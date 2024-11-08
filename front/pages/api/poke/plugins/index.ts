@@ -43,9 +43,7 @@ async function handler(
         });
       }
 
-      const plugins = pluginManager.getPluginsForResourceType(
-        resourceType as string
-      );
+      const plugins = pluginManager.getPluginsForResourceType(resourceType);
 
       const pluginList = plugins.map((p) => ({
         id: p.manifest.id,

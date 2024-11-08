@@ -3,17 +3,17 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
   Dialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   Label,
   ListCheckIcon,
   MoreIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuTrigger,
   PlusIcon,
   RobotIcon,
   TrashIcon,
@@ -229,11 +229,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
             ) : (
               <div className={classNames("flex justify-end gap-2 pt-2")}>
                 <Button
+                  href={`/w/${owner.sId}/assistant/new`}
                   label="New"
                   icon={ChatBubbleBottomCenterPlusIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
-                  href={`/w/${owner.sId}/assistant/new`}
                   onClick={() => {
                     setSidebarOpen(false);
                     const { cId } = router.query;
@@ -247,39 +247,39 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     }
                   }}
                 />
-                <NewDropdownMenu>
-                  <NewDropdownMenuTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
-                  </NewDropdownMenuTrigger>
-                  <NewDropdownMenuContent>
-                    <NewDropdownMenuLabel>Assistants</NewDropdownMenuLabel>
-                    <NewDropdownMenuItem
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>Assistants</DropdownMenuLabel>
+                    <DropdownMenuItem
                       label="Create new assistant"
                       href={`/w/${owner.sId}/builder/assistants/create`}
                       icon={PlusIcon}
                     />
                     {isBuilder(owner) && (
-                      <NewDropdownMenuItem
+                      <DropdownMenuItem
                         href={`/w/${owner.sId}/builder/assistants`}
                         label="Manage assistants"
                         icon={RobotIcon}
                       />
                     )}
-                    <NewDropdownMenuLabel>Conversations</NewDropdownMenuLabel>
-                    <NewDropdownMenuItem
+                    <DropdownMenuLabel>Conversations</DropdownMenuLabel>
+                    <DropdownMenuItem
                       label="Edit conversations"
                       onClick={toggleMultiSelect}
                       icon={ListCheckIcon}
                       disabled={conversations.length === 0}
                     />
-                    <NewDropdownMenuItem
+                    <DropdownMenuItem
                       label="Clear conversation history"
                       onClick={() => setShowDeleteDialog("all")}
                       icon={TrashIcon}
                       disabled={conversations.length === 0}
                     />
-                  </NewDropdownMenuContent>
-                </NewDropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
             {isConversationsError && (

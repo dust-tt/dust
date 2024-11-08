@@ -1,10 +1,4 @@
-import {
-  Button,
-  ExternalLinkIcon,
-  LogoHorizontalColorLogo,
-  LogoutIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { StoredUser } from "@extension/lib/storage";
@@ -19,6 +13,7 @@ type ProtectedRouteProps = {
 export type ProtectedRouteChildrenProps = {
   user: StoredUser;
   workspace: LightWorkspaceType;
+  handleLogout: () => void;
 };
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
@@ -52,26 +47,9 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   return (
     <div className="flex h-screen flex-col gap-2 p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2 pb-16">
-          <LogoHorizontalColorLogo className="h-4 w-16" />
-          <a href="https://dust.tt" target="_blank">
-            <ExternalLinkIcon color="#64748B" />
-          </a>
-        </div>
-        <Button
-          icon={LogoutIcon}
-          variant="outline"
-          label="Sign out"
-          onClick={handleLogout}
-          size="xs"
-        />
-      </div>
-      <>
-        {typeof children === "function"
-          ? children({ user, workspace })
-          : children}
-      </>
+      {typeof children === "function"
+        ? children({ user, workspace, handleLogout })
+        : children}
     </div>
   );
 };

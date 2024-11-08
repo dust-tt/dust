@@ -1,10 +1,10 @@
 import {
   Button,
   Dialog,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -144,25 +144,25 @@ export const AddToSpaceDialog = ({
           This data is already available in all spaces.
         </div>
       ) : (
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger asChild>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button
               label={space ? space.name : "Select space"}
               size="sm"
               isSelect
               variant="outline"
             />
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
             {availableSpaces.map((currentSpace) => (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 key={currentSpace.sId}
                 label={currentSpace.name}
                 onClick={() => setSpace(currentSpace)}
               />
             ))}
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </Dialog>
   );

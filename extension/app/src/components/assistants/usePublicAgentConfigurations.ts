@@ -1,68 +1,26 @@
-import type {
-  AgentsGetViewType,
-  LightAgentConfigurationType,
-} from "@dust-tt/types";
-import { fetcher, useSWRWithDefaults } from "@extension/lib/swr";
+import { useDustAPI } from "@extension/lib/dust_api";
+import { useSWRWithDefaults } from "@extension/lib/swr";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
 
-export function usePublicAgentConfigurations({
-  workspaceId,
-  agentsGetView,
-  includes = [],
-  limit,
-  sort,
-  disabled,
-}: {
-  workspaceId: string;
-  agentsGetView: AgentsGetViewType | null;
-  includes?: ("authors" | "usage")[];
-  limit?: number;
-  sort?: "alphabetical" | "priority";
-  disabled?: boolean;
-}) {
-  const agentConfigurationsFetcher: Fetcher<{
-    agentConfigurations: LightAgentConfigurationType[];
-  }> = fetcher;
+export function usePublicAgentConfigurations() {
+  const dustAPI = useDustAPI();
 
-  // Function to generate query parameters.
-  function getQueryString() {
-    const params = new URLSearchParams();
-    if (typeof agentsGetView === "string") {
-      params.append("view", agentsGetView);
+  const agentConfigurationsFetcher = async () => {
+    const res = await dustAPI.getAgentConfigurations();
+    if (res.isOk()) {
+      return res.value;
     }
-    if (includes.includes("usage")) {
-      params.append("withUsage", "true");
-    }
-    if (includes.includes("authors")) {
-      params.append("withAuthors", "true");
-    }
-
-    if (limit) {
-      params.append("limit", limit.toString());
-    }
-
-    if (sort) {
-      params.append("sort", sort);
-    }
-
-    return params.toString();
-  }
-
-  const queryString = getQueryString();
-
-  const key = `/api/v1/w/${workspaceId}/assistant/agent_configurations?${queryString}`;
+    throw new Error(res.error.message);
+  };
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(agentsGetView ? key : null, agentConfigurationsFetcher, {
-      disabled,
-    });
+    useSWRWithDefaults(
+      ["getAgentConfigurations", dustAPI.workspaceId()],
+      agentConfigurationsFetcher
+    );
 
   return {
-    agentConfigurations: useMemo(
-      () => (data ? data.agentConfigurations : []),
-      [data]
-    ),
+    agentConfigurations: useMemo(() => data ?? [], [data]),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutate,

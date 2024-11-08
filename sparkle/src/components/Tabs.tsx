@@ -1,6 +1,7 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as React from "react";
 
+import { ScrollArea, ScrollBar } from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
 import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { cn } from "@sparkle/lib/utils";
@@ -17,15 +18,18 @@ const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   TabsListProps
 >(({ className, isFullSize = true, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      "s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator",
-      isFullSize && "s-w-full",
-      className
-    )}
-    {...props}
-  />
+  <ScrollArea>
+    <TabsPrimitive.List
+      ref={ref}
+      className={cn(
+        "s-inline-flex s-h-11 s-gap-2 s-border-b s-border-separator",
+        isFullSize && "s-w-full",
+        className
+      )}
+      {...props}
+    />
+    <ScrollBar orientation="horizontal" className="s-hidden" />
+  </ScrollArea>
 ));
 TabsList.displayName = TabsPrimitive.List.displayName;
 
@@ -58,25 +62,29 @@ const TabsTrigger = React.forwardRef<
       <TabsPrimitive.Trigger
         ref={ref}
         className={cn(
+          "s-h-11",
           "disabled:s-pointer-events-none data-[state=active]:s-shadow-inner-border",
           className
         )}
         disabled={disabled}
+        asChild
         {...props}
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          label={label}
-          tooltip={tooltip}
-          icon={icon}
-          disabled={disabled}
-          href={href}
-          target={target}
-          rel={rel}
-          replace={replace}
-          shallow={shallow}
-        />
+        <div>
+          <Button
+            variant="ghost"
+            size="sm"
+            label={label}
+            tooltip={tooltip}
+            icon={icon}
+            disabled={disabled}
+            href={href}
+            target={target}
+            rel={rel}
+            replace={replace}
+            shallow={shallow}
+          />
+        </div>
       </TabsPrimitive.Trigger>
     );
   }

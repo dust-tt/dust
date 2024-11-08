@@ -64,7 +64,7 @@ chrome.runtime.onMessage.addListener(
             const tab = tabs[0];
             if (!tab?.id) {
               log("No active tab found.");
-              sendResponse({ url: "", content: "" });
+              sendResponse({ url: "", content: "", title: "" });
               return;
             }
 
@@ -74,12 +74,13 @@ chrome.runtime.onMessage.addListener(
                 func: () => document.documentElement.innerText,
               });
               sendResponse({
+                title: tab.title || "",
                 url: tab.url || "",
                 content: result.result ?? "no content.",
               });
             } catch (error) {
               log("Error getting active tab content:", error);
-              sendResponse({ url: tab.url || "", content: "" });
+              sendResponse({ url: tab.url || "", content: "", title: "" });
             }
           }
         );

@@ -140,26 +140,34 @@ export async function getReposPage(
 export async function getRepo(
   connectionId: string,
   repoId: number
-): Promise<GithubRepo> {
+): Promise<Result<GithubRepo, ExternalOAuthTokenError>> {
   const octokit = await getOctokit(connectionId);
 
-  const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
-    repo_id: repoId,
-  });
+  try {
+    const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
+      repo_id: repoId,
+    });
 
-  return {
-    id: r.id,
-    name: r.name,
-    private: r.private,
-    url: r.html_url,
-    createdAt: r.created_at ? new Date(r.created_at) : null,
-    updatedAt: r.updated_at ? new Date(r.updated_at) : null,
-    description: r.description,
-    owner: {
-      id: r.owner.id,
-      login: r.owner.login,
-    },
-  };
+    return new Ok({
+      id: r.id,
+      name: r.name,
+      private: r.private,
+      url: r.html_url,
+      createdAt: r.created_at ? new Date(r.created_at) : null,
+      updatedAt: r.updated_at ? new Date(r.updated_at) : null,
+      description: r.description,
+      owner: {
+        id: r.owner.id,
+        login: r.owner.login,
+      },
+    });
+  } catch (err) {
+    if (isGithubRequestErrorNotFound(err)) {
+      return new Err(new ExternalOAuthTokenError(err));
+    }
+
+    throw err;
+  }
 }
 
 export async function getRepoIssuesPage(

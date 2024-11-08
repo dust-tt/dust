@@ -176,19 +176,16 @@ async function handler(
           } else {
             if (chat) {
               anthropic_models = [
-                { id: "claude-instant-1.2" },
                 { id: "claude-2.1" },
                 { id: "claude-3-haiku-20240307" },
                 { id: "claude-3-sonnet-20240229" },
                 { id: "claude-3-5-sonnet-20240620" },
                 { id: "claude-3-5-sonnet-20241022" },
+                { id: "claude-3-5-haiku-20241022" },
                 { id: "claude-3-opus-20240229" },
               ];
             } else {
-              anthropic_models = [
-                { id: "claude-instant-1.2" },
-                { id: "claude-2.1" },
-              ];
+              anthropic_models = [{ id: "claude-2.1" }];
             }
           }
 

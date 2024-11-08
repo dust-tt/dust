@@ -46,45 +46,17 @@ export async function retrieveSelectedNodes({
   }
 
   const brands = await ZendeskBrandResource.fetchAllReadOnly({ connectorId });
-  const brandNodes: ContentNode[] = brands.map((brand) => {
-    return {
-      provider: connector.type,
-      internalId: getBrandInternalId(connectorId, brand.brandId),
-      parentInternalId: null,
-      type: "folder",
-      title: brand.name,
-      sourceUrl: brand.url,
-      expandable: true,
-      permission:
-        brand.helpCenterPermission === "read" &&
-        brand.ticketsPermission === "read"
-          ? "read"
-          : "none",
-      dustDocumentId: null,
-      lastUpdatedAt: brand.updatedAt.getTime() ?? null,
-    };
-  });
-
   const helpCenterNodes: ContentNode[] = brands
-    .filter((brand) => brand.hasHelpCenter)
+    .filter(
+      (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
+    )
     .map((brand) => brand.getHelpCenterContentNode({ connectorId }));
 
-  const categories = await ZendeskCategoryResource.fetchAllReadOnly({
-    connectorId,
-  });
-  const categoriesNodes: ContentNode[] = categories.map((category) =>
-    category.toContentNode({ connectorId })
-  );
-  const ticketNodes: ContentNode[] = brands.map((brand) =>
-    brand.getTicketsContentNode({ connectorId })
-  );
+  const ticketNodes: ContentNode[] = brands
+    .filter((brand) => brand.ticketsPermission === "read")
+    .map((brand) => brand.getTicketsContentNode({ connectorId }));
 
-  return [
-    ...brandNodes,
-    ...helpCenterNodes,
-    ...categoriesNodes,
-    ...ticketNodes,
-  ];
+  return [...helpCenterNodes, ...ticketNodes];
 }
 
 export async function retrieveChildrenNodes({
@@ -106,38 +78,33 @@ export async function retrieveChildrenNodes({
   const isReadPermissionsOnly = filterPermission === "read";
   let nodes: ContentNode[] = [];
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
 
   // At the root level, we show one node for each brand.
   if (!parentInternalId) {
     if (isReadPermissionsOnly) {
-      const brandsInDatabase =
-        await ZendeskBrandResource.fetchAllWithHelpCenter({ connectorId });
+      const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
+        connectorId,
+      });
       nodes = brandsInDatabase.map((brand) =>
         brand.toContentNode({ connectorId })
       );
     } else {
       const { result: brands } = await zendeskApiClient.brand.list();
-      nodes = brands
-        .filter((brand) => brand.has_help_center)
-        .map((brand) => ({
-          provider: connector.type,
-          internalId: getBrandInternalId(connectorId, brand.id),
-          parentInternalId: null,
-          type: "folder",
-          title: brand.name || "Brand",
-          sourceUrl: brand.brand_url,
-          expandable: true,
-          permission: "none",
-          dustDocumentId: null,
-          lastUpdatedAt: null,
-        }));
+      nodes = brands.map((brand) => ({
+        provider: connector.type,
+        internalId: getBrandInternalId(connectorId, brand.id),
+        parentInternalId: null,
+        type: "folder",
+        title: brand.name || "Brand",
+        sourceUrl: brand.brand_url,
+        expandable: true,
+        permission: "none",
+        dustDocumentId: null,
+        lastUpdatedAt: null,
+      }));
     }
   } else {
     const { type, objectId } = getIdFromInternalId(
@@ -213,11 +180,11 @@ export async function retrieveChildrenNodes({
           });
         if (isReadPermissionsOnly) {
           nodes = categoriesInDatabase.map((category) =>
-            category.toContentNode({ connectorId })
+            category.toContentNode({ connectorId, expandable: true })
           );
         } else {
-          await changeZendeskClientSubdomain({
-            client: zendeskApiClient,
+          await changeZendeskClientSubdomain(zendeskApiClient, {
+            connectorId,
             brandId: objectId,
           });
           const categories =
@@ -228,7 +195,11 @@ export async function retrieveChildrenNodes({
             );
             return {
               provider: connector.type,
-              internalId: getCategoryInternalId(connectorId, category.id),
+              internalId: getCategoryInternalId(
+                connectorId,
+                objectId,
+                category.id
+              ),
               parentInternalId: parentInternalId,
               type: "folder",
               title: category.name,
@@ -249,7 +220,7 @@ export async function retrieveChildrenNodes({
           const articlesInDb =
             await ZendeskArticleResource.fetchByCategoryIdReadOnly({
               connectorId,
-              categoryId: objectId,
+              categoryId: objectId.categoryId,
             });
           nodes = articlesInDb.map((article) =>
             article.toContentNode({ connectorId })

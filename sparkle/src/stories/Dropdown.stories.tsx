@@ -3,22 +3,22 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
-  NewDropdownMenu,
-  NewDropdownMenuCheckboxItem,
-  NewDropdownMenuContent,
-  NewDropdownMenuGroup,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuPortal,
-  NewDropdownMenuRadioGroup,
-  NewDropdownMenuRadioItem,
-  NewDropdownMenuSearchbar,
-  NewDropdownMenuSeparator,
-  NewDropdownMenuSub,
-  NewDropdownMenuSubContent,
-  NewDropdownMenuSubTrigger,
-  NewDropdownMenuTrigger,
-} from "@sparkle/components/NewDropdown";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@sparkle/components/Dropdown";
 import {
   AnthropicLogo,
   GithubLogo,
@@ -40,9 +40,9 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "NewPrimitives/Dropdown",
-  component: NewDropdownMenu,
-} satisfies Meta<typeof NewDropdownMenu>;
+  title: "Primitives/Dropdown",
+  component: DropdownMenu,
+} satisfies Meta<typeof DropdownMenu>;
 
 export default meta;
 
@@ -60,64 +60,64 @@ export const DropdownExamples = () => (
 
 function SimpleDropdownDemo() {
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger>Open Simple Dropdown</NewDropdownMenuTrigger>
-      <NewDropdownMenuContent>
-        <NewDropdownMenuLabel label="My Account" />
-        <NewDropdownMenuItem label="Profile" />
-        <NewDropdownMenuItem label="Billing" />
-        <NewDropdownMenuItem label="Team" />
-        <NewDropdownMenuItem label="Subscription" />
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+    <DropdownMenu>
+      <DropdownMenuTrigger>Open Simple Dropdown</DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuLabel label="My Account" />
+        <DropdownMenuItem label="Profile" />
+        <DropdownMenuItem label="Billing" />
+        <DropdownMenuItem label="Team" />
+        <DropdownMenuItem label="Subscription" />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
 function ComplexDropdownDemo() {
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger>Open Complex</NewDropdownMenuTrigger>
-      <NewDropdownMenuContent className="s-w-56">
-        <NewDropdownMenuLabel label="My Account" />
-        <NewDropdownMenuGroup>
-          <NewDropdownMenuItem icon={UserIcon} label="Profile" />
-          <NewDropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
-          <NewDropdownMenuItem icon={Cog6ToothIcon} label="Settings" />
-          <NewDropdownMenuItem icon={UserIcon} label="Keyboard shortcuts" />
-        </NewDropdownMenuGroup>
-        <NewDropdownMenuSeparator />
-        <NewDropdownMenuGroup>
-          <NewDropdownMenuLabel label="Team" />
-          <NewDropdownMenuItem icon={UserIcon} label="Members" />
-          <NewDropdownMenuSub>
-            <NewDropdownMenuSubTrigger icon={UserIcon} label="Invite users" />
-            <NewDropdownMenuPortal>
-              <NewDropdownMenuSubContent>
-                <NewDropdownMenuItem icon={MagicIcon} label="Email" />
-                <NewDropdownMenuItem
+    <DropdownMenu>
+      <DropdownMenuTrigger>Open Complex</DropdownMenuTrigger>
+      <DropdownMenuContent className="s-w-56">
+        <DropdownMenuLabel label="My Account" />
+        <DropdownMenuGroup>
+          <DropdownMenuItem icon={UserIcon} label="Profile" />
+          <DropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
+          <DropdownMenuItem icon={Cog6ToothIcon} label="Settings" />
+          <DropdownMenuItem icon={UserIcon} label="Keyboard shortcuts" />
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel label="Team" />
+          <DropdownMenuItem icon={UserIcon} label="Members" />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger icon={UserIcon} label="Invite users" />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem icon={MagicIcon} label="Email" />
+                <DropdownMenuItem
                   icon={ChatBubbleBottomCenterPlusIcon}
                   label="Message"
                 />
-                <NewDropdownMenuSeparator />
-                <NewDropdownMenuItem icon={UserIcon} label="More..." />
-              </NewDropdownMenuSubContent>
-            </NewDropdownMenuPortal>
-          </NewDropdownMenuSub>
-          <NewDropdownMenuItem icon={UserGroupIcon} label="New Team" />
-        </NewDropdownMenuGroup>
-        <NewDropdownMenuSeparator />
-        <NewDropdownMenuItem icon={GithubLogo} label="GitHub" />
-        <NewDropdownMenuItem icon={UserIcon} label="Support" />
-        <NewDropdownMenuItem icon={CloudArrowDownIcon} label="API" disabled />
-        <NewDropdownMenuSeparator />
-        <NewDropdownMenuItem
+                <DropdownMenuSeparator />
+                <DropdownMenuItem icon={UserIcon} label="More..." />
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+          <DropdownMenuItem icon={UserGroupIcon} label="New Team" />
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem icon={GithubLogo} label="GitHub" />
+        <DropdownMenuItem icon={UserIcon} label="Support" />
+        <DropdownMenuItem icon={CloudArrowDownIcon} label="API" disabled />
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
           icon={LogoutIcon}
           label="Log out"
           variant="warning"
           href="/api/auth/logout"
         />
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -129,32 +129,32 @@ function DropdownMenuCheckboxes() {
   const [showPanel, setShowPanel] = React.useState<Checked>(false);
 
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger>Open Checkbox</NewDropdownMenuTrigger>
-      <NewDropdownMenuContent className="s-w-56">
-        <NewDropdownMenuLabel label="Appearance" />
-        <NewDropdownMenuSeparator />
-        <NewDropdownMenuCheckboxItem
+    <DropdownMenu>
+      <DropdownMenuTrigger>Open Checkbox</DropdownMenuTrigger>
+      <DropdownMenuContent className="s-w-56">
+        <DropdownMenuLabel label="Appearance" />
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
           checked={showStatusBar}
           onCheckedChange={setShowStatusBar}
         >
           Status Bar
-        </NewDropdownMenuCheckboxItem>
-        <NewDropdownMenuCheckboxItem
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
           checked={showActivityBar}
           onCheckedChange={setShowActivityBar}
           disabled
         >
           Activity Bar
-        </NewDropdownMenuCheckboxItem>
-        <NewDropdownMenuCheckboxItem
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
           checked={showPanel}
           onCheckedChange={setShowPanel}
         >
           Panel
-        </NewDropdownMenuCheckboxItem>
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+        </DropdownMenuCheckboxItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -162,22 +162,18 @@ function DropdownMenuRadioGroupDemo() {
   const [position, setPosition] = React.useState("bottom");
 
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger>Open Radio Group</NewDropdownMenuTrigger>
-      <NewDropdownMenuContent className="s-w-56">
-        <NewDropdownMenuLabel label="Panel Position" />
-        <NewDropdownMenuSeparator />
-        <NewDropdownMenuRadioGroup value={position} onValueChange={setPosition}>
-          <NewDropdownMenuRadioItem value="top">Top</NewDropdownMenuRadioItem>
-          <NewDropdownMenuRadioItem value="bottom">
-            Bottom
-          </NewDropdownMenuRadioItem>
-          <NewDropdownMenuRadioItem value="right">
-            Right
-          </NewDropdownMenuRadioItem>
-        </NewDropdownMenuRadioGroup>
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+    <DropdownMenu>
+      <DropdownMenuTrigger>Open Radio Group</DropdownMenuTrigger>
+      <DropdownMenuContent className="s-w-56">
+        <DropdownMenuLabel label="Panel Position" />
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
+          <DropdownMenuRadioItem value="top">Top</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="bottom">Bottom</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="right">Right</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -202,14 +198,14 @@ function ModelsDropdownDemo() {
   ];
 
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button label={selectedModel} variant="outline" size="sm" />
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent>
-        <NewDropdownMenuLabel label="Best performing models" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuLabel label="Best performing models" />
         {bestPerformingModels.map((modelConfig) => (
-          <NewDropdownMenuItem
+          <DropdownMenuItem
             key={modelConfig.name}
             label={modelConfig.name}
             onClick={() => setSelectedModel(modelConfig.name)}
@@ -217,8 +213,8 @@ function ModelsDropdownDemo() {
             icon={modelConfig.icon}
           />
         ))}
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -250,18 +246,18 @@ function ModelsDropdownRadioGroupDemo() {
   ];
 
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button label={selectedModel} variant="ghost" size="sm" />
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent>
-        <NewDropdownMenuRadioGroup
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuRadioGroup
           value={selectedModel}
           onValueChange={(value) => setSelectedModel(value)}
         >
-          <NewDropdownMenuLabel label="Best performing models" />
+          <DropdownMenuLabel label="Best performing models" />
           {bestPerformingModels.map((modelConfig) => (
-            <NewDropdownMenuRadioItem
+            <DropdownMenuRadioItem
               key={modelConfig.name}
               label={modelConfig.name}
               icon={modelConfig.icon}
@@ -269,9 +265,9 @@ function ModelsDropdownRadioGroupDemo() {
               value={modelConfig.name}
             />
           ))}
-        </NewDropdownMenuRadioGroup>
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -307,25 +303,25 @@ function DropdownMenuSearchbarDemo() {
   );
 
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           label={selectedItem || "Select System"}
           variant="outline"
           size="sm"
         />
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent className="s-w-[300px]">
-        <NewDropdownMenuSearchbar
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="s-w-[300px]">
+        <DropdownMenuSearchbar
           placeholder="Search systems..."
           name="search"
           value={searchText}
           onChange={setSearchText}
         />
-        <NewDropdownMenuSeparator />
+        <DropdownMenuSeparator />
         <ScrollArea className="s-h-[200px]">
           {filteredItems.map((item) => (
-            <NewDropdownMenuItem
+            <DropdownMenuItem
               key={item}
               label={item}
               onClick={() => {
@@ -335,7 +331,7 @@ function DropdownMenuSearchbarDemo() {
             />
           ))}
         </ScrollArea>
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

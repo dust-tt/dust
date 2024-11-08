@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import type { AgentMessagePublicType } from "@dust-tt/client";
+import { isRetrievalActionType, isWebsearchActionType } from "@dust-tt/client";
 import type {
   ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
@@ -9,12 +11,14 @@ import {
   ChatBubbleThoughtIcon,
   Chip,
   Citation,
+  ClipboardIcon,
   ContentMessage,
   ConversationMessage,
   DocumentDuplicateIcon,
   EyeIcon,
   Markdown,
   Popover,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionSpecificEvent,
@@ -23,7 +27,6 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
-  AgentMessageType,
   GenerationTokensEvent,
   LightWorkspaceType,
   RetrievalActionType,
@@ -35,8 +38,6 @@ import {
   assertNever,
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
-  isRetrievalActionType,
-  isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
@@ -52,6 +53,7 @@ import {
 } from "@extension/components/markdown/MentionBlock";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { useEventSource } from "@extension/hooks/useEventSource";
+import { retryMessage } from "@extension/lib/conversation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
@@ -96,7 +98,7 @@ export function makeWebsearchResultsCitation(
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  message: AgentMessageType;
+  message: AgentMessagePublicType;
   messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: LightWorkspaceType;
   size: ConversationMessageSizeType;
@@ -116,8 +118,13 @@ export function AgentMessage({
   owner,
   size,
 }: AgentMessageProps) {
+  const sendNotification = useSendNotification();
+
   const [streamedAgentMessage, setStreamedAgentMessage] =
-    useState<AgentMessageType>(message);
+    useState<AgentMessagePublicType>(message);
+
+  const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
+    useState<boolean>(false);
 
   const [references, setReferences] = useState<{
     [key: string]: MarkdownCitation;
@@ -178,9 +185,9 @@ export function AgentMessage({
     } = JSON.parse(eventStr);
 
     const updateMessageWithAction = (
-      m: AgentMessageType,
+      m: AgentMessagePublicType,
       action: AgentActionType
-    ): AgentMessageType => {
+    ): AgentMessagePublicType => {
       return {
         ...m,
         actions: m.actions
@@ -271,7 +278,7 @@ export function AgentMessage({
     { isReadyToConsumeStream: shouldStream }
   );
 
-  const agentMessageToRender = ((): AgentMessageType => {
+  const agentMessageToRender = ((): AgentMessagePublicType => {
     switch (message.status) {
       case "succeeded":
       case "failed":
@@ -410,11 +417,45 @@ export function AgentMessage({
     [activeReferences, lastHoveredReference]
   );
 
+  function cleanUpCitations(message: string): string {
+    const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
+    return message.replace(regex, "");
+  }
+
+  const buttons =
+    message.status === "failed"
+      ? []
+      : [
+          <Button
+            key="copy-msg-button"
+            tooltip="Copy to clipboard"
+            variant="outline"
+            size="xs"
+            onClick={() => {
+              void navigator.clipboard.writeText(
+                cleanUpCitations(agentMessageToRender.content || "")
+              );
+            }}
+            icon={ClipboardIcon}
+          />,
+          <Button
+            key="retry-msg-button"
+            tooltip="Retry"
+            variant="outline"
+            size="xs"
+            onClick={() => {
+              void retryHandler(agentMessageToRender);
+            }}
+            icon={ArrowPathIcon}
+            disabled={isRetryHandlerProcessing || shouldStream}
+          />,
+        ];
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
       name={`@${agentConfiguration.name}`}
-      buttons={[]}
+      buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       messageEmoji={messageEmoji}
       renderName={() => {
@@ -449,7 +490,7 @@ export function AgentMessage({
     streaming,
     lastTokenClassification,
   }: {
-    agentMessage: AgentMessageType;
+    agentMessage: AgentMessagePublicType;
     references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
@@ -463,7 +504,7 @@ export function AgentMessage({
               code: "unexpected_error",
             }
           }
-          retryHandler={() => {}}
+          retryHandler={async () => retryHandler(agentMessage)}
         />
       );
     }
@@ -525,20 +566,23 @@ export function AgentMessage({
     );
   }
 
-  // TODO(Ext): Handle retry API
-  // async function retryHandler(agentMessage: AgentMessageType) {
-  //   setIsRetryHandlerProcessing(true);
-  //   await fetch(
-  //     `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
-  //     {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //     }
-  //   );
-  //   setIsRetryHandlerProcessing(false);
-  // }
+  async function retryHandler(agentMessage: AgentMessagePublicType) {
+    setIsRetryHandlerProcessing(true);
+    const res = await retryMessage({
+      owner,
+      conversationId,
+      messageId: agentMessage.sId,
+    });
+    if (res.isErr()) {
+      console.error(res.error);
+      sendNotification({
+        title: res.error.title,
+        description: res.error.message,
+        type: "error",
+      });
+    }
+    setIsRetryHandlerProcessing(false);
+  }
 }
 
 function getCitations({

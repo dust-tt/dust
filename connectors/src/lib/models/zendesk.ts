@@ -102,7 +102,7 @@ ZendeskBrand.init(
       defaultValue: DataTypes.NOW,
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     name: {
@@ -166,6 +166,7 @@ export class ZendeskCategory extends Model<
   declare permission: "read" | "none";
 
   declare name: string;
+  declare description: string | null;
   declare url: string;
 
   declare lastUpsertedTs?: Date;
@@ -191,16 +192,20 @@ ZendeskCategory.init(
       defaultValue: DataTypes.NOW,
     },
     categoryId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     url: {
       type: DataTypes.STRING,
@@ -250,7 +255,7 @@ export class ZendeskArticle extends Model<
   declare name: string;
   declare url: string;
 
-  declare lastUpsertedTs: Date;
+  declare lastUpsertedTs: Date | null;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -273,15 +278,15 @@ ZendeskArticle.init(
       defaultValue: DataTypes.NOW,
     },
     articleId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     categoryId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     name: {
@@ -336,19 +341,8 @@ export class ZendeskTicket extends Model<
   declare groupId: number;
   declare organizationId: number;
 
-  declare name: string;
-  declare description: string;
   declare subject: string;
-  declare requesterMail: string;
   declare url: string;
-
-  declare satisfactionScore: string;
-  declare satisfactionComment: string;
-
-  declare status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
-  declare tags: string[];
-  declare type: "problem" | "incident" | "question" | "task";
-  declare customFields: string[];
 
   declare lastUpsertedTs: Date;
 
@@ -372,70 +366,33 @@ ZendeskTicket.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    ticketId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    brandId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    groupId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    assigneeId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    organizationId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    name: {
+    url: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    satisfactionScore: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    satisfactionComment: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     subject: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    description: {
-      type: DataTypes.STRING,
+    ticketId: {
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
-    requesterMail: {
-      type: DataTypes.STRING,
+    brandId: {
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
+    groupId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
-    tags: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
+    assigneeId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
-    url: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    type: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    customFields: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
+    organizationId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     permission: {
       type: DataTypes.STRING,
@@ -460,6 +417,7 @@ ZendeskTicket.init(
     ],
   }
 );
+
 ConnectorModel.hasMany(ZendeskTicket, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",

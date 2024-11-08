@@ -192,6 +192,9 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }
     }
 
+    const objective =
+      typeof rawInputs.objective === "string" ? rawInputs.objective : "n/a";
+
     const { model } = agentConfiguration;
 
     const supportedModel = getSupportedModelConfig(model);
@@ -336,6 +339,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           schema: renderSchemaPropertiesAsJSONSchema(
             actionConfiguration.schema
           ),
+          objective,
         },
       ],
       {
@@ -469,6 +473,14 @@ async function processActionSpecification({
   description: string;
 }): Promise<AgentActionSpecification> {
   const inputs = [];
+
+  inputs.push({
+    name: "objective",
+    description:
+      "The objective behind the use of the tool based on the conversation state." +
+      " This is used to guide the tool to extract the right data based on the user request.",
+    type: "string" as const,
+  });
 
   if (actionConfiguration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());

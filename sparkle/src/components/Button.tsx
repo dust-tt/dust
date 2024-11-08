@@ -14,7 +14,7 @@ import {
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-const BUTTON_VARIANTS = [
+export const BUTTON_VARIANTS = [
   "primary",
   "highlight",
   "warning",
@@ -24,7 +24,7 @@ const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-const BUTTON_SIZES = ["xs", "sm", "md"] as const;
+export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
 
 type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
@@ -77,7 +77,7 @@ const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
   ghost: "slate400",
 };
 
-interface MetaButtonProps
+export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
@@ -105,7 +105,7 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 MetaButton.displayName = "MetaButton";
 
 export interface ButtonProps
-  extends MetaButtonProps,
+  extends Omit<MetaButtonProps, "children">,
     Omit<LinkWrapperProps, "children" | "className"> {
   label?: string;
   icon?: React.ComponentType;
@@ -159,7 +159,38 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
-    const buttonElement = (
+    const innerButton = (
+      <MetaButton
+        ref={ref}
+        size={buttonSize}
+        variant={variant}
+        disabled={isLoading || props.disabled}
+        className={isPulsing ? "s-animate-pulse" : ""}
+        aria-label={ariaLabel || tooltip || label}
+        style={
+          {
+            "--pulse-color": "#93C5FD",
+            "--duration": "1.5s",
+          } as React.CSSProperties
+        }
+        {...props}
+      >
+        {content}
+      </MetaButton>
+    );
+
+    const wrappedContent = tooltip ? (
+      <TooltipProvider>
+        <TooltipRoot>
+          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
+          <TooltipContent>{tooltip}</TooltipContent>
+        </TooltipRoot>
+      </TooltipProvider>
+    ) : (
+      innerButton
+    );
+
+    return href ? (
       <LinkWrapper
         href={href}
         target={target}
@@ -167,37 +198,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         replace={replace}
         shallow={shallow}
       >
-        <MetaButton
-          ref={ref}
-          size={buttonSize}
-          variant={variant}
-          disabled={isLoading || props.disabled}
-          className={isPulsing ? "s-animate-pulse" : ""}
-          aria-label={ariaLabel || tooltip || label}
-          style={
-            {
-              "--pulse-color": "#93C5FD",
-              "--duration": "1.5s",
-            } as React.CSSProperties
-          }
-          {...props}
-        >
-          {content}
-        </MetaButton>
+        {wrappedContent}
       </LinkWrapper>
-    );
-
-    return tooltip ? (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild ref={ref}>
-            {buttonElement}
-          </TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
-        </TooltipRoot>
-      </TooltipProvider>
     ) : (
-      buttonElement
+      wrappedContent
     );
   }
 );

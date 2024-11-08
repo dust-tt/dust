@@ -100,18 +100,20 @@ export class Authenticator {
   }
 
   /**
-   * Converts an array of group sIDs (string identifiers) into ResourcePermission objects.
+   * Converts an array of arrays of group sIDs into ResourcePermission objects.
+   *
    * This utility method creates standard read/write permissions for each group.
    *
-   * The resulting permissions enforce a conjunction (AND) between groups. A user must belong to
-   * ALL groups to access the resource, as each group is placed in a separate ResourcePermission
-   * entry.
+   * Permission logic:
+   * - A user must belong to AT LEAST ONE group from EACH sub-array.
+   *   Each sub-array creates a ResourcePermission entry that can be satisfied by ANY of its groups.
+   *   Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
    *
-   * @param groupIds - Array of group string identifiers
-   * @returns Array of ResourcePermission objects, one per group, requiring membership in all groups
+   * @param groupIds - Array of arrays of group string identifiers
+   * @returns Array of ResourcePermission objects, one entry per sub-array
    */
   static createResourcePermissionsFromGroupIds(
-    groupIds: string[]
+    groupIds: string[][]
   ): ResourcePermission[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
@@ -121,14 +123,12 @@ export class Authenticator {
       return id;
     };
 
-    // Each group in separate entry enforces AND relationship.
-    return groupIds.map((groupId) => ({
-      groups: [
-        {
-          id: getIdFromSIdOrThrow(groupId),
-          permissions: ["read", "write"],
-        },
-      ],
+    // Each group in the same entry enforces OR relationship.
+    return groupIds.map((group) => ({
+      groups: group.map((groupId) => ({
+        id: getIdFromSIdOrThrow(groupId),
+        permissions: ["read", "write"],
+      })),
     }));
   }
 

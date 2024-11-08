@@ -266,7 +266,7 @@ export async function getUserConversations(
       }
 
       const conversation = {
-        id: p.conversationId,
+        id: p.conversation.id,
         created: p.conversation.createdAt.getTime(),
         sId: p.conversation.sId,
         owner,
@@ -284,7 +284,6 @@ export async function getUserConversations(
     },
     []
   );
-
   return conversations;
 }
 
@@ -2171,12 +2170,12 @@ export function canAccessConversation(
 ): boolean {
   const owner = auth.getNonNullableWorkspace();
 
-  const groupIds =
+  const requestedGroupIds =
     conversation instanceof Conversation
-      ? getConversationGroupIdsFromModel(owner, conversation)
-      : conversation.groupIds;
+      ? getConversationRequestedGroupIdsFromModel(owner, conversation)
+      : conversation.requestedGroupIds;
 
   return auth.canRead(
-    Authenticator.createResourcePermissionsFromGroupIds(groupIds)
+    Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
   );
 }

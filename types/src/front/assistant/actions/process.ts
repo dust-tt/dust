@@ -71,9 +71,6 @@ export type ProcessActionOutputsType = {
   total_documents: number;
   total_chunks: number;
   total_tokens: number;
-  skip_documents: number;
-  skip_chunks: number;
-  skip_tokens: number;
 };
 
 // Use top_k of 768 as 512 worked really smoothly during initial tests. Might update to 1024 in the

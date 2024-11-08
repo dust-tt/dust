@@ -1,11 +1,11 @@
 import {
   AssistantPreview,
   ColorPicker,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
   EmojiPicker,
   Markdown,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuTrigger,
   TextArea,
 } from "@dust-tt/sparkle";
 import { Input } from "@dust-tt/sparkle";
@@ -158,19 +158,19 @@ function PickerInputField({
                   {...field}
                   value={field.value} // Ensuring value is a string
                 />
-                <NewDropdownMenu>
-                  <NewDropdownMenuTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <div ref={pickerRef}>
                       <PokeButton variant="outline">{buttonLabel}</PokeButton>
                     </div>
-                  </NewDropdownMenuTrigger>
-                  <NewDropdownMenuContent>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
                     {picker((value: string) => {
                       field.onChange(value);
                       pickerRef.current?.click();
                     })}
-                  </NewDropdownMenuContent>
-                </NewDropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </PokeFormControl>
           ) : (

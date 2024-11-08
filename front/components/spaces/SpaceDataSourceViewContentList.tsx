@@ -2,10 +2,10 @@ import {
   Button,
   Cog6ToothIcon,
   DataTable,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Searchbar,
   Spinner,
   useHashParam,
@@ -373,7 +373,7 @@ export const SpaceDataSourceViewContentList = ({
         className={classNames(
           "flex gap-2",
           isEmpty
-            ? "h-36 w-full items-center justify-center rounded-xl bg-structure-100"
+            ? "h-36 w-full items-center justify-center rounded-xl bg-muted-background"
             : ""
         )}
       >
@@ -398,26 +398,26 @@ export const SpaceDataSourceViewContentList = ({
           <>
             {((viewType === "tables" && hasDocuments) ||
               (viewType === "documents" && hasTables)) && (
-              <NewDropdownMenu>
-                <NewDropdownMenuTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     size="sm"
                     label={viewType === "documents" ? "Documents" : "Tables"}
                     variant="outline"
                     isSelect
                   />
-                </NewDropdownMenuTrigger>
-                <NewDropdownMenuContent>
-                  <NewDropdownMenuItem
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
                     label="Documents"
                     onClick={() => handleViewTypeChange("documents")}
                   />
-                  <NewDropdownMenuItem
+                  <DropdownMenuItem
                     label="Tables"
                     onClick={() => handleViewTypeChange("tables")}
                   />
-                </NewDropdownMenuContent>
-              </NewDropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             <FoldersHeaderMenu
               owner={owner}

@@ -31,6 +31,7 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
   `s-border-${color}-100`,
   `s-border-${color}-200`,
   `s-border-${color}-300`,
+  `s-text-${color}-500`,
   `s-text-${color}-800`,
   `s-text-${color}-900`,
   `s-text-${color}-950`,
@@ -171,9 +172,17 @@ module.exports = {
         rainbow: {
           "0%": { "background-position": "0%" },
           "100%": { "background-position": "200%" },
+        "shiny-text": {
+          "0%": {
+            "background-position": "calc(-200%) 0",
+          },
+          "100%": {
+            "background-position": "calc(200%) 0",
+          },
         },
       },
       animation: {
+        "shiny-text": "shiny-text 2s infinite",
         pulse: "pulse var(--duration) ease-out infinite",
         "opacity-pulse": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "background-position-spin":
@@ -227,7 +236,7 @@ module.exports = {
             dark: colors.slate[500],
           },
           background: {
-            DEFAULT: colors.slate[100],
+            DEFAULT: colors.slate[50],
             dark: colors.slate[900],
           },
         },
@@ -235,7 +244,7 @@ module.exports = {
           DEFAULT: colors.blue[500],
           light: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
           dark: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
-          muted: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
+          muted: { DEFAULT: "#AFCDEF", dark: "#284896" },
           950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
           800: { DEFAULT: colors.blue[800], dark: colors.blue[200] },
@@ -270,7 +279,7 @@ module.exports = {
           DEFAULT: colors.red[500],
           light: { DEFAULT: colors.red[400], dark: colors.red[600] },
           dark: { DEFAULT: colors.red[600], dark: colors.red[400] },
-          muted: { DEFAULT: colors.red[300], dark: colors.red[700] },
+          muted: { DEFAULT: "#E3BDC3", dark: "#762F39" },
           950: { DEFAULT: colors.red[950], dark: colors.red[50] },
           900: { DEFAULT: colors.red[900], dark: colors.red[100] },
           800: { DEFAULT: colors.red[800], dark: colors.red[200] },
@@ -287,7 +296,7 @@ module.exports = {
           DEFAULT: colors.emerald[500],
           light: { DEFAULT: colors.emerald[400], dark: colors.emerald[600] },
           dark: { DEFAULT: colors.emerald[600], dark: colors.emerald[400] },
-          muted: { DEFAULT: colors.emerald[300], dark: colors.emerald[700] },
+          muted: { DEFAULT: "#9CDECC", dark: "#1C5D56" },
           500: { DEFAULT: colors.emerald[500], dark: colors.emerald[500] },
           400: { DEFAULT: colors.emerald[400], dark: colors.emerald[600] },
           200: { DEFAULT: colors.emerald[200], dark: colors.emerald[800] },

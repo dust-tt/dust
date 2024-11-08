@@ -278,12 +278,17 @@ export async function getPagesAndDatabasesToSync({
   cursors,
   excludeUpToDatePages,
   loggerArgs,
+  filter,
 }: {
   connectorId: ModelId;
   lastSyncedAt: number | null;
-  cursors: string[];
+  cursors: {
+    previous: string | null;
+    last: string | null;
+  };
   excludeUpToDatePages: boolean;
   loggerArgs: Record<string, string | number>;
+  filter?: "page" | "database";
 }): Promise<{
   pageIds: string[];
   databaseIds: string[];
@@ -317,17 +322,18 @@ export async function getPagesAndDatabasesToSync({
 
   let res;
   try {
-    res = await getPagesAndDatabasesEditedSince(
-      accessToken,
-      lastSyncedAt,
+    res = await getPagesAndDatabasesEditedSince({
+      notionAccessToken: accessToken,
+      sinceTs: lastSyncedAt,
       cursors,
-      {
+      loggerArgs: {
         ...loggerArgs,
         dataSourceId: connector.dataSourceId,
         workspaceId: connector.workspaceId,
       },
-      skippedDatabaseIds
-    );
+      skippedDatabaseIds,
+      filter,
+    });
   } catch (e) {
     if (isNotionClientError(e)) {
       // Sometimes a cursor will consistently fail with 500.
@@ -2571,6 +2577,31 @@ export async function upsertDatabaseStructuredDataFromCache({
   }
 
   await dbModel.update({ structuredDataUpsertedTs: upsertAt });
+}
+
+export async function logMaxSearchPageIndexReached({
+  connectorId,
+  searchPageIndex,
+  maxSearchPageIndex,
+}: {
+  connectorId: ModelId;
+  searchPageIndex: number;
+  maxSearchPageIndex: number;
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const localLogger = logger.child({
+    workspaceId: connector.workspaceId,
+    dataSourceId: connector.dataSourceId,
+    maxSearchPageIndex,
+    connectorId,
+    searchPageIndex,
+  });
+
+  localLogger.info("Max search page index reached.");
 }
 
 function getTableInfoFromDatabase(database: NotionDatabase): {

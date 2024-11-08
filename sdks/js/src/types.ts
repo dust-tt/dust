@@ -1,16 +1,42 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
-const ModelProviderIdSchema = z.enum([
+const FlexibleEnumSchema = <U extends string>(values: readonly [U, ...U[]]) =>
+  z.enum(values).transform((val) => val); // Transform bypass for the enum validation when parsing but doesn't affect the inferred type
+
+const ModelProviderIdSchema = FlexibleEnumSchema([
   "openai",
   "anthropic",
   "mistral",
   "google_ai_studio",
 ]);
 
-const EmbeddingProviderIdSchema = z.enum(["openai", "mistral"]);
+const ModelLLMIdSchema = FlexibleEnumSchema([
+  "gpt-3.5-turbo",
+  "gpt-4-turbo",
+  "gpt-4o-2024-08-06",
+  "gpt-4o",
+  "gpt-4o-mini",
+  "o1-preview",
+  "o1-mini",
+  "claude-3-opus-20240229",
+  "claude-3-5-sonnet-20240620",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-5-haiku-20241022",
+  "claude-3-haiku-20240307",
+  "claude-2.1",
+  "claude-instant-1.2",
+  "mistral-large-latest",
+  "mistral-medium",
+  "mistral-small-latest",
+  "codestral-latest",
+  "gemini-1.5-pro-latest",
+  "gemini-1.5-flash-latest",
+]);
 
-const ConnectorsAPIErrorTypeSchema = z.enum([
+const EmbeddingProviderIdSchema = FlexibleEnumSchema(["openai", "mistral"]);
+
+const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema([
   "authorization_error",
   "not_found",
   "internal_server_error",
@@ -42,7 +68,7 @@ export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
 
-const SupportedContentFragmentTypeSchema = z.enum([
+const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
   ...([
     // Text content types.
     "application/msword",
@@ -65,21 +91,21 @@ const SupportedContentFragmentTypeSchema = z.enum([
   ] as const),
 ]);
 
-const UserMessageOriginSchema = z.union([
-  z.enum([
-    "slack",
-    "web",
-    "api",
-    "gsheet",
-    "zapier",
-    "make",
-    "zendesk",
-    "raycast",
-    "extension",
-  ]),
-  z.null(),
-  z.undefined(),
-]);
+const UserMessageOriginSchema = FlexibleEnumSchema([
+  "slack",
+  "web",
+  "api",
+  "gsheet",
+  "zapier",
+  "make",
+  "zendesk",
+  "raycast",
+  "extension",
+])
+  .or(z.null())
+  .or(z.undefined());
+
+const VisibilitySchema = FlexibleEnumSchema(["visible", "deleted"]);
 
 const RankSchema = z.object({
   rank: z.number(),
@@ -116,7 +142,7 @@ const Timezone = z.string().refine((s) => moment.tz.names().includes(s), {
   message: "Invalid timezone",
 });
 
-const ConnectorProvidersSchema = z.enum([
+const ConnectorProvidersSchema = FlexibleEnumSchema([
   "confluence",
   "github",
   "google_drive",
@@ -226,14 +252,14 @@ export interface LoggerInterface {
   warn: (args: Record<string, unknown>, message: string) => void;
 }
 
-const DataSourceViewCategoriesSchema = z.enum([
+const DataSourceViewCategoriesSchema = FlexibleEnumSchema([
   "managed",
   "folder",
   "website",
   "apps",
 ]);
 
-const BlockTypeSchema = z.enum([
+const BlockTypeSchema = FlexibleEnumSchema([
   "input",
   "data",
   "data_source",
@@ -305,20 +331,10 @@ const RunTypeSchema = z.object({
     .optional(),
 });
 
-const FunctionCallSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  arguments: z.string(),
-});
-
-const FunctionMessageTypeModelSchema = z.object({
-  role: z.literal("function"),
-  name: z.string(),
-  function_call_id: z.string(),
-  content: z.string(),
-});
-
-const TokensClassificationSchema = z.enum(["tokens", "chain_of_thought"]);
+const TokensClassificationSchema = FlexibleEnumSchema([
+  "tokens",
+  "chain_of_thought",
+]);
 
 export const GenerationTokensEventSchema = z.object({
   type: z.literal("generation_tokens"),
@@ -334,7 +350,7 @@ export const GenerationTokensEventSchema = z.object({
 });
 export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
-const BaseActionTypeSchema = z.enum([
+const BaseActionTypeSchema = FlexibleEnumSchema([
   "dust_app_run_action",
   "tables_query_action",
   "retrieval_action",
@@ -347,10 +363,6 @@ const BaseActionTypeSchema = z.enum([
 const BaseActionSchema = z.object({
   id: ModelIdSchema,
   type: BaseActionTypeSchema,
-  renderForFunctionCall: z.function().returns(FunctionCallSchema),
-  renderForMultiActionsModel: z
-    .function()
-    .returns(FunctionMessageTypeModelSchema),
 });
 
 const BrowseActionOutputSchema = z.object({
@@ -374,6 +386,7 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("browse_action"),
 });
+type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
 const DustAppParametersSchema = z.record(
   z.union([z.string(), z.number(), z.boolean()])
@@ -401,8 +414,9 @@ const DustAppRunActionTypeSchema = BaseActionSchema.extend({
   ...o,
   output: o.output,
 }));
+type DustAppRunActionPublicType = z.infer<typeof DustAppRunActionTypeSchema>;
 
-const DataSourceViewKindSchema = z.enum(["default", "custom"]);
+const DataSourceViewKindSchema = FlexibleEnumSchema(["default", "custom"]);
 
 const DataSourceViewSchema = z.object({
   category: DataSourceViewCategoriesSchema,
@@ -460,7 +474,6 @@ const RetrievalDocumentTypeSchema = z.object({
 });
 
 const RetrievalActionTypeSchema = BaseActionSchema.extend({
-  id: ModelIdSchema,
   agentMessageId: ModelIdSchema,
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
@@ -473,6 +486,7 @@ const RetrievalActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("retrieval_action"),
 });
+type RetrievalActionPublicType = z.infer<typeof RetrievalActionTypeSchema>;
 
 const ProcessSchemaAllowedTypesSchema = z.enum(["string", "number", "boolean"]);
 
@@ -488,13 +502,9 @@ const ProcessActionOutputsSchema = z.object({
   total_documents: z.number(),
   total_chunks: z.number(),
   total_tokens: z.number(),
-  skip_documents: z.number(),
-  skip_chunks: z.number(),
-  skip_tokens: z.number(),
 });
 
 const ProcessActionTypeSchema = BaseActionSchema.extend({
-  id: ModelIdSchema,
   agentMessageId: ModelIdSchema,
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
@@ -506,9 +516,9 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("process_action"),
 });
+type ProcessActionPublicType = z.infer<typeof ProcessActionTypeSchema>;
 
 const TablesQueryActionTypeSchema = BaseActionSchema.extend({
-  id: ModelIdSchema,
   params: DustAppParametersSchema,
   output: z.record(z.union([z.string(), z.number(), z.boolean()])).nullable(),
   resultsFileId: z.string().nullable(),
@@ -519,8 +529,9 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("tables_query_action"),
 });
+type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
-const WhitelistableFeaturesSchema = z.enum([
+const WhitelistableFeaturesSchema = FlexibleEnumSchema([
   "usage_data_api",
   "okta_enterprise_connection",
   "labs_transcripts",
@@ -532,9 +543,12 @@ const WhitelistableFeaturesSchema = z.enum([
   "snowflake_connector_feature",
   "zendesk_connector_feature",
 ]);
+
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 
-const WorkspaceSegmentationSchema = z.enum(["interesting"]).nullable();
+const WorkspaceSegmentationSchema = FlexibleEnumSchema([
+  "interesting",
+]).nullable();
 
 const RoleSchema = z.enum(["admin", "builder", "user", "none"]);
 
@@ -552,7 +566,14 @@ const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });
 
-const UserProviderSchema = z.enum(["github", "google"]).nullable();
+const UserProviderSchema = FlexibleEnumSchema([
+  "auth0",
+  "github",
+  "google",
+  "okta",
+  "samlp",
+  "waad",
+]).nullable();
 
 const UserSchema = z.object({
   sId: z.string(),
@@ -600,22 +621,23 @@ const WebsearchActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("websearch_action"),
 });
+type WebsearchActionPublicType = z.infer<typeof WebsearchActionTypeSchema>;
 
-const GlobalAgentStatusSchema = z.enum([
+const GlobalAgentStatusSchema = FlexibleEnumSchema([
   "active",
   "disabled_by_admin",
   "disabled_missing_datasource",
   "disabled_free_workspace",
 ]);
 
-const AgentStatusSchema = z.enum(["active", "archived", "draft"]);
+const AgentStatusSchema = FlexibleEnumSchema(["active", "archived", "draft"]);
 
 const AgentConfigurationStatusSchema = z.union([
   AgentStatusSchema,
   GlobalAgentStatusSchema,
 ]);
 
-const AgentConfigurationScopeSchema = z.enum([
+const AgentConfigurationScopeSchema = FlexibleEnumSchema([
   "global",
   "workspace",
   "published",
@@ -631,27 +653,7 @@ const AgentRecentAuthorsSchema = z.array(z.string()).readonly();
 
 const AgentModelConfigurationSchema = z.object({
   providerId: ModelProviderIdSchema,
-  modelId: z.enum([
-    "gpt-3.5-turbo",
-    "gpt-4-turbo",
-    "gpt-4o-2024-08-06",
-    "gpt-4o",
-    "gpt-4o-mini",
-    "o1-preview",
-    "o1-mini",
-    "claude-3-opus-20240229",
-    "claude-3-5-sonnet-20240620",
-    "claude-3-5-sonnet-20241022",
-    "claude-3-haiku-20240307",
-    "claude-2.1",
-    "claude-instant-1.2",
-    "mistral-large-latest",
-    "mistral-medium",
-    "mistral-small-latest",
-    "codestral-latest",
-    "gemini-1.5-pro-latest",
-    "gemini-1.5-flash-latest",
-  ]),
+  modelId: ModelLLMIdSchema,
   temperature: z.number(),
 });
 
@@ -691,7 +693,7 @@ const ContentFragmentSchema = z.object({
   fileId: z.string().nullable(),
   created: z.number(),
   type: z.literal("content_fragment"),
-  visibility: z.enum(["visible", "deleted"]),
+  visibility: VisibilitySchema,
   version: z.number(),
   sourceUrl: z.string().nullable(),
   textUrl: z.string(),
@@ -700,14 +702,13 @@ const ContentFragmentSchema = z.object({
   contentType: SupportedContentFragmentTypeSchema,
   context: ContentFragmentContextSchema,
 });
+export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
 const AgentMentionSchema = z.object({
   configurationId: z.string(),
 });
 
 const MentionTypeSchema = AgentMentionSchema;
-
-const MessageVisibilitySchema = z.enum(["visible", "deleted"]);
 
 const UserMessageContextSchema = z.object({
   username: z.string(),
@@ -723,7 +724,7 @@ const UserMessageSchema = z.object({
   created: z.number(),
   type: z.literal("user_message"),
   sId: z.string(),
-  visibility: MessageVisibilitySchema,
+  visibility: VisibilitySchema,
   version: z.number(),
   user: UserSchema.nullable(),
   mentions: z.array(MentionTypeSchema),
@@ -740,8 +741,9 @@ const AgentActionTypeSchema = z.union([
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
 ]);
+export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
-const AgentMessageStatusSchema = z.enum([
+const AgentMessageStatusSchema = FlexibleEnumSchema([
   "created",
   "succeeded",
   "failed",
@@ -754,7 +756,7 @@ const AgentMessageTypeSchema = z.object({
   created: z.number(),
   type: z.literal("agent_message"),
   sId: z.string(),
-  visibility: MessageVisibilitySchema,
+  visibility: VisibilitySchema,
   version: z.number(),
   parentMessageId: z.string().nullable(),
   configuration: LightAgentConfigurationSchema,
@@ -775,9 +777,9 @@ const AgentMessageTypeSchema = z.object({
     })
     .nullable(),
 });
-export type AgentMessageType = z.infer<typeof AgentMessageTypeSchema>;
+export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
-const ConversationVisibilitySchema = z.enum([
+const ConversationVisibilitySchema = FlexibleEnumSchema([
   "unlisted",
   "workspace",
   "deleted",
@@ -1015,7 +1017,7 @@ export const CoreAPIErrorSchema = z.object({
 export const CoreAPITokenTypeSchema = z.tuple([z.number(), z.string()]);
 export type CoreAPITokenType = z.infer<typeof CoreAPITokenTypeSchema>;
 
-const APIErrorTypeSchema = z.enum([
+const APIErrorTypeSchema = FlexibleEnumSchema([
   "action_api_error",
   "action_failed",
   "action_unknown_error",
@@ -1033,6 +1035,7 @@ const APIErrorTypeSchema = z.enum([
   "connector_update_unauthorized",
   "conversation_access_restricted",
   "conversation_not_found",
+  "content_too_large",
   "data_source_auth_error",
   "data_source_document_not_found",
   "data_source_error",
@@ -1252,7 +1255,12 @@ export type DustAPICredentials = {
   userEmail?: string;
 };
 
-const SpaceKindSchema = z.enum(["regular", "global", "system", "public"]);
+const SpaceKindSchema = FlexibleEnumSchema([
+  "regular",
+  "global",
+  "system",
+  "public",
+]);
 
 const SpaceTypeSchema = z.object({
   name: z.string(),
@@ -1388,8 +1396,21 @@ export type PublicPostMessagesRequestBody = z.infer<
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
-  agentMessages?: AgentMessageType[];
+  agentMessages?: AgentMessagePublicType[];
 };
+
+export const PublicPostEditMessagesRequestBodySchema = z.object({
+  content: z.string(),
+  mentions: z.array(
+    z.object({
+      configurationId: z.string(),
+    })
+  ),
+});
+
+export type PublicPostEditMessagesRequestBody = z.infer<
+  typeof PublicPostEditMessagesRequestBodySchema
+>;
 
 export const PublicPostContentFragmentRequestBodySchema = z.object({
   title: z.string(),
@@ -1457,7 +1478,7 @@ export type PostConversationsResponseType = z.infer<
   typeof PostConversationsResponseSchema
 >;
 
-const GetConversationsResponseSchema = z.object({
+export const GetConversationsResponseSchema = z.object({
   conversations: ConversationWithoutContentSchema.array(),
 });
 export type GetConversationsResponseType = z.infer<
@@ -1796,7 +1817,7 @@ const usageTables = [
   "all",
 ] as const;
 
-const SupportedUsageTablesSchema = z.enum(usageTables);
+const SupportedUsageTablesSchema = FlexibleEnumSchema(usageTables);
 
 export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
 
@@ -1822,3 +1843,47 @@ export const GetWorkspaceUsageRequestSchema = z.union([
 export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
 >;
+
+export const MeResponseSchema = z.object({
+  user: UserSchema.and(z.object({ workspaces: LightWorkspaceSchema.array() })),
+});
+
+export type MeResponseType = z.infer<typeof MeResponseSchema>;
+
+// Typeguards.
+
+export function isRetrievalActionType(
+  action: AgentActionPublicType
+): action is RetrievalActionPublicType {
+  return action.type === "retrieval_action";
+}
+
+export function isWebsearchActionType(
+  action: AgentActionPublicType
+): action is WebsearchActionPublicType {
+  return action.type === "retrieval_action";
+}
+
+export function isTablesQueryActionType(
+  action: AgentActionPublicType
+): action is TablesQueryActionPublicType {
+  return action.type === "tables_query_action";
+}
+
+export function isDustAppRunActionType(
+  action: AgentActionPublicType
+): action is DustAppRunActionPublicType {
+  return action.type === "dust_app_run_action";
+}
+
+export function isProcessActionType(
+  action: AgentActionPublicType
+): action is ProcessActionPublicType {
+  return action.type === "process_action";
+}
+
+export function BrowseActionPublicType(
+  action: AgentActionPublicType
+): action is BrowseActionPublicType {
+  return action.type === "browse_action";
+}

@@ -5,7 +5,6 @@ import {
   PopoverTrigger,
   ScrollArea,
   Searchbar,
-  Separator,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
@@ -103,6 +102,8 @@ export default function DataSourcePicker({
     setFilteredDataSourceViews(newDataSources.slice(0, 30));
   }, [spaceDataSourceViews, searchFilter]);
 
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="flex items-center">
       <div className="flex items-center">
@@ -117,7 +118,7 @@ export default function DataSourcePicker({
             "No DataSource"
           )
         ) : (
-          <PopoverRoot>
+          <PopoverRoot open={open} onOpenChange={setOpen}>
             <PopoverTrigger>
               {selectedDataSourceView ? (
                 <div
@@ -138,7 +139,7 @@ export default function DataSourcePicker({
                 <Button variant="outline" label="Select DataSource" isSelect />
               ) : (
                 <Link
-                  href={`/w/${owner.sId}/data-sources/spaces`}
+                  href={`/w/${owner.sId}/spaces/${space.sId}`}
                   className={classNames(
                     readOnly ? "text-gray-300" : "text-gray-700"
                   )}
@@ -169,12 +170,12 @@ export default function DataSourcePicker({
                           },
                         ]);
                         setSearchFilter("");
+                        setOpen(false);
                       }}
                     >
                       <div className="my-1">
                         <div className="text-sm">{dsv.dataSource.name}</div>
                       </div>
-                      <Separator />
                     </div>
                   ))}
                   {filteredDataSourceViews.length === 0 && (

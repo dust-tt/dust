@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { syncBrandWithPermissions } from "@connectors/connectors/zendesk/lib/utils";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
@@ -12,76 +13,64 @@ import {
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
 
+/**
+ * Marks a help center as permission "read", optionally alongside all its children (categories and articles).
+ */
 export async function allowSyncZendeskHelpCenter({
   connectorId,
   connectionId,
   brandId,
+  withChildren = true,
 }: {
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
-  let brand = await ZendeskBrandResource.fetchByBrandId({
+  withChildren?: boolean;
+}): Promise<boolean> {
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connectionId)
+  );
+
+  const syncSuccess = await syncBrandWithPermissions({
+    zendeskApiClient,
+    connectionId,
     connectorId,
     brandId,
+    permissions: {
+      ticketsPermission: "none",
+      helpCenterPermission: "read",
+    },
   });
-
-  if (brand?.helpCenterPermission === "none") {
-    await brand.update({ helpCenterPermission: "read" });
+  if (!syncSuccess) {
+    return false; // stopping early if the brand sync failed
   }
 
-  const { accessToken, subdomain } =
-    await getZendeskSubdomainAndAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
-
-  if (!brand) {
-    const {
-      result: { brand: fetchedBrand },
-    } = await zendeskApiClient.brand.show(brandId);
-    if (fetchedBrand) {
-      brand = await ZendeskBrandResource.makeNew({
-        blob: {
-          subdomain: fetchedBrand.subdomain,
-          connectorId: connectorId,
-          brandId: fetchedBrand.id,
-          name: fetchedBrand.name || "Brand",
-          helpCenterPermission: "read",
-          ticketsPermission: "none",
-          hasHelpCenter: fetchedBrand.has_help_center,
-          url: fetchedBrand.url,
-        },
-      });
-    } else {
+  // updating permissions for all the children categories
+  if (withChildren) {
+    await changeZendeskClientSubdomain(zendeskApiClient, {
+      connectorId,
+      brandId,
+    });
+    try {
+      const categories = await zendeskApiClient.helpcenter.categories.list();
+      categories.forEach((category) =>
+        allowSyncZendeskCategory({
+          connectionId,
+          connectorId,
+          categoryId: category.id,
+          brandId,
+        })
+      );
+    } catch (e) {
       logger.error(
         { connectorId, brandId },
-        "[Zendesk] Brand could not be fetched."
+        "[Zendesk] Categories could not be fetched."
       );
-      return null;
+      return false;
     }
   }
 
-  await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
-  try {
-    const categories = await zendeskApiClient.helpcenter.categories.list();
-    categories.forEach((category) =>
-      allowSyncZendeskCategory({
-        connectionId,
-        connectorId,
-        categoryId: category.id,
-      })
-    );
-  } catch (e) {
-    logger.error(
-      { connectorId, brandId },
-      "[Zendesk] Categories could not be fetched."
-    );
-    return null;
-  }
-
-  return brand;
+  return true;
 }
 
 /**
@@ -90,9 +79,11 @@ export async function allowSyncZendeskHelpCenter({
 export async function revokeSyncZendeskHelpCenter({
   connectorId,
   brandId,
+  withChildren = true,
 }: {
   connectorId: ModelId;
   brandId: number;
+  withChildren?: boolean;
 }): Promise<ZendeskBrandResource | null> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -108,25 +99,34 @@ export async function revokeSyncZendeskHelpCenter({
 
   // updating the field helpCenterPermission to "none" for the brand
   await brand.revokeHelpCenterPermissions();
+
   // revoking the permissions for all the children categories and articles
-  await ZendeskCategoryResource.revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  });
-  await ZendeskArticleResource.revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  });
+  if (withChildren) {
+    await ZendeskCategoryResource.revokePermissionsForBrand({
+      connectorId,
+      brandId,
+    });
+    await ZendeskArticleResource.revokePermissionsForBrand({
+      connectorId,
+      brandId,
+    });
+  }
+
   return brand;
 }
 
+/**
+ * Marks a category with "read" permissions, alongside all its children articles.
+ */
 export async function allowSyncZendeskCategory({
   connectorId,
   connectionId,
+  brandId,
   categoryId,
 }: {
   connectorId: ModelId;
   connectionId: string;
+  brandId: number;
   categoryId: number;
 }): Promise<ZendeskCategoryResource | null> {
   let category = await ZendeskCategoryResource.fetchByCategoryId({
@@ -137,25 +137,26 @@ export async function allowSyncZendeskCategory({
     await category.update({ permission: "read" });
   }
 
-  const { accessToken, subdomain } =
-    await getZendeskSubdomainAndAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
-
   if (!category) {
+    const zendeskApiClient = createZendeskClient(
+      await getZendeskSubdomainAndAccessToken(connectionId)
+    );
+    await changeZendeskClientSubdomain(zendeskApiClient, {
+      connectorId,
+      brandId,
+    });
     const { result: fetchedCategory } =
       await zendeskApiClient.helpcenter.categories.show(categoryId);
     if (fetchedCategory) {
       category = await ZendeskCategoryResource.makeNew({
         blob: {
-          connectorId: connectorId,
-          brandId: fetchedCategory.id,
-          name: fetchedCategory.name || "Brand",
-          categoryId: fetchedCategory.id,
+          connectorId,
+          brandId,
+          name: fetchedCategory.name || "Category",
+          categoryId,
           permission: "read",
-          url: fetchedCategory.url,
+          url: fetchedCategory.html_url,
+          description: fetchedCategory.description,
         },
       });
     } else {
@@ -163,6 +164,13 @@ export async function allowSyncZendeskCategory({
       return null;
     }
   }
+
+  await allowSyncZendeskHelpCenter({
+    connectorId,
+    connectionId,
+    brandId,
+    withChildren: false,
+  });
 
   return category;
 }
@@ -177,18 +185,38 @@ export async function revokeSyncZendeskCategory({
   connectorId: ModelId;
   categoryId: number;
 }): Promise<ZendeskCategoryResource | null> {
+  // revoking the permissions for the category
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
-    categoryId: categoryId,
+    categoryId,
   });
   if (!category) {
     logger.error(
-      { categoryId: categoryId },
+      { categoryId },
       "[Zendesk] Category not found, could not revoke sync."
     );
     return null;
   }
-
   await category.revokePermissions();
+
+  // revoking the permissions for all the children articles
+  await ZendeskArticleResource.revokePermissionsForCategory({
+    connectorId,
+    categoryId,
+  });
+
+  // revoking the permissions for the help center if no other category is allowed
+  const categories = await ZendeskCategoryResource.fetchByBrandId({
+    connectorId,
+    brandId: category.brandId,
+  });
+  if (categories.length === 0) {
+    await revokeSyncZendeskHelpCenter({
+      connectorId,
+      brandId: category.brandId,
+      withChildren: false,
+    });
+  }
+
   return category;
 }

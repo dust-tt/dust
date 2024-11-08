@@ -11,19 +11,16 @@ export interface LinkWrapperProps {
   target?: string;
 }
 
-export function LinkWrapper({
-  children,
-  href,
-  rel,
-  replace,
-  shallow,
-  target,
-}: LinkWrapperProps) {
+export const LinkWrapper = React.forwardRef<
+  HTMLAnchorElement,
+  LinkWrapperProps
+>(({ children, href, rel, replace, shallow, target }, ref) => {
   const { components } = React.useContext(SparkleContext);
 
   if (href) {
     return (
       <components.link
+        ref={ref}
         href={href}
         target={target}
         rel={rel}
@@ -36,4 +33,4 @@ export function LinkWrapper({
   }
 
   return children;
-}
+});

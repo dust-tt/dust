@@ -5,7 +5,6 @@ import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentMessageSuccessEvent,
-  AgentMessageType,
   APIError,
   ConversationPublicType,
   DataSourceViewType,
@@ -34,9 +33,11 @@ import {
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetConversationResponseSchema,
+  GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
+  MeResponseSchema,
   Ok,
   PatchDataSourceViewsResponseSchema,
   PostContentFragmentResponseSchema,
@@ -119,6 +120,36 @@ export class DustAPI {
     return this._useLocalInDev && this._nodeEnv === "development"
       ? "http://localhost:3000"
       : this._url;
+  }
+
+  /**
+   * Fetches the current user's information from the API.
+   *
+   * This method sends a GET request to the `/api/v1/me` endpoint with the necessary
+   * authorization headers. It then processes the response to extract the user information.
+   * Note that this will only work if you are using an OAuth2 token. It will always fail with a workspace API key.
+   *
+   * @returns {Promise<Result<User, Error>>} A promise that resolves to a Result object containing
+   * either the user information or an error.
+   */
+  async me() {
+    // This method call directly _fetchWithError and _resultFromResponse as it's a little special : it doesn't live under the workspace resource.
+    const headers: RequestInit["headers"] = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
+
+    const res = await this._fetchWithError(`${this.apiUrl()}/api/v1/me`, {
+      method: "GET",
+      headers,
+    });
+
+    const r = await this._resultFromResponse(MeResponseSchema, res);
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.user);
   }
 
   async request(args: RequestArgsType) {
@@ -525,16 +556,32 @@ export class DustAPI {
     return new Ok(r.value.message);
   }
 
-  async streamAgentMessageEvents({
+  async streamAgentAnswerEvents({
     conversation,
-    message,
+    userMessageId,
   }: {
     conversation: ConversationPublicType;
-    message: AgentMessageType;
+    userMessageId: string;
   }) {
+    // find the agent message with the parentMessageId equal to the user message id
+    const agentMessages = conversation.content
+      .map((versions) => {
+        const m = versions[versions.length - 1];
+        return m;
+      })
+      .filter((m) => {
+        return (
+          m && m.type === "agent_message" && m.parentMessageId === userMessageId
+        );
+      });
+    if (agentMessages.length === 0) {
+      return new Err(new Error("Failed to retrieve agent message"));
+    }
+    const agentMessage = agentMessages[0];
+
     const res = await this.request({
       method: "GET",
-      path: `assistant/conversations/${conversation.sId}/messages/${message.sId}/events`,
+      path: `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`,
     });
 
     if (res.isErr()) {
@@ -645,6 +692,22 @@ export class DustAPI {
     };
 
     return new Ok({ eventStream: streamEvents() });
+  }
+
+  async getConversations() {
+    const res = await this.request({
+      method: "GET",
+      path: `assistant/conversations`,
+    });
+
+    const r = await this._resultFromResponse(
+      GetConversationsResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.conversations);
   }
 
   async getConversation({ conversationId }: { conversationId: string }) {
@@ -809,37 +872,65 @@ export class DustAPI {
       return res;
     }
 
+    if (res.value.response.status === 413) {
+      return new Err({
+        type: "content_too_large",
+        title: "Your message is too long to be sent.",
+        message: "Please try again with a shorter message.",
+      });
+    }
+
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
     const text = await res.value.response.text();
 
     try {
-      const json = schema.parse(JSON.parse(text)) as z.infer<T>;
-      return new Ok(json);
-    } catch (e) {
-      try {
-        // Expected error format
-        const err: APIError = APIErrorSchema.parse(JSON.parse(text));
-        return new Err(err);
-      } catch (e) {
-        // Unexpected error format
-        const err: APIError = {
-          type: "unexpected_response_format",
-          message: `Unexpected response format from DustAPI calling ${res.value.response.url} : ${e}`,
-        };
-        this._logger.error(
-          {
-            dustError: err,
-            parseError: e,
-            rawText: text,
-            status: res.value.response.status,
-            url: res.value.response.url,
-            duration: res.value.duration,
-          },
-          "DustAPI error"
-        );
-        return new Err(err);
+      const r = schema.safeParse(JSON.parse(text));
+      if (r.success) {
+        return new Ok(r.data as z.infer<T>);
+      } else {
+        // We couldn't parse the response directly, maybe it's an error
+        const rErr = APIErrorSchema.safeParse(JSON.parse(text));
+        if (rErr.success) {
+          // Successfully parsed an error
+          return new Err(rErr.data);
+        } else {
+          // Unexpected response format (neither an error nor a valid response)
+          const err: APIError = {
+            type: "unexpected_response_format",
+            message: `Unexpected response format from DustAPI calling ${res.value.response.url} : ${r.error.message}`,
+          };
+          this._logger.error(
+            {
+              dustError: err,
+              parseError: r.error.message,
+              rawText: text,
+              status: res.value.response.status,
+              url: res.value.response.url,
+              duration: res.value.duration,
+            },
+            "DustAPI error"
+          );
+          return new Err(err);
+        }
       }
+    } catch (e) {
+      const err: APIError = {
+        type: "unexpected_response_format",
+        message: `Fail to parse response from DustAPI calling ${res.value.response.url} : ${e}`,
+      };
+      this._logger.error(
+        {
+          dustError: err,
+          error: e,
+          rawText: text,
+          status: res.value.response.status,
+          url: res.value.response.url,
+          duration: res.value.duration,
+        },
+        "DustAPI error"
+      );
+      return new Err(err);
     }
   }
 }

@@ -1,13 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import {
-  Button,
-  ClipboardIcon,
-  CubeIcon,
-  Modal,
-  Page,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Button, ClipboardIcon, CubeIcon, Modal, Page } from "@dust-tt/sparkle";
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { RunConfig, RunType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -214,23 +207,19 @@ export default function Deploy({
         isOpen={showViewAppAPIModal}
         onClose={() => setShowViewAppAPIModal(false)}
       />
-      <Tooltip
-        label={
+      <Button
+        tooltip={
           disabled
             ? "You need to run this app at least once successfully to view the endpoint"
             : "View how to run this app programmatically"
         }
-        trigger={
-          <Button
-            label="API"
-            variant="primary"
-            onClick={() => {
-              setShowViewAppAPIModal(true);
-            }}
-            disabled={disabled}
-            icon={CubeIcon}
-          />
-        }
+        label="API"
+        variant="primary"
+        onClick={() => {
+          setShowViewAppAPIModal(true);
+        }}
+        disabled={disabled}
+        icon={CubeIcon}
       />
     </div>
   );

@@ -1,4 +1,13 @@
-import { ArrowUpIcon, Button } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  Button,
+  Checkbox,
+  MetaButton,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
@@ -22,6 +31,8 @@ export interface InputBarContainerProps {
   selectedAssistant: AgentMention | null;
   stickyMentions?: AgentMention[];
   disableAutoFocus: boolean;
+  isTabIncluded: boolean;
+  toggleIncludeTab: () => void;
 }
 
 export const InputBarContainer = ({
@@ -32,8 +43,10 @@ export const InputBarContainer = ({
   selectedAssistant,
   stickyMentions,
   disableAutoFocus,
+  isTabIncluded,
+  toggleIncludeTab,
 }: InputBarContainerProps) => {
-  const suggestions = usePublicAssistantSuggestions(agentConfigurations, owner);
+  const suggestions = usePublicAssistantSuggestions(agentConfigurations);
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
@@ -80,7 +93,26 @@ export const InputBarContainer = ({
       />
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
-        <div className="flex py-2">
+        <div className="flex py-2 space-x-1">
+          <TooltipProvider>
+            <TooltipRoot>
+              <TooltipTrigger asChild>
+                <MetaButton
+                  size="xs"
+                  variant="outline"
+                  onClick={toggleIncludeTab}
+                >
+                  <Checkbox checked={isTabIncluded} size="xs" /> Tab sharing
+                </MetaButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isTabIncluded
+                  ? "Each message in this conversation includes the content of the current tab as attachment."
+                  : "If enabled, each message in this conversation will include the content of the current tab as attachment."}
+              </TooltipContent>
+            </TooltipRoot>
+          </TooltipProvider>
+
           <AssistantPicker
             owner={owner}
             size="xs"

@@ -78,7 +78,7 @@ export async function googleDriveFullSync({
 
   let nextPageToken: string | undefined = undefined;
 
-  if (!foldersToBrowse) {
+  if (!foldersToBrowse.length) {
     foldersToBrowse = await getFoldersToSync(connectorId);
   }
 

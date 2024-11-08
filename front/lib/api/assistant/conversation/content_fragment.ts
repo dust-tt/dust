@@ -45,7 +45,7 @@ export async function getContentFragmentBlob(
           workspaceId: owner.sId,
           conversationId: conversation.sId,
           messageId,
-          contentFormat: "raw",
+          contentFormat: "text",
         }).downloadUrl
       : url;
 

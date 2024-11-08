@@ -1,17 +1,16 @@
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Hoverable,
   IconButton,
   Input,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   PlusIcon,
   SparklesIcon,
   Spinner,
   TextArea,
-  Tooltip,
   XCircleIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -209,18 +208,18 @@ function PropertiesFields({
                 </div>
 
                 <div className="col-span-2">
-                  <NewDropdownMenu>
-                    <NewDropdownMenuTrigger asChild>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
                         isSelect
                         label={prop["type"]}
                         variant="ghost"
                         size="sm"
                       />
-                    </NewDropdownMenuTrigger>
-                    <NewDropdownMenuContent>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
                       {["string", "number", "boolean"].map((value, i) => (
-                        <NewDropdownMenuItem
+                        <DropdownMenuItem
                           key={`${value}-${i}`}
                           label={value}
                           onClick={() => {
@@ -231,8 +230,8 @@ function PropertiesFields({
                           }}
                         />
                       ))}
-                    </NewDropdownMenuContent>
-                  </NewDropdownMenu>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div className="col-span-1 flex flex-row items-end pb-2">
@@ -581,20 +580,14 @@ export function ActionProcess({
           </div>
           {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (
             <div>
-              <Tooltip
-                label={
-                  "Automatically re-generate the extraction schema based on Instructions"
-                }
-                trigger={
-                  <Button
-                    label="Re-generate from Instructions"
-                    variant="ghost"
-                    icon={SparklesIcon}
-                    size="xs"
-                    disabled={isGeneratingSchema}
-                    onClick={generateSchemaFromInstructions}
-                  />
-                }
+              <Button
+                tooltip="Automatically re-generate the extraction schema based on Instructions"
+                label="Re-generate from Instructions"
+                variant="ghost"
+                icon={SparklesIcon}
+                size="xs"
+                disabled={isGeneratingSchema}
+                onClick={generateSchemaFromInstructions}
               />
             </div>
           )}

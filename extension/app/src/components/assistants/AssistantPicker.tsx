@@ -1,12 +1,14 @@
 import {
+  Avatar,
   Button,
-  Item,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   RobotIcon,
   ScrollArea,
-  Searchbar,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -43,24 +45,22 @@ export function AssistantPicker({
   };
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
-        <div>
-          {pickerButton ? (
-            pickerButton
-          ) : (
-            <Button
-              icon={RobotIcon}
-              variant="ghost"
-              isSelect
-              size={size}
-              tooltip="Pick an assistant"
-            />
-          )}
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="mr-2 p-2">
-        <Searchbar
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {pickerButton ? (
+          pickerButton
+        ) : (
+          <Button
+            icon={RobotIcon}
+            variant="ghost"
+            isSelect
+            size={size}
+            tooltip="Pick an assistant"
+          />
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-[300px]">
+        <DropdownMenuSearchbar
           ref={searchbarRef}
           placeholder="Search"
           name="input"
@@ -75,27 +75,21 @@ export function AssistantPicker({
             }
           }}
         />
-        <ScrollArea className="mt-2 h-[300px]">
+        <DropdownMenuSeparator className="mt-2" />
+        <ScrollArea className="mt-1 h-[300px]">
           {searchedAssistants.map((c) => (
-            <div
-              key={`assistant-picker-container-${c.sId}`}
-              className="flex flex-row items-center justify-between px-2"
-            >
-              <Item.Avatar
-                key={`assistant-picker-${c.sId}`}
-                label={c.name}
-                visual={c.pictureUrl}
-                hasAction={false}
-                onClick={() => {
-                  onItemClick(c);
-                  setSearchText("");
-                }}
-                className="truncate"
-              />
-            </div>
+            <DropdownMenuItem
+              key={`assistant-picker-${c.sId}`}
+              icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
+              label={c.name}
+              onClick={() => {
+                onItemClick(c);
+                setSearchText("");
+              }}
+            />
           ))}
         </ScrollArea>
-      </PopoverContent>
-    </PopoverRoot>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

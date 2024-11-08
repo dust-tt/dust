@@ -1,11 +1,11 @@
 import {
   ChevronDownIcon,
   Chip,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   IconButton,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { ActiveRoleType } from "@dust-tt/types";
 import { ACTIVE_ROLES } from "@dust-tt/types";
@@ -19,8 +19,8 @@ interface RoleDropDownProps {
 
 export function RoleDropDown({ onChange, selectedRole }: RoleDropDownProps) {
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <div className="group flex cursor-pointer items-center gap-2">
           <Chip
             color={ROLES_DATA[selectedRole]["color"]}
@@ -35,10 +35,10 @@ export function RoleDropDown({ onChange, selectedRole }: RoleDropDownProps) {
             className="group-hover:text-action-400"
           />
         </div>
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
         {ACTIVE_ROLES.map((role) => (
-          <NewDropdownMenuItem
+          <DropdownMenuItem
             key={role}
             onClick={() => onChange(role)}
             label={
@@ -47,7 +47,7 @@ export function RoleDropDown({ onChange, selectedRole }: RoleDropDownProps) {
             }
           />
         ))}
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

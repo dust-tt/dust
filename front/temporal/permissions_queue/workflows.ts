@@ -1,8 +1,8 @@
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
+import assert from "assert";
 
 import type * as activities from "@app/temporal/permissions_queue/activities";
 import { updateSpacePermissionsSignal } from "@app/temporal/permissions_queue/signals";
-import assert from "assert";
 
 const { updateSpacePermissions } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",

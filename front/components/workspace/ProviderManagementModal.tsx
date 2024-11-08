@@ -1,13 +1,12 @@
 import {
   Button,
   ContextItem,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Modal,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   SliderToggle,
-  Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
@@ -194,27 +193,24 @@ export function ProviderManagementModal({
       </div>
       <div className="flex flex-row items-center gap-4 px-4 pt-4">
         <div className="text-sm font-semibold">Embedding Provider:</div>
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger>
-            <Tooltip
-              label="Please contact us if you are willing to change this setting."
-              trigger={
-                <Button
-                  isSelect
-                  label={
-                    embeddingProvider
-                      ? prettyfiedProviderNames[embeddingProvider]
-                      : prettyfiedProviderNames["openai"]
-                  }
-                  variant="outline"
-                  size="sm"
-                />
+        <DropdownMenu>
+          <DropdownMenuTrigger disabled>
+            <Button
+              disabled
+              tooltip="Please contact us if you are willing to change this setting."
+              isSelect
+              label={
+                embeddingProvider
+                  ? prettyfiedProviderNames[embeddingProvider]
+                  : prettyfiedProviderNames["openai"]
               }
+              variant="outline"
+              size="sm"
             />
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
             {EMBEDDING_PROVIDER_IDS.map((provider) => (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 key={provider}
                 label={prettyfiedProviderNames[provider]}
                 onClick={() => {
@@ -222,8 +218,8 @@ export function ProviderManagementModal({
                 }}
               />
             ))}
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="px-4 pt-2 text-sm text-gray-500">
         Embedding models are used to create numerical representations of your

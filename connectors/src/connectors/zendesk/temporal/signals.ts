@@ -2,10 +2,17 @@ import { defineSignal } from "@temporalio/workflow";
 
 export interface ZendeskUpdateSignal {
   zendeskId: number;
-  type: "brand" | "help-center" | "tickets" | "category";
+  type: "brand" | "help-center" | "tickets";
   forceResync: boolean;
 }
 
-export const zendeskUpdatesSignal = defineSignal<[ZendeskUpdateSignal[]]>(
-  "zendeskUpdatesSignal"
-);
+export interface ZendeskCategoryUpdateSignal {
+  brandId: number;
+  categoryId: number;
+  type: "category";
+  forceResync: boolean;
+}
+
+export const zendeskUpdatesSignal = defineSignal<
+  [(ZendeskUpdateSignal | ZendeskCategoryUpdateSignal)[]]
+>("zendeskUpdatesSignal");

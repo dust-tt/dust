@@ -43,18 +43,19 @@ export function AssistantInputBar({
   stickyMentions,
   additionalAgentConfiguration,
   disableAutoFocus = false,
+  isTabIncluded,
+  toggleIncludeTab,
 }: {
   owner: LightWorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   disableAutoFocus?: boolean;
+  isTabIncluded: boolean;
+  toggleIncludeTab: () => void;
 }) {
   const { agentConfigurations: baseAgentConfigurations } =
-    usePublicAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-    });
+    usePublicAgentConfigurations();
 
   const agentConfigurations = useMemo(() => {
     if (
@@ -123,10 +124,10 @@ export function AssistantInputBar({
   return (
     <div className="flex w-full flex-col">
       <div className="flex flex-1 px-0">
-        <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
+        <div className="flex w-full flex-1 flex-col items-end self-stretch">
           <div
             className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4",
               "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
               "transition-all",
               "rounded-2xl border-b border-l border-r border-element-500 focus-within:border-action-300 focus-within:shadow-md focus-within:ring-1",
@@ -142,37 +143,13 @@ export function AssistantInputBar({
                 selectedAssistant={selectedAssistant}
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
+                isTabIncluded={isTabIncluded}
+                toggleIncludeTab={toggleIncludeTab}
               />
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-export function FixedAssistantInputBar({
-  owner,
-  onSubmit,
-  stickyMentions,
-  additionalAgentConfiguration,
-  disableAutoFocus = false,
-}: {
-  owner: LightWorkspaceType;
-  onSubmit: (input: string, mentions: MentionType[]) => void;
-  stickyMentions?: AgentMention[];
-  additionalAgentConfiguration?: LightAgentConfigurationType;
-  disableAutoFocus?: boolean;
-}) {
-  return (
-    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
-      <AssistantInputBar
-        owner={owner}
-        onSubmit={onSubmit}
-        stickyMentions={stickyMentions}
-        additionalAgentConfiguration={additionalAgentConfiguration}
-        disableAutoFocus={disableAutoFocus}
-      />
     </div>
   );
 }

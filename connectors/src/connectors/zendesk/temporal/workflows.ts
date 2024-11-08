@@ -8,14 +8,17 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
-import type { ZendeskUpdateSignal } from "@connectors/connectors/zendesk/temporal/signals";
+import type {
+  ZendeskCategoryUpdateSignal,
+  ZendeskUpdateSignal,
+} from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
-  syncZendeskArticlesActivity,
+  syncZendeskArticleBatchActivity,
   syncZendeskTicketsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
@@ -26,6 +29,7 @@ const {
   checkZendeskTicketsPermissionsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
+  getAllZendeskBrandsIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -49,42 +53,48 @@ export async function zendeskSyncWorkflow({
   const brandHelpCenterSignals: ZendeskUpdateSignal[] = [];
   const brandTicketsIds = new Set<number>();
   const brandTicketSignals: ZendeskUpdateSignal[] = [];
+
   const categoryIds = new Set<number>();
-  const categorySignals: ZendeskUpdateSignal[] = [];
+  const categoryBrands: Record<number, number> = {};
+  const categorySignals: ZendeskCategoryUpdateSignal[] = [];
 
   // If we get a signal, update the workflow state by adding help center ids.
   // Signals are sent when permissions are updated by the admin.
-  setHandler(zendeskUpdatesSignal, (zendeskUpdates: ZendeskUpdateSignal[]) => {
-    zendeskUpdates.forEach((signal) => {
-      switch (signal.type) {
-        case "brand": {
-          brandIds.add(signal.zendeskId);
-          brandSignals.push(signal);
-          break;
+  setHandler(
+    zendeskUpdatesSignal,
+    (zendeskUpdates: (ZendeskUpdateSignal | ZendeskCategoryUpdateSignal)[]) => {
+      zendeskUpdates.forEach((signal) => {
+        switch (signal.type) {
+          case "brand": {
+            brandIds.add(signal.zendeskId);
+            brandSignals.push(signal);
+            break;
+          }
+          case "help-center": {
+            brandHelpCenterIds.add(signal.zendeskId);
+            brandHelpCenterSignals.push(signal);
+            break;
+          }
+          case "tickets": {
+            brandTicketsIds.add(signal.zendeskId);
+            brandTicketSignals.push(signal);
+            break;
+          }
+          case "category": {
+            categoryIds.add(signal.categoryId);
+            categoryBrands[signal.categoryId] = signal.brandId;
+            categorySignals.push(signal);
+            break;
+          }
+          default:
+            assertNever(
+              `Unexpected signal type received within Zendesk sync workflow.`,
+              signal
+            );
         }
-        case "help-center": {
-          brandHelpCenterIds.add(signal.zendeskId);
-          brandHelpCenterSignals.push(signal);
-          break;
-        }
-        case "tickets": {
-          brandTicketsIds.add(signal.zendeskId);
-          brandTicketSignals.push(signal);
-          break;
-        }
-        case "category": {
-          categoryIds.add(signal.zendeskId);
-          categorySignals.push(signal);
-          break;
-        }
-        default:
-          assertNever(
-            `Unexpected signal type ${signal.type} received within Zendesk sync workflow.`,
-            signal.type
-          );
-      }
-    });
-  });
+      });
+    }
+  );
 
   // If we got no signal, then we're on the scheduled execution
   if (
@@ -93,7 +103,8 @@ export async function zendeskSyncWorkflow({
     brandTicketsIds.size === 0 &&
     categoryIds.size === 0
   ) {
-    // TODO: refresh the data we don't receive updates about through the webhooks here
+    const allBrandIds = await getAllZendeskBrandsIdsActivity({ connectorId });
+    allBrandIds.forEach((brandId) => brandIds.add(brandId));
   }
 
   const {
@@ -161,18 +172,23 @@ export async function zendeskSyncWorkflow({
   while (categoryIds.size > 0) {
     const categoryIdsToProcess = new Set(categoryIds);
     for (const categoryId of categoryIdsToProcess) {
-      if (!categoryIds.has(categoryId)) {
-        continue;
-      }
       const relatedSignal = categorySignals.find(
-        (signal) => signal.zendeskId === categoryId
+        (signal) => signal.categoryId === categoryId
       );
       const forceResync = relatedSignal?.forceResync || false;
+      const brandId = categoryBrands[categoryId];
+      if (!brandId) {
+        throw new Error(
+          "Unreachable: a category ID was pushed without a brand."
+        );
+      }
 
       await executeChild(zendeskCategorySyncWorkflow, {
         workflowId: `${workflowId}-category-${categoryId}`,
         searchAttributes: parentSearchAttributes,
-        args: [{ connectorId, categoryId, currentSyncDateMs, forceResync }],
+        args: [
+          { connectorId, categoryId, brandId, currentSyncDateMs, forceResync },
+        ],
         memo,
       });
       categoryIds.delete(categoryId);
@@ -290,28 +306,40 @@ export async function zendeskBrandTicketsSyncWorkflow({
 export async function zendeskCategorySyncWorkflow({
   connectorId,
   categoryId,
+  brandId,
   currentSyncDateMs,
   forceResync,
 }: {
   connectorId: ModelId;
   categoryId: number;
+  brandId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const isCategoryAllowed = await syncZendeskCategoryActivity({
+  const wasCategoryUpdated = await syncZendeskCategoryActivity({
     connectorId,
     categoryId,
     currentSyncDateMs,
+    brandId,
   });
-  if (!isCategoryAllowed) {
+  if (!wasCategoryUpdated) {
     return; // nothing to sync
   }
-  await syncZendeskArticlesActivity({
-    connectorId,
-    categoryId,
-    currentSyncDateMs,
-    forceResync,
-  });
+
+  let cursor = null; // cursor involved in the pagination of the API
+  let hasMore = true;
+
+  while (hasMore) {
+    const result = await syncZendeskArticleBatchActivity({
+      connectorId,
+      categoryId,
+      currentSyncDateMs,
+      forceResync,
+      cursor,
+    });
+    hasMore = result.hasMore || false;
+    cursor = result.afterCursor;
+  }
 }
 
 /**
@@ -332,26 +360,34 @@ async function runZendeskBrandHelpCenterSyncActivities({
     connectorId,
     brandId,
   });
-  const categoriesToSync = new Set<number>();
+  const categoryIdsToSync = new Set<number>();
   for (const categoryId of categoryIds) {
     const wasCategoryUpdated = await syncZendeskCategoryActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
+      brandId,
     });
     if (wasCategoryUpdated) {
-      categoriesToSync.add(categoryId);
+      categoryIdsToSync.add(categoryId);
     }
   }
 
-  /// grouping the articles by category for a lower granularity
-  for (const categoryId of categoriesToSync) {
-    await syncZendeskArticlesActivity({
-      connectorId,
-      categoryId,
-      currentSyncDateMs,
-      forceResync,
-    });
+  for (const categoryId of categoryIdsToSync) {
+    let hasMore = true;
+    let cursor = null; // cursor involved in the pagination of the API
+
+    while (hasMore) {
+      const result = await syncZendeskArticleBatchActivity({
+        connectorId,
+        categoryId,
+        currentSyncDateMs,
+        forceResync,
+        cursor,
+      });
+      hasMore = result.hasMore || false;
+      cursor = result.afterCursor;
+    }
   }
 }
 

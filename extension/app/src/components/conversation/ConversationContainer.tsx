@@ -1,11 +1,4 @@
-import {
-  Button,
-  CloudArrowDownIcon,
-  HistoryIcon,
-  Page,
-  Tooltip,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightWorkspaceType,
@@ -14,7 +7,7 @@ import type {
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
-import { FixedAssistantInputBar } from "@extension/components/input_bar/InputBar";
+import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import {
@@ -23,8 +16,14 @@ import {
   postMessage,
   updateConversationWithOptimisticData,
 } from "@extension/lib/conversation";
+import { useDustAPI } from "@extension/lib/dust_api";
+import { getRandomGreetingForName } from "@extension/lib/greetings";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
+import {
+  getConversationContext,
+  setConversationContext,
+} from "@extension/lib/storage";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -43,21 +42,37 @@ export function ConversationContainer({
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
 
-  const [tabContentToInclude, setTabContentToInclude] = useState<{
-    title: string;
-    content: string;
-    url: string;
-  } | null>(null);
+  const [includeContent, setIncludeContent] = useState<boolean | undefined>();
+
+  useEffect(() => {
+    if (includeContent === undefined) {
+      return;
+    }
+
+    void setConversationContext(activeConversationId ?? "new", {
+      includeCurrentPage: includeContent,
+    });
+  }, [includeContent]);
+
+  useEffect(() => {
+    const doAsync = async () => {
+      const context = await getConversationContext(
+        activeConversationId ?? "new"
+      );
+      setIncludeContent(context.includeCurrentPage);
+    };
+    void doAsync();
+  }, [conversationId]);
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+  const dustAPI = useDustAPI();
 
   const { animate, setAnimate } = useContext(InputBarContext);
   const sendNotification = useSendNotification();
 
-  const { mutateConversation } = usePublicConversation({
+  const { conversation, mutateConversation } = usePublicConversation({
     conversationId,
-    workspaceId: owner.sId,
   });
 
   useEffect(() => {
@@ -74,17 +89,17 @@ export function ConversationContainer({
     }
   }, [activeConversationId, navigate]);
 
-  const handleIncludeCurrentTab = async () => {
+  const getIncludeCurrentTab = async () => {
     const backgroundRes = await sendGetActiveTabMessage();
     if (!backgroundRes.content || !backgroundRes.url) {
       console.error("Failed to get content from the current tab.");
-      return;
+      return null;
     }
-    setTabContentToInclude({
-      title: `Content from ${backgroundRes.url}`,
+    return {
+      title: backgroundRes.title,
       content: backgroundRes.content,
       url: backgroundRes.url,
-    });
+    };
   };
 
   const handlePostMessage = async (input: string, mentions: MentionType[]) => {
@@ -95,10 +110,26 @@ export function ConversationContainer({
     try {
       await mutateConversation(
         async (currentConversation) => {
+          const tabContent = includeContent
+            ? await getIncludeCurrentTab()
+            : null;
+          // Check if the content is already uploaded - compare the title and the size of the content.
+          const alreadyUploaded =
+            tabContent &&
+            conversation?.content
+              .map((m) => m[m.length - 1])
+              .some(
+                (m) =>
+                  m.type === "content_fragment" &&
+                  m.title === tabContent.title &&
+                  m.textBytes === new Blob([tabContent.content]).size
+              );
+
           const result = await postMessage({
-            owner,
+            dustAPI,
             conversationId: activeConversationId,
             messageData,
+            tabContent: alreadyUploaded ? null : tabContent,
           });
 
           if (result.isOk()) {
@@ -150,13 +181,14 @@ export function ConversationContainer({
   const { submit: handlePostConversation } = useSubmitFunction(
     useCallback(
       async (input: string, mentions: MentionType[]) => {
+        const tabContent = includeContent ? await getIncludeCurrentTab() : null;
         const conversationRes = await postConversation({
-          owner,
+          dustAPI,
           messageData: {
             input,
             mentions,
           },
-          tabContent: tabContentToInclude,
+          tabContent,
         });
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
@@ -169,10 +201,13 @@ export function ConversationContainer({
             });
           }
         } else {
+          await setConversationContext(conversationRes.value.sId, {
+            includeCurrentPage: !!includeContent,
+          });
           setActiveConversationId(conversationRes.value.sId);
         }
       },
-      [owner, sendNotification, setActiveConversationId, tabContentToInclude]
+      [owner, sendNotification, setActiveConversationId, includeContent]
     )
   );
 
@@ -183,37 +218,13 @@ export function ConversationContainer({
     [setStickyMentions]
   );
 
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(user.firstName));
+  }, [user]);
+
   return (
     <>
-      <div className="flex items-center justify-between pb-2">
-        <Page.SectionHeader title={`Hi ${user.firstName},`} />
-        <div className="space-x-1">
-          {!activeConversationId && (
-            <Tooltip
-              label={
-                tabContentToInclude
-                  ? `Page included: ${tabContentToInclude.url}`
-                  : "Include content from the current tab"
-              }
-              trigger={
-                <Button
-                  icon={CloudArrowDownIcon}
-                  variant="outline"
-                  onClick={handleIncludeCurrentTab}
-                  disabled={tabContentToInclude !== null}
-                  size="xs"
-                />
-              }
-            />
-          )}
-          <Button
-            icon={HistoryIcon}
-            variant="outline"
-            onClick={() => navigate("/conversations")}
-            size="xs"
-          />
-        </div>
-      </div>
       {activeConversationId && (
         <ConversationViewer
           conversationId={activeConversationId}
@@ -222,14 +233,23 @@ export function ConversationContainer({
           onStickyMentionsChange={onStickyMentionsChange}
         />
       )}
-      <FixedAssistantInputBar
-        owner={owner}
-        onSubmit={
-          activeConversationId ? handlePostMessage : handlePostConversation
-        }
-        stickyMentions={stickyMentions}
-      />
-
+      <div className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl pb-4">
+        {!activeConversationId && (
+          <div className="pb-2">
+            <Page.Header title={greeting} />
+            <Page.SectionHeader title="Start a conversation" />
+          </div>
+        )}
+        <AssistantInputBar
+          owner={owner}
+          onSubmit={
+            activeConversationId ? handlePostMessage : handlePostConversation
+          }
+          stickyMentions={stickyMentions}
+          isTabIncluded={!!includeContent}
+          toggleIncludeTab={() => setIncludeContent((v) => !v)}
+        />
+      </div>
       <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}

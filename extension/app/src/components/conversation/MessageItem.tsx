@@ -3,11 +3,11 @@ import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation
 import type {
   ConversationMessageReactions,
   LightWorkspaceType,
-  MessageWithContentFragmentsType,
 } from "@dust-tt/types";
 import { isSupportedImageContentType } from "@dust-tt/types";
 import { AgentMessage } from "@extension/components/conversation/AgentMessage";
 import { UserMessage } from "@extension/components/conversation/UserMessage";
+import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
 import type { StoredUser } from "@extension/lib/storage";
 import React from "react";
 
@@ -64,6 +64,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                     key={contentFragment.sId}
                     title={contentFragment.title}
                     size="xs"
+                    sizing="fluid"
                     type={citationType}
                     href={contentFragment.sourceUrl || undefined}
                     imgSrc={contentFragment.sourceUrl || undefined}

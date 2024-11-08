@@ -95,26 +95,31 @@ async function handler(
           return;
 
         case "anthropic":
-          const testGenerate = await fetch(
-            "https://api.anthropic.com/v1/complete",
+          const testCountTokens = await fetch(
+            "https://api.anthropic.com/v1/messages/count_tokens",
             {
               method: "POST",
               headers: {
                 "x-api-key": config.api_key,
                 "anthropic-version": "2023-06-01",
+                "anthropic-beta": "token-counting-2024-11-01",
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                prompt: "\n\nHuman: 👋\n\nAssistant:",
-                model: "claude-instant-1.2",
-                max_tokens_to_sample: 1,
-                stop_sequences: [],
+                model: "claude-3-5-sonnet-20241022",
+                system: "You are a scientist",
+                messages: [
+                  {
+                    role: "user",
+                    content: "Hello, Claude",
+                  },
+                ],
               }),
             }
           );
 
-          if (!testGenerate.ok) {
-            const errRes = await testGenerate.json();
+          if (!testCountTokens.ok) {
+            const errRes = await testCountTokens.json();
             const errType = errRes.error?.type ?? "unknown error";
             const errMessage =
               errRes.error?.message ?? "contact us at team@dust.tt";
@@ -122,7 +127,7 @@ async function handler(
               .status(400)
               .json({ ok: false, error: `[${errType}] ${errMessage}` });
           } else {
-            await testGenerate.json();
+            await testCountTokens.json();
             res.status(200).json({ ok: true });
           }
           return;

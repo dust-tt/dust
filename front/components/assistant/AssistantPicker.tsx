@@ -1,12 +1,12 @@
 import {
   Avatar,
   Button,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuSearchbar,
-  NewDropdownMenuSeparator,
-  NewDropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   PlusIcon,
   RobotIcon,
   ScrollArea,
@@ -51,8 +51,8 @@ export function AssistantPicker({
   };
 
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         {pickerButton ? (
           pickerButton
         ) : (
@@ -64,9 +64,9 @@ export function AssistantPicker({
             tooltip="Pick an assistant"
           />
         )}
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent className="min-w-[300px]">
-        <NewDropdownMenuSearchbar
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-[300px]">
+        <DropdownMenuSearchbar
           ref={searchbarRef}
           placeholder="Search"
           name="input"
@@ -81,10 +81,10 @@ export function AssistantPicker({
             }
           }}
         />
-        <NewDropdownMenuSeparator className="mt-2" />
+        <DropdownMenuSeparator className="mt-2" />
         <ScrollArea className="mt-1 h-[300px]">
           {searchedAssistants.map((c) => (
-            <NewDropdownMenuItem
+            <DropdownMenuItem
               key={`assistant-picker-${c.sId}`}
               icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
               label={c.name}
@@ -97,7 +97,7 @@ export function AssistantPicker({
         </ScrollArea>
         {showFooterButtons && (
           <>
-            <NewDropdownMenuSeparator />
+            <DropdownMenuSeparator />
             <div className="flex justify-end">
               <Button
                 label="Create"
@@ -110,7 +110,7 @@ export function AssistantPicker({
             </div>
           </>
         )}
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

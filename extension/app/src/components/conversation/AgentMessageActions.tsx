@@ -1,15 +1,15 @@
+import type {
+  AgentActionPublicType,
+  AgentMessagePublicType,
+} from "@dust-tt/client";
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { Chip, Spinner } from "@dust-tt/sparkle";
-import type {
-  AgentActionType,
-  AgentMessageType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 import { classNames } from "@extension/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 interface AgentMessageActionsProps {
-  agentMessage: AgentMessageType;
+  agentMessage: AgentMessagePublicType;
   size?: ConversationMessageSizeType;
   owner: LightWorkspaceType;
 }
@@ -92,7 +92,7 @@ function ActionDetails({
   );
 }
 
-function renderActionName(actions: AgentActionType[]): string {
+function renderActionName(actions: AgentActionPublicType[]): string {
   const uniqueActionTypes = actions.reduce(
     (acc, action) => {
       if (!acc.includes(action.type)) {
@@ -101,7 +101,7 @@ function renderActionName(actions: AgentActionType[]): string {
 
       return acc;
     },
-    [] as AgentActionType["type"][]
+    [] as AgentActionPublicType["type"][]
   );
 
   return uniqueActionTypes

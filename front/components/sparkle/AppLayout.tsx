@@ -9,6 +9,7 @@ import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
+import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
@@ -53,6 +54,9 @@ export default function AppLayout({
 }) {
   const [loaded, setLoaded] = useState(false);
   const user = useUser();
+
+  const { isNavigationBarOpen, setIsNavigationBarOpen } =
+    useAppKeyboardShortcuts(owner);
 
   useEffect(() => {
     setLoaded(true);
@@ -115,6 +119,8 @@ export default function AppLayout({
       <div className="light flex h-full flex-row">
         <Navigation
           hideSidebar={hideSidebar}
+          isNavigationBarOpen={isNavigationBarOpen}
+          setNavigationBarOpen={setIsNavigationBarOpen}
           owner={owner}
           subscription={subscription}
           navChildren={navChildren}
