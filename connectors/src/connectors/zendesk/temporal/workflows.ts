@@ -248,9 +248,6 @@ export async function zendeskBrandSyncWorkflow({
     brandId,
     currentSyncDateMs,
   });
-  if (!helpCenterAllowed && !ticketsAllowed) {
-    return; // nothing to sync since we don't have permission anymore
-  }
   if (helpCenterAllowed) {
     await runZendeskBrandHelpCenterSyncActivities({
       connectorId,
@@ -288,15 +285,14 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
     connectorId,
     brandId,
   });
-  if (!isHelpCenterAllowed) {
-    return; // nothing to sync
+  if (isHelpCenterAllowed) {
+    await runZendeskBrandHelpCenterSyncActivities({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+    });
   }
-  await runZendeskBrandHelpCenterSyncActivities({
-    connectorId,
-    brandId,
-    currentSyncDateMs,
-    forceResync,
-  });
 }
 
 /**
@@ -317,15 +313,14 @@ export async function zendeskBrandTicketsSyncWorkflow({
     connectorId,
     brandId,
   });
-  if (!areTicketsAllowed) {
-    return; // nothing to sync
+  if (areTicketsAllowed) {
+    await runZendeskBrandTicketsSyncActivities({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+    });
   }
-  await runZendeskBrandTicketsSyncActivities({
-    connectorId,
-    brandId,
-    currentSyncDateMs,
-    forceResync,
-  });
 }
 
 /**
@@ -351,19 +346,17 @@ export async function zendeskCategorySyncWorkflow({
     currentSyncDateMs,
     brandId,
   });
-  if (!wasCategoryUpdated) {
-    return; // nothing to sync
+  if (wasCategoryUpdated) {
+    await runWithPagination((cursor) =>
+      syncZendeskArticleBatchActivity({
+        connectorId,
+        categoryId,
+        currentSyncDateMs,
+        forceResync,
+        cursor,
+      })
+    );
   }
-
-  await runWithPagination((cursor) =>
-    syncZendeskArticleBatchActivity({
-      connectorId,
-      categoryId,
-      currentSyncDateMs,
-      forceResync,
-      cursor,
-    })
-  );
 }
 
 /**
