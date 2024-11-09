@@ -8,6 +8,7 @@ import { cn } from "@sparkle/lib/utils";
 const radioStyles = cva(
   cn(
     "s-aspect-square s-rounded-full s-border s-border-border-darker s-text-foreground",
+    "s-flex s-items-center s-justify-center",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50",
     "checked:s-ring-0 checked:s-bg-action-500"
@@ -30,8 +31,8 @@ const radioIndicatorStyles = cva(
   {
     variants: {
       size: {
-        xs: "s-h-2 s-w-2 s-ml-[3px]",
-        sm: "s-h-2.5 s-w-2.5 s-ml-1",
+        xs: "s-h-2 s-w-2",
+        sm: "s-h-2.5 s-w-2.5",
       },
     },
     defaultVariants: {
@@ -82,10 +83,7 @@ const RadioGroupItem = React.forwardRef<
     );
     return (
       <div
-        className={cn(
-          "s-group",
-          size === "sm" ? "s-h-5 s-w-5" : "-s-mt-1.5 s-h-4 s-w-4"
-        )}
+        className={cn("s-group", size === "sm" ? "s-h-5 s-w-5" : "s-h-4 s-w-4")}
       >
         {tooltipMessage ? (
           <Tooltip
