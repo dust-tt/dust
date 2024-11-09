@@ -77,6 +77,7 @@ type RequestArgsType = {
   query?: URLSearchParams;
   body?: Record<string, unknown>;
   overrideWorkspaceId?: string;
+  signal?: AbortSignal;
 };
 
 export class DustAPI {
@@ -115,6 +116,10 @@ export class DustAPI {
 
   workspaceId(): string {
     return this._credentials.workspaceId;
+  }
+
+  setWorkspaceId(workspaceId: string) {
+    this._credentials.workspaceId = workspaceId;
   }
 
   apiUrl(): string {
@@ -186,6 +191,7 @@ export class DustAPI {
       method: args.method,
       headers,
       body: args.body ? JSON.stringify(args.body) : undefined,
+      signal: args.signal,
     });
 
     return res;
@@ -565,9 +571,11 @@ export class DustAPI {
   async streamAgentAnswerEvents({
     conversation,
     userMessageId,
+    signal,
   }: {
     conversation: ConversationPublicType;
     userMessageId: string;
+    signal?: AbortSignal;
   }) {
     // find the agent message with the parentMessageId equal to the user message id
     const agentMessages = conversation.content
@@ -588,6 +596,7 @@ export class DustAPI {
     const res = await this.request({
       method: "GET",
       path: `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`,
+      signal,
     });
 
     if (res.isErr()) {
