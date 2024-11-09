@@ -1,10 +1,9 @@
-import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
+import { Citation } from "@dust-tt/sparkle";
 import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type {
   ConversationMessageReactions,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { isSupportedImageContentType } from "@dust-tt/types";
 import { AgentMessage } from "@extension/components/conversation/AgentMessage";
 import { UserMessage } from "@extension/components/conversation/UserMessage";
 import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
@@ -39,41 +38,26 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const isZoomable = isSupportedImageContentType(
-                contentFragment.contentType
-              );
               const citationType: CitationType = [
                 "dust-application/slack",
               ].includes(contentFragment.contentType)
                 ? "slack"
                 : "document";
 
-              if (isZoomable) {
-                return (
-                  <ZoomableImageCitationWrapper
-                    key={contentFragment.sId}
-                    size="xs"
-                    title={contentFragment.title}
-                    imgSrc={`${contentFragment.sourceUrl}?action=view`}
-                    alt={contentFragment.title}
-                  />
-                );
-              } else {
-                return (
-                  <Citation
-                    key={contentFragment.sId}
-                    title={contentFragment.title}
-                    size="xs"
-                    sizing="fluid"
-                    type={citationType}
-                    href={contentFragment.sourceUrl || undefined}
-                    imgSrc={contentFragment.sourceUrl || undefined}
-                    avatarSrc={
-                      contentFragment.context.profilePictureUrl || undefined
-                    }
-                  />
-                );
-              }
+              return (
+                <Citation
+                  key={contentFragment.sId}
+                  title={contentFragment.title}
+                  size="xs"
+                  sizing="fluid"
+                  type={citationType}
+                  href={undefined}
+                  imgSrc={undefined}
+                  avatarSrc={
+                    contentFragment.context.profilePictureUrl || undefined
+                  }
+                />
+              );
             })
           : undefined;
 
