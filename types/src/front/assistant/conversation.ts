@@ -63,6 +63,7 @@ export type UserMessageOrigin =
   | "slack"
   | "web"
   | "api"
+  | "email"
   | "gsheet"
   | "zapier"
   | "make"

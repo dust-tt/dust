@@ -156,6 +156,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema([
   "zendesk",
   "raycast",
   "extension",
+  "email",
 ])
   .or(z.null())
   .or(z.undefined());

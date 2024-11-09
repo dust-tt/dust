@@ -33,7 +33,7 @@ export const ACTION_SPECIFICATIONS: Record<
   }
 > = {
   RETRIEVAL_EXHAUSTIVE: {
-    label: "Most recent data",
+    label: "Include data",
     description: "Include as much data as possible",
     cardIcon: TimeIcon,
     dropDownIcon: TimeIcon,

@@ -13,13 +13,12 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
-
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
-  syncZendeskArticleBatchActivity,
-  syncZendeskTicketsActivity,
+  syncZendeskArticlesBatchActivity,
+  syncZendeskTicketsBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -330,7 +329,7 @@ export async function zendeskCategorySyncWorkflow({
   let hasMore = true;
 
   while (hasMore) {
-    const result = await syncZendeskArticleBatchActivity({
+    const result = await syncZendeskArticlesBatchActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
@@ -378,7 +377,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
     let cursor = null; // cursor involved in the pagination of the API
 
     while (hasMore) {
-      const result = await syncZendeskArticleBatchActivity({
+      const result = await syncZendeskArticlesBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
@@ -405,11 +404,18 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  // TODO(2024-10-29 aubin): see how we can batch the tickets into multiple activities
-  await syncZendeskTicketsActivity({
-    connectorId,
-    brandId,
-    currentSyncDateMs,
-    forceResync,
-  });
+  let cursor: string | null = null;
+  let hasMore = true;
+
+  while (hasMore) {
+    const result = await syncZendeskTicketsBatchActivity({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+      cursor,
+    });
+    hasMore = result.hasMore || false;
+    cursor = result.nextCursor;
+  }
 }

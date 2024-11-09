@@ -135,20 +135,6 @@ export function throwIfInvalidAgentConfiguration(
   configation: AgentConfigurationType | TemplateAgentConfigurationType
 ) {
   configation.actions.forEach((action) => {
-    if (isRetrievalConfiguration(action)) {
-      if (action.query === "none") {
-        if (
-          action.relativeTimeFrame === "auto" ||
-          action.relativeTimeFrame === "none"
-        ) {
-          /** Should never happen. Throw loudly if it does */
-          throw new Error(
-            "Invalid configuration: exhaustive retrieval must have a definite time frame"
-          );
-        }
-      }
-    }
-
     if (isProcessConfiguration(action)) {
       if (
         action.relativeTimeFrame === "auto" ||

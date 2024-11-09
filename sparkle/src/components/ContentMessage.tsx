@@ -1,24 +1,109 @@
+import { cva } from "class-variance-authority";
 import React, { ComponentType } from "react";
 
 import { Icon } from "@sparkle/components/Icon";
-import { InformationCircleIcon } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
+
+const CONTENT_MESSAGE_VARIANTS = [
+  "emerald",
+  "amber",
+  "slate",
+  "purple",
+  "warning",
+  "sky",
+  "pink",
+  "action",
+  "red",
+] as const;
+
+type ContentMessageVariantType = (typeof CONTENT_MESSAGE_VARIANTS)[number];
+
+const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
+
+type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
+
+const contentMessageVariants = cva(
+  "s-flex s-flex-col s-gap-2 s-rounded-2xl s-p-4",
+  {
+    variants: {
+      variant: {
+        emerald: "s-bg-emerald-100",
+        amber: "s-bg-amber-100",
+        slate: "s-bg-slate-100",
+        purple: "s-bg-purple-100",
+        warning: "s-bg-warning-100",
+        sky: "s-bg-sky-100",
+        pink: "s-bg-pink-100",
+        action: "s-bg-action-100",
+        red: "s-bg-red-100",
+      },
+      size: {
+        lg: "",
+        md: "s-max-w-[500px]",
+        sm: "s-max-w-[380px]",
+      },
+    },
+    defaultVariants: {
+      variant: "amber",
+      size: "md",
+    },
+  }
+);
+
+const iconVariants = cva("s-shrink-0", {
+  variants: {
+    variant: {
+      emerald: "s-text-emerald-800",
+      amber: "s-text-amber-800",
+      slate: "s-text-slate-800",
+      purple: "s-text-purple-800",
+      warning: "s-text-warning-800",
+      sky: "s-text-sky-800",
+      pink: "s-text-pink-800",
+      action: "s-text-action-800",
+      red: "s-text-red-800",
+    },
+  },
+});
+
+const titleVariants = cva("s-text-base s-font-semibold", {
+  variants: {
+    variant: {
+      emerald: "s-text-emerald-800",
+      amber: "s-text-amber-800",
+      slate: "s-text-slate-800",
+      purple: "s-text-purple-800",
+      warning: "s-text-warning-800",
+      sky: "s-text-sky-800",
+      pink: "s-text-pink-800",
+      action: "s-text-action-800",
+      red: "s-text-red-800",
+    },
+  },
+});
+
+const textVariants = cva("s-text-sm", {
+  variants: {
+    variant: {
+      emerald: "s-text-emerald-950",
+      amber: "s-text-amber-950",
+      slate: "s-text-slate-950",
+      purple: "s-text-purple-950",
+      warning: "s-text-warning-950",
+      sky: "s-text-sky-950",
+      pink: "s-text-pink-950",
+      action: "s-text-action-950",
+      red: "s-text-red-950",
+    },
+  },
+});
 
 export interface ContentMessageProps {
-  title: string;
+  title?: string;
   children: React.ReactNode;
   className?: string;
-  size?: "sm" | "md" | "lg";
-  variant?:
-    | "emerald"
-    | "amber"
-    | "slate"
-    | "purple"
-    | "warning"
-    | "sky"
-    | "pink"
-    | "action"
-    | "red";
+  size?: ContentMessageSizeType;
+  variant?: ContentMessageVariantType;
   icon?: ComponentType;
 }
 
@@ -30,55 +115,21 @@ export function ContentMessage({
   className = "",
   icon,
 }: ContentMessageProps) {
-  const variantClasses = {
-    border: `s-border-${variant}-200`,
-    background: `s-bg-${variant}-100`,
-    iconColor: `s-text-${variant}-800`,
-    titleColor: `s-text-${variant}-800`,
-    textColor: `s-text-${variant}-950`,
-  };
-
   return (
-    <div
-      className={classNames(
-        "s-flex s-gap-2 s-border",
-        variantClasses.border,
-        variantClasses.background,
-        size === "lg"
-          ? "s-rounded-2xl s-p-4"
-          : size === "md"
-            ? "s-max-w-[500px] s-rounded-2xl s-p-4"
-            : "s-max-w-[380px] s-rounded-xl s-px-4 s-py-3",
-        className
-      )}
-    >
-      {["md", "lg"].includes(size) && (
-        <>
-          <Icon
-            size="md"
-            visual={icon ?? InformationCircleIcon}
-            className={classNames("s-shrink-0", variantClasses.iconColor)}
-          />
-          <div className="s-flex s-flex-col s-gap-2">
-            <div
-              className={classNames(
-                "s-text-base s-font-semibold",
-                variantClasses.titleColor
-              )}
-            >
-              {title}
-            </div>
-            <div className={classNames("s-text-sm", variantClasses.textColor)}>
-              {children}
-            </div>
-          </div>
-        </>
-      )}
-      {size === "sm" && (
-        <div className={classNames("s-text-sm", variantClasses.textColor)}>
-          {children}
+    <div className={cn(contentMessageVariants({ variant, size }), className)}>
+      {(icon || title) && (
+        <div className="s-flex s-items-center s-gap-1.5">
+          {icon && (
+            <Icon
+              size="sm"
+              visual={icon}
+              className={iconVariants({ variant })}
+            />
+          )}
+          {title && <div className={titleVariants({ variant })}>{title}</div>}
         </div>
       )}
+      <div className={textVariants({ variant })}>{children}</div>
     </div>
   );
 }

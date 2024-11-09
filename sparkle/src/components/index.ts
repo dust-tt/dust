@@ -1,7 +1,6 @@
 export { AnimatedText } from "./AnimatedText";
 export { AssistantPreview } from "./AssistantPreview";
 export { Avatar } from "./Avatar";
-export { Banner } from "./Banner";
 export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type { ButtonProps } from "./Button";

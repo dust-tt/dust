@@ -81,8 +81,8 @@ export function AssistantPicker({
             }
           }}
         />
-        <DropdownMenuSeparator className="mt-2" />
-        <ScrollArea className="mt-1 h-[300px]">
+        <DropdownMenuSeparator />
+        <ScrollArea className="border-1 -mb-1 -mt-1 h-[300px]">
           {searchedAssistants.map((c) => (
             <DropdownMenuItem
               key={`assistant-picker-${c.sId}`}
@@ -95,20 +95,17 @@ export function AssistantPicker({
             />
           ))}
         </ScrollArea>
+        <DropdownMenuSeparator />
         {showFooterButtons && (
-          <>
-            <DropdownMenuSeparator />
-            <div className="flex justify-end">
-              <Button
-                label="Create"
-                size="xs"
-                variant="primary"
-                icon={PlusIcon}
-                className="mr-2"
-                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-              />
-            </div>
-          </>
+          <div className="flex justify-end p-1">
+            <Button
+              label="Create"
+              size="xs"
+              variant="primary"
+              icon={PlusIcon}
+              href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+            />
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

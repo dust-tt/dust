@@ -77,8 +77,8 @@ export const RadioGroupWithChildrenExample = () => {
         onValueChange={(value) => setSelectedChoice(value)}
       >
         {choices.map((choice) => (
-          <RadioGroupChoice value={choice.id}>
-            <div className="s-flex s-items-center s-gap-2 s-p-2">
+          <RadioGroupChoice value={choice.id} iconPosition="start">
+            <div className="s-flex s-items-center s-gap-2 s-border s-border-red-500 s-p-2">
               <Icon visual={LockIcon} />
               <Label>{choice.label}</Label>
               <Button label="Click me" />
