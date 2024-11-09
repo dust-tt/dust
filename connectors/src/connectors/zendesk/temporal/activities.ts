@@ -196,6 +196,15 @@ export async function checkZendeskTicketsPermissionsActivity({
 }
 
 /**
+ * Retrieves the IDs of every brand stored in db.
+ */
+export async function getAllZendeskBrandsWithTicketsActivity(
+  connectorId: ModelId
+): Promise<number[]> {
+  return ZendeskBrandResource.fetchAllBrandWithTicketsIds({ connectorId });
+}
+
+/**
  * Retrieves the categories for a given Brand.
  */
 export async function getZendeskCategoriesActivity({
@@ -428,10 +437,12 @@ export async function syncZendeskTicketBatchActivity({
  */
 export async function syncZendeskArticlesDiffBatchActivity({
   connectorId,
+  brandId,
   currentSyncDateMs,
   cursor,
 }: {
   connectorId: ModelId;
+  brandId: number;
   currentSyncDateMs: number;
   cursor: string | null;
 }): Promise<{ hasMore: boolean; afterCursor: string | null }> {
@@ -448,12 +459,16 @@ export async function syncZendeskArticlesDiffBatchActivity({
     connector.connectionId
   );
   const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
 
   const {
     articles,
     meta: { after_cursor, end_of_stream },
   } = await fetchRecentlyUpdatedArticles({
-    subdomain,
+    subdomain: brandSubdomain,
     accessToken,
     ...(cursor ? { cursor } : { startTime: currentSyncDateMs - 1000 * 60 * 5 }), // 5 min ago, previous scheduled execution
   });

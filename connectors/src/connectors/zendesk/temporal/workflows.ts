@@ -28,6 +28,7 @@ const {
 const {
   checkZendeskHelpCenterPermissionsActivity,
   checkZendeskTicketsPermissionsActivity,
+  getAllZendeskBrandsWithTicketsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
 } = proxyActivities<typeof activities>({
@@ -214,17 +215,21 @@ export async function zendeskIncrementalSyncWorkflow({
   connectorId: ModelId;
   currentSyncDateMs: number;
 }) {
-  let cursor = null; // cursor involved in the pagination of the API
-  let hasMore = true;
+  const brandIds = await getAllZendeskBrandsWithTicketsActivity(connectorId);
 
-  while (hasMore) {
-    const result = await syncZendeskArticlesDiffBatchActivity({
-      connectorId,
-      currentSyncDateMs,
-      cursor,
-    });
-    hasMore = result.hasMore || false;
-    cursor = result.afterCursor;
+  for (const brandId of brandIds) {
+    let cursor: string | null = null; // cursor involved in the pagination of the API
+    let hasMore = true;
+    while (hasMore) {
+      const result = await syncZendeskArticlesDiffBatchActivity({
+        connectorId,
+        brandId,
+        currentSyncDateMs,
+        cursor,
+      });
+      hasMore = result.hasMore || false;
+      cursor = result.afterCursor;
+    }
   }
 }
 
