@@ -18,8 +18,8 @@ const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
-  syncZendeskArticlesBatchActivity,
-  syncZendeskTicketsBatchActivity,
+  syncZendeskArticleBatchActivity,
+  syncZendeskTicketBatchActivity,
   syncZendeskArticlesDiffBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
@@ -358,7 +358,7 @@ export async function zendeskCategorySyncWorkflow({
   let hasMore = true;
 
   while (hasMore) {
-    const result = await syncZendeskArticlesBatchActivity({
+    const result = await syncZendeskArticleBatchActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
@@ -406,7 +406,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
     let cursor = null; // cursor involved in the pagination of the API
 
     while (hasMore) {
-      const result = await syncZendeskArticlesBatchActivity({
+      const result = await syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
@@ -437,7 +437,7 @@ async function runZendeskBrandTicketsSyncActivities({
   let hasMore = true;
 
   while (hasMore) {
-    const result = await syncZendeskTicketsBatchActivity({
+    const result = await syncZendeskTicketBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,
