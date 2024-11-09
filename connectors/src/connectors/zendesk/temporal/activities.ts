@@ -289,7 +289,7 @@ export async function syncZendeskCategoryActivity({
  * This activity is responsible for syncing the next batch of articles to process.
  * It does not sync the Category, only the Articles.
  */
-export async function syncZendeskArticlesBatchActivity({
+export async function syncZendeskArticleBatchActivity({
   connectorId,
   categoryId,
   currentSyncDateMs,
@@ -361,7 +361,7 @@ export async function syncZendeskArticlesBatchActivity({
 /**
  * This activity is responsible for syncing the next batch of tickets to process.
  */
-export async function syncZendeskTicketsBatchActivity({
+export async function syncZendeskTicketBatchActivity({
   connectorId,
   brandId,
   currentSyncDateMs,
