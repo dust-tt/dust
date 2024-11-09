@@ -6,6 +6,7 @@ import {
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { useConversations } from "@extension/components/conversation/useConversations";
@@ -24,7 +25,15 @@ export const ConversationsPage = ({
   workspace,
 }: ProtectedRouteChildrenProps) => {
   const navigate = useNavigate();
-  const conversations = useConversations();
+  const { conversations, isConversationsLoading } = useConversations();
+
+  if (isConversationsLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   const groupConversationsByDate = (
     conversations: ConversationWithoutContentPublicType[]
@@ -64,8 +73,8 @@ export const ConversationsPage = ({
     return groups;
   };
 
-  const conversationsByDate = conversations.conversations.length
-    ? groupConversationsByDate(conversations.conversations)
+  const conversationsByDate = conversations.length
+    ? groupConversationsByDate(conversations)
     : ({} as Record<GroupLabel, ConversationWithoutContentPublicType[]>);
 
   return (
