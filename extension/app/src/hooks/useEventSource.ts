@@ -51,7 +51,7 @@ const stableEventSourceManager = {
       headers: {
         Authorization: "Bearer " + token,
       },
-      heartbeatTimeout: 120000,
+      heartbeatTimeout: 90000,
     });
     this.sources.set(uniqueId, newSource);
 

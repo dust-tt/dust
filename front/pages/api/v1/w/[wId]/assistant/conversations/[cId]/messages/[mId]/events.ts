@@ -8,7 +8,6 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
-import { clearHeartbeat, resetHeartbeat } from "@app/lib/api/events";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -156,14 +155,12 @@ async function handler(
       });
       res.flushHeaders();
 
-      const heartbeat = resetHeartbeat(res);
       for await (const event of eventStream) {
-        resetHeartbeat(res, heartbeat);
         res.write(`data: ${JSON.stringify(event)}\n\n`);
         // @ts-expect-error - We need it for streaming but it does not exists in the types.
         res.flush();
       }
-      clearHeartbeat(heartbeat);
+
       res.write("data: done\n\n");
       // @ts-expect-error - We need it for streaming but it does not exists in the types.
       res.flush();

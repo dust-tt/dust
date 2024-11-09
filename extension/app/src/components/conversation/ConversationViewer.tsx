@@ -5,9 +5,11 @@ import type {
   ContentFragmentType,
   ConversationTitleEvent,
   HeartbeatEvent,
+  LightWorkspaceType,
   UserMessageNewEvent,
   UserMessageType,
 } from "@dust-tt/client";
+import type { AgentMention } from "@dust-tt/types";
 import { isAgentMention } from "@dust-tt/types";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";

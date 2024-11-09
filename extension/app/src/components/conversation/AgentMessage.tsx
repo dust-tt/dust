@@ -166,7 +166,8 @@ export function AgentMessage({
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
       }
-      const url = esURL + "?lastEventId=" + lastEventId;
+      const url =
+        esURL + "?lastEventId=" + lastEventId + "&heartbeatInterval=60000";
 
       return url;
     },
