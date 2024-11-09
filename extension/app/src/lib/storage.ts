@@ -62,14 +62,12 @@ export const getConversationContext = async (
   return conversationContext[conversationId] ?? { includeCurrentPage: false };
 };
 
-export const setConversationContext = async (
-  conversationId: string,
-  context: ConversationContext
-): Promise<void> => {
+export const setConversationsContext = async (
+  conversationsWithContext: Record<string, ConversationContext>
+) => {
   const result = await chrome.storage.local.get(["conversationContext"]);
   const v = result.conversationContext ?? {};
-  v[conversationId] = context;
-  await chrome.storage.local.set({ conversationContext: v });
+  Object.assign(v, conversationsWithContext);
 };
 
 /**

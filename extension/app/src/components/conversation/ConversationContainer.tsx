@@ -23,7 +23,7 @@ import { getRandomGreetingForName } from "@extension/lib/greetings";
 import type { StoredUser } from "@extension/lib/storage";
 import {
   getConversationContext,
-  setConversationContext,
+  setConversationsContext,
 } from "@extension/lib/storage";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -49,9 +49,10 @@ export function ConversationContainer({
     if (includeContent === undefined) {
       return;
     }
-
-    void setConversationContext(activeConversationId ?? "new", {
-      includeCurrentPage: includeContent,
+    void setConversationsContext({
+      [activeConversationId ?? "new"]: {
+        includeCurrentPage: includeContent,
+      },
     });
   }, [includeContent]);
 
@@ -181,8 +182,11 @@ export function ConversationContainer({
             });
           }
         } else {
-          await setConversationContext(conversationRes.value.sId, {
-            includeCurrentPage: !!includeContent,
+          await setConversationsContext({
+            [conversationRes.value.sId]: {
+              includeCurrentPage: !!includeContent,
+            },
+            new: { includeCurrentPage: false },
           });
           setActiveConversationId(conversationRes.value.sId);
         }
