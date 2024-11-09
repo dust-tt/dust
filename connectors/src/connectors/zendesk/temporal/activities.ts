@@ -372,7 +372,7 @@ export async function syncZendeskTicketBatchActivity({
   currentSyncDateMs: number;
   forceResync: boolean;
   cursor: string | null;
-}) {
+}): Promise<{ hasMore: boolean; afterCursor: string }> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
@@ -426,7 +426,7 @@ export async function syncZendeskTicketBatchActivity({
   );
 
   return {
-    nextCursor: meta.after_cursor,
+    afterCursor: meta.after_cursor,
     hasMore: meta.has_more,
   };
 }

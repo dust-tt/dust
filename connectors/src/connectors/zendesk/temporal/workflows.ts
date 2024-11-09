@@ -218,18 +218,14 @@ export async function zendeskIncrementalSyncWorkflow({
   const brandIds = await getAllZendeskBrandsWithTicketsActivity(connectorId);
 
   for (const brandId of brandIds) {
-    let cursor: string | null = null; // cursor involved in the pagination of the API
-    let hasMore = true;
-    while (hasMore) {
-      const result = await syncZendeskArticlesDiffBatchActivity({
+    await runWithPagination((cursor) =>
+      syncZendeskArticlesDiffBatchActivity({
         connectorId,
         brandId,
         currentSyncDateMs,
         cursor,
-      });
-      hasMore = result.hasMore || false;
-      cursor = result.afterCursor;
-    }
+      })
+    );
   }
 }
 
@@ -359,20 +355,15 @@ export async function zendeskCategorySyncWorkflow({
     return; // nothing to sync
   }
 
-  let cursor = null; // cursor involved in the pagination of the API
-  let hasMore = true;
-
-  while (hasMore) {
-    const result = await syncZendeskArticleBatchActivity({
+  await runWithPagination((cursor) =>
+    syncZendeskArticleBatchActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
       forceResync,
       cursor,
-    });
-    hasMore = result.hasMore || false;
-    cursor = result.afterCursor;
-  }
+    })
+  );
 }
 
 /**
@@ -407,20 +398,15 @@ async function runZendeskBrandHelpCenterSyncActivities({
   }
 
   for (const categoryId of categoryIdsToSync) {
-    let hasMore = true;
-    let cursor = null; // cursor involved in the pagination of the API
-
-    while (hasMore) {
-      const result = await syncZendeskArticleBatchActivity({
+    await runWithPagination((cursor) =>
+      syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
         forceResync,
         cursor,
-      });
-      hasMore = result.hasMore || false;
-      cursor = result.afterCursor;
-    }
+      })
+    );
   }
 }
 
@@ -438,18 +424,31 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  let cursor: string | null = null;
-  let hasMore = true;
-
-  while (hasMore) {
-    const result = await syncZendeskTicketBatchActivity({
+  await runWithPagination((cursor) =>
+    syncZendeskTicketBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,
       forceResync,
       cursor,
-    });
+    })
+  );
+}
+
+/**
+ * Runs an activity function with cursor-based pagination.
+ */
+async function runWithPagination(
+  activity: (
+    cursor: string | null
+  ) => Promise<{ hasMore: boolean; afterCursor: string | null }>
+): Promise<void> {
+  let cursor: string | null = null; // cursor involved in the pagination of the API
+  let hasMore = true;
+
+  while (hasMore) {
+    const result = await activity(cursor);
     hasMore = result.hasMore || false;
-    cursor = result.nextCursor;
+    cursor = result.afterCursor;
   }
 }
