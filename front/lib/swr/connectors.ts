@@ -73,7 +73,7 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
                 featureFlags.includes("index_private_slack_channel")
             )
           : [],
-      [data]
+      [data, featureFlags]
     ),
     isResourcesLoading: !error && !data,
     isResourcesError: error,

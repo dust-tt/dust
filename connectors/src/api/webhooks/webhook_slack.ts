@@ -7,6 +7,7 @@ import {
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackSyncOneMessageWorkflow,
@@ -19,7 +20,6 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 
 export interface SlackWebhookEvent<T = string> {
   bot_id?: string;
