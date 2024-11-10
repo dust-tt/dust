@@ -13,10 +13,10 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface UseConnectorPermissionsReturn<IncludeParents extends boolean> {
   resources: GetDataSourcePermissionsResponseBody<IncludeParents>["resources"];

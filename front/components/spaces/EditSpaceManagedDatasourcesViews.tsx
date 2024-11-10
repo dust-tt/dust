@@ -17,6 +17,7 @@ import { removeNulls } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useContext, useMemo, useState } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
@@ -25,7 +26,6 @@ import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
-import { ConfirmContext } from "@app/components/Confirm";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
