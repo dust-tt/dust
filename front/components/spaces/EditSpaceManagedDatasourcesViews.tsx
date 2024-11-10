@@ -15,7 +15,7 @@ import type {
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
@@ -25,6 +25,7 @@ import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import { ConfirmContext } from "@app/components/Confirm";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
@@ -44,6 +45,7 @@ export function EditSpaceManagedDataSourcesViews({
   space,
 }: EditSpaceManagedDataSourcesViewsProps) {
   const sendNotification = useSendNotification();
+  const confirm = useContext(ConfirmContext);
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showNoConnectionDialog, setShowNoConnectionDialog] = useState(false);
@@ -272,6 +274,25 @@ export function EditSpaceManagedDataSourcesViews({
         owner={owner}
         systemSpaceDataSourceViews={filterSystemSpaceDataSourceViews}
         onSave={async (selectionConfigurations) => {
+          // confirmation in case there are private nodes
+          const privateNodes = Object.values(selectionConfigurations)
+            .map((sc) => sc.selectedResources)
+            .flat()
+            .filter((node) => node.providerVisibility === "private");
+
+          if (privateNodes.length > 0) {
+            const confirmed = await confirm({
+              title: "Sensitive data synchronization",
+              message: `You are synchronizing data from ${privateNodes
+                .map((node) => node.title)
+                .join(", ")}. Is this okay?`,
+              validateVariant: "warning",
+            });
+            if (!confirmed) {
+              return;
+            }
+          }
+
           await updateSpaceDataSourceViews(selectionConfigurations);
         }}
         initialSelectedDataSources={filteredDataSourceViews}
