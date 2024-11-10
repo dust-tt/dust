@@ -7,6 +7,7 @@ export const WHITELISTABLE_FEATURES = [
   "openai_o1_feature",
   "openai_o1_mini_feature",
   "zendesk_connector_feature",
+  "index_private_slack_channel",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

@@ -16,6 +16,7 @@ import {
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface UseConnectorPermissionsReturn<IncludeParents extends boolean> {
   resources: GetDataSourcePermissionsResponseBody<IncludeParents>["resources"];
@@ -40,6 +41,9 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   includeParents?: IncludeParents;
   viewType?: ContentNodesViewType;
 }): UseConnectorPermissionsReturn<IncludeParents> {
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const permissionsFetcher: Fetcher<
     GetDataSourcePermissionsResponseBody<IncludeParents>
   > = fetcher;
@@ -60,7 +64,17 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   });
 
   return {
-    resources: useMemo(() => (data ? data.resources : []), [data]),
+    resources: useMemo(
+      () =>
+        data
+          ? data.resources.filter(
+              (resource) =>
+                resource.providerVisibility !== "private" ||
+                featureFlags.includes("index_private_slack_channel")
+            )
+          : [],
+      [data]
+    ),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
