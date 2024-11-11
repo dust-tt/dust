@@ -1071,11 +1071,6 @@ const AgentMessageEventTypeSchema = z.object({
 
 export type AgentMessageEventType = z.infer<typeof AgentMessageEventTypeSchema>;
 
-const HeartbeatEventSchema = z.object({
-  type: z.literal("heartbeat"),
-});
-export type HeartbeatEvent = z.infer<typeof HeartbeatEventSchema>;
-
 export const CoreAPIErrorSchema = z.object({
   message: z.string(),
   code: z.string(),

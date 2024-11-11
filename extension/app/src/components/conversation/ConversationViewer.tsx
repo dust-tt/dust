@@ -4,7 +4,6 @@ import type {
   AgentMessagePublicType,
   ContentFragmentType,
   ConversationTitleEvent,
-  HeartbeatEvent,
   LightWorkspaceType,
   UserMessageNewEvent,
   UserMessageType,
@@ -97,8 +96,7 @@ export function ConversationViewer({
           | UserMessageNewEvent
           | AgentMessageNewEvent
           | AgentGenerationCancelledEvent
-          | ConversationTitleEvent
-          | HeartbeatEvent;
+          | ConversationTitleEvent;
       } = JSON.parse(eventStr);
 
       const event = eventPayload.data;
@@ -106,8 +104,6 @@ export function ConversationViewer({
       if (!eventIds.current.includes(eventPayload.eventId)) {
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
-          case "heartbeat":
-            break;
           case "user_message_new":
           case "agent_message_new":
             void mutateConversation(async (currentMessagePages) => {
