@@ -1,16 +1,21 @@
 import type { DataSourceWithAgentsUsageType, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
+import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
@@ -152,4 +157,82 @@ export async function hardDeleteSpace(
   });
 
   return new Ok(undefined);
+}
+
+export async function createRegularSpaceAndGroup(
+  auth: Authenticator,
+  {
+    name,
+    memberIds,
+    isRestricted,
+  }: { name: string; memberIds: string[] | null; isRestricted: boolean },
+  { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
+): Promise<Result<SpaceResource, DustError | Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const plan = auth.getNonNullablePlan();
+  const all = await SpaceResource.listWorkspaceSpaces(auth);
+  const isLimitReached = isPrivateSpacesLimitReached(
+    all.map((v) => v.toJSON()),
+    plan
+  );
+
+  if (isLimitReached && !ignoreWorkspaceLimit) {
+    return new Err(
+      new DustError(
+        "limit_reached",
+        "The maximum number of spaces has been reached."
+      )
+    );
+  }
+
+  const nameAvailable = await SpaceResource.isNameAvailable(auth, name);
+  if (!nameAvailable) {
+    return new Err(
+      new DustError("space_already_exists", "This space name is already used.")
+    );
+  }
+
+  const group = await GroupResource.makeNew({
+    name: `Group for space ${name}`,
+    workspaceId: owner.id,
+    kind: "regular",
+  });
+
+  const globalGroupRes = isRestricted
+    ? null
+    : await GroupResource.fetchWorkspaceGlobalGroup(auth);
+
+  const groups = removeNulls([
+    group,
+    globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
+  ]);
+
+  const space = await SpaceResource.makeNew(
+    {
+      name,
+      kind: "regular",
+      workspaceId: owner.id,
+    },
+    groups
+  );
+
+  if (memberIds) {
+    const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
+      user.toJSON()
+    );
+    const groupsResult = await group.addMembers(auth, users);
+    if (groupsResult.isErr()) {
+      logger.error(
+        {
+          error: groupsResult.error,
+        },
+        "The space cannot be created - group members could not be added"
+      );
+
+      return new Err(new Error("The space cannot be created."));
+    }
+  }
+
+  return new Ok(space);
 }

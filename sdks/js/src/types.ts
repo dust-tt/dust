@@ -1328,10 +1328,12 @@ const SpaceKindSchema = FlexibleEnumSchema([
 ]);
 
 const SpaceTypeSchema = z.object({
+  createdAt: z.number(),
+  groupIds: z.array(z.string()),
+  kind: SpaceKindSchema,
   name: z.string(),
   sId: z.string(),
-  kind: SpaceKindSchema,
-  groupIds: z.array(z.string()),
+  updatedAt: z.number(),
 });
 
 const AppTypeSchema = z.object({

@@ -587,11 +587,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   toJSON(): SpaceType {
     return {
+      createdAt: this.createdAt.getTime(),
       groupIds: this.groups.map((group) => group.sId),
       isRestricted: this.isRegularAndRestricted(),
       kind: this.kind,
       name: this.name,
       sId: this.sId,
+      updatedAt: this.updatedAt.getTime(),
     };
   }
 
