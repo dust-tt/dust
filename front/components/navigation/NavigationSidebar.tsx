@@ -5,6 +5,7 @@ import {
   NavigationListItem,
   NavigationListLabel,
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
@@ -13,11 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  AppLayoutNavigation,
-  SidebarNavigation,
-  TabAppLayoutNavigation,
-} from "@app/components/navigation/config";
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
@@ -42,9 +39,6 @@ export const NavigationSidebar = React.forwardRef<
   const router = useRouter();
   const { user } = useUser();
   const [activePath, setActivePath] = useState("");
-  const [currentTab, setCurrentTab] = useState<
-    TabAppLayoutNavigation | undefined
-  >(undefined);
 
   useEffect(() => {
     if (router.isReady && router.route) {
@@ -52,29 +46,12 @@ export const NavigationSidebar = React.forwardRef<
     }
   }, [router.route, router.isReady]);
 
-  const nav = useMemo(() => getTopNavigationTabs(owner), [owner]);
-
-  const [navs, setNavs] = useState<AppLayoutNavigation[]>([]);
-
-  // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pages
-  useEffect(() => {
-    setNavs((prevNavs) => {
-      const newNavs = nav.map((n) => {
-        const current = n.isCurrent(activePath);
-        return { ...n, current };
-      });
-
-      const isSameCurrent =
-        prevNavs.length === newNavs.length &&
-        prevNavs.every((prevNav, index) => {
-          return prevNav.current === newNavs[index].current;
-        });
-
-      const activeTab = nav.filter((n) => n.isCurrent(activePath))[0];
-      setCurrentTab(activeTab);
-      return isSameCurrent ? prevNavs : newNavs;
-    });
-  }, [nav, activePath]);
+  // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
+  const navs = useMemo(() => getTopNavigationTabs(owner), [owner]);
+  const currentTab = useMemo(
+    () => navs.find((n) => n.isCurrent(activePath)),
+    [navs, activePath]
+  );
 
   return (
     <div
@@ -115,9 +92,9 @@ export const NavigationSidebar = React.forwardRef<
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
         {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
-        {nav.length > 1 && (
+        {navs.length > 1 && (
           <div className="pt-2">
-            <Tabs value={currentTab?.id}>
+            <Tabs value={currentTab?.id ?? "conversations"}>
               <TabsList className="px-2">
                 {navs.map((tab) => (
                   <TabsTrigger
@@ -134,58 +111,58 @@ export const NavigationSidebar = React.forwardRef<
                   />
                 ))}
               </TabsList>
+              {navs.map((tab) => (
+                <TabsContent key={tab.id} value={tab.id}>
+                  {subNavigation && tab.isCurrent(activePath) && (
+                    <>
+                      {subNavigation.map((nav) => (
+                        <div key={nav.id} className="px-2">
+                          <NavigationList>
+                            {nav.label && (
+                              <NavigationListLabel
+                                label={nav.label}
+                                variant={nav.variant}
+                              />
+                            )}
+                            {nav.menus.map((menu) => (
+                              <React.Fragment key={menu.id}>
+                                <NavigationListItem
+                                  selected={menu.current}
+                                  label={menu.label}
+                                  icon={menu.icon}
+                                  href={menu.href}
+                                  target={menu.target}
+                                />
+                                {menu.subMenuLabel && (
+                                  <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase text-slate-400">
+                                    {menu.subMenuLabel}
+                                  </div>
+                                )}
+                                {menu.subMenu && (
+                                  <div className="mb-2 flex flex-col">
+                                    {menu.subMenu.map((nav) => (
+                                      <NavigationListItem
+                                        key={nav.id}
+                                        selected={nav.current}
+                                        label={nav.label}
+                                        icon={nav.icon}
+                                        className="grow pl-14 pr-4"
+                                        href={nav.href ? nav.href : undefined}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </NavigationList>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </TabsContent>
+              ))}
             </Tabs>
           </div>
-        )}
-        {subNavigation && (
-          <>
-            {subNavigation && (
-              <>
-                {subNavigation.map((nav) => (
-                  <div key={nav.id} className="px-2">
-                    <NavigationList>
-                      {nav.label && (
-                        <NavigationListLabel
-                          label={nav.label}
-                          variant={nav.variant}
-                        />
-                      )}
-                      {nav.menus.map((menu) => (
-                        <React.Fragment key={menu.id}>
-                          <NavigationListItem
-                            selected={menu.current}
-                            label={menu.label}
-                            icon={menu.icon}
-                            href={menu.href}
-                            target={menu.target}
-                          />
-                          {menu.subMenuLabel && (
-                            <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase text-slate-400">
-                              {menu.subMenuLabel}
-                            </div>
-                          )}
-                          {menu.subMenu && (
-                            <div className="mb-2 flex flex-col">
-                              {menu.subMenu.map((nav) => (
-                                <NavigationListItem
-                                  key={nav.id}
-                                  selected={nav.current}
-                                  label={nav.label}
-                                  icon={nav.icon}
-                                  className="grow pl-14 pr-4"
-                                  href={nav.href ? nav.href : undefined}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </NavigationList>
-                  </div>
-                ))}
-              </>
-            )}
-          </>
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
