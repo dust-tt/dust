@@ -1,3 +1,6 @@
+import type { PendingUpdate } from "@extension/lib/storage";
+import { savePendingUpdate } from "@extension/lib/storage";
+
 import {
   AUTH0_AUDIENCE,
   AUTH0_CLIENT_DOMAIN,
@@ -13,6 +16,17 @@ import type {
 import { generatePKCE } from "./src/lib/utils";
 
 const log = console.error;
+
+/**
+ * Listener for force update mechanism.
+ */
+chrome.runtime.onUpdateAvailable.addListener(async (details) => {
+  const pendingUpdate: PendingUpdate = {
+    version: details.version,
+    detectedAt: Date.now(),
+  };
+  await savePendingUpdate(pendingUpdate);
+});
 
 /**
  * Listener to open/close the side panel when the user clicks on the extension icon.

@@ -106,6 +106,25 @@ export const getStoredUser = async (): Promise<StoredUser | null> => {
 };
 
 /**
+ * Store version for force update.
+ */
+
+export type PendingUpdate = {
+  version: string;
+  detectedAt: number;
+};
+export const savePendingUpdate = async (
+  pendingUpdate: PendingUpdate
+): Promise<PendingUpdate> => {
+  await chrome.storage.local.set({ pendingUpdate });
+  return pendingUpdate;
+};
+export const getPendingUpdate = async (): Promise<PendingUpdate | null> => {
+  const result = await chrome.storage.local.get(["pendingUpdate"]);
+  return result.pendingUpdate ?? null;
+};
+
+/**
  * Clear all stored data.
  */
 

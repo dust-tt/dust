@@ -8,7 +8,6 @@ import type {
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
-  HeartbeatEvent,
   LightWorkspaceType,
   RetrievalActionPublicType,
   RetrievalDocumentPublicType,

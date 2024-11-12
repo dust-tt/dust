@@ -1,9 +1,15 @@
-import { Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  LogoHorizontalColorLogo,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { StoredUser } from "@extension/lib/storage";
+import { getPendingUpdate } from "@extension/lib/storage";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 type ProtectedRouteProps = {
@@ -27,6 +33,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   } = useAuth();
 
   const navigate = useNavigate();
+  const [isLatestVersion, setIsLatestVersion] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated || !isUserSetup || !user || !workspace) {
@@ -35,11 +42,51 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   }, [navigate, isLoading, isAuthenticated, isUserSetup, user, workspace]);
 
+  const checkIsLatestVersion = async () => {
+    const pendingUpdate = await getPendingUpdate();
+    if (!pendingUpdate) {
+      return null;
+    }
+    if (pendingUpdate.version > chrome.runtime.getManifest().version) {
+      setIsLatestVersion(false);
+    }
+  };
+
+  useEffect(() => {
+    void checkIsLatestVersion();
+
+    chrome.storage.local.onChanged.addListener((changes) => {
+      if (changes.pendingUpdate) {
+        void checkIsLatestVersion();
+      }
+    });
+  }, []);
+
   if (isLoading || !isAuthenticated || !isUserSetup || !user || !workspace) {
     return (
       <div className="flex h-screen flex-col gap-2 p-4">
         <div className="flex h-full w-full items-center justify-center">
           <Spinner />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLatestVersion) {
+    return (
+      <div className="flex h-screen flex-col gap-2 p-4">
+        <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <LogoHorizontalColorLogo className="h-6 w-24" />
+            <Page.Header title="Update required" />
+          </div>
+          <Page.SectionHeader title="Panel closes after update. Click Dust icon in toolbar to return." />
+          <Button
+            label="Update now"
+            onClick={async () => {
+              chrome.runtime.reload();
+            }}
+          />
         </div>
       </div>
     );
