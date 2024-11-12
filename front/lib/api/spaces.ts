@@ -159,7 +159,7 @@ export async function hardDeleteSpace(
   return new Ok(undefined);
 }
 
-export async function createSpaceAndGroup(
+export async function createRegularSpaceAndGroup(
   auth: Authenticator,
   {
     name,
