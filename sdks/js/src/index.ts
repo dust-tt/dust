@@ -958,12 +958,13 @@ export class DustAPI {
     const text = await res.value.response.text();
 
     try {
-      const r = schema.safeParse(JSON.parse(text));
+      const response = JSON.parse(text);
+      const r = schema.safeParse(response);
       if (r.success) {
         return new Ok(r.data as z.infer<T>);
       } else {
         // We couldn't parse the response directly, maybe it's an error
-        const rErr = APIErrorSchema.safeParse(JSON.parse(text));
+        const rErr = APIErrorSchema.safeParse(response["error"]);
         if (rErr.success) {
           // Successfully parsed an error
           return new Err(rErr.data);
