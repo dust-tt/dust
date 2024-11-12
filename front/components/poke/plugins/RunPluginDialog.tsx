@@ -85,7 +85,7 @@ export function RunPluginDialog({
               </PokeAlert>
             )}
             {result && (
-              <PokeAlert variant="default">
+              <PokeAlert variant="success">
                 <PokeAlertTitle>Success</PokeAlertTitle>
                 <PokeAlertDescription>
                   {result} - Make sure to reload.

@@ -3,7 +3,7 @@ import { Checkbox } from "@dust-tt/sparkle";
 import { createIoTsCodecFromArgs } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
@@ -35,6 +35,8 @@ interface PluginFormProps {
 }
 
 export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
   const argsCodec = useMemo(() => {
     if (!manifest) {
       return null;
@@ -68,6 +70,9 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
   });
 
   async function handleSubmit(values: FormValues<typeof argsCodec>) {
+    // Lock the form to prevent multiple submissions.
+    setIsSubmitted(true);
+
     await onSubmit(values);
   }
 
@@ -133,7 +138,7 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
             )}
           />
         ))}
-        <PokeButton type="submit" variant="outline">
+        <PokeButton type="submit" variant="outline" disabled={isSubmitted}>
           Run
         </PokeButton>
       </form>
