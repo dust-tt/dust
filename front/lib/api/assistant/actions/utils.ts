@@ -34,7 +34,7 @@ export const ACTION_SPECIFICATIONS: Record<
 > = {
   RETRIEVAL_EXHAUSTIVE: {
     label: "Include data",
-    description: "Include as much data as possible",
+    description: "Include data exhaustively",
     cardIcon: TimeIcon,
     dropDownIcon: TimeIcon,
     flag: null,
