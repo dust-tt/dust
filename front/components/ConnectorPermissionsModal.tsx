@@ -33,7 +33,8 @@ import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { ConfirmContext, ConfirmDataType } from "@app/components/Confirm";
+import type { ConfirmDataType } from "@app/components/Confirm";
+import { ConfirmContext } from "@app/components/Confirm";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";

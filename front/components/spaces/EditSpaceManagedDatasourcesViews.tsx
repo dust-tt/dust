@@ -18,6 +18,7 @@ import { useRouter } from "next/router";
 import React, { useContext, useMemo, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import { confirmPrivateNodesSync } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
@@ -26,7 +27,6 @@ import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
-import { confirmPrivateNodesSync } from "@app/components/ConnectorPermissionsModal";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
@@ -283,7 +283,7 @@ export function EditSpaceManagedDataSourcesViews({
               confirm,
             }))
           )
-            await updateSpaceDataSourceViews(selectionConfigurations);
+            {await updateSpaceDataSourceViews(selectionConfigurations);}
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />

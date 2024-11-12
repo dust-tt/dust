@@ -491,6 +491,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             slackChannelId: id,
             slackChannelName: remoteChannel.channel.name,
             permission: "none",
+            private: !!remoteChannel.channel.is_private,
           });
           channels[id] = slackChannel;
           channel = slackChannel;
