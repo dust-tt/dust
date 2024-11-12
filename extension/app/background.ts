@@ -56,10 +56,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-chrome.contextMenus.onClicked.addListener(async (event, tab) => {
-  // if (tab) {
-  //   await chrome.sidePanel.open({ windowId: tab.windowId });
-  // }
+chrome.contextMenus.onClicked.addListener(async (event) => {
   switch (event.menuItemId) {
     case "add_tab_content":
       void sendAttachSelection({
