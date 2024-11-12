@@ -12,15 +12,14 @@ export interface TextareaProps
   error?: string | null;
   showErrorLabel?: boolean;
   minRows?: number;
+  isDisplay?: boolean;
 }
 
 const textAreaStyles = cn(
   "s-flex s-w-full s-px-3 s-py-2",
+  "s-text-sm placeholder:s-text-muted-foreground s-text-foreground s-bg-muted-background s-ring-offset-background s-border s-border-border-dark/0 s-rounded-xl",
   "s-transition s-duration-100",
-  "s-text-sm placeholder:s-text-muted-foreground s-text-foreground",
-  "s-ring-offset-background s-border s-border-border-dark s-bg-background s-rounded-xl",
-  "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 ",
-  "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-text-muted-foreground"
+  "focus-visible:s-outline-none focus-visible:s-border-border-dark focus-visible:s-ring-2 focus-visible:s-ring-offset-2 "
 );
 
 const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
@@ -31,6 +30,8 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       minRows = 10,
       error,
       showErrorLabel,
+      disabled = false,
+      isDisplay = false,
       ...props
     },
     ref
@@ -47,6 +48,11 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         <textarea
           className={cn(
             textAreaStyles,
+            disabled
+              ? isDisplay
+                ? "s-cursor-default"
+                : "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground"
+              : "",
             resizeClass[resize],
             className,
             !error
@@ -61,6 +67,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           )}
           ref={ref}
           rows={minRows}
+          disabled={disabled}
           {...props}
         />
         {error && showErrorLabel && (

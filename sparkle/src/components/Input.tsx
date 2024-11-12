@@ -32,10 +32,9 @@ const messageVariantStyles: Record<MessageStatus, string> = {
 };
 
 const stateVariantStyles: Record<InputStateType, string> = {
-  default: "focus-visible:s-ring-ring",
-  disabled:
-    "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-text-muted-foreground",
-  error: "s-border-border-warning focus:s-ring-ring-warning",
+  default: "",
+  disabled: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",
+  error: "focus:s-ring-ring-warning",
 };
 
 const messageVariant = cva("", {
@@ -49,7 +48,7 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark/0 s-bg-muted-background s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
     "placeholder:s-text-muted-foreground",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-border-border-dark"

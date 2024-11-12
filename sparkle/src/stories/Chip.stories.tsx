@@ -56,6 +56,6 @@ export const Basic: Story = {
     label: "Example Chip",
     size: "sm",
     color: "slate",
-    isBusy: false,
+    isBusy: true,
   },
 };

@@ -200,8 +200,8 @@ module.exports = {
             dark: colors.slate[600],
           },
           warning: {
-            DEFAULT: colors.red[200],
-            dark: colors.red[800],
+            DEFAULT: colors.slate[200],
+            dark: colors.slate[800],
           },
         },
         separator: { DEFAULT: colors.slate[200], dark: colors.slate[800] },

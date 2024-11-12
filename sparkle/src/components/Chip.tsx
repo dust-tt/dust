@@ -1,6 +1,7 @@
 import { cva } from "class-variance-authority";
 import React, { ComponentType, ReactNode } from "react";
 
+import { AnimatedText } from "@sparkle/components/";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
@@ -89,7 +90,7 @@ export function Chip({
   return (
     <div
       className={cn(
-        chipVariants({ size, background: color, text: color, isBusy }),
+        chipVariants({ size, background: color, text: color }),
         className
       )}
       aria-label={label}
@@ -97,7 +98,11 @@ export function Chip({
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {label && (
         <span className={cn("s-pointer s-grow s-cursor-default s-truncate")}>
-          {label}
+          {isBusy ? (
+            <AnimatedText variant={color}>{label}</AnimatedText>
+          ) : (
+            label
+          )}
         </span>
       )}
       {children}
