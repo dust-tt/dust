@@ -1372,7 +1372,7 @@ export async function getGlobalAgents(
   if (user) {
     const favoriteStates = await getFavoriteStates({
       auth,
-      configurationSIds: globalAgents.map((agent) => agent.sId),
+      configurationIds: globalAgents.map((agent) => agent.sId),
     });
 
     for (const agent of globalAgents) {

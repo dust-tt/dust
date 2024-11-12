@@ -5,24 +5,21 @@ import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 
 export async function getFavoriteStates({
   auth,
-  configurationSIds,
+  configurationIds,
 }: {
   auth: Authenticator;
-  configurationSIds: string[];
+  configurationIds: string[];
 }): Promise<Map<string, boolean>> {
-  const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
-  if (!userId || !workspaceId || !auth.isUser()) {
-    throw new Error("User or workspace not found");
-  }
+  const user = auth.getNonNullableUser();
 
-  if (configurationSIds.length === 0) {
+  if (configurationIds.length === 0) {
     return new Map();
   }
 
   const relations = await AgentUserRelation.findAll({
     where: {
-      agentConfiguration: { [Op.in]: configurationSIds },
-      userId,
+      agentConfiguration: { [Op.in]: configurationIds },
+      userId: user.id,
     },
   });
 
