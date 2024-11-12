@@ -579,6 +579,7 @@ const EXTENSION_WHITELIST = [
   ".swift",
   ".css",
   ".html",
+  ".htm",
   ".less",
   ".sass",
   ".scss",
