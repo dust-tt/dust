@@ -1,7 +1,6 @@
 import type {
   LightWorkspaceType,
   PokeSpaceType,
-  UserType,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
