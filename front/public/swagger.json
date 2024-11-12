@@ -3311,7 +3311,10 @@
               "zapier",
               "make",
               "zendesk",
-              "raycast"
+              "raycast",
+              "github-copilot-chat",
+              "extension",
+              "email"
             ]
           }
         }

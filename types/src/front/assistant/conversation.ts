@@ -69,7 +69,9 @@ export type UserMessageOrigin =
   | "make"
   | "zendesk"
   | "raycast"
-  | "extension";
+  | "github-copilot-chat"
+  | "extension"
+  | "email";
 
 export type UserMessageContext = {
   username: string;

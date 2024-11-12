@@ -125,6 +125,9 @@
  *             - make
  *             - zendesk
  *             - raycast
+ *             - github-copilot-chat
+ *             - extension
+ *             - email
  *     AgentConfiguration:
  *       type: object
  *       properties:
