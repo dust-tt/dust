@@ -221,42 +221,6 @@ Item.Avatar = function ({
   );
 };
 
-type NavigationListItemProps = Pick<
-  ItemProps,
-  | "action"
-  | "className"
-  | "description"
-  | "disabled"
-  | "hasAction"
-  | "icon"
-  | "label"
-  | "link"
-  | "onClick"
-  | "selected"
->;
-
-Item.Navigation = function (props: NavigationListItemProps) {
-  return <Item {...props} style="action" spacing="md" />;
-};
-
-type LinkItemProps = Pick<
-  ItemProps,
-  "onClick" | "label" | "description" | "visual" | "icon" | "className" | "link"
->;
-
-Item.Link = function ({ ...props }: LinkItemProps) {
-  return (
-    <Item
-      {...props}
-      // Pass down additional props as needed
-      style="link"
-      hasAction={false}
-      spacing="lg"
-      // Add any conditions or logic for additional props
-    />
-  );
-};
-
 interface DropdownListItemBaseProps {
   style?: "default" | "warning";
 }

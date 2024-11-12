@@ -85,7 +85,7 @@ const ItemWithLabelIconAndDescription = <
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr] s-gap-x-1.5">
+        <div className="s-grid s-grid-cols-[auto,1fr] s-items-center s-gap-x-1.5">
           {icon && (
             <div
               className={cn(
