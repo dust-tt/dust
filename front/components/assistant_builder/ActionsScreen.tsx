@@ -919,9 +919,8 @@ function ActionEditor({
                 What's the data?
               </div>
               <div className="text-sm text-element-600">
-                Provide a brief description of the data content and context.
-                This helps the Assistant determine when and how to utilize this
-                information source effectively
+                Provide a brief description of the data content and context to
+                help the assistant determine when to utilize it effectively
               </div>
             </div>
           ) : (

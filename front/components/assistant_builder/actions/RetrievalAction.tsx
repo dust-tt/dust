@@ -193,7 +193,7 @@ export function ActionRetrievalExhaustive({
             timeFrameDisabled ? "text-slate-400" : "text-element-900"
           )}
         >
-          Collect data from the last
+          Only include data from the last
         </div>
         <input
           type="text"
