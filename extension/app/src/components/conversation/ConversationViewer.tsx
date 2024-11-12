@@ -1,16 +1,14 @@
 import type {
+  AgentGenerationCancelledEvent,
+  AgentMessageNewEvent,
   AgentMessagePublicType,
   ContentFragmentType,
-  UserMessageType,
-} from "@dust-tt/client";
-import type {
-  AgentGenerationCancelledEvent,
-  AgentMention,
-  AgentMessageNewEvent,
   ConversationTitleEvent,
   LightWorkspaceType,
   UserMessageNewEvent,
-} from "@dust-tt/types";
+  UserMessageType,
+} from "@dust-tt/client";
+import type { AgentMention } from "@dust-tt/types";
 import { isAgentMention } from "@dust-tt/types";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";

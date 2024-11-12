@@ -1,5 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type { AgentMessagePublicType } from "@dust-tt/client";
+import type {
+  AgentActionPublicType,
+  AgentActionSpecificEvent,
+  AgentActionSuccessEvent,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessagePublicType,
+  AgentMessageSuccessEvent,
+  GenerationTokensEvent,
+  HeartbeatEvent,
+  LightWorkspaceType,
+  RetrievalActionPublicType,
+  RetrievalDocumentPublicType,
+  WebsearchActionPublicType,
+  WebsearchResultPublicType,
+} from "@dust-tt/client";
 import { isRetrievalActionType, isWebsearchActionType } from "@dust-tt/client";
 import type {
   ConversationMessageEmojiSelectorProps,
@@ -20,20 +35,6 @@ import {
   Popover,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentActionType,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-  GenerationTokensEvent,
-  LightWorkspaceType,
-  RetrievalActionType,
-  RetrievalDocumentType,
-  WebsearchActionType,
-  WebsearchResultType,
-} from "@dust-tt/types";
 import {
   assertNever,
   getProviderFromRetrievedDocument,
@@ -75,7 +76,7 @@ export function visualizationDirective() {
 }
 
 export function makeDocumentCitation(
-  document: RetrievalDocumentType
+  document: RetrievalDocumentPublicType
 ): MarkdownCitation {
   return {
     href: document.sourceUrl ?? undefined,
@@ -85,7 +86,7 @@ export function makeDocumentCitation(
 }
 
 export function makeWebsearchResultsCitation(
-  result: WebsearchResultType
+  result: WebsearchResultPublicType
 ): MarkdownCitation {
   return {
     description: result.snippet,
@@ -186,7 +187,7 @@ export function AgentMessage({
 
     const updateMessageWithAction = (
       m: AgentMessagePublicType,
-      action: AgentActionType
+      action: AgentActionPublicType
     ): AgentMessagePublicType => {
       return {
         ...m,
@@ -261,7 +262,7 @@ export function AgentMessage({
             });
             break;
           default:
-            assertNever(event);
+            assertNever(event.classification);
         }
         break;
       }
@@ -353,7 +354,7 @@ export function AgentMessage({
     // Retrieval actions
     const retrievalActionsWithDocs = agentMessageToRender.actions
       .filter((a) => isRetrievalActionType(a) && a.documents)
-      .sort((a, b) => a.id - b.id) as RetrievalActionType[];
+      .sort((a, b) => a.id - b.id) as RetrievalActionPublicType[];
     const allDocs = removeNulls(
       retrievalActionsWithDocs.map((a) => a.documents).flat()
     );
@@ -367,7 +368,7 @@ export function AgentMessage({
     // Websearch actions
     const websearchActionsWithResults = agentMessageToRender.actions
       .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-      .sort((a, b) => a.id - b.id) as WebsearchActionType[];
+      .sort((a, b) => a.id - b.id) as WebsearchActionPublicType[];
     const allWebResults = removeNulls(
       websearchActionsWithResults.map((a) => a.output?.results).flat()
     );

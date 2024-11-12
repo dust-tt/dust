@@ -529,6 +529,10 @@ const RetrievalDocumentTypeSchema = z.object({
   timestamp: z.number(),
 });
 
+export type RetrievalDocumentPublicType = z.infer<
+  typeof RetrievalDocumentTypeSchema
+>;
+
 const RetrievalActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   params: z.object({
@@ -542,7 +546,10 @@ const RetrievalActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("retrieval_action"),
 });
-type RetrievalActionPublicType = z.infer<typeof RetrievalActionTypeSchema>;
+
+export type RetrievalActionPublicType = z.infer<
+  typeof RetrievalActionTypeSchema
+>;
 
 const ProcessSchemaAllowedTypesSchema = z.enum(["string", "number", "boolean"]);
 
@@ -646,26 +653,21 @@ const UserSchema = z.object({
   image: z.string().nullable(),
 });
 
+export const WebsearchResultSchema = z.object({
+  title: z.string(),
+  snippet: z.string(),
+  link: z.string(),
+  reference: z.string(),
+});
+
+export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
+
 const WebsearchActionOutputSchema = z.union([
   z.object({
-    results: z.array(
-      z.object({
-        title: z.string(),
-        snippet: z.string(),
-        link: z.string(),
-        reference: z.string(),
-      })
-    ),
+    results: z.array(WebsearchResultSchema),
   }),
   z.object({
-    results: z.array(
-      z.object({
-        title: z.string(),
-        snippet: z.string(),
-        link: z.string(),
-        reference: z.string(),
-      })
-    ),
+    results: z.array(WebsearchResultSchema),
     error: z.string(),
   }),
 ]);
@@ -679,7 +681,10 @@ const WebsearchActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("websearch_action"),
 });
-type WebsearchActionPublicType = z.infer<typeof WebsearchActionTypeSchema>;
+
+export type WebsearchActionPublicType = z.infer<
+  typeof WebsearchActionTypeSchema
+>;
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema([
   "active",
