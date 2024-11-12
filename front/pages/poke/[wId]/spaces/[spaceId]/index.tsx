@@ -76,7 +76,7 @@ export default function DataSourceViewPage({
   return (
     <div className="flex flex-row gap-x-6">
       <ViewSpaceViewTable space={space} />
-      <div className="mt-4r flex flex-1 flex-col">
+      <div className="mt-4 flex flex-1 flex-col">
         <PluginList
           resourceType="spaces"
           workspaceResource={{
