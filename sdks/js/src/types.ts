@@ -155,6 +155,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema([
   "make",
   "zendesk",
   "raycast",
+  "github-copilot-chat",
   "extension",
   "email",
 ])
