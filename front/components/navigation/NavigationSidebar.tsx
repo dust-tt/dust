@@ -14,9 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  SidebarNavigation,
-} from "@app/components/navigation/config";
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
@@ -67,7 +65,7 @@ export const NavigationSidebar = React.forwardRef<
                 href={`/w/${owner.sId}/assistant/new`}
                 className="inline-flex"
               >
-                <Logo className="h-4 w-16"/>
+                <Logo className="h-4 w-16" />
               </Link>
             </div>
             {user && user.workspaces.length > 1 ? (
