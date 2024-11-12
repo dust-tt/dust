@@ -1,9 +1,8 @@
-import { IconButton } from "@dust-tt/sparkle";
+import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
 import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import PokeLink from "@app/components/poke/shadcn/ui/link";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 export function makeColumnsForSpaces(
@@ -16,7 +15,9 @@ export function makeColumnsForSpaces(
         const sId: string = row.getValue("sId");
 
         return (
-          <PokeLink href={`/poke/${owner.sId}/spaces/${sId}`}>{sId}</PokeLink>
+          <LinkWrapper href={`/poke/${owner.sId}/spaces/${sId}`}>
+            {sId}
+          </LinkWrapper>
         );
       },
       header: ({ column }) => {
