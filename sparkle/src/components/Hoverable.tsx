@@ -7,7 +7,7 @@ interface HoverableProps {
   children: ReactNode;
   className?: string;
   onClick: (e: SyntheticEvent) => void;
-  variant?: "primary" | "invisible";
+  variant?: "primary" | "highlight" | "invisible";
 }
 
 export function Hoverable({
@@ -16,11 +16,13 @@ export function Hoverable({
   onClick,
   variant = "invisible",
 }: HoverableProps) {
-  const baseClasses = "s-cursor-pointer s-duration-300";
+  const baseClasses =
+    "s-cursor-pointer s-duration-200 hover:s-underline hover:s-text-highlight-light hover:s-underline-offset-2 active:s-text-highlight-dark";
 
   const variantClasses = {
-    invisible: "hover:s-text-action-500 active:s-text-action-600",
-    primary: "s-font-bold s-text-blue-500 hover:active:s-text-action-600",
+    invisible: "",
+    primary: "s-font-medium s-text-foreground",
+    highlight: "s-font-medium s-text-highlight",
   };
 
   return (
