@@ -26,6 +26,7 @@ import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import { confirmPrivateNodesSync } from "@app/components/ConnectorPermissionsModal";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
@@ -274,26 +275,15 @@ export function EditSpaceManagedDataSourcesViews({
         owner={owner}
         systemSpaceDataSourceViews={filterSystemSpaceDataSourceViews}
         onSave={async (selectionConfigurations) => {
-          // confirmation in case there are private nodes
-          const privateNodes = Object.values(selectionConfigurations)
-            .map((sc) => sc.selectedResources)
-            .flat()
-            .filter((node) => node.providerVisibility === "private");
-
-          if (privateNodes.length > 0) {
-            const confirmed = await confirm({
-              title: "Sensitive data synchronization",
-              message: `You are synchronizing data from ${privateNodes
-                .map((node) => node.title)
-                .join(", ")}. Is this okay?`,
-              validateVariant: "warning",
-            });
-            if (!confirmed) {
-              return;
-            }
-          }
-
-          await updateSpaceDataSourceViews(selectionConfigurations);
+          if (
+            !(await confirmPrivateNodesSync({
+              selectedNodes: Object.values(selectionConfigurations)
+                .map((sc) => sc.selectedResources)
+                .flat(),
+              confirm,
+            }))
+          )
+            await updateSpaceDataSourceViews(selectionConfigurations);
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />
