@@ -15,10 +15,7 @@ import { InputBarContainer } from "@extension/components/input_bar/InputBarConta
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import type { AttachSelectionMessage } from "@extension/lib/messages";
-import {
-  sendAttachSelection,
-  sendInputBarStatus,
-} from "@extension/lib/messages";
+import { sendInputBarStatus } from "@extension/lib/messages";
 import { classNames } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
