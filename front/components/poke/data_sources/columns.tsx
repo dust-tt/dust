@@ -35,7 +35,7 @@ export function makeColumnsForDataSources(
           <div className="flex space-x-2">
             <p>sId</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -52,7 +52,7 @@ export function makeColumnsForDataSources(
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")

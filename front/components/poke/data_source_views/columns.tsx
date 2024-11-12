@@ -28,7 +28,7 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
           <div className="flex space-x-2">
             <p>sId</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -52,7 +52,7 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
           <div className="flex space-x-2">
             <p>Data Source</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")

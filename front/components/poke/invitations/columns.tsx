@@ -32,6 +32,7 @@ export function makeColumnsForInvitations(
             &nbsp;
             <IconButton
               icon={ClipboardIcon}
+              variant="outline"
               tooltip="Copy invite link to clipboard"
               size="xs"
               onClick={() =>
@@ -74,7 +75,7 @@ export function makeColumnsForInvitations(
           <IconButton
             icon={TrashIcon}
             size="xs"
-            variant="ghost"
+            variant="outline"
             onClick={async () => {
               await onRevokeInvitation(invitation.inviteEmail);
             }}
