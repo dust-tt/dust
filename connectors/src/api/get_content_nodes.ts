@@ -92,7 +92,7 @@ const _getContentNodes = async (
 
   const contentNodes = sortBy(
     removeNulls(internalIds.map((internalId) => contentNodesMap[internalId])),
-    "title"
+    (e) => e.title.toLowerCase()
   );
 
   if (includeParents) {
