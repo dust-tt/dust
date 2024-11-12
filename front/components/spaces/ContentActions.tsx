@@ -266,11 +266,12 @@ const makeViewSourceUrlContentAction = (
   return {
     label,
     icon: ExternalLinkIcon,
-    link: contentNode.sourceUrl
-      ? { href: contentNode.sourceUrl, target: "_blank" }
-      : undefined,
     disabled: contentNode.sourceUrl === null,
-    onClick: () => {},
+    onClick: () => {
+      if (contentNode.sourceUrl) {
+        window.open(contentNode.sourceUrl, "_blank");
+      }
+    },
   };
 };
 
