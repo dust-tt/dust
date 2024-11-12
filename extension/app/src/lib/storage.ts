@@ -68,6 +68,7 @@ export const setConversationsContext = async (
   const result = await chrome.storage.local.get(["conversationContext"]);
   const v = result.conversationContext ?? {};
   Object.assign(v, conversationsWithContext);
+  await chrome.storage.local.set({ conversationContext: v });
 };
 
 /**
