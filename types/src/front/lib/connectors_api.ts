@@ -55,6 +55,13 @@ export type ConnectorType = {
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ContentNodeType = "file" | "folder" | "database" | "channel";
 
+export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
+  folder: 1,
+  file: 2,
+  database: 3,
+  channel: 4,
+};
+
 /**
  * A ContentNode represents a connector related node. As an example:
  * - Notion: Top-level pages (possibly manually added lower level ones)

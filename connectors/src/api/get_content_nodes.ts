@@ -4,7 +4,7 @@ import type {
   Result,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { contentNodeTypeSortOrder, removeNulls } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -92,7 +92,7 @@ const _getContentNodes = async (
 
   const contentNodes = sortBy(
     removeNulls(internalIds.map((internalId) => contentNodesMap[internalId])),
-    (e) => e.title.toLowerCase()
+    (c) => [contentNodeTypeSortOrder[c.type], c.title.toLowerCase()]
   );
 
   if (includeParents) {
