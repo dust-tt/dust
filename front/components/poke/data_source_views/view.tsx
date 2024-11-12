@@ -47,9 +47,10 @@ export function ViewDataSourceViewTable({
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Space</PokeTableHead>
-                <PokeTableCell>
-                  {dataSourceView.space.name} ({dataSourceView.space.sId})
-                </PokeTableCell>
+                <PokeTableCellWithLink
+                  href={`/poke/${owner.sId}/spaces/${dataSourceView.space.sId}`}
+                  content={`${dataSourceView.space.name} (${dataSourceView.space.sId})`}
+                />
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Space Type</PokeTableHead>

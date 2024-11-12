@@ -1,5 +1,6 @@
 import type {
   RoleType,
+  UserType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -11,7 +12,7 @@ import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 
 function prepareMembersForDisplay(
-  members: UserTypeWithWorkspaces[]
+  members: (UserType | UserTypeWithWorkspaces)[]
 ): MemberDisplayType[] {
   return members.map((m) => {
     return {
@@ -19,18 +20,23 @@ function prepareMembersForDisplay(
       email: m.email,
       name: m.fullName,
       provider: m.provider,
-      role: m.workspaces[0].role,
+      role: "workspaces" in m ? m.workspaces[0].role : "none",
       sId: m.sId,
     };
   });
 }
 
 interface MembersDataTableProps {
-  members: UserTypeWithWorkspaces[];
+  members: (UserType | UserTypeWithWorkspaces)[];
   owner: WorkspaceType;
+  readonly?: boolean;
 }
 
-export function MembersDataTable({ members, owner }: MembersDataTableProps) {
+export function MembersDataTable({
+  members,
+  owner,
+  readonly,
+}: MembersDataTableProps) {
   const router = useRouter();
 
   const onRevokeMember = async (m: MemberDisplayType) => {
@@ -98,6 +104,7 @@ export function MembersDataTable({ members, owner }: MembersDataTableProps) {
           columns={makeColumnsForMembers({
             onRevokeMember,
             onUpdateMemberRole,
+            readonly,
           })}
           data={prepareMembersForDisplay(members)}
           facets={[
