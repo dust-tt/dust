@@ -74,13 +74,10 @@ import { apiError } from "@app/logger/withlogging";
  *       content:
  *         application/json:
  *           schema:
- *            "requestBody": {
- *               "type": "object",
- *               "properties": {
- *                 "userFavorite": {
- *                   "type": "boolean"
- *                 }
- *               },
+ *             type: object
+ *             properties:
+ *               userFavorite:
+ *                  type: boolean
  *     security:
  *       - BearerAuth: []
  *     responses:

@@ -3,13 +3,14 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 
-export async function getFavoriteStates({
-  auth,
-  configurationIds,
-}: {
-  auth: Authenticator;
-  configurationIds: string[];
-}): Promise<Map<string, boolean>> {
+export async function getFavoriteStates(
+  auth: Authenticator,
+  {
+    configurationIds,
+  }: {
+    configurationIds: string[];
+  }
+): Promise<Map<string, boolean>> {
   const user = auth.getNonNullableUser();
 
   if (configurationIds.length === 0) {

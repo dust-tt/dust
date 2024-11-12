@@ -392,7 +392,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
     user
-      ? getFavoriteStates({ auth, configurationIds: configurationSIds })
+      ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
   ]);
 

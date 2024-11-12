@@ -1370,8 +1370,7 @@ export async function getGlobalAgents(
   // add user's favorite status to the agents if needed
   const user = auth.user();
   if (user) {
-    const favoriteStates = await getFavoriteStates({
-      auth,
+    const favoriteStates = await getFavoriteStates(auth, {
       configurationIds: globalAgents.map((agent) => agent.sId),
     });
 
