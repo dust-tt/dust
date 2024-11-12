@@ -1,6 +1,5 @@
 import type {
   RoleType,
-  UserType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -12,7 +11,7 @@ import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 
 function prepareMembersForDisplay(
-  members: (UserType | UserTypeWithWorkspaces)[]
+  members: UserTypeWithWorkspaces[]
 ): MemberDisplayType[] {
   return members.map((m) => {
     return {
@@ -20,14 +19,14 @@ function prepareMembersForDisplay(
       email: m.email,
       name: m.fullName,
       provider: m.provider,
-      role: "workspaces" in m ? m.workspaces[0].role : "none",
+      role: m.workspaces[0].role,
       sId: m.sId,
     };
   });
 }
 
 interface MembersDataTableProps {
-  members: (UserType | UserTypeWithWorkspaces)[];
+  members: UserTypeWithWorkspaces[];
   owner: WorkspaceType;
   readonly?: boolean;
 }
