@@ -57,6 +57,7 @@ const AboutMenuConfig: MenuConfig = {
   ],
 };
 
+// If you change this, make sure to update the links in the extension as well.
 const LegalMenuConfig: MenuConfig = {
   title: "Legal",
   items: [

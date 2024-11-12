@@ -1,11 +1,9 @@
 import {
   Avatar,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
   LogoHorizontalColorLogo,
   LogoutIcon,
 } from "@dust-tt/sparkle";
@@ -27,12 +25,6 @@ export const MainPage = ({
           <Link to="https://dust.tt" target="_blank">
             <LogoHorizontalColorLogo className="h-4 w-16" />
           </Link>
-          <Button
-            icon={ExternalLinkIcon}
-            variant="ghost"
-            href="https://dust.tt"
-            target="_blank"
-          />
         </div>
         <div className="flex items-center gap-2">
           <ConversationsListButton size="md" />
