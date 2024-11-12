@@ -282,8 +282,9 @@ export function EditSpaceManagedDataSourcesViews({
                 .flat(),
               confirm,
             }))
-          )
-            {await updateSpaceDataSourceViews(selectionConfigurations);}
+          ) {
+            await updateSpaceDataSourceViews(selectionConfigurations);
+          }
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />
