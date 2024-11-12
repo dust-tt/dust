@@ -2,7 +2,7 @@
  * Utils to generate PKCE code verifier and challenge.
  */
 
-import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/client";
 
 const base64URLEncode = (buffer: ArrayBuffer): string => {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))

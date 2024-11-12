@@ -1,3 +1,4 @@
+import { supportedFileExtensions } from "@dust-tt/client";
 import {
   AttachmentIcon,
   Button,
@@ -9,7 +10,6 @@ import {
   DropdownMenuTrigger,
   ImageIcon,
 } from "@dust-tt/sparkle";
-import { supportedFileExtensions } from "@dust-tt/types";
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useRef } from "react";

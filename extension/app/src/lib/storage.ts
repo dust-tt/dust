@@ -1,5 +1,7 @@
-import type { UserTypeWithWorkspaces } from "@dust-tt/types";
+import type { MeResponseType } from "@dust-tt/client";
 import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
+
+export type UserTypeWithWorkspaces = MeResponseType["user"];
 
 export type StoredTokens = {
   accessToken: string;

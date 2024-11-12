@@ -1,11 +1,10 @@
-import type { ConversationPublicType } from "@dust-tt/client";
 import type {
-  AgentMention,
+  AgentMentionType,
+  ConversationPublicType,
   LightAgentConfigurationType,
   LightWorkspaceType,
-  MentionType,
-  UploadedContentFragment,
-} from "@dust-tt/types";
+  UploadedContentFragmentType,
+} from "@dust-tt/client";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
@@ -18,23 +17,6 @@ import { classNames } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 // AGENT MENTION
-
-function AgentMention({
-  agentConfiguration,
-}: {
-  agentConfiguration: LightAgentConfigurationType;
-}) {
-  return (
-    <div
-      className={classNames("inline-block font-medium text-brand")}
-      contentEditable={false}
-      data-agent-configuration-id={agentConfiguration?.sId}
-      data-agent-name={agentConfiguration?.name}
-    >
-      @{agentConfiguration.name}
-    </div>
-  );
-}
 
 /**
  *
@@ -55,10 +37,10 @@ export function AssistantInputBar({
   owner: LightWorkspaceType;
   onSubmit: (
     input: string,
-    mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    mentions: AgentMentionType[],
+    contentFragments: UploadedContentFragmentType[]
   ) => void;
-  stickyMentions?: AgentMention[];
+  stickyMentions?: AgentMentionType[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   disableAutoFocus?: boolean;
   conversation?: ConversationPublicType;
@@ -140,7 +122,7 @@ export function AssistantInputBar({
     }
 
     const { mentions: rawMentions, text } = textAndMentions;
-    const mentions: MentionType[] = [
+    const mentions: AgentMentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
     const newFiles = fileUploaderService.getFileBlobs().map((cf) => ({
