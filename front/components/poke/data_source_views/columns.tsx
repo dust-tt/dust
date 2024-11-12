@@ -2,7 +2,6 @@ import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import PokeLink from "@app/components/poke/shadcn/ui/link";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 interface DataSourceView {
