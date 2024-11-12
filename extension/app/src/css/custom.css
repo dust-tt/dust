@@ -1,4 +1,8 @@
+html {
+  font-size: 14px;
+}
+
 body {
   font-family: darkmode-off-cc, sans-serif;
-  font-size: 14px;
+  font-size: 100%;
 }
