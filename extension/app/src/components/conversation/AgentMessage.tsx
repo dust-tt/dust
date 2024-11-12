@@ -166,8 +166,7 @@ export function AgentMessage({
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
       }
-      const url =
-        esURL + "?lastEventId=" + lastEventId + "&heartbeatInterval=60000";
+      const url = esURL + "?lastEventId=" + lastEventId;
 
       return url;
     },
@@ -183,8 +182,7 @@ export function AgentMessage({
         | AgentActionSuccessEvent
         | GenerationTokensEvent
         | AgentGenerationCancelledEvent
-        | AgentMessageSuccessEvent
-        | HeartbeatEvent;
+        | AgentMessageSuccessEvent;
     } = JSON.parse(eventStr);
 
     const updateMessageWithAction = (
@@ -201,8 +199,6 @@ export function AgentMessage({
 
     const event = eventPayload.data;
     switch (event.type) {
-      case "heartbeat":
-        break;
       case "agent_action_success":
         setStreamedAgentMessage((m) => {
           return { ...updateMessageWithAction(m, event.action) };
