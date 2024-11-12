@@ -84,7 +84,7 @@ export function Chip({
   label,
   children,
   className,
-  isBusy = false,
+  isBusy,
   icon,
 }: ChipProps) {
   return (
