@@ -6,7 +6,7 @@
     "start": "next start --keepAliveTimeout 5000",
     "start:worker": "tsx ./start_worker.ts",
     "lint": "next lint",
-    "docs": "npx next-swagger-doc-cli swagger.json && npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json && npm run format",
+    "docs": "npx next-swagger-doc-cli swagger.json 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || { npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json && npm run format; }",
     "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
