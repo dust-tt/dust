@@ -1912,20 +1912,23 @@ const SupportedUsageTablesSchema = FlexibleEnumSchema(usageTables);
 
 export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
 
-const MonthSchema = z
+const DateSchema = z
   .string()
-  .refine((s): s is string => /^\d{4}-(0[1-9]|1[0-2])$/.test(s), "YYYY-MM");
+  .refine(
+    (s): s is string => /^\d{4}-(0[1-9]|1[0-2])(-([0-2]\d|3[01]))?$/.test(s),
+    "YYYY-MM or YYYY-MM-DD"
+  );
 
 export const GetWorkspaceUsageRequestSchema = z.union([
   z.object({
-    start: MonthSchema,
+    start: DateSchema,
     end: z.undefined(),
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
   }),
   z.object({
-    start: MonthSchema,
-    end: MonthSchema,
+    start: DateSchema,
+    end: DateSchema,
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
   }),
