@@ -1,4 +1,4 @@
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
+import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -26,9 +26,9 @@ export function makeColumnsForDataSources(
         const sId: string = row.getValue("sId");
 
         return (
-          <PokeLink href={`/poke/${owner.sId}/data_sources/${sId}`}>
+          <LinkWrapper href={`/poke/${owner.sId}/data_sources/${sId}`}>
             {sId}
-          </PokeLink>
+          </LinkWrapper>
         );
       },
       header: ({ column }) => {

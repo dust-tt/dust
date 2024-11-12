@@ -1,4 +1,4 @@
-import { IconButton } from "@dust-tt/sparkle";
+import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -22,7 +22,7 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
       cell: ({ row }) => {
         const { dataSourceViewLink, sId } = row.original;
 
-        return <PokeLink href={dataSourceViewLink}>{sId}</PokeLink>;
+        return <LinkWrapper href={dataSourceViewLink}>{sId}</LinkWrapper>;
       },
       header: ({ column }) => {
         return (
@@ -44,7 +44,9 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
       cell: ({ row }) => {
         const { dataSourceLink, dataSourceName } = row.original;
 
-        return <PokeLink href={dataSourceLink}>{dataSourceName}</PokeLink>;
+        return (
+          <LinkWrapper href={dataSourceLink}>{dataSourceName}</LinkWrapper>
+        );
       },
       header: ({ column }) => {
         return (
