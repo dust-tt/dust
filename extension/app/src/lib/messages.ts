@@ -10,16 +10,20 @@ export type AuthBackgroundResponse = {
   success: boolean;
 };
 
-export type AuthBackroundMessage = {
+export type AuthBackgroundMessage = {
   type: "AUTHENTICATE" | "REFRESH_TOKEN" | "LOGOUT" | "SIGN_CONNECT";
   refreshToken?: string;
 };
 
+export type GetActiveTabOptions = {
+  includeContent: boolean;
+  includeScreenshot: boolean;
+  includeSelectionOnly?: boolean;
+};
+
 export type GetActiveTabBackgroundMessage = {
   type: "GET_ACTIVE_TAB";
-  includeContent?: boolean;
-  includeScreenshot?: boolean;
-};
+} & GetActiveTabOptions;
 
 export type GetActiveTabBackgroundResponse = {
   title: string;
@@ -28,13 +32,36 @@ export type GetActiveTabBackgroundResponse = {
   screenshot?: string;
 };
 
+export type AttachSelectionMessage = {
+  type: "ATTACH_TAB";
+} & GetActiveTabOptions;
+
+export type InputBarStatusMessage = {
+  type: "INPUT_BAR_STATUS";
+  available: boolean;
+};
+
+const sendMessage = <T, U>(message: T): Promise<U> => {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response: U | undefined) => {
+      if (chrome.runtime.lastError) {
+        return reject(chrome.runtime.lastError);
+      }
+      if (!response) {
+        return reject(new Error("No response received."));
+      }
+      return resolve(response);
+    });
+  });
+};
+
 /**
  * Messages to the background script to authenticate, refresh tokens, and logout.
  */
 
 export const sendAuthMessage = (): Promise<Auth0AuthorizeResponse> => {
   return new Promise((resolve, reject) => {
-    const message: AuthBackroundMessage = { type: "AUTHENTICATE" };
+    const message: AuthBackgroundMessage = { type: "AUTHENTICATE" };
     chrome.runtime.sendMessage(
       message,
       (response: Auth0AuthorizeResponse | undefined) => {
@@ -73,7 +100,7 @@ export const sendRefreshTokenMessage = (
   refreshToken: string
 ): Promise<Auth0AuthorizeResponse> => {
   return new Promise((resolve, reject) => {
-    const message: AuthBackroundMessage = {
+    const message: AuthBackgroundMessage = {
       type: "REFRESH_TOKEN",
       refreshToken,
     };
@@ -101,20 +128,8 @@ export const sendRefreshTokenMessage = (
 };
 
 export const sentLogoutMessage = (): Promise<AuthBackgroundResponse> => {
-  return new Promise((resolve, reject) => {
-    const message: AuthBackroundMessage = { type: "LOGOUT" };
-    chrome.runtime.sendMessage(
-      message,
-      (response: AuthBackgroundResponse | undefined) => {
-        if (chrome.runtime.lastError) {
-          return reject(chrome.runtime.lastError);
-        }
-        if (!response) {
-          return reject(new Error("No response received."));
-        }
-        return resolve(response);
-      }
-    );
+  return sendMessage<AuthBackgroundMessage, AuthBackgroundResponse>({
+    type: "LOGOUT",
   });
 };
 
@@ -122,27 +137,28 @@ export const sentLogoutMessage = (): Promise<AuthBackgroundResponse> => {
  * Message to the background script to get the active tab content.
  */
 
-export const sendGetActiveTabMessage = (
-  includeContent: boolean,
-  includeScreenshot: boolean
-): Promise<GetActiveTabBackgroundResponse> => {
-  return new Promise((resolve, reject) => {
-    const message: GetActiveTabBackgroundMessage = {
-      type: "GET_ACTIVE_TAB",
-      includeContent,
-      includeScreenshot,
-    };
-    chrome.runtime.sendMessage(
-      message,
-      (response: GetActiveTabBackgroundResponse | undefined) => {
-        if (chrome.runtime.lastError) {
-          return reject(chrome.runtime.lastError);
-        }
-        if (!response) {
-          return reject(new Error("No response received."));
-        }
-        return resolve(response);
-      }
-    );
+export const sendGetActiveTabMessage = (params: GetActiveTabOptions) => {
+  return sendMessage<
+    GetActiveTabBackgroundMessage,
+    GetActiveTabBackgroundResponse
+  >({
+    type: "GET_ACTIVE_TAB",
+    ...params,
+  });
+};
+
+export const sendAttachSelection = (
+  opts: GetActiveTabOptions = { includeContent: true, includeScreenshot: false }
+) => {
+  return sendMessage<AttachSelectionMessage, void>({
+    type: "ATTACH_TAB",
+    ...opts,
+  });
+};
+
+export const sendInputBarStatus = (available: boolean) => {
+  return sendMessage<InputBarStatusMessage, void>({
+    type: "INPUT_BAR_STATUS",
+    available,
   });
 };

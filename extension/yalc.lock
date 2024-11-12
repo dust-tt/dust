@@ -1,0 +1,10 @@
+{
+  "version": "v1",
+  "packages": {
+    "@dust-tt/sparkle": {
+      "signature": "26edffd6028f0c909313ea097f484ee2",
+      "file": true,
+      "replaced": "^0.2.300"
+    }
+  }
+}

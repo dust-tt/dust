@@ -8,11 +8,13 @@ import {
 } from "./src/lib/config";
 import type {
   Auth0AuthorizeResponse,
+  AuthBackgroundMessage,
   AuthBackgroundResponse,
-  AuthBackroundMessage,
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
+  InputBarStatusMessage,
 } from "./src/lib/messages";
+import { sendAttachSelection as sendAttachSelection } from "./src/lib/messages";
 import { generatePKCE } from "./src/lib/utils";
 
 const log = console.error;
@@ -33,6 +35,51 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
  */
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  chrome.contextMenus.create({
+    id: "add_tab_content",
+    title: "Add tab content to conversation",
+    contexts: ["page"],
+    enabled: false,
+  });
+  chrome.contextMenus.create({
+    id: "add_tab_screenshot",
+    title: "Add tab screenshot to conversation",
+    contexts: ["page"],
+    enabled: false,
+  });
+
+  chrome.contextMenus.create({
+    id: "add_selection",
+    title: "Add selection to conversation",
+    contexts: ["selection"],
+    enabled: false,
+  });
+});
+
+chrome.contextMenus.onClicked.addListener(async (event, tab) => {
+  // if (tab) {
+  //   await chrome.sidePanel.open({ windowId: tab.windowId });
+  // }
+  switch (event.menuItemId) {
+    case "add_tab_content":
+      void sendAttachSelection({
+        includeContent: true,
+        includeScreenshot: false,
+      });
+      break;
+    case "add_tab_screenshot":
+      void sendAttachSelection({
+        includeContent: false,
+        includeScreenshot: true,
+      });
+      break;
+    case "add_selection":
+      void sendAttachSelection({
+        includeContent: true,
+        includeScreenshot: false,
+        includeSelectionOnly: true,
+      });
+  }
 });
 
 /**
@@ -41,7 +88,10 @@ chrome.runtime.onInstalled.addListener(() => {
  */
 chrome.runtime.onMessage.addListener(
   (
-    message: AuthBackroundMessage | GetActiveTabBackgroundMessage,
+    message:
+      | AuthBackgroundMessage
+      | GetActiveTabBackgroundMessage
+      | InputBarStatusMessage,
     sender,
     sendResponse: (
       response:
@@ -82,21 +132,30 @@ chrome.runtime.onMessage.addListener(
               return;
             }
 
+            const includeContent = message.includeContent ?? true;
+            const includeScreenshot = message.includeScreenshot ?? false;
             try {
-              const capture = message.includeScreenshot
+              const capture = includeScreenshot
                 ? await chrome.tabs.captureVisibleTab()
                 : undefined;
 
-              const [result] = message.includeContent
-                ? await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    func: () => document.documentElement.innerText,
-                  })
+              const [result] = includeContent
+                ? await chrome.scripting.executeScript(
+                    message.includeSelectionOnly
+                      ? {
+                          target: { tabId: tab.id },
+                          func: () => window.getSelection()?.toString(),
+                        }
+                      : {
+                          target: { tabId: tab.id },
+                          func: () => document.documentElement.innerText,
+                        }
+                  )
                 : [undefined];
               sendResponse({
                 title: tab.title || "",
                 url: tab.url || "",
-                content: message.includeContent
+                content: includeContent
                   ? (result?.result ?? "no content.")
                   : undefined,
                 screenshot: capture,
@@ -107,6 +166,17 @@ chrome.runtime.onMessage.addListener(
             }
           }
         );
+        return true;
+      case "INPUT_BAR_STATUS":
+        chrome.contextMenus.update("add_tab_content", {
+          enabled: message.available,
+        });
+        chrome.contextMenus.update("add_tab_screenshot", {
+          enabled: message.available,
+        });
+        chrome.contextMenus.update("add_selection", {
+          enabled: message.available,
+        });
         return true;
       default:
         log(`Unknown message: ${message}.`);
