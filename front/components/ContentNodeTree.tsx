@@ -280,12 +280,12 @@ function ContentNodeTreeChildren({
               />
             </div>
 
-            <div className="p-1">
+            {search.trim().length > 0 && (
               <Button
-                disabled={search.trim().length === 0}
                 icon={ListCheckIcon}
                 label={selectAllClicked ? "Unselect All" : "Select All"}
                 size="sm"
+                className="m-1"
                 variant="ghost"
                 onClick={() => {
                   const isSelected = !selectAllClicked;
@@ -303,7 +303,7 @@ function ContentNodeTreeChildren({
                   });
                 }}
               />
-            </div>
+            )}
           </div>
         </>
       )}
