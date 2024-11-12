@@ -7,6 +7,7 @@ import "./src/css/components.css";
 // Local custom styles
 import "./src/css/custom.css";
 
+import { Notification } from "@dust-tt/sparkle";
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
 import { routes } from "@extension/pages/routes";
 import ReactDOM from "react-dom/client";
@@ -17,7 +18,9 @@ const router = createBrowserRouter(routes);
 const App = () => {
   return (
     <AuthProvider>
-      <RouterProvider router={router} />
+      <Notification.Area>
+        <RouterProvider router={router} />
+      </Notification.Area>
     </AuthProvider>
   );
 };
