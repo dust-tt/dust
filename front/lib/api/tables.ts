@@ -341,16 +341,6 @@ export async function rowsFromCsv({
     useAppForHeaderDetection
   );
 
-  if (useAppForHeaderDetection) {
-    // TODO Remove this logs before rolling out to customers has it exposes sensitive data !
-    // Enable static header detection for debugging
-    const headerResStatic = await detectHeaders(auth, csv, delimiter, false);
-    logger.info(
-      { headerRes, headerResStatic, useAppForHeaderDetection },
-      "Header detection result"
-    );
-  }
-
   if (headerRes.isErr()) {
     return headerRes;
   }
