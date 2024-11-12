@@ -39,12 +39,10 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
+import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import {
-  AgentUserRelation,
-  GlobalAgentSettings,
-} from "@app/lib/models/assistant/agent";
+import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import {
   PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
   PRODUCTION_DUST_APPS_WORKSPACE_ID,
@@ -1372,18 +1370,12 @@ export async function getGlobalAgents(
   // add user's favorite status to the agents if needed
   const user = auth.user();
   if (user) {
-    const relations = await AgentUserRelation.findAll({
-      where: {
-        userId: user.id,
-        agentConfiguration: globalAgents.map((agent) => agent.sId),
-      },
+    const favoriteStates = await getFavoriteStates(auth, {
+      configurationIds: globalAgents.map((agent) => agent.sId),
     });
 
     for (const agent of globalAgents) {
-      const relation = relations.find(
-        (r) => r.agentConfiguration === agent.sId
-      );
-      agent.userFavorite = relation ? relation.favorite : false;
+      agent.userFavorite = !!favoriteStates.get(agent.sId);
     }
   }
 

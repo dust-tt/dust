@@ -27,18 +27,16 @@ export async function setAgentUserFavorite({
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
   }
 
-  const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
-  if (!userId || !workspaceId || !auth.isUser()) {
-    return new Err(new Error("User or workspace not found"));
-  }
+  const user = auth.getNonNullableUser();
+  const workspace = auth.getNonNullableWorkspace();
 
   if (agentConfiguration.status !== "active") {
     return new Err(new Error("Agent is not active"));
   }
 
   await AgentUserRelation.upsert({
-    userId,
-    workspaceId,
+    userId: user.id,
+    workspaceId: workspace.id,
     agentConfiguration: agentConfiguration.sId,
     favorite: userFavorite,
   });

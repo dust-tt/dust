@@ -1360,6 +1360,22 @@ export type GetDataSourcesResponseType = z.infer<
   typeof GetDataSourcesResponseSchema
 >;
 
+export const GetOrPatchAgentConfigurationResponseSchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+});
+
+export type GetOrPatchAgentConfigurationResponseType = z.infer<
+  typeof GetOrPatchAgentConfigurationResponseSchema
+>;
+
+export const PatchAgentConfigurationRequestSchema = z.object({
+  userFavorite: z.boolean().optional(),
+});
+
+export type PatchAgentConfigurationRequestType = z.infer<
+  typeof PatchAgentConfigurationRequestSchema
+>;
+
 export const GetAgentConfigurationsResponseSchema = z.object({
   agentConfigurations: LightAgentConfigurationSchema.array(),
 });

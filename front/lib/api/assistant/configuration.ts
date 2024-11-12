@@ -46,6 +46,7 @@ import {
   fetchTableQueryActionConfigurations,
 } from "@app/lib/api/assistant/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/api/assistant/configuration/websearch";
+import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   getGlobalAgents,
   isGlobalAgentId,
@@ -382,7 +383,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tableQueryActionsConfigurationsPerAgent,
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
-    agentUserRelations,
+    favoriteStatePerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
     fetchAgentProcessActionConfigurations({ configurationIds, variant }),
@@ -390,22 +391,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchTableQueryActionConfigurations({ configurationIds, variant }),
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
-    user && configurationIds.length > 0
-      ? AgentUserRelation.findAll({
-          where: {
-            agentConfiguration: { [Op.in]: configurationSIds },
-            userId: user.id,
-          },
-        }).then((relations) =>
-          relations.reduce(
-            (acc, relation) => {
-              acc[relation.agentConfiguration] = relation;
-              return acc;
-            },
-            {} as Record<string, AgentUserRelation>
-          )
-        )
-      : Promise.resolve({} as Record<string, AgentUserRelation>),
+    user
+      ? getFavoriteStates(auth, { configurationIds: configurationSIds })
+      : Promise.resolve(new Map<string, boolean>()),
   ]);
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -461,8 +449,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       scope: agent.scope,
-      // no agentUserRelation means agent is not in favorites
-      userFavorite: !!agentUserRelations[agent.sId]?.favorite,
+      userFavorite: !!favoriteStatePerAgent.get(agent.sId),
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,
