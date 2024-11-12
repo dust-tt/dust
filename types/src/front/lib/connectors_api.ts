@@ -107,6 +107,7 @@ export interface BaseContentNode {
   permission: ConnectorPermission;
   dustDocumentId: string | null;
   lastUpdatedAt: number | null;
+  providerVisibility?: "public" | "private";
 }
 
 export type ContentNode = BaseContentNode & {

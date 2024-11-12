@@ -317,6 +317,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       slackChannelId: string;
       slackChannelName: string;
       permission: ConnectorPermission;
+      private: boolean;
     }[] = [];
 
     try {
@@ -332,6 +333,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             slackChannelId: channel.slackChannelId,
             slackChannelName: channel.slackChannelName,
             permission: channel.permission,
+            private: channel.private,
           }))
         );
       } else {
@@ -369,6 +371,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
               slackChannelId: remoteChannel.id,
               slackChannelName: remoteChannel.name,
               permission: permissions,
+              private: !!remoteChannel.is_private,
             });
           }
         }
@@ -386,6 +389,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         dustDocumentId: null,
         lastUpdatedAt: null,
         dustTableId: null,
+        providerVisibility: ch.private ? "private" : "public",
       }));
 
       resources.sort((a, b) => {
@@ -487,6 +491,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             slackChannelId: id,
             slackChannelName: remoteChannel.channel.name,
             permission: "none",
+            private: !!remoteChannel.channel.is_private,
           });
           channels[id] = slackChannel;
           channel = slackChannel;
@@ -586,6 +591,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       dustDocumentId: null,
       lastUpdatedAt: null,
       dustTableId: null,
+      providerVisibility: ch.private ? "private" : "public",
     }));
 
     return new Ok(contentNodes);

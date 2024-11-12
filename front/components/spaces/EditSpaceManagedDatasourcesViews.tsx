@@ -15,8 +15,10 @@ import type {
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
+import { confirmPrivateNodesSync } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
@@ -44,6 +46,7 @@ export function EditSpaceManagedDataSourcesViews({
   space,
 }: EditSpaceManagedDataSourcesViewsProps) {
   const sendNotification = useSendNotification();
+  const confirm = useContext(ConfirmContext);
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showNoConnectionDialog, setShowNoConnectionDialog] = useState(false);
@@ -272,7 +275,16 @@ export function EditSpaceManagedDataSourcesViews({
         owner={owner}
         systemSpaceDataSourceViews={filterSystemSpaceDataSourceViews}
         onSave={async (selectionConfigurations) => {
-          await updateSpaceDataSourceViews(selectionConfigurations);
+          if (
+            !(await confirmPrivateNodesSync({
+              selectedNodes: Object.values(selectionConfigurations)
+                .map((sc) => sc.selectedResources)
+                .flat(),
+              confirm,
+            }))
+          ) {
+            await updateSpaceDataSourceViews(selectionConfigurations);
+          }
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />

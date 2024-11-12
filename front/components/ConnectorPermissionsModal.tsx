@@ -14,6 +14,7 @@ import {
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
+  BaseContentNode,
   ConnectorPermission,
   ConnectorProvider,
   ConnectorType,
@@ -29,9 +30,11 @@ import {
   MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import type { ConfirmDataType } from "@app/components/Confirm";
+import { ConfirmContext } from "@app/components/Confirm";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
@@ -551,6 +554,7 @@ export function ConnectorPermissionsModal({
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
 
+  const confirm = useContext(ConfirmContext);
   const [selectedNodes, setSelectedNodes] = useState<
     Record<string, ContentNodeTreeItemStatus>
   >({});
@@ -629,6 +633,16 @@ export function ConnectorPermissionsModal({
   }
 
   async function save() {
+    if (
+      !(await confirmPrivateNodesSync({
+        selectedNodes: Object.values(selectedNodes)
+          .filter((sn) => sn.isSelected)
+          .map((sn) => sn.node),
+        confirm,
+      }))
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       if (Object.keys(selectedNodes).length) {
@@ -826,4 +840,31 @@ export function ConnectorPermissionsModal({
       />
     </>
   );
+}
+
+export async function confirmPrivateNodesSync({
+  selectedNodes,
+  confirm,
+}: {
+  selectedNodes: BaseContentNode[];
+  confirm: (n: ConfirmDataType) => Promise<boolean>;
+}): Promise<boolean> {
+  // confirmation in case there are private nodes
+  const privateNodes = selectedNodes.filter(
+    (node) => node.providerVisibility === "private"
+  );
+
+  if (privateNodes.length > 0) {
+    const warnNodes = privateNodes.slice(0, 3).map((node) => node.title);
+    if (privateNodes.length > 3) {
+      warnNodes.push(` and ${privateNodes.length - 3} more...`);
+    }
+
+    return confirm({
+      title: "Sensitive data synchronization",
+      message: `You are synchronizing data from private source(s): ${warnNodes.join(", ")}. Is this okay?`,
+      validateVariant: "warning",
+    });
+  }
+  return true;
 }

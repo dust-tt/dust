@@ -3,6 +3,7 @@ import {
   DocumentIcon,
   DocumentPileIcon,
   FolderIcon,
+  LockIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 import type { BaseContentNode } from "@dust-tt/types";
@@ -19,6 +20,9 @@ function getVisualForFileContentNode(node: BaseContentNode & { type: "file" }) {
 export function getVisualForContentNode(node: BaseContentNode) {
   switch (node.type) {
     case "channel":
+      if (node.providerVisibility === "private") {
+        return LockIcon;
+      }
       return ChatBubbleLeftRightIcon;
 
     case "database":
