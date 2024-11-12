@@ -33,7 +33,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Id</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -50,7 +50,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -88,7 +88,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Role</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -134,7 +134,7 @@ export function makeColumnsForMembers({
           <IconButton
             icon={TrashIcon}
             size="xs"
-            variant="ghost"
+            variant="outline"
             onClick={async () => {
               await onRevokeMember(member);
             }}

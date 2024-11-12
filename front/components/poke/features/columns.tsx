@@ -22,7 +22,7 @@ export function makeColumnsForFeatureFlags(
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
