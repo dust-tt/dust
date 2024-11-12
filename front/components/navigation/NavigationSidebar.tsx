@@ -46,6 +46,7 @@ export const NavigationSidebar = React.forwardRef<
     }
   }, [router.route, router.isReady]);
 
+  // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
   const navs = useMemo(() => getTopNavigationTabs(owner), [owner]);
   const currentTab = useMemo(
     () => navs.find((n) => n.isCurrent(activePath)),
