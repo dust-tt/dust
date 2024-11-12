@@ -252,7 +252,7 @@ module.exports = {
         },
         primary: {
           DEFAULT: colors.slate[800],
-          light: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
+          light: { DEFAULT: colors.slate[600], dark: colors.slate[300] },
           dark: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
           muted: { DEFAULT: colors.slate[400], dark: colors.slate[600] },
           950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
