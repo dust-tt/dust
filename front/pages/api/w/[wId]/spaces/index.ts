@@ -1,15 +1,14 @@
 import type { SpaceType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PostSpaceRequestBodySchema, removeNulls } from "@dust-tt/types";
+import { PostSpaceRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -28,8 +27,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "GET":
       const { role, kind } = req.query;
@@ -99,83 +96,50 @@ async function handler(
         });
       }
 
-      const plan = auth.getNonNullablePlan();
-      const all = await SpaceResource.listWorkspaceSpaces(auth);
-      const isLimitReached = isPrivateSpacesLimitReached(
-        all.map((v) => v.toJSON()),
-        plan
+      const spaceRes = await createRegularSpaceAndGroup(
+        auth,
+        bodyValidation.right
       );
+      if (spaceRes.isErr()) {
+        if (spaceRes.error instanceof DustError) {
+          if (spaceRes.error.code === "limit_reached") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "The maximum number of spaces has been reached.",
+              },
+            });
+          }
 
-      if (isLimitReached) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The maximum number of spaces has been reached.",
-          },
-        });
-      }
-
-      const { name, memberIds, isRestricted } = bodyValidation.right;
-
-      const nameAvailable = await SpaceResource.isNameAvailable(auth, name);
-      if (!nameAvailable) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "space_already_exists",
-            message: "This space name is already used.",
-          },
-        });
-      }
-
-      const group = await GroupResource.makeNew({
-        name: `Group for space ${name}`,
-        workspaceId: owner.id,
-        kind: "regular",
-      });
-
-      const globalGroupRes = isRestricted
-        ? null
-        : await GroupResource.fetchWorkspaceGlobalGroup(auth);
-
-      const groups = removeNulls([
-        group,
-        globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
-      ]);
-
-      const space = await SpaceResource.makeNew(
-        {
-          name,
-          kind: "regular",
-          workspaceId: owner.id,
-        },
-        groups
-      );
-
-      if (memberIds) {
-        const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
-          user.toJSON()
-        );
-        const groupsResult = await group.addMembers(auth, users);
-        if (groupsResult.isErr()) {
-          logger.error(
-            {
-              error: groupsResult.error,
-            },
-            "The space cannot be created - group members could not be added"
-          );
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "The space cannot be created.",
-            },
-          });
+          if (spaceRes.error.code === "space_already_exists") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "space_already_exists",
+                message: "This space name is already used.",
+              },
+            });
+          }
         }
+
+        logger.error(
+          {
+            error: spaceRes.error,
+          },
+          "The space cannot be created"
+        );
+
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "The space cannot be created.",
+          },
+        });
       }
 
-      return res.status(201).json({ space: space.toJSON() });
+      return res.status(201).json({ space: spaceRes.value.toJSON() });
 
     default:
       return apiError(req, res, {

@@ -4,6 +4,7 @@ export type DustErrorCode =
   | "invalid_id"
   | "core_api_error"
   | "internal_error"
+  | "limit_reached"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"
@@ -16,7 +17,9 @@ export type DustErrorCode =
   | "user_not_found"
   | "user_not_member"
   | "user_already_member"
-  | "system_or_global_group";
+  | "system_or_global_group"
+  // Space errors
+  | "space_already_exists";
 
 export class DustError extends Error {
   constructor(
