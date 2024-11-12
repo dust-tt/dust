@@ -2,7 +2,6 @@ import type { PostMessagesResponseBody } from "@dust-tt/client";
 import { PublicPostEditMessagesRequestBodySchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isUserMessageType } from "@dust-tt/types";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -11,11 +10,6 @@ import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-
-export const PostEditRequestBodySchema = t.type({
-  content: t.string,
-  mentions: t.array(t.type({ configurationId: t.string })),
-});
 
 /**
  * @swagger

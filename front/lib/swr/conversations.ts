@@ -21,9 +21,11 @@ import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wI
 export function useConversation({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
+  options?: { disabled: boolean };
 }): {
   conversation: ConversationType | null;
   isConversationLoading: boolean;
@@ -37,7 +39,8 @@ export function useConversation({
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}`
       : null,
-    conversationFetcher
+    conversationFetcher,
+    options
   );
 
   return {
