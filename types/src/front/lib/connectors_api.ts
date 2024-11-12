@@ -55,6 +55,18 @@ export type ConnectorType = {
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ContentNodeType = "file" | "folder" | "database" | "channel";
 
+/*
+ * This constant defines the priority order for sorting content nodes by their type.
+ * The types are sorted in the following order: folder first, then file, database, and channel.
+ * This mapping is used to provide a numerical value representing the priority of each content node type.
+ */
+export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
+  folder: 1,
+  file: 2,
+  database: 3,
+  channel: 4,
+};
+
 /**
  * A ContentNode represents a connector related node. As an example:
  * - Notion: Top-level pages (possibly manually added lower level ones)
