@@ -1,4 +1,9 @@
-import { Button, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  LogoHorizontalColorLogo,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { StoredUser } from "@extension/lib/storage";
@@ -71,7 +76,11 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return (
       <div className="flex h-screen flex-col gap-2 p-4">
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
-          <Page.SectionHeader title="The extension will update and you'll need to click the extension icon to reopen the panel." />
+          <div className="flex flex-col items-center text-center space-y-4">
+            <LogoHorizontalColorLogo className="h-6 w-24" />
+            <Page.Header title="Update required" />
+          </div>
+          <Page.SectionHeader title="Panel closes after update. Click Dust icon in toolbar to return." />
           <Button
             label="Update now"
             onClick={async () => {
