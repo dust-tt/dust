@@ -1,9 +1,13 @@
-import { EmotionLaughIcon, IconButton, TrashIcon } from "@dust-tt/sparkle";
+import {
+  EmotionLaughIcon,
+  IconButton,
+  LinkWrapper,
+  TrashIcon,
+} from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import PokeLink from "@app/components/poke/shadcn/ui/link";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type AgentConfigurationDisplayType = {
@@ -27,9 +31,9 @@ export function makeColumnsForAssistants(
         const sId: string = row.getValue("sId");
 
         return (
-          <PokeLink href={`/poke/${owner.sId}/assistants/${sId}`}>
+          <LinkWrapper href={`/poke/${owner.sId}/assistants/${sId}`}>
             {sId}
-          </PokeLink>
+          </LinkWrapper>
         );
       },
       header: ({ column }) => {
