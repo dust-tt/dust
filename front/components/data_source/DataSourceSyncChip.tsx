@@ -116,6 +116,16 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
         );
+      case "remote_database_network_error":
+        return (
+          <Tooltip
+            label={
+              "We encountered a network error while trying to connect to your database." +
+              "Please check your network connection and try again."
+            }
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
+        );
       default:
         assertNever(connector.errorType);
     }
