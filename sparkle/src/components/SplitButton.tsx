@@ -36,55 +36,79 @@ interface SplitButtonActionProps {
   onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
 }
 
-export interface SplitButtonProps extends Omit<MetaButtonProps, "children"> {
+export interface SplitButtonProps
+  extends Omit<MetaButtonProps, "children" | "onClick"> {
   actions: SplitButtonActionProps[];
-  defaultAction: SplitButtonActionProps;
+  action?: SplitButtonActionProps;
+  defaultAction?: SplitButtonActionProps;
+  onActionChange?: (action: SplitButtonActionProps) => void;
 }
 
 export const SplitButton = React.forwardRef<
   HTMLButtonElement,
   SplitButtonProps
->(({ actions, className, size, variant, disabled, ...props }, ref) => {
-  const [current, setCurrent] = useState(props.defaultAction);
-  return (
-    <div className="s-flex s-items-center">
-      <Button
-        {...props}
-        size={size}
-        variant={variant}
-        label={current.label}
-        icon={current.icon}
-        disabled={disabled || current.disabled}
-        onClick={(e) => current.onClick && current.onClick(e)}
-        ref={ref}
-        className={cn("s-rounded-r-none s-border-r-0", className)}
-      />
-      <div className={separatorVariants({ size })}>
-        <Separator orientation="vertical" />
-      </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            {...props}
-            size={size}
-            variant={variant}
-            icon={ChevronDownIcon}
-            disabled={disabled}
-            className={cn("s-rounded-l-none s-border-l-0", className)}
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {actions.map((action, index) => (
-            <DropdownMenuItem
-              key={index}
-              label={action.label}
-              icon={action.icon}
-              disabled={action.disabled}
-              onClick={() => setCurrent(action)}
+>(
+  (
+    {
+      actions,
+      className,
+      size,
+      variant,
+      disabled,
+      action,
+      defaultAction,
+      onActionChange,
+      ...props
+    },
+    ref
+  ) => {
+    const [localAction, setLocalAction] = useState(defaultAction ?? actions[0]);
+    const actionToUse = action ?? localAction;
+    return (
+      <div className="s-flex s-items-center">
+        <Button
+          {...props}
+          size={size}
+          variant={variant}
+          label={actionToUse?.label}
+          icon={actionToUse?.icon}
+          disabled={disabled || actionToUse?.disabled}
+          onClick={(e) => actionToUse?.onClick && actionToUse?.onClick(e)}
+          ref={ref}
+          className={cn("s-rounded-r-none s-border-r-0", className)}
+        />
+        <div className={separatorVariants({ size })}>
+          <Separator orientation="vertical" />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              {...props}
+              size={size}
+              variant={variant}
+              icon={ChevronDownIcon}
+              disabled={disabled}
+              className={cn("s-rounded-l-none s-border-l-0", className)}
             />
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-});
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {actions.map((action, index) => (
+              <DropdownMenuItem
+                key={index}
+                label={action.label}
+                icon={action.icon}
+                disabled={action.disabled}
+                onClick={() => {
+                  setLocalAction(action);
+                  if (onActionChange) {
+                    onActionChange(action);
+                  }
+                }}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  }
+);
