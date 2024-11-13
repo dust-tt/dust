@@ -25,8 +25,18 @@ const turndownService = new TurndownService();
 export async function deleteTicket(
   connectorId: ModelId,
   ticket: ZendeskFetchedTicket,
-  dataSourceConfig: DataSourceConfig
+  dataSourceConfig: DataSourceConfig,
+  loggerArgs: Record<string, string | number | null>
 ): Promise<void> {
+  logger.info(
+    {
+      ...loggerArgs,
+      connectorId,
+      ticketId: ticket.id,
+      subject: ticket.subject,
+    },
+    "[Zendesk] Deleting ticket."
+  );
   await Promise.all([
     ZendeskTicketResource.deleteByTicketId({
       connectorId,

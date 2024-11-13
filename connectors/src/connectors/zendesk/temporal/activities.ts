@@ -500,7 +500,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
     tickets,
     async (ticket) => {
       if (ticket.status === "deleted") {
-        return deleteTicket(connectorId, ticket, dataSourceConfig);
+        return deleteTicket(connectorId, ticket, dataSourceConfig, loggerArgs);
       }
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
       const users = await zendeskApiClient.users.showMany(
