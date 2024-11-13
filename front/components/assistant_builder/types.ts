@@ -200,7 +200,7 @@ export function getDefaultAssistantState() {
       temperature: 0.7,
     },
     maxStepsPerRun: 3,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
   } satisfies AssistantBuilderState;
 }
