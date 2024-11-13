@@ -155,7 +155,7 @@ async function fetchFromZendeskWithRetries({
 export async function fetchRecentlyUpdatedArticles({
   subdomain,
   accessToken,
-  startTime = null,
+  startTime = null, // start time in Unix epoch time, in seconds
   cursor = null,
 }:
   | {

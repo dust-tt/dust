@@ -576,7 +576,9 @@ export async function syncZendeskArticleUpdateBatchActivity({
   } = await fetchRecentlyUpdatedArticles({
     subdomain: brandSubdomain,
     accessToken,
-    ...(cursor ? { cursor } : { startTime: currentSyncDateMs - 1000 * 60 * 5 }), // 5 min ago, previous scheduled execution
+    ...(cursor
+      ? { cursor }
+      : { startTime: Math.floor(currentSyncDateMs / 1000 - 60 * 5) }), // 5 min ago, previous scheduled execution
   });
 
   await concurrentExecutor(
