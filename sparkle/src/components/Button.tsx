@@ -26,7 +26,7 @@ export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
 export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
 
-type ButtonSizeType = (typeof BUTTON_SIZES)[number];
+export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 const styleVariants: Record<ButtonVariantType, string> = {
   primary:
