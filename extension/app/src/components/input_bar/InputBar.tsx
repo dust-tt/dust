@@ -5,13 +5,16 @@ import type {
   LightWorkspaceType,
   UploadedContentFragmentType,
 } from "@dust-tt/client";
+import { Button, StopIcon } from "@dust-tt/sparkle";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
+import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
 import { InputBarCitations } from "@extension/components/input_bar/InputBarCitations";
 import type { InputBarContainerProps } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
+import { useDustAPI } from "@extension/lib/dust_api";
 import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -44,6 +47,8 @@ export function AssistantInputBar({
   isTabIncluded: boolean;
   toggleIncludeTab: () => void;
 }) {
+  const dustAPI = useDustAPI();
+
   const { agentConfigurations: baseAgentConfigurations } =
     usePublicAgentConfigurations();
 
@@ -106,6 +111,47 @@ export function AssistantInputBar({
     };
   }, []);
 
+  // GenerationContext: to know if we are generating or not
+  const generationContext = useContext(GenerationContext);
+  if (!generationContext) {
+    throw new Error(
+      "FixedAssistantInputBar must be used within a GenerationContextProvider"
+    );
+  }
+
+  // Handle stopping the generation of messages.
+  const [isStopping, setIsStopping] = useState<boolean>(false);
+
+  const handleStopGeneration = async () => {
+    if (!conversation?.id) {
+      return;
+    }
+    setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
+
+    const r = await dustAPI.cancelMessageGeneration({
+      conversationId: conversation.sId,
+      messageIds: generationContext.generatingMessages
+        .filter((m) => m.conversationId === conversation.sId)
+        .map((m) => m.messageId),
+    });
+
+    if (r.isOk()) {
+      // The generation was successfully stopped.
+      // do we want to mutate the conversation ?
+    }
+  };
+
+  useEffect(() => {
+    if (
+      isStopping &&
+      !generationContext.generatingMessages.some(
+        (m) => m.conversationId === conversation?.sId
+      )
+    ) {
+      setIsStopping(false);
+    }
+  }, [isStopping, generationContext.generatingMessages, conversation?.sId]);
+
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
@@ -147,8 +193,25 @@ export function AssistantInputBar({
     fileUploaderService.resetUpload();
   };
 
+  const isGenerating = generationContext.generatingMessages.some(
+    (m) => m.conversationId === conversation?.sId
+  );
+
   return (
     <div className="flex w-full flex-col">
+      {isGenerating && (
+        <div className="flex justify-center px-4 pb-4">
+          <Button
+            className="mt-4"
+            variant="outline"
+            label={isStopping ? "Stopping generation..." : "Stop generation"}
+            icon={StopIcon}
+            onClick={handleStopGeneration}
+            disabled={isStopping}
+          />
+        </div>
+      )}
+
       <div className="flex flex-1 px-0">
         <div className="flex w-full flex-1 flex-col items-end self-stretch">
           <div

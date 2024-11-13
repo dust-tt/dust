@@ -42,6 +42,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
+import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
 import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import {
   CitationsContext,
@@ -55,7 +56,14 @@ import {
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { retryMessage } from "@extension/lib/conversation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Components } from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -349,6 +357,34 @@ export function AgentMessage({
     }
     return () => clearTimeout(timer);
   }, [lastHoveredReference]);
+
+  const generationContext = useContext(GenerationContext);
+  if (!generationContext) {
+    throw new Error(
+      "AgentMessage must be used within a GenerationContextProvider"
+    );
+  }
+
+  useEffect(() => {
+    const isInArray = generationContext.generatingMessages.some(
+      (m) => m.messageId === message.sId
+    );
+    if (agentMessageToRender.status === "created" && !isInArray) {
+      generationContext.setGeneratingMessages((s) => [
+        ...s,
+        { messageId: message.sId, conversationId },
+      ]);
+    } else if (agentMessageToRender.status !== "created" && isInArray) {
+      generationContext.setGeneratingMessages((s) =>
+        s.filter((m) => m.messageId !== message.sId)
+      );
+    }
+  }, [
+    agentMessageToRender.status,
+    generationContext,
+    message.sId,
+    conversationId,
+  ]);
 
   useEffect(() => {
     // Retrieval actions

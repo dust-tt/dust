@@ -6,6 +6,7 @@ import type {
   AgentErrorEvent,
   AgentMessageSuccessEvent,
   APIError,
+  CancelMessageGenerationRequestType,
   ConversationPublicType,
   DataSourceViewType,
   DustAPICredentials,
@@ -30,6 +31,7 @@ import type {
 } from "./types";
 import {
   APIErrorSchema,
+  CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
   Err,
   FileUploadRequestResponseSchema,
@@ -707,6 +709,33 @@ export class DustAPI {
     };
 
     return new Ok({ eventStream: streamEvents() });
+  }
+
+  async cancelMessageGeneration({
+    conversationId,
+    messageIds,
+  }: {
+    conversationId: string;
+    messageIds: string[];
+  }) {
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/cancel`,
+      body: {
+        messageIds,
+      } as CancelMessageGenerationRequestType,
+    });
+
+    const r = await this._resultFromResponse(
+      CancelMessageGenerationResponseSchema,
+      res
+    );
+
+    if (r.isErr()) {
+      return r;
+    } else {
+      return new Ok(r.value);
+    }
   }
 
   async getConversations() {

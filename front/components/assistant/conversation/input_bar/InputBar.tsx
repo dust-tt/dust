@@ -7,7 +7,6 @@ import type {
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useSWRConfig } from "swr";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -19,6 +18,7 @@ import InputBarContainer, {
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
@@ -54,7 +54,11 @@ export function AssistantInputBar({
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
 }) {
-  const { mutate } = useSWRConfig();
+  const { mutateConversation } = useConversation({
+    conversationId,
+    workspaceId: owner.sId,
+    options: { disabled: true }, // We just want to get the mutation function
+  });
 
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
@@ -155,7 +159,7 @@ export function AssistantInputBar({
     fileUploaderService.resetUpload();
   };
 
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isStopping, setIsStopping] = useState<boolean>(false);
 
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);
@@ -169,7 +173,7 @@ export function AssistantInputBar({
     if (!conversationId) {
       return;
     }
-    setIsProcessing(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
+    setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
     await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
       {
@@ -185,21 +189,19 @@ export function AssistantInputBar({
         }),
       }
     );
-    await mutate(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
-    );
+    await mutateConversation();
   };
 
   useEffect(() => {
     if (
-      isProcessing &&
+      isStopping &&
       !generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       )
     ) {
-      setIsProcessing(false);
+      setIsStopping(false);
     }
-  }, [isProcessing, generationContext.generatingMessages, conversationId]);
+  }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   return (
     <div className="flex w-full flex-col">
@@ -210,10 +212,10 @@ export function AssistantInputBar({
           <Button
             className="mt-4"
             variant="outline"
-            label={isProcessing ? "Stopping generation..." : "Stop generation"}
+            label={isStopping ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
             onClick={handleStopGeneration}
-            disabled={isProcessing}
+            disabled={isStopping}
           />
         </div>
       )}
