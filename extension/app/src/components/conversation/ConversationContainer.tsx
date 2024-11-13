@@ -235,7 +235,9 @@ export function ConversationContainer({
             }
             stickyMentions={stickyMentions}
             isTabIncluded={!!includeContent}
-            toggleIncludeTab={() => setIncludeContent((v) => !v)}
+            setIncludeTab={(includeTab) => {
+              setIncludeContent(includeTab);
+            }}
             conversation={conversation ?? undefined}
           />
         </div>
