@@ -174,6 +174,14 @@ export function compareAgentsForSort(
     return 1;
   }
 
+  // Check for 'claude-3'
+  if (a.sId === "claude-3-sonnet") {
+    return -1;
+  }
+  if (b.sId === "claude-3-sonnet") {
+    return 1;
+  }
+
   // Check for 'gpt4'
   if (a.sId === "gpt-4") {
     return -1;
