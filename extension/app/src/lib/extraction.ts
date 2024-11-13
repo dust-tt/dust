@@ -227,7 +227,7 @@ export const extractPage = (url: string) => {
 //
 // URL: ${window.location.href}`;
 
-      const extract = `${header}\n\n${render}`;
+      const extract = `${header}\n${render}`;
       // console.log("----------------------------");
       // console.log(extract);
       return extract;
