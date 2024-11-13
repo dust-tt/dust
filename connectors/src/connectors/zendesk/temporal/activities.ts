@@ -485,13 +485,14 @@ export async function syncZendeskTicketUpdateBatchActivity({
     brandId,
   });
 
+  const startTime = Math.floor(currentSyncDateMs / 1000) - 60 * 5; // 5 min ago, previous scheduled execution
   const {
     tickets,
     meta: { after_cursor, end_of_stream },
   } = await fetchRecentlyUpdatedTickets({
     subdomain: brandSubdomain,
     accessToken,
-    ...(cursor ? { cursor } : { startTime: currentSyncDateMs - 1000 * 60 * 5 }), // 5 min ago, previous scheduled execution
+    ...(cursor ? { cursor } : { startTime }),
   });
 
   await concurrentExecutor(

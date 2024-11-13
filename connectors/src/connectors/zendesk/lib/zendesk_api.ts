@@ -208,6 +208,7 @@ export async function fetchRecentlyUpdatedTickets({
   tickets: ZendeskFetchedTicket[];
   meta: { end_of_stream: boolean; after_cursor: string };
 }> {
+  startTime &&= Math.min(startTime || Math.floor(Date.now() / 1000) - 60); // we get a StartTimeTooRecent error before 1 minute
   const response = await fetchFromZendeskWithRetries({
     url:
       `https://${subdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json` +
