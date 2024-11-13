@@ -7,13 +7,11 @@ body {
   font-size: 100%;
 }
 
-
 .animate-\[bgblink_200ms_3\] {
   animation: bgblink 200ms 3;
 }
 
 @keyframes bgblink {
-
   0%,
   100% {
     --tw-bg-opacity: 1;
