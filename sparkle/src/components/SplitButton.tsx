@@ -27,22 +27,25 @@ const separatorVariants = cva("s--ml-[1px]", {
     size: separatorSizeVariants,
   },
 });
-type LabelProps = {
+
+interface SplitButtonActionProps {
   label: string;
   icon?: React.ComponentType;
   tooltip?: string;
   disabled?: boolean;
   onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-};
-type SplitButtonProps = MetaButtonProps & {
-  values: LabelProps[];
-};
+}
+
+export interface SplitButtonProps extends Omit<MetaButtonProps, "children"> {
+  actions: SplitButtonActionProps[];
+  defaultAction: SplitButtonActionProps;
+}
 
 export const SplitButton = React.forwardRef<
   HTMLButtonElement,
   SplitButtonProps
->(({ values, className, size, variant, disabled, ...props }, ref) => {
-  const [current, setCurrent] = useState(values[0]);
+>(({ actions, className, size, variant, disabled, ...props }, ref) => {
+  const [current, setCurrent] = useState(props.defaultAction);
   return (
     <div className="s-flex s-items-center">
       <Button
@@ -51,7 +54,7 @@ export const SplitButton = React.forwardRef<
         variant={variant}
         label={current.label}
         icon={current.icon}
-        disabled={disabled}
+        disabled={disabled || current.disabled}
         onClick={(e) => current.onClick && current.onClick(e)}
         ref={ref}
         className={cn("s-rounded-r-none s-border-r-0", className)}
@@ -71,13 +74,13 @@ export const SplitButton = React.forwardRef<
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {values.map((value, index) => (
+          {actions.map((action, index) => (
             <DropdownMenuItem
               key={index}
-              label={value.label}
-              icon={value.icon}
-              disabled={value.disabled}
-              onClick={() => setCurrent(value)}
+              label={action.label}
+              icon={action.icon}
+              disabled={action.disabled}
+              onClick={() => setCurrent(action)}
             />
           ))}
         </DropdownMenuContent>
