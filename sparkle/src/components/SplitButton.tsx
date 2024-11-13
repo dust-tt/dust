@@ -38,9 +38,24 @@ interface SplitButtonActionProps {
 
 export interface SplitButtonProps
   extends Omit<MetaButtonProps, "children" | "onClick"> {
+  /**
+   * List of possible actions, will be displayed in dropdown
+   */
   actions: SplitButtonActionProps[];
+
+  /**
+   * Current action to use (controlled mode)
+   */
   action?: SplitButtonActionProps;
+
+  /**
+   * default action to use in uncontrolled mode. If not specified, the first action will be used.
+   */
   defaultAction?: SplitButtonActionProps;
+
+  /**
+   * Event handler for action change
+   */
   onActionChange?: (action: SplitButtonActionProps) => void;
 }
 
@@ -62,18 +77,27 @@ export const SplitButton = React.forwardRef<
     },
     ref
   ) => {
+    // If there are no actions, do not display anything
+    if (actions.length === 0) {
+      return null;
+    }
+
+    // Local state in uncontrolled mode, set to defaultAction or first action
     const [localAction, setLocalAction] = useState(defaultAction ?? actions[0]);
+
+    // Override and ignore if controlled
     const actionToUse = action ?? localAction;
+
     return (
       <div className="s-flex s-items-center">
         <Button
           {...props}
           size={size}
           variant={variant}
-          label={actionToUse?.label}
-          icon={actionToUse?.icon}
-          disabled={disabled || actionToUse?.disabled}
-          onClick={(e) => actionToUse?.onClick && actionToUse?.onClick(e)}
+          label={actionToUse.label}
+          icon={actionToUse.icon}
+          disabled={disabled || actionToUse.disabled}
+          onClick={(e) => actionToUse.onClick && actionToUse.onClick(e)}
           ref={ref}
           className={cn("s-rounded-r-none s-border-r-0", className)}
         />
