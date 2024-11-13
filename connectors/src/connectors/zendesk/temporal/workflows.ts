@@ -13,6 +13,7 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
+
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
@@ -325,7 +326,7 @@ export async function zendeskCategorySyncWorkflow({
     return; // nothing to sync
   }
 
-  await runWithPagination((cursor) =>
+  await runZendeskActivityWithPagination((cursor) =>
     syncZendeskArticleBatchActivity({
       connectorId,
       categoryId,
@@ -368,7 +369,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
   }
 
   for (const categoryId of categoryIdsToSync) {
-    await runWithPagination((cursor) =>
+    await runZendeskActivityWithPagination((cursor) =>
       syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
@@ -394,7 +395,7 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  await runWithPagination((cursor) =>
+  await runZendeskActivityWithPagination((cursor) =>
     syncZendeskTicketBatchActivity({
       connectorId,
       brandId,
@@ -408,7 +409,7 @@ async function runZendeskBrandTicketsSyncActivities({
 /**
  * Runs an activity function with cursor-based pagination.
  */
-async function runWithPagination(
+async function runZendeskActivityWithPagination(
   activity: (
     cursor: string | null
   ) => Promise<{ hasMore: boolean; afterCursor: string | null }>
