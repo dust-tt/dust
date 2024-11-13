@@ -1,12 +1,12 @@
-import type { AgentMention } from "@dust-tt/types";
+import type { AgentMentionType } from "@dust-tt/client";
 import { createContext, useState } from "react";
 
 export const InputBarContext = createContext<{
   animate: boolean;
-  selectedAssistant: AgentMention | null;
+  selectedAssistant: AgentMentionType | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAssistant: React.Dispatch<
-    React.SetStateAction<AgentMention | null>
+    React.SetStateAction<AgentMentionType | null>
   >;
 }>({
   animate: false,
@@ -20,7 +20,7 @@ export const InputBarContext = createContext<{
 export function InputBarProvider({ children }: { children: React.ReactNode }) {
   const [animate, setAnimate] = useState<boolean>(false);
   const [selectedAssistant, setSelectedAssistant] =
-    useState<AgentMention | null>(null);
+    useState<AgentMentionType | null>(null);
 
   return (
     <InputBarContext.Provider

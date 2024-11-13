@@ -1,11 +1,10 @@
 import type {
   AgentActionPublicType,
   AgentMessagePublicType,
+  LightWorkspaceType,
 } from "@dust-tt/client";
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { Chip, Spinner } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
-import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 import { classNames } from "@extension/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 interface AgentMessageActionsProps {
@@ -13,6 +12,15 @@ interface AgentMessageActionsProps {
   size?: ConversationMessageSizeType;
   owner: LightWorkspaceType;
 }
+
+const ACTION_RUNNING_LABELS: Record<AgentActionPublicType["type"], string> = {
+  dust_app_run_action: "Running App",
+  process_action: "Extracting data",
+  retrieval_action: "Searching data",
+  tables_query_action: "Querying tables",
+  websearch_action: "Searching the web",
+  browse_action: "Browsing page",
+};
 
 export function AgentMessageActions({
   agentMessage,

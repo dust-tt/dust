@@ -1,10 +1,9 @@
-import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
-  AgentMention,
+  AgentMentionType,
   LightWorkspaceType,
-  MentionType,
-  UploadedContentFragment,
-} from "@dust-tt/types";
+  UploadedContentFragmentType,
+} from "@dust-tt/client";
+import { Page, useSendNotification } from "@dust-tt/sparkle";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
@@ -67,7 +66,7 @@ export function ConversationContainer({
   }, [conversationId]);
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+  const [stickyMentions, setStickyMentions] = useState<AgentMentionType[]>([]);
   const dustAPI = useDustAPI();
 
   const { animate, setAnimate } = useContext(InputBarContext);
@@ -93,8 +92,8 @@ export function ConversationContainer({
 
   const handlePostMessage = async (
     input: string,
-    mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    mentions: AgentMentionType[],
+    contentFragments: UploadedContentFragmentType[]
   ) => {
     if (!activeConversationId) {
       return null;
@@ -160,8 +159,8 @@ export function ConversationContainer({
     useCallback(
       async (
         input: string,
-        mentions: MentionType[],
-        contentFragments: UploadedContentFragment[]
+        mentions: AgentMentionType[],
+        contentFragments: UploadedContentFragmentType[]
       ) => {
         const conversationRes = await postConversation({
           dustAPI,
@@ -196,7 +195,7 @@ export function ConversationContainer({
   );
 
   const onStickyMentionsChange = useCallback(
-    (mentions: AgentMention[]) => {
+    (mentions: AgentMentionType[]) => {
       setStickyMentions(mentions);
     },
     [setStickyMentions]

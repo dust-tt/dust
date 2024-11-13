@@ -30,6 +30,7 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
@@ -258,6 +259,7 @@ const WorkspacePage = ({
               </div>
               <DataSourceDataTable owner={owner} />
               <DataSourceViewsDataTable owner={owner} />
+              <SpaceDataTable owner={owner} />
               <AssistantsDataTable owner={owner} />
               <FeatureFlagsDataTable
                 owner={owner}

@@ -23,25 +23,6 @@ import { classNames } from "@app/lib/utils";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
-// AGENT MENTION
-
-function AgentMention({
-  agentConfiguration,
-}: {
-  agentConfiguration: LightAgentConfigurationType;
-}) {
-  return (
-    <div
-      className={classNames("inline-block font-medium text-brand")}
-      contentEditable={false}
-      data-agent-configuration-id={agentConfiguration?.sId}
-      data-agent-name={agentConfiguration?.name}
-    >
-      @{agentConfiguration.name}
-    </div>
-  );
-}
-
 /**
  *
  * @param additionalAgentConfiguration when trying an assistant in a modal or drawer we

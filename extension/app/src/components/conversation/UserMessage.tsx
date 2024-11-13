@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
 import type {
   ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
 } from "@dust-tt/sparkle";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserMessageType } from "@dust-tt/types";
 import { AgentSuggestion } from "@extension/components/conversation/AgentSuggestion";
 import {
   CiteBlock,

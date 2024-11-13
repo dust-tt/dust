@@ -1,3 +1,8 @@
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+  UserMessageType,
+} from "@dust-tt/client";
 import {
   AssistantPreview,
   Button,
@@ -5,11 +10,6 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserMessageType,
-} from "@dust-tt/types";
 import { AssistantPicker } from "@extension/components/assistants/AssistantPicker";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";

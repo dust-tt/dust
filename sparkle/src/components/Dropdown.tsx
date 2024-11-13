@@ -40,7 +40,7 @@ export const menuStyleClasses = {
   },
   label: "s-font-semibold s-px-2 s-py-2 s-text-xs s-text-muted-foreground",
   description:
-    "s-grow s-truncate s-text-sm s-font-regular s-text-element-700 dark:s-text-element-600-dark",
+    "s-grow s-truncate s-text-xs s-text-muted-foreground s-font-normal",
   separator: "-s-mx-1 s-my-1 s-h-px s-bg-separator",
   shortcut: "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
 };
@@ -85,7 +85,7 @@ const ItemWithLabelIconAndDescription = <
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr] s-gap-x-1.5">
+        <div className="s-grid s-grid-cols-[auto,1fr] s-items-center s-gap-x-1.5">
           {icon && (
             <div
               className={cn(

@@ -50,7 +50,6 @@
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.2.301",
-    "@dust-tt/types": "file:../types",
     "@tailwindcss/forms": "^0.5.9",
     "@tiptap/extension-character-count": "^2.9.1",
     "@tiptap/extension-mention": "^2.9.1",

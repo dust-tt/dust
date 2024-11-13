@@ -1,7 +1,7 @@
 import type {
-  ConversationMessageReactions,
+  ConversationMessageReactionsType,
   LightWorkspaceType,
-} from "@dust-tt/types";
+} from "@dust-tt/client";
 import MessageItem from "@extension/components/conversation/MessageItem";
 import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
 import type { StoredUser } from "@extension/lib/storage";
@@ -14,7 +14,7 @@ interface MessageGroupProps {
   hideReactions: boolean;
   isInModal: boolean;
   owner: LightWorkspaceType;
-  reactions: ConversationMessageReactions;
+  reactions: ConversationMessageReactionsType;
   user: StoredUser;
 }
 

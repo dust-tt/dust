@@ -1,4 +1,4 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/client";
 import { useAuthHook } from "@extension/components/auth/useAuth";
 import type { StoredUser } from "@extension/lib/storage";
 import type { ReactNode } from "react";

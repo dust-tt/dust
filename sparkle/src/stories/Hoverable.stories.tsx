@@ -32,6 +32,16 @@ export const HoverableExample = () => {
           I am primary, you can hover me.
         </Hoverable>
       </div>
+      <div>
+        <Hoverable
+          variant="highlight"
+          onClick={() => {
+            alert("Soupinou!");
+          }}
+        >
+          I am highlight, you can hover me.
+        </Hoverable>
+      </div>
     </div>
   );
 };
