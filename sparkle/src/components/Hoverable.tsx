@@ -1,31 +1,42 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import React, { SyntheticEvent } from "react";
 import { ReactNode } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
-interface HoverableProps {
+const hoverableVariants = cva(
+  "s-cursor-pointer s-duration-200 hover:s-underline hover:s-underline-offset-2",
+  {
+    variants: {
+      variant: {
+        invisible: "hover:s-text-highlight-light active:s-text-highlight-dark",
+        primary:
+          "s-font-medium s-text-foreground hover:s-text-highlight-light active:s-text-highlight-dark",
+        highlight:
+          "s-font-medium s-text-highlight hover:s-text-highlight-light active:s-text-highlight-dark",
+      },
+    },
+    defaultVariants: {
+      variant: "invisible",
+    },
+  }
+);
+
+interface HoverableProps extends VariantProps<typeof hoverableVariants> {
   children: ReactNode;
   className?: string;
   onClick: (e: SyntheticEvent) => void;
-  variant?: "primary" | "invisible";
 }
 
 export function Hoverable({
   children,
-  className = "",
+  className,
   onClick,
-  variant = "invisible",
+  variant,
 }: HoverableProps) {
-  const baseClasses = "s-cursor-pointer s-duration-300";
-
-  const variantClasses = {
-    invisible: "hover:s-text-action-500 active:s-text-action-600",
-    primary: "s-font-bold s-text-blue-500 hover:active:s-text-action-600",
-  };
-
   return (
     <span
-      className={classNames(baseClasses, variantClasses[variant], className)}
+      className={cn(hoverableVariants({ variant }), className)}
       onClick={onClick}
     >
       {children}

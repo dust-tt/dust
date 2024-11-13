@@ -2,7 +2,6 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   FolderIcon,
-  Item,
   LightbulbIcon,
   Modal,
   Page,
@@ -72,19 +71,23 @@ function LinksList({
   title?: string;
 }) {
   return (
-    <Item.List>
-      {title && <Item.SectionHeader label={title} variant="secondary" />}
+    <div className="flex flex-col gap-2">
+      {title && (
+        <div className="text-xs font-medium text-muted-foreground">{title}</div>
+      )}
       {linksList.map((link, index) => (
-        <Item.Link
-          icon={link.icon}
-          label={link.title}
-          link={link.href ? { href: link.href, target: "_blank" } : undefined}
-          onClick={link.onClick}
-          key={index}
-          description={link.description}
-        />
+        <div key={index}>
+          <Button
+            icon={link.icon}
+            variant="ghost"
+            label={link.title}
+            link={link.href ? { href: link.href, target: "_blank" } : undefined}
+            onClick={link.onClick}
+            description={link.description}
+          />
+        </div>
       ))}
-    </Item.List>
+    </div>
   );
 }
 

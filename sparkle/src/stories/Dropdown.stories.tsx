@@ -28,6 +28,7 @@ import {
 
 import {
   ArrowDownCircleIcon,
+  Avatar,
   Button,
   ChatBubbleBottomCenterPlusIcon,
   CloudArrowDownIcon,
@@ -64,6 +65,32 @@ function SimpleDropdownDemo() {
       <DropdownMenuTrigger>Open Simple Dropdown</DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel label="My Account" />
+        <DropdownMenuItem
+          icon={() => (
+            <Avatar
+              size="xs"
+              visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+            />
+          )}
+          label="@hello"
+          onClick={() => {
+            console.log("hello");
+          }}
+          description="Anthropic's latest Claude 3.5 Sonnet model (200k context)."
+        />
+        <DropdownMenuItem
+          icon={() => (
+            <Avatar
+              size="xs"
+              visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
+            />
+          )}
+          label="@helloWorld"
+          onClick={() => {
+            console.log("hello");
+          }}
+          description="Anthropic's latest Claude 3.5 Sonnet model (200k context)."
+        />
         <DropdownMenuItem label="Profile" />
         <DropdownMenuItem label="Billing" />
         <DropdownMenuItem label="Team" />

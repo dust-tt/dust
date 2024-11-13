@@ -59,7 +59,37 @@ export const TextAreaExample = () => {
               textValues[3],
             ])
           }
-          error={"errored because blah"}
+        />
+        <TextArea
+          placeholder="placeholder"
+          disabled
+          value={
+            "I want you to act as a professional coder for html emails. We are currently using Sendgrid as our main way to handle emails. Make concise answers, always output the code in a Code Block."
+          }
+          onChange={(e) =>
+            setTextValues([
+              textValues[0],
+              textValues[1],
+              e.target.value,
+              textValues[3],
+            ])
+          }
+        />
+        <TextArea
+          placeholder="placeholder"
+          disabled
+          isDisplay
+          value={
+            "I want you to act as a professional coder for html emails. We are currently using Sendgrid as our main way to handle emails. Make concise answers, always output the code in a Code Block."
+          }
+          onChange={(e) =>
+            setTextValues([
+              textValues[0],
+              textValues[1],
+              e.target.value,
+              textValues[3],
+            ])
+          }
         />
       </div>
     </div>
