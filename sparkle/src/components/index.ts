@@ -62,7 +62,6 @@ export { Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
-export { Item } from "./Item";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
