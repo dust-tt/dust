@@ -3,16 +3,7 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/client";
-import {
-  ArrowUpIcon,
-  Button,
-  Checkbox,
-  MetaButton,
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from "@dust-tt/sparkle";
+import { SplitButton } from "@dust-tt/sparkle";
 import { AssistantPicker } from "@extension/components/assistants/AssistantPicker";
 import { AttachFragment } from "@extension/components/conversation/AttachFragment";
 import type { CustomEditorProps } from "@extension/components/input_bar/editor/useCustomEditor";
@@ -23,7 +14,7 @@ import { InputBarContext } from "@extension/components/input_bar/InputBarContext
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { classNames } from "@extension/lib/utils";
 import { EditorContent } from "@tiptap/react";
-import React, { useContext, useEffect } from "react";
+import { useContext, useEffect } from "react";
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -34,7 +25,7 @@ export interface InputBarContainerProps {
   stickyMentions?: AgentMentionType[];
   disableAutoFocus: boolean;
   isTabIncluded: boolean;
-  toggleIncludeTab: () => void;
+  setIncludeTab: (includeTab: boolean) => void;
   fileUploaderService: FileUploaderService;
 }
 
@@ -47,7 +38,7 @@ export const InputBarContainer = ({
   stickyMentions,
   disableAutoFocus,
   isTabIncluded,
-  toggleIncludeTab,
+  setIncludeTab,
   fileUploaderService,
 }: InputBarContainerProps) => {
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
@@ -81,6 +72,22 @@ export const InputBarContainer = ({
     "whitespace-pre-wrap font-normal"
   );
 
+  const onClick = async () => {
+    const jsonContent = editorService.getTextAndMentions();
+    onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {
+      editorService.clearEditor();
+    });
+  };
+
+  const SendAction = {
+    label: "Send",
+    onClick,
+  };
+  const SendWithContentAction = {
+    label: "Send with tab content",
+    onClick,
+  };
+
   return (
     <div
       id="InputBarContainer"
@@ -98,24 +105,6 @@ export const InputBarContainer = ({
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
         <div className="flex py-2 space-x-1">
-          <TooltipProvider>
-            <TooltipRoot>
-              <TooltipTrigger asChild>
-                <MetaButton
-                  size="xs"
-                  variant="outline"
-                  onClick={toggleIncludeTab}
-                >
-                  <Checkbox checked={isTabIncluded} size="xs" /> Tab sharing
-                </MetaButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isTabIncluded
-                  ? "Each message in this conversation includes the content of the current tab as attachment."
-                  : "If enabled, each message in this conversation will include the content of the current tab as attachment."}
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
           <AttachFragment
             fileUploaderService={fileUploaderService}
             editorService={editorService}
@@ -129,17 +118,15 @@ export const InputBarContainer = ({
             assistants={allAssistants}
           />
         </div>
-        <Button
+        <SplitButton
           size="sm"
-          icon={ArrowUpIcon}
+          actions={[SendAction, SendWithContentAction]}
+          action={isTabIncluded ? SendWithContentAction : SendAction}
           variant="highlight"
-          disabled={editorService.isEmpty()}
-          onClick={async () => {
-            const jsonContent = editorService.getTextAndMentions();
-            onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {
-              editorService.clearEditor();
-            });
+          onActionChange={(action) => {
+            setIncludeTab(action === SendWithContentAction);
           }}
+          disabled={editorService.isEmpty()}
         />
       </div>
     </div>

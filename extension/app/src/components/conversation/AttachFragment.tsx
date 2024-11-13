@@ -2,12 +2,7 @@ import { supportedFileExtensions } from "@dust-tt/client";
 import {
   AttachmentIcon,
   Button,
-  DocumentIcon,
   DocumentTextIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   ImageIcon,
 } from "@dust-tt/sparkle";
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
@@ -40,46 +35,39 @@ export const AttachFragment = ({
         type="file"
         multiple={true}
       />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            icon={AttachmentIcon}
-            variant="ghost"
-            isSelect
-            size="xs"
-            tooltip="Attach content"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="min-w-[300px]">
-          <DropdownMenuItem
-            icon={DocumentIcon}
-            label={"Attach file"}
-            onClick={async () => {
-              fileInputRef.current?.click();
-            }}
-          />
-          <DropdownMenuItem
-            icon={DocumentTextIcon}
-            label={"Attach tab content"}
-            onClick={() =>
-              fileUploaderService.uploadContentTab({
-                includeContent: true,
-                includeScreenshot: false,
-              })
-            }
-          />
-          <DropdownMenuItem
-            icon={ImageIcon}
-            label={"Attach tab screenshot"}
-            onClick={() =>
-              fileUploaderService.uploadContentTab({
-                includeContent: false,
-                includeScreenshot: true,
-              })
-            }
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        icon={AttachmentIcon}
+        tooltip={"Attach file"}
+        variant="ghost"
+        size="xs"
+        onClick={async () => {
+          fileInputRef.current?.click();
+        }}
+      />
+      <Button
+        icon={DocumentTextIcon}
+        tooltip={"Attach tab content"}
+        variant="ghost"
+        size="xs"
+        onClick={() =>
+          fileUploaderService.uploadContentTab({
+            includeContent: true,
+            includeScreenshot: false,
+          })
+        }
+      />
+      <Button
+        icon={ImageIcon}
+        tooltip={"Attach tab screenshot"}
+        variant="ghost"
+        size="xs"
+        onClick={() =>
+          fileUploaderService.uploadContentTab({
+            includeContent: false,
+            includeScreenshot: true,
+          })
+        }
+      />
     </>
   );
 };
