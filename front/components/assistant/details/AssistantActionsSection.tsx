@@ -267,8 +267,8 @@ function renderOtherAction(
   } else if (isWebsearchConfiguration(action)) {
     return (
       <ActionSection title="Web navigation" key={`other-${index}`}>
-        <div className="flex items-center gap-2">
-          <Icon visual={PlanetIcon} size="xs" />
+        <div className="flex gap-2 text-muted-foreground">
+          <Icon visual={PlanetIcon} size="sm" />
           <div>
             Assistant can navigate the web (browse any provided links, make a
             google search, etc.) to answer
@@ -294,7 +294,9 @@ interface ActionSectionProps {
 function ActionSection({ title, children }: ActionSectionProps) {
   return (
     <div>
-      <div className="pb-2 text-lg font-bold text-element-800">{title}</div>
+      <div className="text-text-foreground pb-2 text-lg font-medium">
+        {title}
+      </div>
       {children}
     </div>
   );
@@ -482,7 +484,7 @@ function DustAppSection({ dustApp }: DustAppSectionProps) {
   return (
     <div className="flex flex-col gap-2">
       <div>The following tool is run before answering:</div>
-      <div className="flex items-center gap-2 capitalize">
+      <div className="flex gap-2 capitalize text-muted-foreground">
         <div>
           <CommandLineIcon />
         </div>

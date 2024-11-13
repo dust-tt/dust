@@ -1,11 +1,13 @@
 import {
   Avatar,
   BookOpenIcon,
+  ChevronDownIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  Icon,
   LightbulbIcon,
   LogoutIcon,
   StarIcon,
@@ -59,10 +61,10 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <>
+        <div className="flex items-center gap-2">
           <span className="sr-only">Open user menu</span>
           <Avatar
-            size="md"
+            size="sm"
             visual={
               user.image
                 ? user.image
@@ -72,7 +74,8 @@ export function UserMenu({
               "clickable";
             }}
           />
-        </>
+          <Icon visual={ChevronDownIcon} />
+        </div>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent>

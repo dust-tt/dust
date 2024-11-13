@@ -1,9 +1,21 @@
 import {
+  Button,
+  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDoubleLeftIcon,
   CollapseButton,
-  Logo,
+  DocumentIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  HeartIcon,
+  LightbulbIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
+  SlackLogo,
   Tabs,
   TabsContent,
   TabsList,
@@ -59,33 +71,22 @@ export const NavigationSidebar = React.forwardRef<
       className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50"
     >
       <div className="flex flex-col">
-        <div className="flex flex-row justify-between p-3">
-          <div className="flex flex-col gap-2">
-            <div className="pt-3">
-              <Link
-                href={`/w/${owner.sId}/assistant/new`}
-                className="inline-flex"
-              >
-                <Logo className="h-4 w-16" />
-              </Link>
-            </div>
-            {user && user.workspaces.length > 1 ? (
-              <WorkspacePicker
-                user={user}
-                workspace={owner}
-                onWorkspaceUpdate={(workspace) => {
-                  const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                  if (workspace.id !== owner.id) {
-                    void router
-                      .push(assistantRoute)
-                      .then(() => router.reload());
-                  }
-                }}
-              />
-            ) : null}
-          </div>
-          {user && <UserMenu user={user} owner={owner} />}
+        <div className="flex flex-row items-center gap-1 px-3 py-2">
+          <p className="text-xs text-muted-foreground">Workspace:</p>
+          <Button size="xs" label="Select workspace" variant="ghost" isSelect />
         </div>
+        {user && user.workspaces.length > 1 ? (
+          <WorkspacePicker
+            user={user}
+            workspace={owner}
+            onWorkspaceUpdate={(workspace) => {
+              const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+              if (workspace.id !== owner.id) {
+                void router.push(assistantRoute).then(() => router.reload());
+              }
+            }}
+          />
+        ) : null}
 
         <AppStatusBanner />
         {subscription.endDate && (
@@ -166,6 +167,61 @@ export const NavigationSidebar = React.forwardRef<
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
+      <div className="flex items-center gap-2 border-t border-border-dark p-2">
+        {user && <UserMenu user={user} owner={owner} />}
+        <div className="flex-grow" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              label="Help"
+              icon={HeartIcon}
+              isSelect
+              onClick={() => {
+                console.log("help modal");
+              }}
+            />
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent>
+            <DropdownMenuLabel label="Learn about Dust" />
+            <DropdownMenuItem label="Quickstart Guide" icon={LightbulbIcon} />
+            <DropdownMenuItem
+              label="Guides & Documentation"
+              icon={DocumentIcon}
+            />
+            <DropdownMenuItem
+              label="Join the Slack Community"
+              icon={SlackLogo}
+            />
+            <DropdownMenuLabel label="Ask questions" />
+            <DropdownMenuItem
+              label="Ask @help"
+              description="Ask anything about Dust"
+              icon={ChatBubbleLeftRightIcon}
+            />
+            <DropdownMenuItem
+              label="How to invite new users?"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+            <DropdownMenuItem
+              label="How to use assistants in Slack workflow?"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+            <DropdownMenuItem
+              label="How to manage billing?"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          variant="ghost"
+          icon={ChevronDoubleLeftIcon}
+          onClick={() => {
+            console.log("help modal");
+          }}
+        />
+      </div>
     </div>
   );
 });
