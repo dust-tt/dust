@@ -138,6 +138,8 @@ export async function zendeskSyncWorkflow({
         memo,
       });
       brandIds.delete(brandId);
+      brandHelpCenterIds.delete(brandId);
+      brandTicketsIds.delete(brandId);
     }
   }
   while (brandHelpCenterIds.size > 0) {
