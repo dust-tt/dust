@@ -123,6 +123,20 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   };
 }
 
+function _getDefaultSearchActionForGlobalAgent({
+  agentSid,
+}: {
+  agentSid: GLOBAL_AGENTS_SID;
+}): AgentActionConfigurationType {
+  return {
+    id: -1,
+    sId: agentSid + "-search-action",
+    type: "websearch_configuration",
+    name: DEFAULT_WEBSEARCH_ACTION_NAME,
+    description: `Search the web for more information.`,
+  };
+}
+
 /**
  * GLOBAL AGENTS CONFIGURATION
  *
@@ -196,9 +210,12 @@ function _getHelperGlobalAgent({
         name: "search_dust_docs",
         description: `The documentation of the Dust platform.`,
       },
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.HELPER,
+      }),
     ],
     maxStepsPerRun: 3,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -230,9 +247,13 @@ function _getGPT35TurboGlobalAgent({
       modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GPT35_TURBO,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -273,9 +294,13 @@ function _getGPT4GlobalAgent({
       modelId: GPT_4O_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GPT4,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -312,9 +337,13 @@ function _getO1PreviewGlobalAgent({
       modelId: O1_PREVIEW_MODEL_CONFIG.modelId,
       temperature: 1, // 1 is forced for O1
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.O1,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -352,8 +381,8 @@ function _getO1MiniGlobalAgent({
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -385,9 +414,13 @@ function _getClaudeInstantGlobalAgent({
       modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -426,9 +459,13 @@ function _getClaude2GlobalAgent({
       temperature: 0.7,
     },
 
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.CLAUDE_2,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -461,9 +498,13 @@ function _getClaude3HaikuGlobalAgent({
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -501,9 +542,13 @@ function _getClaude3OpusGlobalAgent({
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -542,9 +587,13 @@ function _getClaude3GlobalAgent({
       temperature: 0.7,
     },
 
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -582,9 +631,13 @@ function _getMistralLargeGlobalAgent({
       modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -622,9 +675,13 @@ function _getMistralMediumGlobalAgent({
       modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -656,9 +713,13 @@ function _getMistralSmallGlobalAgent({
       modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -695,9 +756,13 @@ function _getGeminiProGlobalAgent({
       modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GEMINI_PRO,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -1011,9 +1076,13 @@ function _getDustGlobalAgent(
       scope: "global",
       userFavorite: false,
       model,
-      actions: [],
+      actions: [
+        _getDefaultSearchActionForGlobalAgent({
+          agentSid: GLOBAL_AGENTS_SID.DUST,
+        }),
+      ],
       maxStepsPerRun: 0,
-      visualizationEnabled: false,
+      visualizationEnabled: true,
       templateId: null,
       // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
@@ -1042,7 +1111,7 @@ function _getDustGlobalAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
-      visualizationEnabled: false,
+      visualizationEnabled: true,
       templateId: null,
       // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
@@ -1149,7 +1218,7 @@ function _getDustGlobalAgent(
     model,
     actions,
     maxStepsPerRun: 3,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
