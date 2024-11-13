@@ -8,7 +8,7 @@ export const createSpacePlugin = createPlugin(
     id: "create-space",
     name: "Create a Space",
     description: "Create a new space",
-    resourceTypes: ["spaces"],
+    resourceTypes: ["workspaces"],
     args: {
       name: {
         type: "string",
