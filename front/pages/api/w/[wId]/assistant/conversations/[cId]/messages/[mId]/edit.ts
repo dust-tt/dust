@@ -12,7 +12,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
-export const PostEditRequestBodySchema = t.type({
+const PostEditRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(t.type({ configurationId: t.string })),
 });

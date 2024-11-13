@@ -68,6 +68,9 @@ module.exports = {
       minHeight: (theme) => ({
         ...theme("spacing"),
       }),
+      backgroundImage: {
+        "rainbow-gradient": `linear-gradient(90deg, ${colors.red[500]}, ${colors.pink[500]}, ${colors.amber[500]}, ${colors.emerald[500]}, ${colors.sky[500]}, ${colors.blue[500]}, ${colors.purple[500]})`,
+      },
       keyframes: {
         pulse: {
           "0%, 100%": { boxShadow: "0 0 0 0 var(--pulse-color)" },
@@ -174,6 +177,10 @@ module.exports = {
             "background-position": "calc(200%) 0",
           },
         },
+        rainbow: {
+          "0%": { "background-position": "0%" },
+          "100%": { "background-position": "200%" },
+        },
       },
       animation: {
         "shiny-text": "shiny-text 2s infinite",
@@ -185,6 +192,7 @@ module.exports = {
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
+        rainbow: "rainbow var(--speed, 8s) infinite linear",
       },
       colors: {
         brand: {

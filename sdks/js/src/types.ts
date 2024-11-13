@@ -1532,6 +1532,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
     })
     .partial()
 );
+
 export type PublicPostMessagesRequestBody = z.infer<
   typeof PublicPostMessagesRequestBodySchema
 >;
@@ -2069,6 +2070,22 @@ export const MeResponseSchema = z.object({
 });
 
 export type MeResponseType = z.infer<typeof MeResponseSchema>;
+
+export const CancelMessageGenerationResponseSchema = z.object({
+  success: z.literal(true),
+});
+
+export type CancelMessageGenerationResponseType = z.infer<
+  typeof CancelMessageGenerationResponseSchema
+>;
+
+export const CancelMessageGenerationRequestSchema = z.object({
+  messageIds: z.array(z.string()),
+});
+
+export type CancelMessageGenerationRequestType = z.infer<
+  typeof CancelMessageGenerationRequestSchema
+>;
 
 // Typeguards.
 
