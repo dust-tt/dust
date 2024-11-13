@@ -22,8 +22,8 @@ export default function WorkspacePicker({
   workspace,
 }: WorkspacePickerProps) {
   return (
-    <div className="flex flex-row items-center gap-2">
-      <p className="text-sm text-slate-500">Workspace:</p>
+    <div className="flex flex-row items-center gap-1 px-3 py-2">
+      <p className="text-xs text-muted-foreground">Workspace:</p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

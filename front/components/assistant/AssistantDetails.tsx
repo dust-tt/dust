@@ -129,7 +129,7 @@ export function AssistantDetails({
       hasChanged={false}
       variant="side-sm"
     >
-      <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
+      <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
         <DescriptionSection />
         <AssistantActionsSection
           agentConfiguration={agentConfiguration}
