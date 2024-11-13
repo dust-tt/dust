@@ -5,7 +5,6 @@ import type {
   LightWorkspaceType,
   UploadedContentFragmentType,
 } from "@dust-tt/client";
-import { compareAgentsForSort } from "@dust-tt/types";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
 import { InputBarCitations } from "@extension/components/input_bar/InputBarCitations";
@@ -13,10 +12,8 @@ import type { InputBarContainerProps } from "@extension/components/input_bar/Inp
 import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
-import { classNames } from "@extension/lib/utils";
+import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-
-// AGENT MENTION
 
 /**
  *

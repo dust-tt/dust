@@ -152,3 +152,44 @@ export function filterAndSortAgents(
 
   return filtered;
 }
+
+// This function implements our general strategy to sort agents to users (input bar, assistant list,
+// agent suggestions...).
+export function compareAgentsForSort(
+  a: LightAgentConfigurationType,
+  b: LightAgentConfigurationType
+) {
+  // Place favorites first
+  if (a.userFavorite && !b.userFavorite) {
+    return -1;
+  }
+  if (b.userFavorite && !a.userFavorite) {
+    return 1;
+  }
+  // Check for 'dust'
+  if (a.sId === "dust") {
+    return -1;
+  }
+  if (b.sId === "dust") {
+    return 1;
+  }
+
+  // Check for 'gpt4'
+  if (a.sId === "gpt-4") {
+    return -1;
+  }
+  if (b.sId === "gpt-4") {
+    return 1;
+  }
+
+  // Check for agents with non-global 'scope'
+  if (a.scope !== "global" && b.scope === "global") {
+    return -1;
+  }
+  if (b.scope !== "global" && a.scope === "global") {
+    return 1;
+  }
+
+  // default: sort alphabetically
+  return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+}
