@@ -206,7 +206,8 @@ export async function fetchRecentlyUpdatedTickets({
     cursor: string | null;
   }): Promise<{
   tickets: ZendeskFetchedTicket[];
-  meta: { end_of_stream: boolean; after_cursor: string };
+  end_of_stream: boolean;
+  after_cursor: string;
 }> {
   startTime &&= Math.min(startTime || Math.floor(Date.now() / 1000) - 60); // we get a StartTimeTooRecent error before 1 minute
   const response = await fetchFromZendeskWithRetries({
@@ -219,7 +220,8 @@ export async function fetchRecentlyUpdatedTickets({
   return (
     response || {
       tickets: [],
-      meta: { end_of_stream: false, after_cursor: "" },
+      end_of_stream: false,
+      after_cursor: "",
     }
   );
 }
