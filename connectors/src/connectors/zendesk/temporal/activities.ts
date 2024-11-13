@@ -17,7 +17,10 @@ import {
   fetchZendeskArticlesInCategory,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
-import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
+import {
+  deleteTicket,
+  syncTicket,
+} from "@connectors/connectors/zendesk/temporal/sync_ticket";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
@@ -496,6 +499,9 @@ export async function syncZendeskTicketUpdateBatchActivity({
   await concurrentExecutor(
     tickets,
     async (ticket) => {
+      if (ticket.status === "deleted") {
+        return deleteTicket(connectorId, ticket, dataSourceConfig);
+      }
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
       const users = await zendeskApiClient.users.showMany(
         comments.map((c) => c.author_id)

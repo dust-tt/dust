@@ -662,6 +662,16 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
+  static async deleteByTicketId({
+    connectorId,
+    ticketId,
+  }: {
+    connectorId: number;
+    ticketId: number;
+  }): Promise<void> {
+    await ZendeskTicket.destroy({ where: { connectorId, ticketId } });
+  }
+
   static async deleteByBrandId({
     connectorId,
     brandId,

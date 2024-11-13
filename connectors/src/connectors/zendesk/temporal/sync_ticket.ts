@@ -8,6 +8,7 @@ import type {
   ZendeskFetchedUser,
 } from "@connectors/connectors/zendesk/lib/node-zendesk-types";
 import {
+  deleteFromDataSource,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertToDatasource,
@@ -17,6 +18,23 @@ import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
+
+export async function deleteTicket(
+  connectorId: ModelId,
+  ticket: ZendeskFetchedTicket,
+  dataSourceConfig: DataSourceConfig
+): Promise<void> {
+  await Promise.all([
+    ZendeskTicketResource.deleteByTicketId({
+      connectorId,
+      ticketId: ticket.id,
+    }),
+    deleteFromDataSource(
+      dataSourceConfig,
+      getTicketInternalId(connectorId, ticket.id)
+    ),
+  ]);
+}
 
 export async function syncTicket({
   connectorId,
