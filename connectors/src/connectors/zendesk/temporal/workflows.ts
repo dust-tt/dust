@@ -29,11 +29,11 @@ const {
 const {
   checkZendeskHelpCenterPermissionsActivity,
   checkZendeskTicketsPermissionsActivity,
+  getZendeskHelpCenterReadAllowedBrandIdsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskTicketsAllowedBrandIdsActivity,
   getZendeskTimestampCursorActivity,
-  getZendeskHelpCenterReadPermissionedBrandIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -223,7 +223,7 @@ export async function zendeskIncrementalSyncWorkflow({
   const [cursor, ticketBrandIds, helpCenterBrandIds] = await Promise.all([
     getZendeskTimestampCursorActivity(connectorId),
     getZendeskTicketsAllowedBrandIdsActivity(connectorId),
-    getZendeskHelpCenterReadPermissionedBrandIdsActivity(connectorId),
+    getZendeskHelpCenterReadAllowedBrandIdsActivity(connectorId),
   ]);
 
   const startTimeMs = cursor

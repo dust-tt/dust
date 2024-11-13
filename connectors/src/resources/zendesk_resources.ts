@@ -248,7 +248,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => brand.get().brandId);
   }
 
-  static async fetchHelpCenterReadPermissionedBrandIds({
+  static async fetchHelpCenterReadAllowedBrandIds({
     connectorId,
   }: {
     connectorId: number;

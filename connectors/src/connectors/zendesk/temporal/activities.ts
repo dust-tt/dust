@@ -258,10 +258,10 @@ export async function getZendeskTimestampCursorActivity(
 /**
  * Retrieves the IDs of every brand stored in db that has read permissions on their Help Center.
  */
-export async function getZendeskHelpCenterReadPermissionedBrandIdsActivity(
+export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchHelpCenterReadPermissionedBrandIds({
+  return ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds({
     connectorId,
   });
 }
