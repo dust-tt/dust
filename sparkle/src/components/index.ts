@@ -87,6 +87,7 @@ export {
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupChoice, RadioGroupItem } from "./RadioGroup";
+export { RainbowEffectDiv } from "./RainbowEffectDiv";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
 export type { SearchbarProps } from "./Searchbar";
 export { Searchbar } from "./Searchbar";
