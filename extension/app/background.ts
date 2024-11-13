@@ -165,6 +165,7 @@ chrome.runtime.onMessage.addListener(
         );
         return true;
       case "INPUT_BAR_STATUS":
+        // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
         chrome.contextMenus.update("add_tab_content", {
           enabled: message.available,
         });
