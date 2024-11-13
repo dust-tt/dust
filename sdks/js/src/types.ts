@@ -793,6 +793,7 @@ export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 export type UploadedContentFragmentType = {
   fileId: string;
   title: string;
+  url?: string;
 };
 
 const AgentMentionSchema = z.object({

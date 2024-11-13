@@ -331,7 +331,14 @@ export function useFileUploaderService({
           onUpload();
         }
 
-        return await handleFilesUpload([file], updateBlobs);
+        const fragments = await handleFilesUpload([file], updateBlobs);
+        if (fragments) {
+          fragments.forEach((f) => {
+            f.publicUrl = tabContent.url;
+          });
+        }
+
+        return fragments;
       }
     }
 
