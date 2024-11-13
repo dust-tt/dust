@@ -12,6 +12,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchRecentlyUpdatedTickets,
   fetchSolvedZendeskTicketsInBrand,
   fetchZendeskArticlesInCategory,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -203,6 +204,17 @@ export async function getAllZendeskBrandsIdsActivity({
   connectorId: ModelId;
 }): Promise<number[]> {
   return ZendeskBrandResource.fetchAllBrandIds({ connectorId });
+}
+
+/**
+ * Retrieves the IDs of every brand stored in db that has read permissions on their Tickets.
+ */
+export async function getZendeskTicketsAllowedBrandIdsActivity(
+  connectorId: ModelId
+): Promise<number[]> {
+  return ZendeskBrandResource.fetchTicketsAllowedBrandIds({
+    connectorId,
+  });
 }
 
 /**
@@ -438,6 +450,71 @@ export async function syncZendeskTicketBatchActivity({
     afterCursor: meta.after_cursor,
     hasMore: meta.has_more,
   };
+}
+
+/**
+ * This activity is responsible for syncing the next batch of recently updated articles to process.
+ * It is based on the incremental endpoint, which returns a diff.
+ */
+export async function syncZendeskTicketUpdateBatchActivity({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+  cursor,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  currentSyncDateMs: number;
+  cursor: string | null;
+}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
+
+  const {
+    tickets,
+    meta: { after_cursor, end_of_stream },
+  } = await fetchRecentlyUpdatedTickets({
+    subdomain: brandSubdomain,
+    accessToken,
+    ...(cursor ? { cursor } : { startTime: currentSyncDateMs - 1000 * 60 * 5 }), // 5 min ago, previous scheduled execution
+  });
+
+  const users = await zendeskApiClient.users.list();
+
+  await concurrentExecutor(
+    tickets,
+    async (ticket) => {
+      const comments = await zendeskApiClient.tickets.getComments(ticket.id);
+      return syncTicket({
+        connectorId,
+        ticket,
+        brandId,
+        users,
+        comments,
+        dataSourceConfig,
+        currentSyncDateMs,
+        loggerArgs,
+        forceResync: false,
+      });
+    },
+    { concurrency: 10 }
+  );
+  return { hasMore: !end_of_stream, afterCursor: after_cursor };
 }
 
 /**
