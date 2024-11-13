@@ -142,7 +142,7 @@ impl Dataset {
             created: utils::now(),
             dataset_id: String::from(id),
             hash,
-            keys: keys,
+            keys,
             data,
         })
     }

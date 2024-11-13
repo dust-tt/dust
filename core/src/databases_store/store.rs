@@ -10,7 +10,6 @@ use crate::{databases::table::Row, utils};
 
 #[async_trait]
 pub trait DatabasesStore {
-    async fn init(&self) -> Result<()>;
     async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<Row>>;
     async fn list_table_rows(
         &self,
@@ -46,11 +45,8 @@ impl PostgresDatabasesStore {
         let pool = Pool::builder().max_size(32).build(manager).await?;
         Ok(Self { pool })
     }
-}
 
-#[async_trait]
-impl DatabasesStore for PostgresDatabasesStore {
-    async fn init(&self) -> Result<()> {
+    pub async fn init(&self) -> Result<()> {
         let conn = self.pool.get().await?;
         for table in POSTGRES_TABLES {
             conn.execute(table, &[]).await?;
@@ -60,7 +56,10 @@ impl DatabasesStore for PostgresDatabasesStore {
         }
         Ok(())
     }
+}
 
+#[async_trait]
+impl DatabasesStore for PostgresDatabasesStore {
     async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<Row>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;

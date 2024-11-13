@@ -7,7 +7,7 @@ use axum::{
 };
 use dust::{
     databases::table::{LocalTable, Table},
-    databases_store::{self, store::DatabasesStore},
+    databases_store::{self},
     sqlite_workers::sqlite_database::{SqliteDatabase, SqliteDatabaseError},
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
 };
@@ -319,7 +319,6 @@ fn main() {
 
         let s = databases_store::store::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
             .await?;
-        s.init().await?;
         let databases_store = Box::new(s);
 
         let state = Arc::new(WorkerState::new(databases_store));
