@@ -163,7 +163,7 @@ export async function postConversation({
     contentFragments: contentFragments.map((contentFragment) => ({
       title: contentFragment.title,
       fileId: contentFragment.fileId,
-      url: null,
+      url: contentFragment.url,
       context: {
         username: user.username,
         email: user.email,

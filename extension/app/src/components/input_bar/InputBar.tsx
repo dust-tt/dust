@@ -190,6 +190,7 @@ export function AssistantInputBar({
     const newFiles = fileUploaderService.getFileBlobs().map((cf) => ({
       title: cf.filename,
       fileId: cf.fileId,
+      url: cf.publicUrl,
     }));
 
     resetEditorText();
@@ -209,6 +210,7 @@ export function AssistantInputBar({
           ...files.map((cf) => ({
             title: cf.filename,
             fileId: cf.fileId || "",
+            url: cf.publicUrl,
           }))
         );
       }
