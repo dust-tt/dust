@@ -117,7 +117,9 @@ function PickDustApp({
                     const disabled =
                       !app.description || app.description.length === 0;
                     return (
-                      <Item.Navigation
+                      <Item
+                        style="action"
+                        spacing="md"
                         label={app.name + (disabled ? " (No description)" : "")}
                         icon={CommandLineIcon}
                         disabled={disabled}
