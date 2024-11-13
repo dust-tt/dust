@@ -155,35 +155,25 @@ async function fetchFromZendeskWithRetries({
 export async function fetchRecentlyUpdatedArticles({
   subdomain,
   accessToken,
-  startTime = null, // start time in Unix epoch time, in seconds
-  cursor = null,
-}:
-  | {
-      subdomain: string;
-      accessToken: string;
-      startTime: number | null;
-      cursor?: never;
-    }
-  | {
-      subdomain: string;
-      accessToken: string;
-      startTime?: never;
-      cursor: string | null;
-    }): Promise<{
+  startTime, // start time in Unix epoch time, in seconds
+}: {
+  subdomain: string;
+  accessToken: string;
+  startTime: number;
+}): Promise<{
   articles: ZendeskFetchedArticle[];
-  meta: { end_of_stream: boolean; after_cursor: string };
+  next_page: string | null;
+  end_time: number;
 }> {
-  const response = await fetchWithRetries({
-    url:
-      `https://${subdomain}.zendesk.com/api/v2/help_center/incremental/articles.json` +
-      (cursor ? `?cursor=${cursor}` : "") +
-      (startTime ? `?start_time=${startTime}` : ""),
+  const response = await fetchFromZendeskWithRetries({
+    url: `https://${subdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
     accessToken,
   });
   return (
     response || {
       articles: [],
-      meta: { end_of_stream: false, after_cursor: "" },
+      next_page: null,
+      end_time: startTime,
     }
   );
 }

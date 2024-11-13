@@ -537,18 +537,19 @@ export async function syncZendeskTicketBatchActivity({
 /**
  * This activity is responsible for syncing the next batch of recently updated articles to process.
  * It is based on the incremental endpoint, which returns a diff.
+ * @returns The next start time if there is any more data to fetch, null otherwise.
  */
 export async function syncZendeskArticleUpdateBatchActivity({
   connectorId,
   brandId,
   currentSyncDateMs,
-  cursor,
+  startTime,
 }: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
-  cursor: string | null;
-}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
+  startTime: number;
+}): Promise<number | null> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -570,15 +571,10 @@ export async function syncZendeskArticleUpdateBatchActivity({
     brandId,
   });
 
-  const {
-    articles,
-    meta: { after_cursor, end_of_stream },
-  } = await fetchRecentlyUpdatedArticles({
+  const { articles, end_time, next_page } = await fetchRecentlyUpdatedArticles({
     subdomain: brandSubdomain,
     accessToken,
-    ...(cursor
-      ? { cursor }
-      : { startTime: Math.floor(currentSyncDateMs / 1000 - 60 * 5) }), // 5 min ago, previous scheduled execution
+    startTime,
   });
 
   await concurrentExecutor(
@@ -612,11 +608,11 @@ export async function syncZendeskArticleUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
-  return { hasMore: !end_of_stream, afterCursor: after_cursor };
+  return next_page !== null ? end_time : null;
 }
 
 /**
- * This activity is responsible for syncing the next batch of recently updated articles to process.
+ * This activity is responsible for syncing the next batch of recently updated tickets to process.
  * It is based on the incremental endpoint, which returns a diff.
  */
 export async function syncZendeskTicketUpdateBatchActivity({

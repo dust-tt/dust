@@ -232,14 +232,15 @@ export async function zendeskIncrementalSyncWorkflow({
   const startTime = Math.floor(startTimeMs / 1000);
 
   for (const brandId of helpCenterBrandIds) {
-    await runZendeskActivityWithPagination((cursor) =>
-      syncZendeskArticleUpdateBatchActivity({
+    let articleSyncStartTime: number | null = startTime;
+    while (articleSyncStartTime !== null) {
+      articleSyncStartTime = await syncZendeskArticleUpdateBatchActivity({
         connectorId,
         brandId,
         currentSyncDateMs,
-        cursor,
-      })
-    );
+        startTime: articleSyncStartTime,
+      });
+    }
   }
 
   for (const brandId of ticketBrandIds) {
