@@ -503,7 +503,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
         return deleteTicket(connectorId, ticket, dataSourceConfig, loggerArgs);
       }
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
-      const users = await zendeskApiClient.users.showMany(
+      const { result: users } = await zendeskApiClient.users.showMany(
         comments.map((c) => c.author_id)
       );
       return syncTicket({

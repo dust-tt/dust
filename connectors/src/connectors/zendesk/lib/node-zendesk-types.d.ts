@@ -239,7 +239,9 @@ declare module "node-zendesk" {
       show: (
         userId: number
       ) => Promise<{ response: Response; result: ZendeskFetchedUser }>;
-      showMany: (userIds: number[]) => Promise<ZendeskFetchedUser[]>;
+      showMany: (
+        userIds: number[]
+      ) => Promise<{ response: Response; result: ZendeskFetchedUser[] }>;
     };
   }
 
