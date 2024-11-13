@@ -10,7 +10,7 @@ import {
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
 
-export async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
+export async function getZendeskConnectorOrRaise(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -18,7 +18,7 @@ export async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
   return connector;
 }
 
-export async function _getZendeskCategoryOrRaise({
+export async function getZendeskCategoryOrRaise({
   connectorId,
   categoryId,
 }: {

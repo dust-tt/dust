@@ -5,8 +5,8 @@ import {
   getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
-  _getZendeskCategoryOrRaise,
-  _getZendeskConnectorOrRaise,
+  getZendeskCategoryOrRaise,
+  getZendeskConnectorOrRaise,
 } from "@connectors/connectors/zendesk/lib/utils";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
@@ -44,7 +44,7 @@ export async function saveZendeskConnectorStartSync({
 }: {
   connectorId: ModelId;
 }) {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await getZendeskConnectorOrRaise(connectorId);
   const res = await syncStarted(connector.id);
   if (res.isErr()) {
     throw res.error;
@@ -59,7 +59,7 @@ export async function saveZendeskConnectorSuccessSync({
 }: {
   connectorId: ModelId;
 }) {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await getZendeskConnectorOrRaise(connectorId);
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
     throw res.error;
@@ -85,7 +85,7 @@ export async function syncZendeskBrandActivity({
   brandId: number;
   currentSyncDateMs: number;
 }): Promise<{ helpCenterAllowed: boolean; ticketsAllowed: boolean }> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
@@ -230,7 +230,7 @@ export async function getZendeskCategoriesActivity({
   connectorId: ModelId;
   brandId: number;
 }): Promise<number[]> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await getZendeskConnectorOrRaise(connectorId);
   const client = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
@@ -261,9 +261,9 @@ export async function syncZendeskCategoryActivity({
   brandId: number;
   currentSyncDateMs: number;
 }): Promise<boolean> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const categoryInDb = await _getZendeskCategoryOrRaise({
+  const categoryInDb = await getZendeskCategoryOrRaise({
     connectorId,
     categoryId,
   });
@@ -317,7 +317,7 @@ export async function syncZendeskArticleBatchActivity({
   forceResync: boolean;
   cursor: string | null;
 }): Promise<{ hasMore: boolean; afterCursor: string | null }> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -325,7 +325,7 @@ export async function syncZendeskArticleBatchActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
-  const category = await _getZendeskCategoryOrRaise({
+  const category = await getZendeskCategoryOrRaise({
     connectorId,
     categoryId,
   });
@@ -389,7 +389,7 @@ export async function syncZendeskTicketBatchActivity({
   forceResync: boolean;
   cursor: string | null;
 }): Promise<{ hasMore: boolean; afterCursor: string }> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -470,7 +470,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
   currentSyncDateMs: number;
   cursor: string | null;
 }): Promise<{ hasMore: boolean; afterCursor: string | null }> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
