@@ -166,6 +166,7 @@ export async function fetchRecentlyUpdatedArticles({
   end_time: number;
 }> {
   startTime &&= Math.min(startTime || Math.floor(Date.now() / 1000) - 60); // we get a StartTimeTooRecent error before 1 minute
+  // this endpoint retrieves changes in content despite what is mentioned in the documentation.
   const response = await fetchFromZendeskWithRetries({
     url: `https://${subdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
     accessToken,
