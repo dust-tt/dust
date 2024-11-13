@@ -8,6 +8,8 @@ export const InputBarContext = createContext<{
   setSelectedAssistant: React.Dispatch<
     React.SetStateAction<AgentMentionType | null>
   >;
+  attachPageBlinking: boolean;
+  setAttachPageBlinking: React.Dispatch<React.SetStateAction<boolean>>;
 }>({
   animate: false,
   selectedAssistant: null,
@@ -15,10 +17,13 @@ export const InputBarContext = createContext<{
   setAnimate: () => {},
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   setSelectedAssistant: () => {},
+  attachPageBlinking: false,
+  setAttachPageBlinking: () => {},
 });
 
 export function InputBarProvider({ children }: { children: React.ReactNode }) {
   const [animate, setAnimate] = useState<boolean>(false);
+  const [attachPageBlinking, setAttachPageBlinking] = useState<boolean>(false);
   const [selectedAssistant, setSelectedAssistant] =
     useState<AgentMentionType | null>(null);
 
@@ -29,6 +34,8 @@ export function InputBarProvider({ children }: { children: React.ReactNode }) {
         setAnimate,
         selectedAssistant,
         setSelectedAssistant,
+        attachPageBlinking,
+        setAttachPageBlinking,
       }}
     >
       {children}

@@ -170,6 +170,8 @@ export function AssistantInputBar({
     }
   }, [isStopping, generationContext.generatingMessages, conversation?.sId]);
 
+  const { setAttachPageBlinking } = useContext(InputBarContext);
+
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
@@ -198,6 +200,9 @@ export function AssistantInputBar({
         includeScreenshot: false,
         conversation,
         updateBlobs: false,
+        onUpload: () => {
+          setAttachPageBlinking(true);
+        },
       });
       if (files) {
         newFiles.push(
