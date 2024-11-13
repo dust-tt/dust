@@ -1,3 +1,8 @@
+import type {
+  AgentMentionType,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@dust-tt/client";
 import {
   ArrowUpIcon,
   Button,
@@ -8,11 +13,6 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { AssistantPicker } from "@extension/components/assistants/AssistantPicker";
 import { AttachFragment } from "@extension/components/conversation/AttachFragment";
 import type { CustomEditorProps } from "@extension/components/input_bar/editor/useCustomEditor";
@@ -30,8 +30,8 @@ export interface InputBarContainerProps {
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: LightWorkspaceType;
-  selectedAssistant: AgentMention | null;
-  stickyMentions?: AgentMention[];
+  selectedAssistant: AgentMentionType | null;
+  stickyMentions?: AgentMentionType[];
   disableAutoFocus: boolean;
   isTabIncluded: boolean;
   toggleIncludeTab: () => void;

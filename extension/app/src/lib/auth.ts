@@ -1,10 +1,13 @@
-import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import {
   sendAuthMessage,
   sendRefreshTokenMessage,
   sentLogoutMessage,
 } from "@extension/lib/messages";
-import type { StoredTokens, StoredUser } from "@extension/lib/storage";
+import type {
+  StoredTokens,
+  StoredUser,
+  UserTypeWithWorkspaces,
+} from "@extension/lib/storage";
 import {
   clearStoredData,
   getStoredTokens,
@@ -85,5 +88,5 @@ const fetchMe = async (token: string): Promise<UserTypeWithWorkspaces> => {
     );
   }
   const me = await response.json();
-  return me.user;
+  return me;
 };

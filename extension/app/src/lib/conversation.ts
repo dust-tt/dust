@@ -1,25 +1,33 @@
 import type {
+  AgentMentionType,
   AgentMessageNewEvent,
   AgentMessagePublicType,
+  ContentFragmentType,
   ConversationPublicType,
+  ConversationVisibility,
   DustAPI,
   LightWorkspaceType,
+  Result,
+  UploadedContentFragmentType,
   UserMessageNewEvent,
   UserMessageType,
-} from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
-import type {
-  ContentFragmentType,
-  ConversationVisibility,
-  MentionType,
-  Result,
-  SubmitMessageError,
-  UploadedContentFragment,
   UserMessageWithRankType,
   UserType,
-} from "@dust-tt/types";
+} from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
+
+type SubmitMessageError = {
+  type:
+    | "user_not_found"
+    | "attachment_upload_error"
+    | "message_send_error"
+    | "plan_limit_reached_error"
+    | "content_too_large";
+  title: string;
+  message: string;
+};
 
 export type MessageWithContentFragmentsType =
   | AgentMessagePublicType
@@ -33,7 +41,7 @@ export function createPlaceholderUserMessage({
   user,
 }: {
   input: string;
-  mentions: MentionType[];
+  mentions: AgentMentionType[];
   user: UserType;
 }): UserMessageType {
   const createdAt = new Date().getTime();
@@ -118,10 +126,10 @@ export async function postConversation({
   dustAPI: DustAPI;
   messageData: {
     input: string;
-    mentions: MentionType[];
+    mentions: AgentMentionType[];
   };
   visibility?: ConversationVisibility;
-  contentFragments: UploadedContentFragment[];
+  contentFragments: UploadedContentFragmentType[];
 }): Promise<Result<ConversationPublicType, SubmitMessageError>> {
   const { input, mentions } = messageData;
   const user = await getStoredUser();
@@ -191,9 +199,9 @@ export async function postMessage({
   conversationId: string;
   messageData: {
     input: string;
-    mentions: MentionType[];
+    mentions: AgentMentionType[];
   };
-  contentFragments: UploadedContentFragment[];
+  contentFragments: UploadedContentFragmentType[];
 }): Promise<Result<{ message: UserMessageType }, SubmitMessageError>> {
   const { input, mentions } = messageData;
   const user = await getStoredUser();

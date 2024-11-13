@@ -14,7 +14,14 @@ import type {
   WebsearchActionPublicType,
   WebsearchResultPublicType,
 } from "@dust-tt/client";
-import { isRetrievalActionType, isWebsearchActionType } from "@dust-tt/client";
+import {
+  assertNever,
+  getProviderFromRetrievedDocument,
+  getTitleFromRetrievedDocument,
+  isRetrievalActionType,
+  isWebsearchActionType,
+  removeNulls,
+} from "@dust-tt/client";
 import type {
   ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
@@ -34,12 +41,6 @@ import {
   Popover,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import {
-  assertNever,
-  getProviderFromRetrievedDocument,
-  getTitleFromRetrievedDocument,
-  removeNulls,
-} from "@dust-tt/types";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
 import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import {

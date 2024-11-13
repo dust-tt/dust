@@ -1,10 +1,10 @@
+import type { LightWorkspaceType } from "@dust-tt/client";
 import {
   Button,
   LogoHorizontalColorLogo,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { StoredUser } from "@extension/lib/storage";
 import { getPendingUpdate } from "@extension/lib/storage";

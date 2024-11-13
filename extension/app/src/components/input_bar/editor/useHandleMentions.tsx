@@ -1,4 +1,7 @@
-import type { AgentMention, LightAgentConfigurationType } from "@dust-tt/types";
+import type {
+  AgentMentionType,
+  LightAgentConfigurationType,
+} from "@dust-tt/client";
 import type {
   EditorMention,
   EditorService,
@@ -8,8 +11,8 @@ import { useEffect, useRef } from "react";
 const useHandleMentions = (
   editorService: EditorService,
   agentConfigurations: LightAgentConfigurationType[],
-  stickyMentions: AgentMention[] | undefined,
-  selectedAssistant: AgentMention | null,
+  stickyMentions: AgentMentionType[] | undefined,
+  selectedAssistant: AgentMentionType | null,
   disableAutoFocus: boolean
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);

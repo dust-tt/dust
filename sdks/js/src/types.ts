@@ -124,6 +124,21 @@ const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
   ...(Object.keys(supportedLegacy) as [keyof typeof supportedLegacy]),
 ]);
 
+const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
+
+export const supportedPlainTextExtensions = uniq(
+  Object.values(supportedPlainText).flat()
+);
+
+export const supportedImageExtensions = uniq(
+  Object.values(supportedImage).flat()
+);
+
+export const supportedFileExtensions = uniq([
+  ...supportedPlainTextExtensions,
+  ...supportedImageExtensions,
+]);
+
 export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {
@@ -655,6 +670,8 @@ const UserSchema = z.object({
   image: z.string().nullable(),
 });
 
+export type UserType = z.infer<typeof UserSchema>;
+
 export const WebsearchResultSchema = z.object({
   title: z.string(),
   snippet: z.string(),
@@ -745,6 +762,10 @@ const LightAgentConfigurationSchema = z.object({
   requestedGroupIds: z.array(z.array(z.string())),
 });
 
+export type LightAgentConfigurationType = z.infer<
+  typeof LightAgentConfigurationSchema
+>;
+
 const ContentFragmentContextSchema = z.object({
   username: z.string().nullable(),
   fullName: z.string().nullable(),
@@ -769,11 +790,16 @@ const ContentFragmentSchema = z.object({
 });
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
+export type UploadedContentFragmentType = {
+  fileId: string;
+  title: string;
+};
+
 const AgentMentionSchema = z.object({
   configurationId: z.string(),
 });
 
-const MentionTypeSchema = AgentMentionSchema;
+export type AgentMentionType = z.infer<typeof AgentMentionSchema>;
 
 const UserMessageContextSchema = z.object({
   username: z.string(),
@@ -792,11 +818,17 @@ const UserMessageSchema = z.object({
   visibility: VisibilitySchema,
   version: z.number(),
   user: UserSchema.nullable(),
-  mentions: z.array(MentionTypeSchema),
+  mentions: z.array(AgentMentionSchema),
   content: z.string(),
   context: UserMessageContextSchema,
 });
 export type UserMessageType = z.infer<typeof UserMessageSchema>;
+
+const UserMessageWithRankTypeSchema = UserMessageSchema.and(RankSchema);
+
+export type UserMessageWithRankType = z.infer<
+  typeof UserMessageWithRankTypeSchema
+>;
 
 const AgentActionTypeSchema = z.union([
   RetrievalActionTypeSchema,
@@ -851,6 +883,10 @@ const ConversationVisibilitySchema = FlexibleEnumSchema([
   "test",
 ]);
 
+export type ConversationVisibility = z.infer<
+  typeof ConversationVisibilitySchema
+>;
+
 const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
@@ -871,10 +907,33 @@ export const ConversationSchema = ConversationWithoutContentSchema.extend({
     ])
   ),
 });
+
 export type ConversationWithoutContentPublicType = z.infer<
   typeof ConversationWithoutContentSchema
 >;
 export type ConversationPublicType = z.infer<typeof ConversationSchema>;
+
+const ConversationMessageReactionsSchema = z.array(
+  z.object({
+    messageId: z.string(),
+    reactions: z.array(
+      z.object({
+        emoji: z.string(),
+        users: z.array(
+          z.object({
+            userId: ModelIdSchema.nullable(),
+            username: z.string(),
+            fullName: z.string().nullable(),
+          })
+        ),
+      })
+    ),
+  })
+);
+
+export type ConversationMessageReactionsType = z.infer<
+  typeof ConversationMessageReactionsSchema
+>;
 
 const BrowseParamsEventSchema = z.object({
   type: z.literal("browse_params"),
@@ -2047,4 +2106,58 @@ export function BrowseActionPublicType(
   action: AgentActionPublicType
 ): action is BrowseActionPublicType {
   return action.type === "browse_action";
+}
+
+export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
+  return (arg as AgentMentionType).configurationId !== undefined;
+}
+
+export function assertNever(x: never): never {
+  throw new Error(
+    `${
+      typeof x === "object" ? JSON.stringify(x) : x
+    } is not of type never. This should never happen.`
+  );
+}
+
+export function removeNulls<T>(arr: (T | null | undefined)[]): T[] {
+  return arr.filter((v): v is T => v !== null && v !== undefined);
+}
+
+type ConnectorProviderDocumentType =
+  | Exclude<ConnectorProvider, "webcrawler">
+  | "document";
+
+export function getProviderFromRetrievedDocument(
+  document: RetrievalDocumentPublicType
+): ConnectorProviderDocumentType {
+  if (document.dataSourceView) {
+    if (document.dataSourceView.dataSource.connectorProvider === "webcrawler") {
+      return "document";
+    }
+    return document.dataSourceView.dataSource.connectorProvider || "document";
+  }
+  return "document";
+}
+
+export function getTitleFromRetrievedDocument(
+  document: RetrievalDocumentPublicType
+): string {
+  const provider = getProviderFromRetrievedDocument(document);
+
+  if (provider === "slack") {
+    for (const t of document.tags) {
+      if (t.startsWith("channelName:")) {
+        return `#${t.substring(12)}`;
+      }
+    }
+  }
+
+  for (const t of document.tags) {
+    if (t.startsWith("title:")) {
+      return t.substring(6);
+    }
+  }
+
+  return document.documentId;
 }

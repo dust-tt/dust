@@ -1,5 +1,6 @@
 import type {
   AgentGenerationCancelledEvent,
+  AgentMentionType,
   AgentMessageNewEvent,
   AgentMessagePublicType,
   ContentFragmentType,
@@ -8,8 +9,7 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
 } from "@dust-tt/client";
-import type { AgentMention } from "@dust-tt/types";
-import { isAgentMention } from "@dust-tt/types";
+import { isAgentMention } from "@dust-tt/client";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { useEventSource } from "@extension/hooks/useEventSource";
@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 interface ConversationViewerProps {
   conversationId: string;
-  onStickyMentionsChange?: (mentions: AgentMention[]) => void;
+  onStickyMentionsChange?: (mentions: AgentMentionType[]) => void;
   owner: LightWorkspaceType;
   user: StoredUser;
 }

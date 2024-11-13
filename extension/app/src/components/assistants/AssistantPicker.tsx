@@ -1,3 +1,7 @@
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@dust-tt/client";
 import {
   Avatar,
   Button,
@@ -10,10 +14,6 @@ import {
   RobotIcon,
   ScrollArea,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { filterAndSortAgents } from "@extension/lib/utils";
 import { useEffect, useState } from "react";
 
