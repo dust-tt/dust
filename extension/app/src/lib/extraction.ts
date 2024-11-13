@@ -225,9 +225,10 @@ export const extractPage = (url: string) => {
 // clickable [c], input [i], and image [v] elements. The origin DOM structure is preserved through
 // the indentation of these elements in the text DOM representation.
 //
-// URL: ${url}`;
+// URL: ${window.location.href}`;
 
       const extract = `${header}\n\n${render}`;
+      // console.log("----------------------------");
       // console.log(extract);
       return extract;
     };
