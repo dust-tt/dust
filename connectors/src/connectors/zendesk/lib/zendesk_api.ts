@@ -184,6 +184,45 @@ export async function fetchZendeskArticlesInCategory({
   );
 }
 
+/**
+ * Fetches a batch of the recently updated tickets from the Zendesk API using the incremental API endpoint.
+ */
+export async function fetchRecentlyUpdatedTickets({
+    subdomain,
+    accessToken,
+    startTime = null,
+    cursor = null,
+  }: // pass either a cursor or a start time, but not both
+    | {
+    subdomain: string;
+    accessToken: string;
+    startTime: number | null;
+    cursor?: never;
+  }
+    | {
+    subdomain: string;
+    accessToken: string;
+    startTime?: never;
+    cursor: string | null;
+  }): Promise<{
+  tickets: ZendeskFetchedTicket[];
+  meta: { end_of_stream: boolean; after_cursor: string };
+}> {
+  const response = await fetchFromZendeskWithRetries({
+    url:
+      `https://${subdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json` +
+      (cursor ? `?cursor=${cursor}` : "") +
+      (startTime ? `?start_time=${startTime}` : ""),
+    accessToken,
+  });
+  return (
+    response || {
+      tickets: [],
+      meta: { end_of_stream: false, after_cursor: "" },
+    }
+  );
+}
+
 export async function fetchSolvedZendeskTicketsInBrand({
   brandSubdomain,
   accessToken,
