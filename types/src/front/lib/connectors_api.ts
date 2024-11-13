@@ -22,6 +22,7 @@ const CONNECTORS_ERROR_TYPES = [
   "webcrawling_error_content_too_large",
   "webcrawling_error_blocked",
   "remote_database_connection_not_readonly",
+  "remote_database_network_error",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
