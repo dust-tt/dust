@@ -13,6 +13,7 @@ import {
 import { useSendNotification } from "@dust-tt/sparkle";
 import { getIncludeCurrentTab } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
+import type { GetActiveTabOptions } from "@extension/lib/messages";
 import { useState } from "react";
 
 interface FileBlob {
@@ -259,11 +260,21 @@ export function useFileUploaderService({
     setFileBlobs([]);
   };
 
-  const uploadContentTab = async (
-    conversation?: ConversationPublicType,
-    updateBlobs?: boolean
-  ) => {
-    const tabContentRes = await getIncludeCurrentTab();
+  const uploadContentTab = async ({
+    conversation,
+    updateBlobs,
+    includeContent,
+    includeSelectionOnly,
+    includeScreenshot,
+  }: {
+    conversation?: ConversationPublicType;
+    updateBlobs?: boolean;
+  } & GetActiveTabOptions) => {
+    const tabContentRes = await getIncludeCurrentTab({
+      includeContent,
+      includeSelectionOnly,
+      includeScreenshot,
+    });
 
     if (tabContentRes && tabContentRes.isErr()) {
       sendNotification({
@@ -277,50 +288,56 @@ export function useFileUploaderService({
     const tabContent =
       tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
 
-    if (!tabContent?.content) {
-      sendNotification({
-        title: "Cannot get tab content",
-        description: "No content found.",
-        type: "error",
-      });
-      return;
-    }
+    if (includeContent) {
+      if (!tabContent?.content) {
+        sendNotification({
+          title: "Cannot get tab content",
+          description: "No content found.",
+          type: "error",
+        });
+        return;
+      }
+      const messages = conversation?.content.map((m) => m[m.length - 1]) || [];
+      let title = `${tabContent.title}.txt`;
+      if (includeSelectionOnly) {
+        let count = 1;
+        title = `${tabContent.title} (selection).txt`;
+        while (
+          messages.some(
+            (m) => m.type === "content_fragment" && m.title === title
+          ) ||
+          fileBlobs.some((f) => f.filename === title)
+        ) {
+          title = `${tabContent.title} (selection)-${count++}.txt`;
+        }
+      }
 
-    const title = `${tabContent.title}.txt`;
-    // Check if the content is already uploaded - compare the title and the size of the content.
-    const alreadyUploaded = conversation?.content
-      .map((m) => m[m.length - 1])
-      .some(
+      // Check if the content is already uploaded - compare the title and the size of the content.
+      const alreadyUploaded = messages.some(
         (m) =>
           m.type === "content_fragment" &&
           m.title === title &&
           m.textBytes === new Blob([tabContent.content ?? ""]).size
       );
 
-    if (tabContent && tabContent.content && !alreadyUploaded) {
-      const file = new File([tabContent.content], title, {
-        type: "text/plain",
-      });
+      if (tabContent && tabContent.content && !alreadyUploaded) {
+        const file = new File([tabContent.content], title, {
+          type: "text/plain",
+        });
 
-      return await handleFilesUpload([file], updateBlobs);
-    }
-  };
-
-  const uploadContentTabAsScreenshot = async () => {
-    const tabContentRes = await getIncludeCurrentTab(false, true);
-
-    if (tabContentRes && tabContentRes.isErr()) {
-      sendNotification({
-        title: "Cannot get tab content",
-        description: tabContentRes.error.message,
-        type: "error",
-      });
+        return await handleFilesUpload([file], updateBlobs);
+      }
     }
 
-    const tabContent =
-      tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
-
-    if (tabContent && tabContent.screenshot) {
+    if (includeScreenshot) {
+      if (!tabContent?.screenshot) {
+        sendNotification({
+          title: "Cannot get tab content",
+          description: "No content found.",
+          type: "error",
+        });
+        return;
+      }
       const response = await fetch(tabContent.screenshot);
       const blob = await response.blob();
       const file = new File([blob], `${tabContent.title}.jpg`, {
@@ -349,7 +366,6 @@ export function useFileUploaderService({
     handleFilesUpload,
     isProcessingFiles,
     uploadContentTab,
-    uploadContentTabAsScreenshot,
     removeFile,
     resetUpload,
   };

@@ -15,6 +15,8 @@ import { InputBarContainer } from "@extension/components/input_bar/InputBarConta
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useDustAPI } from "@extension/lib/dust_api";
+import type { AttachSelectionMessage } from "@extension/lib/messages";
+import { sendInputBarStatus } from "@extension/lib/messages";
 import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -54,6 +56,22 @@ export function AssistantInputBar({
 
   const fileUploaderService = useFileUploaderService({
     owner,
+  });
+
+  useEffect(() => {
+    void sendInputBarStatus(true);
+    const listener = (message: AttachSelectionMessage) => {
+      const { type, ...options } = message;
+      if (type === "ATTACH_TAB") {
+        // Handle message
+        void fileUploaderService.uploadContentTab(options);
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => {
+      void sendInputBarStatus(false);
+      chrome.runtime.onMessage.removeListener(listener);
+    };
   });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
@@ -176,10 +194,12 @@ export function AssistantInputBar({
     resetEditorText();
 
     if (isTabIncluded) {
-      const files = await fileUploaderService.uploadContentTab(
+      const files = await fileUploaderService.uploadContentTab({
+        includeContent: true,
+        includeScreenshot: false,
         conversation,
-        false
-      );
+        updateBlobs: false,
+      });
       if (files) {
         newFiles.push(
           ...files.map((cf) => ({

@@ -15,6 +15,7 @@ import type {
   UserType,
 } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { GetActiveTabOptions } from "@extension/lib/messages";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 
@@ -316,17 +317,11 @@ export async function retryMessage({
   return new Ok(await mRes.json());
 }
 
-export const getIncludeCurrentTab = async (
-  includeContent: boolean = true,
-  includeScreenshot: boolean = false
-) => {
-  const backgroundRes = await sendGetActiveTabMessage(
-    includeContent,
-    includeScreenshot
-  );
+export const getIncludeCurrentTab = async (params: GetActiveTabOptions) => {
+  const backgroundRes = await sendGetActiveTabMessage(params);
   if (
-    (includeContent && !backgroundRes.content) ||
-    (includeScreenshot && !backgroundRes.screenshot) ||
+    (params.includeContent && !backgroundRes.content) ||
+    (params.includeScreenshot && !backgroundRes.screenshot) ||
     !backgroundRes.url ||
     !backgroundRes.title
   ) {

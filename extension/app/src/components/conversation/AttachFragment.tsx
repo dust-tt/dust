@@ -47,7 +47,7 @@ export const AttachFragment = ({
             variant="ghost"
             isSelect
             size="xs"
-            tooltip="Pick an assistant"
+            tooltip="Attach content"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="min-w-[300px]">
@@ -60,13 +60,23 @@ export const AttachFragment = ({
           />
           <DropdownMenuItem
             icon={DocumentTextIcon}
-            label={"Attach page content"}
-            onClick={() => fileUploaderService.uploadContentTab()}
+            label={"Attach tab content"}
+            onClick={() =>
+              fileUploaderService.uploadContentTab({
+                includeContent: true,
+                includeScreenshot: false,
+              })
+            }
           />
           <DropdownMenuItem
             icon={ImageIcon}
-            label={"Attach page screenshot"}
-            onClick={() => fileUploaderService.uploadContentTabAsScreenshot()}
+            label={"Attach tab screenshot"}
+            onClick={() =>
+              fileUploaderService.uploadContentTab({
+                includeContent: false,
+                includeScreenshot: true,
+              })
+            }
           />
         </DropdownMenuContent>
       </DropdownMenu>
