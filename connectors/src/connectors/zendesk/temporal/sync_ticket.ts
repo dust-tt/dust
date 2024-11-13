@@ -1,12 +1,12 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
-import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
   ZendeskFetchedTicket,
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
-} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+} from "@connectors/@types/node-zendesk";
+import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,

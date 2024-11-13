@@ -7,7 +7,7 @@ import { createClient } from "node-zendesk";
 import type {
   ZendeskFetchedArticle,
   ZendeskFetchedTicket,
-} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+} from "@connectors/@types/node-zendesk";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
