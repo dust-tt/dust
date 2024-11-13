@@ -276,12 +276,12 @@ export function EditSpaceManagedDataSourcesViews({
         systemSpaceDataSourceViews={filterSystemSpaceDataSourceViews}
         onSave={async (selectionConfigurations) => {
           if (
-            !(await confirmPrivateNodesSync({
+            await confirmPrivateNodesSync({
               selectedNodes: Object.values(selectionConfigurations)
                 .map((sc) => sc.selectedResources)
                 .flat(),
               confirm,
-            }))
+            })
           ) {
             await updateSpaceDataSourceViews(selectionConfigurations);
           }

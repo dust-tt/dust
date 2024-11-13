@@ -866,5 +866,6 @@ export async function confirmPrivateNodesSync({
       validateVariant: "warning",
     });
   }
+
   return true;
 }
