@@ -494,12 +494,13 @@ export async function syncZendeskTicketUpdateBatchActivity({
     ...(cursor ? { cursor } : { startTime: currentSyncDateMs - 1000 * 60 * 5 }), // 5 min ago, previous scheduled execution
   });
 
-  const users = await zendeskApiClient.users.list();
-
   await concurrentExecutor(
     tickets,
     async (ticket) => {
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
+      const users = await zendeskApiClient.users.showMany(
+        comments.map((c) => c.author_id)
+      );
       return syncTicket({
         connectorId,
         ticket,
