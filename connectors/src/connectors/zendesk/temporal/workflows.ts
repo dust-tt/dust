@@ -20,6 +20,7 @@ const {
   syncZendeskCategoryActivity,
   syncZendeskArticleBatchActivity,
   syncZendeskTicketBatchActivity,
+  syncZendeskTicketUpdateBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -29,7 +30,7 @@ const {
   checkZendeskTicketsPermissionsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
-  getAllZendeskBrandsIdsActivity,
+  getZendeskTicketsAllowedBrandIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -96,17 +97,6 @@ export async function zendeskSyncWorkflow({
     }
   );
 
-  // If we got no signal, then we're on the scheduled execution
-  if (
-    brandIds.size === 0 &&
-    brandHelpCenterIds.size === 0 &&
-    brandTicketsIds.size === 0 &&
-    categoryIds.size === 0
-  ) {
-    const allBrandIds = await getAllZendeskBrandsIdsActivity({ connectorId });
-    allBrandIds.forEach((brandId) => brandIds.add(brandId));
-  }
-
   const {
     workflowId,
     searchAttributes: parentSearchAttributes,
@@ -114,6 +104,21 @@ export async function zendeskSyncWorkflow({
   } = workflowInfo();
 
   const currentSyncDateMs = new Date().getTime();
+
+  // If we got no signal, then we're on the scheduled execution
+  if (
+    brandIds.size === 0 &&
+    brandHelpCenterIds.size === 0 &&
+    brandTicketsIds.size === 0 &&
+    categoryIds.size === 0
+  ) {
+    await executeChild(zendeskIncrementalSyncWorkflow, {
+      workflowId: `${workflowId}-incremental`,
+      searchAttributes: parentSearchAttributes,
+      args: [{ connectorId, currentSyncDateMs }],
+      memo,
+    });
+  }
 
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
@@ -198,6 +203,30 @@ export async function zendeskSyncWorkflow({
   // run cleanup here if needed
 
   await saveZendeskConnectorSuccessSync({ connectorId });
+}
+
+/**
+ * Syncs the tickets updated since the last scheduled execution.
+ */
+export async function zendeskIncrementalSyncWorkflow({
+  connectorId,
+  currentSyncDateMs,
+}: {
+  connectorId: ModelId;
+  currentSyncDateMs: number;
+}) {
+  const brandIds = await getZendeskTicketsAllowedBrandIdsActivity(connectorId);
+
+  for (const brandId of brandIds) {
+    await runZendeskActivityWithPagination((cursor) =>
+      syncZendeskTicketUpdateBatchActivity({
+        connectorId,
+        brandId,
+        currentSyncDateMs,
+        cursor,
+      })
+    );
+  }
 }
 
 /**
