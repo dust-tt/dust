@@ -9,7 +9,6 @@ import "./src/css/custom.css";
 
 import { Notification } from "@dust-tt/sparkle";
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
-import { GenerationContextProvider } from "@extension/components/conversation/GenerationContextProvider";
 import { routes } from "@extension/pages/routes";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -20,9 +19,7 @@ const App = () => {
   return (
     <AuthProvider>
       <Notification.Area>
-        <GenerationContextProvider>
-          <RouterProvider router={router} />
-        </GenerationContextProvider>
+        <RouterProvider router={router} />
       </Notification.Area>
     </AuthProvider>
   );

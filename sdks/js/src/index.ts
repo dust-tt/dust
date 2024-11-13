@@ -722,7 +722,6 @@ export class DustAPI {
       method: "POST",
       path: `assistant/conversations/${conversationId}/cancel`,
       body: {
-        action: "cancel",
         messageIds,
       } as CancelMessageGenerationRequestType,
     });

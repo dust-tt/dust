@@ -2080,7 +2080,6 @@ export type CancelMessageGenerationResponseType = z.infer<
 >;
 
 export const CancelMessageGenerationRequestSchema = z.object({
-  action: z.literal("cancel"),
   messageIds: z.array(z.string()),
 });
 
