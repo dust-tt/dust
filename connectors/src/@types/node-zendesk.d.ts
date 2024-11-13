@@ -1,5 +1,3 @@
-import "node-zendesk";
-
 import type { ZendeskClientOptions } from "node-zendesk";
 
 interface ZendeskFetchedBrand {
