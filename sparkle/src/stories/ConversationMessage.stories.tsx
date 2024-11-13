@@ -66,6 +66,24 @@ export const ConversationExample = () => {
                 imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
                 alt={"Image"}
               />,
+              <ZoomableImageCitationWrapper
+                size="xs"
+                title="Title"
+                imgSrc="https://placecats.com/poppy/600/600" // Service that generates random cat images of a given size
+                alt={"Image"}
+              />,
+              <ZoomableImageCitationWrapper
+                size="xs"
+                title="Title"
+                imgSrc="https://placecats.com/neo/1200/700"
+                alt={"Image"}
+              />,
+              <ZoomableImageCitationWrapper
+                size="xs"
+                title="Title"
+                imgSrc="https://placecats.com/800/400"
+                alt={"Image"}
+              />,
             ]}
           >
             To conditionally render the citations only if a citations React node
