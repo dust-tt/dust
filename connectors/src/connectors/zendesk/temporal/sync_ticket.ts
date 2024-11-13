@@ -19,6 +19,9 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
 
+/**
+ * Deletes a ticket from the db and the data sources.
+ */
 export async function deleteTicket(
   connectorId: ModelId,
   ticket: ZendeskFetchedTicket,
@@ -36,6 +39,9 @@ export async function deleteTicket(
   ]);
 }
 
+/**
+ * Syncs a ticket in the db and upserts it to the data sources.
+ */
 export async function syncTicket({
   connectorId,
   ticket,
