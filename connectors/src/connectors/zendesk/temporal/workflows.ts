@@ -21,7 +21,7 @@ const {
   syncZendeskArticleBatchActivity,
   syncZendeskTicketBatchActivity,
   syncZendeskTicketUpdateBatchActivity,
-  syncZendeskRecentlyUpdatedArticleBatchActivity,
+  syncZendeskArticleUpdateBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -233,7 +233,7 @@ export async function zendeskIncrementalSyncWorkflow({
 
   for (const brandId of helpCenterBrandIds) {
     await runZendeskActivityWithPagination((cursor) =>
-      syncZendeskRecentlyUpdatedArticleBatchActivity({
+      syncZendeskArticleUpdateBatchActivity({
         connectorId,
         brandId,
         currentSyncDateMs,

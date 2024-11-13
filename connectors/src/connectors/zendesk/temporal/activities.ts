@@ -538,7 +538,7 @@ export async function syncZendeskTicketBatchActivity({
  * This activity is responsible for syncing the next batch of recently updated articles to process.
  * It is based on the incremental endpoint, which returns a diff.
  */
-export async function syncZendeskRecentlyUpdatedArticleBatchActivity({
+export async function syncZendeskArticleUpdateBatchActivity({
   connectorId,
   brandId,
   currentSyncDateMs,
