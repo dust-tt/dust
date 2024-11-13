@@ -13,6 +13,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchRecentlyUpdatedArticles,
   fetchRecentlyUpdatedTickets,
   fetchSolvedZendeskTicketsInBrand,
   fetchZendeskArticlesInCategory,
@@ -252,6 +253,17 @@ export async function getZendeskTimestampCursorActivity(
   return cursors.timestampCursor
     ? new Date(Math.min(cursors.timestampCursor.getTime(), minAgo))
     : new Date(minAgo);
+}
+
+/**
+ * Retrieves the IDs of every brand stored in db that has read permissions on their Help Center.
+ */
+export async function getZendeskHelpCenterReadPermissionedBrandIdsActivity(
+  connectorId: ModelId
+): Promise<number[]> {
+  return ZendeskBrandResource.fetchHelpCenterReadPermissionedBrandIds({
+    connectorId,
+  });
 }
 
 /**
@@ -520,6 +532,85 @@ export async function syncZendeskTicketBatchActivity({
     afterCursor: meta.after_cursor,
     hasMore: meta.has_more,
   };
+}
+
+/**
+ * This activity is responsible for syncing the next batch of recently updated articles to process.
+ * It is based on the incremental endpoint, which returns a diff.
+ */
+export async function syncZendeskRecentlyUpdatedArticleBatchActivity({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+  cursor,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  currentSyncDateMs: number;
+  cursor: string | null;
+}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
+
+  const {
+    articles,
+    meta: { after_cursor, end_of_stream },
+  } = await fetchRecentlyUpdatedArticles({
+    subdomain: brandSubdomain,
+    accessToken,
+    ...(cursor ? { cursor } : { startTime: currentSyncDateMs - 1000 * 60 * 5 }), // 5 min ago, previous scheduled execution
+  });
+
+  await concurrentExecutor(
+    articles,
+    async (article) => {
+      const { result: section } =
+        await zendeskApiClient.helpcenter.sections.show(article.section_id);
+      const { result: user } = await zendeskApiClient.users.show(
+        article.author_id
+      );
+
+      if (section.category_id) {
+        const category = await ZendeskCategoryResource.fetchByCategoryId({
+          connectorId,
+          categoryId: section.category_id,
+        });
+        if (category && category.permission === "read") {
+          return syncArticle({
+            connectorId,
+            category,
+            article,
+            section,
+            user,
+            dataSourceConfig,
+            currentSyncDateMs,
+            loggerArgs,
+            forceResync: false,
+          });
+        }
+      }
+    },
+    { concurrency: 10 }
+  );
+  return { hasMore: !end_of_stream, afterCursor: after_cursor };
 }
 
 /**
