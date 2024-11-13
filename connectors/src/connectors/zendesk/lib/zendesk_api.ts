@@ -97,7 +97,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
 /**
  * Runs a GET request to the Zendesk API with a maximum number of retries before throwing.
  */
-async function fetchWithRetries({
+async function fetchFromZendeskWithRetries({
   url,
   accessToken,
 }: {
@@ -173,7 +173,7 @@ export async function fetchZendeskArticlesInCategory({
     `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
   );
 
-  const response = await fetchWithRetries({
+  const response = await fetchFromZendeskWithRetries({
     url:
       `https://${subdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?page[size]=${pageSize}` +
       (cursor ? `&page[after]=${cursor}` : ""),
@@ -203,7 +203,7 @@ export async function fetchZendeskTicketsInBrand({
     `pageSize must be at most 100 (current value: ${pageSize})`
   );
 
-  const response = await fetchWithRetries({
+  const response = await fetchFromZendeskWithRetries({
     url:
       `https://${brandSubdomain}.zendesk.com/api/v2/tickets?page[size]=${pageSize}` +
       (cursor ? `&page[after]=${cursor}` : ""),
