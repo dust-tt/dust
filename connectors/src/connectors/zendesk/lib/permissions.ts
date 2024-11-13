@@ -114,21 +114,8 @@ export async function retrieveChildrenNodes({
     switch (type) {
       // If the parent is a Brand, we return a node for its tickets and one for its help center.
       case "brand": {
-        const ticketsNode: ContentNode = {
-          provider: connector.type,
-          internalId: getTicketsInternalId(connectorId, objectId),
-          parentInternalId: parentInternalId,
-          type: "folder",
-          title: "Tickets",
-          sourceUrl: null,
-          expandable: false,
-          permission: "none",
-          dustDocumentId: null,
-          lastUpdatedAt: null,
-        };
-        nodes.push(ticketsNode);
-
         let hasHelpCenter = false;
+        let brandName = "";
         if (isReadPermissionsOnly) {
           const brandInDatabase = await ZendeskBrandResource.fetchByBrandId({
             connectorId,
@@ -136,9 +123,11 @@ export async function retrieveChildrenNodes({
           });
           hasHelpCenter =
             brandInDatabase !== null && brandInDatabase.hasHelpCenter;
+          brandName = brandInDatabase?.name ?? "";
         } else {
           const fetchedBrand = await zendeskApiClient.brand.show(objectId);
           hasHelpCenter = fetchedBrand.result.brand.has_help_center;
+          brandName = fetchedBrand.result.brand.name;
         }
         if (hasHelpCenter) {
           const helpCenterNode: ContentNode = {
@@ -146,7 +135,7 @@ export async function retrieveChildrenNodes({
             internalId: getHelpCenterInternalId(connectorId, objectId),
             parentInternalId: parentInternalId,
             type: "folder",
-            title: "Help Center",
+            title: `(${brandName}) Help Center`,
             sourceUrl: null,
             expandable: true,
             permission: "none",
@@ -155,6 +144,19 @@ export async function retrieveChildrenNodes({
           };
           nodes.push(helpCenterNode);
         }
+        const ticketsNode: ContentNode = {
+          provider: connector.type,
+          internalId: getTicketsInternalId(connectorId, objectId),
+          parentInternalId: parentInternalId,
+          type: "folder",
+          title: `(${brandName}) Tickets`,
+          sourceUrl: null,
+          expandable: false,
+          permission: "none",
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        };
+        nodes.push(ticketsNode);
         break;
       }
       // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.

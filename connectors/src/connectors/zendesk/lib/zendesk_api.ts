@@ -205,7 +205,7 @@ export async function fetchZendeskTicketsInBrand({
 
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/tickets?page[size]=${pageSize}` +
+      `https://${brandSubdomain}.zendesk.com/api/v2/tickets?status=solved&page[size]=${pageSize}` +
       (cursor ? `&page[after]=${cursor}` : ""),
     accessToken,
   });
