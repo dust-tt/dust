@@ -275,16 +275,20 @@ export function EditSpaceManagedDataSourcesViews({
         owner={owner}
         systemSpaceDataSourceViews={filterSystemSpaceDataSourceViews}
         onSave={async (selectionConfigurations) => {
-          if (
-            !(await confirmPrivateNodesSync({
-              selectedNodes: Object.values(selectionConfigurations)
-                .map((sc) => sc.selectedResources)
-                .flat(),
-              confirm,
-            }))
-          ) {
-            await updateSpaceDataSourceViews(selectionConfigurations);
+          const selectedNodes = Object.values(selectionConfigurations)
+            .map((sc) => sc.selectedResources)
+            .flat();
+
+          const syncConfirmed = await confirmPrivateNodesSync({
+            selectedNodes,
+            confirm,
+          });
+
+          if (!syncConfirmed) {
+            return;
           }
+
+          await updateSpaceDataSourceViews(selectionConfigurations);
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />
