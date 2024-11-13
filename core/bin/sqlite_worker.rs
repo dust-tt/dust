@@ -319,7 +319,6 @@ fn main() {
 
         let s = databases_store::store::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
             .await?;
-        s.init().await?;
         let databases_store = Box::new(s);
 
         let state = Arc::new(WorkerState::new(databases_store));

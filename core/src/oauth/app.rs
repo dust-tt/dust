@@ -302,7 +302,6 @@ pub async fn create_app() -> Result<Router> {
     {
         Ok(db_uri) => {
             let s = store::PostgresOAuthStore::new(&db_uri).await?;
-            s.init().await?;
             Box::new(s)
         }
         Err(_) => Err(anyhow!("OAUTH_DATABASE_URI not set."))?,
