@@ -200,9 +200,11 @@ export function AssistantInputBar({
         includeScreenshot: false,
         conversation,
         updateBlobs: false,
+        onUpload: () => {
+          setAttachPageBlinking(true);
+        },
       });
       if (files) {
-        setAttachPageBlinking(true);
         newFiles.push(
           ...files.map((cf) => ({
             title: cf.filename,

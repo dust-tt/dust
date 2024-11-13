@@ -8,7 +8,7 @@ import {
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef } from "react";
 
 type AttachFragmentProps = {
   fileUploaderService: FileUploaderService;
