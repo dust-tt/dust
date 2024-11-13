@@ -1,4 +1,3 @@
-import { Input } from "@dust-tt/sparkle";
 import { Checkbox } from "@dust-tt/sparkle";
 import { createIoTsCodecFromArgs } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
