@@ -519,7 +519,11 @@ export async function syncZendeskTicketUpdateBatchActivity({
     brandId,
   });
 
-  const startTime = Math.floor(currentSyncDateMs / 1000) - 60 * 5; // 5 min ago, previous scheduled execution
+  const startTimeMs =
+    connector.lastSyncSuccessfulTime?.getTime() ??
+    currentSyncDateMs - 1000 * 60 * 5; // 5 min ago, previous scheduled execution
+  const startTime = Math.floor(startTimeMs / 1000);
+
   const { tickets, after_cursor, end_of_stream } =
     await fetchRecentlyUpdatedTickets({
       subdomain: brandSubdomain,
