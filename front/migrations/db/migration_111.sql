@@ -4,4 +4,4 @@ ALTER TABLE
 ADD
     COLUMN "sId" VARCHAR(255);
 
-CREATE INDEX "content_fragments_s_id" ON "content_fragments" ("sId");
+CREATE INDEX CONCURRENTLY "content_fragments_s_id" ON "content_fragments" ("sId");
