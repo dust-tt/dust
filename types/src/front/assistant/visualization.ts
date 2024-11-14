@@ -32,6 +32,7 @@ export type VisualizationRPCRequestMap = {
   setContentHeight: SetContentHeightParams;
   setErrorMessage: setErrorMessageParams;
   downloadFileRequest: DownloadFileRequestParams;
+  displayCode: null;
 };
 
 // Derive the command type from the keys of the request map
@@ -60,6 +61,7 @@ export interface CommandResultMap {
   downloadFileRequest: { blob: Blob; filename?: string };
   setContentHeight: void;
   setErrorMessage: void;
+  displayCode: void;
 }
 
 // TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
@@ -170,6 +172,26 @@ export function isDownloadFileRequest(
   );
 }
 
+// Type guard for getCodeToExecute.
+export function isDisplayCodeRequest(
+  value: unknown
+): value is VisualizationRPCRequest & {
+  command: "displayCode";
+  params: null;
+} {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const v = value as Partial<VisualizationRPCRequest>;
+
+  return (
+    v.command === "displayCode" &&
+    typeof v.identifier === "string" &&
+    typeof v.messageUniqueId === "string"
+  );
+}
+
 export function isVisualizationRPCRequest(
   value: unknown
 ): value is VisualizationRPCRequest {
@@ -182,6 +204,7 @@ export function isVisualizationRPCRequest(
     isGetFileRequest(value) ||
     isDownloadFileRequest(value) ||
     isSetContentHeightRequest(value) ||
-    isSetErrorMessageRequest(value)
+    isSetErrorMessageRequest(value) ||
+    isDisplayCodeRequest(value)
   );
 }

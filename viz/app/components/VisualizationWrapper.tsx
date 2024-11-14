@@ -14,7 +14,7 @@ import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
 import { useResizeDetector } from "react-resize-detector";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
-import { Download } from "lucide-react";
+import { Download, SquareTerminal } from "lucide-react";
 import { toBlob } from "html-to-image";
 
 export function useVisualizationAPI(
@@ -83,12 +83,20 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
+  const displayCode = useCallback(
+    async () => {
+      await sendCrossDocumentMessage("displayCode", null);
+    },
+    [sendCrossDocumentMessage]
+  );
+
   return {
     error,
     fetchCode,
     fetchFile,
     sendHeightToParent,
     downloadFile,
+    displayCode,
   };
 }
 
@@ -182,7 +190,7 @@ export function VisualizationWrapper({
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  const { fetchCode, fetchFile, error, sendHeightToParent, downloadFile } = api;
+  const { fetchCode, fetchFile, error, sendHeightToParent, downloadFile, displayCode } = api;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 
@@ -249,6 +257,10 @@ export function VisualizationWrapper({
     }
   }, [ref, downloadFile]);
 
+    const handleDisplayCode = useCallback(async () => {
+    await displayCode();
+  }, [displayCode]);
+
   useEffect(() => {
     if (error) {
       setErrorMessage(error);
@@ -266,12 +278,17 @@ export function VisualizationWrapper({
 
   return (
     <div className="relative group/viz">
+      <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
       <button
         onClick={handleScreenshotDownload}
-        className="absolute top-2 right-2 bg-white p-2 rounded shadow hover:bg-gray-100 transition opacity-0 group-hover/viz:opacity-100 z-50"
+        className="hover:bg-slate-200 rounded p-2 border border-slate-200"
       >
         <Download size={20} />
       </button>
+      <button className="hover:bg-slate-200 rounded p-2 border border-slate-200" onClick={handleDisplayCode}>
+        <SquareTerminal size={20} />
+      </button>
+      </div>
       <div ref={ref}>
         <Runner
           code={runnerParams.code}
