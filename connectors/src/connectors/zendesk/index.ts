@@ -43,6 +43,7 @@ import {
   ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -88,14 +89,49 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   async update({
     connectionId,
   }: {
-    connectionId: string;
+    connectionId?: string | null;
   }): Promise<Result<string, ConnectorsAPIError>> {
-    logger.info({ connectionId }, "Updating Zendesk connector");
+    const { connectorId } = this;
 
-    // Make sure to verify that the the new OAuth connection metadata.zendesk_subdomain matches the
-    // existing ZendeskConfiguration.subdomain (to prevent subdoamin switch as part of re-auth).
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err({
+        type: "connector_not_found",
+        message: "Connector not found",
+      });
+    }
 
-    throw new Error("Method not implemented.");
+    const configuration =
+      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+    if (!configuration) {
+      return new Err({
+        type: "connector_update_error",
+        message: "Error retrieving Zendesk configuration to update connector",
+      });
+    }
+
+    if (connectionId) {
+      const newConnectionId = connectionId;
+
+      const { subdomain: newSubdomain } =
+        await getZendeskSubdomainAndAccessToken(newConnectionId);
+
+      if (configuration.subdomain !== newSubdomain) {
+        return new Err({
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change the subdomain of a Zendesk connector",
+        });
+      }
+
+      await connector.update({ connectionId: newConnectionId });
+
+      // if the connector was previously paused, unpause it.
+      if (connector.isPaused()) {
+        await this.unpause();
+      }
+    }
+    return new Ok(connector.id.toString());
   }
 
   async clean(): Promise<Result<undefined, Error>> {
