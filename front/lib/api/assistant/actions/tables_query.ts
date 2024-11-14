@@ -21,7 +21,7 @@ import {
 import { stringify } from "csv-stringify";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";

@@ -15,7 +15,7 @@ import { BaseAction, BrowseActionOutputSchema, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";

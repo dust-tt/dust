@@ -36,7 +36,7 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
+} from "@app/lib/api/assistant/actions/constants";
 import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";

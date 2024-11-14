@@ -22,7 +22,7 @@ import assert from "assert";
 import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import {

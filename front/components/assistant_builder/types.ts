@@ -24,7 +24,7 @@ import {
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
+} from "@app/lib/api/assistant/actions/constants";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 export const ACTION_MODES = [

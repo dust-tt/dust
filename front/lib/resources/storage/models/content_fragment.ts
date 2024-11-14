@@ -19,6 +19,7 @@ export class ContentFragmentModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare sId: string;
   declare title: string;
   declare contentType: SupportedContentFragmentType;
   declare sourceUrl: string | null; // GCS (upload) or Slack or ...
@@ -53,6 +54,10 @@ ContentFragmentModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     title: {
       type: DataTypes.TEXT,
@@ -90,7 +95,7 @@ ContentFragmentModel.init(
   {
     modelName: "content_fragment",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["fileId"] }],
+    indexes: [{ fields: ["fileId"] }, { fields: ["sId"] }],
   }
 );
 
