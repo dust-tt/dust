@@ -39,7 +39,7 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
-  renderConversationForModelMultiActions,
+  renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -292,9 +292,9 @@ async function* runMultiActionsAgentLoop(
   }
 }
 
-// This method is used by the multi-actions execution loop to pick the next action
-// to execute and generate its inputs.
-export async function* runMultiActionsAgent(
+// This method is used by the multi-actions execution loop to pick the next action to execute and
+// generate its inputs.
+async function* runMultiActionsAgent(
   auth: Authenticator,
   {
     agentConfiguration,
@@ -363,7 +363,7 @@ export async function* runMultiActionsAgent(
   const MIN_GENERATION_TOKENS = 2048;
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModelMultiActions({
+  const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
     prompt,
@@ -431,6 +431,8 @@ export async function* runMultiActionsAgent(
 
     specifications.push(specRes.value);
   }
+
+  // If we have attachments inject a fake LS action to handle them.
 
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case

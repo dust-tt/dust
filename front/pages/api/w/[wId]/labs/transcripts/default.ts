@@ -25,7 +25,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner.id);
+  const flags = await getFeatureFlags(owner);
 
   if (!flags.includes("labs_transcripts")) {
     return apiError(req, res, {

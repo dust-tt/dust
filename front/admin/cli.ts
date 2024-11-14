@@ -4,14 +4,11 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import {
-  getTextContentFromMessage,
-  renderConversationForModelMultiActions,
-} from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
@@ -336,7 +333,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
       const prompt = "";
 
-      const convoRes = await renderConversationForModelMultiActions({
+      const convoRes = await renderConversationForModel(auth, {
         conversation,
         model,
         prompt,

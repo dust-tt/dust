@@ -1399,7 +1399,7 @@ export async function getGlobalAgents(
       (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
     );
 
-  const flags = await getFeatureFlags(owner.id);
+  const flags = await getFeatureFlags(owner);
 
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(

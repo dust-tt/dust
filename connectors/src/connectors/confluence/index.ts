@@ -513,8 +513,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
             getSpaceHierarchy,
             () => memoizationKey,
             60 * 60 * 1000,
-            undefined,
-            true
+            undefined
           )(this.connectorId, currentPage.spaceId)
         : undefined;
 

@@ -16,6 +16,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 const router = createBrowserRouter(routes);
 
 const App = () => {
+  chrome.runtime.connect({ name: "sidepanel-connection" });
   return (
     <AuthProvider>
       <Notification.Area>

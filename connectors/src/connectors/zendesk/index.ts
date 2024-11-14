@@ -24,8 +24,8 @@ import {
   getIdFromInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
+  retrieveAllSelectedNodes,
   retrieveChildrenNodes,
-  retrieveSelectedNodes,
 } from "@connectors/connectors/zendesk/lib/permissions";
 import {
   allowSyncZendeskTickets,
@@ -171,23 +171,20 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    const { connectorId } = this;
-
     if (filterPermission === "read" && parentInternalId === null) {
-      // We want all selected nodes despite the hierarchy
-      const selectedNodes = await retrieveSelectedNodes({ connectorId });
-      return new Ok(selectedNodes);
+      // retrieving all the selected nodes despite the hierarchy
+      return new Ok(await retrieveAllSelectedNodes(this.connectorId));
     }
 
     try {
-      return new Ok(
-        await retrieveChildrenNodes({
-          connectorId,
-          parentInternalId,
-          filterPermission,
-          viewType: "documents",
-        })
-      );
+      const nodes = await retrieveChildrenNodes({
+        connectorId: this.connectorId,
+        parentInternalId,
+        filterPermission,
+        viewType: "documents",
+      });
+      nodes.sort((a, b) => a.title.localeCompare(b.title));
+      return new Ok(nodes);
     } catch (e) {
       return new Err(e as Error);
     }
@@ -427,16 +424,14 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     });
 
     return new Ok([
-      ...brands.map((brand) => brand.toContentNode({ connectorId })),
+      ...brands.map((brand) => brand.toContentNode(connectorId)),
       ...brandHelpCenters.map((brand) =>
-        brand.getHelpCenterContentNode({ connectorId })
+        brand.getHelpCenterContentNode(connectorId)
       ),
-      ...brandTickets.map((brand) =>
-        brand.getTicketsContentNode({ connectorId })
-      ),
-      ...categories.map((category) => category.toContentNode({ connectorId })),
-      ...articles.map((article) => article.toContentNode({ connectorId })),
-      ...tickets.map((ticket) => ticket.toContentNode({ connectorId })),
+      ...brandTickets.map((brand) => brand.getTicketsContentNode(connectorId)),
+      ...categories.map((category) => category.toContentNode(connectorId)),
+      ...articles.map((article) => article.toContentNode(connectorId)),
+      ...tickets.map((ticket) => ticket.toContentNode(connectorId)),
     ]);
   }
 

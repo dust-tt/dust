@@ -270,7 +270,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     await ZendeskBrand.destroy({ where: { connectorId }, transaction });
   }
 
-  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  toContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getBrandInternalId(connectorId, this.brandId),
@@ -280,7 +280,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       sourceUrl: this.url,
       expandable: true,
       permission:
-        this.helpCenterPermission === "read" ||
+        this.helpCenterPermission === "read" &&
         this.ticketsPermission === "read"
           ? "read"
           : "none",
@@ -289,17 +289,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     };
   }
 
-  getHelpCenterContentNode({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): ContentNode {
+  getHelpCenterContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getHelpCenterInternalId(connectorId, this.brandId),
       parentInternalId: getBrandInternalId(connectorId, this.brandId),
       type: "folder",
-      title: "Help Center",
+      title: `Help Center`,
       sourceUrl: null,
       expandable: true,
       permission: this.helpCenterPermission,
@@ -308,13 +304,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     };
   }
 
-  getTicketsContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  getTicketsContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getTicketsInternalId(connectorId, this.brandId),
       parentInternalId: getBrandInternalId(connectorId, this.brandId),
       type: "folder",
-      title: "Tickets",
+      title: `Tickets`,
       sourceUrl: null,
       expandable: false,
       permission: this.ticketsPermission,
@@ -487,13 +483,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     }
   }
 
-  toContentNode({
-    connectorId,
-    expandable = false,
-  }: {
-    connectorId: number;
-    expandable?: boolean;
-  }): ContentNode {
+  toContentNode(
+    connectorId: number,
+    { expandable = false }: { expandable?: boolean } = {}
+  ): ContentNode {
     return {
       provider: "zendesk",
       internalId: getCategoryInternalId(
@@ -581,7 +574,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     };
   }
 
-  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  toContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getTicketInternalId(connectorId, this.ticketId),
@@ -747,7 +740,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     };
   }
 
-  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  toContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getArticleInternalId(connectorId, this.articleId),
