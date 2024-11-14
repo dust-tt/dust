@@ -547,22 +547,23 @@ export async function syncZendeskTicketUpdateBatchActivity({
     async (ticket) => {
       if (ticket.status === "deleted") {
         return deleteTicket(connectorId, ticket, dataSourceConfig, loggerArgs);
+      } else if (ticket.status === "solved") {
+        const comments = await zendeskApiClient.tickets.getComments(ticket.id);
+        const { result: users } = await zendeskApiClient.users.showMany(
+          comments.map((c) => c.author_id)
+        );
+        return syncTicket({
+          connectorId,
+          ticket,
+          brandId,
+          users,
+          comments,
+          dataSourceConfig,
+          currentSyncDateMs,
+          loggerArgs,
+          forceResync: false,
+        });
       }
-      const comments = await zendeskApiClient.tickets.getComments(ticket.id);
-      const { result: users } = await zendeskApiClient.users.showMany(
-        comments.map((c) => c.author_id)
-      );
-      return syncTicket({
-        connectorId,
-        ticket,
-        brandId,
-        users,
-        comments,
-        dataSourceConfig,
-        currentSyncDateMs,
-        loggerArgs,
-        forceResync: false,
-      });
     },
     { concurrency: 10 }
   );
