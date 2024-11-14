@@ -25,7 +25,7 @@ import assert from "assert";
 import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import {
   parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,

@@ -18,8 +18,9 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
+} from "@app/lib/api/assistant/actions/constants";
 
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
@@ -153,7 +154,7 @@ export async function submitAssistantBuilderForm({
           {
             type: "websearch_configuration",
             name: DEFAULT_WEBSEARCH_ACTION_NAME,
-            description: "Perform a web search",
+            description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
           },
           {
             type: "browse_configuration",

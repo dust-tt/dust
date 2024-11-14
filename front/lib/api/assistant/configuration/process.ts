@@ -6,7 +6,7 @@ import type {
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import { renderRetrievalTimeframeType } from "@app/lib/api/assistant/configuration/helpers";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";

@@ -37,8 +37,9 @@ import assert from "assert";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
+} from "@app/lib/api/assistant/actions/constants";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -133,7 +134,7 @@ function _getDefaultSearchActionForGlobalAgent({
     sId: agentSid + "-search-action",
     type: "websearch_configuration",
     name: DEFAULT_WEBSEARCH_ACTION_NAME,
-    description: `Perform a web search.`,
+    description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   };
 }
 
@@ -337,13 +338,9 @@ function _getO1PreviewGlobalAgent({
       modelId: O1_PREVIEW_MODEL_CONFIG.modelId,
       temperature: 1, // 1 is forced for O1
     },
-    actions: [
-      _getDefaultSearchActionForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.O1,
-      }),
-    ],
+    actions: [],
     maxStepsPerRun: 3,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -382,7 +379,7 @@ function _getO1MiniGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 3,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -414,11 +411,7 @@ function _getClaudeInstantGlobalAgent({
       modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [
-      _getDefaultSearchActionForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
-      }),
-    ],
+    actions: [],
     maxStepsPerRun: 3,
     visualizationEnabled: true,
     templateId: null,
@@ -459,11 +452,7 @@ function _getClaude2GlobalAgent({
       temperature: 0.7,
     },
 
-    actions: [
-      _getDefaultSearchActionForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.CLAUDE_2,
-      }),
-    ],
+    actions: [],
     maxStepsPerRun: 3,
     visualizationEnabled: true,
     templateId: null,
@@ -498,11 +487,7 @@ function _getClaude3HaikuGlobalAgent({
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [
-      _getDefaultSearchActionForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
-      }),
-    ],
+    actions: [],
     maxStepsPerRun: 3,
     visualizationEnabled: true,
     templateId: null,
@@ -542,11 +527,7 @@ function _getClaude3OpusGlobalAgent({
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [
-      _getDefaultSearchActionForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
-      }),
-    ],
+    actions: [],
     maxStepsPerRun: 3,
     visualizationEnabled: true,
     templateId: null,
@@ -587,11 +568,7 @@ function _getClaude3GlobalAgent({
       temperature: 0.7,
     },
 
-    actions: [
-      _getDefaultSearchActionForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
-      }),
-    ],
+    actions: [],
     maxStepsPerRun: 3,
     visualizationEnabled: true,
     templateId: null,
