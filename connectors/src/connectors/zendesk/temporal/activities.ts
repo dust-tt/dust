@@ -72,7 +72,7 @@ export async function saveZendeskConnectorSuccessSync({
     throw new Error("[Zendesk] ZendeskWorkspace not found.");
   }
   await workspace.update({
-    lastSuccessfulSyncStartTs: new Date(currentSyncDateMs),
+    timestampCursor: new Date(currentSyncDateMs),
   });
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
@@ -237,7 +237,7 @@ export async function getZendeskWorkspaceLastSuccessfulSyncTimeActivity(
   if (!workspace) {
     workspace = await ZendeskWorkspaceResource.makeNew({ blob: {} });
   }
-  return workspace.lastSuccessfulSyncStartTs;
+  return workspace.timestampCursor;
 }
 
 /**

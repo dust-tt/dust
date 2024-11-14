@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS "zendesk_workspaces"
     "id"                        SERIAL,
     "createdAt"                 TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt"                 TIMESTAMP WITH TIME ZONE NOT NULL,
-    "lastSuccessfulSyncStartTs" TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    "timestampCursor"           TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     "connectorId"               INTEGER                  NOT NULL REFERENCES "connectors" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );

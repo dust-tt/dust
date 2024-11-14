@@ -17,7 +17,7 @@ export class ZendeskWorkspace extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare lastSuccessfulSyncStartTs: Date | null;
+  declare timestampCursor: Date | null;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -39,7 +39,7 @@ ZendeskWorkspace.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    lastSuccessfulSyncStartTs: {
+    timestampCursor: {
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,

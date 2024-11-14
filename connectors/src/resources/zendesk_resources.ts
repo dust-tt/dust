@@ -94,7 +94,7 @@ export class ZendeskWorkspaceResource extends BaseResource<ZendeskWorkspace> {
       id: this.id,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      lastSuccessfulSyncStartTs: this.lastSuccessfulSyncStartTs,
+      lastSuccessfulSyncStartTs: this.timestampCursor,
       connectorId: this.connectorId,
     };
   }
