@@ -184,7 +184,7 @@ export async function fetchZendeskArticlesInCategory({
   );
 }
 
-export async function fetchZendeskTicketsInBrand({
+export async function fetchSolvedZendeskTicketsInBrand({
   brandSubdomain,
   accessToken,
   pageSize,
@@ -203,16 +203,28 @@ export async function fetchZendeskTicketsInBrand({
     `pageSize must be at most 100 (current value: ${pageSize})`
   );
 
+  const searchQuery = encodeURIComponent("status:solved");
+
+  logger.info(
+    { brandSubdomain, pageSize, cursor, searchQuery },
+    "[Zendesk] Fetching solved tickets from Zendesk API"
+  );
+
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/tickets?status=solved&page[size]=${pageSize}` +
+      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?query=${searchQuery}&filter[type]=ticket&page[size]=${pageSize}` +
       (cursor ? `&page[after]=${cursor}` : ""),
     accessToken,
   });
 
+  logger.info(
+    { response },
+    "[Zendesk] Fetched solved tickets from Zendesk API"
+  );
+
   return response
     ? {
-        tickets: response.tickets || [],
+        tickets: response.results || [],
         meta: {
           has_more: !!response.meta?.has_more,
           after_cursor: response.meta?.after_cursor || "",
