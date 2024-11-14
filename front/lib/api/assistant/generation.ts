@@ -522,8 +522,6 @@ async function renderConversationForModelMultiActions({
     "[ASSISTANT_TRACE] renderConversationForModelMultiActions"
   );
 
-  // console.log("MESSAGES\n", selected.map((m) => JSON.stringify(m)).join("\n"));
-
   return new Ok({
     modelConversation: {
       messages: selected,

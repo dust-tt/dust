@@ -86,8 +86,6 @@ export async function* runAgent(
     throw new Error("Unreachable: could not find owner workspace for agent");
   }
 
-  // console.log(JSON.stringify(conversation));
-
   const stream = runMultiActionsAgentLoop(
     auth,
     fullConfiguration,
