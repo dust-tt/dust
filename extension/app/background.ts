@@ -215,7 +215,6 @@ chrome.runtime.onMessage.addListener(
           state.lastHandler();
           state.lastHandler = undefined;
         }
-        // switchContextMenuActions(message.available);
         return true;
       default:
         log(`Unknown message: ${message}.`);
