@@ -105,3 +105,5 @@ export {
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";
+// Ajoute cette ligne à la fin du fichier
+export { MonBouton } from "./MonBouton/MonBouton";

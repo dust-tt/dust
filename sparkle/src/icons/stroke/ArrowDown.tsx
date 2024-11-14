@@ -11,7 +11,7 @@ const SvgArrowDown = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m13 16.171 5.364-5.364 1.414 1.415L12 20l-7.778-7.778 1.414-1.415L11 16.171V4h2V16.17Z"
+      d="m13 16.172 5.364-5.365 1.414 1.415L12 20l-7.778-7.778 1.414-1.415L11 16.172V4h2v12.172Z"
     />
   </svg>
 );
