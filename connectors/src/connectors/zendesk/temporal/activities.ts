@@ -4,6 +4,11 @@ import {
   getArticleInternalId,
   getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
+import {
+  deleteTicket,
+  syncTicket,
+} from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
@@ -12,11 +17,6 @@ import {
   fetchSolvedZendeskTicketsInBrand,
   fetchZendeskArticlesInCategory,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
-import {
-  deleteTicket,
-  syncTicket,
-} from "@connectors/connectors/zendesk/temporal/sync_ticket";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
