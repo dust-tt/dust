@@ -9,20 +9,20 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-export class ZendeskWorkspace extends Model<
-  InferAttributes<ZendeskWorkspace>,
-  InferCreationAttributes<ZendeskWorkspace>
+export class ZendeskTimestampCursors extends Model<
+  InferAttributes<ZendeskTimestampCursors>,
+  InferCreationAttributes<ZendeskTimestampCursors>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare timestampCursor: Date | null;
+  declare timestampCursor: Date | null; // start date of the last successful sync, null if never successfully synced
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
-ZendeskWorkspace.init(
+ZendeskTimestampCursors.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -51,11 +51,11 @@ ZendeskWorkspace.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(ZendeskWorkspace, {
+ConnectorModel.hasMany(ZendeskTimestampCursors, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-ZendeskWorkspace.belongsTo(ConnectorModel);
+ZendeskTimestampCursors.belongsTo(ConnectorModel);
 
 export class ZendeskConfiguration extends Model<
   InferAttributes<ZendeskConfiguration>,

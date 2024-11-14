@@ -20,6 +20,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -28,7 +29,6 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
   ZendeskTicketResource,
-  ZendeskWorkspaceResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -66,13 +66,14 @@ export async function saveZendeskConnectorSuccessSync({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
-  const workspace =
-    await ZendeskWorkspaceResource.fetchByConnectorId(connectorId);
-  if (!workspace) {
-    throw new Error("[Zendesk] ZendeskWorkspace not found.");
+  const cursors = await ZendeskTimestampCursors.findOne({
+    where: { connectorId },
+  });
+  if (!cursors) {
+    throw new Error("[Zendesk] ZendeskTimestampCursors not found.");
   }
-  await workspace.update({
-    timestampCursor: new Date(currentSyncDateMs),
+  await cursors.update({
+    timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
   });
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
@@ -227,19 +228,21 @@ export async function getAllZendeskBrandsIdsActivity({
 }
 
 /**
- * Retrieves the start date of the last successful sync.
+ * Retrieves the timestamp cursor, which is the start date of the last successful sync.
  */
-export async function getZendeskWorkspaceLastSuccessfulSyncTimeActivity(
+export async function getZendeskTimestampCursorActivity(
   connectorId: ModelId
 ): Promise<Date | null> {
-  let workspace =
-    await ZendeskWorkspaceResource.fetchByConnectorId(connectorId);
-  if (!workspace) {
-    workspace = await ZendeskWorkspaceResource.makeNew({
-      blob: { connectorId },
+  let cursors = await ZendeskTimestampCursors.findOne({
+    where: { connectorId },
+  });
+  if (!cursors) {
+    cursors = await ZendeskTimestampCursors.create({
+      connectorId,
+      timestampCursor: null, // start date of the last successful sync, null for now since we do not know it will succeed
     });
   }
-  return workspace.timestampCursor;
+  return cursors.timestampCursor;
 }
 
 /**

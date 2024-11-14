@@ -1,5 +1,5 @@
 -- Migration created on Nov 14, 2024
-CREATE TABLE IF NOT EXISTS "zendesk_workspaces"
+CREATE TABLE IF NOT EXISTS "zendesk_timestamp_cursors"
 (
     "id"                        SERIAL,
     "createdAt"                 TIMESTAMP WITH TIME ZONE NOT NULL,

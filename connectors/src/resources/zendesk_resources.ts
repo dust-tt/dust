@@ -22,83 +22,9 @@ import {
   ZendeskCategory,
   ZendeskConfiguration,
   ZendeskTicket,
-  ZendeskWorkspace,
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ZendeskWorkspaceResource
-  extends ReadonlyAttributesType<ZendeskWorkspace> {}
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ZendeskWorkspaceResource extends BaseResource<ZendeskWorkspace> {
-  static model: ModelStatic<ZendeskWorkspace> = ZendeskWorkspace;
-
-  constructor(
-    model: ModelStatic<ZendeskWorkspace>,
-    blob: Attributes<ZendeskWorkspace>
-  ) {
-    super(ZendeskWorkspace, blob);
-  }
-
-  static async makeNew({
-    blob,
-    transaction,
-  }: {
-    blob: CreationAttributes<ZendeskWorkspace>;
-    transaction?: Transaction;
-  }): Promise<ZendeskWorkspaceResource> {
-    const configuration = await ZendeskWorkspace.create(
-      { ...blob },
-      transaction && { transaction }
-    );
-    return new this(this.model, configuration.get());
-  }
-
-  static async fetchByConnectorId(
-    connectorId: number
-  ): Promise<ZendeskWorkspaceResource | null> {
-    const workspace = await ZendeskWorkspace.findOne({
-      where: { connectorId },
-    });
-    return workspace && new this(this.model, workspace.get());
-  }
-
-  static async deleteByConnectorId(
-    connectorId: number,
-    transaction: Transaction
-  ): Promise<void> {
-    await this.model.destroy({ where: { connectorId }, transaction });
-  }
-
-  async postFetchHook(): Promise<void> {
-    return;
-  }
-
-  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
-    await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
-      transaction,
-    });
-    return new Ok(undefined);
-  }
-
-  toJSON(): Record<string, unknown> {
-    return {
-      id: this.id,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      lastSuccessfulSyncStartTs: this.timestampCursor,
-      connectorId: this.connectorId,
-    };
-  }
-}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

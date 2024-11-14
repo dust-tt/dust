@@ -31,7 +31,7 @@ const {
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskTicketsAllowedBrandIdsActivity,
-  getZendeskWorkspaceLastSuccessfulSyncTimeActivity,
+  getZendeskTimestampCursorActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -218,12 +218,12 @@ export async function zendeskIncrementalSyncWorkflow({
   connectorId: ModelId;
   currentSyncDateMs: number;
 }) {
-  const [startDate, brandIds] = await Promise.all([
-    getZendeskWorkspaceLastSuccessfulSyncTimeActivity(connectorId),
+  const [cursor, brandIds] = await Promise.all([
+    getZendeskTimestampCursorActivity(connectorId),
     getZendeskTicketsAllowedBrandIdsActivity(connectorId),
   ]);
 
-  const startTimeMs = startDate?.getTime() ?? currentSyncDateMs - 1000 * 60 * 5; // 5 min ago, previous scheduled execution
+  const startTimeMs = cursor?.getTime() ?? currentSyncDateMs - 1000 * 60 * 5; // 5 min ago, previous scheduled execution
   const startTime = Math.floor(startTimeMs / 1000);
 
   for (const brandId of brandIds) {
