@@ -228,7 +228,7 @@ export function AssistantInputBar({
         )}
       >
         <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
-          <RainbowEffectDiv outerClassName="w-full">
+          <RainbowEffectDiv className="w-full">
             <div
               className={classNames(
                 "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
