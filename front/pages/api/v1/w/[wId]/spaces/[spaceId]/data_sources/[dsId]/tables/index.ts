@@ -176,6 +176,16 @@ async function handler(
     });
   }
 
+  if (dataSource.space.kind === "conversations") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you're trying to access was not found",
+      },
+    });
+  }
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   switch (req.method) {

@@ -65,7 +65,12 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+      const allSpaces = await SpaceResource.listWorkspaceSpaces(auth);
+
+      // conversations space should not be shown
+      const spaces = allSpaces.filter(
+        (space) => space.kind !== "conversations"
+      );
 
       const isLegacyRequest = req.url?.includes("/vaults");
       if (isLegacyRequest) {
