@@ -67,6 +67,16 @@ async function handler(
     });
   }
 
+  if (dataSource.space.isConversations()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you're trying to access was not found",
+      },
+    });
+  }
+
   // Only Slack & Webcrawler connectors have configurations.
   // SlackConfiguration.botEnabled can only be updated from a Poke route.
   // So these routes are currently only for Webcrawler connectors.

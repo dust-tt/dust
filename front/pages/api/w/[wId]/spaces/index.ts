@@ -68,6 +68,9 @@ async function handler(
         spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
       }
 
+      // Filter out conversation spaces.
+      spaces = spaces.filter((s) => s.kind !== "conversations");
+
       return res.status(200).json({
         spaces: spaces.map((s) => s.toJSON()),
       });
