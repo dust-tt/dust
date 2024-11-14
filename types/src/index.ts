@@ -23,6 +23,7 @@ export * from "./front/app";
 export * from "./front/assistant/actions/browse";
 export * from "./front/assistant/actions/dust_app_run";
 export * from "./front/assistant/actions/guards";
+export * from "./front/assistant/actions/jit/list_files";
 export * from "./front/assistant/actions/process";
 export * from "./front/assistant/actions/retrieval";
 export * from "./front/assistant/actions/tables_query";
