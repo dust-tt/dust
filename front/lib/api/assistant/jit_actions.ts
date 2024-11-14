@@ -12,17 +12,22 @@ import type {
 import {
   assertNever,
   Err,
+  getTablesQueryResultsFileAttachment,
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isDevelopment,
+  isTablesQueryActionType,
   isTextContent,
   isUserMessageType,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
 
-import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
+import {
+  getTextContentFromMessage,
+  getTextRepresentationFromMessages,
+} from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
@@ -219,18 +224,7 @@ export async function renderConversationForModelJIT({
 
   // Compute in parallel the token count for each message and the prompt.
   const res = await tokenCountForTexts(
-    [
-      prompt,
-      ...messages.map((m) => {
-        let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
-        if ("function_calls" in m) {
-          text += m.function_calls
-            .map((f) => `${f.name} ${f.arguments}`)
-            .join(" ");
-        }
-        return text;
-      }),
-    ],
+    [prompt, ...getTextRepresentationFromMessages(messages)],
     model
   );
 
@@ -340,6 +334,50 @@ export async function renderConversationForModelJIT({
     }
   }
 
+  if (selected.length > 0) {
+    const { filesAsXML, hasFiles } = await listConversationFiles({
+      conversation,
+    });
+    if (hasFiles) {
+      const randomCallId =
+        "list_conversation_files_" + Math.random().toString(36).substring(7);
+      const functionName = "list_conversation_files";
+
+      const simulatedAgentMessages = [
+        // 1. We add a message from the agent, asking to use the files listing function
+        {
+          role: "assistant",
+          content: "Please list the files available to this conversation.",
+          function_calls: [
+            {
+              id: randomCallId,
+              name: functionName,
+              arguments: "{}",
+            },
+          ],
+        } as AssistantFunctionCallMessageTypeModel,
+
+        // 2. We add a message with the resulting files listing
+        {
+          function_call_id: randomCallId,
+          role: "function",
+          name: functionName,
+          content: filesAsXML,
+        } as FunctionMessageTypeModel,
+      ];
+
+      // Update the list of messages and the tokens count.
+      for (const m of simulatedAgentMessages) {
+        const approxSimulatedAgentMessagesTokenCount =
+          getTextRepresentationFromMessages([m]).join("").length / 3;
+
+        selected.push(m);
+        messagesCount.push(approxSimulatedAgentMessagesTokenCount);
+        tokensUsed += approxSimulatedAgentMessagesTokenCount;
+      }
+    }
+  }
+
   while (
     selected.length > 0 &&
     // Most model providers don't support starting by a function result or assistant message.
@@ -369,4 +407,44 @@ export async function renderConversationForModelJIT({
     },
     tokensUsed,
   });
+}
+
+async function listConversationFiles({
+  conversation,
+}: {
+  conversation: ConversationType;
+}) {
+  const fileAttachments: string[] = [];
+  for (const m of conversation.content.flat(1)) {
+    if (isContentFragmentType(m)) {
+      if (!m.fileId) {
+        continue;
+      }
+      fileAttachments.push(
+        `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}" />`
+      );
+    } else if (isAgentMessageType(m)) {
+      for (const a of m.actions) {
+        if (isTablesQueryActionType(a)) {
+          const attachment = getTablesQueryResultsFileAttachment({
+            resultsFileId: a.resultsFileId,
+            resultsFileSnippet: a.resultsFileSnippet,
+            output: a.output,
+            includeSnippet: false,
+          });
+          if (attachment) {
+            fileAttachments.push(attachment);
+          }
+        }
+      }
+    }
+  }
+  let filesAsXML = "<files>\n";
+
+  if (fileAttachments.length > 0) {
+    filesAsXML += fileAttachments.join("\n");
+  }
+  filesAsXML += "\n</files>";
+
+  return { filesAsXML, hasFiles: fileAttachments.length > 0 };
 }

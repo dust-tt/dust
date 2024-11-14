@@ -32,7 +32,10 @@ import {
   isJITActionsEnabled,
   renderConversationForModelJIT,
 } from "@app/lib/api/assistant/jit_actions";
-import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
+import {
+  getTextContentFromMessage,
+  getTextRepresentationFromMessages,
+} from "@app/lib/api/assistant/utils";
 import { getVisualizationPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
@@ -386,18 +389,7 @@ async function renderConversationForModelMultiActions({
 
   // Compute in parallel the token count for each message and the prompt.
   const res = await tokenCountForTexts(
-    [
-      prompt,
-      ...messages.map((m) => {
-        let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
-        if ("function_calls" in m) {
-          text += m.function_calls
-            .map((f) => `${f.name} ${f.arguments}`)
-            .join(" ");
-        }
-        return text;
-      }),
-    ],
+    [prompt, ...getTextRepresentationFromMessages(messages)],
     model
   );
 
