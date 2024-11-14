@@ -1,4 +1,4 @@
-import { Page } from "@dust-tt/sparkle";
+import { Button, Page } from "@dust-tt/sparkle";
 import type {
   AgentMessageType,
   ContentFragmentType,
@@ -9,6 +9,7 @@ import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { DustProdActionRegistry } from "@app/lib/registry";
 import { useConversation } from "@app/poke/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
@@ -67,7 +68,9 @@ const AgentMessageView = ({ message }: { message: AgentMessageType }) => {
         </a>
         {")"}
       </div>
-      <div className="text-element-600">version={message.version}</div>
+      <div className="text-element-600">
+        version={message.version} {message.actions.length}
+      </div>
       {message.actions.map((a, i) => {
         return (
           <div key={`action-${i}`} className="pl-2 text-element-600">
@@ -111,21 +114,29 @@ const ConversationPage = ({
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { conversation } = useConversation({ workspaceId, conversationId });
-
+  const multiActionsApp =
+    DustProdActionRegistry["assistant-v2-multi-actions-agent"];
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
       {conversation && (
         <div className="mx-auto max-w-4xl pt-8">
           <Page.Vertical align="stretch">
-            <div className="ml-4 text-sm text-element-600">
-              <a
+            <div className="flex space-x-2">
+              <Button
                 href={`http://go/trace-conversation/${conversation.sId}`}
+                label="Trace Conversation"
+                variant="primary"
+                size="xs"
                 target="_blank"
-                className="text-action-500"
-              >
-                [trace-conversation]
-              </a>
+              />
+              <Button
+                href={`/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs?wIdTarget=${workspaceId}`}
+                label="Dust apps logs for workspace"
+                variant="primary"
+                size="xs"
+                target="_blank"
+              />
             </div>
             {conversation.content.map((messages, i) => {
               return (
