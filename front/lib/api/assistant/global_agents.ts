@@ -133,7 +133,7 @@ function _getDefaultSearchActionForGlobalAgent({
     sId: agentSid + "-search-action",
     type: "websearch_configuration",
     name: DEFAULT_WEBSEARCH_ACTION_NAME,
-    description: `Perform a web search. Do not use for common knowledge questions.`,
+    description: `Perform a web search.`,
   };
 }
 
