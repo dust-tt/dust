@@ -70,11 +70,16 @@ export async function saveZendeskConnectorSuccessSync({
     where: { connectorId },
   });
   if (!cursors) {
-    throw new Error("[Zendesk] ZendeskTimestampCursors not found.");
+    // can be missing if the first sync was not within an incremental workflow
+    await ZendeskTimestampCursors.create({
+      connectorId,
+      timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
+    });
+  } else {
+    await cursors.update({
+      timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
+    });
   }
-  await cursors.update({
-    timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
-  });
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
     throw res.error;
