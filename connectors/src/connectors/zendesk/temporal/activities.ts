@@ -235,7 +235,9 @@ export async function getZendeskWorkspaceLastSuccessfulSyncTimeActivity(
   let workspace =
     await ZendeskWorkspaceResource.fetchByConnectorId(connectorId);
   if (!workspace) {
-    workspace = await ZendeskWorkspaceResource.makeNew({ blob: {} });
+    workspace = await ZendeskWorkspaceResource.makeNew({
+      blob: { connectorId },
+    });
   }
   return workspace.timestampCursor;
 }
