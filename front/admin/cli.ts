@@ -7,10 +7,8 @@ import {
 import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import {
-  getTextContentFromMessage,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";

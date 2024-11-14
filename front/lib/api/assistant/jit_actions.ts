@@ -22,7 +22,7 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 
-import { getTextContentFromMessage } from "@app/lib/api/assistant/generation";
+import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";

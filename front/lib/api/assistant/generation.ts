@@ -32,6 +32,7 @@ import {
   isJITActionsEnabled,
   renderConversationForModelJIT,
 } from "@app/lib/api/assistant/jit_actions";
+import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getVisualizationPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
@@ -157,30 +158,6 @@ export async function constructPromptMultiActions(
   }
 
   return prompt;
-}
-
-export function getTextContentFromMessage(
-  message: ModelMessageTypeMultiActions
-): string {
-  const { content } = message;
-
-  if (typeof content === "string") {
-    return content;
-  }
-
-  if (!content) {
-    return "";
-  }
-
-  return content
-    ?.map((c) => {
-      if (isTextContent(c)) {
-        return c.text;
-      }
-
-      return c.image_url.url;
-    })
-    .join("\n");
 }
 
 /**
