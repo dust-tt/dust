@@ -11,11 +11,25 @@ export type JITListFilesConfigurationType = {
   description: string | null;
 };
 
+export type JITFileType = {
+  fileId: string;
+  title: string;
+  contentType: string;
+};
+
 export interface JITListFilesActionType extends BaseAction {
   agentMessageId: ModelId;
-  files: string[];
+  files: JITFileType[];
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
   type: "jit_list_files_action";
 }
+
+export type JITListFilesSuccessEvent = {
+  type: "jit_list_files_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: JITListFilesActionType;
+};
