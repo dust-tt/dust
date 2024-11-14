@@ -83,7 +83,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
-  generateLegacyModelSId,
+  generateRandomModelSId,
   getResourceIdFromSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -112,7 +112,7 @@ export async function createConversation(
   }
 
   const conversation = await Conversation.create({
-    sId: generateLegacyModelSId(),
+    sId: generateRandomModelSId(),
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
@@ -791,7 +791,7 @@ export async function* postUserMessage(
       async function createMessageAndUserMessage() {
         return Message.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             rank: nextMessageRank++,
             conversationId: conversation.id,
             parentId: null,
@@ -871,7 +871,7 @@ export async function* postUserMessage(
               );
               const messageRow = await Message.create(
                 {
-                  sId: generateLegacyModelSId(),
+                  sId: generateRandomModelSId(),
                   rank: nextMessageRank++,
                   conversationId: conversation.id,
                   parentId: userMessage.id,
@@ -1260,7 +1260,7 @@ export async function* editUserMessage(
       async function createMessageAndUserMessage(messageRow: Message) {
         return Message.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
@@ -1355,7 +1355,7 @@ export async function* editUserMessage(
             );
             const messageRow = await Message.create(
               {
-                sId: generateLegacyModelSId(),
+                sId: generateRandomModelSId(),
                 rank: nextMessageRank++,
                 conversationId: conversation.id,
                 parentId: userMessage.id,
@@ -1603,7 +1603,7 @@ export async function* retryAgentMessage(
       );
       const m = await Message.create(
         {
-          sId: generateLegacyModelSId(),
+          sId: generateRandomModelSId(),
           rank: messageRow.rank,
           conversationId: conversation.id,
           parentId: messageRow.parentId,
@@ -1756,7 +1756,7 @@ export async function postNewContentFragment(
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
-  const messageId = generateLegacyModelSId();
+  const messageId = generateRandomModelSId();
 
   const cfBlobRes = await getContentFragmentBlob(
     auth,

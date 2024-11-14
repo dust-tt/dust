@@ -137,7 +137,7 @@ export function getResourceNameAndIdFromSId(
 /**
  * Generates 10-character long model SId from [A-Za-z0-9] characters.
  */
-export function generateLegacyModelSId(prefix?: string): string {
+export function generateRandomModelSId(prefix?: string): string {
   const u = uuidv4();
   const b = blake3(u, { length: 10 });
   const sId = Buffer.from(b)

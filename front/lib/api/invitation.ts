@@ -19,7 +19,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipInvitation } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -128,7 +128,7 @@ export async function updateOrCreateInvitation(
   return typeFromModel(
     owner,
     await MembershipInvitation.create({
-      sId: generateLegacyModelSId(),
+      sId: generateRandomModelSId(),
       workspaceId: owner.id,
       inviteEmail: sanitizeString(inviteEmail),
       status: "pending",

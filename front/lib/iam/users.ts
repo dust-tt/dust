@@ -4,7 +4,7 @@ import { sanitizeString } from "@dust-tt/types";
 
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
@@ -140,7 +140,7 @@ export async function createOrUpdateUser(
     );
 
     const u = await UserResource.makeNew({
-      sId: generateLegacyModelSId(),
+      sId: generateRandomModelSId(),
       auth0Sub: externalUser.sub,
       provider: mapAuth0ProviderToLegacy(session)?.provider ?? null,
       username: externalUser.nickname,

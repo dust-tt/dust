@@ -3,7 +3,7 @@
 // import { Plan, Subscription } from "@app/lib/models/plan";
 // import { Workspace } from "@app/lib/models/workspace";
 // import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
-// import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+// import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 //
 // async function main() {
 //   const workspaces = await Workspace.findAll({
@@ -47,7 +47,7 @@
 //         if (workspace.upgradedAt) {
 //           // We subscribe to Free Trial plan
 //           await Subscription.create({
-//             sId: generateLegacyModelSId(),
+//             sId: generateRandomModelSId(),
 //             workspaceId: workspace.id,
 //             planId: freeUpgradedPlan.id,
 //             status: "active",
