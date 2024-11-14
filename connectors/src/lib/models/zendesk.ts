@@ -47,7 +47,7 @@ ZendeskTimestampCursors.init(
   },
   {
     sequelize: sequelizeConnection,
-    modelName: "zendesk_workspaces",
+    modelName: "zendesk_timestamp_cursors",
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
