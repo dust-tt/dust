@@ -272,6 +272,16 @@ export async function getManagedDataSourcePermissionsHandler(
     includeParents,
   });
   if (permissionsRes.isErr()) {
+    if (permissionsRes.error.type === "connector_rate_limit_error") {
+      return apiError(req, res, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message:
+            "Rate limit error while retrieving the data source permissions",
+        },
+      });
+    }
     return apiError(req, res, {
       status_code: 500,
       api_error: {
