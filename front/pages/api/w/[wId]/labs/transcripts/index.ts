@@ -33,7 +33,7 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner.id);
+  const flags = await getFeatureFlags(owner);
 
   if (!flags.includes("labs_transcripts")) {
     return apiError(req, res, {

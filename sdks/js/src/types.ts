@@ -622,6 +622,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema([
   "snowflake_connector_feature",
   "zendesk_connector_feature",
   "index_private_slack_channel",
+  "conversations_jit_actions",
 ]);
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

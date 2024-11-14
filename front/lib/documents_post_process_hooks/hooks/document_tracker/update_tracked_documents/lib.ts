@@ -35,7 +35,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
     documentId,
   });
 
-  const flags = await getFeatureFlags(owner.id);
+  const flags = await getFeatureFlags(owner);
 
   if (!flags.includes("document_tracker")) {
     return false;
