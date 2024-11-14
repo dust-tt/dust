@@ -252,7 +252,7 @@ ZendeskCategory.init(
       allowNull: false,
     },
     description: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     url: {
@@ -419,7 +419,7 @@ ZendeskTicket.init(
       allowNull: false,
     },
     subject: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     ticketId: {
