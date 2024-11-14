@@ -27,8 +27,8 @@ import {
   ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
-  ZendeskConfigurationResource,
   ZendeskTicketResource,
+  ZendeskWorkspaceResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -66,12 +66,12 @@ export async function saveZendeskConnectorSuccessSync({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
-  const configuration =
-    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
-  if (!configuration) {
-    throw new Error("[Zendesk] ZendeskConfiguration not found.");
+  const workspace =
+    await ZendeskWorkspaceResource.fetchByConnectorId(connectorId);
+  if (!workspace) {
+    throw new Error("[Zendesk] ZendeskWorkspace not found.");
   }
-  await configuration.update({
+  await workspace.update({
     lastSuccessfulSyncStartTs: new Date(currentSyncDateMs),
   });
   const res = await syncSucceeded(connector.id);
@@ -224,6 +224,20 @@ export async function getAllZendeskBrandsIdsActivity({
   connectorId: ModelId;
 }): Promise<number[]> {
   return ZendeskBrandResource.fetchAllBrandIds({ connectorId });
+}
+
+/**
+ * Retrieves the start date of the last successful sync.
+ */
+export async function getZendeskWorkspaceLastSuccessfulSyncTimeActivity(
+  connectorId: ModelId
+): Promise<Date | null> {
+  let workspace =
+    await ZendeskWorkspaceResource.fetchByConnectorId(connectorId);
+  if (!workspace) {
+    workspace = await ZendeskWorkspaceResource.makeNew({ blob: {} });
+  }
+  return workspace.lastSuccessfulSyncStartTs;
 }
 
 /**
@@ -501,11 +515,13 @@ export async function syncZendeskTicketBatchActivity({
 export async function syncZendeskTicketUpdateBatchActivity({
   connectorId,
   brandId,
+  startTime,
   currentSyncDateMs,
   cursor,
 }: {
   connectorId: ModelId;
   brandId: number;
+  startTime: number;
   currentSyncDateMs: number;
   cursor: string | null;
 }): Promise<{ hasMore: boolean; afterCursor: string | null }> {
@@ -529,11 +545,6 @@ export async function syncZendeskTicketUpdateBatchActivity({
     connectorId,
     brandId,
   });
-
-  const startTimeMs =
-    connector.lastSyncSuccessfulTime?.getTime() ??
-    currentSyncDateMs - 1000 * 60 * 5; // 5 min ago, previous scheduled execution
-  const startTime = Math.floor(startTimeMs / 1000);
 
   const { tickets, after_cursor, end_of_stream } =
     await fetchRecentlyUpdatedTickets({

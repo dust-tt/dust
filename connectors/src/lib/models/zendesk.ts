@@ -9,6 +9,54 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
+export class ZendeskWorkspace extends Model<
+  InferAttributes<ZendeskWorkspace>,
+  InferCreationAttributes<ZendeskWorkspace>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare lastSuccessfulSyncStartTs: Date | null;
+
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
+}
+
+ZendeskWorkspace.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastSuccessfulSyncStartTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "zendesk_workspaces",
+    indexes: [{ fields: ["connectorId"], unique: true }],
+  }
+);
+ConnectorModel.hasMany(ZendeskWorkspace, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+ZendeskWorkspace.belongsTo(ConnectorModel);
+
 export class ZendeskConfiguration extends Model<
   InferAttributes<ZendeskConfiguration>,
   InferCreationAttributes<ZendeskConfiguration>
@@ -16,8 +64,6 @@ export class ZendeskConfiguration extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-
-  declare lastSuccessfulSyncStartTs: Date | null;
 
   declare subdomain: string;
   declare conversationsSlidingWindow: number;
@@ -41,11 +87,6 @@ ZendeskConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    lastSuccessfulSyncStartTs: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null,
     },
     subdomain: {
       type: DataTypes.STRING,
