@@ -494,16 +494,35 @@ function NewActionModal({
     }
   }, [initialAction, newAction]);
 
-  const titleValid =
-    (initialAction && initialAction?.name === newAction?.name) ||
-    ((newAction?.name?.trim() ?? "").length > 0 &&
-      !builderState.actions.some((a) => a.name === newAction?.name) &&
-      /^[a-z0-9_]+$/.test(newAction?.name ?? "") &&
-      // We reserve the name we use for capability actions, as these aren't
-      // configurable via the "add tool" menu.
-      !CAPABILITIES_ACTION_CATEGORIES.some(
-        (c) => getDefaultActionConfiguration(c)?.name === newAction?.name
-      ));
+  const titleError =
+    initialAction && initialAction?.name !== newAction?.name
+      ? getActionNameError(newAction?.name, builderState.actions)
+      : null;
+
+  function getActionNameError(
+    name: string | undefined,
+    existingActions: AssistantBuilderActionConfiguration[]
+  ): string | null {
+    if (!name || name.trim().length === 0) {
+      return "The name cannot be empty.";
+    }
+    if (existingActions.some((a) => a.name === name)) {
+      return "This name is already used for another tool. Please use a different name.";
+    }
+    if (!/^[a-z0-9_]+$/.test(name)) {
+      return "The name can only contain lowercase letters, numbers, and underscores (no spaces).";
+    }
+    // We reserve the name we use for capability actions, as these aren't
+    // configurable via the "add tool" menu.
+    const isReservedName = CAPABILITIES_ACTION_CATEGORIES.some(
+      (c) => getDefaultActionConfiguration(c)?.name === name
+    );
+    if (isReservedName) {
+      return "This name is reserved for a system tool. Please use a different name.";
+    }
+
+    return null;
+  }
 
   const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
 
@@ -527,7 +546,7 @@ function NewActionModal({
       onSave={() => {
         if (
           newAction &&
-          titleValid &&
+          !titleError &&
           descriptionValid &&
           !hasActionError(newAction)
         ) {
@@ -536,10 +555,8 @@ function NewActionModal({
           onSave(newAction);
           onCloseLocal();
         } else {
-          if (!titleValid) {
-            setShowInvalidActionNameError(
-              "This name is already used for another tool. Please use a different name."
-            );
+          if (titleError) {
+            setShowInvalidActionNameError(titleError);
           }
           if (!descriptionValid) {
             setShowInvalidActionDescError("Description cannot be empty.");

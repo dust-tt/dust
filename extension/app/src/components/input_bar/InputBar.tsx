@@ -34,7 +34,7 @@ export function AssistantInputBar({
   disableAutoFocus = false,
   conversation,
   isTabIncluded,
-  toggleIncludeTab,
+  setIncludeTab,
 }: {
   owner: LightWorkspaceType;
   onSubmit: (
@@ -47,7 +47,7 @@ export function AssistantInputBar({
   disableAutoFocus?: boolean;
   conversation?: ConversationPublicType;
   isTabIncluded: boolean;
-  toggleIncludeTab: () => void;
+  setIncludeTab: (includeTab: boolean) => void;
 }) {
   const dustAPI = useDustAPI();
 
@@ -170,6 +170,8 @@ export function AssistantInputBar({
     }
   }, [isStopping, generationContext.generatingMessages, conversation?.sId]);
 
+  const { setAttachPageBlinking } = useContext(InputBarContext);
+
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
@@ -181,7 +183,6 @@ export function AssistantInputBar({
     if (isEmpty) {
       return;
     }
-
     const { mentions: rawMentions, text } = textAndMentions;
     const mentions: AgentMentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
@@ -189,6 +190,7 @@ export function AssistantInputBar({
     const newFiles = fileUploaderService.getFileBlobs().map((cf) => ({
       title: cf.filename,
       fileId: cf.fileId,
+      url: cf.publicUrl,
     }));
 
     resetEditorText();
@@ -199,12 +201,16 @@ export function AssistantInputBar({
         includeScreenshot: false,
         conversation,
         updateBlobs: false,
+        onUpload: () => {
+          setAttachPageBlinking(true);
+        },
       });
       if (files) {
         newFiles.push(
           ...files.map((cf) => ({
             title: cf.filename,
             fileId: cf.fileId || "",
+            url: cf.publicUrl,
           }))
         );
       }
@@ -255,7 +261,7 @@ export function AssistantInputBar({
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 isTabIncluded={isTabIncluded}
-                toggleIncludeTab={toggleIncludeTab}
+                setIncludeTab={setIncludeTab}
                 fileUploaderService={fileUploaderService}
               />
             </div>

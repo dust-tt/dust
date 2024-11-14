@@ -800,11 +800,20 @@ export async function formatMessagesForUpsert({
       const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
       const messageDateStr = formatDateForUpsert(messageDate);
 
+      const filesInfo = message.files
+        ? "\n" +
+          message.files
+            .map((file) => {
+              return `Attached file : ${file.name} ( ${file.mimetype} )`;
+            })
+            .join("\n")
+        : "";
+
       return {
         messageDate,
         dateStr: messageDateStr,
         userName,
-        text: text,
+        text: text + filesInfo,
         content: text + "\n",
         sections: [],
       };

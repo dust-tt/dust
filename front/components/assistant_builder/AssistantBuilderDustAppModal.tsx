@@ -1,4 +1,11 @@
-import { CommandLineIcon, Item, Modal, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  CommandLineIcon,
+  ContextItem,
+  Icon,
+  Modal,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { AppType, LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { sortBy } from "lodash";
@@ -6,6 +13,7 @@ import { useMemo } from "react";
 
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { classNames } from "@app/lib/utils";
 
 interface AssistantBuilderDustAppModalProps {
   allowedSpaces: SpaceType[];
@@ -108,7 +116,7 @@ function PickDustApp({
               }
 
               return (
-                <>
+                <ContextItem.List>
                   {sortBy(
                     allowedDustApps,
                     (a) => !a.description || a.description.length === 0,
@@ -117,20 +125,31 @@ function PickDustApp({
                     const disabled =
                       !app.description || app.description.length === 0;
                     return (
-                      <Item
-                        style="action"
-                        spacing="md"
-                        label={app.name + (disabled ? " (No description)" : "")}
-                        icon={CommandLineIcon}
-                        disabled={disabled}
+                      <ContextItem
                         key={app.sId}
-                        onClick={() => {
-                          onPick(app);
-                        }}
+                        title={
+                          <span
+                            className={classNames(
+                              disabled
+                                ? "s-text-element-500"
+                                : "s-text-element-900"
+                            )}
+                          >
+                            {app.name + (disabled ? " (No description)" : "")}
+                          </span>
+                        }
+                        visual={
+                          <Icon
+                            visual={CommandLineIcon}
+                            size="md"
+                            className={disabled ? "s-text-element-500" : ""}
+                          />
+                        }
+                        onClick={disabled ? undefined : () => onPick(app)}
                       />
                     );
                   })}
-                </>
+                </ContextItem.List>
               );
             }}
           />

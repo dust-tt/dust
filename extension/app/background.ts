@@ -6,6 +6,7 @@ import {
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
 } from "./src/lib/config";
+import { extractPage } from "./src/lib/extraction";
 import type {
   Auth0AuthorizeResponse,
   AuthBackgroundMessage,
@@ -145,7 +146,7 @@ chrome.runtime.onMessage.addListener(
                         }
                       : {
                           target: { tabId: tab.id },
-                          func: () => document.documentElement.innerText,
+                          func: extractPage(tab.url || ""),
                         }
                   )
                 : [undefined];

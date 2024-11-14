@@ -13,12 +13,13 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
+
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
-  syncZendeskArticlesBatchActivity,
-  syncZendeskTicketsBatchActivity,
+  syncZendeskArticleBatchActivity,
+  syncZendeskTicketBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -218,9 +219,6 @@ export async function zendeskBrandSyncWorkflow({
     brandId,
     currentSyncDateMs,
   });
-  if (!helpCenterAllowed && !ticketsAllowed) {
-    return; // nothing to sync since we don't have permission anymore
-  }
   if (helpCenterAllowed) {
     await runZendeskBrandHelpCenterSyncActivities({
       connectorId,
@@ -258,15 +256,14 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
     connectorId,
     brandId,
   });
-  if (!isHelpCenterAllowed) {
-    return; // nothing to sync
+  if (isHelpCenterAllowed) {
+    await runZendeskBrandHelpCenterSyncActivities({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+    });
   }
-  await runZendeskBrandHelpCenterSyncActivities({
-    connectorId,
-    brandId,
-    currentSyncDateMs,
-    forceResync,
-  });
 }
 
 /**
@@ -287,15 +284,14 @@ export async function zendeskBrandTicketsSyncWorkflow({
     connectorId,
     brandId,
   });
-  if (!areTicketsAllowed) {
-    return; // nothing to sync
+  if (areTicketsAllowed) {
+    await runZendeskBrandTicketsSyncActivities({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+    });
   }
-  await runZendeskBrandTicketsSyncActivities({
-    connectorId,
-    brandId,
-    currentSyncDateMs,
-    forceResync,
-  });
 }
 
 /**
@@ -321,23 +317,16 @@ export async function zendeskCategorySyncWorkflow({
     currentSyncDateMs,
     brandId,
   });
-  if (!wasCategoryUpdated) {
-    return; // nothing to sync
-  }
-
-  let cursor = null; // cursor involved in the pagination of the API
-  let hasMore = true;
-
-  while (hasMore) {
-    const result = await syncZendeskArticlesBatchActivity({
-      connectorId,
-      categoryId,
-      currentSyncDateMs,
-      forceResync,
-      cursor,
-    });
-    hasMore = result.hasMore || false;
-    cursor = result.afterCursor;
+  if (wasCategoryUpdated) {
+    await runZendeskActivityWithPagination((cursor) =>
+      syncZendeskArticleBatchActivity({
+        connectorId,
+        categoryId,
+        currentSyncDateMs,
+        forceResync,
+        cursor,
+      })
+    );
   }
 }
 
@@ -373,20 +362,15 @@ async function runZendeskBrandHelpCenterSyncActivities({
   }
 
   for (const categoryId of categoryIdsToSync) {
-    let hasMore = true;
-    let cursor = null; // cursor involved in the pagination of the API
-
-    while (hasMore) {
-      const result = await syncZendeskArticlesBatchActivity({
+    await runZendeskActivityWithPagination((cursor) =>
+      syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
         forceResync,
         cursor,
-      });
-      hasMore = result.hasMore || false;
-      cursor = result.afterCursor;
-    }
+      })
+    );
   }
 }
 
@@ -404,18 +388,31 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  let cursor: string | null = null;
-  let hasMore = true;
-
-  while (hasMore) {
-    const result = await syncZendeskTicketsBatchActivity({
+  await runZendeskActivityWithPagination((cursor) =>
+    syncZendeskTicketBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,
       forceResync,
       cursor,
-    });
+    })
+  );
+}
+
+/**
+ * Runs an activity function with cursor-based pagination.
+ */
+async function runZendeskActivityWithPagination(
+  activity: (
+    cursor: string | null
+  ) => Promise<{ hasMore: boolean; afterCursor: string | null }>
+): Promise<void> {
+  let cursor: string | null = null; // cursor involved in the pagination of the API
+  let hasMore = true;
+
+  while (hasMore) {
+    const result = await activity(cursor);
     hasMore = result.hasMore || false;
-    cursor = result.nextCursor;
+    cursor = result.afterCursor;
   }
 }

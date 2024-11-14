@@ -4,9 +4,10 @@ import {
   CommandLineIcon,
   FolderIcon,
   GlobeAltIcon,
-  Item,
+  NavigationList,
   NavigationListLabel,
   PlusIcon,
+  ScrollArea,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -63,7 +64,6 @@ export default function SpaceSideBarMenu({
       workspaceId: owner.sId,
     });
 
-  // Spaces that are in the spacesAsUser list should be displayed first, use the name as a tiebreaker.
   const compareSpaces = useCallback(
     (s1: SpaceType, s2: SpaceType) => {
       const s1IsMember = !!spacesAsUser.find((s) => s.sId === s1.sId);
@@ -88,88 +88,90 @@ export default function SpaceSideBarMenu({
     return <></>;
   }
 
-  // Group by section and sort.
-  const sortedGroupedSpaces = groupSpaces(spaces)
-    // Remove the empty system menu for users & builders.
-    .filter(
-      ({ section, spaces }) => section !== "system" || spaces.length !== 0
-    );
+  const sortedGroupedSpaces = groupSpaces(spaces).filter(
+    ({ section, spaces }) => section !== "system" || spaces.length !== 0
+  );
+
+  // Function to render space items.
+  const renderSpaceItems = (
+    spaces: SpaceType[],
+    spacesAsUser: SpaceType[],
+    owner: LightWorkspaceType
+  ) => {
+    return spaces.map((space) => (
+      <Fragment key={`space-${space.sId}`}>
+        {space.kind === "system" ? (
+          <NavigationList>
+            <SystemSpaceMenu owner={owner} space={space} />
+          </NavigationList>
+        ) : (
+          <NavigationList>
+            <SpaceMenu
+              owner={owner}
+              space={space}
+              isMember={!!spacesAsUser.find((v) => v.sId === space.sId)}
+            />
+          </NavigationList>
+        )}
+      </Fragment>
+    ));
+  };
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
-      <div className="flex w-full flex-col px-2">
-        <Item.List>
-          {sortedGroupedSpaces.map(({ section, spaces }, index) => {
-            // Public spaces are created manually by us to hold public dust apps - other workspaces
-            // can't create them, so we do not show the section at all if there are no spaces.
-            if (section === "public" && !spaces.length) {
-              return null;
-            }
+      <ScrollArea className="w-full">
+        <div className="px-2 pb-2">
+          <NavigationList>
+            {sortedGroupedSpaces.map(({ section, spaces }, index) => {
+              if (section === "public" && !spaces.length) {
+                return null;
+              }
 
-            if (section === "restricted" && !spaces.length && !isAdmin) {
-              return null;
-            }
+              if (section === "restricted" && !spaces.length && !isAdmin) {
+                return null;
+              }
 
-            const sectionDetails = getSpaceSectionDetails(section);
+              const sectionDetails = getSpaceSectionDetails(section);
 
-            return (
-              <Fragment key={`space-section-${index}`}>
-                <div className="flex items-center justify-between">
-                  <NavigationListLabel
-                    label={sectionDetails.label}
-                    variant="secondary"
-                  />
-                  {sectionDetails.displayCreateSpaceButton &&
-                    isAdmin &&
-                    openSpaceCreationModal && (
-                      <Button
-                        className="mt-4"
-                        size="xs"
-                        variant="ghost"
-                        label="New"
-                        icon={PlusIcon}
-                        onClick={() =>
-                          openSpaceCreationModal({
-                            defaultRestricted: sectionDetails.defaultRestricted,
-                          })
-                        }
-                      />
-                    )}
-                </div>
-                {renderSpaceItems(
-                  spaces.toSorted(compareSpaces),
-                  spacesAsUser,
-                  owner
-                )}
-              </Fragment>
-            );
-          })}
-        </Item.List>
-      </div>
+              return (
+                <Fragment key={`space-section-${index}`}>
+                  <div className="flex items-center justify-between">
+                    <NavigationListLabel
+                      label={sectionDetails.label}
+                      variant="secondary"
+                    />
+                    {sectionDetails.displayCreateSpaceButton &&
+                      isAdmin &&
+                      openSpaceCreationModal && (
+                        <Button
+                          className="mt-4"
+                          size="xs"
+                          variant="ghost"
+                          label="New"
+                          icon={PlusIcon}
+                          onClick={() =>
+                            openSpaceCreationModal({
+                              defaultRestricted:
+                                sectionDetails.defaultRestricted,
+                            })
+                          }
+                        />
+                      )}
+                  </div>
+                  {renderSpaceItems(
+                    spaces.toSorted(compareSpaces),
+                    spacesAsUser,
+                    owner
+                  )}
+                </Fragment>
+              );
+            })}
+          </NavigationList>
+        </div>
+      </ScrollArea>
     </div>
   );
 }
-
-// Function to render space items.
-const renderSpaceItems = (
-  spaces: SpaceType[],
-  spacesAsUser: SpaceType[],
-  owner: LightWorkspaceType
-) => {
-  return spaces.map((space) => (
-    <Fragment key={`space-${space.sId}`}>
-      {space.kind === "system" ? (
-        <SystemSpaceMenu owner={owner} space={space} />
-      ) : (
-        <SpaceMenu
-          owner={owner}
-          space={space}
-          isMember={!!spacesAsUser.find((v) => v.sId === space.sId)}
-        />
-      )}
-    </Fragment>
-  ));
-};
 
 type SpaceSectionStructureType =
   | {

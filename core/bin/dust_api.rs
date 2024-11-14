@@ -41,7 +41,7 @@ use dust::{
         database::{execute_query, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
-    databases_store::store::{self as databases_store, DatabasesStore},
+    databases_store::store::{self as databases_store},
     dataset,
     deno::js_executor::JSExecutor,
     project,
@@ -2925,7 +2925,6 @@ fn main() {
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
             Ok(db_uri) => {
                 let store = postgres::PostgresStore::new(&db_uri).await?;
-                store.init().await?;
                 Box::new(store)
             }
             Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
@@ -2934,7 +2933,6 @@ fn main() {
             match std::env::var("DATABASES_STORE_DATABASE_URI") {
                 Ok(db_uri) => {
                     let s = databases_store::PostgresDatabasesStore::new(&db_uri).await?;
-                    s.init().await?;
                     Box::new(s)
                 }
                 Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,

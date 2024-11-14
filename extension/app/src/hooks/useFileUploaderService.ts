@@ -266,9 +266,11 @@ export function useFileUploaderService({
     includeContent,
     includeSelectionOnly,
     includeScreenshot,
+    onUpload,
   }: {
     conversation?: ConversationPublicType;
     updateBlobs?: boolean;
+    onUpload?: () => void;
   } & GetActiveTabOptions) => {
     const tabContentRes = await getIncludeCurrentTab({
       includeContent,
@@ -325,7 +327,18 @@ export function useFileUploaderService({
           type: "text/plain",
         });
 
-        return await handleFilesUpload([file], updateBlobs);
+        if (onUpload) {
+          onUpload();
+        }
+
+        const fragments = await handleFilesUpload([file], updateBlobs);
+        if (fragments) {
+          fragments.forEach((f) => {
+            f.publicUrl = tabContent.url;
+          });
+        }
+
+        return fragments;
       }
     }
 
@@ -343,6 +356,10 @@ export function useFileUploaderService({
       const file = new File([blob], `${tabContent.title}.jpg`, {
         type: blob.type,
       });
+
+      if (onUpload) {
+        onUpload();
+      }
 
       return await handleFilesUpload([file]);
     }

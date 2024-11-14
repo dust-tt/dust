@@ -4,6 +4,10 @@ import {
   getArticleInternalId,
   getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import {
+  _getZendeskCategoryOrRaise,
+  _getZendeskConnectorOrRaise,
+} from "@connectors/connectors/zendesk/lib/utils";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
@@ -18,7 +22,6 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
   ZendeskBrandResource,
@@ -28,33 +31,6 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const ZENDESK_BATCH_SIZE = 100;
-
-async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  return connector;
-}
-
-async function _getZendeskCategoryOrRaise({
-  connectorId,
-  categoryId,
-}: {
-  connectorId: ModelId;
-  categoryId: number;
-}) {
-  const category = await ZendeskCategoryResource.fetchByCategoryId({
-    connectorId,
-    categoryId,
-  });
-  if (!category) {
-    throw new Error(
-      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
-    );
-  }
-  return category;
-}
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -196,7 +172,7 @@ export async function checkZendeskHelpCenterPermissionsActivity({
 /**
  * This activity is responsible for checking the permissions for a Brand's Tickets.
  *
- * @returns true if the Help Center has read permissions enabled.
+ * @returns true if the Brand has read permissions enabled on tickets.
  */
 export async function checkZendeskTicketsPermissionsActivity({
   connectorId,
@@ -313,7 +289,7 @@ export async function syncZendeskCategoryActivity({
  * This activity is responsible for syncing the next batch of articles to process.
  * It does not sync the Category, only the Articles.
  */
-export async function syncZendeskArticlesBatchActivity({
+export async function syncZendeskArticleBatchActivity({
   connectorId,
   categoryId,
   currentSyncDateMs,
@@ -382,7 +358,10 @@ export async function syncZendeskArticlesBatchActivity({
   return { hasMore: has_more, afterCursor: after_cursor };
 }
 
-export async function syncZendeskTicketsBatchActivity({
+/**
+ * This activity is responsible for syncing the next batch of tickets to process.
+ */
+export async function syncZendeskTicketBatchActivity({
   connectorId,
   brandId,
   currentSyncDateMs,
@@ -394,7 +373,7 @@ export async function syncZendeskTicketsBatchActivity({
   currentSyncDateMs: number;
   forceResync: boolean;
   cursor: string | null;
-}) {
+}): Promise<{ hasMore: boolean; afterCursor: string }> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
@@ -407,19 +386,17 @@ export async function syncZendeskTicketsBatchActivity({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
+  const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
 
-  // Fetch tickets in batches
   const { tickets, meta } = await fetchZendeskTicketsInBrand({
-    brandSubdomain: subdomain,
+    brandSubdomain,
     accessToken,
     pageSize: ZENDESK_BATCH_SIZE,
     cursor,
-  });
-
-  const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
-  await changeZendeskClientSubdomain(zendeskApiClient, {
-    connectorId,
-    brandId,
   });
 
   const users = await zendeskApiClient.users.list();
@@ -450,9 +427,7 @@ export async function syncZendeskTicketsBatchActivity({
   );
 
   return {
-    processedCount: res.length,
-    successCount: res.filter((r) => r).length,
-    nextCursor: meta.after_cursor,
+    afterCursor: meta.after_cursor,
     hasMore: meta.has_more,
   };
 }

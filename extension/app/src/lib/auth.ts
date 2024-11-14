@@ -29,7 +29,7 @@ export const login = async (): Promise<
       throw new Error("No access token received.");
     }
     const tokens = await saveTokens(response);
-    const me = await fetchMe(tokens.accessToken);
+    const { user: me } = await fetchMe(tokens.accessToken);
     if (!me) {
       throw new Error("Login failed: No user profile received.");
     }
@@ -78,7 +78,9 @@ export const refreshToken = async (): Promise<StoredTokens | undefined> => {
 };
 
 // Fetch me sends a request to the /me route to get the user info.
-const fetchMe = async (token: string): Promise<UserTypeWithWorkspaces> => {
+const fetchMe = async (
+  token: string
+): Promise<{ user: UserTypeWithWorkspaces }> => {
   const response = await fetch(`${process.env.DUST_DOMAIN}/api/v1/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
