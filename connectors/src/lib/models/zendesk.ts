@@ -17,6 +17,8 @@ export class ZendeskConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare lastSuccessfulSyncStartTs: Date | null;
+
   declare subdomain: string;
   declare conversationsSlidingWindow: number;
 
@@ -39,6 +41,11 @@ ZendeskConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    lastSuccessfulSyncStartTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     subdomain: {
       type: DataTypes.STRING,

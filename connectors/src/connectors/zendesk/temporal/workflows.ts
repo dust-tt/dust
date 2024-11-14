@@ -204,7 +204,7 @@ export async function zendeskSyncWorkflow({
 
   // run cleanup here if needed
 
-  await saveZendeskConnectorSuccessSync({ connectorId });
+  await saveZendeskConnectorSuccessSync({ connectorId, currentSyncDateMs });
 }
 
 /**

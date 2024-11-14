@@ -27,6 +27,7 @@ import {
   ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -56,13 +57,23 @@ export async function saveZendeskConnectorStartSync({
  */
 export async function saveZendeskConnectorSuccessSync({
   connectorId,
+  currentSyncDateMs,
 }: {
   connectorId: ModelId;
+  currentSyncDateMs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error("[Zendesk] ZendeskConfiguration not found.");
+  }
+  await configuration.update({
+    lastSuccessfulSyncStartTs: new Date(currentSyncDateMs),
+  });
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
     throw res.error;
