@@ -68,7 +68,7 @@ export function makeJITListFilesAction(
   step: number,
   agentMessage: AgentMessageType,
   conversation: ConversationType
-): JITListFilesActionType {
+): JITListFilesActionType | null {
   const jitFiles: JITFileType[] = [];
 
   for (const m of conversation.content.flat(1)) {
@@ -93,6 +93,10 @@ export function makeJITListFilesAction(
         }
       }
     }
+  }
+
+  if (jitFiles.length === 0) {
+    return null;
   }
 
   return new JITListFilesAction({

@@ -50,6 +50,7 @@ import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 import { getCitationsCount } from "./actions/utils";
+import { makeJITListFilesAction } from "./actions/jit/list_files";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -362,6 +363,16 @@ async function* runMultiActionsAgent(
 
   const MIN_GENERATION_TOKENS = 2048;
 
+  const fakeJITListFiles = makeJITListFilesAction(
+    0,
+    agentMessage,
+    conversation
+  );
+
+  if (fakeJITListFiles) {
+    agentMessage.actions.unshift(fakeJITListFiles);
+  }
+
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
@@ -369,6 +380,11 @@ async function* runMultiActionsAgent(
     prompt,
     allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
   });
+
+  // remove the fake JIT action from the agentMessage.actions
+  if (fakeJITListFiles) {
+    agentMessage.actions.shift();
+  }
 
   if (modelConversationRes.isErr()) {
     logger.error(
