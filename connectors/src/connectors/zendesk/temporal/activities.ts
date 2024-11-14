@@ -12,8 +12,8 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchSolvedZendeskTicketsInBrand,
   fetchZendeskArticlesInCategory,
-  fetchZendeskTicketsInBrand,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
 import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
@@ -392,12 +392,20 @@ export async function syncZendeskTicketBatchActivity({
     brandId,
   });
 
-  const { tickets, meta } = await fetchZendeskTicketsInBrand({
+  const { tickets, meta } = await fetchSolvedZendeskTicketsInBrand({
     brandSubdomain,
     accessToken,
     pageSize: ZENDESK_BATCH_SIZE,
     cursor,
   });
+
+  if (tickets.length === 0) {
+    logger.info(
+      { ...loggerArgs, ticketsSynced: 0 },
+      `[Zendesk] No tickets to process in batch - stopping.`
+    );
+    return { hasMore: false, afterCursor: "" };
+  }
 
   const users = await zendeskApiClient.users.list();
 
