@@ -204,23 +204,12 @@ export async function fetchSolvedZendeskTicketsInBrand({
   );
 
   const searchQuery = encodeURIComponent("status:solved");
-
-  logger.info(
-    { brandSubdomain, pageSize, cursor, searchQuery },
-    "[Zendesk] Fetching solved tickets from Zendesk API"
-  );
-
   const response = await fetchFromZendeskWithRetries({
     url:
       `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?query=${searchQuery}&filter[type]=ticket&page[size]=${pageSize}` +
       (cursor ? `&page[after]=${cursor}` : ""),
     accessToken,
   });
-
-  logger.info(
-    { response },
-    "[Zendesk] Fetched solved tickets from Zendesk API"
-  );
 
   return response
     ? {
