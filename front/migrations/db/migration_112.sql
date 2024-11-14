@@ -6,3 +6,5 @@ ALTER COLUMN
     "sId"
 SET
     NOT NULL;
+
+CREATE INDEX CONCURRENTLY "content_fragments_s_id" ON "content_fragments" ("sId");
