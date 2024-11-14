@@ -34,6 +34,17 @@ spec:
         - podSelector:
             matchLabels:
               app: core
+    - podSelector:
+        matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+              - connectors
+              - connectors-worker
+              - connectors-worker-google-drive
+              - connectors-worker-notion
+              - connectors-worker-notion-gc
+              - connectors-worker-webcrawler
       ports:
         - protocol: TCP
           port: 3006
