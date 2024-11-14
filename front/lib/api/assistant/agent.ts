@@ -31,7 +31,9 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { makeJITListFilesAction } from "@app/lib/api/assistant/actions/jit/list_files";
 import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
+import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -48,9 +50,6 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
-
-import { getCitationsCount } from "./actions/utils";
-import { makeJITListFilesAction } from "./actions/jit/list_files";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
