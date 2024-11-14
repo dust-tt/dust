@@ -332,7 +332,9 @@ const ANTHROPIC_TOOL_USE_META_PROMPT =
   `whether the tools results are enough to answer the user's question. ` +
   `The response to the user must be in \`<response>\` tags. ` +
   `There must be a single \`<response>\` after the tools use (if any). ` +
-  `When answering basic factual questions (like capitals, simple definitions, or well-known historical dates), provide the answer directly without using tools AND without mentioning tools, common knowledge, or your reasoning process.`;
+  `When answering basic factual questions (like capitals, simple definitions, ` +
+  `or well-known historical dates), provide the answer directly without using the ` +
+  `search tool AND without mentioning it, common knowledge, or your reasoning process.`;
 
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
