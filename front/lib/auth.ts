@@ -3,7 +3,6 @@ import type { DustAPICredentials } from "@dust-tt/client";
 import type {
   GroupType,
   LightWorkspaceType,
-  ModelId,
   PermissionType,
   ResourcePermission,
   RoleType,
@@ -1001,13 +1000,13 @@ export async function prodAPICredentialsForOwner(
 }
 
 export const getFeatureFlags = async (
-  workspaceId: ModelId
+  workspace: WorkspaceType
 ): Promise<WhitelistableFeature[]> => {
   if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
     return [...WHITELISTABLE_FEATURES];
   } else {
     const res = await FeatureFlag.findAll({
-      where: { workspaceId: workspaceId },
+      where: { workspaceId: workspace.id },
     });
     return res.map((flag) => flag.name);
   }

@@ -24,7 +24,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -334,14 +334,13 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       return;
     }
 
-    const renderedConversationRes =
-      await renderConversationForModelMultiActions({
-        conversation,
-        model: supportedModel,
-        prompt: agentConfiguration.instructions ?? "",
-        allowedTokenCount,
-        excludeImages: true,
-      });
+    const renderedConversationRes = await renderConversationForModel(auth, {
+      conversation,
+      model: supportedModel,
+      prompt: agentConfiguration.instructions ?? "",
+      allowedTokenCount,
+      excludeImages: true,
+    });
     if (renderedConversationRes.isErr()) {
       yield {
         type: "tables_query_error",

@@ -4,13 +4,12 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import {
   getTextContentFromMessage,
-  renderConversationForModelMultiActions,
+  renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -336,7 +335,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
       const prompt = "";
 
-      const convoRes = await renderConversationForModelMultiActions({
+      const convoRes = await renderConversationForModel(auth, {
         conversation,
         model,
         prompt,

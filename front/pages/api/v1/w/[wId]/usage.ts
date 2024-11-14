@@ -35,7 +35,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner.id);
+  const flags = await getFeatureFlags(owner);
   if (!flags.includes("usage_data_api")) {
     return apiError(req, res, {
       status_code: 403,

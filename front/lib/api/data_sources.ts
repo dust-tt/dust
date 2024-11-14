@@ -415,7 +415,7 @@ export async function upsertTable({
     tableParents.push(nonNullTableId);
   }
 
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace().id);
+  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
   const useAppForHeaderDetectionFlag = flags.includes(
     "use_app_for_header_detection"
@@ -572,7 +572,7 @@ export async function handleDataSourceTableCSVUpsert({
     tableParents.push(tableId);
   }
 
-  const flags = await getFeatureFlags(owner.id);
+  const flags = await getFeatureFlags(owner);
 
   const useAppForHeaderDetection =
     !!params.useAppForHeaderDetection &&

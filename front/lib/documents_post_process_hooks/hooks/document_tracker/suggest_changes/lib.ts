@@ -50,8 +50,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
 ): Promise<boolean> {
   const auth = params.auth;
   const owner = auth.getNonNullableWorkspace();
-
-  const flags = await getFeatureFlags(owner.id);
+  const flags = await getFeatureFlags(owner);
 
   if (!flags.includes("document_tracker")) {
     return false;

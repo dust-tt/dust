@@ -63,7 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const flags = await getFeatureFlags(owner.id);
+  const flags = await getFeatureFlags(owner);
   if (!flags.includes("labs_transcripts")) {
     return {
       notFound: true,
