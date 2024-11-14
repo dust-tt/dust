@@ -63,7 +63,7 @@ export const LoginPage = () => {
           </div>
         </div>
         <p className="text-center text-element-700">
-          By logging in, you agree to Dust's{" "}
+          By signing in, you agree to Dust's{" "}
           <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
             Terms of Use
           </Link>{" "}
