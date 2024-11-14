@@ -1,48 +1,59 @@
-name: Apply Infra
+# ⛔️ DEPRECATED ACTION ⛔️
+# This workflow has been deprecated in favor of using:
+# - Terraform for infrastructure management
+# - Helm/Helmfile for Kubernetes resources
+#
+# For any infrastructure changes, please contact:
+# - @jules
+# - @flavien
+#
+# Last active: [Insert date when it was deprecated]
 
-on:
-  workflow_dispatch:
+# name: Apply Infra
 
-concurrency:
-  group: apply_infra
-  cancel-in-progress: false
+# on:
+#   workflow_dispatch:
 
-env:
-  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
-  DD_API_KEY: ${{ secrets.DD_API_KEY }}
-  DD_APP_KEY: ${{ secrets.DD_APP_KEY }}
+# concurrency:
+#   group: apply_infra
+#   cancel-in-progress: false
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+# env:
+#   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+#   DD_API_KEY: ${{ secrets.DD_API_KEY }}
+#   DD_APP_KEY: ${{ secrets.DD_APP_KEY }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
+#     if: github.ref == 'refs/heads/main'
 
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
 
-      - name: "Authenticate with Google Cloud"
-        uses: "google-github-actions/auth@v1"
-        with:
-          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
+#       - name: Get short sha
+#         id: short_sha
+#         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
+#       - name: "Authenticate with Google Cloud"
+#         uses: "google-github-actions/auth@v1"
+#         with:
+#           credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
 
-      - name: Install gke-gcloud-auth-plugin
-        run: |
-          gcloud components install gke-gcloud-auth-plugin
+#       - name: "Set up Cloud SDK"
+#         uses: "google-github-actions/setup-gcloud@v1"
 
-      - name: Install yq
-        run: |
-          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          chmod a+x /usr/local/bin/yq
+#       - name: Install gke-gcloud-auth-plugin
+#         run: |
+#           gcloud components install gke-gcloud-auth-plugin
 
-      - name: Run Apply Infra
-        run: |
-          cd k8s
-          ./apply_infra.sh
+#       - name: Install yq
+#         run: |
+#           wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+#           chmod a+x /usr/local/bin/yq
+
+#       - name: Run Apply Infra
+#         run: |
+#           cd k8s
+#           ./apply_infra.sh
