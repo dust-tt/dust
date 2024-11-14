@@ -20,6 +20,16 @@ import { generatePKCE } from "./src/lib/utils";
 
 const log = console.error;
 
+const state: {
+  extensionReady: boolean;
+  inputBarReady: boolean;
+  lastHandler: (() => void) | undefined;
+} = {
+  extensionReady: false,
+  inputBarReady: false,
+  lastHandler: undefined,
+};
+
 /**
  * Listener for force update mechanism.
  */
@@ -40,43 +50,76 @@ chrome.runtime.onInstalled.addListener(() => {
     id: "add_tab_content",
     title: "Add tab content to conversation",
     contexts: ["page"],
-    enabled: false,
   });
   chrome.contextMenus.create({
     id: "add_tab_screenshot",
     title: "Add tab screenshot to conversation",
     contexts: ["page"],
-    enabled: false,
   });
 
   chrome.contextMenus.create({
     id: "add_selection",
     title: "Add selection to conversation",
     contexts: ["selection"],
-    enabled: false,
   });
 });
 
-chrome.contextMenus.onClicked.addListener(async (event) => {
-  switch (event.menuItemId) {
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "sidepanel-connection") {
+    console.log("Sidepanel is there");
+    state.extensionReady = true;
+    port.onDisconnect.addListener(() => {
+      // This fires when sidepanel closes
+      console.log("Sidepanel was closed");
+      state.extensionReady = false;
+      state.inputBarReady = false;
+      state.lastHandler = undefined;
+    });
+  }
+});
+
+const getActionHandler = (menuItemId: string | number) => {
+  switch (menuItemId) {
     case "add_tab_content":
-      void sendAttachSelection({
-        includeContent: true,
-        includeScreenshot: false,
-      });
+      return () =>
+        void sendAttachSelection({
+          includeContent: true,
+          includeScreenshot: false,
+        });
       break;
     case "add_tab_screenshot":
-      void sendAttachSelection({
-        includeContent: false,
-        includeScreenshot: true,
-      });
+      return () =>
+        void sendAttachSelection({
+          includeContent: false,
+          includeScreenshot: true,
+        });
       break;
     case "add_selection":
-      void sendAttachSelection({
-        includeContent: true,
-        includeScreenshot: false,
-        includeSelectionOnly: true,
-      });
+      return () =>
+        void sendAttachSelection({
+          includeContent: true,
+          includeScreenshot: false,
+          includeSelectionOnly: true,
+        });
+  }
+};
+
+chrome.contextMenus.onClicked.addListener(async (event, tab) => {
+  const handler = getActionHandler(event.menuItemId);
+  if (!handler) {
+    return;
+  }
+
+  if (!state.extensionReady && tab) {
+    // Store the handler for later use when the extension is ready.
+    state.lastHandler = handler;
+    void chrome.sidePanel.open({
+      windowId: tab.windowId,
+    });
+  } else if (state.inputBarReady) {
+    handler();
+  } else {
+    // Extension is loaded but the input bar is not visible - do nothing.
   }
 });
 
@@ -167,21 +210,18 @@ chrome.runtime.onMessage.addListener(
         return true;
       case "INPUT_BAR_STATUS":
         // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
-        chrome.contextMenus.update("add_tab_content", {
-          enabled: message.available,
-        });
-        chrome.contextMenus.update("add_tab_screenshot", {
-          enabled: message.available,
-        });
-        chrome.contextMenus.update("add_selection", {
-          enabled: message.available,
-        });
+        state.inputBarReady = message.available;
+        if (state.lastHandler && state.inputBarReady) {
+          state.lastHandler();
+          state.lastHandler = undefined;
+        }
         return true;
       default:
         log(`Unknown message: ${message}.`);
     }
   }
 );
+
 /**
  * Authenticate the user using Auth0.
  */
