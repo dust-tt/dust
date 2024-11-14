@@ -21,6 +21,7 @@ const {
   syncZendeskArticleBatchActivity,
   syncZendeskTicketBatchActivity,
   syncZendeskTicketUpdateBatchActivity,
+  syncZendeskRecentlyUpdatedArticleBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -32,6 +33,7 @@ const {
   saveZendeskConnectorSuccessSync,
   getZendeskTicketsAllowedBrandIdsActivity,
   getZendeskTimestampCursorActivity,
+  getZendeskHelpCenterReadPermissionedBrandIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -218,9 +220,10 @@ export async function zendeskIncrementalSyncWorkflow({
   connectorId: ModelId;
   currentSyncDateMs: number;
 }) {
-  const [cursor, brandIds] = await Promise.all([
+  const [cursor, ticketBrandIds, helpCenterBrandIds] = await Promise.all([
     getZendeskTimestampCursorActivity(connectorId),
     getZendeskTicketsAllowedBrandIdsActivity(connectorId),
+    getZendeskHelpCenterReadPermissionedBrandIdsActivity(connectorId),
   ]);
 
   const startTimeMs = cursor
@@ -228,7 +231,18 @@ export async function zendeskIncrementalSyncWorkflow({
     : currentSyncDateMs - 1000 * 60 * 5; // 5 min ago, previous scheduled execution
   const startTime = Math.floor(startTimeMs / 1000);
 
-  for (const brandId of brandIds) {
+  for (const brandId of helpCenterBrandIds) {
+    await runZendeskActivityWithPagination((cursor) =>
+      syncZendeskRecentlyUpdatedArticleBatchActivity({
+        connectorId,
+        brandId,
+        currentSyncDateMs,
+        cursor,
+      })
+    );
+  }
+
+  for (const brandId of ticketBrandIds) {
     await runZendeskActivityWithPagination((cursor) =>
       syncZendeskTicketUpdateBatchActivity({
         connectorId,
