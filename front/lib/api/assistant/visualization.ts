@@ -19,7 +19,7 @@ export async function getVisualizationPrompt({
   auth: Authenticator;
   conversation: ConversationType;
 }) {
-  const isJITEnabled = !(await isJITActionsEnabled(auth));
+  const isJITEnabled = await isJITActionsEnabled(auth);
 
   // When JIT is enabled, we return the visualization prompt directly without listing the files as the files will be made available to the model via another mechanism (simulated function call).
   if (isJITEnabled) {

@@ -222,6 +222,44 @@ export async function renderConversationForModelJIT({
     }
   }
 
+  // If we have messages...
+  if (messages.length > 0) {
+    const { filesAsXML, hasFiles } = listConversationFiles({
+      conversation,
+    });
+
+    // ... and files, we simulate a function call to list the files at the end of the conversation.
+    if (hasFiles) {
+      const randomCallId = "tool_" + Math.random().toString(36).substring(7);
+      const functionName = "list_conversation_files";
+
+      const simulatedAgentMessages = [
+        // 1. We add a message from the agent, asking to use the files listing function
+        {
+          role: "assistant",
+          function_calls: [
+            {
+              id: randomCallId,
+              name: functionName,
+              arguments: "{}",
+            },
+          ],
+        } as AssistantFunctionCallMessageTypeModel,
+
+        // 2. We add a message with the resulting files listing
+        {
+          function_call_id: randomCallId,
+          role: "function",
+          name: functionName,
+          content: filesAsXML,
+        } as FunctionMessageTypeModel,
+      ];
+
+      // Append the simulated messages to the end of the conversation.
+      messages.push(...simulatedAgentMessages);
+    }
+  }
+
   // Compute in parallel the token count for each message and the prompt.
   const res = await tokenCountForTexts(
     [prompt, ...getTextRepresentationFromMessages(messages)],
@@ -334,50 +372,6 @@ export async function renderConversationForModelJIT({
     }
   }
 
-  if (selected.length > 0) {
-    const { filesAsXML, hasFiles } = await listConversationFiles({
-      conversation,
-    });
-    if (hasFiles) {
-      const randomCallId =
-        "list_conversation_files_" + Math.random().toString(36).substring(7);
-      const functionName = "list_conversation_files";
-
-      const simulatedAgentMessages = [
-        // 1. We add a message from the agent, asking to use the files listing function
-        {
-          role: "assistant",
-          content: "Please list the files available to this conversation.",
-          function_calls: [
-            {
-              id: randomCallId,
-              name: functionName,
-              arguments: "{}",
-            },
-          ],
-        } as AssistantFunctionCallMessageTypeModel,
-
-        // 2. We add a message with the resulting files listing
-        {
-          function_call_id: randomCallId,
-          role: "function",
-          name: functionName,
-          content: filesAsXML,
-        } as FunctionMessageTypeModel,
-      ];
-
-      // Update the list of messages and the tokens count.
-      for (const m of simulatedAgentMessages) {
-        const approxSimulatedAgentMessagesTokenCount =
-          getTextRepresentationFromMessages([m]).join("").length / 3;
-
-        selected.push(m);
-        messagesCount.push(approxSimulatedAgentMessagesTokenCount);
-        tokensUsed += approxSimulatedAgentMessagesTokenCount;
-      }
-    }
-  }
-
   while (
     selected.length > 0 &&
     // Most model providers don't support starting by a function result or assistant message.
@@ -409,7 +403,7 @@ export async function renderConversationForModelJIT({
   });
 }
 
-async function listConversationFiles({
+function listConversationFiles({
   conversation,
 }: {
   conversation: ConversationType;
