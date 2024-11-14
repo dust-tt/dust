@@ -3,7 +3,6 @@ import type { DustAPICredentials } from "@dust-tt/client";
 import type {
   GroupType,
   LightWorkspaceType,
-  ModelId,
   PermissionType,
   ResourcePermission,
   RoleType,

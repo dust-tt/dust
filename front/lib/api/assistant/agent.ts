@@ -39,7 +39,7 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
-  renderConversationForModelMultiActions,
+  renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -363,7 +363,7 @@ export async function* runMultiActionsAgent(
   const MIN_GENERATION_TOKENS = 2048;
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModelMultiActions({
+  const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
     prompt,

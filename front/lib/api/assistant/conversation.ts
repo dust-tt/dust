@@ -56,7 +56,7 @@ import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
   batchRenderMessages,
   canReadMessage,
@@ -511,7 +511,7 @@ export async function generateConversationTitle(
   const MIN_GENERATION_TOKENS = 1024;
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModelMultiActions({
+  const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
