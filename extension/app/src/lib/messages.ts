@@ -36,9 +36,21 @@ export type AttachSelectionMessage = {
   type: "ATTACH_TAB";
 } & GetActiveTabOptions;
 
+export type AttachAndSubmitMessage = {
+  type: "ATTACH_TAB_AND_SUBMIT";
+  text: string;
+  configurationId: string;
+} & GetActiveTabOptions;
+
 export type InputBarStatusMessage = {
   type: "INPUT_BAR_STATUS";
   available: boolean;
+};
+
+export type RouteChangeMesssage = {
+  type: "ROUTE_CHANGE";
+  pathname: string;
+  search: string;
 };
 
 const sendMessage = <T, U>(message: T): Promise<U> => {
@@ -147,18 +159,20 @@ export const sendGetActiveTabMessage = (params: GetActiveTabOptions) => {
   });
 };
 
+export const sendInputBarStatus = (available: boolean) => {
+  return sendMessage<InputBarStatusMessage, void>({
+    type: "INPUT_BAR_STATUS",
+    available,
+  });
+};
+
+// Messages from background script to content script
+
 export const sendAttachSelection = (
   opts: GetActiveTabOptions = { includeContent: true, includeScreenshot: false }
 ) => {
   return sendMessage<AttachSelectionMessage, void>({
     type: "ATTACH_TAB",
     ...opts,
-  });
-};
-
-export const sendInputBarStatus = (available: boolean) => {
-  return sendMessage<InputBarStatusMessage, void>({
-    type: "INPUT_BAR_STATUS",
-    available,
   });
 };

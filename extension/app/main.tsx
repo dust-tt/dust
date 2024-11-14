@@ -9,6 +9,7 @@ import "./src/css/custom.css";
 
 import { Notification } from "@dust-tt/sparkle";
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
+import { PortProvider } from "@extension/components/PortContext";
 import { routes } from "@extension/pages/routes";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -16,13 +17,14 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 const router = createBrowserRouter(routes);
 
 const App = () => {
-  chrome.runtime.connect({ name: "sidepanel-connection" });
   return (
-    <AuthProvider>
-      <Notification.Area>
-        <RouterProvider router={router} />
-      </Notification.Area>
-    </AuthProvider>
+    <PortProvider>
+      <AuthProvider>
+        <Notification.Area>
+          <RouterProvider router={router} />
+        </Notification.Area>
+      </AuthProvider>
+    </PortProvider>
   );
 };
 const rootElement = document.getElementById("root");
