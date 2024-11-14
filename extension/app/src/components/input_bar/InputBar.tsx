@@ -16,10 +16,7 @@ import { InputBarContext } from "@extension/components/input_bar/InputBarContext
 import { PortContext } from "@extension/components/PortContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useDustAPI } from "@extension/lib/dust_api";
-import type {
-  AttachAndSubmitMessage,
-  AttachSelectionMessage,
-} from "@extension/lib/messages";
+import type { AttachSelectionMessage } from "@extension/lib/messages";
 import { sendInputBarStatus } from "@extension/lib/messages";
 import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -66,34 +63,11 @@ export function AssistantInputBar({
   useEffect(() => {
     if (port) {
       void sendInputBarStatus(true);
-      const listener = async (
-        message: AttachSelectionMessage | AttachAndSubmitMessage
-      ) => {
+      const listener = async (message: AttachSelectionMessage) => {
         const { type } = message;
         if (type === "ATTACH_TAB") {
           // Handle message
           void fileUploaderService.uploadContentTab(message);
-        } else if (type === "ATTACH_TAB_AND_SUBMIT") {
-          const files = await fileUploaderService.uploadContentTab({
-            includeContent: message.includeContent,
-            includeScreenshot: message.includeScreenshot,
-            includeSelectionOnly: message.includeSelectionOnly,
-            conversation,
-            updateBlobs: false,
-          });
-
-          onSubmit(
-            message.text,
-            [{ configurationId: message.configurationId }],
-            files
-              ? files.map((cf) => ({
-                  title: cf.filename,
-                  fileId: cf.fileId || "",
-                  url: cf.publicUrl,
-                }))
-              : []
-          );
-          fileUploaderService.resetUpload();
         }
       };
       port.onMessage.addListener(listener);

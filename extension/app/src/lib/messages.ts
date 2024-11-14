@@ -36,12 +36,6 @@ export type AttachSelectionMessage = {
   type: "ATTACH_TAB";
 } & GetActiveTabOptions;
 
-export type AttachAndSubmitMessage = {
-  type: "ATTACH_TAB_AND_SUBMIT";
-  text: string;
-  configurationId: string;
-} & GetActiveTabOptions;
-
 export type InputBarStatusMessage = {
   type: "INPUT_BAR_STATUS";
   available: boolean;
