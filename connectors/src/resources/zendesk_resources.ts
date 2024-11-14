@@ -868,6 +868,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return articles.map((article) => new this(this.model, article.get()));
   }
 
+  static async deleteByArticleId({
+    connectorId,
+    articleId,
+  }: {
+    connectorId: number;
+    articleId: number;
+  }) {
+    await ZendeskArticle.destroy({ where: { connectorId, articleId } });
+  }
   static async deleteByCategoryId({
     connectorId,
     categoryId,
