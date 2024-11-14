@@ -1,4 +1,4 @@
-import { Button, StopIcon } from "@dust-tt/sparkle";
+import { Button, RainbowEffectDiv, StopIcon } from "@dust-tt/sparkle";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
@@ -228,34 +228,36 @@ export function AssistantInputBar({
         )}
       >
         <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
-          <div
-            className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
-              "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
-              "transition-all",
-              isFloating
-                ? "sm:rounded-2xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
-                : "",
-              isAnimating ? "duration-600 animate-shake" : "duration-300"
-            )}
-          >
-            <div className="relative flex w-full flex-1 flex-col">
-              <InputBarCitations fileUploaderService={fileUploaderService} />
+          <RainbowEffectDiv outerClassName="w-full">
+            <div
+              className={classNames(
+                "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
+                "border-t border-border-dark bg-primary-50",
+                "transition-all",
+                isFloating
+                  ? "sm:rounded-2xl sm:border-b sm:border-l sm:border-r sm:border-border-dark sm:focus-within:shadow-md sm:focus-within:ring-2 sm:focus-within:ring-offset-2"
+                  : "",
+                isAnimating ? "duration-600 animate-shake" : "duration-300"
+              )}
+            >
+              <div className="relative flex w-full flex-1 flex-col">
+                <InputBarCitations fileUploaderService={fileUploaderService} />
 
-              <InputBarContainer
-                actions={actions}
-                disableAutoFocus={disableAutoFocus}
-                allAssistants={activeAgents}
-                agentConfigurations={agentConfigurations}
-                owner={owner}
-                selectedAssistant={selectedAssistant}
-                onEnterKeyDown={handleSubmit}
-                stickyMentions={stickyMentions}
-                fileUploaderService={fileUploaderService}
-                disableSendButton={fileUploaderService.isProcessingFiles}
-              />
+                <InputBarContainer
+                  actions={actions}
+                  disableAutoFocus={disableAutoFocus}
+                  allAssistants={activeAgents}
+                  agentConfigurations={agentConfigurations}
+                  owner={owner}
+                  selectedAssistant={selectedAssistant}
+                  onEnterKeyDown={handleSubmit}
+                  stickyMentions={stickyMentions}
+                  fileUploaderService={fileUploaderService}
+                  disableSendButton={fileUploaderService.isProcessingFiles}
+                />
+              </div>
             </div>
-          </div>
+          </RainbowEffectDiv>
         </div>
       </div>
     </div>
