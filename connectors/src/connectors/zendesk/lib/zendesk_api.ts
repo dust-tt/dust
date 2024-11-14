@@ -188,23 +188,23 @@ export async function fetchZendeskArticlesInCategory({
  * Fetches a batch of the recently updated tickets from the Zendesk API using the incremental API endpoint.
  */
 export async function fetchRecentlyUpdatedTickets({
-    subdomain,
-    accessToken,
-    startTime = null,
-    cursor = null,
-  }: // pass either a cursor or a start time, but not both
-    | {
-    subdomain: string;
-    accessToken: string;
-    startTime: number | null;
-    cursor?: never;
-  }
-    | {
-    subdomain: string;
-    accessToken: string;
-    startTime?: never;
-    cursor: string | null;
-  }): Promise<{
+  subdomain,
+  accessToken,
+  startTime = null,
+  cursor = null,
+}: // pass either a cursor or a start time, but not both
+| {
+      subdomain: string;
+      accessToken: string;
+      startTime: number | null;
+      cursor?: never;
+    }
+  | {
+      subdomain: string;
+      accessToken: string;
+      startTime?: never;
+      cursor: string | null;
+    }): Promise<{
   tickets: ZendeskFetchedTicket[];
   end_of_stream: boolean;
   after_cursor: string;
