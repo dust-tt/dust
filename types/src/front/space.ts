@@ -1,4 +1,10 @@
-const SPACE_KINDS = ["regular", "global", "system", "public"] as const;
+const SPACE_KINDS = [
+  "regular",
+  "global",
+  "system",
+  "public",
+  "conversations",
+] as const;
 export type SpaceKind = (typeof SPACE_KINDS)[number];
 
 export type SpaceType = {

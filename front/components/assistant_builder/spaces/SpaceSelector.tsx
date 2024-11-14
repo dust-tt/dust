@@ -8,7 +8,11 @@ import {
 import type { SpaceType } from "@dust-tt/types";
 import React, { useState } from "react";
 
-import { getSpaceIcon, getSpaceName, groupSpaces } from "@app/lib/spaces";
+import {
+  getSpaceIcon,
+  getSpaceName,
+  groupSpacesForDisplay,
+} from "@app/lib/spaces";
 import { classNames } from "@app/lib/utils";
 
 interface SpaceSelectorProps {
@@ -39,7 +43,7 @@ export function SpaceSelector({
   }
 
   // Group by kind and sort.
-  const sortedSpaces = groupSpaces(spaces)
+  const sortedSpaces = groupSpacesForDisplay(spaces)
     .filter((i) => i.section !== "system")
     .map((i) =>
       i.spaces.sort((a, b) => {

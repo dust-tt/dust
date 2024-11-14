@@ -112,9 +112,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         [globalGroup]
       ));
 
+    const conversationsSpace =
+      existingSpaces.find((s) => s.kind === "conversations") ||
+      (await SpaceResource.makeNew(
+        {
+          name: "Conversations",
+          kind: "conversations",
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        [globalGroup]
+      ));
+
     return {
       systemSpace,
       globalSpace,
+      conversationsSpace,
     };
   }
 
@@ -188,7 +200,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.baseFetch(auth, {
       where: {
         kind: {
-          [Op.in]: ["system", "global"],
+          [Op.in]: ["system", "global", "conversations"],
         },
       },
     });
@@ -470,8 +482,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Default Workspace space.
-    if (this.isGlobal()) {
+    // Default Workspace space and Conversations space.
+    if (this.isGlobal() || this.isConversations()) {
       return [
         {
           workspaceId: this.workspaceId,
@@ -565,6 +577,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   isSystem() {
     return this.kind === "system";
+  }
+
+  isConversations() {
+    return this.kind === "conversations";
   }
 
   isRegular() {
