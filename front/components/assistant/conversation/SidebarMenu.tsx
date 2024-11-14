@@ -16,6 +16,7 @@ import {
   NavigationListLabel,
   PlusIcon,
   RobotIcon,
+  ScrollArea,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -199,108 +200,110 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         )}
       >
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
-          <div className="flex w-full flex-col px-2">
-            {isMultiSelect ? (
-              <div className={classNames("flex items-center pt-2")}>
-                <div className="flex-grow" />
-                <Button
-                  size="sm"
-                  icon={MoreIcon}
-                  variant="ghost"
-                  className="invisible"
-                />
-                <Button
-                  size="xs"
-                  variant="outline"
-                  icon={XMarkIcon}
-                  onClick={toggleMultiSelect}
-                  className="mr-2"
-                />
-                <Button
-                  icon={TrashIcon}
-                  size="xs"
-                  variant={
-                    selectedConversations.length === 0 ? "outline" : "warning"
-                  }
-                  disabled={selectedConversations.length === 0}
-                  onClick={() => setShowDeleteDialog("selection")}
-                />
-              </div>
-            ) : (
-              <div className={classNames("flex justify-end gap-2 pt-2")}>
-                <Button
-                  href={`/w/${owner.sId}/assistant/new`}
-                  label="New"
-                  icon={ChatBubbleBottomCenterPlusIcon}
-                  className="shrink"
-                  tooltip="Create a new conversation"
-                  onClick={() => {
-                    setSidebarOpen(false);
-                    const { cId } = router.query;
-                    const isNewConversation =
-                      router.pathname === "/w/[wId]/assistant/[cId]" &&
-                      typeof cId === "string" &&
-                      cId === "new";
-
-                    if (isNewConversation && triggerInputAnimation) {
-                      triggerInputAnimation();
+          <ScrollArea className="w-full">
+            <div className="flex w-full flex-col px-2">
+              {isMultiSelect ? (
+                <div className={classNames("flex items-center pt-2")}>
+                  <div className="flex-grow" />
+                  <Button
+                    size="sm"
+                    icon={MoreIcon}
+                    variant="ghost"
+                    className="invisible"
+                  />
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    icon={XMarkIcon}
+                    onClick={toggleMultiSelect}
+                    className="mr-2"
+                  />
+                  <Button
+                    icon={TrashIcon}
+                    size="xs"
+                    variant={
+                      selectedConversations.length === 0 ? "outline" : "warning"
                     }
-                  }}
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" icon={MoreIcon} variant="outline" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuLabel>Assistants</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      label="Create new assistant"
-                      href={`/w/${owner.sId}/builder/assistants/create`}
-                      icon={PlusIcon}
-                    />
-                    {isBuilder(owner) && (
+                    disabled={selectedConversations.length === 0}
+                    onClick={() => setShowDeleteDialog("selection")}
+                  />
+                </div>
+              ) : (
+                <div className={classNames("flex justify-end gap-2 pt-2")}>
+                  <Button
+                    href={`/w/${owner.sId}/assistant/new`}
+                    label="New"
+                    icon={ChatBubbleBottomCenterPlusIcon}
+                    className="shrink"
+                    tooltip="Create a new conversation"
+                    onClick={() => {
+                      setSidebarOpen(false);
+                      const { cId } = router.query;
+                      const isNewConversation =
+                        router.pathname === "/w/[wId]/assistant/[cId]" &&
+                        typeof cId === "string" &&
+                        cId === "new";
+
+                      if (isNewConversation && triggerInputAnimation) {
+                        triggerInputAnimation();
+                      }
+                    }}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" icon={MoreIcon} variant="outline" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuLabel>Assistants</DropdownMenuLabel>
                       <DropdownMenuItem
-                        href={`/w/${owner.sId}/builder/assistants`}
-                        label="Manage assistants"
-                        icon={RobotIcon}
+                        label="Create new assistant"
+                        href={`/w/${owner.sId}/builder/assistants/create`}
+                        icon={PlusIcon}
                       />
-                    )}
-                    <DropdownMenuLabel>Conversations</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      label="Edit conversations"
-                      onClick={toggleMultiSelect}
-                      icon={ListCheckIcon}
-                      disabled={conversations.length === 0}
-                    />
-                    <DropdownMenuItem
-                      label="Clear conversation history"
-                      onClick={() => setShowDeleteDialog("all")}
-                      icon={TrashIcon}
-                      disabled={conversations.length === 0}
-                    />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-            {isConversationsError && (
-              <Label className="py-1 text-xs font-medium text-element-800">
-                Error loading conversations
-              </Label>
-            )}
-            {conversationsByDate &&
-              Object.keys(conversationsByDate).map((dateLabel) => (
-                <RenderConversations
-                  key={dateLabel}
-                  conversations={conversationsByDate[dateLabel as GroupLabel]}
-                  dateLabel={dateLabel}
-                  isMultiSelect={isMultiSelect}
-                  selectedConversations={selectedConversations}
-                  toggleConversationSelection={toggleConversationSelection}
-                  router={router}
-                  owner={owner}
-                />
-              ))}
-          </div>
+                      {isBuilder(owner) && (
+                        <DropdownMenuItem
+                          href={`/w/${owner.sId}/builder/assistants`}
+                          label="Manage assistants"
+                          icon={RobotIcon}
+                        />
+                      )}
+                      <DropdownMenuLabel>Conversations</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        label="Edit conversations"
+                        onClick={toggleMultiSelect}
+                        icon={ListCheckIcon}
+                        disabled={conversations.length === 0}
+                      />
+                      <DropdownMenuItem
+                        label="Clear conversation history"
+                        onClick={() => setShowDeleteDialog("all")}
+                        icon={TrashIcon}
+                        disabled={conversations.length === 0}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+              {isConversationsError && (
+                <Label className="py-1 text-xs font-medium text-element-800">
+                  Error loading conversations
+                </Label>
+              )}
+              {conversationsByDate &&
+                Object.keys(conversationsByDate).map((dateLabel) => (
+                  <RenderConversations
+                    key={dateLabel}
+                    conversations={conversationsByDate[dateLabel as GroupLabel]}
+                    dateLabel={dateLabel}
+                    isMultiSelect={isMultiSelect}
+                    selectedConversations={selectedConversations}
+                    toggleConversationSelection={toggleConversationSelection}
+                    router={router}
+                    owner={owner}
+                  />
+                ))}
+            </div>
+          </ScrollArea>
         </div>
       </div>
     </>
