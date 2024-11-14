@@ -25,11 +25,3 @@ export interface JITListFilesActionType extends BaseAction {
   step: number;
   type: "jit_list_files_action";
 }
-
-export type JITListFilesSuccessEvent = {
-  type: "jit_list_files_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  action: JITListFilesActionType;
-};
