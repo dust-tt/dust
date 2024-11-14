@@ -12,7 +12,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -244,7 +244,7 @@ async function handler(
         remote_database_secret_id: remoteDatabaseSecretId,
       } = r.data;
 
-      const tableId = maybeTableId || generateLegacyModelSId();
+      const tableId = maybeTableId || generateRandomModelSId();
 
       const tRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,

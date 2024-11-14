@@ -7,7 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -108,7 +108,7 @@ async function handler(
 
       const app = await AppResource.makeNew(
         {
-          sId: generateLegacyModelSId(),
+          sId: generateRandomModelSId(),
           name: req.body.name,
           description,
           dustAPIProjectId: p.value.project.project_id.toString(),

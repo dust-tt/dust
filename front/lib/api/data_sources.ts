@@ -37,7 +37,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -408,7 +408,7 @@ export async function upsertTable({
   auth: Authenticator;
   useAppForHeaderDetection?: boolean;
 }) {
-  const nonNullTableId = tableId ?? generateLegacyModelSId();
+  const nonNullTableId = tableId ?? generateRandomModelSId();
   const tableParents: string[] = parents ?? [];
 
   if (!tableParents.includes(nonNullTableId)) {
@@ -565,7 +565,7 @@ export async function handleDataSourceTableCSVUpsert({
     });
   }
 
-  const tableId = params.tableId ?? generateLegacyModelSId();
+  const tableId = params.tableId ?? generateRandomModelSId();
   const tableParents: string[] = params.parents ?? [];
 
   if (!tableParents.includes(tableId)) {

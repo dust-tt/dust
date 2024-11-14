@@ -25,7 +25,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -45,7 +45,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const w = await Workspace.create({
-        sId: generateLegacyModelSId(),
+        sId: generateRandomModelSId(),
         name: args.name,
       });
 
