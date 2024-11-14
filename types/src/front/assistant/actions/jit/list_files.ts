@@ -1,16 +1,6 @@
 import { BaseAction } from "../../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../../shared/model_id";
 
-export type JITListFilesConfigurationType = {
-  id: ModelId;
-  sId: string;
-
-  type: "jit_list_files_configuration";
-
-  name: string;
-  description: string | null;
-};
-
 export type JITFileType = {
   fileId: string;
   title: string;
