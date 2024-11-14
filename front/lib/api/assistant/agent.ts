@@ -292,9 +292,9 @@ async function* runMultiActionsAgentLoop(
   }
 }
 
-// This method is used by the multi-actions execution loop to pick the next action
-// to execute and generate its inputs.
-export async function* runMultiActionsAgent(
+// This method is used by the multi-actions execution loop to pick the next action to execute and
+// generate its inputs.
+async function* runMultiActionsAgent(
   auth: Authenticator,
   {
     agentConfiguration,
@@ -431,6 +431,8 @@ export async function* runMultiActionsAgent(
 
     specifications.push(specRes.value);
   }
+
+  // If we have attachments inject a fake LS action to handle them.
 
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
