@@ -23,6 +23,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
 const MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT = 500 * 1024; // 500 KB
@@ -45,12 +46,13 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   static async makeNew(
-    blob: CreationAttributes<ContentFragmentModel>,
+    blob: Omit<CreationAttributes<ContentFragmentModel>, "sId">,
     transaction?: Transaction
   ) {
     const contentFragment = await ContentFragmentModel.create(
       {
         ...blob,
+        sId: generateRandomModelSId("cf"),
       },
       {
         transaction,
