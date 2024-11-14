@@ -71,10 +71,6 @@ export const NavigationSidebar = React.forwardRef<
       className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50"
     >
       <div className="flex flex-col">
-        <div className="flex flex-row items-center gap-1 px-3 py-2">
-          <p className="text-xs text-muted-foreground">Workspace:</p>
-          <Button size="xs" label="Select workspace" variant="ghost" isSelect />
-        </div>
         {user && user.workspaces.length > 1 ? (
           <WorkspacePicker
             user={user}
