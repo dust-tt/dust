@@ -1,15 +1,10 @@
-name: Deploy Infra
+name: Deploy connectors
 
 on:
   workflow_dispatch:
-    inputs:
-      us-central1:
-        description: "Deploy to us-central1"
-        type: boolean
-        default: true
 
 concurrency:
-  group: deploy_infra
+  group: deploy_connectors
   cancel-in-progress: false
 
 env:
@@ -66,7 +61,7 @@ jobs:
               repo: 'dust-infra',
               event_type: 'trigger-component-deploy',
               client_payload: {
-                us_central1: ${{ inputs.us-central1 }},
+                regions: 'us-central1',
                 component: 'connectors',
                 image_tag: '${{ steps.short_sha.outputs.short_sha }}'
               }
