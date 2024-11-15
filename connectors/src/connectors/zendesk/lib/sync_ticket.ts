@@ -98,6 +98,7 @@ export async function syncTicket({
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
         ...commonTicketData,
+        ticketCreatedAt: createdAtDate,
         ticketId: ticket.id,
         brandId,
         permission: "read",
