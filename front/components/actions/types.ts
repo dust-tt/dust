@@ -1,7 +1,4 @@
-import type {
-  ConfigurableAgentActionType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
@@ -12,24 +9,22 @@ import { TablesQueryActionDetails } from "@app/components/actions/tables_query/T
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
-  T extends ConfigurableAgentActionType = ConfigurableAgentActionType,
+  T extends AgentActionType = AgentActionType,
 > {
   action: T;
   owner: LightWorkspaceType;
   defaultOpen: boolean;
 }
 
-interface ActionSpecification<T extends ConfigurableAgentActionType> {
+interface ActionSpecification<T extends AgentActionType> {
   runningLabel: string;
   detailsComponent: React.ComponentType<ActionDetailsComponentBaseProps<T>>;
 }
 
-type ActionType = ConfigurableAgentActionType["type"];
+type ActionType = AgentActionType["type"];
 
 type ActionSpecifications = {
-  [K in ActionType]: ActionSpecification<
-    Extract<ConfigurableAgentActionType, { type: K }>
-  >;
+  [K in ActionType]: ActionSpecification<Extract<AgentActionType, { type: K }>>;
 };
 
 const actionsSpecification: ActionSpecifications = {
@@ -57,10 +52,14 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: BrowseActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.browse_action,
   },
+  jit_list_files_action: {
+    detailsComponent: () => null,
+    runningLabel: ACTION_RUNNING_LABELS.jit_list_files_action,
+  },
 };
 
 export function getActionSpecification<T extends ActionType>(
   actionType: T
-): ActionSpecification<Extract<ConfigurableAgentActionType, { type: T }>> {
+): ActionSpecification<Extract<AgentActionType, { type: T }>> {
   return actionsSpecification[actionType];
 }

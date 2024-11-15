@@ -613,20 +613,20 @@ type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 const JITFileTypeSchema = z.object({
   fileId: z.string(),
   title: z.string(),
-  contentType: SupportedContentFragmentTypeSchema,
+  contentType: z.string(),
 });
 
 const JITListFilesActionTypeSchema = BaseActionSchema.extend({
-  files: z.array(JITFileTypeSchema).nullable(),
+  files: z.array(JITFileTypeSchema),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   step: z.number(),
-  type: z.literal("tables_query_action"),
+  type: z.literal("jit_list_files_action"),
 });
-type JITListFIlesActionPublicType = z.infer<
-  typeof JITListFilesActionTypeSchema
->;
+// type JITListFIlesActionPublicType = z.infer<
+//   typeof JITListFilesActionTypeSchema
+// >;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema([
   "usage_data_api",

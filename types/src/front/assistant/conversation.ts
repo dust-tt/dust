@@ -129,7 +129,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
-  jit_list_files_action: "Listing files",
+  jit_list_files_action: "Listing conversation files",
 };
 
 /**
