@@ -88,7 +88,6 @@ export async function renderConversationForModelJIT({
 
     if (isAgentMessageType(m)) {
       const actions = removeNulls(m.actions);
-
       // This array is 2D, because we can have multiple calls per agent message (parallel calls).
 
       const steps = [] as Array<{
@@ -105,8 +104,8 @@ export async function renderConversationForModelJIT({
           actions: [],
         }) satisfies (typeof steps)[number];
 
-      for (const action of actions) {
-        const stepIndex = action.step;
+      for (let stepIndex = 0; stepIndex < actions.length; stepIndex++) {
+        const action = actions[stepIndex];
         steps[stepIndex] = steps[stepIndex] || emptyStep();
         steps[stepIndex].actions.push({
           call: action.renderForFunctionCall(),
