@@ -1,8 +1,5 @@
-import {
-  isUniqueSpaceKind,
-  UNIQUE_SPACE_KINDS,
-  type SpaceKind,
-} from "@dust-tt/types";
+import type { SpaceKind } from "@dust-tt/types";
+import { isUniqueSpaceKind } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
