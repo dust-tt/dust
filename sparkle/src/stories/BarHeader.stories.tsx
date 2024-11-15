@@ -146,6 +146,7 @@ export const BasicBarHeaderConversation = () => (
   <div className="s-mt-16 s-h-full s-w-full">
     <BarHeader
       title="Knowledge Base"
+      tooltip="This is a tooltip"
       rightActions={<BarHeader.ButtonBar variant="conversation" />}
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
