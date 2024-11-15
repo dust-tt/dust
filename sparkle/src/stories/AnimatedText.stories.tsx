@@ -4,7 +4,7 @@ import React from "react";
 import { AnimatedText } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/AnimatedText",
+  title: "Effects/AnimatedText",
   component: AnimatedText,
 } satisfies Meta<typeof AnimatedText>;
 
