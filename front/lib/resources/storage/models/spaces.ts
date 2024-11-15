@@ -1,4 +1,8 @@
-import type { SpaceKind, UNIQUE_SPACE_KINDS } from "@dust-tt/types";
+import {
+  isUniqueSpaceKind,
+  UNIQUE_SPACE_KINDS,
+  type SpaceKind,
+} from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -76,7 +80,7 @@ SpaceModel.addHook(
   "beforeCreate",
   "enforce_one_special_space_per_workspace",
   async (space: SpaceModel, options: { transaction: Transaction }) => {
-    if (UNIQUE_SPACE_KINDS.includes(space.kind)) {
+    if (isUniqueSpaceKind(space.kind)) {
       const existingSpace = await SpaceModel.findOne({
         where: {
           workspaceId: space.workspaceId,
