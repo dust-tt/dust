@@ -44,6 +44,7 @@ export const useAuthHook = () => {
       return;
     }
     setTokens(savedTokens);
+    scheduleTokenRefresh(savedTokens.expiresAt);
   }, [handleLogout]);
 
   const scheduleTokenRefresh = useCallback(
