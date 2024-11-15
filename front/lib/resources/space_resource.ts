@@ -182,25 +182,39 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async listWorkspaceSpaces(
-    auth: Authenticator
+    auth: Authenticator,
+    options?: { includeConversationsSpace?: boolean }
   ): Promise<SpaceResource[]> {
     const spaces = await this.baseFetch(auth);
 
-    return spaces.filter((s) => s.canList(auth));
+    if (!options?.includeConversationsSpace) {
+      return spaces.filter((s) => !s.isConversations());
+    }
+    return spaces;
   }
 
   static async listWorkspaceSpacesAsMember(auth: Authenticator) {
     const spaces = await this.baseFetch(auth);
 
     // using canRead() as we know that only members can read spaces (but admins can list them)
-    return spaces.filter((s) => s.canList(auth) && s.canRead(auth));
+    // also, conversations space is not meant for members
+    return spaces.filter(
+      (s) => s.canList(auth) && s.canRead(auth) && !s.isConversations()
+    );
   }
 
-  static async listWorkspaceDefaultSpaces(auth: Authenticator) {
+  static async listWorkspaceDefaultSpaces(
+    auth: Authenticator,
+    options?: { includeConversationsSpace?: boolean }
+  ) {
     return this.baseFetch(auth, {
       where: {
         kind: {
-          [Op.in]: ["system", "global", "conversations"],
+          [Op.in]: [
+            "system",
+            "global",
+            ...(options?.includeConversationsSpace ? ["conversations"] : []),
+          ],
         },
       },
     });
