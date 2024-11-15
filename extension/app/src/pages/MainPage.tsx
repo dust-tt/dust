@@ -1,5 +1,6 @@
 import {
   Avatar,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -7,6 +8,7 @@ import {
   LogoHorizontalColorLogo,
   LogoutIcon,
 } from "@dust-tt/sparkle";
+import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { ConversationsListButton } from "@extension/components/conversation/ConversationsListButton";
@@ -18,13 +20,40 @@ export const MainPage = ({
   workspace,
   handleLogout,
 }: ProtectedRouteChildrenProps) => {
+  const { handleSelectWorkspace } = useAuth();
+
   return (
     <>
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2 pb-6">
+        <div className="flex flex-col gap-2 pb-6">
           <Link to="https://dust.tt" target="_blank">
             <LogoHorizontalColorLogo className="h-4 w-16" />
           </Link>
+          {user.workspaces.length > 1 && (
+            <div className="flex flex-row items-center gap-2">
+              <p className="text-sm text-slate-500">Workspace:</p>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    label={workspace ? workspace.name : "Select workspace"}
+                    variant="ghost"
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {user.workspaces.map((w) => {
+                    return (
+                      <DropdownMenuItem
+                        key={w.sId}
+                        onClick={() => void handleSelectWorkspace(w.sId)}
+                        label={w.name}
+                      />
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <ConversationsListButton size="md" />
