@@ -41,6 +41,12 @@ export type InputBarStatusMessage = {
   available: boolean;
 };
 
+export type RouteChangeMesssage = {
+  type: "ROUTE_CHANGE";
+  pathname: string;
+  search: string;
+};
+
 const sendMessage = <T, U>(message: T): Promise<U> => {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response: U | undefined) => {
@@ -147,18 +153,20 @@ export const sendGetActiveTabMessage = (params: GetActiveTabOptions) => {
   });
 };
 
+export const sendInputBarStatus = (available: boolean) => {
+  return sendMessage<InputBarStatusMessage, void>({
+    type: "INPUT_BAR_STATUS",
+    available,
+  });
+};
+
+// Messages from background script to content script
+
 export const sendAttachSelection = (
   opts: GetActiveTabOptions = { includeContent: true, includeScreenshot: false }
 ) => {
   return sendMessage<AttachSelectionMessage, void>({
     type: "ATTACH_TAB",
     ...opts,
-  });
-};
-
-export const sendInputBarStatus = (available: boolean) => {
-  return sendMessage<InputBarStatusMessage, void>({
-    type: "INPUT_BAR_STATUS",
-    available,
   });
 };

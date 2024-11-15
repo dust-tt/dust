@@ -15,16 +15,17 @@ import type {
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
 } from "./src/lib/messages";
-import { sendAttachSelection as sendAttachSelection } from "./src/lib/messages";
 import { generatePKCE } from "./src/lib/utils";
 
 const log = console.error;
 
 const state: {
+  port: chrome.runtime.Port | undefined;
   extensionReady: boolean;
   inputBarReady: boolean;
   lastHandler: (() => void) | undefined;
 } = {
+  port: undefined,
   extensionReady: false,
   inputBarReady: false,
   lastHandler: undefined,
@@ -47,6 +48,11 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.contextMenus.create({
+    id: "ask_dust",
+    title: "Ask @dust to summarize this page",
+    contexts: ["all"],
+  });
+  chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
     contexts: ["page"],
@@ -67,10 +73,12 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "sidepanel-connection") {
     console.log("Sidepanel is there");
+    state.port = port;
     state.extensionReady = true;
     port.onDisconnect.addListener(() => {
       // This fires when sidepanel closes
       console.log("Sidepanel was closed");
+      state.port = undefined;
       state.extensionReady = false;
       state.inputBarReady = false;
       state.lastHandler = undefined;
@@ -80,27 +88,53 @@ chrome.runtime.onConnect.addListener((port) => {
 
 const getActionHandler = (menuItemId: string | number) => {
   switch (menuItemId) {
+    case "ask_dust":
+      return () => {
+        if (state.port) {
+          const params = JSON.stringify({
+            includeContent: true,
+            includeScreenshot: false,
+            text: ":mention[dust]{sId=dust} summarize this page.",
+            configurationId: "dust",
+          });
+          state.port.postMessage({
+            type: "ROUTE_CHANGE",
+            pathname: "/run",
+            search: `?${params}`,
+          });
+        }
+      };
     case "add_tab_content":
-      return () =>
-        void sendAttachSelection({
-          includeContent: true,
-          includeScreenshot: false,
-        });
-      break;
+      return () => {
+        if (state.port) {
+          state.port.postMessage({
+            type: "ATTACH_TAB",
+            includeContent: true,
+            includeScreenshot: false,
+          });
+        }
+      };
     case "add_tab_screenshot":
-      return () =>
-        void sendAttachSelection({
-          includeContent: false,
-          includeScreenshot: true,
-        });
-      break;
+      return () => {
+        if (state.port) {
+          state.port.postMessage({
+            type: "ATTACH_TAB",
+            includeContent: false,
+            includeScreenshot: true,
+          });
+        }
+      };
     case "add_selection":
-      return () =>
-        void sendAttachSelection({
-          includeContent: true,
-          includeScreenshot: false,
-          includeSelectionOnly: true,
-        });
+      return () => {
+        if (state.port) {
+          state.port.postMessage({
+            type: "ATTACH_TAB",
+            includeContent: true,
+            includeScreenshot: false,
+            includeSelectionOnly: true,
+          });
+        }
+      };
   }
 };
 
@@ -116,10 +150,8 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
     void chrome.sidePanel.open({
       windowId: tab.windowId,
     });
-  } else if (state.inputBarReady) {
-    handler();
   } else {
-    // Extension is loaded but the input bar is not visible - do nothing.
+    await handler();
   }
 });
 

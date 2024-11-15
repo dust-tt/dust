@@ -13,6 +13,7 @@ import { InputBarCitations } from "@extension/components/input_bar/InputBarCitat
 import type { InputBarContainerProps } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
+import { PortContext } from "@extension/components/PortContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useDustAPI } from "@extension/lib/dust_api";
 import type { AttachSelectionMessage } from "@extension/lib/messages";
@@ -58,21 +59,24 @@ export function AssistantInputBar({
     owner,
   });
 
+  const port = useContext(PortContext);
   useEffect(() => {
-    void sendInputBarStatus(true);
-    const listener = (message: AttachSelectionMessage) => {
-      const { type, ...options } = message;
-      if (type === "ATTACH_TAB") {
-        // Handle message
-        void fileUploaderService.uploadContentTab(options);
-      }
-    };
-    chrome.runtime.onMessage.addListener(listener);
-    return () => {
-      void sendInputBarStatus(false);
-      chrome.runtime.onMessage.removeListener(listener);
-    };
-  });
+    if (port) {
+      void sendInputBarStatus(true);
+      const listener = async (message: AttachSelectionMessage) => {
+        const { type } = message;
+        if (type === "ATTACH_TAB") {
+          // Handle message
+          void fileUploaderService.uploadContentTab(message);
+        }
+      };
+      port.onMessage.addListener(listener);
+      return () => {
+        void sendInputBarStatus(false);
+        port.onMessage.removeListener(listener);
+      };
+    }
+  }, []);
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 
