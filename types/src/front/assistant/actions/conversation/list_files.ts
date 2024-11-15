@@ -1,4 +1,4 @@
-import { BaseAction } from "../../../../front/lib/api/assistant/actions/index";
+import { BaseAction } from "../../../../front/assistant/actions/index";
 import { ModelId } from "../../../../shared/model_id";
 
 export type ConversationFileType = {
