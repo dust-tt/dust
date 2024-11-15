@@ -50,7 +50,7 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ vars.INFRA_DISPATCH_APP_ID }}
+          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
           private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
 
       - name: Trigger dust-infra workflow
