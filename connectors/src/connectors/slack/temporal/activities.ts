@@ -76,7 +76,18 @@ export async function getChannels(
       limit: 1000,
       cursor: nextCursor,
     });
+
     nextCursor = c?.response_metadata?.next_cursor;
+
+    logger.info(
+      {
+        connectorId,
+        returnedChannels: c?.channels ? c.channels.length : undefined,
+        nextCursor,
+      },
+      "[Slack] conversations.list call"
+    );
+
     if (c.error) {
       throw new Error(c.error);
     }
