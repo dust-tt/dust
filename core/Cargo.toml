@@ -35,9 +35,9 @@ path = "bin/qdrant/create_collection.rs"
 # name = "qdrant_migrate_embedder"
 # path = "bin/qdrant/migrate_embedder.rs"
 
-# [[bin]]
-# name = "qdrant_delete_orphaned_points"
-# path = "bin/qdrant/delete_orphaned_points.rs"
+[[bin]]
+name = "qdrant_delete_orphaned_points"
+path = "bin/qdrant/delete_orphaned_points.rs"
 
 
 # [[bin]]
