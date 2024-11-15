@@ -13,6 +13,8 @@ import {
   TextExtraction,
 } from "@dust-tt/types";
 import { parse } from "csv-parse";
+import { IncomingForm } from "formidable";
+import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
 import { PassThrough, Readable, Transform } from "stream";
@@ -22,8 +24,11 @@ import config from "@app/lib/api/config";
 import type { CSVRow } from "@app/lib/api/csv";
 import { analyzeCSVColumns } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+
+const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
 // NotSupported preprocessing
 
@@ -383,7 +388,7 @@ const processingPerContentType: PreprocessingPerContentType = {
   },
 };
 
-export async function maybeApplyPreProcessing(
+async function maybeApplyPreProcessing(
   auth: Authenticator,
   file: FileResource
 ): Promise<Result<undefined, Error>> {
@@ -407,4 +412,102 @@ export async function maybeApplyPreProcessing(
   await file.markAsReady();
 
   return new Ok(undefined);
+}
+
+export async function uploadToCloudStorage(
+  auth: Authenticator,
+  { file, req }: { file: FileResource; req: IncomingMessage }
+): Promise<
+  Result<
+    FileResource,
+    Omit<DustError, "code"> & {
+      code:
+        | "internal_server_error"
+        | "invalid_request_error"
+        | "file_too_large"
+        | "file_type_not_supported";
+    }
+  >
+> {
+  if (file.isReady || file.isFailed) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "The file has already been uploaded or the upload has failed.",
+    });
+  }
+
+  if (file.createdAt.getTime() + UPLOAD_DELAY_AFTER_CREATION_MS < Date.now()) {
+    await file.markAsFailed();
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File upload has expired. Create a new file.",
+    });
+  }
+
+  try {
+    const form = new IncomingForm({
+      // Stream the uploaded document to the cloud storage.
+      fileWriteStreamHandler: () => {
+        return file.getWriteStream({
+          auth,
+          version: "original",
+        });
+      },
+
+      // Support only one file upload.
+      maxFiles: 1,
+
+      // Validate the file size.
+      maxFileSize: file.fileSize,
+
+      // Ensure the file is of the correct type.
+      filter: function (part) {
+        if (part.mimetype !== file.contentType) {
+          return false;
+        }
+
+        return true;
+      },
+    });
+    const [, files] = await form.parse(req);
+
+    const maybeFiles = files.file;
+
+    if (!maybeFiles || maybeFiles.length === 0) {
+      return new Err({
+        name: "dust_error",
+        code: "file_type_not_supported",
+        message: "No file uploaded.",
+      });
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.startsWith("options.maxTotalFileSize")) {
+        return new Err({
+          name: "dust_error",
+          code: "file_too_large",
+          message: "File is too large.",
+        });
+      }
+    }
+
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Error uploading file : ${error instanceof Error ? error : new Error(JSON.stringify(error))}`,
+    });
+  }
+
+  const preProcessingRes = await maybeApplyPreProcessing(auth, file);
+  if (preProcessingRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to process the file : ${preProcessingRes.error}`,
+    });
+  }
+
+  return new Ok(file);
 }
