@@ -22,7 +22,7 @@
     "sidePanel",
     "identity",
     "storage",
-    "activeTab",
+    "tabs",
     "scripting",
     "contextMenus"
   ],
