@@ -1,12 +1,36 @@
-import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_app_run";
-import { ProcessConfigurationType } from "../../front/assistant/actions/process";
-import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
-import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
+import {
+  BrowseConfigurationType,
+  BrowseParamsEvent,
+} from "../../front/assistant/actions/browse";
+import {
+  DustAppRunBlockEvent,
+  DustAppRunConfigurationType,
+  DustAppRunParamsEvent,
+} from "../../front/assistant/actions/dust_app_run";
+import {
+  ProcessConfigurationType,
+  ProcessParamsEvent,
+} from "../../front/assistant/actions/process";
+import {
+  RetrievalConfigurationType,
+  RetrievalParamsEvent,
+} from "../../front/assistant/actions/retrieval";
+import {
+  TablesQueryConfigurationType,
+  TablesQueryModelOutputEvent,
+  TablesQueryOutputEvent,
+  TablesQueryStartedEvent,
+} from "../../front/assistant/actions/tables_query";
+import {
+  WebsearchConfigurationType,
+  WebsearchParamsEvent,
+} from "../../front/assistant/actions/websearch";
+import {
+  AgentActionType,
+  AgentMessageType,
+} from "../../front/assistant/conversation";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
-import { BrowseConfigurationType } from "./actions/browse";
-import { WebsearchConfigurationType } from "./actions/websearch";
-
 /**
  * Agent Action configuration
  */
@@ -215,3 +239,109 @@ export interface TemplateAgentConfigurationType {
 }
 
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 8;
+
+/**
+ * Agent events
+ */
+
+// Event sent when an agent error occured before we have a agent message in the database.
+export type AgentMessageErrorEvent = {
+  type: "agent_message_error";
+  created: number;
+  configurationId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+// Generic event sent when an error occured (whether it's during the action or the message generation).
+export type AgentErrorEvent = {
+  type: "agent_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+export type AgentDisabledErrorEvent = {
+  type: "agent_disabled_error";
+  created: number;
+  configurationId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+// Event sent during the execution of an action. These are action specific.
+export type AgentActionSpecificEvent =
+  | RetrievalParamsEvent
+  | DustAppRunParamsEvent
+  | DustAppRunBlockEvent
+  | TablesQueryStartedEvent
+  | TablesQueryModelOutputEvent
+  | TablesQueryOutputEvent
+  | ProcessParamsEvent
+  | WebsearchParamsEvent
+  | BrowseParamsEvent;
+
+// Event sent once the action is completed, we're moving to generating a message if applicable.
+export type AgentActionSuccessEvent = {
+  type: "agent_action_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: AgentActionType;
+};
+
+// Event sent to stop the generation.
+export type AgentGenerationCancelledEvent = {
+  type: "agent_generation_cancelled";
+  created: number;
+  configurationId: string;
+  messageId: string;
+};
+
+// Event sent once the message is completed and successful.
+export type AgentMessageSuccessEvent = {
+  type: "agent_message_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageType;
+  runIds: string[];
+};
+
+export type AgentActionsEvent = {
+  type: "agent_actions";
+  created: number;
+  runId: string;
+  actions: Array<{
+    action: AgentActionConfigurationType;
+    inputs: Record<string, string | boolean | number>;
+    specification: AgentActionSpecification | null;
+    functionCallId: string | null;
+  }>;
+};
+
+export type AgentChainOfThoughtEvent = {
+  type: "agent_chain_of_thought";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageType;
+  chainOfThought: string;
+};
+
+export type AgentContentEvent = {
+  type: "agent_message_content";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  content: string;
+  processedContent: string;
+};

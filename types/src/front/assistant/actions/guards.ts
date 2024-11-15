@@ -1,7 +1,12 @@
 import {
+  BrowseActionType,
+  BrowseConfigurationType,
+} from "../../../front/assistant/actions/browse";
+import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
+import { BaseAction } from "../../../front/assistant/actions/index";
 import {
   ProcessActionType,
   ProcessConfigurationType,
@@ -14,14 +19,15 @@ import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
-import { AgentActionType } from "../../../front/assistant/conversation";
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
+import {
+  WebsearchActionType,
+  WebsearchConfigurationType,
+} from "../../../front/assistant/actions/websearch";
 import {
   AgentConfigurationType,
   TemplateAgentConfigurationType,
-} from "../agent";
-import { BrowseActionType, BrowseConfigurationType } from "./browse";
-import { WebsearchActionType, WebsearchConfigurationType } from "./websearch";
+} from "../../../front/assistant/agent";
+import { AgentActionType } from "../../../front/assistant/conversation";
 
 export function isTablesQueryConfiguration(
   arg: unknown

@@ -1,5 +1,8 @@
-import { ModelId } from "../../../../../shared/model_id";
-import { FunctionCallType, FunctionMessageTypeModel } from "../generation";
+import {
+  FunctionCallType,
+  FunctionMessageTypeModel,
+} from "../../../front/assistant/generation";
+import { ModelId } from "../../../shared/model_id";
 
 type BaseActionType =
   | "dust_app_run_action"
