@@ -1,6 +1,12 @@
-import { Button, Spinner } from "@dust-tt/sparkle";
-import { MarkdownContentContext } from "@dust-tt/sparkle";
-import { Markdown } from "@dust-tt/sparkle";
+import {
+  Button,
+  CodeBlock,
+  Markdown,
+  MarkdownContentContext,
+  Modal,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   LightWorkspaceType,
@@ -58,12 +64,14 @@ function useVisualizationDataHandler({
   visualization,
   setContentHeight,
   setErrorMessage,
+  setCodeDrawerOpened,
   vizIframeRef,
   workspaceId,
 }: {
   visualization: Visualization;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
+  setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string;
 }) {
@@ -147,6 +155,10 @@ function useVisualizationDataHandler({
           downloadFileFromBlob(data.params.blob, data.params.filename);
           break;
 
+        case "displayCode":
+          setCodeDrawerOpened(true);
+          break;
+
         default:
           assertNever(data);
       }
@@ -160,9 +172,34 @@ function useVisualizationDataHandler({
     getFileBlob,
     setContentHeight,
     setErrorMessage,
+    setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
   ]);
+}
+
+export function CodeDrawer({
+  isOpened,
+  onClose,
+  code,
+}: {
+  isOpened: boolean;
+  onClose: () => void;
+  code: string;
+}) {
+  return (
+    <Modal
+      isOpen={isOpened}
+      onClose={onClose}
+      title="Code for this visualization"
+      variant="side-md"
+      hasChanged={false}
+    >
+      <Page variant="modal">
+        <CodeBlock className="language-jsx">{code}</CodeBlock>
+      </Page>
+    </Modal>
+  );
 }
 
 export function VisualizationActionIframe({
@@ -179,7 +216,7 @@ export function VisualizationActionIframe({
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryClicked, setRetryClicked] = useState(false);
-
+  const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const isErrored = !!errorMessage || retryClicked;
@@ -189,6 +226,7 @@ export function VisualizationActionIframe({
     workspaceId: owner.sId,
     setContentHeight,
     setErrorMessage,
+    setCodeDrawerOpened,
     vizIframeRef,
   });
 
@@ -225,6 +263,13 @@ export function VisualizationActionIframe({
         <div className="absolute inset-0 flex items-center justify-center bg-white">
           <Spinner size="xl" />
         </div>
+      )}
+      {code && (
+        <CodeDrawer
+          isOpened={isCodeDrawerOpen}
+          onClose={() => setCodeDrawerOpened(false)}
+          code={code}
+        />
       )}
       <div
         className={classNames(
