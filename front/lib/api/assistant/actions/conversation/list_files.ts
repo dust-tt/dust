@@ -1,10 +1,10 @@
 import type {
   AgentMessageType,
+  ConversationFileType,
+  ConversationListFilesActionType,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
-  JITFileType,
-  JITListFilesActionType,
   ModelId,
 } from "@dust-tt/types";
 import {
@@ -15,30 +15,27 @@ import {
   isTablesQueryActionType,
 } from "@dust-tt/types";
 
-interface JITListFilesActionBlob {
+interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
   functionCallId: string | null;
   functionCallName: string | null;
-  files: JITFileType[];
-  step: number;
+  files: ConversationFileType[];
 }
 
-export class JITListFilesAction extends BaseAction {
+export class ConversationListFilesAction extends BaseAction {
   readonly agentMessageId: ModelId;
-  readonly files: JITFileType[];
+  readonly files: ConversationFileType[];
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
-  readonly step: number;
-  readonly type = "jit_list_files_action";
+  readonly type = "conversation_list_files_action";
 
-  constructor(blob: JITListFilesActionBlob) {
-    super(-1, "jit_list_files_action");
+  constructor(blob: ConversationListFilesActionBlob) {
+    super(-1, "conversation_list_files_action");
 
     this.agentMessageId = blob.agentMessageId;
     this.files = blob.files;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
-    this.step = blob.step;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -64,12 +61,11 @@ export class JITListFilesAction extends BaseAction {
   }
 }
 
-export function makeJITListFilesAction(
-  step: number,
+export function makeConversationListFilesAction(
   agentMessage: AgentMessageType,
   conversation: ConversationType
-): JITListFilesActionType | null {
-  const jitFiles: JITFileType[] = [];
+): ConversationListFilesActionType | null {
+  const jitFiles: ConversationFileType[] = [];
 
   for (const m of conversation.content.flat(1)) {
     if (isContentFragmentType(m)) {
@@ -99,11 +95,10 @@ export function makeJITListFilesAction(
     return null;
   }
 
-  return new JITListFilesAction({
+  return new ConversationListFilesAction({
     functionCallId: "call_" + Math.random().toString(36).substring(7),
     functionCallName: "list_conversation_files",
     files: jitFiles,
     agentMessageId: agentMessage.agentMessageId,
-    step: step,
   });
 }

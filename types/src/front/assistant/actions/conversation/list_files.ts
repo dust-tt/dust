@@ -1,17 +1,16 @@
 import { BaseAction } from "../../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../../shared/model_id";
 
-export type JITFileType = {
+export type ConversationFileType = {
   fileId: string;
   title: string;
   contentType: string;
 };
 
-export interface JITListFilesActionType extends BaseAction {
+export interface ConversationListFilesActionType extends BaseAction {
   agentMessageId: ModelId;
-  files: JITFileType[];
+  files: ConversationFileType[];
   functionCallId: string | null;
   functionCallName: string | null;
-  step: number;
-  type: "jit_list_files_action";
+  type: "conversation_list_files_action";
 }

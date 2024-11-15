@@ -9,7 +9,7 @@ type BaseActionType =
   | "websearch_action"
   | "browse_action"
   | "visualization_action"
-  | "jit_list_files_action";
+  | "conversation_list_files_action";
 
 export abstract class BaseAction {
   readonly id: ModelId;

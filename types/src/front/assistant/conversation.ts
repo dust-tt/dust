@@ -7,7 +7,7 @@ import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
 import { BrowseActionType } from "./actions/browse";
-import { JITListFilesActionType } from "./actions/jit/list_files";
+import { ConversationListFilesActionType } from "./actions/conversation/list_files";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -112,9 +112,11 @@ export type ConfigurableAgentActionType =
   | WebsearchActionType
   | BrowseActionType;
 
-export type JITAgentActionType = JITListFilesActionType;
+export type ConversationAgentActionType = ConversationListFilesActionType;
 
-export type AgentActionType = ConfigurableAgentActionType | JITAgentActionType;
+export type AgentActionType =
+  | ConfigurableAgentActionType
+  | ConversationAgentActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -129,7 +131,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
-  jit_list_files_action: "Listing conversation files",
+  conversation_list_files_action: "Listing conversation files",
 };
 
 /**

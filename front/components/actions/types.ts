@@ -52,7 +52,7 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: BrowseActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.browse_action,
   },
-  jit_list_files_action: {
+  conversation_list_files_action: {
     detailsComponent: () => null,
     runningLabel: ACTION_RUNNING_LABELS.jit_list_files_action,
   },

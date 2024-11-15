@@ -4,6 +4,7 @@ import type {
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentActionType,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentContentEvent,
@@ -50,6 +51,9 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
+
+import { makeConversationListFilesAction } from "./actions/conversation/list_files";
+import { isJITActionsEnabled } from "./jit_actions";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -292,6 +296,23 @@ async function* runMultiActionsAgentLoop(
   }
 }
 
+async function getEmulatedAgentMessageActions(
+  auth: Authenticator,
+  {
+    agentMessage,
+    conversation,
+  }: { agentMessage: AgentMessageType; conversation: ConversationType }
+): Promise<AgentActionType[]> {
+  const actions: AgentActionType[] = [];
+  if (await isJITActionsEnabled(auth)) {
+    const a = makeConversationListFilesAction(agentMessage, conversation);
+    if (a) {
+      actions.push(a);
+    }
+  }
+  return actions;
+}
+
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 async function* runMultiActionsAgent(
@@ -362,15 +383,10 @@ async function* runMultiActionsAgent(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  const fakeJITListFiles = makeJITListFilesAction(
-    0,
-    agentMessage,
-    conversation
-  );
-
-  if (fakeJITListFiles) {
-    agentMessage.actions.unshift(fakeJITListFiles);
-  }
+  // const emulatedActions = await getEmulatedAgentMessageActions(auth, {
+  //   agentMessage,
+  //   conversation,
+  // });
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
@@ -379,11 +395,6 @@ async function* runMultiActionsAgent(
     prompt,
     allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
   });
-
-  // remove the fake JIT action from the agentMessage.actions
-  if (fakeJITListFiles) {
-    agentMessage.actions.shift();
-  }
 
   if (modelConversationRes.isErr()) {
     logger.error(

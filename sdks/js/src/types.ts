@@ -460,6 +460,24 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
 });
 type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
+const ConversationFileTypeSchema = z.object({
+  fileId: z.string(),
+  title: z.string(),
+  contentType: z.string(),
+});
+
+const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
+  files: z.array(ConversationFileTypeSchema),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  agentMessageId: ModelIdSchema,
+  step: z.number(),
+  type: z.literal("conversation_list_files_action"),
+});
+// type ConversationListFIlesActionPublicType = z.infer<
+//   typeof ConversationListFilesActionTypeSchema
+// >;
+
 const DustAppParametersSchema = z.record(
   z.union([z.string(), z.number(), z.boolean()])
 );
@@ -609,24 +627,6 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
   type: z.literal("tables_query_action"),
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
-
-const JITFileTypeSchema = z.object({
-  fileId: z.string(),
-  title: z.string(),
-  contentType: z.string(),
-});
-
-const JITListFilesActionTypeSchema = BaseActionSchema.extend({
-  files: z.array(JITFileTypeSchema),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  agentMessageId: ModelIdSchema,
-  step: z.number(),
-  type: z.literal("jit_list_files_action"),
-});
-// type JITListFIlesActionPublicType = z.infer<
-//   typeof JITListFilesActionTypeSchema
-// >;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema([
   "usage_data_api",
@@ -857,7 +857,7 @@ const AgentActionTypeSchema = z.union([
   ProcessActionTypeSchema,
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
-  JITListFilesActionTypeSchema,
+  ConversationListFilesActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
