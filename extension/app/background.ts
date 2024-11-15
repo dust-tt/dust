@@ -49,7 +49,7 @@ chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.contextMenus.create({
     id: "ask_dust",
-    title: "Ask dust to summarize this page",
+    title: "Ask @dust to summarize this page",
     contexts: ["all"],
   });
   chrome.contextMenus.create({
@@ -94,7 +94,7 @@ const getActionHandler = (menuItemId: string | number) => {
           const params = JSON.stringify({
             includeContent: true,
             includeScreenshot: false,
-            text: ":mention[dust]{sId=dust} summarize this page",
+            text: ":mention[dust]{sId=dust} summarize this page.",
             configurationId: "dust",
           });
           state.port.postMessage({
