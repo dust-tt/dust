@@ -1,4 +1,7 @@
-import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
+import type {
+  ConfigurableAgentActionType,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
@@ -9,22 +12,24 @@ import { TablesQueryActionDetails } from "@app/components/actions/tables_query/T
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
-  T extends AgentActionType = AgentActionType,
+  T extends ConfigurableAgentActionType = ConfigurableAgentActionType,
 > {
   action: T;
   owner: LightWorkspaceType;
   defaultOpen: boolean;
 }
 
-interface ActionSpecification<T extends AgentActionType> {
+interface ActionSpecification<T extends ConfigurableAgentActionType> {
   runningLabel: string;
   detailsComponent: React.ComponentType<ActionDetailsComponentBaseProps<T>>;
 }
 
-type ActionType = AgentActionType["type"];
+type ActionType = ConfigurableAgentActionType["type"];
 
 type ActionSpecifications = {
-  [K in ActionType]: ActionSpecification<Extract<AgentActionType, { type: K }>>;
+  [K in ActionType]: ActionSpecification<
+    Extract<ConfigurableAgentActionType, { type: K }>
+  >;
 };
 
 const actionsSpecification: ActionSpecifications = {
@@ -56,6 +61,6 @@ const actionsSpecification: ActionSpecifications = {
 
 export function getActionSpecification<T extends ActionType>(
   actionType: T
-): ActionSpecification<Extract<AgentActionType, { type: T }>> {
+): ActionSpecification<Extract<ConfigurableAgentActionType, { type: T }>> {
   return actionsSpecification[actionType];
 }

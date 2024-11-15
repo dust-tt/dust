@@ -107,14 +107,3 @@ export function makeJITListFilesAction(
     step: step,
   });
 }
-
-/**
- * Action rendering.
- */
-
-// JITListFilesAction are never stored in DB so they are never rendered to the user.
-export async function jitListFilesTypesFromAgentMessageIds(): Promise<
-  JITListFilesAction[]
-> {
-  return [];
-}

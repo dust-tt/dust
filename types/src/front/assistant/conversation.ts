@@ -104,15 +104,17 @@ export function isUserMessageType(arg: MessageType): arg is UserMessageType {
 /**
  * Agent messages
  */
-
-export type AgentActionType =
+export type ConfigurableAgentActionType =
   | RetrievalActionType
   | DustAppRunActionType
   | TablesQueryActionType
   | ProcessActionType
   | WebsearchActionType
-  | BrowseActionType
-  | JITListFilesActionType;
+  | BrowseActionType;
+
+export type JITAgentActionType = JITListFilesActionType;
+
+export type AgentActionType = ConfigurableAgentActionType | JITAgentActionType;
 
 export type AgentMessageStatus =
   | "created"

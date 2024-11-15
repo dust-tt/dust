@@ -610,6 +610,24 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
+const JITFileTypeSchema = z.object({
+  fileId: z.string(),
+  title: z.string(),
+  contentType: SupportedContentFragmentTypeSchema,
+});
+
+const JITListFilesActionTypeSchema = BaseActionSchema.extend({
+  files: z.array(JITFileTypeSchema).nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  agentMessageId: ModelIdSchema,
+  step: z.number(),
+  type: z.literal("tables_query_action"),
+});
+type JITListFIlesActionPublicType = z.infer<
+  typeof JITListFilesActionTypeSchema
+>;
+
 const WhitelistableFeaturesSchema = FlexibleEnumSchema([
   "usage_data_api",
   "okta_enterprise_connection",
@@ -839,6 +857,7 @@ const AgentActionTypeSchema = z.union([
   ProcessActionTypeSchema,
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
+  JITListFilesActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
