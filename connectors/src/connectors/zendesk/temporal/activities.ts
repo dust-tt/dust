@@ -188,7 +188,7 @@ export async function syncZendeskBrandActivity({
 
 /**
  * This activity is responsible for fetching a batch of tickets
- * that are older than the conversationsSlidingWindow and ready to be deleted.
+ * that are older than the retention period and ready to be deleted.
  */
 export async function getNextOldTicketBatchActivity(
   connectorId: ModelId
