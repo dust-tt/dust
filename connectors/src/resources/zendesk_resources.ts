@@ -622,6 +622,23 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     ];
   }
 
+  static async fetchOutdatedTicketIds({
+    connectorId,
+    expirationDate,
+    batchSize,
+  }: {
+    connectorId: number;
+    expirationDate: Date;
+    batchSize: number;
+  }): Promise<number[]> {
+    const tickets = await ZendeskTicket.findAll({
+      attributes: ["ticketId"],
+      where: { connectorId, updatedAt: { [Op.lt]: expirationDate } },
+      limit: batchSize,
+    });
+    return tickets.map((ticket) => ticket.ticketId);
+  }
+
   static async fetchByTicketId({
     connectorId,
     ticketId,
