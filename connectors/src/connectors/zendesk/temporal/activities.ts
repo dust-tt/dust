@@ -247,7 +247,11 @@ export async function getZendeskTimestampCursorActivity(
       timestampCursor: null, // start date of the last successful sync, null for now since we do not know it will succeed
     });
   }
-  return cursors.timestampCursor;
+  // we get a StartTimeTooRecent error before 1 minute
+  const minAgo = Date.now() - 60 * 1000; // 1 minute ago
+  return cursors.timestampCursor
+    ? new Date(Math.min(cursors.timestampCursor.getTime(), minAgo))
+    : new Date(minAgo);
 }
 
 /**
