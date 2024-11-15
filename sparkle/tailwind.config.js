@@ -69,7 +69,7 @@ module.exports = {
         ...theme("spacing"),
       }),
       backgroundImage: {
-        "rainbow-gradient": `linear-gradient(90deg, ${colors.red[500]}, ${colors.pink[500]}, ${colors.amber[500]}, ${colors.emerald[500]}, ${colors.sky[500]}, ${colors.blue[500]}, ${colors.purple[500]})`,
+        "rainbow-gradient": `linear-gradient(90deg, ${colors.sky[300]}, ${colors.purple[700]}, ${colors.blue[500]}, ${colors.indigo[300]}, ${colors.sky[600]}, ${colors.blue[500]}, ${colors.purple[300]})`,
       },
       keyframes: {
         pulse: {
@@ -192,7 +192,7 @@ module.exports = {
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
-        rainbow: "rainbow var(--speed, 8s) infinite linear",
+        rainbow: "rainbow var(--speed, 6s) infinite linear",
       },
       colors: {
         brand: {
