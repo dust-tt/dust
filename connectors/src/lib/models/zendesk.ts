@@ -66,7 +66,7 @@ export class ZendeskConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare subdomain: string;
-  declare conversationsSlidingWindow: number; // in days
+  declare retentionPeriodDays: number;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -92,7 +92,7 @@ ZendeskConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    conversationsSlidingWindow: {
+    retentionPeriodDays: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 180, // approximately 6 months

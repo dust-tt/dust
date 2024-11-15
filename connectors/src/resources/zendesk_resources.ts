@@ -95,7 +95,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
       updatedAt: this.updatedAt,
 
       subdomain: this.subdomain,
-      conversationsSlidingWindow: this.conversationsSlidingWindow,
+      retentionPeriodDays: this.retentionPeriodDays,
 
       connectorId: this.connectorId,
     };

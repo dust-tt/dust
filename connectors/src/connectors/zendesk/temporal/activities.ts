@@ -203,8 +203,7 @@ export async function getNextOldTicketBatchActivity(
   return ZendeskTicketResource.fetchOutdatedTicketIds({
     connectorId,
     expirationDate: new Date(
-      Date.now() -
-      configuration.conversationsSlidingWindow * 24 * 60 * 60 * 1000 // conversion from days to ms
+      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
     ),
     batchSize: ZENDESK_BATCH_SIZE,
   });
