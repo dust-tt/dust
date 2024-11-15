@@ -90,7 +90,7 @@ export async function renderConversationForModelJIT({
       // calls).  Actions all have a step index which indicates how they should be grouped but some
       // actions injected by `getEmulatedAgentMessageActions` have a step index of `-1`. We
       // therefore group by index, then order and transform in a 2D array to present to the model.
-      const stepsByStepIndex = {} as Record<
+      const stepByStepIndex = {} as Record<
         string,
         {
           contents: string[];
@@ -105,27 +105,26 @@ export async function renderConversationForModelJIT({
         ({
           contents: [],
           actions: [],
-        }) satisfies (typeof stepsByStepIndex)[number];
+        }) satisfies (typeof stepByStepIndex)[number];
 
       for (const action of actions) {
         const stepIndex = action.step;
-        stepsByStepIndex[stepIndex] =
-          stepsByStepIndex[stepIndex] || emptyStep();
-        stepsByStepIndex[stepIndex].actions.push({
+        stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
+        stepByStepIndex[stepIndex].actions.push({
           call: action.renderForFunctionCall(),
           result: action.renderForMultiActionsModel(),
         });
       }
 
       for (const content of m.rawContents) {
-        stepsByStepIndex[content.step] =
-          stepsByStepIndex[content.step] || emptyStep();
+        stepByStepIndex[content.step] =
+          stepByStepIndex[content.step] || emptyStep();
         if (content.content.trim()) {
-          stepsByStepIndex[content.step].contents.push(content.content);
+          stepByStepIndex[content.step].contents.push(content.content);
         }
       }
 
-      const steps = Object.entries(stepsByStepIndex)
+      const steps = Object.entries(stepByStepIndex)
         .sort(([a], [b]) => Number(a) - Number(b))
         .map(([, step]) => step);
 
