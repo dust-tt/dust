@@ -17,6 +17,7 @@ const ContentFragmentBaseSchema = t.intersection([
   }),
   t.partial({
     url: t.union([t.string, t.null]),
+    supersededContentFragmentId: t.union([t.string, t.null]),
   }),
 ]);
 

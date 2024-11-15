@@ -93,7 +93,7 @@ async function destroyContentFragments(
   }
 
   const contentFragments =
-    await ContentFragmentResource.fetchMany(contentFragmentIds);
+    await ContentFragmentResource.fetchManyByModelIds(contentFragmentIds);
 
   for (const contentFragment of contentFragments) {
     const messageContentFragmentId = messageAndContentFragmentIds.find(

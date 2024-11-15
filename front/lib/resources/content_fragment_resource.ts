@@ -21,6 +21,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -46,13 +47,14 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<ContentFragmentModel>, "sId">,
+    blob: Omit<CreationAttributes<ContentFragmentModel>, "sId" | "version">,
     transaction?: Transaction
   ) {
     const contentFragment = await ContentFragmentModel.create(
       {
         ...blob,
         sId: generateRandomModelSId("cf"),
+        version: "latest",
       },
       {
         transaction,
@@ -60,6 +62,50 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
 
     return new this(ContentFragmentModel, contentFragment.get());
+  }
+
+  static async makeNewVersion(
+    sId: string,
+    blob: Omit<CreationAttributes<ContentFragmentModel>, "sId" | "version">,
+    transaction?: Transaction
+  ): Promise<ContentFragmentResource> {
+    const t = transaction ?? (await frontSequelize.transaction());
+
+    try {
+      // First, mark all existing content fragments with this sId as superseded
+      await ContentFragmentModel.update(
+        { version: "superseded" },
+        {
+          where: { sId },
+          transaction: t,
+        }
+      );
+
+      // Create new content fragment with "latest" version
+      const contentFragment = await ContentFragmentModel.create(
+        {
+          ...blob,
+          sId,
+          version: "latest",
+        },
+        {
+          transaction: t,
+        }
+      );
+
+      // If we created our own transaction, commit it
+      if (!transaction) {
+        await t.commit();
+      }
+
+      return new this(ContentFragmentModel, contentFragment.get());
+    } catch (error) {
+      // If we created our own transaction, roll it back
+      if (!transaction) {
+        await t.rollback();
+      }
+      throw error;
+    }
   }
 
   static fromMessage(
@@ -88,7 +134,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return ContentFragmentResource.fromMessage(message);
   }
 
-  static async fetchMany(ids: Array<ModelId>) {
+  static async fetchManyByModelIds(ids: Array<ModelId>) {
     const blobs = await ContentFragmentResource.model.findAll({
       where: {
         id: ids,
@@ -328,6 +374,7 @@ async function renderFromFileId(
     model,
     title,
     textBytes,
+    contentFragmentVersion,
   }: {
     contentType: string;
     excludeImages: boolean;
@@ -335,6 +382,7 @@ async function renderFromFileId(
     model: ModelConfigurationType;
     title: string;
     textBytes: number | null;
+    contentFragmentVersion: string;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
   if (isSupportedImageContentFragmentType(contentType)) {
@@ -345,7 +393,14 @@ async function renderFromFileId(
         content: [
           {
             type: "text",
-            text: `<attachment id="${fileId}" type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]</attachment>`,
+            text: renderContentFragmentXml({
+              fileId: null,
+              contentType,
+              title,
+              version: contentFragmentVersion,
+              content:
+                "[Image content interpreted by a vision-enabled model. Description not available in this context.]",
+            }),
           },
         ],
       });
@@ -381,7 +436,13 @@ async function renderFromFileId(
       content: [
         {
           type: "text",
-          text: `<attachment id="${fileId}" type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+          text: renderContentFragmentXml({
+            fileId,
+            contentType,
+            title,
+            version: contentFragmentVersion,
+            content,
+          }),
         },
       ],
     });
@@ -398,12 +459,34 @@ export async function renderContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const { contentType, fileId, sId, title, textBytes } = message;
+  const { contentType, fileId, sId, title, textBytes, contentFragmentVersion } =
+    message;
 
   try {
     // Render content based on fragment type:
+    // - If the fragment is superseded by another content fragment, don't render the content.
     // - If the fragment is a file, render it from the file. For large CSV files, render a snippet version (CSV schema).
     // - If the fragment is not a file (public API), always render the full content.
+    if (message.contentFragmentVersion === "superseded") {
+      return new Ok({
+        role: "content_fragment",
+        name: `inject_${contentType}`,
+        content: [
+          {
+            type: "text",
+            text: renderContentFragmentXml({
+              fileId,
+              contentType,
+              title,
+              version: contentFragmentVersion,
+              content:
+                "Content is outdated. Please refer to the latest version of this content.",
+            }),
+          },
+        ],
+      });
+    }
+
     if (fileId) {
       return await renderFromFileId(conversation.owner, {
         contentType,
@@ -412,6 +495,7 @@ export async function renderContentFragmentForModel(
         model,
         title,
         textBytes,
+        contentFragmentVersion,
       });
     } else {
       const content = await getContentFragmentText({
@@ -426,7 +510,13 @@ export async function renderContentFragmentForModel(
         content: [
           {
             type: "text",
-            text: `<attachment id="${fileId}" type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+            text: renderContentFragmentXml({
+              fileId: null,
+              contentType,
+              title,
+              version: contentFragmentVersion,
+              content,
+            }),
           },
         ],
       });
@@ -444,4 +534,20 @@ export async function renderContentFragmentForModel(
 
     return new Err(new Error("Failed to retrieve content fragment text"));
   }
+}
+
+function renderContentFragmentXml({
+  fileId,
+  contentType,
+  title,
+  version,
+  content,
+}: {
+  fileId: string | null;
+  contentType: string;
+  title: string;
+  version: string;
+  content: string;
+}) {
+  return `<attachment id="${fileId}" type="${contentType}" title="${title}" version="${version}">\n${content}\n</attachment>`;
 }

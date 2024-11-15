@@ -114,12 +114,14 @@ async function handler(
         r.data.contentType = normalizedContentType;
       }
       const { context, ...contentFragment } = r.data;
+
       const contentFragmentRes = await postNewContentFragment(
         auth,
         conversation,
         contentFragment,
         context
       );
+
       if (contentFragmentRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
