@@ -383,10 +383,14 @@ async function* runMultiActionsAgent(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  // const emulatedActions = await getEmulatedAgentMessageActions(auth, {
-  //   agentMessage,
-  //   conversation,
-  // });
+  const emulatedActions = await getEmulatedAgentMessageActions(auth, {
+    agentMessage,
+    conversation,
+  });
+
+  // Prepend emulated actions to the current agent message before rendering the conversation for the
+  // model.
+  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
@@ -395,6 +399,11 @@ async function* runMultiActionsAgent(
     prompt,
     allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
   });
+
+  // Scrub emulated actions from the agent message after rendering.
+  agentMessage.actions = agentMessage.actions.filter(
+    (a) => !emulatedActions.includes(a)
+  );
 
   if (modelConversationRes.isErr()) {
     logger.error(
