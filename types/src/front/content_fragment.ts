@@ -35,6 +35,8 @@ export function getSupportedContentFragmentTypeCodec(): t.Mixed {
   ]);
 }
 
+export type ContentFragmentVersion = "superseded" | "latest";
+
 export type ContentFragmentType = {
   id: ModelId;
   sId: string;
@@ -49,6 +51,8 @@ export type ContentFragmentType = {
   title: string;
   contentType: SupportedContentFragmentType;
   context: ContentFragmentContextType;
+  contentFragmentId: string;
+  contentFragmentVersion: ContentFragmentVersion;
 };
 
 export type UploadedContentFragment = {

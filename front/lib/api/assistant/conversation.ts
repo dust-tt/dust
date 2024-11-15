@@ -1780,6 +1780,7 @@ export async function postNewContentFragment(
           userContextEmail: context?.email,
           userContextFullName: context?.fullName,
           userContextUsername: context?.username,
+          version: "latest",
         },
         t
       );

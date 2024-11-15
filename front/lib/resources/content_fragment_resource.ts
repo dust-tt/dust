@@ -201,6 +201,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         email: this.userContextEmail,
         username: this.userContextUsername,
       },
+      contentFragmentId: this.sId,
+      contentFragmentVersion: this.version,
     };
   }
 }
