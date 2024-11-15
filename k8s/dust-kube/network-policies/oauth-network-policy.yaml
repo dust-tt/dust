@@ -45,6 +45,7 @@ spec:
               - connectors-worker-notion
               - connectors-worker-notion-gc
               - connectors-worker-webcrawler
+              - connectors-worker-zendesk
       ports:
         - protocol: TCP
           port: 3006
