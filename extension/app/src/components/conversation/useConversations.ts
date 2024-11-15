@@ -1,6 +1,7 @@
+import { logout } from "@extension/lib/auth";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 export function useConversations() {
   const dustAPI = useDustAPI();
@@ -16,6 +17,15 @@ export function useConversations() {
     ["getConversations", dustAPI.workspaceId()],
     conversationsFetcher
   );
+
+  useEffect(() => {
+    if (
+      typeof error?.message === "string" &&
+      error?.message.includes("User not found")
+    ) {
+      void logout();
+    }
+  }, [error]);
 
   return {
     conversations: useMemo(() => data ?? [], [data]),
