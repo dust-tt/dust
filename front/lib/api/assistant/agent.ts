@@ -30,6 +30,7 @@ import {
   isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
+import assert from "assert";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { isJITActionsEnabled } from "@app/lib/api/assistant//jit_actions";
@@ -308,6 +309,9 @@ async function getEmulatedAgentMessageActions(
       actions.push(a);
     }
   }
+
+  // We ensure that all emulated actions are injected with step -1.
+  assert(actions.every((a) => a.step === -1));
   return actions;
 }
 
