@@ -688,11 +688,6 @@ export async function handleDataSourceTableCSVUpsert({
   return new Ok(tableRes.value);
 }
 
-type DataSourceWithoutProviderBodyType = {
-  name: string;
-  description: string | null;
-};
-
 /**
  * Data sources without provider = folders
  */
@@ -702,12 +697,14 @@ export async function createDataSourceWithoutProvider(
     plan,
     owner,
     space,
-    body,
+    name,
+    description,
   }: {
     plan: PlanType;
     owner: WorkspaceType;
     space: SpaceResource;
-    body: DataSourceWithoutProviderBodyType;
+    name: string;
+    description: string | null;
   }
 ): Promise<
   Result<
@@ -721,8 +718,6 @@ export async function createDataSourceWithoutProvider(
     }
   >
 > {
-  const { name, description } = body;
-
   if (name.startsWith("managed-")) {
     return new Err({
       name: "dust_error",

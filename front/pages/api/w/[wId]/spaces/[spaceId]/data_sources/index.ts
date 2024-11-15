@@ -183,7 +183,8 @@ async function handler(
           plan,
           owner,
           space,
-          body,
+          name: body.name,
+          description: body.description,
         });
 
         if (r.isErr()) {
