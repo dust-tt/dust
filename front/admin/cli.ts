@@ -8,7 +8,10 @@ import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
-import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
+import {
+  getTextContentFromMessage,
+  getTextRepresentationFromMessages,
+} from "@app/lib/api/assistant/utils";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
@@ -347,17 +350,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const messages = renderedConvo.modelConversation.messages;
 
       const tokenCountRes = await tokenCountForTexts(
-        [
-          ...messages.map((m) => {
-            let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
-            if ("function_calls" in m) {
-              text += m.function_calls
-                .map((f) => `${f.name} ${f.arguments}`)
-                .join(" ");
-            }
-            return text;
-          }),
-        ],
+        getTextRepresentationFromMessages(messages),
         model
       );
       if (tokenCountRes.isErr()) {

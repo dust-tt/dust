@@ -41,13 +41,13 @@ export interface UserMessageTypeModel {
   name: string;
   content: Content[];
 }
-
 export interface FunctionCallType {
   id: string;
   name: string;
-  arguments: string;
+  arguments: string; // Empty is not valid, should be at least "{}"
 }
 
+// Assistant requiring usage of function(s) call(s)
 export interface AssistantFunctionCallMessageTypeModel {
   role: "assistant";
   content?: string;
@@ -60,6 +60,7 @@ export interface AssistantContentMessageTypeModel {
   content: string;
 }
 
+// This is the output of one function call
 export interface FunctionMessageTypeModel {
   role: "function";
   name: string;

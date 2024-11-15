@@ -7,9 +7,8 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import _ from "lodash";
-import * as readline from "readline"; // Add this line
-import type { Readable } from "stream";
 
+import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 
@@ -20,104 +19,65 @@ export async function getVisualizationPrompt({
   auth: Authenticator;
   conversation: ConversationType;
 }) {
-  const readFirstFiveLines = (inputStream: Readable): Promise<string[]> => {
-    return new Promise((resolve, reject) => {
-      const rl: readline.Interface = readline.createInterface({
-        input: inputStream,
-        crlfDelay: Infinity,
-      });
+  const isJITEnabled = await isJITActionsEnabled(auth);
 
-      let lineCount: number = 0;
-      const lines: string[] = [];
-
-      rl.on("line", (line: string) => {
-        lines.push(line);
-        lineCount++;
-        if (lineCount === 5) {
-          rl.close();
-        }
-      });
-
-      rl.on("close", () => {
-        resolve(lines);
-      });
-
-      rl.on("error", (err: Error) => {
-        reject(err);
-      });
-    });
-  };
-
-  const contentFragmentMessages: Array<ContentFragmentType> = [];
-  for (const m of conversation.content.flat(1)) {
-    if (isContentFragmentType(m)) {
-      contentFragmentMessages.push(m);
-    }
-  }
-  const contentFragmentFileBySid = _.keyBy(
-    await FileResource.fetchByIds(
-      auth,
-      removeNulls(contentFragmentMessages.map((m) => m.fileId))
-    ),
-    "sId"
-  );
-
-  const contentFragmentTextByMessageId: Record<string, string[]> = {};
-  for (const m of contentFragmentMessages) {
-    if (!m.fileId || !m.contentType.startsWith("text/")) {
-      continue;
-    }
-
-    const file = contentFragmentFileBySid[m.fileId];
-    if (!file) {
-      continue;
-    }
-    const readStream = file.getReadStream({
-      auth,
-      version: "original",
-    });
-    contentFragmentTextByMessageId[m.sId] =
-      await readFirstFiveLines(readStream);
-  }
-
-  let prompt = visualizationSystemPrompt.trim() + "\n\n";
-
-  const fileAttachments: string[] = [];
-  for (const m of conversation.content.flat(1)) {
-    if (isContentFragmentType(m)) {
-      if (!m.fileId || !contentFragmentFileBySid[m.fileId]) {
-        continue;
+  // When JIT is enabled, we return the visualization prompt directly without listing the files as the files will be made available to the model via another mechanism (simulated function call).
+  if (isJITEnabled) {
+    return visualizationSystemPrompt.trim();
+  } else {
+    const contentFragmentMessages: Array<ContentFragmentType> = [];
+    for (const m of conversation.content.flat(1)) {
+      if (isContentFragmentType(m)) {
+        contentFragmentMessages.push(m);
       }
-      fileAttachments.push(
-        `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}" />`
-      );
-    } else if (isAgentMessageType(m)) {
-      for (const a of m.actions) {
-        if (isTablesQueryActionType(a)) {
-          const attachment = getTablesQueryResultsFileAttachment({
-            resultsFileId: a.resultsFileId,
-            resultsFileSnippet: a.resultsFileSnippet,
-            output: a.output,
-            includeSnippet: false,
-          });
-          if (attachment) {
-            fileAttachments.push(attachment);
+    }
+    const contentFragmentFileBySid = _.keyBy(
+      await FileResource.fetchByIds(
+        auth,
+        removeNulls(contentFragmentMessages.map((m) => m.fileId))
+      ),
+      "sId"
+    );
+
+    let prompt = visualizationSystemPrompt.trim() + "\n\n";
+
+    const fileAttachments: string[] = [];
+    for (const m of conversation.content.flat(1)) {
+      if (isContentFragmentType(m)) {
+        if (!m.fileId || !contentFragmentFileBySid[m.fileId]) {
+          continue;
+        }
+        fileAttachments.push(
+          `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}" />`
+        );
+      } else if (isAgentMessageType(m)) {
+        for (const a of m.actions) {
+          if (isTablesQueryActionType(a)) {
+            const attachment = getTablesQueryResultsFileAttachment({
+              resultsFileId: a.resultsFileId,
+              resultsFileSnippet: a.resultsFileSnippet,
+              output: a.output,
+              includeSnippet: false,
+            });
+            if (attachment) {
+              fileAttachments.push(attachment);
+            }
           }
         }
       }
     }
-  }
 
-  if (fileAttachments.length > 0) {
-    prompt +=
-      "Files accessible to the :::visualization directive environment:\n";
-    prompt += fileAttachments.join("\n");
-  } else {
-    prompt +=
-      "No files are currently accessible to the :::visualization directive environment in this conversation.";
-  }
+    if (fileAttachments.length > 0) {
+      prompt +=
+        "Files accessible to the :::visualization directive environment:\n";
+      prompt += fileAttachments.join("\n");
+    } else {
+      prompt +=
+        "No files are currently accessible to the :::visualization directive environment in this conversation.";
+    }
 
-  return prompt;
+    return prompt;
+  }
 }
 
 export const visualizationSystemPrompt = `\
