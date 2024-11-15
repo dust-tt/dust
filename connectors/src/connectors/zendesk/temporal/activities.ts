@@ -472,6 +472,11 @@ export async function syncZendeskTicketBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -494,6 +499,7 @@ export async function syncZendeskTicketBatchActivity({
     accessToken,
     pageSize: ZENDESK_BATCH_SIZE,
     cursor,
+    retentionPeriodDays: configuration.retentionPeriodDays,
   });
 
   if (tickets.length === 0) {

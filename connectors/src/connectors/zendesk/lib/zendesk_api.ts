@@ -260,11 +260,13 @@ export async function fetchSolvedZendeskTicketsInBrand({
   accessToken,
   pageSize,
   cursor,
+  retentionPeriodDays,
 }: {
   brandSubdomain: string;
   accessToken: string;
   pageSize: number;
   cursor: string | null;
+  retentionPeriodDays: number;
 }): Promise<{
   tickets: ZendeskFetchedTicket[];
   meta: { has_more: boolean; after_cursor: string };
@@ -274,7 +276,9 @@ export async function fetchSolvedZendeskTicketsInBrand({
     `pageSize must be at most 100 (current value: ${pageSize})`
   );
 
-  const searchQuery = encodeURIComponent("status:solved");
+  const searchQuery = encodeURIComponent(
+    `status:solved created>${retentionPeriodDays}days`
+  );
   const response = await fetchFromZendeskWithRetries({
     url:
       `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?query=${searchQuery}&filter[type]=ticket&page[size]=${pageSize}` +
