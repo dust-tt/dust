@@ -43,7 +43,7 @@ jobs:
           ./k8s/cloud-build.sh \
             --image-name=connectors \
             --dockerfile-path=./connectors/Dockerfile \
-            --working-dir=. \
+            --working-dir=./ \
             --dust-client-facing-url=https://dust.tt
 
       - name: Generate a token
