@@ -311,7 +311,10 @@ async function getEmulatedAgentMessageActions(
   }
 
   // We ensure that all emulated actions are injected with step -1.
-  assert(actions.every((a) => a.step === -1));
+  assert(
+    actions.every((a) => a.step === -1),
+    "Emulated actions must have step -1"
+  );
   return actions;
 }
 
