@@ -88,8 +88,6 @@ export async function syncTicket({
   const commonTicketData = {
     subject: ticket.subject,
     url: ticket.url,
-    createdAt: createdAtDate,
-    updatedAt: updatedAtDate,
     assigneeId: ticket.assignee_id,
     groupId: ticket.group_id,
     organizationId: ticket.organization_id,
