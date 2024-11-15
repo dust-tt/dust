@@ -3,11 +3,6 @@ import { getAccessToken } from "@extension/lib/storage";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
-import type {
-  SWRInfiniteConfiguration,
-  SWRInfiniteKeyLoader,
-} from "swr/infinite";
-import useSWRInfinite from "swr/infinite";
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
@@ -95,15 +90,6 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
       mutateRegardlessOfQueryParams: myMutateRegardlessOfQueryParams,
     };
   }
-}
-
-export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
-  getKey: SWRInfiniteKeyLoader<TData, TKey>,
-  fetcher: Fetcher<TData, TKey> | null,
-  config?: SWRInfiniteConfiguration
-) {
-  const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
-  return useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
 }
 
 const resHandler = async (res: Response) => {

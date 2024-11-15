@@ -1,6 +1,7 @@
+import { logout } from "@extension/lib/auth";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 export function usePublicAgentConfigurations() {
   const dustAPI = useDustAPI();
@@ -18,6 +19,15 @@ export function usePublicAgentConfigurations() {
       ["getAgentConfigurations", dustAPI.workspaceId()],
       agentConfigurationsFetcher
     );
+
+  useEffect(() => {
+    if (
+      typeof error?.message === "string" &&
+      error?.message.includes("User not found")
+    ) {
+      void logout();
+    }
+  }, [error]);
 
   return {
     agentConfigurations: useMemo(() => data ?? [], [data]),
