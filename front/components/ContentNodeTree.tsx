@@ -154,10 +154,7 @@ function ContentNodeTreeChildren({
     return (
       <div className="text-sm text-warning">
         {resourcesError?.type === "rate_limit_error" ? (
-          <>
-            Failed to retrieve permissions, we are currently rate limited by the
-            provider API.
-          </>
+          <>Connected service's API limit reached. Please retry shortly.</>
         ) : (
           <>
             Failed to retrieve permissions likely due to a revoked
