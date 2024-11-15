@@ -10,6 +10,7 @@ import {
   EmbedderType,
 } from "../../core/data_source";
 import { DustAppSecretType } from "../../front/dust_app_secret";
+import { GroupType } from "../../front/groups";
 import { dustManagedCredentials } from "../../front/lib/api/credentials";
 import { EmbeddingProviderIdType } from "../../front/lib/assistant";
 import { Project } from "../../front/project";
@@ -21,10 +22,9 @@ import {
   RunStatus,
   TraceType,
 } from "../../front/run";
+import { LightWorkspaceType } from "../../front/user";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
-import { GroupType } from "../groups";
-import { LightWorkspaceType } from "../user";
 
 export const MAX_CHUNK_SIZE = 512;
 

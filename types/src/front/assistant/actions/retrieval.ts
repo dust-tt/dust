@@ -2,9 +2,9 @@
  * Data Source configuration
  */
 
+import { BaseAction } from "../../../front/assistant/actions/index";
 import { ConnectorProvider } from "../../../front/data_source";
 import { DataSourceViewType } from "../../../front/data_source_view";
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
 

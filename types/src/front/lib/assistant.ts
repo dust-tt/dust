@@ -1,8 +1,8 @@
+import { LightAgentConfigurationType } from "../../front/assistant/agent";
+import { GenerationTokensEvent } from "../../front/assistant/generation";
 import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
-import { LightAgentConfigurationType } from "../assistant/agent";
-import { GenerationTokensEvent } from "./api/assistant/generation";
 
 /**
  * PROVIDER IDS

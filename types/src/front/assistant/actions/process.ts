@@ -1,9 +1,9 @@
+import { BaseAction } from "../../../front/assistant/actions/index";
 import {
   DataSourceConfiguration,
   RetrievalTimeframe,
   TimeFrame,
 } from "../../../front/assistant/actions/retrieval";
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 
 export const PROCESS_SCHEMA_ALLOWED_TYPES = [
@@ -124,4 +124,3 @@ export type ProcessSuccessEvent = {
   messageId: string;
   action: ProcessActionType;
 };
-
