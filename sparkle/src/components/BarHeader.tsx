@@ -1,5 +1,6 @@
 import React from "react";
 
+import { Tooltip } from "@sparkle/components/Tooltip";
 import {
   ArrowUpOnSquareIcon,
   ChevronLeftIcon,
@@ -12,6 +13,7 @@ import { Button } from "./Button";
 
 interface BarHeaderProps {
   title: string;
+  tooltip?: string;
   leftActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   className?: string;
@@ -19,6 +21,7 @@ interface BarHeaderProps {
 
 export function BarHeader({
   title,
+  tooltip,
   leftActions,
   rightActions,
   className = "",
@@ -39,7 +42,17 @@ export function BarHeader({
       )}
     >
       {leftActions && <div className={buttonBarClasses}>{leftActions}</div>}
-      <div className={titleClasses}>{title}</div>
+      <div className={titleClasses}>
+        {tooltip ? (
+          <Tooltip
+            tooltipTriggerAsChild
+            trigger={<span>{title}</span>}
+            label={tooltip}
+          ></Tooltip>
+        ) : (
+          title
+        )}
+      </div>
       {rightActions && <div className={buttonBarClasses}>{rightActions}</div>}
     </div>
   );
