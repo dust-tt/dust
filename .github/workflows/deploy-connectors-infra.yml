@@ -64,8 +64,8 @@ jobs:
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
-            await github.rest.repos.createDispatchEvent({
-              owner: context.repo.owner,,
+            await github.rest.repos.createWorkflowDispatch({
+              owner: context.repo.owner,
               repo: 'dust-infra',
               event_type: 'trigger-component-deploy',
               workflow_id: 'deploy.yaml',
