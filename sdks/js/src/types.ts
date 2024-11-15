@@ -474,9 +474,6 @@ const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("conversation_list_files_action"),
 });
-// type ConversationListFIlesActionPublicType = z.infer<
-//   typeof ConversationListFilesActionTypeSchema
-// >;
 
 const DustAppParametersSchema = z.record(
   z.union([z.string(), z.number(), z.boolean()])
