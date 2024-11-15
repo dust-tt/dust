@@ -26,6 +26,7 @@ export const ConversationPage = ({
     <FileDropProvider>
       <BarHeader
         title={conversation?.title || "Conversation"}
+        tooltip={conversation?.title || "Conversation"}
         rightActions={
           <div className="flex flex-row items-right">
             <ConversationsListButton />
