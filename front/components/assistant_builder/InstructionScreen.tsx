@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
   Page,
   Popover,
+  ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -402,25 +403,27 @@ function AdvancedSettings({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel label="Best performing models" />
-                <ModelList
-                  modelConfigs={bestPerformingModelConfig}
-                  onClick={(modelSettings) => {
-                    setGenerationSettings({
-                      ...generationSettings,
-                      modelSettings,
-                    });
-                  }}
-                />
-                <DropdownMenuLabel label="Other models" />
-                <ModelList
-                  modelConfigs={otherModelsConfig}
-                  onClick={(modelSettings) => {
-                    setGenerationSettings({
-                      ...generationSettings,
-                      modelSettings,
-                    });
-                  }}
-                />
+                <ScrollArea className="max-h-[300px]">
+                  <ModelList
+                    modelConfigs={bestPerformingModelConfig}
+                    onClick={(modelSettings) => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings,
+                      });
+                    }}
+                  />
+                  <DropdownMenuLabel label="Other models" />
+                  <ModelList
+                    modelConfigs={otherModelsConfig}
+                    onClick={(modelSettings) => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings,
+                      });
+                    }}
+                  />
+                </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
