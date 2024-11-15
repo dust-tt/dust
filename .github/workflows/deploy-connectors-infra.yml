@@ -60,7 +60,7 @@ jobs:
           gh api octocat
 
       - name: Trigger dust-infra workflow
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
