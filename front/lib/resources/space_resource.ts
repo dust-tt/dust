@@ -260,6 +260,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return space;
   }
 
+  static async fetchWorkspaceConversationsSpace(
+    auth: Authenticator
+  ): Promise<SpaceResource> {
+    const [space] = await this.baseFetch(auth, {
+      where: { kind: "conversations" },
+    });
+
+    if (!space) {
+      throw new Error("Conversations space not found.");
+    }
+
+    return space;
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string,
