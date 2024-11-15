@@ -1,4 +1,7 @@
-import type { SupportedContentFragmentType } from "@dust-tt/types";
+import type {
+  ContentFragmentVersion,
+  SupportedContentFragmentType,
+} from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -36,6 +39,8 @@ export class ContentFragmentModel extends Model<
 
   declare userId: ForeignKey<User["id"]> | null;
   declare fileId: ForeignKey<FileModel["id"]> | null;
+
+  declare version: ContentFragmentVersion;
 }
 
 ContentFragmentModel.init(
@@ -91,11 +96,16 @@ ContentFragmentModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    version: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "latest",
+    },
   },
   {
     modelName: "content_fragment",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["fileId"] }, { fields: ["sId"] }],
+    indexes: [{ fields: ["fileId"] }, { fields: ["sId", "version"] }],
   }
 );
 
