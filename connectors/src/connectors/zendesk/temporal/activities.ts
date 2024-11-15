@@ -223,17 +223,6 @@ export async function checkZendeskTicketsPermissionsActivity({
 }
 
 /**
- * Retrieves the IDs of every brand stored in db.
- */
-export async function getAllZendeskBrandsIdsActivity({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}): Promise<number[]> {
-  return ZendeskBrandResource.fetchAllBrandIds({ connectorId });
-}
-
-/**
  * Retrieves the timestamp cursor, which is the start date of the last successful sync.
  */
 export async function getZendeskTimestampCursorActivity(
