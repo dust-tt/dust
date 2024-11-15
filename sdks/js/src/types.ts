@@ -471,6 +471,7 @@ const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
+  step: z.number(),
   type: z.literal("conversation_list_files_action"),
 });
 // type ConversationListFIlesActionPublicType = z.infer<

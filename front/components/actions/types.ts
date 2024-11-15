@@ -54,7 +54,7 @@ const actionsSpecification: ActionSpecifications = {
   },
   conversation_list_files_action: {
     detailsComponent: () => null,
-    runningLabel: ACTION_RUNNING_LABELS.jit_list_files_action,
+    runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
   },
 };
 

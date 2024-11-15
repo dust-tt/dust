@@ -27,6 +27,7 @@ export class ConversationListFilesAction extends BaseAction {
   readonly files: ConversationFileType[];
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
+  readonly step: number = -1;
   readonly type = "conversation_list_files_action";
 
   constructor(blob: ConversationListFilesActionBlob) {

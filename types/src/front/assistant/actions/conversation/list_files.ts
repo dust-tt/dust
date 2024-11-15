@@ -12,5 +12,6 @@ export interface ConversationListFilesActionType extends BaseAction {
   files: ConversationFileType[];
   functionCallId: string | null;
   functionCallName: string | null;
+  step: number;
   type: "conversation_list_files_action";
 }
