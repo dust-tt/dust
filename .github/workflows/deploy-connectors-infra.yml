@@ -50,16 +50,15 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ vars.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
+          app-id: ${{ vars.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
 
       - name: Trigger dust-infra workflow
         uses: actions/github-script@v6
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         with:
-          github-token: ${{ secrets.GH_TOKEN }}
+          github-token: ${{ env.GH_TOKEN }}
           script: |
             await github.rest.repos.createDispatchEvent({
               owner: 'dust-tt',
