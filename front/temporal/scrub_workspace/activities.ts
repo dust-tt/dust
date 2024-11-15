@@ -152,8 +152,10 @@ async function archiveAssistants(auth: Authenticator) {
 }
 
 async function deleteDatasources(auth: Authenticator) {
-  const globalAndSystemSpaces =
-    await SpaceResource.listWorkspaceDefaultSpaces(auth);
+  const globalAndSystemSpaces = await SpaceResource.listWorkspaceDefaultSpaces(
+    auth,
+    { includeConversationsSpace: true }
+  );
 
   // Retrieve and delete all data sources associated with the system and global spaces.
   // Others will be deleted when deleting the spaces.

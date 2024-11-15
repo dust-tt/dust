@@ -112,9 +112,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         [globalGroup]
       ));
 
+    const conversationsSpace =
+      existingSpaces.find((s) => s.kind === "conversations") ||
+      (await SpaceResource.makeNew(
+        {
+          name: "Conversations",
+          kind: "conversations",
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        [globalGroup]
+      ));
+
     return {
       systemSpace,
       globalSpace,
+      conversationsSpace,
     };
   }
 
@@ -170,25 +182,39 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async listWorkspaceSpaces(
-    auth: Authenticator
+    auth: Authenticator,
+    options?: { includeConversationsSpace?: boolean }
   ): Promise<SpaceResource[]> {
     const spaces = await this.baseFetch(auth);
 
-    return spaces.filter((s) => s.canList(auth));
+    if (!options?.includeConversationsSpace) {
+      return spaces.filter((s) => !s.isConversations());
+    }
+    return spaces;
   }
 
   static async listWorkspaceSpacesAsMember(auth: Authenticator) {
     const spaces = await this.baseFetch(auth);
 
     // using canRead() as we know that only members can read spaces (but admins can list them)
-    return spaces.filter((s) => s.canList(auth) && s.canRead(auth));
+    // also, conversations space is not meant for members
+    return spaces.filter(
+      (s) => s.canList(auth) && s.canRead(auth) && !s.isConversations()
+    );
   }
 
-  static async listWorkspaceDefaultSpaces(auth: Authenticator) {
+  static async listWorkspaceDefaultSpaces(
+    auth: Authenticator,
+    options?: { includeConversationsSpace?: boolean }
+  ) {
     return this.baseFetch(auth, {
       where: {
         kind: {
-          [Op.in]: ["system", "global"],
+          [Op.in]: [
+            "system",
+            "global",
+            ...(options?.includeConversationsSpace ? ["conversations"] : []),
+          ],
         },
       },
     });
@@ -470,8 +496,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Default Workspace space.
-    if (this.isGlobal()) {
+    // Default Workspace space and Conversations space.
+    if (this.isGlobal() || this.isConversations()) {
       return [
         {
           workspaceId: this.workspaceId,
@@ -565,6 +591,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   isSystem() {
     return this.kind === "system";
+  }
+
+  isConversations() {
+    return this.kind === "conversations";
   }
 
   isRegular() {

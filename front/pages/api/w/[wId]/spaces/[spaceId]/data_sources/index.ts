@@ -103,7 +103,7 @@ async function handler(
   }
 
   const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space) {
+  if (!space || space.isConversations()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

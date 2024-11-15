@@ -37,7 +37,7 @@ async function handler(
     });
   }
   const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !space.canList(auth)) {
+  if (!space || !space.canList(auth) || space.isConversations()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

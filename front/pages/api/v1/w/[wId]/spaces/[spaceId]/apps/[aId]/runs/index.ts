@@ -207,6 +207,16 @@ async function handler(
     });
   }
 
+  if (app.space.kind === "conversations") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you're trying to access was not found",
+      },
+    });
+  }
+
   if (!app.canRead(keyAuth)) {
     return apiError(req, res, {
       status_code: 403,

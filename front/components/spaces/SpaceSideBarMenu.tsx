@@ -28,7 +28,11 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
-import { getSpaceIcon, getSpaceName, groupSpaces } from "@app/lib/spaces";
+import {
+  getSpaceIcon,
+  getSpaceName,
+  groupSpacesForDisplay,
+} from "@app/lib/spaces";
 import { useApps } from "@app/lib/swr/apps";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
@@ -88,7 +92,7 @@ export default function SpaceSideBarMenu({
     return <></>;
   }
 
-  const sortedGroupedSpaces = groupSpaces(spaces).filter(
+  const sortedGroupedSpaces = groupSpacesForDisplay(spaces).filter(
     ({ section, spaces }) => section !== "system" || spaces.length !== 0
   );
 

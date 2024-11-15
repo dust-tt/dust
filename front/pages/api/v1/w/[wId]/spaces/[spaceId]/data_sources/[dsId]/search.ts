@@ -194,6 +194,16 @@ async function handler(
     });
   }
 
+  if (dataSource.space.kind === "conversations") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you're trying to access was not found",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET": {
       // I could not find a way to make the query params be an array if there is only one tag.

@@ -1,5 +1,6 @@
 import { LockIcon, PlanetIcon, ServerIcon } from "@dust-tt/sparkle";
 import type { PlanType, SpaceType, WorkspaceType } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import type React from "react";
 
@@ -37,19 +38,34 @@ export const dustAppsListUrl = (
   return `/w/${owner.sId}/spaces/${space.sId}/categories/apps`;
 };
 
-export const groupSpaces = (spaces: SpaceType[]) => {
+export const groupSpacesForDisplay = (spaces: SpaceType[]) => {
+  // Conversations space should never be displayed
+  const spacesWithoutConversations = spaces.filter(
+    (space) => space.kind !== "conversations"
+  );
   // Group by kind and sort.
-  const groupedSpaces = groupBy(spaces, (space): SpaceSectionGroupType => {
-    switch (space.kind) {
-      case "public":
-      case "system":
-        return space.kind;
+  const groupedSpaces = groupBy(
+    spacesWithoutConversations,
+    (space): SpaceSectionGroupType => {
+      // please ts
+      if (space.kind === "conversations") {
+        throw new Error("Conversations space should never be displayed");
+      }
 
-      case "global":
-      case "regular":
-        return space.isRestricted ? "restricted" : "shared";
+      switch (space.kind) {
+        case "public":
+        case "system":
+          return space.kind;
+
+        case "global":
+        case "regular":
+          return space.isRestricted ? "restricted" : "shared";
+
+        default:
+          assertNever(space.kind);
+      }
     }
-  });
+  );
 
   return SPACE_SECTION_GROUP_ORDER.map((section) => ({
     section,

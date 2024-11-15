@@ -1,5 +1,11 @@
 import type { SpaceKind } from "@dust-tt/types";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { isUniqueSpaceKind } from "@dust-tt/types";
+import type {
+  CreationOptional,
+  ForeignKey,
+  NonAttribute,
+  Transaction,
+} from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
@@ -66,3 +72,25 @@ SpaceModel.belongsTo(Workspace, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
+
+SpaceModel.addHook(
+  "beforeCreate",
+  "enforce_one_special_space_per_workspace",
+  async (space: SpaceModel, options: { transaction: Transaction }) => {
+    if (isUniqueSpaceKind(space.kind)) {
+      const existingSpace = await SpaceModel.findOne({
+        where: {
+          workspaceId: space.workspaceId,
+          kind: space.kind,
+        },
+        transaction: options.transaction,
+      });
+
+      if (existingSpace) {
+        throw new Error(`A ${space.kind} space exists for this workspace.`, {
+          cause: `enforce_one_${space.kind}_space_per_workspace`,
+        });
+      }
+    }
+  }
+);

@@ -73,6 +73,16 @@ async function handler(
     });
   }
 
+  if (space.kind === "conversations") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you're trying to access was not found",
+      },
+    });
+  }
+
   const dataSources = await DataSourceResource.listBySpace(auth, space);
 
   switch (req.method) {
