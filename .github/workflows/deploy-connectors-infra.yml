@@ -62,7 +62,7 @@ jobs:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             await github.rest.repos.createDispatchEvent({
-              owner: ${{ github.repository_owner }},
+              owner: '${{ github.repository_owner }}',
               repo: 'dust-infra',
               event_type: 'trigger-component-deploy',
               client_payload: {
