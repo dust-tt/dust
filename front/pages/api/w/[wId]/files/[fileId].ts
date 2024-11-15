@@ -2,16 +2,13 @@ import type {
   FileUploadedRequestResponseBody,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { maybeApplyPreProcessing } from "@app/lib/api/files/preprocessing";
+import { uploadToCloudStorage } from "@app/lib/api/files/upload";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
-
-const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
 export const config = {
   api: {
@@ -99,110 +96,19 @@ async function handler(
     }
 
     case "POST": {
-      if (file.isReady || file.isFailed) {
+      const r = await uploadToCloudStorage(auth, { file, req });
+
+      if (r.isErr()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: r.error.code == "internal_server_error" ? 500 : 400,
           api_error: {
-            type: "invalid_request_error",
-            message:
-              "The file has already been uploaded or the upload has failed.",
+            type: r.error.code,
+            message: r.error.message,
           },
         });
+      } else {
+        return res.status(200).json({ file: file.toJSON(auth) });
       }
-
-      if (
-        file.createdAt.getTime() + UPLOAD_DELAY_AFTER_CREATION_MS <
-        Date.now()
-      ) {
-        await file.markAsFailed();
-
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "File upload has expired. Create a new file.",
-          },
-        });
-      }
-
-      try {
-        const form = new IncomingForm({
-          // Stream the uploaded document to the cloud storage.
-          fileWriteStreamHandler: () => {
-            return file.getWriteStream({
-              auth,
-              version: "original",
-            });
-          },
-
-          // Support only one file upload.
-          maxFiles: 1,
-
-          // Validate the file size.
-          maxFileSize: file.fileSize,
-
-          // Ensure the file is of the correct type.
-          filter: function (part) {
-            if (part.mimetype !== file.contentType) {
-              return false;
-            }
-
-            return true;
-          },
-        });
-        const [, files] = await form.parse(req);
-
-        const maybeFiles = files.file;
-
-        if (!maybeFiles || maybeFiles.length === 0) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "file_type_not_supported",
-              message: "File is not supported.",
-            },
-          });
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          if (error.message.startsWith("options.maxTotalFileSize")) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "file_too_large",
-                message: "File is too large.",
-              },
-            });
-          }
-        }
-
-        return apiError(
-          req,
-          res,
-          {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Error uploading file.",
-            },
-          },
-          error instanceof Error ? error : new Error(JSON.stringify(error))
-        );
-      }
-
-      const preProcessingRes = await maybeApplyPreProcessing(auth, file);
-      if (preProcessingRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Failed to process the file.",
-          },
-        });
-      }
-
-      res.status(200).json({ file: file.toJSON(auth) });
-      return;
     }
 
     default:
