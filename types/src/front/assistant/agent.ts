@@ -1,9 +1,30 @@
-import { BrowseConfigurationType } from "../../front/assistant/actions/browse";
-import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_app_run";
-import { ProcessConfigurationType } from "../../front/assistant/actions/process";
-import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
-import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
-import { WebsearchConfigurationType } from "../../front/assistant/actions/websearch";
+import {
+  BrowseConfigurationType,
+  BrowseParamsEvent,
+} from "../../front/assistant/actions/browse";
+import {
+  DustAppRunBlockEvent,
+  DustAppRunConfigurationType,
+  DustAppRunParamsEvent,
+} from "../../front/assistant/actions/dust_app_run";
+import {
+  ProcessConfigurationType,
+  ProcessParamsEvent,
+} from "../../front/assistant/actions/process";
+import {
+  RetrievalConfigurationType,
+  RetrievalParamsEvent,
+} from "../../front/assistant/actions/retrieval";
+import {
+  TablesQueryConfigurationType,
+  TablesQueryModelOutputEvent,
+  TablesQueryOutputEvent,
+  TablesQueryStartedEvent,
+} from "../../front/assistant/actions/tables_query";
+import {
+  WebsearchConfigurationType,
+  WebsearchParamsEvent,
+} from "../../front/assistant/actions/websearch";
 import {
   AgentActionType,
   AgentMessageType,
