@@ -1,3 +1,3 @@
-import { APIErrorWithStatusCode } from "../../../../front/lib/error";
+import { APIErrorWithStatusCode } from "../../front/lib/error";
 
 export type PubSubError = APIErrorWithStatusCode;
