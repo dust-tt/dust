@@ -32,25 +32,37 @@ jobs:
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"
 
-      - name: Install gke-gcloud-auth-plugin
-        run: |
-          gcloud components install gke-gcloud-auth-plugin
-
-      - name: Setup kubectl
-        run: |
-          gcloud container clusters get-credentials dust-kube --region us-central1
-
       - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh --image-name=viz --dockerfile-path=./viz/Dockerfile --working-dir=./ --dust-client-facing-url=https://dust.tt
+          ./k8s/cloud-build.sh \
+            --image-name=viz \
+            --dockerfile-path=./viz/Dockerfile \
+            --working-dir=./ \
+            --dust-client-facing-url=https://dust.tt
 
-      - name: Deploy the image on Kubernetes
-        run: |
-          chmod +x ./k8s/deploy-image.sh
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/viz-image:${{ steps.short_sha.outputs.short_sha }} viz-deployment
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            dust-infra
 
-      - name: Wait for rollout to complete
-        run: |
-          echo "Waiting for rollout to complete"
-          kubectl rollout status deployment/viz-deployment --timeout=10m
+      - name: Trigger dust-infra workflow
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: 'dust-infra',
+              event_type: 'trigger-component-deploy',
+              client_payload: {
+                regions: 'us-central1',
+                component: 'viz',
+                image_tag: '${{ steps.short_sha.outputs.short_sha }}'
+              }
+            });
