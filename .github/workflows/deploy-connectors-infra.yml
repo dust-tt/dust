@@ -53,12 +53,16 @@ jobs:
           app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
           private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
 
-      - name: Trigger dust-infra workflow
-        uses: actions/github-script@v6
+      - name: Use the token
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          gh api octocat
+
+      - name: Trigger dust-infra workflow
+        uses: actions/github-script@v6
         with:
-          github-token: ${{ env.GH_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             await github.rest.repos.createDispatchEvent({
               owner: 'dust-tt',
