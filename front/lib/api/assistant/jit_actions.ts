@@ -12,12 +12,10 @@ import type {
 import {
   assertNever,
   Err,
-  getTablesQueryResultsFileAttachment,
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isDevelopment,
-  isTablesQueryActionType,
   isTextContent,
   isUserMessageType,
   Ok,
@@ -81,45 +79,54 @@ export async function renderConversationForModelJIT({
   const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
 
-  // Render loop.
-  // Render all messages and all actions.
+  // Render loop: dender all messages and all actions.
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
     if (isAgentMessageType(m)) {
       const actions = removeNulls(m.actions);
 
-      // This array is 2D, because we can have multiple calls per agent message (parallel calls).
-
-      const steps = [] as Array<{
-        contents: string[];
-        actions: Array<{
-          call: FunctionCallType;
-          result: FunctionMessageTypeModel;
-        }>;
-      }>;
+      // This is a record of arrays, because we can have multiple calls per agent message (parallel
+      // calls).  Actions all have a step index which indicates how they should be grouped but some
+      // actions injected by `getEmulatedAgentMessageActions` have a step index of `-1`. We
+      // therefore group by index, then order and transform in a 2D array to present to the model.
+      const stepByStepIndex = {} as Record<
+        string,
+        {
+          contents: string[];
+          actions: Array<{
+            call: FunctionCallType;
+            result: FunctionMessageTypeModel;
+          }>;
+        }
+      >;
 
       const emptyStep = () =>
         ({
           contents: [],
           actions: [],
-        }) satisfies (typeof steps)[number];
+        }) satisfies (typeof stepByStepIndex)[number];
 
       for (const action of actions) {
         const stepIndex = action.step;
-        steps[stepIndex] = steps[stepIndex] || emptyStep();
-        steps[stepIndex].actions.push({
+        stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
+        stepByStepIndex[stepIndex].actions.push({
           call: action.renderForFunctionCall(),
           result: action.renderForMultiActionsModel(),
         });
       }
 
       for (const content of m.rawContents) {
-        steps[content.step] = steps[content.step] || emptyStep();
+        stepByStepIndex[content.step] =
+          stepByStepIndex[content.step] || emptyStep();
         if (content.content.trim()) {
-          steps[content.step].contents.push(content.content);
+          stepByStepIndex[content.step].contents.push(content.content);
         }
       }
+
+      const steps = Object.entries(stepByStepIndex)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([, step]) => step);
 
       if (excludeActions) {
         // In Exclude Actions mode, we only render the last step that has content.
@@ -219,44 +226,6 @@ export async function renderConversationForModelJIT({
       }
     } else {
       assertNever(m);
-    }
-  }
-
-  // If we have messages...
-  if (messages.length > 0) {
-    const { filesAsXML, hasFiles } = listConversationFiles({
-      conversation,
-    });
-
-    // ... and files, we simulate a function call to list the files at the end of the conversation.
-    if (hasFiles) {
-      const randomCallId = "tool_" + Math.random().toString(36).substring(7);
-      const functionName = "list_conversation_files";
-
-      const simulatedAgentMessages = [
-        // 1. We add a message from the agent, asking to use the files listing function
-        {
-          role: "assistant",
-          function_calls: [
-            {
-              id: randomCallId,
-              name: functionName,
-              arguments: "{}",
-            },
-          ],
-        } as AssistantFunctionCallMessageTypeModel,
-
-        // 2. We add a message with the resulting files listing
-        {
-          function_call_id: randomCallId,
-          role: "function",
-          name: functionName,
-          content: filesAsXML,
-        } as FunctionMessageTypeModel,
-      ];
-
-      // Append the simulated messages to the end of the conversation.
-      messages.push(...simulatedAgentMessages);
     }
   }
 
@@ -401,44 +370,4 @@ export async function renderConversationForModelJIT({
     },
     tokensUsed,
   });
-}
-
-function listConversationFiles({
-  conversation,
-}: {
-  conversation: ConversationType;
-}) {
-  const fileAttachments: string[] = [];
-  for (const m of conversation.content.flat(1)) {
-    if (isContentFragmentType(m)) {
-      if (!m.fileId) {
-        continue;
-      }
-      fileAttachments.push(
-        `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}" />`
-      );
-    } else if (isAgentMessageType(m)) {
-      for (const a of m.actions) {
-        if (isTablesQueryActionType(a)) {
-          const attachment = getTablesQueryResultsFileAttachment({
-            resultsFileId: a.resultsFileId,
-            resultsFileSnippet: a.resultsFileSnippet,
-            output: a.output,
-            includeSnippet: false,
-          });
-          if (attachment) {
-            fileAttachments.push(attachment);
-          }
-        }
-      }
-    }
-  }
-  let filesAsXML = "<files>\n";
-
-  if (fileAttachments.length > 0) {
-    filesAsXML += fileAttachments.join("\n");
-  }
-  filesAsXML += "\n</files>";
-
-  return { filesAsXML, hasFiles: fileAttachments.length > 0 };
 }

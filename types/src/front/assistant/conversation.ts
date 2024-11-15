@@ -7,6 +7,7 @@ import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
 import { BrowseActionType } from "./actions/browse";
+import { ConversationListFilesActionType } from "./actions/conversation/list_files";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -103,14 +104,19 @@ export function isUserMessageType(arg: MessageType): arg is UserMessageType {
 /**
  * Agent messages
  */
-
-export type AgentActionType =
+export type ConfigurableAgentActionType =
   | RetrievalActionType
   | DustAppRunActionType
   | TablesQueryActionType
   | ProcessActionType
   | WebsearchActionType
   | BrowseActionType;
+
+export type ConversationAgentActionType = ConversationListFilesActionType;
+
+export type AgentActionType =
+  | ConfigurableAgentActionType
+  | ConversationAgentActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -125,6 +131,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
+  conversation_list_files_action: "Listing conversation files",
 };
 
 /**

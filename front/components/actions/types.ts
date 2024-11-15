@@ -52,6 +52,10 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: BrowseActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.browse_action,
   },
+  conversation_list_files_action: {
+    detailsComponent: () => null,
+    runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
+  },
 };
 
 export function getActionSpecification<T extends ActionType>(

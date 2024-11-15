@@ -460,6 +460,21 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
 });
 type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
+const ConversationFileTypeSchema = z.object({
+  fileId: z.string(),
+  title: z.string(),
+  contentType: z.string(),
+});
+
+const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
+  files: z.array(ConversationFileTypeSchema),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  agentMessageId: ModelIdSchema,
+  step: z.number(),
+  type: z.literal("conversation_list_files_action"),
+});
+
 const DustAppParametersSchema = z.record(
   z.union([z.string(), z.number(), z.boolean()])
 );
@@ -839,6 +854,7 @@ const AgentActionTypeSchema = z.union([
   ProcessActionTypeSchema,
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
+  ConversationListFilesActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
