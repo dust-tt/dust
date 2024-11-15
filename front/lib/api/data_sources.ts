@@ -7,21 +7,28 @@ import type {
   ConnectorType,
   CoreAPIDataSource,
   CoreAPIDocument,
+  CoreAPIError,
   CoreAPILightDocument,
   CoreAPITable,
   DataSourceType,
   DataSourceWithConnectorDetailsType,
   FrontDataSourceDocumentSectionType,
+  PlanType,
   Result,
   UpsertTableFromCsvRequestType,
   WithConnector,
+  WorkspaceType,
 } from "@dust-tt/types";
 import {
   assertNever,
   ConnectorsAPI,
   CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
+  EMBEDDING_CONFIGS,
   Err,
+  isDataSourceNameValid,
   MANAGED_DS_DELETABLE,
   Ok,
   sectionFullText,
@@ -37,7 +44,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -676,4 +686,136 @@ export async function handleDataSourceTableCSVUpsert({
   }
 
   return new Ok(tableRes.value);
+}
+
+/**
+ * Data sources without provider = folders
+ */
+export async function createDataSourceWithoutProvider(
+  auth: Authenticator,
+  {
+    plan,
+    owner,
+    space,
+    name,
+    description,
+  }: {
+    plan: PlanType;
+    owner: WorkspaceType;
+    space: SpaceResource;
+    name: string;
+    description: string | null;
+  }
+): Promise<
+  Result<
+    DataSourceViewResource,
+    Omit<DustError, "code"> & {
+      code:
+        | "invalid_request_error"
+        | "plan_limit_error"
+        | "internal_server_error";
+      dataSourceError?: CoreAPIError;
+    }
+  >
+> {
+  if (name.startsWith("managed-")) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "The data source name cannot start with `managed-`.",
+    });
+  }
+  if (!isDataSourceNameValid(name)) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Data source names cannot be empty.",
+    });
+  }
+  const dataSources = await DataSourceResource.listByWorkspace(auth);
+  if (
+    plan.limits.dataSources.count != -1 &&
+    dataSources.length >= plan.limits.dataSources.count
+  ) {
+    return new Err({
+      name: "dust_error",
+      code: "plan_limit_error",
+      message: "Your plan does not allow you to create more data sources.",
+    });
+  }
+
+  const dataSourceEmbedder =
+    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
+  const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const dustProject = await coreAPI.createProject();
+  if (dustProject.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "Failed to create internal project for the data source.",
+      dataSourceError: dustProject.error,
+    });
+  }
+
+  const dustDataSource = await coreAPI.createDataSource({
+    projectId: dustProject.value.project.project_id.toString(),
+    config: {
+      qdrant_config: {
+        cluster: DEFAULT_QDRANT_CLUSTER,
+        shadow_write_cluster: null,
+      },
+      embedder_config: {
+        embedder: {
+          max_chunk_size: embedderConfig.max_chunk_size,
+          model_id: embedderConfig.model_id,
+          provider_id: embedderConfig.provider_id,
+          splitter_id: embedderConfig.splitter_id,
+        },
+      },
+    },
+    credentials: dustManagedCredentials(),
+  });
+
+  if (dustDataSource.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "Failed to create the data source.",
+      dataSourceError: dustDataSource.error,
+    });
+  }
+
+  const dataSourceView =
+    await DataSourceViewResource.createDataSourceAndDefaultView(
+      auth,
+      {
+        name,
+        description,
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
+        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
+        workspaceId: owner.id,
+        assistantDefaultSelected: false,
+      },
+      space
+    );
+
+  try {
+    // Asynchronous tracking without awaiting, handled safely
+    void ServerSideTracking.trackDataSourceCreated({
+      user: auth.getNonNullableUser(),
+      workspace: owner,
+      dataSource: dataSourceView.dataSource.toJSON(),
+    });
+  } catch (error) {
+    logger.error(
+      {
+        error,
+      },
+      "Failed to track data source creation"
+    );
+  }
+
+  return new Ok(dataSourceView);
 }

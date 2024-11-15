@@ -15,7 +15,6 @@ import {
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
-  isDataSourceNameValid,
   sendUserOperationMessage,
   WebCrawlerConfigurationTypeSchema,
 } from "@dust-tt/types";
@@ -25,6 +24,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { createDataSourceWithoutProvider } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -36,13 +36,22 @@ import {
   isConnectorProviderAssistantDefaultSelected,
   isValidConnectorSuffix,
 } from "@app/lib/connector_providers";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+// Sorcery: Create a union type with at least two elements to satisfy t.union
+function getConnectorProviderCodec(): t.Mixed {
+  const [first, second, ...rest] = CONNECTOR_PROVIDERS;
+  return t.union([
+    t.literal(first),
+    t.literal(second),
+    ...rest.map((value) => t.literal(value)),
+  ]);
+}
 
 export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   t.type({
@@ -54,15 +63,6 @@ export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
     connectionId: t.string, // Required for some providers
   }),
 ]);
-// Sorcery: Create a union type with at least two elements to satisfy t.union
-export function getConnectorProviderCodec(): t.Mixed {
-  const [first, second, ...rest] = CONNECTOR_PROVIDERS;
-  return t.union([
-    t.literal(first),
-    t.literal(second),
-    ...rest.map((value) => t.literal(value)),
-  ]);
-}
 
 const PostDataSourceWithoutProviderRequestBodySchema = t.type({
   name: t.string,
@@ -179,14 +179,35 @@ async function handler(
         const body = bodyValidation.right as t.TypeOf<
           typeof PostDataSourceWithoutProviderRequestBodySchema
         >;
-        await handleDataSourceWithoutProvider({
-          auth,
+        const r = await createDataSourceWithoutProvider(auth, {
           plan,
           owner,
           space,
-          body,
-          req,
-          res,
+          name: body.name,
+          description: body.description,
+        });
+
+        if (r.isErr()) {
+          return apiError(req, res, {
+            status_code:
+              r.error.code === "internal_server_error"
+                ? 500
+                : r.error.code === "plan_limit_error"
+                  ? 401
+                  : 400,
+            api_error: {
+              type: r.error.code,
+              message: r.error.message,
+              data_source_error: r.error.dataSourceError,
+            },
+          });
+        }
+
+        const dataSourceView = r.value;
+
+        return res.status(201).json({
+          dataSource: dataSourceView.dataSource.toJSON(),
+          dataSourceView: dataSourceView.toJSON(),
         });
       }
       break;
@@ -488,147 +509,6 @@ const handleDataSourceWithProvider = async ({
         }\``,
       });
     }
-  } catch (error) {
-    logger.error(
-      {
-        error,
-      },
-      "Failed to track data source creation"
-    );
-  }
-
-  return;
-};
-
-/**
- * Data sources without provider = folders
- */
-const handleDataSourceWithoutProvider = async ({
-  auth,
-  plan,
-  owner,
-  space,
-  body,
-  req,
-  res,
-}: {
-  auth: Authenticator;
-  plan: PlanType;
-  owner: WorkspaceType;
-  space: SpaceResource;
-  body: t.TypeOf<typeof PostDataSourceWithoutProviderRequestBodySchema>;
-  req: NextApiRequest;
-  res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>;
-}) => {
-  const { name, description } = body;
-
-  if (name.startsWith("managed-")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The data source name cannot start with `managed-`.",
-      },
-    });
-  }
-  if (!isDataSourceNameValid(name)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Data source names cannot be empty.",
-      },
-    });
-  }
-  const dataSources = await DataSourceResource.listByWorkspace(auth);
-  if (
-    plan.limits.dataSources.count != -1 &&
-    dataSources.length >= plan.limits.dataSources.count
-  ) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "plan_limit_error",
-        message: "Your plan does not allow you to create managed data sources.",
-      },
-    });
-  }
-
-  const dataSourceEmbedder =
-    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
-  const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  const dustProject = await coreAPI.createProject();
-  if (dustProject.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `Failed to create internal project for the data source.`,
-        data_source_error: dustProject.error,
-      },
-    });
-  }
-
-  const dustDataSource = await coreAPI.createDataSource({
-    projectId: dustProject.value.project.project_id.toString(),
-    config: {
-      qdrant_config: {
-        cluster: DEFAULT_QDRANT_CLUSTER,
-        shadow_write_cluster: null,
-      },
-      embedder_config: {
-        embedder: {
-          max_chunk_size: embedderConfig.max_chunk_size,
-          model_id: embedderConfig.model_id,
-          provider_id: embedderConfig.provider_id,
-          splitter_id: embedderConfig.splitter_id,
-        },
-      },
-    },
-    credentials: dustManagedCredentials(),
-  });
-
-  if (dustDataSource.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to create the data source.",
-        data_source_error: dustDataSource.error,
-      },
-    });
-  }
-
-  const dataSourceView =
-    await DataSourceViewResource.createDataSourceAndDefaultView(
-      auth,
-      {
-        name,
-        description,
-        dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-        workspaceId: owner.id,
-        assistantDefaultSelected: false,
-      },
-      space
-    );
-
-  const { dataSource } = dataSourceView;
-
-  res.status(201).json({
-    dataSource: dataSource.toJSON(),
-    dataSourceView: dataSourceView.toJSON(),
-  });
-
-  try {
-    // Asynchronous tracking without awaiting, handled safely
-    void ServerSideTracking.trackDataSourceCreated({
-      user: auth.getNonNullableUser(),
-      workspace: owner,
-      dataSource: dataSource.toJSON(),
-    });
   } catch (error) {
     logger.error(
       {
