@@ -66,12 +66,12 @@ export function makeConversationListFilesAction(
   agentMessage: AgentMessageType,
   conversation: ConversationType
 ): ConversationListFilesActionType | null {
-  const jitFiles: ConversationFileType[] = [];
+  const files: ConversationFileType[] = [];
 
   for (const m of conversation.content.flat(1)) {
     if (isContentFragmentType(m)) {
       if (m.fileId) {
-        jitFiles.push({
+        files.push({
           fileId: m.fileId,
           title: m.title,
           contentType: m.contentType,
@@ -81,7 +81,7 @@ export function makeConversationListFilesAction(
       for (const a of m.actions) {
         if (isTablesQueryActionType(a)) {
           if (a.resultsFileId && a.resultsFileSnippet) {
-            jitFiles.push({
+            files.push({
               fileId: a.resultsFileId,
               contentType: "text/csv",
               title: getTablesQueryResultsFileTitle({ output: a.output }),
@@ -92,14 +92,14 @@ export function makeConversationListFilesAction(
     }
   }
 
-  if (jitFiles.length === 0) {
+  if (files.length === 0) {
     return null;
   }
 
   return new ConversationListFilesAction({
     functionCallId: "call_" + Math.random().toString(36).substring(7),
     functionCallName: "list_conversation_files",
-    files: jitFiles,
+    files,
     agentMessageId: agentMessage.agentMessageId,
   });
 }
