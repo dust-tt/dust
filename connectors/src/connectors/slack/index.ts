@@ -277,7 +277,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error | ProviderWorkflowError>> {
+  }): Promise<Result<ContentNode[], Error>> {
     if (parentInternalId) {
       return new Err(
         new Error(
