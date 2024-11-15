@@ -3,7 +3,9 @@ import {
   Avatar,
   Button,
   CloudArrowLeftRightIcon,
+  ContentMessage,
   Dialog,
+  Hoverable,
   Icon,
   Input,
   LockIcon,
@@ -323,34 +325,29 @@ function DataSourceEditionModal({
         {!isDataSourceOwner && (
           <div className="item flex flex-col gap-2 border-t pt-4">
             <Page.SectionHeader title="Editing permissions" />
-            <div className="mb-4 w-full rounded-lg border-pink-200 bg-pink-50 p-3">
-              <div className="flex items-center gap-2 font-medium text-pink-900">
-                <Icon visual={InformationCircleIcon} />
-                Important
-              </div>
-              <div className="pl-4 pt-2 font-medium text-pink-900">
-                You are not the owner of this connection.
-              </div>
-              <div className="p-4 text-sm text-amber-900">
-                Editing permission rights with a different account will likely
-                break the existing data structure in Dust and Assistants using
-                them.
-              </div>
-
+            <ContentMessage
+              size="md"
+              variant="pink"
+              title="You are not the owner of this connection."
+              icon={InformationCircleIcon}
+            >
+              Editing permission rights with a different account will likely
+              break the existing data structure in Dust and Assistants using
+              them.
               {connectorConfiguration.guideLink && (
-                <div className="pl-4 text-sm text-amber-800">
+                <div>
                   Read our{" "}
-                  <a
+                  <Hoverable
                     href={connectorConfiguration.guideLink}
-                    className="text-blue-600"
+                    variant="primary"
                     target="_blank"
                   >
                     Playbook
-                  </a>
+                  </Hoverable>
                   .
                 </div>
               )}
-            </div>
+            </ContentMessage>
           </div>
         )}
 
