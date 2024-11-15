@@ -24,6 +24,25 @@ jobs:
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
+      - name: Initiate a deployment
+        id: build_message
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            text: |
+              🚀 Starting deployment of connectors `${{ steps.short_sha.outputs.short_sha }}`
+              • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.short_sha.outputs.short_sha }}>
+              • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
+              • Author: ${{ github.actor }}
+
+              Building image...
+
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
@@ -40,6 +59,19 @@ jobs:
             --dockerfile-path=./connectors/Dockerfile \
             --working-dir=./ \
             --dust-client-facing-url=https://dust.tt
+
+      - name: Notify Deploy Start
+        id: deployment_message
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            thread_ts: "${{ steps.build_message.outputs.ts }}"
+            text: |
+              ✅ Image build completed
+              Starting deployment to regions: us-central1
 
       - name: Generate a token
         id: generate-token
@@ -63,6 +95,21 @@ jobs:
               client_payload: {
                 regions: 'us-central1',
                 component: 'connectors',
-                image_tag: '${{ steps.short_sha.outputs.short_sha }}'
+                image_tag: '${{ steps.short_sha.outputs.short_sha }}',
+                slack_thread_ts: "${{ steps.build_message.outputs.ts }}",
+                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}'
               }
             });
+
+      - name: Notify Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            thread_ts: "${{ steps.build_message.outputs.ts }}"
+            text: |
+              ❌ Build pipeline failed
+              Check the workflow logs: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>
