@@ -1,5 +1,6 @@
 import {
   Button,
+  CodeBlock,
   Markdown,
   MarkdownContentContext,
   Modal,
@@ -195,14 +196,7 @@ export function CodeDrawer({
       hasChanged={false}
     >
       <Page variant="modal">
-        <Page.Layout direction="vertical">
-          <div className="flex h-full w-full shrink-0">
-            <Markdown
-              content={"```javascript\n" + (code ?? "") + "\n```"}
-              isStreaming={false}
-            />
-          </div>
-        </Page.Layout>
+        <CodeBlock className="language-jsx">{code}</CodeBlock>
       </Page>
     </Modal>
   );
@@ -270,7 +264,7 @@ export function VisualizationActionIframe({
           <Spinner size="xl" />
         </div>
       )}
-      {isCodeDrawerOpen && code && (
+      {code && (
         <CodeDrawer
           isOpened={isCodeDrawerOpen}
           onClose={() => setCodeDrawerOpened(false)}
