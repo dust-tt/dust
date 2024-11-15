@@ -1,12 +1,12 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
-import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
   ZendeskFetchedArticle,
   ZendeskFetchedSection,
   ZendeskFetchedUser,
-} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+} from "@connectors/@types/node-zendesk";
+import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   renderDocumentTitleAndContent,
   renderMarkdownSection,

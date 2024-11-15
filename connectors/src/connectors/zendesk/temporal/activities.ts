@@ -4,24 +4,26 @@ import {
   getArticleInternalId,
   getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
-  _getZendeskCategoryOrRaise,
-  _getZendeskConnectorOrRaise,
-} from "@connectors/connectors/zendesk/lib/utils";
+  deleteTicket,
+  syncTicket,
+} from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchRecentlyUpdatedTickets,
   fetchSolvedZendeskTicketsInBrand,
   fetchZendeskArticlesInCategory,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
-import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
   ZendeskBrandResource,
@@ -40,7 +42,10 @@ export async function saveZendeskConnectorStartSync({
 }: {
   connectorId: ModelId;
 }) {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
   const res = await syncStarted(connector.id);
   if (res.isErr()) {
     throw res.error;
@@ -52,10 +57,29 @@ export async function saveZendeskConnectorStartSync({
  */
 export async function saveZendeskConnectorSuccessSync({
   connectorId,
+  currentSyncDateMs,
 }: {
   connectorId: ModelId;
+  currentSyncDateMs: number;
 }) {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const cursors = await ZendeskTimestampCursors.findOne({
+    where: { connectorId },
+  });
+  if (!cursors) {
+    // can be missing if the first sync was not within an incremental workflow
+    await ZendeskTimestampCursors.create({
+      connectorId,
+      timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
+    });
+  } else {
+    await cursors.update({
+      timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
+    });
+  }
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
     throw res.error;
@@ -81,7 +105,10 @@ export async function syncZendeskBrandActivity({
   brandId: number;
   currentSyncDateMs: number;
 }): Promise<{ helpCenterAllowed: boolean; ticketsAllowed: boolean }> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
@@ -206,6 +233,39 @@ export async function getAllZendeskBrandsIdsActivity({
 }
 
 /**
+ * Retrieves the timestamp cursor, which is the start date of the last successful sync.
+ */
+export async function getZendeskTimestampCursorActivity(
+  connectorId: ModelId
+): Promise<Date | null> {
+  let cursors = await ZendeskTimestampCursors.findOne({
+    where: { connectorId },
+  });
+  if (!cursors) {
+    cursors = await ZendeskTimestampCursors.create({
+      connectorId,
+      timestampCursor: null, // start date of the last successful sync, null for now since we do not know it will succeed
+    });
+  }
+  // we get a StartTimeTooRecent error before 1 minute
+  const minAgo = Date.now() - 60 * 1000; // 1 minute ago
+  return cursors.timestampCursor
+    ? new Date(Math.min(cursors.timestampCursor.getTime(), minAgo))
+    : new Date(minAgo);
+}
+
+/**
+ * Retrieves the IDs of every brand stored in db that has read permissions on their Tickets.
+ */
+export async function getZendeskTicketsAllowedBrandIdsActivity(
+  connectorId: ModelId
+): Promise<number[]> {
+  return ZendeskBrandResource.fetchTicketsAllowedBrandIds({
+    connectorId,
+  });
+}
+
+/**
  * Retrieves the categories for a given Brand.
  */
 export async function getZendeskCategoriesActivity({
@@ -215,7 +275,10 @@ export async function getZendeskCategoriesActivity({
   connectorId: ModelId;
   brandId: number;
 }): Promise<number[]> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
   const client = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
@@ -246,12 +309,20 @@ export async function syncZendeskCategoryActivity({
   brandId: number;
   currentSyncDateMs: number;
 }): Promise<boolean> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const categoryInDb = await _getZendeskCategoryOrRaise({
+  const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     categoryId,
   });
+  if (!categoryInDb) {
+    throw new Error(
+      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
+    );
+  }
 
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
@@ -302,7 +373,10 @@ export async function syncZendeskArticleBatchActivity({
   forceResync: boolean;
   cursor: string | null;
 }): Promise<{ hasMore: boolean; afterCursor: string | null }> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -310,10 +384,15 @@ export async function syncZendeskArticleBatchActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
-  const category = await _getZendeskCategoryOrRaise({
+  const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     categoryId,
   });
+  if (!category) {
+    throw new Error(
+      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
+    );
+  }
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
@@ -374,7 +453,10 @@ export async function syncZendeskTicketBatchActivity({
   forceResync: boolean;
   cursor: string | null;
 }): Promise<{ hasMore: boolean; afterCursor: string }> {
-  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -438,6 +520,79 @@ export async function syncZendeskTicketBatchActivity({
     afterCursor: meta.after_cursor,
     hasMore: meta.has_more,
   };
+}
+
+/**
+ * This activity is responsible for syncing the next batch of recently updated articles to process.
+ * It is based on the incremental endpoint, which returns a diff.
+ */
+export async function syncZendeskTicketUpdateBatchActivity({
+  connectorId,
+  brandId,
+  startTime,
+  currentSyncDateMs,
+  cursor,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  startTime: number;
+  currentSyncDateMs: number;
+  cursor: string | null;
+}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
+
+  const { tickets, after_cursor, end_of_stream } =
+    await fetchRecentlyUpdatedTickets({
+      subdomain: brandSubdomain,
+      accessToken,
+      ...(cursor ? { cursor } : { startTime }),
+    });
+
+  await concurrentExecutor(
+    tickets,
+    async (ticket) => {
+      if (ticket.status === "deleted") {
+        return deleteTicket(connectorId, ticket, dataSourceConfig, loggerArgs);
+      } else if (ticket.status === "solved") {
+        const comments = await zendeskApiClient.tickets.getComments(ticket.id);
+        const { result: users } = await zendeskApiClient.users.showMany(
+          comments.map((c) => c.author_id)
+        );
+        return syncTicket({
+          connectorId,
+          ticket,
+          brandId,
+          users,
+          comments,
+          dataSourceConfig,
+          currentSyncDateMs,
+          loggerArgs,
+          forceResync: false,
+        });
+      }
+    },
+    { concurrency: 10 }
+  );
+  return { hasMore: !end_of_stream, afterCursor: after_cursor };
 }
 
 /**

@@ -1,5 +1,3 @@
-import "node-zendesk";
-
 import type { ZendeskClientOptions } from "node-zendesk";
 
 interface ZendeskFetchedBrand {
@@ -118,7 +116,7 @@ interface ZendeskFetchedTicket {
     score: string;
   };
   sharing_agreement_ids: number[];
-  status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
+  status: "new" | "open" | "pending" | "hold" | "solved" | "closed" | "deleted";
   subject: string;
   submitter_id: number;
   tags: string[];
@@ -239,6 +237,9 @@ declare module "node-zendesk" {
       show: (
         userId: number
       ) => Promise<{ response: Response; result: ZendeskFetchedUser }>;
+      showMany: (
+        userIds: number[]
+      ) => Promise<{ response: Response; result: ZendeskFetchedUser[] }>;
     };
   }
 

@@ -7,7 +7,7 @@ import { createClient } from "node-zendesk";
 import type {
   ZendeskFetchedArticle,
   ZendeskFetchedTicket,
-} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+} from "@connectors/@types/node-zendesk";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -181,6 +181,47 @@ export async function fetchZendeskArticlesInCategory({
   });
   return (
     response || { articles: [], meta: { has_more: false, after_cursor: "" } }
+  );
+}
+
+/**
+ * Fetches a batch of the recently updated tickets from the Zendesk API using the incremental API endpoint.
+ */
+export async function fetchRecentlyUpdatedTickets({
+  subdomain,
+  accessToken,
+  startTime = null,
+  cursor = null,
+}: // pass either a cursor or a start time, but not both
+| {
+      subdomain: string;
+      accessToken: string;
+      startTime: number | null;
+      cursor?: never;
+    }
+  | {
+      subdomain: string;
+      accessToken: string;
+      startTime?: never;
+      cursor: string | null;
+    }): Promise<{
+  tickets: ZendeskFetchedTicket[];
+  end_of_stream: boolean;
+  after_cursor: string;
+}> {
+  const response = await fetchFromZendeskWithRetries({
+    url:
+      `https://${subdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json` +
+      (cursor ? `?cursor=${cursor}` : "") +
+      (startTime ? `?start_time=${startTime}` : ""),
+    accessToken,
+  });
+  return (
+    response || {
+      tickets: [],
+      end_of_stream: false,
+      after_cursor: "",
+    }
   );
 }
 

@@ -263,6 +263,18 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
+  static async fetchTicketsAllowedBrandIds({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, ticketsPermission: "read" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => brand.get().brandId);
+  }
+
   static async deleteByConnectorId(
     connectorId: number,
     transaction: Transaction
@@ -648,6 +660,16 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       where: { connectorId, brandId },
     });
     return tickets.map((ticket) => new this(this.model, ticket.get()));
+  }
+
+  static async deleteByTicketId({
+    connectorId,
+    ticketId,
+  }: {
+    connectorId: number;
+    ticketId: number;
+  }): Promise<void> {
+    await ZendeskTicket.destroy({ where: { connectorId, ticketId } });
   }
 
   static async deleteByBrandId({

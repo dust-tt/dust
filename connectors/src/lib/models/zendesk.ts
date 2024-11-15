@@ -9,6 +9,54 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
+export class ZendeskTimestampCursors extends Model<
+  InferAttributes<ZendeskTimestampCursors>,
+  InferCreationAttributes<ZendeskTimestampCursors>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare timestampCursor: Date | null; // start date of the last successful sync, null if never successfully synced
+
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
+}
+
+ZendeskTimestampCursors.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    timestampCursor: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "zendesk_timestamp_cursors",
+    indexes: [{ fields: ["connectorId"], unique: true }],
+  }
+);
+ConnectorModel.hasMany(ZendeskTimestampCursors, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+ZendeskTimestampCursors.belongsTo(ConnectorModel);
+
 export class ZendeskConfiguration extends Model<
   InferAttributes<ZendeskConfiguration>,
   InferCreationAttributes<ZendeskConfiguration>
@@ -204,7 +252,7 @@ ZendeskCategory.init(
       allowNull: false,
     },
     description: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     url: {
@@ -371,7 +419,7 @@ ZendeskTicket.init(
       allowNull: false,
     },
     subject: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     ticketId: {

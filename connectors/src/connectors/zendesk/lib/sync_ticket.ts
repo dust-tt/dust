@@ -1,13 +1,14 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
-import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
   ZendeskFetchedTicket,
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
-} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+} from "@connectors/@types/node-zendesk";
+import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
+  deleteFromDataSource,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertToDatasource,
@@ -18,6 +19,39 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
 
+/**
+ * Deletes a ticket from the db and the data sources.
+ */
+export async function deleteTicket(
+  connectorId: ModelId,
+  ticket: ZendeskFetchedTicket,
+  dataSourceConfig: DataSourceConfig,
+  loggerArgs: Record<string, string | number | null>
+): Promise<void> {
+  logger.info(
+    {
+      ...loggerArgs,
+      connectorId,
+      ticketId: ticket.id,
+      subject: ticket.subject,
+    },
+    "[Zendesk] Deleting ticket."
+  );
+  await Promise.all([
+    ZendeskTicketResource.deleteByTicketId({
+      connectorId,
+      ticketId: ticket.id,
+    }),
+    deleteFromDataSource(
+      dataSourceConfig,
+      getTicketInternalId(connectorId, ticket.id)
+    ),
+  ]);
+}
+
+/**
+ * Syncs a ticket in the db and upserts it to the data sources.
+ */
 export async function syncTicket({
   connectorId,
   ticket,

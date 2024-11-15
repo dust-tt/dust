@@ -1,6 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { syncBrandWithPermissions } from "@connectors/connectors/zendesk/lib/utils";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
@@ -30,19 +29,39 @@ export async function allowSyncZendeskHelpCenter({
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connectionId)
   );
-
-  const syncSuccess = await syncBrandWithPermissions({
-    zendeskApiClient,
-    connectionId,
+  const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
-    permissions: {
-      ticketsPermission: "none",
-      helpCenterPermission: "read",
-    },
   });
-  if (!syncSuccess) {
-    return false; // stopping early if the brand sync failed
+
+  if (brand) {
+    await brand.grantHelpCenterPermissions();
+  } else {
+    // fetching the brand from Zendesk
+    const {
+      result: { brand: fetchedBrand },
+    } = await zendeskApiClient.brand.show(brandId);
+
+    if (!fetchedBrand) {
+      logger.error(
+        { connectorId, brandId },
+        "[Zendesk] Brand could not be fetched."
+      );
+      return false;
+    }
+
+    await ZendeskBrandResource.makeNew({
+      blob: {
+        subdomain: fetchedBrand.subdomain,
+        connectorId: connectorId,
+        brandId: fetchedBrand.id,
+        name: fetchedBrand.name || "Brand",
+        ticketsPermission: "none",
+        helpCenterPermission: "read",
+        hasHelpCenter: fetchedBrand.has_help_center,
+        url: fetchedBrand.url,
+      },
+    });
   }
 
   // updating permissions for all the children categories

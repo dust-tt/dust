@@ -2,6 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import type { ZendeskConfiguration } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
 import type {
   ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
@@ -44,6 +45,10 @@ export class ZendeskConnectorStrategy
       transaction
     );
     await ZendeskBrandResource.deleteByConnectorId(connector.id, transaction);
+    await ZendeskTimestampCursors.destroy({
+      where: { connectorId: connector.id },
+      transaction,
+    });
     await ZendeskConfigurationResource.deleteByConnectorId(
       connector.id,
       transaction
