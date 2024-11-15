@@ -48,8 +48,8 @@ export const LoginPage = () => {
     return (
       <div className="flex h-screen flex-col p-4">
         <div className="flex flex-1 flex-col items-center justify-center gap-8">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <LogoHorizontalColorLogo className="h-6 w-24" />
+          <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
+            <LogoHorizontalColorLogo className="h-12 w-48" />
             <Page.Header title="Get more done, faster, with the power of your assistants at your fingertips." />
           </div>
           <div className="text-center">
@@ -59,10 +59,11 @@ export const LoginPage = () => {
               label="Sign in"
               onClick={handleLogin}
               disabled={isLoading}
+              size="md"
             />
           </div>
         </div>
-        <p className="text-center text-element-700">
+        <p className="text-center text-element-700 max-w-[300px] mx-auto">
           By signing in, you agree to Dust's{" "}
           <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
             Terms of Use
