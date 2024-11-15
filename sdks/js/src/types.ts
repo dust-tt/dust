@@ -69,7 +69,7 @@ export type ConnectorsAPIErrorType = z.infer<
 >;
 
 // Supported content types for plain text.
-const supportedPlainText = {
+export const supportedPlainText = {
   "application/msword": [".doc", ".docx"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
     ".doc",
@@ -85,12 +85,12 @@ const supportedPlainText = {
 } as const;
 
 // Supported content types for images.
-const supportedImage = {
+export const supportedImage = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
 } as const;
 
-const supportedLegacy = {
+export const supportedLegacy = {
   "dust-application/slack": [],
 } as const;
 
