@@ -1386,6 +1386,7 @@ const SpaceKindSchema = FlexibleEnumSchema([
   "global",
   "system",
   "public",
+  "conversations",
 ]);
 
 const SpaceTypeSchema = z.object({
