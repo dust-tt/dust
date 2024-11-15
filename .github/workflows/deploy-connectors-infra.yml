@@ -1,0 +1,72 @@
+name: Deploy Infra
+
+on:
+  workflow_dispatch:
+    inputs:
+      us-central1:
+        description: "Deploy to us-central1"
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploy_infra
+  cancel-in-progress: false
+
+env:
+  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: "Authenticate with Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: Build the image on Cloud Build
+        run: |
+          chmod +x ./k8s/cloud-build.sh
+          ./k8s/cloud-build.sh \
+            --image-name=connectors \
+            --dockerfile-path=./connectors/Dockerfile \
+            --working-dir=./ \
+            --dust-client-facing-url=https://dust.tt
+
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+
+      - name: Trigger dust-infra workflow
+        uses: actions/github-script@v6
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        with:
+          github-token: ${{ env.GH_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'dust-tt',
+              repo: 'dust-infra',
+              event_type: 'trigger-component-deploy',
+              client_payload: {
+                us_central1: ${{ inputs.us-central1 }},
+                component: 'connectors',
+                image_tag: '${{ steps.short_sha.outputs.short_sha }}'
+              }
+            });
