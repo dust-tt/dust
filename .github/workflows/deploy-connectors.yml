@@ -1,4 +1,4 @@
-name: Deploy connectors
+name: Deploy Connectors
 
 on:
   workflow_dispatch:
