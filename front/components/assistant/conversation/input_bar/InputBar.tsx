@@ -1,4 +1,4 @@
-import { Button, RainbowEffectDiv, StopIcon } from "@dust-tt/sparkle";
+import { Button, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
@@ -228,15 +228,15 @@ export function AssistantInputBar({
         )}
       >
         <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
-          <RainbowEffectDiv className="w-full">
+          <RainbowEffect className="w-full" containerClassName="w-full">
             <div
               className={classNames(
                 "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
-                "border-t border-border-dark bg-primary-50",
+                "border-border-dark bg-primary-50",
                 "transition-all",
                 isFloating
-                  ? "sm:rounded-2xl sm:border-b sm:border-l sm:border-r sm:border-border-dark sm:focus-within:shadow-md sm:focus-within:ring-2 sm:focus-within:ring-offset-2"
-                  : "",
+                  ? "rounded-2xl border focus-within:ring-2 focus-within:ring-primary-300 focus-within:ring-offset-2"
+                  : "border-t",
                 isAnimating ? "duration-600 animate-shake" : "duration-300"
               )}
             >
@@ -257,7 +257,7 @@ export function AssistantInputBar({
                 />
               </div>
             </div>
-          </RainbowEffectDiv>
+          </RainbowEffect>
         </div>
       </div>
     </div>
