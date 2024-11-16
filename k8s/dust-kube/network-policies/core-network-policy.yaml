@@ -31,6 +31,14 @@ spec:
         - podSelector:
             matchLabels:
               app: prodbox
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - front
+                  - front-worker
+                  - front-upsert-table-worker
       ports:
         - protocol: TCP
           port: 3001
