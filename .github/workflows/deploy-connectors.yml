@@ -40,9 +40,6 @@ jobs:
 
               Building image...
 
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
