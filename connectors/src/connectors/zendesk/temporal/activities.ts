@@ -181,56 +181,6 @@ export async function syncZendeskBrandActivity({
 }
 
 /**
- * This activity is responsible for checking the permissions for a Brand's Help Center.
- *
- * @returns true if the Help Center has read permissions enabled.
- */
-export async function checkZendeskHelpCenterPermissionsActivity({
-  connectorId,
-  brandId,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-}): Promise<boolean> {
-  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
-    connectorId,
-    brandId,
-  });
-  if (!brandInDb) {
-    throw new Error(
-      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
-    );
-  }
-
-  return brandInDb.helpCenterPermission === "read";
-}
-
-/**
- * This activity is responsible for checking the permissions for a Brand's Tickets.
- *
- * @returns true if the Brand has read permissions enabled on tickets.
- */
-export async function checkZendeskTicketsPermissionsActivity({
-  connectorId,
-  brandId,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-}): Promise<boolean> {
-  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
-    connectorId,
-    brandId,
-  });
-  if (!brandInDb) {
-    throw new Error(
-      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
-    );
-  }
-
-  return brandInDb.ticketsPermission === "read";
-}
-
-/**
  * Retrieves the timestamp cursor, which is the start date of the last successful sync.
  */
 export async function getZendeskTimestampCursorActivity(

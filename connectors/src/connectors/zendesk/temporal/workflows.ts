@@ -27,8 +27,6 @@ const {
 });
 
 const {
-  checkZendeskHelpCenterPermissionsActivity,
-  checkZendeskTicketsPermissionsActivity,
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
@@ -308,11 +306,12 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const isHelpCenterAllowed = await checkZendeskHelpCenterPermissionsActivity({
+  const { helpCenterAllowed } = await syncZendeskBrandActivity({
     connectorId,
     brandId,
+    currentSyncDateMs,
   });
-  if (isHelpCenterAllowed) {
+  if (helpCenterAllowed) {
     await runZendeskBrandHelpCenterSyncActivities({
       connectorId,
       brandId,
@@ -336,11 +335,12 @@ export async function zendeskBrandTicketsSyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const areTicketsAllowed = await checkZendeskTicketsPermissionsActivity({
+  const { ticketsAllowed } = await syncZendeskBrandActivity({
     connectorId,
     brandId,
+    currentSyncDateMs,
   });
-  if (areTicketsAllowed) {
+  if (ticketsAllowed) {
     await runZendeskBrandTicketsSyncActivities({
       connectorId,
       brandId,
