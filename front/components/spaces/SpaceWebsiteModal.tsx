@@ -390,7 +390,7 @@ export default function SpaceWebsiteModal({
       }
     >
       <div className="w-full pt-6">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto px-1">
           <AdvancedSettingsModal
             advancedSettingsOpened={advancedSettingsOpened}
             setAdvancedSettingsOpened={setAdvancedSettingsOpened}
