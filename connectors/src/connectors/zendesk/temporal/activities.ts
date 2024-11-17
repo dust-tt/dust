@@ -149,10 +149,10 @@ export async function syncZendeskBrandActivity({
   } = await zendeskApiClient.brand.show(brandId);
   if (!fetchedBrand) {
     await Promise.all([
-      brandInDb.delete(),
       deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig }),
       deleteBrandTickets({ connectorId, brandId, dataSourceConfig }),
     ]);
+    await brandInDb.delete();
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
