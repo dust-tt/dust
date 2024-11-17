@@ -255,7 +255,11 @@ export async function fetchRecentlyUpdatedTickets({
   );
 }
 
-export async function fetchSolvedZendeskTicketsInBrand({
+/**
+ * Fetches a batch of tickets from the Zendesk API.
+ * Only fetches tickets that have been solved, and that were created within the retention period.
+ */
+export async function fetchZendeskTicketsInBrand({
   brandSubdomain,
   accessToken,
   pageSize,
