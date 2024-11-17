@@ -127,7 +127,10 @@ export async function syncZendeskBrandActivity({
     brandInDb.helpCenterPermission === "none" &&
     brandInDb.ticketsPermission === "none"
   ) {
-    await brandInDb.delete();
+    await Promise.all([
+      brandInDb.delete(),
+      deleteBrandChildren({ connectorId, brandId, dataSourceConfig }),
+    ]);
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
@@ -140,8 +143,10 @@ export async function syncZendeskBrandActivity({
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);
   if (!fetchedBrand) {
-    await deleteBrandChildren({ connectorId, brandId, dataSourceConfig });
-    await brandInDb.delete();
+    await Promise.all([
+      brandInDb.delete(),
+      deleteBrandChildren({ connectorId, brandId, dataSourceConfig }),
+    ]);
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
@@ -155,7 +160,10 @@ export async function syncZendeskBrandActivity({
   if (noMoreAllowedCategories) {
     // if the tickets and all children categories are not allowed anymore, we delete the brand data
     if (brandInDb.ticketsPermission !== "read") {
-      await deleteBrandChildren({ connectorId, brandId, dataSourceConfig });
+      await Promise.all([
+        brandInDb.delete(),
+        deleteBrandChildren({ connectorId, brandId, dataSourceConfig }),
+      ]);
       return { helpCenterAllowed: false, ticketsAllowed: false };
     }
     await brandInDb.update({ helpCenterPermission: "none" });
