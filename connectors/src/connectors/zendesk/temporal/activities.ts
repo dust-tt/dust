@@ -122,30 +122,34 @@ export async function syncZendeskBrandActivity({
     );
   }
 
+  if (brandInDb.ticketsPermission === "none") {
+    await deleteBrandTickets({ connectorId, brandId, dataSourceConfig });
+  }
+  if (brandInDb.helpCenterPermission === "none") {
+    await deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig });
+  }
+
   // if all rights were revoked, we delete the brand data.
   if (
     brandInDb.helpCenterPermission === "none" &&
     brandInDb.ticketsPermission === "none"
   ) {
-    await Promise.all([
-      brandInDb.delete(),
-      deleteBrandChildren({ connectorId, brandId, dataSourceConfig }),
-    ]);
+    await brandInDb.delete();
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
+  // if the brand is not on Zendesk anymore, we delete it
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-
-  // if the brand is not on Zendesk anymore, we delete it
   const {
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);
   if (!fetchedBrand) {
     await Promise.all([
       brandInDb.delete(),
-      deleteBrandChildren({ connectorId, brandId, dataSourceConfig }),
+      deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig }),
+      deleteBrandTickets({ connectorId, brandId, dataSourceConfig }),
     ]);
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
@@ -158,12 +162,10 @@ export async function syncZendeskBrandActivity({
   const noMoreAllowedCategories = categoriesWithReadPermissions.length === 0;
 
   if (noMoreAllowedCategories) {
+    await deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig });
     // if the tickets and all children categories are not allowed anymore, we delete the brand data
     if (brandInDb.ticketsPermission !== "read") {
-      await Promise.all([
-        brandInDb.delete(),
-        deleteBrandChildren({ connectorId, brandId, dataSourceConfig }),
-      ]);
+      await brandInDb.delete();
       return { helpCenterAllowed: false, ticketsAllowed: false };
     }
     await brandInDb.update({ helpCenterPermission: "none" });
@@ -632,9 +634,38 @@ export async function syncZendeskTicketUpdateBatchActivity({
 }
 
 /**
- * Deletes all the data stored in the db and in the data source relative to a brand (category, articles and tickets).
+ * Deletes all the tickets stored in the db and in the data source relative to a brand.
  */
-async function deleteBrandChildren({
+async function deleteBrandTickets({
+  connectorId,
+  brandId,
+  dataSourceConfig,
+}: {
+  connectorId: number;
+  brandId: number;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  const tickets = await ZendeskTicketResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  /// deleting the tickets in the data source
+  await Promise.all(
+    tickets.map((ticket) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getTicketInternalId(ticket.connectorId, ticket.ticketId)
+      )
+    )
+  );
+  /// deleting the tickets stored in the db
+  await ZendeskTicketResource.deleteByBrandId({ connectorId, brandId });
+}
+
+/**
+ * Deletes all the data stored in the db and in the data source relative to a brand's help center (category, articles).
+ */
+async function deleteBrandHelpCenter({
   connectorId,
   brandId,
   dataSourceConfig,
@@ -656,19 +687,6 @@ async function deleteBrandChildren({
       )
     )
   );
-  /// deleting the tickets in the data source
-  const tickets = await ZendeskTicketResource.fetchByBrandId({
-    connectorId: connectorId,
-    brandId: brandId,
-  });
-  await Promise.all([
-    tickets.map((ticket) =>
-      deleteFromDataSource(
-        dataSourceConfig,
-        getTicketInternalId(ticket.connectorId, ticket.ticketId)
-      )
-    ),
-  ]);
   /// deleting the articles stored in the db
   await ZendeskArticleResource.deleteByBrandId({
     connectorId,
@@ -676,8 +694,6 @@ async function deleteBrandChildren({
   });
   /// deleting the categories stored in the db
   await ZendeskCategoryResource.deleteByBrandId({ connectorId, brandId });
-  /// deleting the tickets stored in the db
-  await ZendeskTicketResource.deleteByBrandId({ connectorId, brandId });
 }
 
 /**
