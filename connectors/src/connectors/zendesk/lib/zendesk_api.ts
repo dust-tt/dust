@@ -176,7 +176,7 @@ export async function fetchZendeskArticlesInCategory({
   const response = await fetchFromZendeskWithRetries({
     url:
       `https://${subdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${cursor}` : ""),
+      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
     accessToken,
   });
   return (
@@ -212,7 +212,7 @@ export async function fetchRecentlyUpdatedTickets({
   const response = await fetchFromZendeskWithRetries({
     url:
       `https://${subdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json` +
-      (cursor ? `?cursor=${cursor}` : "") +
+      (cursor ? `?cursor=${encodeURIComponent(cursor)}` : "") +
       (startTime ? `?start_time=${startTime}` : ""),
     accessToken,
   });
@@ -248,7 +248,7 @@ export async function fetchSolvedZendeskTicketsInBrand({
   const response = await fetchFromZendeskWithRetries({
     url:
       `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?query=${searchQuery}&filter[type]=ticket&page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${cursor}` : ""),
+      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
     accessToken,
   });
 
