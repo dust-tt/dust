@@ -258,30 +258,35 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       const { type, objectId } = getIdFromInternalId(connectorId, id);
       switch (type) {
         case "brand": {
-          toBeSignaledBrandIds.add(objectId);
           if (permission === "none") {
-            await revokeSyncZendeskBrand({
+            const revokedBrand = await revokeSyncZendeskBrand({
               connectorId,
               brandId: objectId,
             });
+            if (revokedBrand) {
+              toBeSignaledBrandIds.add(objectId);
+            }
           }
           if (permission === "read") {
-            await allowSyncZendeskBrand({
+            const wasBrandUpdated = await allowSyncZendeskBrand({
               connectorId,
               connectionId,
               brandId: objectId,
             });
+            if (wasBrandUpdated) {
+              toBeSignaledBrandIds.add(objectId);
+            }
           }
           break;
         }
         case "help-center": {
           if (permission === "none") {
-            const revokedCollection = await revokeSyncZendeskHelpCenter({
+            const revokedBrand = await revokeSyncZendeskHelpCenter({
               connectorId,
               brandId: objectId,
             });
-            if (revokedCollection) {
-              toBeSignaledHelpCenterIds.add(revokedCollection.brandId);
+            if (revokedBrand) {
+              toBeSignaledHelpCenterIds.add(revokedBrand.brandId);
             }
           }
           if (permission === "read") {
