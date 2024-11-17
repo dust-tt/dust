@@ -94,8 +94,9 @@ export async function saveZendeskConnectorSuccessSync({
  * It is going to update the name of the Brand if it has changed.
  * If the Brand is not allowed anymore, it will delete all its data.
  * If the Brand is not present on Zendesk anymore, it will delete all its data as well.
+ * If the Help Center has no readable category anymore, we delete the Help Center data.
  *
- * @returns true if the Brand was updated, false if it was deleted.
+ * @returns the updated permissions of the Brand.
  */
 export async function syncZendeskBrandActivity({
   connectorId,
@@ -122,6 +123,7 @@ export async function syncZendeskBrandActivity({
     );
   }
 
+  // deleting the data not allowed anymore
   if (brandInDb.ticketsPermission === "none") {
     await deleteBrandTickets({ connectorId, brandId, dataSourceConfig });
   }
@@ -154,6 +156,7 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
+  // if there are no read permissions on any category, we delete the help center
   const categoriesWithReadPermissions =
     await ZendeskCategoryResource.fetchByBrandIdReadOnly({
       connectorId,
