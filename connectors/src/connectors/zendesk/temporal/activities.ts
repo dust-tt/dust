@@ -168,7 +168,7 @@ export async function syncZendeskBrandActivity({
       await brandInDb.delete();
       return { helpCenterAllowed: false, ticketsAllowed: false };
     }
-    await brandInDb.update({ helpCenterPermission: "none" });
+    await brandInDb.revokeHelpCenterPermissions();
   }
 
   // otherwise, we update the brand name and lastUpsertedTs
