@@ -38,7 +38,6 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-  isFloatingWithoutMargin = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -221,21 +220,16 @@ export function AssistantInputBar({
         </div>
       )}
 
-      <div
-        className={classNames(
-          "flex flex-1 px-0",
-          isFloating ? (isFloatingWithoutMargin ? "" : "sm:px-4") : ""
-        )}
-      >
+      <div className="flex flex-1">
         <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
           <RainbowEffect className="w-full" containerClassName="w-full">
             <div
               className={classNames(
-                "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
-                "border-border-dark bg-primary-50",
+                "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-2 sm:flex-row sm:pl-5",
+                "bg-primary-50",
                 "transition-all",
                 isFloating
-                  ? "rounded-2xl border focus-within:ring-2 focus-within:ring-primary-300 focus-within:ring-offset-2"
+                  ? "rounded-3xl border border-border-dark/0 focus-within:border-border-dark focus-within:ring-2 focus-within:ring-highlight-300 focus-within:ring-offset-2"
                   : "border-t",
                 isAnimating ? "duration-600 animate-shake" : "duration-300"
               )}
@@ -286,7 +280,7 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
+    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl pb-2 sm:pb-8">
       <AssistantInputBar
         owner={owner}
         onSubmit={onSubmit}

@@ -120,8 +120,8 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
-        <div className="flex py-2">
+      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
+        <div className="flex items-center py-0 sm:py-3.5">
           {actions.includes("attachment") && (
             <>
               <input
