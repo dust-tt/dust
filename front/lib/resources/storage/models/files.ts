@@ -1,6 +1,7 @@
 import type {
   FileStatus,
   FileUseCase,
+  FileUseCaseMetadata,
   SupportedFileContentType,
 } from "@dust-tt/types";
 import type {
@@ -28,7 +29,7 @@ export class FileModel extends Model<
   declare fileSize: number;
   declare status: FileStatus;
   declare useCase: FileUseCase;
-  declare useCaseMetadata: string | null;
+  declare useCaseMetadata: FileUseCaseMetadata | null;
 
   declare userId: ForeignKey<User["id"]> | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;

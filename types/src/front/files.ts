@@ -7,6 +7,7 @@ export const FileUploadUrlRequestSchema = t.type({
   fileName: t.string,
   fileSize: t.number,
   useCase: t.union([t.literal("conversation"), t.literal("avatar")]),
+  useCaseMetadata: t.union([t.undefined, t.type({ conversationId: t.string })]),
 });
 
 export type FileUploadUrlRequestType = t.TypeOf<
@@ -143,6 +144,10 @@ export function isSupportedImageContentType(
 export type FileStatus = "created" | "failed" | "ready";
 
 export type FileUseCase = "conversation" | "avatar" | "tool_output";
+
+export type FileUseCaseMetadata = {
+  conversationId: string;
+};
 
 export interface FileType {
   contentType: SupportedFileContentType;

@@ -71,6 +71,7 @@ export function AssistantInputBar({
   const fileUploaderService = useFileUploaderService({
     owner,
     useCase: "conversation",
+    useCaseMetadata: conversationId ? { conversationId } : undefined,
   });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();

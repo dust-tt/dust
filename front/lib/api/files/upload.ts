@@ -23,6 +23,7 @@ import { PassThrough, Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { v4 as uuidv4 } from "uuid";
 
+import { getConversation } from "@app/lib/api/assistant/conversation";
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import config from "@app/lib/api/config";
 import type { CSVRow } from "@app/lib/api/csv";
@@ -587,110 +588,125 @@ export async function uploadToCloudStorage(
   const jitEnabled = await isJITActionsEnabled(auth);
   if (
     jitEnabled &&
-    (file.useCase === "conversation" || file.useCase === "tool_output") &&
+    file.useCase === "conversation" &&
+    file.useCaseMetadata &&
     isSupportedPlainTextContentType(file.contentType)
   ) {
     const content = preProcessingRes.value;
 
+    // TODO(JIT) instead of erroring (this one and the other below), we should do the checks before and disable JIT if the checks fail.
     if (!content) {
-      logger.warn(
-        {
-          fileId: file.id,
-          workspaceId: auth.workspace()?.sId,
-          contentType: file.contentType,
-          useCase: file.useCase,
-        },
-        "No content extracted from file for JIT processing, should not happen. Action: check that the processing function returns the content."
-      );
-    } else {
-      // Upsert the file to the conversation datasource.
-      const conversationsSpace =
-        await SpaceResource.fetchWorkspaceConversationsSpace(auth);
+      return new Err({
+        name: "dust_error",
+        code: "internal_server_error",
+        message: `No content extracted from file for JIT processing, should not happen with JIT. Action: check that the processing function returns the content.`,
+      });
+    }
 
-      // TODO(JIT) we need to retrieve the conversation linked to the file somehow.
-      const conversationId = 345;
+    if (!file.useCaseMetadata.conversationId) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_server_error",
+        message: `No conversationId in useCaseMetadata, should not happen with JIT. Action: check that the field useCaseMetadata is correctly set.`,
+      });
+    }
 
-      // Fetch the datasource linked to the conversation...
-      let dataSource = await DataSourceResource.fetchByConversationId(
-        auth,
-        conversationId
-      );
+    const r = await getConversation(auth, file.useCaseMetadata.conversationId);
 
-      if (!dataSource) {
-        // ...or create a new one.
+    if (r.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_server_error",
+        message: `Failed to fetch conversation : ${r.error}`,
+      });
+    }
 
-        // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs are used as secrets to share the conversation within the workspace users.
-        const name = `Conversation ${uuidv4()}`;
-        const r = await createDataSourceWithoutProvider(auth, {
-          plan: auth.getNonNullablePlan(),
-          owner: auth.getNonNullableWorkspace(),
-          space: conversationsSpace,
-          name: name,
-          description: "Files uploaded to conversation",
-          conversationId,
-        });
+    const conversationId = r.value.id;
 
-        if (r.isErr()) {
-          return new Err({
-            name: "dust_error",
-            code: "internal_server_error",
-            message: `Failed to create datasource : ${r.error}`,
-          });
-        }
+    // Upsert the file to the conversation datasource.
+    const conversationsSpace =
+      await SpaceResource.fetchWorkspaceConversationsSpace(auth);
 
-        dataSource = r.value.dataSource;
-      }
+    // Fetch the datasource linked to the conversation...
+    let dataSource = await DataSourceResource.fetchByConversationId(
+      auth,
+      conversationId
+    );
 
-      const documentId = `${file.id}`; // Use the file id as the document id to make it easy to track the document back to the file.
-      const sourceUrl = file.getPublicUrl(auth);
+    if (!dataSource) {
+      // ...or create a new one.
 
-      // TODO(JIT) note, upsertDocument do not call runPostUpsertHooks (seems used for document tracker)
-      const upsertDocumentRes = await upsertDocument({
-        name: documentId,
-        source_url: sourceUrl,
-        text: content,
-        parents: [documentId],
-        tags: [`title:${file.fileName}`],
-        light_document_output: true,
-        dataSource,
-        auth,
+      // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs are used as secrets to share the conversation within the workspace users.
+      const name = `Conversation ${uuidv4()}`;
+      const r = await createDataSourceWithoutProvider(auth, {
+        plan: auth.getNonNullablePlan(),
+        owner: auth.getNonNullableWorkspace(),
+        space: conversationsSpace,
+        name: name,
+        description: "Files uploaded to conversation",
+        conversationId,
       });
 
-      if (upsertDocumentRes.isErr()) {
+      if (r.isErr()) {
         return new Err({
           name: "dust_error",
           code: "internal_server_error",
-          message: "There was an error upserting the document.",
-          data_source_error: upsertDocumentRes.error,
+          message: `Failed to create datasource : ${r.error}`,
         });
       }
 
-      const isTable = await isValidTableFile(file, "fake csv");
+      dataSource = r.value.dataSource;
+    }
 
-      if (isTable) {
-        const tableId = `${file.id}`; // Use the file id as the table id to make it easy to track the table back to the file.
-        const upsertTableRes = await upsertTable({
-          tableId,
-          name: file.fileName,
-          description: "Table uploaded from file",
-          truncate: true,
-          csv: content,
-          tags: [`title:${file.fileName}`],
-          parents: [tableId],
-          async: false,
-          dataSource,
-          auth,
-          useAppForHeaderDetection: true,
+    const documentId = file.sId; // Use the file id as the document id to make it easy to track the document back to the file.
+    const sourceUrl = file.getPublicUrl(auth);
+
+    // TODO(JIT) note, upsertDocument do not call runPostUpsertHooks (seems used for document tracker)
+    const upsertDocumentRes = await upsertDocument({
+      name: documentId,
+      source_url: sourceUrl,
+      text: content,
+      parents: [documentId],
+      tags: [`title:${file.fileName}`],
+      light_document_output: true,
+      dataSource,
+      auth,
+    });
+
+    if (upsertDocumentRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_server_error",
+        message: "There was an error upserting the document.",
+        data_source_error: upsertDocumentRes.error,
+      });
+    }
+
+    const isTable = await isValidTableFile(file, content);
+
+    if (isTable) {
+      const tableId = file.sId; // Use the file sId as the table id to make it easy to track the table back to the file.
+      const upsertTableRes = await upsertTable({
+        tableId,
+        name: file.fileName,
+        description: "Table uploaded from file",
+        truncate: true,
+        csv: content,
+        tags: [`title:${file.fileName}`],
+        parents: [tableId],
+        async: false,
+        dataSource,
+        auth,
+        useAppForHeaderDetection: true,
+      });
+
+      if (upsertTableRes.isErr()) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_server_error",
+          message: "There was an error upserting the table.",
+          data_source_error: upsertTableRes.error,
         });
-
-        if (upsertTableRes.isErr()) {
-          return new Err({
-            name: "dust_error",
-            code: "internal_server_error",
-            message: "There was an error upserting the table.",
-            data_source_error: upsertTableRes.error,
-          });
-        }
       }
     }
   }

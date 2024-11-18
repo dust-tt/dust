@@ -58,7 +58,8 @@ async function handler(
         });
       }
 
-      const { contentType, fileName, fileSize, useCase } = bodyValidation.right;
+      const { contentType, fileName, fileSize, useCase, useCaseMetadata } =
+        bodyValidation.right;
 
       if (!isSupportedFileContentType(contentType)) {
         return apiError(req, res, {
@@ -97,6 +98,7 @@ async function handler(
         userId: user.id,
         workspaceId: owner.id,
         useCase,
+        useCaseMetadata: useCaseMetadata,
       });
 
       res.status(200).json({ file: file.toJSONWithUploadUrl(auth) });

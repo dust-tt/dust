@@ -2046,6 +2046,11 @@ export const FileUploadUrlRequestSchema = z.object({
   fileName: z.string(),
   fileSize: z.number(),
   useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
+  useCaseMetadata: z
+    .object({
+      conversationId: z.string(),
+    })
+    .optional(),
 });
 export type FileUploadUrlRequestType = z.infer<
   typeof FileUploadUrlRequestSchema
