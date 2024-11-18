@@ -281,12 +281,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "help-center": {
           if (permission === "none") {
-            const revokedBrand = await revokeSyncZendeskHelpCenter({
+            const revokedBrandHelpCenter = await revokeSyncZendeskHelpCenter({
               connectorId,
               brandId: objectId,
             });
-            if (revokedBrand) {
-              toBeSignaledHelpCenterIds.add(revokedBrand.brandId);
+            if (revokedBrandHelpCenter) {
+              toBeSignaledHelpCenterIds.add(revokedBrandHelpCenter.brandId);
             }
           }
           if (permission === "read") {
@@ -303,12 +303,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "tickets": {
           if (permission === "none") {
-            const revokedCollection = await revokeSyncZendeskTickets({
+            const revokedBrandTickets = await revokeSyncZendeskTickets({
               connectorId,
               brandId: objectId,
             });
-            if (revokedCollection) {
-              toBeSignaledTicketsIds.add(revokedCollection.brandId);
+            if (revokedBrandTickets) {
+              toBeSignaledTicketsIds.add(revokedBrandTickets.brandId);
             }
           }
           if (permission === "read") {
