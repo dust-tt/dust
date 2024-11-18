@@ -403,17 +403,19 @@ export async function zendeskCategorySyncWorkflow({
  * - Categories that have no article anymore.
  * - Brands that have no permission on tickets and Help Center anymore.
  */
-export async function zendeskGarbageCollectWorkflow({
+export async function zendeskGarbageCollectionWorkflow({
   connectorId,
 }: {
   connectorId: ModelId;
 }) {
+  // deleting the outdated tickets
   let ticketIds = await getNextOldTicketBatchActivity(connectorId);
   while (ticketIds.length > 0) {
     await deleteTicketBatchActivity(connectorId, ticketIds);
     ticketIds = await getNextOldTicketBatchActivity(connectorId);
   }
 
+  // deleting the articles that cannot be found anymore in the Zendesk API
   const brandIds =
     await getZendeskHelpCenterReadAllowedBrandIdsActivity(connectorId);
   for (const brandId of brandIds) {
