@@ -1,6 +1,5 @@
 import {
   CollapseButton,
-  Logo,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -16,6 +15,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
+import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
+import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -38,6 +39,7 @@ export const NavigationSidebar = React.forwardRef<
 ) {
   const router = useRouter();
   const { user } = useUser();
+  const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [activePath, setActivePath] = useState("");
 
   useEffect(() => {
@@ -59,33 +61,18 @@ export const NavigationSidebar = React.forwardRef<
       className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50"
     >
       <div className="flex flex-col">
-        <div className="flex flex-row justify-between p-3">
-          <div className="flex flex-col gap-2">
-            <div className="pt-3">
-              <Link
-                href={`/w/${owner.sId}/assistant/new`}
-                className="inline-flex"
-              >
-                <Logo className="h-4 w-16" />
-              </Link>
-            </div>
-            {user && user.workspaces.length > 1 ? (
-              <WorkspacePicker
-                user={user}
-                workspace={owner}
-                onWorkspaceUpdate={(workspace) => {
-                  const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                  if (workspace.id !== owner.id) {
-                    void router
-                      .push(assistantRoute)
-                      .then(() => router.reload());
-                  }
-                }}
-              />
-            ) : null}
-          </div>
-          {user && <UserMenu user={user} owner={owner} />}
-        </div>
+        {user && user.workspaces.length > 1 ? (
+          <WorkspacePicker
+            user={user}
+            workspace={owner}
+            onWorkspaceUpdate={async (workspace) => {
+              const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+              if (workspace.id !== owner.id) {
+                await router.push(assistantRoute).then(() => router.reload());
+              }
+            }}
+          />
+        ) : null}
 
         <AppStatusBanner />
         {subscription.endDate && (
@@ -166,6 +153,17 @@ export const NavigationSidebar = React.forwardRef<
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
+      {user && (
+        <div className="flex items-center gap-2 border-t border-border-dark p-2">
+          <UserMenu user={user} owner={owner} />
+          <div className="flex-grow" />
+          <HelpDropdown owner={owner} user={user} />
+          <QuickStartGuide
+            show={showQuickGuide}
+            onClose={() => setShowQuickGuide(false)}
+          />
+        </div>
+      )}
     </div>
   );
 });
