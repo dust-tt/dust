@@ -5,11 +5,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withInternalAPIRouteResource } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
@@ -30,10 +31,11 @@ async function handler(
     WithAPIErrorResponse<GetRunsResponseBody | PostRunsResponseBody>
   >,
   auth: Authenticator,
+  space: SpaceResource,
   session: SessionWithUser
 ) {
-  const { aId, spaceId } = req.query;
-  if (typeof spaceId !== "string" || typeof aId !== "string") {
+  const { aId } = req.query;
+  if (typeof aId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -47,22 +49,12 @@ async function handler(
   const user = auth.getNonNullableUser();
 
   const app = await AppResource.fetchById(auth, aId);
-  if (!app || app.space.sId !== spaceId) {
+  if (!app || app.space.sId !== space.sId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app was not found.",
-      },
-    });
-  }
-
-  if (app.space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -268,4 +260,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withInternalAPIRouteResource(handler, "space");

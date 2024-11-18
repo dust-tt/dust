@@ -10,9 +10,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getOffsetPaginationParams } from "@app/lib/api/pagination";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withInternalAPIRouteResource } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 const GetContentNodesOrChildrenRequestBody = t.type({
@@ -33,10 +34,12 @@ export type GetDataSourceViewContentNodes = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewContentNodes>>,
-  auth: Authenticator
+
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { dsvId, spaceId } = req.query;
-  if (typeof dsvId !== "string" || typeof spaceId !== "string") {
+  const { dsvId } = req.query;
+  if (typeof dsvId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -50,7 +53,7 @@ async function handler(
 
   if (
     !dataSourceView ||
-    spaceId !== dataSourceView.space.sId ||
+    space.sId !== dataSourceView.space.sId ||
     !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {
@@ -58,16 +61,6 @@ async function handler(
       api_error: {
         type: "data_source_view_not_found",
         message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSourceView.space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -141,4 +134,4 @@ async function handler(
   return res.status(200).json(contentNodesRes.value);
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withInternalAPIRouteResource(handler, "space");

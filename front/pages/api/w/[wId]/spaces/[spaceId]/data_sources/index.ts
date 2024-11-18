@@ -25,7 +25,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { createDataSourceWithoutProvider } from "@app/lib/api/data_sources";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withInternalAPIRouteResource } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import {
@@ -37,7 +37,7 @@ import {
   isValidConnectorSuffix,
 } from "@app/lib/connector_providers";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
@@ -86,32 +86,11 @@ export type PostSpaceDataSourceResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
-
-  const { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameter `spaceId`.",
-      },
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you requested was not found.",
-      },
-    });
-  }
 
   if (space.isSystem()) {
     if (!space.canAdministrate(auth)) {
@@ -521,4 +500,4 @@ const handleDataSourceWithProvider = async ({
   return;
 };
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withInternalAPIRouteResource(handler, "space");

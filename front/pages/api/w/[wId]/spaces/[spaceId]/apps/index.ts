@@ -3,10 +3,10 @@ import { APP_NAME_REGEXP, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withInternalAPIRouteResource } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -23,29 +23,10 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetAppsResponseBody | PostAppResponseBody>
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameter `spaceId`",
-      },
-    });
-  }
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !space.canList(auth) || space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you requested was not found.",
-      },
-    });
-  }
 
   switch (req.method) {
     case "GET":
@@ -134,4 +115,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withInternalAPIRouteResource(handler, "space");
