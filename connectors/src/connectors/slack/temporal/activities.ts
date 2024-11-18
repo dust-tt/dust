@@ -124,7 +124,6 @@ async function _getChannelsUncached(
     {
       connectorId,
       returnedChannels: allChannels.length,
-      nextCursor,
       nbCalls,
     },
     `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
