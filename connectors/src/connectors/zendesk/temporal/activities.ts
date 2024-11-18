@@ -38,11 +38,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
  */
-export async function saveZendeskConnectorStartSync({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}) {
+export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -56,11 +52,7 @@ export async function saveZendeskConnectorStartSync({
 /**
  * This activity is responsible for updating the sync status of the connector to "success".
  */
-export async function saveZendeskConnectorSuccessSync({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}) {
+export async function saveZendeskConnectorSuccessSync(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");

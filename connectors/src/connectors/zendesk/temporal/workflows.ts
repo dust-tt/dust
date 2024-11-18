@@ -56,7 +56,7 @@ export async function zendeskSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  await saveZendeskConnectorStartSync({ connectorId });
+  await saveZendeskConnectorStartSync(connectorId);
 
   const brandIds = new Set<number>();
   const brandSignals: ZendeskUpdateSignal[] = [];
@@ -212,7 +212,7 @@ export async function zendeskSyncWorkflow({
     }
   }
 
-  await saveZendeskConnectorSuccessSync({ connectorId });
+  await saveZendeskConnectorSuccessSync(connectorId);
 }
 
 /**
