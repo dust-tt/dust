@@ -58,6 +58,7 @@ export default function AppLayout({
   }, [router.query]);
 
   const handleCloseQuickGuide = () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { quickGuide: _, ...restQuery } = router.query;
     void router.push(
       {
