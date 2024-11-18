@@ -65,10 +65,10 @@ export const NavigationSidebar = React.forwardRef<
           <WorkspacePicker
             user={user}
             workspace={owner}
-            onWorkspaceUpdate={(workspace) => {
+            onWorkspaceUpdate={async (workspace) => {
               const assistantRoute = `/w/${workspace.sId}/assistant/new`;
               if (workspace.id !== owner.id) {
-                void router.push(assistantRoute).then(() => router.reload());
+                await router.push(assistantRoute).then(() => router.reload());
               }
             }}
           />
