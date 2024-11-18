@@ -53,6 +53,40 @@ export function AssistantInputBar({
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
 }) {
+  const [isFocused, setIsFocused] = useState(false);
+  const rainbowEffectRef = useRef<HTMLDivElement>(null);
+
+  const handleFocusWithin = (event: FocusEvent) => {
+    if (
+      rainbowEffectRef.current &&
+      rainbowEffectRef.current.contains(event.target as Node)
+    ) {
+      setIsFocused(true);
+    }
+  };
+
+  const handleBlurWithin = (event: FocusEvent) => {
+    if (
+      rainbowEffectRef.current &&
+      !rainbowEffectRef.current.contains(event.relatedTarget as Node)
+    ) {
+      setIsFocused(false);
+    }
+  };
+
+  useEffect(() => {
+    const currentRef = rainbowEffectRef.current;
+    if (currentRef) {
+      currentRef.addEventListener("focusin", handleFocusWithin);
+      currentRef.addEventListener("focusout", handleBlurWithin);
+    }
+    return () => {
+      if (currentRef) {
+        currentRef.removeEventListener("focusin", handleFocusWithin);
+        currentRef.removeEventListener("focusout", handleBlurWithin);
+      }
+    };
+  }, []);
   const { mutateConversation } = useConversation({
     conversationId,
     workspaceId: owner.sId,
@@ -204,7 +238,7 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   return (
-    <div className="flex w-full flex-col">
+    <div className="flex w-full flex-col sm:px-3">
       {generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       ) && (
@@ -220,39 +254,40 @@ export function AssistantInputBar({
         </div>
       )}
 
-      <div className="flex flex-1">
-        <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
-          <RainbowEffect className="w-full" containerClassName="w-full">
-            <div
-              className={classNames(
-                "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-2 sm:flex-row sm:pl-5",
-                "bg-primary-50",
-                "transition-all",
-                isFloating
-                  ? "rounded-3xl border border-border-dark/0 focus-within:border-border-dark focus-within:ring-2 focus-within:ring-highlight-300 focus-within:ring-offset-2"
-                  : "border-t",
-                isAnimating ? "duration-600 animate-shake" : "duration-300"
-              )}
-            >
-              <div className="relative flex w-full flex-1 flex-col">
-                <InputBarCitations fileUploaderService={fileUploaderService} />
-
-                <InputBarContainer
-                  actions={actions}
-                  disableAutoFocus={disableAutoFocus}
-                  allAssistants={activeAgents}
-                  agentConfigurations={agentConfigurations}
-                  owner={owner}
-                  selectedAssistant={selectedAssistant}
-                  onEnterKeyDown={handleSubmit}
-                  stickyMentions={stickyMentions}
-                  fileUploaderService={fileUploaderService}
-                  disableSendButton={fileUploaderService.isProcessingFiles}
-                />
-              </div>
+      <div ref={rainbowEffectRef} className="flex w-full flex-col">
+        <RainbowEffect
+          className="w-full"
+          containerClassName="w-full"
+          size={isFocused ? "large" : "medium"}
+        >
+          <div
+            className={classNames(
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-2 sm:flex-row sm:pl-5",
+              "bg-primary-50",
+              "transition-all",
+              isFloating
+                ? "rounded-3xl border border-border-dark/0 focus-within:border-border-dark focus-within:ring-2 focus-within:ring-highlight-300 focus-within:ring-offset-2"
+                : "border-t",
+              isAnimating ? "duration-600 animate-shake" : "duration-300"
+            )}
+          >
+            <div className="relative flex w-full flex-1 flex-col">
+              <InputBarCitations fileUploaderService={fileUploaderService} />
+              <InputBarContainer
+                actions={actions}
+                disableAutoFocus={disableAutoFocus}
+                allAssistants={activeAgents}
+                agentConfigurations={agentConfigurations}
+                owner={owner}
+                selectedAssistant={selectedAssistant}
+                onEnterKeyDown={handleSubmit}
+                stickyMentions={stickyMentions}
+                fileUploaderService={fileUploaderService}
+                disableSendButton={fileUploaderService.isProcessingFiles}
+              />
             </div>
-          </RainbowEffect>
-        </div>
+          </div>
+        </RainbowEffect>
       </div>
     </div>
   );
