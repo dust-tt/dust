@@ -429,7 +429,7 @@ export function AgentMessage({
       visualization: (props: ReactMarkdownProps) => (
         <div className="w-full flex justify-center">
           <Button
-            label="Please check the visualization here"
+            label="See visualization on Dust website"
             onClick={() => {
               window.open(
                 `${process.env.DUST_DOMAIN}/w/${owner.sId}/assistant/${conversationId}`
