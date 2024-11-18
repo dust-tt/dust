@@ -54,10 +54,6 @@ export const routes = [
   },
   {
     path: "/run",
-    element: (
-      <ProtectedRoute>
-        {({ workspace }) => <RunPage workspace={workspace} />}
-      </ProtectedRoute>
-    ),
+    element: <ProtectedRoute>{() => <RunPage />}</ProtectedRoute>,
   },
 ];

@@ -1,6 +1,5 @@
 import type {
   ConversationPublicType,
-  LightWorkspaceType,
   Result,
   SupportedFileContentType,
 } from "@dust-tt/client";
@@ -50,11 +49,7 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
 const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
 const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 
-export function useFileUploaderService({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}) {
+export function useFileUploaderService() {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const sendNotification = useSendNotification();
@@ -241,13 +236,10 @@ export function useFileUploaderService({
         prevFiles.filter((f) => f.fileId !== fileBlob?.fileId)
       );
 
-      // Intentionally not awaiting the fetch call to allow it to run asynchronously.
-      void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      if (fileBlob.fileId) {
+        // Intentionally not awaiting the fetch call to allow it to run asynchronously.
+        void dustAPI.deleteFile(fileBlob.fileId);
+      }
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
       if (allFilesReady && isProcessingFiles) {

@@ -55,9 +55,7 @@ export function AssistantInputBar({
   const { agentConfigurations: baseAgentConfigurations } =
     usePublicAgentConfigurations();
 
-  const fileUploaderService = useFileUploaderService({
-    owner,
-  });
+  const fileUploaderService = useFileUploaderService();
 
   const port = useContext(PortContext);
   useEffect(() => {

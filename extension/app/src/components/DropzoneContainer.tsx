@@ -5,7 +5,7 @@ import {
   supportedImage,
   supportedPlainText,
 } from "@dust-tt/client";
-import { DropzoneOverlay } from "@dust-tt/sparkle";
+import { DropzoneOverlay, useSendNotification } from "@dust-tt/sparkle";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
 import { useEffect } from "react";
 import { useDropzone } from "react-dropzone";
@@ -30,6 +30,23 @@ const generateFileName = (blob: Blob) => {
   return `${name}${extension}`;
 };
 
+const getDroppedUrl = (dataTransfer: DataTransfer) => {
+  const textHtml = dataTransfer.getData("text/html");
+  const droppedUrl = dataTransfer.getData("text/uri-list");
+  if (textHtml) {
+    const div = document.createElement("div");
+    div.innerHTML = textHtml;
+
+    const url = div.querySelector("img")?.src || div.querySelector("a")?.href;
+    div.remove();
+
+    if (url) {
+      return url;
+    }
+  }
+  return droppedUrl;
+};
+
 export function DropzoneContainer({
   children,
   description,
@@ -40,6 +57,8 @@ export function DropzoneContainer({
   const onDrop = (acceptedFiles: File[]) => {
     setDroppedFiles(acceptedFiles);
   };
+
+  const sendNotification = useSendNotification();
 
   const { getRootProps, isDragActive } = useDropzone({
     onDrop,
@@ -53,23 +72,38 @@ export function DropzoneContainer({
       const element = rootProps.ref.current;
       const listener = async (e: React.DragEvent) => {
         if (e.dataTransfer) {
-          const droppedUrl = e.dataTransfer.getData("text/uri-list");
+          const droppedUrl = getDroppedUrl(e.dataTransfer);
           if (droppedUrl) {
             const response = await fetch(droppedUrl);
             const blob = await response.blob();
-
-            if (isSupportedFileContentType(blob.type)) {
-              const filename = droppedUrl.startsWith("data:")
-                ? generateFileName(blob)
-                : decodeURIComponent(
-                    droppedUrl.split("/").pop() || generateFileName(blob)
-                  );
-
+            const filename = droppedUrl.startsWith("data:")
+              ? generateFileName(blob)
+              : decodeURIComponent(
+                  droppedUrl.split("/").pop() || generateFileName(blob)
+                );
+            if (blob.type === "text/html") {
+              const text = await blob.text();
+              const div = document.createElement("div");
+              div.innerHTML = text;
+              const textBlob = new Blob([div.textContent || ""], {
+                type: "text/plain",
+              });
+              div.remove();
+              const file = new File([textBlob], `${filename}.txt`, {
+                type: textBlob.type,
+              });
+              onDrop([file]);
+            } else if (isSupportedFileContentType(blob.type)) {
               const file = new File([blob], filename, {
                 type: blob.type,
               });
-
               onDrop([file]);
+            } else {
+              sendNotification({
+                description: "Unsupported file type : " + blob.type,
+                title: "Unsupported file type",
+                type: "error",
+              });
             }
           }
         }

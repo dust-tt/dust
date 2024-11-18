@@ -842,6 +842,15 @@ export class DustAPI {
     return new Ok(fileUploaded);
   }
 
+  async deleteFile(fileID: string) {
+    const res = await this.request({
+      method: "DELETE",
+      path: `files/${fileID}`,
+    });
+
+    return res;
+  }
+
   async getActiveMemberEmailsInWorkspace() {
     const res = await this.request({
       method: "GET",
