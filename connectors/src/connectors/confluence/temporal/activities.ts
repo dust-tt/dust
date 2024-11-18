@@ -339,7 +339,7 @@ export async function confluenceCheckAndUpsertPageActivity({
       documentUrl,
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [],
+      parents: [documentId],
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {
