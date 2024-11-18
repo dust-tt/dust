@@ -609,8 +609,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.kind === "public";
   }
 
-  isDeleted() {
-    return this.deletedAt !== null;
+  isDeletable() {
+    return (
+      // Soft-deleted spaces can be deleted.
+      this.deletedAt !== null ||
+      // Also, defaults spaces can be deleted.
+      this.isGlobal() ||
+      this.isSystem() ||
+      this.isConversations()
+    );
   }
 
   // Serialization.

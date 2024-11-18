@@ -110,9 +110,7 @@ export async function hardDeleteSpace(
 ): Promise<Result<void, Error>> {
   assert(auth.isAdmin(), "Only admins can delete spaces.");
 
-  const isDeletableSpace =
-    space.isDeleted() || space.isGlobal() || space.isSystem();
-  assert(isDeletableSpace, "Space is not soft deleted.");
+  assert(space.isDeletable(), "Space cannot be deleted.");
 
   const dataSourceViews = await DataSourceViewResource.listBySpace(
     auth,
