@@ -157,11 +157,7 @@ export const NavigationSidebar = React.forwardRef<
         <div className="flex items-center gap-2 border-t border-border-dark p-2">
           <UserMenu user={user} owner={owner} />
           <div className="flex-grow" />
-          <HelpDropdown
-            owner={owner}
-            user={user}
-            setShowQuickGuide={setShowQuickGuide}
-          />
+          <HelpDropdown owner={owner} user={user} />
           <QuickStartGuide
             show={showQuickGuide}
             onClose={() => setShowQuickGuide(false)}
