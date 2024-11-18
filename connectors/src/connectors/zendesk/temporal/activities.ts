@@ -15,8 +15,8 @@ import {
   createZendeskClient,
   fetchRecentlyUpdatedArticles,
   fetchRecentlyUpdatedTickets,
-  fetchSolvedZendeskTicketsInBrand,
   fetchZendeskArticlesInCategory,
+  fetchZendeskTicketsInBrand,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -29,6 +29,7 @@ import {
   ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -183,6 +184,56 @@ export async function syncZendeskBrandActivity({
     helpCenterAllowed: brandInDb.helpCenterPermission === "read",
     ticketsAllowed: brandInDb.ticketsPermission === "read",
   };
+}
+
+/**
+ * This activity is responsible for fetching a batch of tickets
+ * that are older than the retention period and ready to be deleted.
+ */
+export async function getNextOldTicketBatchActivity(
+  connectorId: ModelId
+): Promise<number[]> {
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(
+      `[Zendesk] Configuration not found, connectorId: ${connectorId}`
+    );
+  }
+  return ZendeskTicketResource.fetchOutdatedTicketIds({
+    connectorId,
+    expirationDate: new Date(
+      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
+    ),
+    batchSize: ZENDESK_BATCH_SIZE,
+  });
+}
+
+/**
+ * This activity is responsible for deleting a batch of tickets given their IDs.
+ */
+export async function deleteTicketBatchActivity(
+  connectorId: ModelId,
+  ticketIds: number[]
+): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  await concurrentExecutor(
+    ticketIds,
+    (ticketId) =>
+      deleteTicket({ connectorId, ticketId, dataSourceConfig, loggerArgs }),
+    { concurrency: 10 }
+  );
 }
 
 /**
@@ -421,6 +472,11 @@ export async function syncZendeskTicketBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -438,11 +494,12 @@ export async function syncZendeskTicketBatchActivity({
     brandId,
   });
 
-  const { tickets, meta } = await fetchSolvedZendeskTicketsInBrand({
+  const { tickets, meta } = await fetchZendeskTicketsInBrand({
     brandSubdomain,
     accessToken,
     pageSize: ZENDESK_BATCH_SIZE,
     cursor,
+    retentionPeriodDays: configuration.retentionPeriodDays,
   });
 
   if (tickets.length === 0) {
@@ -612,7 +669,12 @@ export async function syncZendeskTicketUpdateBatchActivity({
     tickets,
     async (ticket) => {
       if (ticket.status === "deleted") {
-        return deleteTicket(connectorId, ticket, dataSourceConfig, loggerArgs);
+        return deleteTicket({
+          connectorId,
+          ticketId: ticket.id,
+          dataSourceConfig,
+          loggerArgs,
+        });
       } else if (ticket.status === "solved") {
         const comments = await zendeskApiClient.tickets.getComments(ticket.id);
         const { result: users } = await zendeskApiClient.users.showMany(

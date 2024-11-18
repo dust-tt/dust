@@ -22,28 +22,28 @@ const turndownService = new TurndownService();
 /**
  * Deletes a ticket from the db and the data sources.
  */
-export async function deleteTicket(
-  connectorId: ModelId,
-  ticket: ZendeskFetchedTicket,
-  dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number | null>
-): Promise<void> {
+export async function deleteTicket({
+  connectorId,
+  ticketId,
+  dataSourceConfig,
+  loggerArgs,
+}: {
+  connectorId: ModelId;
+  ticketId: number;
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs: Record<string, string | number | null>;
+}): Promise<void> {
   logger.info(
-    {
-      ...loggerArgs,
-      connectorId,
-      ticketId: ticket.id,
-      subject: ticket.subject,
-    },
+    { ...loggerArgs, connectorId, ticketId },
     "[Zendesk] Deleting ticket."
   );
   await deleteFromDataSource(
     dataSourceConfig,
-    getTicketInternalId(connectorId, ticket.id)
+    getTicketInternalId(connectorId, ticketId)
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
-    ticketId: ticket.id,
+    ticketId,
   });
 }
 
@@ -88,12 +88,11 @@ export async function syncTicket({
   const commonTicketData = {
     subject: ticket.subject,
     url: ticket.url,
-    createdAt: createdAtDate,
-    updatedAt: updatedAtDate,
     assigneeId: ticket.assignee_id,
     groupId: ticket.group_id,
     organizationId: ticket.organization_id,
     lastUpsertedTs: new Date(currentSyncDateMs),
+    ticketUpdatedAt: updatedAtDate,
   };
 
   if (!ticketInDb) {

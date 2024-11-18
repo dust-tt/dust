@@ -85,8 +85,6 @@ export async function syncArticle({
     articleInDb.lastUpsertedTs < updatedAtDate; // upserting if the article was updated after the last upsert
 
   const updatableFields = {
-    createdAt: new Date(article.created_at),
-    updatedAt: updatedAtDate,
     categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
     name: article.name,
     url: article.html_url,

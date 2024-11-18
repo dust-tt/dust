@@ -66,7 +66,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      { subdomain, conversationsSlidingWindow: 90 }
+      { subdomain, retentionPeriodDays: 180 }
     );
 
     const workflowStartResult = await launchZendeskSyncWorkflow(connector);

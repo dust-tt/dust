@@ -66,7 +66,7 @@ export class ZendeskConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare subdomain: string;
-  declare conversationsSlidingWindow: number;
+  declare retentionPeriodDays: number;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -92,10 +92,10 @@ ZendeskConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    conversationsSlidingWindow: {
+    retentionPeriodDays: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 90,
+      defaultValue: 180, // approximately 6 months
     },
   },
   {
@@ -392,6 +392,7 @@ export class ZendeskTicket extends Model<
   declare subject: string;
   declare url: string;
 
+  declare ticketUpdatedAt: Date;
   declare lastUpsertedTs: Date;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -444,6 +445,10 @@ ZendeskTicket.init(
     },
     permission: {
       type: DataTypes.STRING,
+      allowNull: false,
+    },
+    ticketUpdatedAt: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
     lastUpsertedTs: {
