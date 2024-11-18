@@ -8,8 +8,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   getRequiredScope,
   getUserFromAuth0Token,
-  METHOD_TO_VERB,
-  validateScopes,
   verifyAuth0Token,
 } from "@app/lib/api/auth0";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
