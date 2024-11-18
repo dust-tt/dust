@@ -15,7 +15,7 @@ import {
   MAX_FILE_SIZES,
   Ok,
 } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
 import { getMimeTypeFromFile } from "@app/lib/file";
 

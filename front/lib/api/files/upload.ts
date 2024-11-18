@@ -225,17 +225,19 @@ const extractTextFromFile: PreprocessingFunction = async (
       file.contentType
     );
 
+    let content: string = "";
     await pipeline(
       textStream,
       async function* (source) {
         for await (const chunk of source) {
+          content += chunk;
           yield chunk;
         }
       },
       writeStream
     );
 
-    return new Ok(undefined);
+    return new Ok(content);
   } catch (err) {
     logger.error(
       {
@@ -276,7 +278,7 @@ class CSVColumnAnalyzerTransform extends Transform {
 const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
-): Promise<Result<undefined, Error>> => {
+) => {
   try {
     const readStream = file.getReadStream({
       auth,
@@ -293,8 +295,15 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
     });
 
     // Process the first stream for processed file
+    let content: string = "";
     const processedPipeline = pipeline(
       readStream.pipe(new PassThrough()),
+      async function* (source) {
+        for await (const chunk of source) {
+          content += chunk;
+          yield chunk;
+        }
+      },
       processedWriteStream
     );
 
@@ -312,7 +321,7 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
     // Wait for both pipelines to finish
     await Promise.all([processedPipeline, snippetPipeline]);
 
-    return new Ok(undefined);
+    return new Ok(content);
   } catch (err) {
     logger.error(
       {
@@ -344,10 +353,20 @@ const storeRawText: PreprocessingFunction = async (
     version: "processed",
   });
 
+  let content: string = "";
   try {
-    await pipeline(readStream, writeStream);
+    await pipeline(
+      readStream,
+      async function* (source) {
+        for await (const chunk of source) {
+          content += chunk;
+          yield chunk;
+        }
+      },
+      writeStream
+    );
 
-    return new Ok(undefined);
+    return new Ok(content);
   } catch (err) {
     logger.error(
       {
@@ -370,7 +389,7 @@ const storeRawText: PreprocessingFunction = async (
 type PreprocessingFunction = (
   auth: Authenticator,
   file: FileResource
-) => Promise<Result<undefined, Error>>;
+) => Promise<Result<string | undefined, Error>>;
 
 type PreprocessingPerUseCase = {
   [k in FileUseCase]: PreprocessingFunction | undefined;
@@ -438,10 +457,10 @@ const processingPerContentType: PreprocessingPerContentType = {
   },
 };
 
-async function maybeApplyPreProcessing(
+const maybeApplyPreProcessing: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
-): Promise<Result<undefined, Error>> {
+) => {
   const contentTypeProcessing = processingPerContentType[file.contentType];
   if (!contentTypeProcessing) {
     await file.markAsReady();
@@ -456,13 +475,17 @@ async function maybeApplyPreProcessing(
       await file.markAsFailed();
 
       return res;
+    } else {
+      await file.markAsReady();
+
+      return new Ok(res.value);
     }
   }
 
   await file.markAsReady();
 
   return new Ok(undefined);
-}
+};
 
 export async function uploadToCloudStorage(
   auth: Authenticator,
@@ -567,94 +590,107 @@ export async function uploadToCloudStorage(
     (file.useCase === "conversation" || file.useCase === "tool_output") &&
     isSupportedPlainTextContentType(file.contentType)
   ) {
-    // Upsert the file to the conversation datasource.
-    const conversationsSpace =
-      await SpaceResource.fetchWorkspaceConversationsSpace(auth);
+    const content = preProcessingRes.value;
 
-    // TODO(JIT) we need to retrieve the conversation linked to the file somehow.
-    const conversationId = 345;
+    if (!content) {
+      logger.warn(
+        {
+          fileId: file.id,
+          workspaceId: auth.workspace()?.sId,
+          contentType: file.contentType,
+          useCase: file.useCase,
+        },
+        "No content extracted from file for JIT processing, should not happen. Action: check that the processing function returns the content."
+      );
+    } else {
+      // Upsert the file to the conversation datasource.
+      const conversationsSpace =
+        await SpaceResource.fetchWorkspaceConversationsSpace(auth);
 
-    // Fetch the datasource linked to the conversation...
-    let dataSource = await DataSourceResource.fetchByConversationId(
-      auth,
-      conversationId
-    );
+      // TODO(JIT) we need to retrieve the conversation linked to the file somehow.
+      const conversationId = 345;
 
-    if (!dataSource) {
-      // ...or create a new one.
+      // Fetch the datasource linked to the conversation...
+      let dataSource = await DataSourceResource.fetchByConversationId(
+        auth,
+        conversationId
+      );
 
-      // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs are used as secrets to share the conversation within the workspace users.
-      const name = `Conversation ${uuidv4()}`;
-      const r = await createDataSourceWithoutProvider(auth, {
-        plan: auth.getNonNullablePlan(),
-        owner: auth.getNonNullableWorkspace(),
-        space: conversationsSpace,
-        name: name,
-        description: "Files uploaded to conversation",
-        conversationId,
+      if (!dataSource) {
+        // ...or create a new one.
+
+        // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs are used as secrets to share the conversation within the workspace users.
+        const name = `Conversation ${uuidv4()}`;
+        const r = await createDataSourceWithoutProvider(auth, {
+          plan: auth.getNonNullablePlan(),
+          owner: auth.getNonNullableWorkspace(),
+          space: conversationsSpace,
+          name: name,
+          description: "Files uploaded to conversation",
+          conversationId,
+        });
+
+        if (r.isErr()) {
+          return new Err({
+            name: "dust_error",
+            code: "internal_server_error",
+            message: `Failed to create datasource : ${r.error}`,
+          });
+        }
+
+        dataSource = r.value.dataSource;
+      }
+
+      const documentId = `${file.id}`; // Use the file id as the document id to make it easy to track the document back to the file.
+      const sourceUrl = file.getPublicUrl(auth);
+
+      // TODO(JIT) note, upsertDocument do not call runPostUpsertHooks (seems used for document tracker)
+      const upsertDocumentRes = await upsertDocument({
+        name: documentId,
+        source_url: sourceUrl,
+        text: content,
+        parents: [documentId],
+        tags: [`title:${file.fileName}`],
+        light_document_output: true,
+        dataSource,
+        auth,
       });
 
-      if (r.isErr()) {
+      if (upsertDocumentRes.isErr()) {
         return new Err({
           name: "dust_error",
           code: "internal_server_error",
-          message: `Failed to create datasource : ${r.error}`,
+          message: "There was an error upserting the document.",
+          data_source_error: upsertDocumentRes.error,
         });
       }
 
-      dataSource = r.value.dataSource;
-    }
+      const isTable = await isValidTableFile(file, "fake csv");
 
-    const documentId = `${file.id}`; // Use the file id as the document id to make it easy to track the document back to the file.
-    const sourceUrl = file.getPublicUrl(auth);
-
-    // TODO(JIT) we should extract sections from the processing of the file done above.
-    // TODO(JIT) note, upsertDocument do not call runPostUpsertHooks (seems used for document tracker)
-    const upsertDocumentRes = await upsertDocument({
-      name: documentId,
-      source_url: sourceUrl,
-      text: "fake content",
-      parents: [documentId],
-      tags: [`title:${file.fileName}`],
-      light_document_output: true,
-      dataSource,
-      auth,
-    });
-
-    if (upsertDocumentRes.isErr()) {
-      return new Err({
-        name: "dust_error",
-        code: "internal_server_error",
-        message: "There was an error upserting the document.",
-        data_source_error: upsertDocumentRes.error,
-      });
-    }
-
-    const isTable = await isValidTableFile(file, "fake csv");
-
-    if (isTable) {
-      const tableId = `${file.id}`; // Use the file id as the table id to make it easy to track the table back to the file.
-      const upsertTableRes = await upsertTable({
-        tableId,
-        name: file.fileName,
-        description: "Table uploaded from file",
-        truncate: true,
-        csv: "fake csv",
-        tags: [`title:${file.fileName}`],
-        parents: [tableId],
-        async: false,
-        dataSource,
-        auth,
-        useAppForHeaderDetection: true,
-      });
-
-      if (upsertTableRes.isErr()) {
-        return new Err({
-          name: "dust_error",
-          code: "internal_server_error",
-          message: "There was an error upserting the table.",
-          data_source_error: upsertTableRes.error,
+      if (isTable) {
+        const tableId = `${file.id}`; // Use the file id as the table id to make it easy to track the table back to the file.
+        const upsertTableRes = await upsertTable({
+          tableId,
+          name: file.fileName,
+          description: "Table uploaded from file",
+          truncate: true,
+          csv: content,
+          tags: [`title:${file.fileName}`],
+          parents: [tableId],
+          async: false,
+          dataSource,
+          auth,
+          useAppForHeaderDetection: true,
         });
+
+        if (upsertTableRes.isErr()) {
+          return new Err({
+            name: "dust_error",
+            code: "internal_server_error",
+            message: "There was an error upserting the table.",
+            data_source_error: upsertTableRes.error,
+          });
+        }
       }
     }
   }
