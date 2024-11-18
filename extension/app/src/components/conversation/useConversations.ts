@@ -10,7 +10,7 @@ export function useConversations() {
     if (res.isOk()) {
       return res.value;
     }
-    throw new Error(res.error.message);
+    throw res.error;
   };
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -19,10 +19,7 @@ export function useConversations() {
   );
 
   useEffect(() => {
-    if (
-      typeof error?.message === "string" &&
-      error?.message.includes("User not found")
-    ) {
+    if (error?.type === "not_authenticated") {
       void logout();
     }
   }, [error]);

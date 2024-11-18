@@ -304,7 +304,13 @@ export class Authenticator {
   }): Promise<Authenticator> {
     const user = await getUserFromAuth0Token(token);
     if (!user) {
-      throw new Error("User not found.");
+      return new Authenticator({
+        role: "none",
+        groups: [],
+        user: null,
+        subscription: null,
+        workspace: null,
+      });
     }
 
     const workspace = await Workspace.findOne({

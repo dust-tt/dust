@@ -97,28 +97,28 @@ const resHandler = async (res: Response) => {
     return res.json();
   }
 
-  let errorText;
+  let error;
 
   try {
     const resJson = await res.json();
-    errorText = resJson.error?.message;
+    error = resJson.error;
 
-    if (errorText.includes("User not found")) {
-      errorText = "User not found, logging out.";
+    if (error?.type === "not_authenticated") {
+      error = "User not found, logging out.";
       await logout();
     }
   } catch (e) {
     console.error("Error parsing response: ", e);
-    errorText = await res.text();
+    error = await res.text();
   }
 
   console.error(
     "Error returned by the front API: ",
     res.status,
     res.headers,
-    errorText
+    error
   );
-  throw new Error(errorText);
+  throw new Error(error);
 };
 
 export const fetcher = async (...args: Parameters<typeof fetch>) => {

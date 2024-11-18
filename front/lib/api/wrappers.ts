@@ -205,6 +205,16 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           token,
           wId,
         });
+        if (auth.user() === null) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The user does not have an active session or is not authenticated.",
+            },
+          });
+        }
         if (!auth.isUser()) {
           return apiError(req, res, {
             status_code: 401,
@@ -347,10 +357,11 @@ export function withAuth0TokenAuthentication<T>(
       const user = await getUserFromAuth0Token(bearerToken);
       if (!user) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 401,
           api_error: {
-            type: "user_not_found",
-            message: "Could not find the user.",
+            type: "not_authenticated",
+            message:
+              "The user does not have an active session or is not authenticated.",
           },
         });
       }
