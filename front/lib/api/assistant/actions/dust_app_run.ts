@@ -181,10 +181,10 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
   // This method is in charge of running a dust app and creating an AgentDustAppRunAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
-  // for an AgentDustAppRunAction to be stored (once the params are infered) but for the dust app run
-  // to fail, in which case an error event will be emitted and the AgentDustAppRunAction won't have
-  // any output associated. The error is expected to be stored by the caller on the parent agent
-  // message.
+  // for an AgentDustAppRunAction to be stored (once the params are infered) but for the dust app
+  // run to fail, in which case an error event will be emitted and the AgentDustAppRunAction won't
+  // have any output associated. The error is expected to be stored by the caller on the parent
+  // agent message.
   async *run(
     auth: Authenticator,
     {

@@ -463,7 +463,7 @@ type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 const ConversationFileTypeSchema = z.object({
   fileId: z.string(),
   title: z.string(),
-  contentType: z.string(),
+  contentType: SupportedContentFragmentTypeSchema,
 });
 
 const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
