@@ -8,6 +8,7 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
+import type * as gc_activities from "@connectors/connectors/zendesk/temporal/gc_activities";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
@@ -22,10 +23,14 @@ const {
   syncZendeskTicketBatchActivity,
   syncZendeskTicketUpdateBatchActivity,
   syncZendeskArticleUpdateBatchActivity,
-  deleteTicketBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
+
+const { deleteTicketBatchActivity, getNextOldTicketBatchActivity } =
+  proxyActivities<typeof gc_activities>({
+    startToCloseTimeout: "5 minutes",
+  });
 
 const {
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
@@ -33,7 +38,6 @@ const {
   saveZendeskConnectorSuccessSync,
   getZendeskTicketsAllowedBrandIdsActivity,
   getZendeskTimestampCursorActivity,
-  getNextOldTicketBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
