@@ -52,11 +52,26 @@ export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
 /**
  * This activity is responsible for updating the sync status of the connector to "success".
  */
-export async function saveZendeskConnectorSuccessSync(connectorId: ModelId) {
+export async function saveZendeskConnectorSuccessSync(
+  connectorId: ModelId,
+  currentSyncDateMs: number
+) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
+  // initializing the timestamp cursor if it does not exist (first sync, not incremental)
+  const cursors = await ZendeskTimestampCursors.findOne({
+    where: { connectorId },
+  });
+  if (!cursors) {
+    await ZendeskTimestampCursors.create({
+      connectorId,
+      timestampCursor: new Date(currentSyncDateMs),
+    });
+  }
+
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
     throw res.error;

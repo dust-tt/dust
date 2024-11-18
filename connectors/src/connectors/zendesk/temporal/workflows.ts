@@ -212,7 +212,7 @@ export async function zendeskSyncWorkflow({
     }
   }
 
-  await saveZendeskConnectorSuccessSync(connectorId);
+  await saveZendeskConnectorSuccessSync(connectorId, currentSyncDateMs);
 }
 
 /**
@@ -376,13 +376,13 @@ export async function zendeskCategorySyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const wasCategoryUpdated = await syncZendeskCategoryActivity({
+  const shouldSyncArticles = await syncZendeskCategoryActivity({
     connectorId,
     categoryId,
     currentSyncDateMs,
     brandId,
   });
-  if (wasCategoryUpdated) {
+  if (shouldSyncArticles) {
     await runZendeskActivityWithPagination((cursor) =>
       syncZendeskArticleBatchActivity({
         connectorId,
