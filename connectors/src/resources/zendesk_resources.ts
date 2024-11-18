@@ -820,6 +820,32 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     ];
   }
 
+  /**
+   * Fetches a batch of article IDs.
+   */
+  static async fetchBatchByBrandId({
+    connectorId,
+    brandId,
+    batchSize,
+    cursor,
+  }: {
+    connectorId: number;
+    brandId: number;
+    batchSize: number;
+    cursor: number | null;
+  }): Promise<{ articleIds: number[]; cursor: number | null }> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, brandId },
+      order: [["id", "ASC"]],
+      ...(cursor && { where: { id: { [Op.gt]: cursor } } }),
+      limit: batchSize,
+    });
+    return {
+      articleIds: articles.map((article) => article.get().articleId),
+      cursor: articles[batchSize - 1]?.get().id || null, // returning the last ID if it's a complete batch
+    };
+  }
+
   static async fetchByArticleId({
     connectorId,
     articleId,

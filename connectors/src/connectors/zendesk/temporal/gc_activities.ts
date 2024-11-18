@@ -1,11 +1,18 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import {
+  changeZendeskClientSubdomain,
+  createZendeskClient,
+} from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
+  ZendeskArticleResource,
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
@@ -56,6 +63,72 @@ export async function deleteTicketBatchActivity(
     ticketIds,
     (ticketId) =>
       deleteTicket({ connectorId, ticketId, dataSourceConfig, loggerArgs }),
+    { concurrency: 10 }
+  );
+}
+
+/**
+ * This activity is responsible for fetching a batch of articles.
+ */
+export async function getNextArticleBatchActivity({
+  connectorId,
+  brandId,
+  cursor,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  cursor: number | null;
+}): Promise<{ articleIds: number[]; cursor: number | null }> {
+  return ZendeskArticleResource.fetchBatchByBrandId({
+    connectorId,
+    brandId,
+    cursor,
+    batchSize: ZENDESK_BATCH_SIZE,
+  });
+}
+
+/**
+ * This activity is responsible for garbage collecting a batch of articles given their IDs.
+ */
+export async function garbageCollectArticleBatchActivity({
+  connectorId,
+  brandId,
+  articleIds,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  articleIds: number[];
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
+  );
+  await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
+
+  // TODO(2024-11-18 aubin): see if we need to delete in batch
+  await concurrentExecutor(
+    articleIds,
+    async (articleId) => {
+      const article =
+        await zendeskApiClient.helpcenter.articles.show(articleId);
+      if (!article) {
+        await deleteArticle(connectorId, article, dataSourceConfig, loggerArgs);
+      }
+    },
     { concurrency: 10 }
   );
 }
