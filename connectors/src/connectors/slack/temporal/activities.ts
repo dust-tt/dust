@@ -91,7 +91,7 @@ async function _getChannelsUncached(
       types: "public_channel, private_channel",
       // despite the limit being 1000, slack may return fewer channels
       // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
-      limit: 1000,
+      limit: 999,
       cursor: nextCursor,
     });
     nbCalls++;
