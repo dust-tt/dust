@@ -58,6 +58,22 @@ export const useAuthHook = () => {
     [handleRefreshToken]
   );
 
+  // Listen for changes in storage to make sure we always have the latest user and tokens.
+  useEffect(() => {
+    const handleStorageChange = (changes: {
+      [key: string]: chrome.storage.StorageChange;
+    }) => {
+      if (changes.accessToken && !changes.accessToken.newValue) {
+        console.log("Access token removed from storage.");
+        setTokens(null);
+        setUser(null);
+      }
+    };
+    chrome.storage.local.onChanged.addListener(handleStorageChange);
+    return () =>
+      chrome.storage.local.onChanged.removeListener(handleStorageChange);
+  }, []);
+
   useEffect(() => {
     void (async () => {
       setIsLoading(true);
