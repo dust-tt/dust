@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
 import { Spinner } from "@dust-tt/sparkle";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { postConversation } from "@extension/lib/conversation";
@@ -6,7 +5,7 @@ import { useDustAPI } from "@extension/lib/dust_api";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 
-export const RunPage = ({ workspace }: { workspace: LightWorkspaceType }) => {
+export const RunPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dustAPI = useDustAPI();

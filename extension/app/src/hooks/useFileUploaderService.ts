@@ -1,6 +1,5 @@
 import type {
   ConversationPublicType,
-  LightWorkspaceType,
   Result,
   SupportedFileContentType,
 } from "@dust-tt/client";
