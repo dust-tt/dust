@@ -14,7 +14,7 @@ import type {
   PostInvitationResponseBody,
 } from "@app/pages/api/w/[wId]/invitations";
 
-export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 50;
+export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;
 
 export async function updateInvitation({
   owner,
