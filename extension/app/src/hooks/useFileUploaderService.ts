@@ -241,13 +241,10 @@ export function useFileUploaderService({
         prevFiles.filter((f) => f.fileId !== fileBlob?.fileId)
       );
 
-      // Intentionally not awaiting the fetch call to allow it to run asynchronously.
-      void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      if (fileBlob.fileId) {
+        // Intentionally not awaiting the fetch call to allow it to run asynchronously.
+        void dustAPI.deleteFile(fileBlob.fileId);
+      }
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
       if (allFilesReady && isProcessingFiles) {

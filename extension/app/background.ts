@@ -55,12 +55,12 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
-    contexts: ["page"],
+    contexts: ["all"],
   });
   chrome.contextMenus.create({
     id: "add_tab_screenshot",
     title: "Add tab screenshot to conversation",
-    contexts: ["page"],
+    contexts: ["all"],
   });
 
   chrome.contextMenus.create({
