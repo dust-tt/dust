@@ -20,7 +20,8 @@ const Auth0JwtPayloadSchema = t.type({
   sub: t.string,
 });
 
-type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> & jwt.JwtPayload;
+export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
+  jwt.JwtPayload;
 
 export function getRequiredScope(
   req: NextApiRequest,
