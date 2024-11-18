@@ -3,13 +3,19 @@ import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import { QUEUE_NAME } from "@connectors/connectors/zendesk/temporal/config";
+import {
+  GARBAGE_COLLECT_QUEUE_NAME,
+  QUEUE_NAME,
+} from "@connectors/connectors/zendesk/temporal/config";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
-import { zendeskSyncWorkflow } from "@connectors/connectors/zendesk/temporal/workflows";
+import {
+  zendeskGarbageCollectionWorkflow,
+  zendeskSyncWorkflow,
+} from "@connectors/connectors/zendesk/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -86,8 +92,21 @@ export async function launchZendeskSyncWorkflow(
       memo: { connectorId: connector.id },
       cronSchedule: "*/5 * * * *", // Every 5 minutes.
     });
-  } catch (err) {
-    return new Err(err as Error);
+
+    await client.workflow.start(zendeskGarbageCollectionWorkflow, {
+      args: [{ connectorId: connector.id }],
+      taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
+      workflowId,
+      searchAttributes: { connectorId: [connector.id] },
+      memo: { connectorId: connector.id },
+      cronSchedule: "0 3 * * *", // Every day at 3 a.m.
+    });
+  } catch (err: unknown) {
+    // ignoring errors caused by relaunching the gc workflow
+    // @ts-expect-error error coming from Temporal
+    if (err.name !== "WorkflowExecutionAlreadyStarted") {
+      return new Err(err as Error);
+    }
   }
 
   return new Ok(undefined);
