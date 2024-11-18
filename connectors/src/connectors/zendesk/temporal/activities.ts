@@ -123,7 +123,7 @@ export async function syncZendeskBrandActivity({
     );
   }
 
-  // deleting the data not allowed anymore
+  // deleting the tickets/help center if not allowed anymore
   if (brandInDb.ticketsPermission === "none") {
     await deleteBrandTickets({ connectorId, brandId, dataSourceConfig });
   }
