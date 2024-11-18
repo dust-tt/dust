@@ -248,6 +248,18 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => brand.get().brandId);
   }
 
+  static async fetchHelpCenterReadAllowedBrandIds({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, helpCenterPermission: "read" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => brand.get().brandId);
+  }
+
   static async fetchAllWithHelpCenter({
     connectorId,
   }: {
@@ -856,6 +868,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return articles.map((article) => new this(this.model, article.get()));
   }
 
+  static async deleteByArticleId({
+    connectorId,
+    articleId,
+  }: {
+    connectorId: number;
+    articleId: number;
+  }) {
+    await ZendeskArticle.destroy({ where: { connectorId, articleId } });
+  }
   static async deleteByCategoryId({
     connectorId,
     categoryId,

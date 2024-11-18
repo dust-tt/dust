@@ -8,6 +8,7 @@ import type {
 } from "@connectors/@types/node-zendesk";
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
+  deleteFromDataSource,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertToDatasource,
@@ -18,6 +19,34 @@ import { ZendeskArticleResource } from "@connectors/resources/zendesk_resources"
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
+
+/**
+ * Deletes an article from the db and the data sources.
+ */
+export async function deleteArticle(
+  connectorId: ModelId,
+  article: ZendeskFetchedArticle,
+  dataSourceConfig: DataSourceConfig,
+  loggerArgs: Record<string, string | number | null>
+): Promise<void> {
+  logger.info(
+    {
+      ...loggerArgs,
+      connectorId,
+      articleId: article.id,
+      name: article.name,
+    },
+    "[Zendesk] Deleting article."
+  );
+  await deleteFromDataSource(
+    dataSourceConfig,
+    getArticleInternalId(connectorId, article.id)
+  );
+  await ZendeskArticleResource.deleteByArticleId({
+    connectorId,
+    articleId: article.id,
+  });
+}
 
 /**
  * Syncs an article from Zendesk to the postgres db and to the data sources.

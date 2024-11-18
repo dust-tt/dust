@@ -150,6 +150,36 @@ async function fetchFromZendeskWithRetries({
 }
 
 /**
+ * Fetches a batch of the recently updated articles from the Zendesk API using the incremental API endpoint.
+ */
+export async function fetchRecentlyUpdatedArticles({
+  subdomain,
+  accessToken,
+  startTime, // start time in Unix epoch time, in seconds
+}: {
+  subdomain: string;
+  accessToken: string;
+  startTime: number;
+}): Promise<{
+  articles: ZendeskFetchedArticle[];
+  next_page: string | null;
+  end_time: number;
+}> {
+  // this endpoint retrieves changes in content despite what is mentioned in the documentation.
+  const response = await fetchFromZendeskWithRetries({
+    url: `https://${subdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
+    accessToken,
+  });
+  return (
+    response || {
+      articles: [],
+      next_page: null,
+      end_time: startTime,
+    }
+  );
+}
+
+/**
  * Fetches a batch of articles in a category from the Zendesk API.
  */
 export async function fetchZendeskArticlesInCategory({

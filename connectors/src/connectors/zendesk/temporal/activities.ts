@@ -13,6 +13,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchRecentlyUpdatedArticles,
   fetchRecentlyUpdatedTickets,
   fetchSolvedZendeskTicketsInBrand,
   fetchZendeskArticlesInCategory,
@@ -222,17 +223,6 @@ export async function checkZendeskTicketsPermissionsActivity({
 }
 
 /**
- * Retrieves the IDs of every brand stored in db.
- */
-export async function getAllZendeskBrandsIdsActivity({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}): Promise<number[]> {
-  return ZendeskBrandResource.fetchAllBrandIds({ connectorId });
-}
-
-/**
  * Retrieves the timestamp cursor, which is the start date of the last successful sync.
  */
 export async function getZendeskTimestampCursorActivity(
@@ -252,6 +242,17 @@ export async function getZendeskTimestampCursorActivity(
   return cursors.timestampCursor
     ? new Date(Math.min(cursors.timestampCursor.getTime(), minAgo))
     : new Date(minAgo);
+}
+
+/**
+ * Retrieves the IDs of every brand stored in db that has read permissions on their Help Center.
+ */
+export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
+  connectorId: ModelId
+): Promise<number[]> {
+  return ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds({
+    connectorId,
+  });
 }
 
 /**
@@ -524,6 +525,83 @@ export async function syncZendeskTicketBatchActivity({
 
 /**
  * This activity is responsible for syncing the next batch of recently updated articles to process.
+ * It is based on the incremental endpoint, which returns a diff.
+ * @returns The next start time if there is any more data to fetch, null otherwise.
+ */
+export async function syncZendeskArticleUpdateBatchActivity({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+  startTime,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  currentSyncDateMs: number;
+  startTime: number;
+}): Promise<number | null> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
+
+  const { articles, end_time, next_page } = await fetchRecentlyUpdatedArticles({
+    subdomain: brandSubdomain,
+    accessToken,
+    startTime,
+  });
+
+  await concurrentExecutor(
+    articles,
+    async (article) => {
+      const { result: section } =
+        await zendeskApiClient.helpcenter.sections.show(article.section_id);
+      const { result: user } = await zendeskApiClient.users.show(
+        article.author_id
+      );
+
+      if (section.category_id) {
+        const category = await ZendeskCategoryResource.fetchByCategoryId({
+          connectorId,
+          categoryId: section.category_id,
+        });
+        if (category && category.permission === "read") {
+          return syncArticle({
+            connectorId,
+            category,
+            article,
+            section,
+            user,
+            dataSourceConfig,
+            currentSyncDateMs,
+            loggerArgs,
+            forceResync: false,
+          });
+        }
+      }
+    },
+    { concurrency: 10 }
+  );
+  return next_page !== null ? end_time : null;
+}
+
+/**
+ * This activity is responsible for syncing the next batch of recently updated tickets to process.
  * It is based on the incremental endpoint, which returns a diff.
  */
 export async function syncZendeskTicketUpdateBatchActivity({
