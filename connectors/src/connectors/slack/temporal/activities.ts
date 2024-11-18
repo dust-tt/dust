@@ -59,34 +59,44 @@ const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
  * Broadly, you'll encounter limits like these, applied on a
  * "per API method per app per workspace" basis.
  * Tier 1: ~1 request per minute
- * Tier 2: ~20 request per minute (conversations.history)
+ * Tier 2: ~20 request per minute (conversations.history, conversation.list)
  * Tier 3: ~50 request per minute (conversations.replies)
  */
 
-export async function getChannels(
+/**
+ *  Call cached to avoid rate limits
+ *  ON RATE LIMIT ERRORS PERTAINING TO THIS FUNCTION:
+ * - the next step will be to paginate (overkill at time of writing)
+ * - see issue https://github.com/dust-tt/tasks/issues/1655
+ * - and related PR https://github.com/dust-tt/dust/pull/8709
+ * @param connectorId
+ * @param joinedOnly
+ */
+export const getChannels = cacheWithRedis(
+  _getChannelsUncached,
+  (connectorId, joinedOnly) => `slack-channels-${connectorId}-${joinedOnly}`,
+  5 * 60 * 1000
+);
+
+async function _getChannelsUncached(
   connectorId: ModelId,
   joinedOnly: boolean
 ): Promise<Channel[]> {
   const client = await getSlackClient(connectorId);
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
+  let nbCalls = 0;
   do {
     const c: ConversationsListResponse = await client.conversations.list({
       types: "public_channel, private_channel",
-      limit: 1000,
+      // despite the limit being 1000, slack may return fewer channels
+      // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
+      limit: 999,
       cursor: nextCursor,
     });
+    nbCalls++;
 
     nextCursor = c?.response_metadata?.next_cursor;
-
-    logger.info(
-      {
-        connectorId,
-        returnedChannels: c?.channels ? c.channels.length : undefined,
-        nextCursor,
-      },
-      "[Slack] conversations.list call"
-    );
 
     if (c.error) {
       throw new Error(c.error);
@@ -109,6 +119,15 @@ export async function getChannels(
       }
     }
   } while (nextCursor);
+
+  logger.info(
+    {
+      connectorId,
+      returnedChannels: allChannels.length,
+      nbCalls,
+    },
+    `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
+  );
 
   return allChannels;
 }
