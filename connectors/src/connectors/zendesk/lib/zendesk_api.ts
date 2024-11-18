@@ -281,7 +281,7 @@ export async function fetchZendeskTicketsInBrand({
   );
 
   const searchQuery = encodeURIComponent(
-    `status:solved created>${retentionPeriodDays}days`
+    `status:solved updated>${retentionPeriodDays}days`
   );
   const response = await fetchFromZendeskWithRetries({
     url:

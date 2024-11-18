@@ -92,13 +92,13 @@ export async function syncTicket({
     groupId: ticket.group_id,
     organizationId: ticket.organization_id,
     lastUpsertedTs: new Date(currentSyncDateMs),
+    ticketUpdatedAt: updatedAtDate,
   };
 
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
         ...commonTicketData,
-        ticketCreatedAt: createdAtDate,
         ticketId: ticket.id,
         brandId,
         permission: "read",
