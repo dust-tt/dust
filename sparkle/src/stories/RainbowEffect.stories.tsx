@@ -1,5 +1,5 @@
 import { Meta } from "@storybook/react";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { cn, RainbowEffect } from "../index_with_tw_base";
 
@@ -10,20 +10,50 @@ const meta = {
 
 export default meta;
 
-const Example = () => (
-  <div className="s-flex s-w-[900px] s-flex-1 s-px-0">
-    <RainbowEffect containerClassName="s-w-full" className="s-w-full">
-      <div
-        className={cn(
-          "s-relative s-flex s-h-[120px] s-w-full s-flex-row s-p-3",
-          "s-rounded-2xl s-border s-border-element-500 s-border-primary-200 s-bg-primary-50 s-transition-all",
-          "s-ring-2 s-ring-highlight-300 s-ring-offset-2"
-        )}
+const Example = () => {
+  const [isFocused, setIsFocused] = useState(false);
+  const divRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (divRef.current && !divRef.current.contains(event.target as Node)) {
+        setIsFocused(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  return (
+    <div className="s-flex s-w-[900px] s-flex-1 s-px-0">
+      <RainbowEffect
+        containerClassName="s-w-full"
+        className="s-w-full"
+        size={isFocused ? "large" : "medium"}
       >
-        Hello
-      </div>
-    </RainbowEffect>
-  </div>
-);
+        <div
+          ref={divRef}
+          onClick={handleFocus}
+          className={cn(
+            "s-relative s-flex s-h-[120px] s-w-full s-flex-row s-p-5",
+            "s-rounded-3xl s-border s-border-border-dark/0 s-bg-primary-50 s-transition-all",
+            isFocused
+              ? "s-border-border-dark s-ring-2 s-ring-highlight-300 s-ring-offset-2"
+              : ""
+          )}
+        >
+          Hello
+        </div>
+      </RainbowEffect>
+    </div>
+  );
+};
 
 export const Demo = () => <Example />;
