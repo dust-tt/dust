@@ -50,11 +50,7 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
 const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
 const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 
-export function useFileUploaderService({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}) {
+export function useFileUploaderService() {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const sendNotification = useSendNotification();

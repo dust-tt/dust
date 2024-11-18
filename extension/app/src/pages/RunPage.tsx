@@ -11,9 +11,7 @@ export const RunPage = ({ workspace }: { workspace: LightWorkspaceType }) => {
   const location = useLocation();
   const dustAPI = useDustAPI();
 
-  const fileUploaderService = useFileUploaderService({
-    owner: workspace,
-  });
+  const fileUploaderService = useFileUploaderService();
 
   useEffect(() => {
     const run = async () => {
