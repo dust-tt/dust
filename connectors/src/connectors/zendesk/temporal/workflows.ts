@@ -39,6 +39,7 @@ const {
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskTicketsAllowedBrandIdsActivity,
+  setZendeskTimestampCursorActivity,
   getZendeskTimestampCursorActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
@@ -211,7 +212,7 @@ export async function zendeskSyncWorkflow({
     }
   }
 
-  await saveZendeskConnectorSuccessSync({ connectorId, currentSyncDateMs });
+  await saveZendeskConnectorSuccessSync({ connectorId });
 }
 
 /**
@@ -258,6 +259,8 @@ export async function zendeskIncrementalSyncWorkflow({
       })
     );
   }
+
+  await setZendeskTimestampCursorActivity({ connectorId, currentSyncDateMs });
 }
 
 /**
@@ -510,5 +513,17 @@ async function runZendeskActivityWithPagination(
     const result = await activity(cursor);
     hasMore = result.hasMore || false;
     cursor = result.afterCursor;
+  }
+}
+
+/**
+ * Removes the outdated tickets.
+ * The retention period is defined in the zendesk_configurations table (in number of days).
+ */
+async function cleanupOldZendeskTickets(connectorId: ModelId) {
+  let ticketIds = await getNextOldTicketBatchActivity(connectorId);
+  while (ticketIds.length > 0) {
+    await deleteTicketBatchActivity(connectorId, ticketIds);
+    ticketIds = await getNextOldTicketBatchActivity(connectorId);
   }
 }
