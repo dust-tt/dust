@@ -2,8 +2,8 @@ import { supportedFileExtensions } from "@dust-tt/client";
 import {
   AttachmentIcon,
   Button,
+  CameraIcon,
   DocumentTextIcon,
-  ImageIcon,
 } from "@dust-tt/sparkle";
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
@@ -72,7 +72,7 @@ export const AttachFragment = ({
         }
       />
       <Button
-        icon={ImageIcon}
+        icon={CameraIcon}
         tooltip={"Attach tab screenshot"}
         variant="ghost"
         size="xs"
