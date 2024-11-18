@@ -209,8 +209,6 @@ export async function zendeskSyncWorkflow({
     }
   }
 
-  await cleanupOldZendeskTickets(connectorId);
-
   await saveZendeskConnectorSuccessSync({ connectorId, currentSyncDateMs });
 }
 
@@ -393,6 +391,27 @@ export async function zendeskCategorySyncWorkflow({
 }
 
 /**
+ * Garbage collection workflow for Zendesk.
+ *
+ * This workflow is responsible for deleting the following (in this order):
+ * - Outdated tickets.
+ * - Articles that cannot be found anymore in the Zendesk API.
+ * - Categories that have no article anymore.
+ * - Brands that have no permission on tickets and Help Center anymore.
+ */
+export async function zendeskGarbageCollectWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  let ticketIds = await getNextOldTicketBatchActivity(connectorId);
+  while (ticketIds.length > 0) {
+    await deleteTicketBatchActivity(connectorId, ticketIds);
+    ticketIds = await getNextOldTicketBatchActivity(connectorId);
+  }
+}
+
+/**
  * Run the activities necessary to sync the Help Center of a Brand.
  */
 async function runZendeskBrandHelpCenterSyncActivities({
@@ -476,17 +495,5 @@ async function runZendeskActivityWithPagination(
     const result = await activity(cursor);
     hasMore = result.hasMore || false;
     cursor = result.afterCursor;
-  }
-}
-
-/**
- * Removes the outdated tickets.
- * The retention period is defined in the zendesk_configurations table (in number of days).
- */
-async function cleanupOldZendeskTickets(connectorId: ModelId) {
-  let ticketIds = await getNextOldTicketBatchActivity(connectorId);
-  while (ticketIds.length > 0) {
-    await deleteTicketBatchActivity(connectorId, ticketIds);
-    ticketIds = await getNextOldTicketBatchActivity(connectorId);
   }
 }
