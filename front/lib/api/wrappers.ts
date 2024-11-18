@@ -21,6 +21,7 @@ import {
 import { getSession } from "@app/lib/auth";
 import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -65,7 +66,7 @@ export function withSessionAuthentication<T>(
 
 /**
  * This function is a wrapper for API routes that require session authentication for a workspace.
- * It must be used on all routes that require workspace authentication (prefix: /w/[wId/]).
+ * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
  *
  * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the user is not a
  * member of the workspace. This is useful for routes that share data across workspaces (eg apps
@@ -149,7 +150,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 
 /**
  * This function is a wrapper for Public API routes that require authentication for a workspace.
- * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId/]).
+ * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId]/).
  *
  * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the key is not a
  * associated with the workspace. This is useful for routes that share data across workspaces (eg apps
@@ -411,6 +412,128 @@ export function withAuth0TokenAuthentication<T>(
       const userWithWorkspaces = await getUserWithWorkspaces(user);
 
       return handler(req, res, userWithWorkspaces);
+    }
+  );
+}
+
+/**
+ * This function is a wrapper for `spaces/[spaceId]` API routes, that rely on a space
+ */
+export function withSpace<T>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    user: UserTypeWithWorkspaces
+  ) => Promise<void> | void
+) {
+  return withLogging(
+    async (
+      req: NextApiRequest,
+      res: NextApiResponse<WithAPIErrorResponse<T>>
+    ) => {
+      const bearerTokenRes = await getBearerToken(req);
+      if (bearerTokenRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+      const bearerToken = bearerTokenRes.value;
+      const authMethod = getAuthType(bearerToken);
+
+      if (authMethod !== "access_token") {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+
+      const user = await getUserFromAuth0Token(bearerToken);
+      if (!user) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "user_not_found",
+            message: "Could not find the user.",
+          },
+        });
+      }
+
+      const userWithWorkspaces = await getUserWithWorkspaces(user);
+
+      return handler(req, res, userWithWorkspaces);
+    }
+  );
+}
+
+// This is a type that represents the resources that can be extracted from an API route
+type RouteResourceName = "space";
+
+type RouteResourceMap = {
+  space: SpaceResource;
+};
+
+/*
+ *  API routes containing resource strings that require some handling logic can
+ *  use this wrapper to extract the resource, make the checks, apply the logic
+ *  and then call the handler with the resource.
+ *
+ * e.g. for /w/[wId]/spaces/[spaceId]/... => check the space exists, that it's
+ *  not a conversation space, etc. and provide the space resource to the handler.
+ */
+export function withInternalAPIRouteResource<T, U extends RouteResourceName>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator,
+    routeResource: RouteResourceMap[U],
+    session: SessionWithUser
+  ) => Promise<void> | void,
+  resource: U
+): (
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<T>>
+) => Promise<void> {
+  return withSessionAuthenticationForWorkspace(
+    async (
+      req: NextApiRequest,
+      res: NextApiResponse<WithAPIErrorResponse<T>>,
+      auth: Authenticator,
+      session: SessionWithUser
+    ) => {
+      // Add space to routeParams if it is in the query
+      if (resource === "space") {
+        const { spaceId } = req.query;
+        if (typeof spaceId !== "string") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid space id.",
+            },
+          });
+        }
+
+        const space = await SpaceResource.fetchById(auth, spaceId);
+        if (!space || !space.canList(auth) || space.isConversations()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: "The space you requested was not found.",
+            },
+          });
+        }
+        return handler(req, res, auth, space, session);
+      }
     }
   );
 }
