@@ -2,7 +2,7 @@ import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import { HelpDrawer } from "@app/components/assistant/HelpDrawer";
-import { QuickStartGuide } from "@app/components/quick_start_guide";
+import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";

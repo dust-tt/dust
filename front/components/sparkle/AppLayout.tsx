@@ -8,7 +8,7 @@ import React, { useEffect, useState } from "react";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
-import { QuickStartGuide } from "@app/components/quick_start_guide";
+import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { classNames } from "@app/lib/utils";
 

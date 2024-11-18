@@ -18,7 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
-import { QuickStartGuide } from "@app/components/quick_start_guide";
+import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";

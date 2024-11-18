@@ -4,7 +4,6 @@ import {
   GlobeAltIcon,
   Icon,
   Modal,
-  Page,
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
