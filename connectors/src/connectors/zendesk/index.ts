@@ -258,30 +258,35 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       const { type, objectId } = getIdFromInternalId(connectorId, id);
       switch (type) {
         case "brand": {
-          toBeSignaledBrandIds.add(objectId);
           if (permission === "none") {
-            await revokeSyncZendeskBrand({
+            const revokedBrand = await revokeSyncZendeskBrand({
               connectorId,
               brandId: objectId,
             });
+            if (revokedBrand) {
+              toBeSignaledBrandIds.add(objectId);
+            }
           }
           if (permission === "read") {
-            await allowSyncZendeskBrand({
+            const wasBrandUpdated = await allowSyncZendeskBrand({
               connectorId,
               connectionId,
               brandId: objectId,
             });
+            if (wasBrandUpdated) {
+              toBeSignaledBrandIds.add(objectId);
+            }
           }
           break;
         }
         case "help-center": {
           if (permission === "none") {
-            const revokedCollection = await revokeSyncZendeskHelpCenter({
+            const revokedBrandHelpCenter = await revokeSyncZendeskHelpCenter({
               connectorId,
               brandId: objectId,
             });
-            if (revokedCollection) {
-              toBeSignaledHelpCenterIds.add(revokedCollection.brandId);
+            if (revokedBrandHelpCenter) {
+              toBeSignaledHelpCenterIds.add(revokedBrandHelpCenter.brandId);
             }
           }
           if (permission === "read") {
@@ -298,12 +303,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "tickets": {
           if (permission === "none") {
-            const revokedCollection = await revokeSyncZendeskTickets({
+            const revokedBrandTickets = await revokeSyncZendeskTickets({
               connectorId,
               brandId: objectId,
             });
-            if (revokedCollection) {
-              toBeSignaledTicketsIds.add(revokedCollection.brandId);
+            if (revokedBrandTickets) {
+              toBeSignaledTicketsIds.add(revokedBrandTickets.brandId);
             }
           }
           if (permission === "read") {
