@@ -1,6 +1,4 @@
 import {
-  Button,
-  ChevronDoubleLeftIcon,
   CollapseButton,
   NavigationList,
   NavigationListItem,
@@ -163,13 +161,6 @@ export const NavigationSidebar = React.forwardRef<
             owner={owner}
             user={user}
             setShowQuickGuide={setShowQuickGuide}
-          />
-          <Button
-            variant="ghost"
-            icon={ChevronDoubleLeftIcon}
-            onClick={() => {
-              console.log("help modal");
-            }}
           />
           <QuickStartGuide
             show={showQuickGuide}
