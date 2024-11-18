@@ -139,5 +139,5 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(handler, {
-  requiredScope: "update:conversation",
+  requiredScopes: { POST: "update:conversation" },
 });
