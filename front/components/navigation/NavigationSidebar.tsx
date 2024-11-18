@@ -1,21 +1,10 @@
 import {
   Button,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
   ChevronDoubleLeftIcon,
   CollapseButton,
-  DocumentIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  HeartIcon,
-  LightbulbIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  SlackLogo,
   Tabs,
   TabsContent,
   TabsList,
@@ -28,6 +17,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
+import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
+import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -50,6 +41,7 @@ export const NavigationSidebar = React.forwardRef<
 ) {
   const router = useRouter();
   const { user } = useUser();
+  const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [activePath, setActivePath] = useState("");
 
   useEffect(() => {
@@ -163,61 +155,28 @@ export const NavigationSidebar = React.forwardRef<
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
-      <div className="flex items-center gap-2 border-t border-border-dark p-2">
-        {user && <UserMenu user={user} owner={owner} />}
-        <div className="flex-grow" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              label="Help"
-              icon={HeartIcon}
-              isSelect
-              onClick={() => {
-                console.log("help modal");
-              }}
-            />
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent>
-            <DropdownMenuLabel label="Learn about Dust" />
-            <DropdownMenuItem label="Quickstart Guide" icon={LightbulbIcon} />
-            <DropdownMenuItem
-              label="Guides & Documentation"
-              icon={DocumentIcon}
-            />
-            <DropdownMenuItem
-              label="Join the Slack Community"
-              icon={SlackLogo}
-            />
-            <DropdownMenuLabel label="Ask questions" />
-            <DropdownMenuItem
-              label="Ask @help"
-              description="Ask anything about Dust"
-              icon={ChatBubbleLeftRightIcon}
-            />
-            <DropdownMenuItem
-              label="How to invite new users?"
-              icon={ChatBubbleBottomCenterTextIcon}
-            />
-            <DropdownMenuItem
-              label="How to use assistants in Slack workflow?"
-              icon={ChatBubbleBottomCenterTextIcon}
-            />
-            <DropdownMenuItem
-              label="How to manage billing?"
-              icon={ChatBubbleBottomCenterTextIcon}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          variant="ghost"
-          icon={ChevronDoubleLeftIcon}
-          onClick={() => {
-            console.log("help modal");
-          }}
-        />
-      </div>
+      {user && (
+        <div className="flex items-center gap-2 border-t border-border-dark p-2">
+          <UserMenu user={user} owner={owner} />
+          <div className="flex-grow" />
+          <HelpDropdown
+            owner={owner}
+            user={user}
+            setShowQuickGuide={setShowQuickGuide}
+          />
+          <Button
+            variant="ghost"
+            icon={ChevronDoubleLeftIcon}
+            onClick={() => {
+              console.log("help modal");
+            }}
+          />
+          <QuickStartGuide
+            show={showQuickGuide}
+            onClose={() => setShowQuickGuide(false)}
+          />
+        </div>
+      )}
     </div>
   );
 });

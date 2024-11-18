@@ -5,6 +5,7 @@ import {
   Icon,
   Modal,
   Page,
+  ScrollArea,
 } from "@dust-tt/sparkle";
 import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 
@@ -23,168 +24,184 @@ export function QuickStartGuide({
       onClose={onClose}
       title="🚀 Getting started with Dust"
     >
-      <div className="pb-5">
-        <Page>
-          <div className="px-5">
+      <div className="flex h-full flex-col">
+        <ScrollArea className="flex-1">
+          <div className="p-5">
             <div className="w-full">
               <div className="relative w-full overflow-hidden rounded-lg pb-[56.20%]">
                 <iframe
                   src="https://fast.wistia.net/embed/iframe/v90n8beuh9?seo=true&videoFoam=false"
                   title="Dust product tour"
                   allow="autoplay; fullscreen"
-                  frameBorder="0"
                   className="absolute left-0 top-0 h-full w-full rounded-lg"
-                ></iframe>
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-8">
+              <div>
+                <h5 className="text-lg font-semibold">
+                  👋 Hello <span className="text-success-500">@assistants</span>
+                </h5>
+                <CardButton variant="secondary">
+                  <div className="flex flex-row space-y-4">
+                    <div className="flex flex-col space-y-4">
+                      <p>
+                        In Dust, you have access to{" "}
+                        <strong>multiple AI&nbsp;assistants</strong>.
+                      </p>
+                      <p className="text-sm">
+                        You can call an assistant by typing <strong>"@"</strong>{" "}
+                        and the name of the assistant. You can even call several
+                        assistants at the same time or chain them in one
+                        conversation.
+                      </p>
+                    </div>
+                    <div>
+                      <img src="/static/quick_start_guide_input_bar.png" />
+                    </div>
+                  </div>
+                </CardButton>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h5 className="mb-2 text-lg font-semibold">
+                    👩‍🎨🦸‍♀️🥷🧑‍🚀 Multiple Assistants
+                  </h5>
+                  <CardButton variant="secondary">
+                    <div className="space-y-4">
+                      <p className="font-bold">
+                        Specialized assistants can help answer questions, really
+                        well.
+                      </p>
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          Assistants in Dust can be provided by Dust, by your
+                          company (Company assistants) or by your coworkers
+                          (Shared assistants).
+                        </p>
+                        <p>
+                          Specialised assistants generally combine a model with
+                          specific instructions and access to knowledge.
+                        </p>
+                        <p>
+                          Raw model assistants, without any particular
+                          instructions or access to your company knowledge are
+                          also available, like{" "}
+                          <span className="font-bold text-success-500">
+                            @gpt4
+                          </span>
+                          .
+                        </p>
+                      </div>
+                    </div>
+                  </CardButton>
+                </div>
+
+                <div>
+                  <h5 className="mb-2 text-lg font-semibold">
+                    🛠️ Build your own Assistants
+                  </h5>
+                  <CardButton variant="secondary">
+                    <div className="space-y-4">
+                      <p className="font-bold">
+                        Assistants start with an "instruction": a text telling
+                        what you want them to do.
+                      </p>
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          For instance,{" "}
+                          <span className="italic">"Act as a&nbsp;doctor"</span>
+                          ,{" "}
+                          <span className="italic">
+                            "Summarise this document"
+                          </span>
+                          ,{" "}
+                          <span className="italic">
+                            "What do you know about&nbsp;X"
+                          </span>
+                          .
+                        </p>
+                        <p>
+                          And you can give them access to knowledge.
+                          <br />
+                          We call them{" "}
+                          <span className="font-bold">Data sources.</span>
+                        </p>
+                        <p>
+                          With the right Data source, assistants can answer
+                          questions like{" "}
+                          <span className="italic">
+                            "Have we been working with company X"
+                          </span>
+                          ,{" "}
+                          <span className="italic">
+                            "How do we manage expenses"
+                          </span>
+                          ,{" "}
+                          <span className="italic">
+                            "Write an intro email using the company tone of
+                            voice"...
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </CardButton>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="mb-2 text-lg font-semibold">
+                  📚 What are Data sources?
+                </h5>
+                <p className="mb-4 text-sm">
+                  To augment your assistants with knowledge, you give them data
+                  in three ways:
+                </p>
+
+                <CardButton variant="secondary">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Icon
+                          visual={CloudArrowLeftRightIcon}
+                          className="text-brand"
+                        />
+                        <h6 className="font-semibold">Connections</h6>
+                      </div>
+                      <p className="mt-2 text-sm">
+                        Notion, Slack, Google Drive... Dust can connect to
+                        multiple platforms and synchronize your data.
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Icon visual={FolderIcon} className="text-brand" />
+                        <h6 className="font-semibold">Folders</h6>
+                      </div>
+                      <p className="mt-2 text-sm">
+                        Upload files (text, pdf, csv) directly in Dust.
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Icon visual={GlobeAltIcon} className="text-brand" />
+                        <h6 className="font-semibold">Websites</h6>
+                      </div>
+                      <p className="mt-2 text-sm">
+                        Any public website can be synced in Dust. Think FAQ,
+                        wikipedia pages, documentation...
+                      </p>
+                    </div>
+                  </div>
+                </CardButton>
               </div>
             </div>
           </div>
-
-          <Page.Vertical sizing="grow">
-            <Page.H variant="h5">
-              👋 Hello <span className="text-success-500">@assistants</span>
-            </Page.H>
-            <CardButton variant="secondary">
-              <Page.Vertical sizing="grow">
-                <Page.P size="md">
-                  In Dust, you have access to{" "}
-                  <strong>multiple AI&nbsp;assistants</strong>.
-                </Page.P>
-                <Page.P size="sm">
-                  You can call an assistant by typing <strong>"@"</strong> and
-                  the name of the assistant. You can even call several
-                  assistants at the same time or chain them in one conversation.
-                </Page.P>
-              </Page.Vertical>
-              <Page.Vertical sizing="grow">
-                <img src="/static/quick_start_guide_input_bar.png" />
-              </Page.Vertical>
-            </CardButton>
-          </Page.Vertical>
-
-          <Page.Horizontal>
-            <Page.Vertical sizing="grow">
-              <Page.H variant="h5">👩‍🎨🦸‍♀️🥷🧑‍🚀 Multiple Assistants</Page.H>
-
-              <CardButton variant="secondary">
-                <Page.Vertical>
-                  <Page.P size="md">
-                    <span className="font-bold">
-                      Specialized assistants can help answer questions, really
-                      well.
-                    </span>
-                  </Page.P>
-
-                  <Page.P size="sm">
-                    Assistants in Dust can be provided by Dust, by your company
-                    (Company assistants) or by your coworkers (Shared
-                    assistants).
-                  </Page.P>
-                  <Page.P size="sm">
-                    Specialised assistants generally combine a model with
-                    specific instructions and access to knowledge.
-                  </Page.P>
-                  <Page.P size="sm">
-                    Raw model assistants, without any particular instructions or
-                    access to your company knowledge are also available, like{" "}
-                    <span className="font-bold text-success-500">@gpt4</span>.
-                  </Page.P>
-                </Page.Vertical>
-              </CardButton>
-            </Page.Vertical>
-
-            <Page.Vertical sizing="grow">
-              <Page.H variant="h5">🛠️ Build your own Assistants</Page.H>
-              <CardButton variant="secondary">
-                <Page.Vertical>
-                  <Page.P size="md">
-                    <span className="font-bold">
-                      Assistants start with an “instruction”: a text telling
-                      what you want them to do.
-                    </span>
-                  </Page.P>
-
-                  <Page.P size="sm">
-                    For instance,{" "}
-                    <span className="italic">“Act as a&nbsp;doctor”</span>,{" "}
-                    <span className="italic">“Summarise this document”</span>,{" "}
-                    <span className="italic">
-                      “What do you know about&nbsp;X”
-                    </span>
-                    .
-                  </Page.P>
-                  <Page.P size="sm">
-                    And you can give them access to knowledge.
-                    <br />
-                    We call them{" "}
-                    <span className="font-bold">Data sources.</span>
-                  </Page.P>
-                  <Page.P size="sm">
-                    With the right Data source, assistants can answer questions
-                    like
-                    <span className="italic">
-                      “Have we been working with company X”
-                    </span>
-                    ,{" "}
-                    <span className="italic">“How do we manage expenses”</span>,{" "}
-                    <span className="italic">
-                      “Write an intro email using the company tone of voice”...
-                    </span>
-                  </Page.P>
-                </Page.Vertical>
-              </CardButton>
-            </Page.Vertical>
-          </Page.Horizontal>
-
-          <Page.Vertical>
-            <Page.H variant="h5">📚 What are Data sources?</Page.H>
-            <Page.P size="sm">
-              To augment your assistants with knowledge, you give them data in
-              three ways:
-            </Page.P>
-          </Page.Vertical>
-
-          <CardButton variant="secondary" className="block">
-            <Page.Horizontal>
-              <Page.Vertical sizing="grow">
-                <div className="flex items-center gap-2">
-                  <Icon
-                    visual={CloudArrowLeftRightIcon}
-                    className="text-brand"
-                  />{" "}
-                  <Page.H variant="h6">Connections</Page.H>
-                </div>
-                <Page.P size="sm">
-                  Notion, Slack, Google Drive... Dust can connect to multiple
-                  platforms and synchronize your data.
-                </Page.P>
-              </Page.Vertical>
-
-              <Page.Vertical sizing="grow">
-                <Page.Horizontal>
-                  <div className="flex items-center gap-2">
-                    <Icon visual={FolderIcon} className="text-brand" />{" "}
-                    <Page.H variant="h6">Folders</Page.H>
-                  </div>
-                </Page.Horizontal>
-                <Page.P size="sm">
-                  Upload files (text, pdf, csv) directly in Dust.
-                </Page.P>
-              </Page.Vertical>
-              <Page.Vertical sizing="grow">
-                <Page.Horizontal>
-                  <div className="flex items-center gap-2">
-                    <Icon visual={GlobeAltIcon} className="text-brand" />{" "}
-                    <Page.H variant="h6">Websites</Page.H>
-                  </div>
-                </Page.Horizontal>
-                <Page.P size="sm">
-                  Any public website can be synced in Dust. Think FAQ, wikipedia
-                  pages, documentation...
-                </Page.P>
-              </Page.Vertical>
-            </Page.Horizontal>
-          </CardButton>
-        </Page>
+        </ScrollArea>
       </div>
     </Modal>
   );
