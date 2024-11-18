@@ -1,6 +1,8 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { ManagementClient } from "auth0";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 import type { NextApiRequest } from "next";
@@ -11,45 +13,23 @@ import logger from "@app/logger/logger";
 
 let auth0ManagemementClient: ManagementClient | null = null;
 
-export interface Auth0JwtPayload extends jwt.JwtPayload {
-  azp: string;
-  exp: number;
-  scope: string;
-  sub: string;
-}
+const Auth0JwtPayloadSchema = t.type({
+  azp: t.string,
+  exp: t.number,
+  scope: t.string,
+  sub: t.string,
+});
 
-const METHOD_TO_VERB: Record<string, string> = {
-  GET: "read",
-  POST: "create",
-  PATCH: "update",
-  DELETE: "delete",
-};
+type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> & jwt.JwtPayload;
 
 export function getRequiredScope(
   req: NextApiRequest,
-  {
-    resourceName,
-  }: {
-    resourceName?: string;
-  }
+  requiredScopes?: Record<string, string>
 ) {
-  if (resourceName && req.method) {
-    return [`${METHOD_TO_VERB[req.method]}:${resourceName}`];
+  if (requiredScopes && req.method && requiredScopes[req.method]) {
+    return [requiredScopes[req.method]];
   }
   return undefined;
-}
-
-function isAuth0Payload(payload: jwt.JwtPayload): payload is Auth0JwtPayload {
-  return (
-    "azp" in payload &&
-    typeof payload.azp === "string" &&
-    "exp" in payload &&
-    typeof payload.exp === "number" &&
-    "scope" in payload &&
-    typeof payload.scope === "string" &&
-    "sub" in payload &&
-    typeof payload.sub === "string"
-  );
 }
 
 export function getAuth0ManagemementClient(): ManagementClient {
@@ -130,16 +110,10 @@ export async function verifyAuth0Token(
           return resolve(new Err(Error("No token payload")));
         }
 
-        if (!isAuth0Payload(decoded)) {
+        const payloadValidation = Auth0JwtPayloadSchema.decode(decoded);
+        if (isLeft(payloadValidation)) {
           logger.error("Invalid token payload.");
           return resolve(new Err(Error("Invalid token payload.")));
-        }
-
-        const now = Math.floor(Date.now() / 1000);
-
-        if (decoded.exp <= now) {
-          logger.error("Expired token payload.");
-          return resolve(new Err(Error("Expired token payload.")));
         }
 
         if (requiredScopes) {
@@ -147,12 +121,12 @@ export async function verifyAuth0Token(
           if (
             requiredScopes.some((scope) => !availableScopes.includes(scope))
           ) {
-            logger.error("Insufficient scopes.");
+            logger.error({ requiredScopes }, "Insufficient scopes.");
             return resolve(new Err(Error("Insufficient scopes.")));
           }
         }
 
-        resolve(new Ok(decoded));
+        return resolve(new Ok(payloadValidation.right));
       }
     );
   });

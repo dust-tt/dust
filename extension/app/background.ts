@@ -267,11 +267,12 @@ const authenticate = async (
     client_id: AUTH0_CLIENT_ID,
     response_type: "code",
     scope:
-      "offline_access read:user_profile read:conversation create:conversation",
+      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent",
     redirect_uri: redirectUrl,
     audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
+    prompt: "consent",
   };
 
   const queryString = new URLSearchParams(options).toString();

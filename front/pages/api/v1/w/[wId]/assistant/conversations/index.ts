@@ -279,5 +279,5 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(handler, {
-  resourceName: "conversation",
+  requiredScopes: { GET: "read:conversation", POST: "create:conversation" },
 });

@@ -170,7 +170,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
   opts: {
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: U;
-    resourceName?: string;
+    requiredScopes?: Record<string, string>;
   } = {}
 ) {
   const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
@@ -210,7 +210,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       if (authMethod === "access_token") {
         const decoded = await verifyAuth0Token(
           token,
-          getRequiredScope(req, opts)
+          getRequiredScope(req, opts.requiredScopes)
         );
         if (decoded.isErr()) {
           return apiError(req, res, {
@@ -346,7 +346,7 @@ export function withAuth0TokenAuthentication<T>(
     user: UserTypeWithWorkspaces
   ) => Promise<void> | void,
   opts: {
-    resourceName?: string;
+    requiredScopes?: Record<string, string>;
   } = {}
 ) {
   return withLogging(
@@ -381,7 +381,7 @@ export function withAuth0TokenAuthentication<T>(
 
       const decoded = await verifyAuth0Token(
         bearerToken,
-        getRequiredScope(req, opts)
+        getRequiredScope(req, opts.requiredScopes)
       );
       if (decoded.isErr()) {
         return apiError(req, res, {

@@ -35,5 +35,5 @@ async function handler(
 }
 
 export default withAuth0TokenAuthentication(handler, {
-  resourceName: "user_profile",
+  requiredScopes: { GET: "read:user_profile" },
 });
