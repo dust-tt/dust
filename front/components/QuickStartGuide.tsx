@@ -81,7 +81,7 @@ export function QuickStartGuide({
                           (Shared assistants).
                         </p>
                         <p>
-                          Specialised assistants generally combine a model with
+                          Specialized assistants generally combine a model with
                           specific instructions and access to knowledge.
                         </p>
                         <p>
@@ -114,7 +114,7 @@ export function QuickStartGuide({
                           <span className="italic">"Act as a&nbsp;doctor"</span>
                           ,{" "}
                           <span className="italic">
-                            "Summarise this document"
+                            "Summarize this document"
                           </span>
                           ,{" "}
                           <span className="italic">
