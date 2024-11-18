@@ -1,5 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorPermission,
   ContentNodesViewType,
   DataSourceType,
@@ -21,7 +22,8 @@ import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId
 interface UseConnectorPermissionsReturn<IncludeParents extends boolean> {
   resources: GetDataSourcePermissionsResponseBody<IncludeParents>["resources"];
   isResourcesLoading: boolean;
-  isResourcesError: any;
+  isResourcesError: boolean;
+  resourcesError: APIError | null;
 }
 
 export function useConnectorPermissions<IncludeParents extends boolean>({
@@ -77,6 +79,7 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
     ),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+    resourcesError: error ? (error.error as APIError) : null,
   };
 }
 

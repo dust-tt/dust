@@ -109,6 +109,9 @@ async function getContentNodesForManagedDataSourceView(
     });
 
     if (connectorsRes.isErr()) {
+      if (connectorsRes.error.type === "connector_rate_limit_error") {
+        return new Err(new Error(connectorsRes.error.message));
+      }
       return new Err(
         new Error(
           "An error occurred while fetching the resources' children content nodes."

@@ -8,7 +8,7 @@ import {
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
-import type { BaseContentNode } from "@dust-tt/types";
+import type { APIError, BaseContentNode } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
@@ -35,6 +35,7 @@ export type UseResourcesHook = (parentId: string | null) => {
   resources: BaseContentNode[];
   isResourcesLoading: boolean;
   isResourcesError: boolean;
+  resourcesError?: APIError | null;
 };
 
 export type ContentNodeTreeItemStatus = {
@@ -112,7 +113,7 @@ function ContentNodeTreeChildren({
 
   const { useResourcesHook, emptyComponent } = useContentNodeTreeContext();
 
-  const { resources, isResourcesLoading, isResourcesError } =
+  const { resources, isResourcesLoading, isResourcesError, resourcesError } =
     useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
@@ -152,7 +153,14 @@ function ContentNodeTreeChildren({
   if (isResourcesError) {
     return (
       <div className="text-sm text-warning">
-        Failed to retrieve permissions likely due to a revoked authorization.
+        {resourcesError?.type === "rate_limit_error" ? (
+          <>Connected service's API limit reached. Please retry shortly.</>
+        ) : (
+          <>
+            Failed to retrieve permissions likely due to a revoked
+            authorization.
+          </>
+        )}
       </div>
     );
   }

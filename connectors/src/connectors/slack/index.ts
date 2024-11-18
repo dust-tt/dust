@@ -21,7 +21,10 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -403,6 +406,13 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return new Err(
           new Error("Slack token invalid. Please re-authorize Slack.")
         );
+      }
+      if (e instanceof ProviderWorkflowError && e.type === "rate_limit_error") {
+        logger.error(
+          { connectorId: this.connectorId, error: e },
+          "Slack rate limit when retrieving permissions."
+        );
+        return new Err(e);
       }
       throw e;
     }
