@@ -7,7 +7,6 @@ import {
 } from "@dust-tt/client";
 import { DropzoneOverlay, useSendNotification } from "@dust-tt/sparkle";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
-import { defaultExtract } from "@extension/lib/extraction";
 import { useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 interface DropzoneContainerProps {
@@ -38,11 +37,9 @@ const getDroppedUrl = (dataTransfer: DataTransfer) => {
     const div = document.createElement("div");
     div.innerHTML = textHtml;
 
-    const imageSrc = div.querySelector("img")?.src;
-    if (imageSrc) {
-      return imageSrc;
-    }
-    const url = div.querySelector("a")?.href;
+    const url = div.querySelector("img")?.src || div.querySelector("a")?.href;
+    div.remove();
+
     if (url) {
       return url;
     }
@@ -88,9 +85,10 @@ export function DropzoneContainer({
               const text = await blob.text();
               const div = document.createElement("div");
               div.innerHTML = text;
-              const textBlob = new Blob([defaultExtract(droppedUrl, div)], {
+              const textBlob = new Blob([div.textContent || ""], {
                 type: "text/plain",
               });
+              div.remove();
               const file = new File([textBlob], `${filename}.txt`, {
                 type: textBlob.type,
               });
