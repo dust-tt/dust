@@ -138,9 +138,7 @@ export async function scrubSpaceActivity({
     throw new Error("Space not found.");
   }
 
-  const isDeletableSpace =
-    space.isDeleted() || space.isGlobal() || space.isSystem();
-  assert(isDeletableSpace, "Space is not soft deleted.");
+  assert(space.isDeletable(), "Space cannot be deleted.");
 
   // Delete all the data sources of the spaces.
   const dataSources = await DataSourceResource.listBySpace(auth, space, {
