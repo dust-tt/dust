@@ -1,12 +1,56 @@
+import type { Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { ManagementClient } from "auth0";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
+import type { NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
 let auth0ManagemementClient: ManagementClient | null = null;
+
+export interface Auth0JwtPayload extends jwt.JwtPayload {
+  azp: string;
+  exp: number;
+  scope: string;
+  sub: string;
+}
+
+const METHOD_TO_VERB: Record<string, string> = {
+  GET: "read",
+  POST: "create",
+  PATCH: "update",
+  DELETE: "delete",
+};
+
+export function getRequiredScope(
+  req: NextApiRequest,
+  {
+    resourceName,
+  }: {
+    resourceName?: string;
+  }
+) {
+  if (resourceName && req.method) {
+    return [`${METHOD_TO_VERB[req.method]}:${resourceName}`];
+  }
+  return undefined;
+}
+
+function isAuth0Payload(payload: jwt.JwtPayload): payload is Auth0JwtPayload {
+  return (
+    "azp" in payload &&
+    typeof payload.azp === "string" &&
+    "exp" in payload &&
+    typeof payload.exp === "number" &&
+    "scope" in payload &&
+    typeof payload.scope === "string" &&
+    "sub" in payload &&
+    typeof payload.sub === "string"
+  );
+}
 
 export function getAuth0ManagemementClient(): ManagementClient {
   if (!auth0ManagemementClient) {
@@ -50,13 +94,16 @@ async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
  * Verify an Auth0 token.
  * Not meant to be exported, use `getUserFromAuth0Token` instead.
  */
-async function verifyAuth0Token(accessToken: string): Promise<jwt.JwtPayload> {
+export async function verifyAuth0Token(
+  accessToken: string,
+  requiredScopes?: string[]
+): Promise<Result<Auth0JwtPayload, Error>> {
   const auth0Domain = config.getAuth0TenantUrl();
-  const audience = `https://${auth0Domain}/api/v2/`;
+  const audience = config.getDustApiAudience();
   const verify = `https://${auth0Domain}/.well-known/jwks.json`;
   const issuer = `https://${auth0Domain}/`;
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     jwt.verify(
       accessToken,
       async (header, callback) => {
@@ -77,43 +124,46 @@ async function verifyAuth0Token(accessToken: string): Promise<jwt.JwtPayload> {
       },
       (err, decoded) => {
         if (err) {
-          reject(err);
-          return;
+          return resolve(new Err(err));
         }
         if (!decoded || typeof decoded !== "object") {
-          reject(new Error("No token payload"));
-          return;
+          return resolve(new Err(Error("No token payload")));
         }
-        resolve(decoded);
+
+        if (!isAuth0Payload(decoded)) {
+          logger.error("Invalid token payload.");
+          return resolve(new Err(Error("Invalid token payload.")));
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+
+        if (decoded.exp <= now) {
+          logger.error("Expired token payload.");
+          return resolve(new Err(Error("Expired token payload.")));
+        }
+
+        if (requiredScopes) {
+          const availableScopes = decoded.scope.split(" ");
+          if (
+            requiredScopes.some((scope) => !availableScopes.includes(scope))
+          ) {
+            logger.error("Insufficient scopes.");
+            return resolve(new Err(Error("Insufficient scopes.")));
+          }
+        }
+
+        resolve(new Ok(decoded));
       }
     );
   });
 }
+
 /**
  * Get a user resource from an Auth0 token.
  * We return the user from its Auth0 sub, only if the token is not expired.
  */
 export async function getUserFromAuth0Token(
-  accessToken: string
+  accessToken: Auth0JwtPayload
 ): Promise<UserResource | null> {
-  let decoded: jwt.JwtPayload;
-  try {
-    decoded = await verifyAuth0Token(accessToken);
-  } catch (error) {
-    logger.error({ error }, "Error verifying Auth0 token");
-    return null;
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-
-  if (
-    typeof decoded.sub !== "string" ||
-    typeof decoded.exp !== "number" ||
-    decoded.exp <= now
-  ) {
-    logger.error("Invalid or expired token payload.");
-    return null;
-  }
-
-  return UserResource.fetchByAuth0Sub(decoded.sub);
+  return UserResource.fetchByAuth0Sub(accessToken.sub);
 }

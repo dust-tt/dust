@@ -29,6 +29,7 @@ import type {
   NextApiResponse,
 } from "next";
 
+import type { Auth0JwtPayload } from "@app/lib/api/auth0";
 import { getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -299,7 +300,7 @@ export class Authenticator {
     token,
     wId,
   }: {
-    token: string;
+    token: Auth0JwtPayload;
     wId: string;
   }): Promise<Authenticator> {
     const user = await getUserFromAuth0Token(token);

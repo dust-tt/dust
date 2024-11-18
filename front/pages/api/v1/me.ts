@@ -34,4 +34,6 @@ async function handler(
   }
 }
 
-export default withAuth0TokenAuthentication(handler);
+export default withAuth0TokenAuthentication(handler, {
+  resourceName: "user_profile",
+});

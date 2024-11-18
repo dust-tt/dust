@@ -278,4 +278,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(handler, {
+  resourceName: "conversation",
+});
