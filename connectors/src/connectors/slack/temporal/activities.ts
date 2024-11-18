@@ -85,6 +85,7 @@ async function _getChannelsUncached(
   const client = await getSlackClient(connectorId);
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
+  let nbCalls = 0;
   do {
     const c: ConversationsListResponse = await client.conversations.list({
       types: "public_channel, private_channel",
@@ -93,17 +94,9 @@ async function _getChannelsUncached(
       limit: 1000,
       cursor: nextCursor,
     });
+    nbCalls++;
 
     nextCursor = c?.response_metadata?.next_cursor;
-
-    logger.info(
-      {
-        connectorId,
-        returnedChannels: c?.channels ? c.channels.length : undefined,
-        nextCursor,
-      },
-      "[Slack] conversations.list call"
-    );
 
     if (c.error) {
       throw new Error(c.error);
@@ -126,6 +119,16 @@ async function _getChannelsUncached(
       }
     }
   } while (nextCursor);
+
+  logger.info(
+    {
+      connectorId,
+      returnedChannels: allChannels.length,
+      nextCursor,
+      nbCalls,
+    },
+    `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
+  );
 
   return allChannels;
 }
