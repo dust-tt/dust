@@ -37,16 +37,14 @@ export async function deleteTicket(
     },
     "[Zendesk] Deleting ticket."
   );
-  await Promise.all([
-    ZendeskTicketResource.deleteByTicketId({
-      connectorId,
-      ticketId: ticket.id,
-    }),
-    deleteFromDataSource(
-      dataSourceConfig,
-      getTicketInternalId(connectorId, ticket.id)
-    ),
-  ]);
+  await deleteFromDataSource(
+    dataSourceConfig,
+    getTicketInternalId(connectorId, ticket.id)
+  );
+  await ZendeskTicketResource.deleteByTicketId({
+    connectorId,
+    ticketId: ticket.id,
+  });
 }
 
 /**

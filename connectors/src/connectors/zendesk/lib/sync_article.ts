@@ -38,16 +38,14 @@ export async function deleteArticle(
     },
     "[Zendesk] Deleting article."
   );
-  await Promise.all([
-    ZendeskArticleResource.deleteByArticleId({
-      connectorId,
-      articleId: article.id,
-    }),
-    deleteFromDataSource(
-      dataSourceConfig,
-      getArticleInternalId(connectorId, article.id)
-    ),
-  ]);
+  await deleteFromDataSource(
+    dataSourceConfig,
+    getArticleInternalId(connectorId, article.id)
+  );
+  await ZendeskArticleResource.deleteByArticleId({
+    connectorId,
+    articleId: article.id,
+  });
 }
 
 /**
