@@ -16,11 +16,11 @@ type ResourceMap = { [K in ResourceKey]: KeyToResource[K] };
 type ResourceKey = keyof KeyToResource;
 
 const resolver: {
-  [K in ResourceKey]: (
-    handler: ResourceHandler<any, K>
+  [K in ResourceKey]: <T>(
+    handler: ResourceHandler<T, K>
   ) => (
     req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<any>>,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
     session: SessionWithUser
   ) => Promise<void> | void;
