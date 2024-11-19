@@ -259,15 +259,15 @@ export async function processTranscriptActivity(
   }
 
   // labs_transcripts_gong_full_storage FF enables storing all Gong transcripts in a single datasource view
-  let gongFullStorage = false;
+  let gongFullStorageFF = false;
   let gongFullStorageDataSourceViewId = null;
   if (transcriptsConfiguration.provider === "gong") {
     const featureFlags = await getFeatureFlags(owner);
-    gongFullStorage = featureFlags.includes(
+    gongFullStorageFF = featureFlags.includes(
       "labs_transcripts_gong_full_storage"
     );
 
-    if (gongFullStorage) {
+    if (gongFullStorageFF) {
       const defaultGongTranscriptsStorageConfiguration =
         await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
           auth
@@ -290,7 +290,7 @@ export async function processTranscriptActivity(
   // Decide to store transcript or not (user might not have participated)
   const storeTranscript =
     transcriptsConfiguration.dataSourceViewId ||
-    (gongFullStorage && gongFullStorageDataSourceViewId);
+    (gongFullStorageFF && gongFullStorageDataSourceViewId);
 
   // Decide to process transcript or not (user needs to have participated)
   const processTranscript =
@@ -300,7 +300,7 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
-        gongFullStorage,
+        gongFullStorageFF,
         gongFullStorageDataSourceViewId,
         transcriptsConfiguration,
       },
