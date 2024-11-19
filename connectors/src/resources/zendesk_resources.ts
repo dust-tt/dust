@@ -176,11 +176,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     }
   }
 
-  async revokeAllPermissions(): Promise<void> {
-    await this.revokeHelpCenterPermissions();
-    await this.revokeTicketsPermissions();
-  }
-
   async revokeHelpCenterPermissions(): Promise<void> {
     if (this.helpCenterPermission === "read") {
       await this.update({ helpCenterPermission: "none" });
@@ -499,6 +494,12 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       { permission: "none" },
       { where: { connectorId, brandId } }
     );
+  }
+
+  async grantPermissions(): Promise<void> {
+    if (this.permission === "none") {
+      await this.update({ permission: "read" });
+    }
   }
 
   async revokePermissions(): Promise<void> {

@@ -62,7 +62,7 @@ export async function allowSyncZendeskTickets({
 /**
  * Mark the node "Tickets" and all the children tickets for a Brand as permission "none".
  */
-export async function revokeSyncZendeskTickets({
+export async function forbidSyncZendeskTickets({
   connectorId,
   brandId,
 }: {
@@ -76,7 +76,7 @@ export async function revokeSyncZendeskTickets({
   if (!brand) {
     logger.error(
       { brandId },
-      "[Zendesk] Brand not found, could not revoke sync."
+      "[Zendesk] Brand not found, could not disable sync."
     );
     return null;
   }

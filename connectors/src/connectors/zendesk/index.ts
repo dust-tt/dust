@@ -11,13 +11,13 @@ import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   allowSyncZendeskBrand,
-  revokeSyncZendeskBrand,
+  forbidSyncZendeskBrand,
 } from "@connectors/connectors/zendesk/lib/brand_permissions";
 import {
   allowSyncZendeskCategory,
   allowSyncZendeskHelpCenter,
-  revokeSyncZendeskCategory,
-  revokeSyncZendeskHelpCenter,
+  forbidSyncZendeskCategory,
+  forbidSyncZendeskHelpCenter,
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import {
   getBrandInternalId,
@@ -29,7 +29,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/permissions";
 import {
   allowSyncZendeskTickets,
-  revokeSyncZendeskTickets,
+  forbidSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
@@ -258,8 +258,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
+    const { connectionId } = connector;
 
-    const connectionId = connector.connectionId;
     const toBeSignaledBrandIds = new Set<number>();
     const toBeSignaledTicketsIds = new Set<number>();
     const toBeSignaledHelpCenterIds = new Set<number>();
@@ -279,11 +279,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       switch (type) {
         case "brand": {
           if (permission === "none") {
-            const revokedBrand = await revokeSyncZendeskBrand({
+            const updatedBrand = await forbidSyncZendeskBrand({
               connectorId,
               brandId: objectId,
             });
-            if (revokedBrand) {
+            if (updatedBrand) {
               toBeSignaledBrandIds.add(objectId);
             }
           }
@@ -301,12 +301,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "help-center": {
           if (permission === "none") {
-            const revokedBrandHelpCenter = await revokeSyncZendeskHelpCenter({
+            const updatedBrandHelpCenter = await forbidSyncZendeskHelpCenter({
               connectorId,
               brandId: objectId,
             });
-            if (revokedBrandHelpCenter) {
-              toBeSignaledHelpCenterIds.add(revokedBrandHelpCenter.brandId);
+            if (updatedBrandHelpCenter) {
+              toBeSignaledHelpCenterIds.add(updatedBrandHelpCenter.brandId);
             }
           }
           if (permission === "read") {
@@ -323,12 +323,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "tickets": {
           if (permission === "none") {
-            const revokedBrandTickets = await revokeSyncZendeskTickets({
+            const updatedBrandTickets = await forbidSyncZendeskTickets({
               connectorId,
               brandId: objectId,
             });
-            if (revokedBrandTickets) {
-              toBeSignaledTicketsIds.add(revokedBrandTickets.brandId);
+            if (updatedBrandTickets) {
+              toBeSignaledTicketsIds.add(updatedBrandTickets.brandId);
             }
           }
           if (permission === "read") {
@@ -345,14 +345,14 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
         case "category": {
           if (permission === "none") {
-            const revokedCategory = await revokeSyncZendeskCategory({
+            const updatedCategory = await forbidSyncZendeskCategory({
               connectorId,
               categoryId: objectId.categoryId,
             });
-            if (revokedCategory) {
-              toBeSignaledCategoryIds.add(revokedCategory.categoryId);
-              categoryBrandIds[revokedCategory.categoryId] =
-                revokedCategory.brandId;
+            if (updatedCategory) {
+              toBeSignaledCategoryIds.add(updatedCategory.categoryId);
+              categoryBrandIds[updatedCategory.categoryId] =
+                updatedCategory.brandId;
             }
           }
           if (permission === "read") {
@@ -376,8 +376,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             { connectorId, objectId },
             "[Zendesk] Cannot set permissions for a single article or ticket"
           );
-          throw new Error(
-            "Cannot set permissions for a single article or ticket"
+          return new Err(
+            new Error("Cannot set permissions for a single article or ticket")
           );
         default:
           assertNever(type);
