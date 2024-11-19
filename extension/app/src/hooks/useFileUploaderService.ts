@@ -49,7 +49,7 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
 const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
 const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 
-export function useFileUploaderService() {
+export function useFileUploaderService(conversationId?: string) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const sendNotification = useSendNotification();
@@ -165,6 +165,11 @@ export function useFileUploaderService() {
         fileName: fileBlob.filename,
         fileSize: fileBlob.size,
         useCase: "conversation",
+        useCaseMetadata: conversationId
+          ? {
+              conversationId: conversationId,
+            }
+          : undefined,
         fileObject: fileBlob.file,
       });
       if (fileRes.isErr()) {
