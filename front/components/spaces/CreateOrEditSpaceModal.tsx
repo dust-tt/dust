@@ -6,6 +6,7 @@ import {
   Input,
   Modal,
   Page,
+  ScrollArea,
   SliderToggle,
   useSendNotification,
   XMarkIcon,
@@ -237,13 +238,22 @@ export function CreateOrEditSpaceModal({
                 </p>
               )}
             </div>
-            <MembersSearchAndList
-              isRestricted={isRestricted}
-              owner={owner}
-              onMembersUpdated={setSelectedMembers}
-              selectedMembers={selectedMembers}
-            />
           </div>
+          {isRestricted && (
+            <>
+              <SearchMembersPopover
+                owner={owner}
+                selectedMembers={selectedMembers}
+                onMembersUpdated={setSelectedMembers}
+              />
+              <ScrollArea className="h-full">
+                <MembersTable
+                  onMembersUpdated={setSelectedMembers}
+                  selectedMembers={selectedMembers}
+                />
+              </ScrollArea>
+            </>
+          )}
           {isAdmin && space && space.kind === "regular" && (
             <>
               <ConfirmDeleteSpaceDialog
@@ -270,19 +280,15 @@ export function CreateOrEditSpaceModal({
   );
 }
 
-interface MembersSearchAndListProps {
-  isRestricted: boolean;
+interface MembersTableProps {
   onMembersUpdated: (members: UserType[]) => void;
-  owner: LightWorkspaceType;
   selectedMembers: UserType[];
 }
 
-function MembersSearchAndList({
-  isRestricted,
+function MembersTable({
   onMembersUpdated,
-  owner,
   selectedMembers,
-}: MembersSearchAndListProps) {
+}: MembersTableProps) {
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -350,30 +356,18 @@ function MembersSearchAndList({
   }, [onMembersUpdated, selectedMembers, sendNotifications]);
 
   const rows = useMemo(() => getTableRows(selectedMembers), [selectedMembers]);
-
   const columns = useMemo(() => getTableColumns(), [getTableColumns]);
 
-  if (!isRestricted) {
-    return null;
-  }
-
   return (
-    <div className="flex flex-col items-end gap-2">
-      <SearchMembersPopover
-        owner={owner}
-        selectedMembers={selectedMembers}
-        onMembersUpdated={onMembersUpdated}
-      />
-      <DataTable
-        data={rows}
-        columns={columns}
-        columnsBreakpoints={{
-          email: "md",
-        }}
-        pagination={pagination}
-        setPagination={setPagination}
-        totalRowCount={rows.length}
-      />
-    </div>
+    <DataTable
+      data={rows}
+      columns={columns}
+      columnsBreakpoints={{
+        email: "md",
+      }}
+      pagination={pagination}
+      setPagination={setPagination}
+      totalRowCount={rows.length}
+    />
   );
 }
