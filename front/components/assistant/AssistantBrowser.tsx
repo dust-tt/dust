@@ -4,6 +4,7 @@ import {
   CompanyIcon,
   LockIcon,
   MagnifyingGlassIcon,
+  MoreIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
@@ -19,25 +20,16 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
-import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { subFilter } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
-}
-
-interface AssistantListProps {
-  owner: WorkspaceType;
-  user: UserType;
-  isBuilder: boolean;
-  agents: LightAgentConfigurationType[];
-  loadingStatus: "loading" | "finished";
-  handleAssistantClick: (agent: LightAgentConfigurationType) => void;
 }
 
 const ALL_AGENTS_TABS = [
@@ -57,9 +49,16 @@ const ALL_AGENTS_TABS = [
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
+interface AssistantListProps {
+  owner: WorkspaceType;
+  isBuilder: boolean;
+  agents: LightAgentConfigurationType[];
+  loadingStatus: "loading" | "finished";
+  handleAssistantClick: (agent: LightAgentConfigurationType) => void;
+}
+
 export function AssistantBrowser({
   owner,
-  user,
   isBuilder,
   agents,
   loadingStatus,
@@ -70,6 +69,8 @@ export function AssistantBrowser({
     "selectedTab",
     "favorites"
   );
+
+  const router = useRouter();
 
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents
@@ -212,14 +213,14 @@ export function AssistantBrowser({
               variant="minimal"
               onClick={() => handleAssistantClick(agent)}
               actionElement={
-                <AssistantDropdownMenu
-                  agentConfiguration={agent}
-                  owner={owner}
-                  user={user}
-                  variant="button"
-                  isMoreInfoVisible
-                  showAddRemoveToFavorite
-                  canDelete
+                <Button
+                  icon={MoreIcon}
+                  variant="outline"
+                  size="sm"
+                  onClick={(e: Event) => {
+                    e.stopPropagation();
+                    setQueryParam(router, "assistantDetails", agent.sId);
+                  }}
                 />
               }
             />
