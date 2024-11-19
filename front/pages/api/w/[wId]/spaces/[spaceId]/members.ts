@@ -4,8 +4,8 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { SpaceResource } from "@app/lib/resources/space_resource";

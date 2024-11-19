@@ -5,9 +5,9 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getDatasets } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";

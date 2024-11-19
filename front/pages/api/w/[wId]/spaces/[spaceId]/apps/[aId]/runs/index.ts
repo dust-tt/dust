@@ -3,9 +3,9 @@ import { credentialsFromProviders } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
