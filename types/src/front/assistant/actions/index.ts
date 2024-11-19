@@ -28,5 +28,5 @@ export abstract class BaseAction {
   abstract renderForFunctionCall(): FunctionCallType;
   abstract renderForMultiActionsModel(
     conversation: ConversationType
-  ): FunctionMessageTypeModel;
+  ): Promise<FunctionMessageTypeModel>;
 }

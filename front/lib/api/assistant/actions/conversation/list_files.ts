@@ -76,11 +76,13 @@ export class ConversationListFilesAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content =
       `List of files included in the conversation with their content type.\n\n` +
       `- only the files marked as \`includable\` can be included with ` +
-      `the \`include_conversation_files\` tool.\n\n`;
+      `the \`include_conversation_files\` tool.\n` +
+      // TODO(spolu): add mention of viz if enabled and other tools.
+      `\n`;
     // TODO(spolu) add file token count, make includabiility dependent on that.
     for (const f of this.files) {
       content +=

@@ -87,7 +87,7 @@ export class DustAppRunAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
 
     // Note action.output can be any valid JSON including null.
