@@ -2,7 +2,8 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type {
@@ -32,17 +33,20 @@ export default function WorkspacePicker({
             isSelect
           />
         </DropdownMenuTrigger>
-
         <DropdownMenuContent>
-          {user.workspaces.map((w) => {
-            return (
-              <DropdownMenuItem
-                key={w.sId}
-                onClick={() => void onWorkspaceUpdate(w)}
-                label={w.name}
-              />
-            );
-          })}
+          <DropdownMenuRadioGroup value={workspace.name}>
+            {user.workspaces.map((w) => {
+              return (
+                <DropdownMenuRadioItem
+                  key={w.sId}
+                  onClick={() => void onWorkspaceUpdate(w)}
+                  value={w.name}
+                >
+                  {w.name}
+                </DropdownMenuRadioItem>
+              );
+            })}
+          </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
