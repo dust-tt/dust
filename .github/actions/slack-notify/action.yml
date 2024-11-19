@@ -1,0 +1,58 @@
+name: 'Slack Notification'
+description: 'Send deployment notifications to Slack'
+
+inputs:
+  step:
+    description: 'Deployment step (start/build_success/failure)'
+    required: true
+  component:
+    description: 'Component being deployed'
+    required: true
+  image_tag:
+    description: 'Image tag being deployed'
+    required: true
+  channel:
+    description: 'Slack channel'
+    required: true
+  thread_ts:
+    description: 'Slack thread timestamp'
+    required: false
+  slack_token:
+    description: 'Slack bot token'
+    required: true
+
+outputs:
+  thread_ts:
+    description: "Slack thread timestamp from the initial message"
+    value: ${{ steps.start_notification.outputs.ts }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Notify Build And Deploy Start
+      if: inputs.step == 'start'
+      id: start_notification
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          text: |
+            🚀 Starting deployment of front `${{ inputs.image_tag }}`
+            • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
+            • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
+            • Author: ${{ github.actor }}
+
+    - name: Notify Deploy Failure
+      if: inputs.step == 'failure'
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          thread_ts: "${{ inputs.thread_ts }}"
+          text: |
+            ❌ Build pipeline failed
+            • Check logs: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>
