@@ -170,7 +170,7 @@ export function IntroSection() {
             className={classNames(
               "max-w-[400px] sm:w-full sm:max-w-none",
               "grid grid-cols-2 gap-x-2",
-              "md:grid-cols-5 md:gap-x-12",
+              "md:grid-cols-5 md:gap-x-12"
             )}
           >
             <img alt="alan" src="/static/landing/logos/alan.png" />
