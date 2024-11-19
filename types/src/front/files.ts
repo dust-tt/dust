@@ -143,7 +143,7 @@ export function isSupportedImageContentType(
 
 export type FileStatus = "created" | "failed" | "ready";
 
-export type FileUseCase = "conversation" | "avatar" | "tool_output";
+export type FileUseCase = "conversation" | "avatar" | "tool_output" | "folder";
 
 export type FileUseCaseMetadata = {
   conversationId: string;
