@@ -12,7 +12,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
-import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
+import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
@@ -201,4 +201,4 @@ async function handler(
   }
 }
 
-export default withInternalAPIRouteResource(handler, "space");
+export default withResourceFromRoute(handler, "space");

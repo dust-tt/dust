@@ -4,7 +4,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
+import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -260,4 +260,4 @@ async function handler(
   }
 }
 
-export default withInternalAPIRouteResource(handler, "space");
+export default withResourceFromRoute(handler, "space");

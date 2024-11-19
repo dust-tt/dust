@@ -5,7 +5,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
+import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -166,4 +166,4 @@ async function handler(
   }
 }
 
-export default withInternalAPIRouteResource(handler, "space");
+export default withResourceFromRoute(handler, "space");

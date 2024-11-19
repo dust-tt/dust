@@ -5,7 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
+import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
 import { getDatasetHash } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
@@ -231,4 +231,4 @@ async function handler(
   }
 }
 
-export default withInternalAPIRouteResource(handler, "space");
+export default withResourceFromRoute(handler, "space");

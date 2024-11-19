@@ -24,7 +24,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
+import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
 import { createDataSourceWithoutProvider } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -500,4 +500,4 @@ const handleDataSourceWithProvider = async ({
   return;
 };
 
-export default withInternalAPIRouteResource(handler, "space");
+export default withResourceFromRoute(handler, "space");
