@@ -457,6 +457,10 @@ export async function upsertTable({
       return csvRowsRes;
     }
 
+    const detectedHeaders = csvRowsRes?.isOk()
+      ? csvRowsRes.value.detectedHeaders
+      : undefined;
+
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: auth.getNonNullableWorkspace().sId,
@@ -470,6 +474,7 @@ export async function upsertTable({
         csv: csv ?? null,
         truncate,
         useAppForHeaderDetection: useApp,
+        detectedHeaders,
       },
     });
     if (enqueueRes.isErr()) {
@@ -620,6 +625,10 @@ export async function handleDataSourceTableCSVUpsert({
       });
     }
 
+    const detectedHeaders = csvRowsRes?.isOk()
+      ? csvRowsRes.value.detectedHeaders
+      : undefined;
+
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: owner.sId,
@@ -633,6 +642,7 @@ export async function handleDataSourceTableCSVUpsert({
         csv: csv ?? null,
         truncate,
         useAppForHeaderDetection,
+        detectedHeaders,
       },
     });
     if (enqueueRes.isErr()) {
