@@ -50,7 +50,7 @@ type NotFoundError = {
   message: string;
 };
 
-export type DetectedHeadersType = { header: string[]; rowIndex: number };
+type DetectedHeadersType = { header: string[]; rowIndex: number };
 
 export type TableOperationError =
   | {
@@ -495,7 +495,7 @@ export async function rowsFromCsv({
 
 async function staticHeaderDetection(
   firstRow: string[]
-): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
+): Promise<Result<DetectedHeadersType, CsvParsingError>> {
   const firstRecordCells = firstRow.map(
     (h, i) => h.trim().toLocaleLowerCase() || `col_${i}`
   );
@@ -513,7 +513,7 @@ async function detectHeaders(
   csv: string,
   delimiter: string,
   useAppForHeaderDetection: boolean
-): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
+): Promise<Result<DetectedHeadersType, CsvParsingError>> {
   const headParser = parse(csv, { delimiter });
   const records = [];
   for await (const anyRecord of headParser) {
