@@ -496,6 +496,12 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     );
   }
 
+  async grantPermissions(): Promise<void> {
+    if (this.permission === "none") {
+      await this.update({ permission: "read" });
+    }
+  }
+
   async revokePermissions(): Promise<void> {
     if (this.permission === "read") {
       await this.update({ permission: "none" });

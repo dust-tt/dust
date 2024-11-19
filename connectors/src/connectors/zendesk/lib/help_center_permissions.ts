@@ -152,11 +152,10 @@ export async function allowSyncZendeskCategory({
     connectorId,
     categoryId,
   });
-  if (category?.permission === "none") {
-    await category.update({ permission: "read" });
-  }
 
-  if (!category) {
+  if (category) {
+    await category.grantPermissions();
+  } else {
     const zendeskApiClient = createZendeskClient(
       await getZendeskSubdomainAndAccessToken(connectionId)
     );
