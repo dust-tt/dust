@@ -13,7 +13,30 @@ import logger from "@app/logger/logger";
 
 let auth0ManagemementClient: ManagementClient | null = null;
 
-const Auth0JwtPayloadSchema = t.type({
+export const SUPPORTED_METHODS = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+] as const;
+export type MethodType = (typeof SUPPORTED_METHODS)[number];
+
+const isSupportedMethod = (method: string): method is MethodType =>
+  SUPPORTED_METHODS.includes(method as MethodType);
+
+export type ScopeType =
+  | "read:user_profile"
+  | "read:conversation"
+  | "update:conversation"
+  | "create:conversation"
+  | "read:file"
+  | "update:file"
+  | "create:file"
+  | "delete:file"
+  | "read:agent";
+
+export const Auth0JwtPayloadSchema = t.type({
   azp: t.string,
   exp: t.number,
   scope: t.string,
@@ -25,10 +48,17 @@ export type Auth0JwtPayload = t.TypeOf<typeof Auth0JwtPayloadSchema> &
 
 export function getRequiredScope(
   req: NextApiRequest,
-  requiredScopes?: Record<string, string>
+  requiredScopes?: Partial<Record<MethodType, ScopeType>>
 ) {
-  if (requiredScopes && req.method && requiredScopes[req.method]) {
-    return [requiredScopes[req.method]];
+  const method = req.method;
+
+  if (
+    method &&
+    isSupportedMethod(method) &&
+    requiredScopes &&
+    requiredScopes[method]
+  ) {
+    return requiredScopes[method];
   }
   return undefined;
 }
@@ -77,12 +107,17 @@ async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
  */
 export async function verifyAuth0Token(
   accessToken: string,
-  requiredScopes?: string[]
+  requiredScope?: ScopeType
 ): Promise<Result<Auth0JwtPayload, Error>> {
   const auth0Domain = config.getAuth0TenantUrl();
   const audience = config.getDustApiAudience();
   const verify = `https://${auth0Domain}/.well-known/jwks.json`;
   const issuer = `https://${auth0Domain}/`;
+
+  // TODO(thomas): Remove this when all clients are updated.
+  const legacyAudience = `https://${auth0Domain}/api/v2/`;
+  const decoded = jwt.decode(accessToken, { json: true });
+  const useLegacy = decoded && decoded.aud === legacyAudience;
 
   return new Promise((resolve) => {
     jwt.verify(
@@ -100,7 +135,7 @@ export async function verifyAuth0Token(
       },
       {
         algorithms: ["RS256"],
-        audience: audience,
+        audience: useLegacy ? legacyAudience : audience,
         issuer: issuer,
       },
       (err, decoded) => {
@@ -117,12 +152,13 @@ export async function verifyAuth0Token(
           return resolve(new Err(Error("Invalid token payload.")));
         }
 
-        if (requiredScopes) {
+        if (requiredScope && !useLegacy) {
           const availableScopes = decoded.scope.split(" ");
-          if (
-            requiredScopes.some((scope) => !availableScopes.includes(scope))
-          ) {
-            logger.error({ requiredScopes }, "Insufficient scopes.");
+          if (!availableScopes.includes(requiredScope)) {
+            logger.error(
+              { requiredScopes: requiredScope },
+              "Insufficient scopes."
+            );
             return resolve(new Err(Error("Insufficient scopes.")));
           }
         }

@@ -5,6 +5,7 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { MethodType, ScopeType } from "@app/lib/api/auth0";
 import {
   getRequiredScope,
   getUserFromAuth0Token,
@@ -51,7 +52,7 @@ export function withSessionAuthentication<T>(
           api_error: {
             type: "not_authenticated",
             message:
-              "The user does not have an active session or is not authenticated",
+              "The user does not have an active session or is not authenticated.",
           },
         });
       }
@@ -168,7 +169,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
   opts: {
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: U;
-    requiredScopes?: Record<string, string>;
+    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
   } = {}
 ) {
   const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
@@ -344,7 +345,7 @@ export function withAuth0TokenAuthentication<T>(
     user: UserTypeWithWorkspaces
   ) => Promise<void> | void,
   opts: {
-    requiredScopes?: Record<string, string>;
+    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
   } = {}
 ) {
   return withLogging(
@@ -393,7 +394,7 @@ export function withAuth0TokenAuthentication<T>(
       }
 
       const user = await getUserFromAuth0Token(decoded.value);
-
+      // TODO(thomas): user not found : means the user is not registered, display a message to the user and redirects to site
       if (!user) {
         return apiError(req, res, {
           status_code: 401,
