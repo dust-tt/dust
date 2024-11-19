@@ -273,23 +273,14 @@ export async function processTranscriptActivity(
           auth
         );
 
-      if (!defaultGongTranscriptsStorageConfiguration) {
-        localLogger.error(
-          {},
-          "[processTranscriptActivity] No default transcript configuration for Gong storage enabled. Stopping."
-        );
-        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-        return;
-      }
-
       gongFullStorageDataSourceViewId =
-        defaultGongTranscriptsStorageConfiguration.dataSourceViewId;
+        defaultGongTranscriptsStorageConfiguration?.dataSourceViewId;
     }
   }
 
   // Decide to store transcript or not (user might not have participated)
   const storeTranscript =
-    transcriptsConfiguration.dataSourceViewId ||
+    (transcriptsConfiguration.dataSourceViewId && userParticipated) ||
     (gongFullStorageFF && gongFullStorageDataSourceViewId);
 
   // Decide to process transcript or not (user needs to have participated)
