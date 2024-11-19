@@ -14,6 +14,7 @@ import { uniq } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
@@ -22,7 +23,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 
 type SpaceCategoryInfo = {
   usage: DataSourceWithAgentsUsageType;
