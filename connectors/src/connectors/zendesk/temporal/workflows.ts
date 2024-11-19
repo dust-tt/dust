@@ -9,7 +9,6 @@ import {
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
 import type * as gc_activities from "@connectors/connectors/zendesk/temporal/gc_activities";
-import { garbageCollectArticleBatchActivity } from "@connectors/connectors/zendesk/temporal/gc_activities";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
@@ -28,10 +27,12 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
-const { deleteTicketBatchActivity, getNextOldTicketBatchActivity } =
-  proxyActivities<typeof gc_activities>({
-    startToCloseTimeout: "5 minutes",
-  });
+const {
+  garbageCollectTicketBatchActivity,
+  garbageCollectArticleBatchActivity,
+} = proxyActivities<typeof gc_activities>({
+  startToCloseTimeout: "2 minutes",
+});
 
 const {
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
@@ -405,11 +406,9 @@ export async function zendeskGarbageCollectionWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  // deleting the outdated tickets
-  let ticketIds = await getNextOldTicketBatchActivity(connectorId);
-  while (ticketIds.length > 0) {
-    await deleteTicketBatchActivity(connectorId, ticketIds);
-    ticketIds = await getNextOldTicketBatchActivity(connectorId);
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = await garbageCollectTicketBatchActivity(connectorId);
   }
 
   // deleting the articles that cannot be found anymore in the Zendesk API
@@ -417,7 +416,6 @@ export async function zendeskGarbageCollectionWorkflow({
     await getZendeskHelpCenterReadAllowedBrandIdsActivity(connectorId);
   for (const brandId of brandIds) {
     let cursor = null;
-
     do {
       cursor = await garbageCollectArticleBatchActivity({
         connectorId,

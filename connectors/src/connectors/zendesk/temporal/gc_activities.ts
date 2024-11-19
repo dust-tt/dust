@@ -18,12 +18,12 @@ import {
 } from "@connectors/resources/zendesk_resources";
 
 /**
- * This activity is responsible for fetching a batch of tickets
+ * This activity is responsible for fetching and cleaning up a batch of tickets
  * that are older than the retention period and ready to be deleted.
  */
-export async function getNextOldTicketBatchActivity(
+export async function garbageCollectTicketBatchActivity(
   connectorId: ModelId
-): Promise<number[]> {
+): Promise<boolean> {
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
@@ -31,22 +31,18 @@ export async function getNextOldTicketBatchActivity(
       `[Zendesk] Configuration not found, connectorId: ${connectorId}`
     );
   }
-  return ZendeskTicketResource.fetchOutdatedTicketIds({
+  const ticketIds = await ZendeskTicketResource.fetchOutdatedTicketIds({
     connectorId,
     expirationDate: new Date(
       Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
     ),
     batchSize: ZENDESK_BATCH_SIZE,
   });
-}
 
-/**
- * This activity is responsible for deleting a batch of tickets given their IDs.
- */
-export async function deleteTicketBatchActivity(
-  connectorId: ModelId,
-  ticketIds: number[]
-): Promise<void> {
+  if (ticketIds.length === 0) {
+    return false;
+  }
+
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -65,6 +61,8 @@ export async function deleteTicketBatchActivity(
       deleteTicket({ connectorId, ticketId, dataSourceConfig, loggerArgs }),
     { concurrency: 10 }
   );
+
+  return ticketIds.length === ZENDESK_BATCH_SIZE; // true iff there are more tickets to process
 }
 
 /**
@@ -79,18 +77,6 @@ export async function garbageCollectArticleBatchActivity({
   brandId: number;
   cursor: number | null;
 }): Promise<number | null> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
   const { articleIds, cursor: nextCursor } =
     await ZendeskArticleResource.fetchBatchByBrandId({
       connectorId,
@@ -102,6 +88,18 @@ export async function garbageCollectArticleBatchActivity({
   if (articleIds.length === 0) {
     return null;
   }
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
 
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connector.connectionId)
