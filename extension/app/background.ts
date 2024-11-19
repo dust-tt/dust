@@ -2,9 +2,9 @@ import type { PendingUpdate } from "@extension/lib/storage";
 import { savePendingUpdate } from "@extension/lib/storage";
 
 import {
-  AUTH0_AUDIENCE,
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
+  DUST_API_AUDIENCE,
 } from "./src/lib/config";
 import { extractPage } from "./src/lib/extraction";
 import type {
@@ -266,10 +266,10 @@ const authenticate = async (
   const options = {
     client_id: AUTH0_CLIENT_ID,
     response_type: "code",
-    // "offline_access" to receive refresh tokens to maintain user sessions without re-prompting for authentication.
-    scope: "openid offline_access",
+    scope:
+      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
     redirect_uri: redirectUrl,
-    audience: AUTH0_AUDIENCE,
+    audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
   };

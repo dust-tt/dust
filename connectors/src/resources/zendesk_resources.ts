@@ -176,11 +176,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     }
   }
 
-  async revokeAllPermissions(): Promise<void> {
-    await this.revokeHelpCenterPermissions();
-    await this.revokeTicketsPermissions();
-  }
-
   async revokeHelpCenterPermissions(): Promise<void> {
     if (this.helpCenterPermission === "read") {
       await this.update({ helpCenterPermission: "none" });
@@ -501,6 +496,12 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     );
   }
 
+  async grantPermissions(): Promise<void> {
+    if (this.permission === "none") {
+      await this.update({ permission: "read" });
+    }
+  }
+
   async revokePermissions(): Promise<void> {
     if (this.permission === "read") {
       await this.update({ permission: "none" });
@@ -818,6 +819,32 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       getHelpCenterInternalId(connectorId, this.brandId),
       getBrandInternalId(connectorId, this.brandId),
     ];
+  }
+
+  /**
+   * Fetches a batch of article IDs.
+   */
+  static async fetchBatchByBrandId({
+    connectorId,
+    brandId,
+    batchSize,
+    cursor,
+  }: {
+    connectorId: number;
+    brandId: number;
+    batchSize: number;
+    cursor: number | null;
+  }): Promise<{ articleIds: number[]; cursor: number | null }> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, brandId },
+      order: [["id", "ASC"]],
+      ...(cursor && { where: { id: { [Op.gt]: cursor } } }),
+      limit: batchSize,
+    });
+    return {
+      articleIds: articles.map((article) => article.get().articleId),
+      cursor: articles[batchSize - 1]?.get().id || null, // returning the last ID if it's a complete batch
+    };
   }
 
   static async fetchByArticleId({

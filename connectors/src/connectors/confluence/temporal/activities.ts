@@ -17,6 +17,7 @@ import {
   getConfluencePageParentIds,
   getSpaceHierarchy,
 } from "@connectors/connectors/confluence/lib/hierarchy";
+import { makeConfluenceInternalPageId } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
@@ -339,7 +340,7 @@ export async function confluenceCheckAndUpsertPageActivity({
       documentUrl,
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [],
+      parents: [makeConfluenceInternalPageId(documentId)],
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {

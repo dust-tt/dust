@@ -112,8 +112,13 @@ async function main() {
   await FileModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
   await GroupSpaceModel.sync({ alter: true });
+
+  await Conversation.sync({ alter: true });
+  await ConversationParticipant.sync({ alter: true });
+
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
+
   await RunModel.sync({ alter: true });
   await RunUsageModel.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
@@ -138,8 +143,6 @@ async function main() {
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
-  await Conversation.sync({ alter: true });
-  await ConversationParticipant.sync({ alter: true });
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
   await ContentFragmentModel.sync({ alter: true });

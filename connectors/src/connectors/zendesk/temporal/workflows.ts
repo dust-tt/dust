@@ -8,6 +8,7 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
+import type * as gc_activities from "@connectors/connectors/zendesk/temporal/gc_activities";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
@@ -22,9 +23,15 @@ const {
   syncZendeskTicketBatchActivity,
   syncZendeskTicketUpdateBatchActivity,
   syncZendeskArticleUpdateBatchActivity,
-  deleteTicketBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
+});
+
+const {
+  garbageCollectTicketBatchActivity,
+  garbageCollectArticleBatchActivity,
+} = proxyActivities<typeof gc_activities>({
+  startToCloseTimeout: "2 minutes",
 });
 
 const {
@@ -32,8 +39,8 @@ const {
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskTicketsAllowedBrandIdsActivity,
+  setZendeskTimestampCursorActivity,
   getZendeskTimestampCursorActivity,
-  getNextOldTicketBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -49,7 +56,7 @@ export async function zendeskSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  await saveZendeskConnectorStartSync({ connectorId });
+  await saveZendeskConnectorStartSync(connectorId);
 
   const brandIds = new Set<number>();
   const brandSignals: ZendeskUpdateSignal[] = [];
@@ -205,9 +212,7 @@ export async function zendeskSyncWorkflow({
     }
   }
 
-  await cleanupOldZendeskTickets(connectorId);
-
-  await saveZendeskConnectorSuccessSync({ connectorId, currentSyncDateMs });
+  await saveZendeskConnectorSuccessSync(connectorId, currentSyncDateMs);
 }
 
 /**
@@ -254,6 +259,8 @@ export async function zendeskIncrementalSyncWorkflow({
       })
     );
   }
+
+  await setZendeskTimestampCursorActivity({ connectorId, currentSyncDateMs });
 }
 
 /**
@@ -369,13 +376,13 @@ export async function zendeskCategorySyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const wasCategoryUpdated = await syncZendeskCategoryActivity({
+  const shouldSyncArticles = await syncZendeskCategoryActivity({
     connectorId,
     categoryId,
     currentSyncDateMs,
     brandId,
   });
-  if (wasCategoryUpdated) {
+  if (shouldSyncArticles) {
     await runZendeskActivityWithPagination((cursor) =>
       syncZendeskArticleBatchActivity({
         connectorId,
@@ -385,6 +392,40 @@ export async function zendeskCategorySyncWorkflow({
         cursor,
       })
     );
+  }
+}
+
+/**
+ * Garbage collection workflow for Zendesk.
+ *
+ * This workflow is responsible for deleting the following (in this order):
+ * - Outdated tickets.
+ * - Articles that cannot be found anymore in the Zendesk API.
+ * - Categories that have no article anymore.
+ * - Brands that have no permission on tickets and Help Center anymore.
+ */
+export async function zendeskGarbageCollectionWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = await garbageCollectTicketBatchActivity(connectorId);
+  }
+
+  // deleting the articles that cannot be found anymore in the Zendesk API
+  const brandIds =
+    await getZendeskHelpCenterReadAllowedBrandIdsActivity(connectorId);
+  for (const brandId of brandIds) {
+    let cursor = null;
+    do {
+      cursor = await garbageCollectArticleBatchActivity({
+        connectorId,
+        brandId,
+        cursor,
+      });
+    } while (cursor !== null);
   }
 }
 
@@ -472,17 +513,5 @@ async function runZendeskActivityWithPagination(
     const result = await activity(cursor);
     hasMore = result.hasMore || false;
     cursor = result.afterCursor;
-  }
-}
-
-/**
- * Removes the outdated tickets.
- * The retention period is defined in the zendesk_configurations table (in number of days).
- */
-async function cleanupOldZendeskTickets(connectorId: ModelId) {
-  let ticketIds = await getNextOldTicketBatchActivity(connectorId);
-  while (ticketIds.length > 0) {
-    await deleteTicketBatchActivity(connectorId, ticketIds);
-    ticketIds = await getNextOldTicketBatchActivity(connectorId);
   }
 }

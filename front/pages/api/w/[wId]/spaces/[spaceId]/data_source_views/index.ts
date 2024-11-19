@@ -199,7 +199,7 @@ async function handler(
 
       const { dataSourceId, parentsIn } = bodyValidation.right;
 
-      // Create a new view
+      // Create a new view.
       const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
       if (!dataSource) {
         return apiError(req, res, {

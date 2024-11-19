@@ -11,6 +11,9 @@ const config = {
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },
+  getDustApiAudience: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_API_AUDIENCE");
+  },
   getAuth0M2MClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_M2M_CLIENT_ID");
   },

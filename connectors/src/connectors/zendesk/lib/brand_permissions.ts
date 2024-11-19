@@ -1,14 +1,21 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { allowSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
-import { allowSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
+import {
+  allowSyncZendeskHelpCenter,
+  forbidSyncZendeskHelpCenter,
+} from "@connectors/connectors/zendesk/lib/help_center_permissions";
+import {
+  allowSyncZendeskTickets,
+  forbidSyncZendeskTickets,
+} from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 /**
- * Mark a brand as permission "read" and all children (help center and tickets) if specified.
+ * Mark a brand as permission "read", with all its children (help center and tickets + children).
+ * Creates the brand by fetching it from Zendesk if it does not exist in db.
  */
 export async function allowSyncZendeskBrand({
   connectorId,
@@ -73,9 +80,9 @@ export async function allowSyncZendeskBrand({
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections and articles).
+ * Mark a brand as permission "none", with all its children (help center and tickets + children).
  */
-export async function revokeSyncZendeskBrand({
+export async function forbidSyncZendeskBrand({
   connectorId,
   brandId,
 }: {
@@ -89,11 +96,14 @@ export async function revokeSyncZendeskBrand({
   if (!brand) {
     logger.error(
       { brandId },
-      "[Zendesk] Brand not found, could not revoke sync."
+      "[Zendesk] Brand not found, could not disable sync."
     );
     return null;
   }
 
-  await brand.revokeAllPermissions();
+  // revoke permissions for the two children resources (help center and tickets + respective children)
+  await forbidSyncZendeskHelpCenter({ connectorId, brandId });
+  await forbidSyncZendeskTickets({ connectorId, brandId });
+
   return brand;
 }

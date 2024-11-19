@@ -18,6 +18,7 @@ import {
   fetchZendeskArticlesInCategory,
   fetchZendeskTicketsInBrand,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
@@ -34,16 +35,10 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const ZENDESK_BATCH_SIZE = 100;
-
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
  */
-export async function saveZendeskConnectorStartSync({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}) {
+export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -57,31 +52,26 @@ export async function saveZendeskConnectorStartSync({
 /**
  * This activity is responsible for updating the sync status of the connector to "success".
  */
-export async function saveZendeskConnectorSuccessSync({
-  connectorId,
-  currentSyncDateMs,
-}: {
-  connectorId: ModelId;
-  currentSyncDateMs: number;
-}) {
+export async function saveZendeskConnectorSuccessSync(
+  connectorId: ModelId,
+  currentSyncDateMs: number
+) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
+  // initializing the timestamp cursor if it does not exist (first sync, not incremental)
   const cursors = await ZendeskTimestampCursors.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    // can be missing if the first sync was not within an incremental workflow
     await ZendeskTimestampCursors.create({
       connectorId,
-      timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
-    });
-  } else {
-    await cursors.update({
-      timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
+      timestampCursor: new Date(currentSyncDateMs),
     });
   }
+
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
     throw res.error;
@@ -187,57 +177,7 @@ export async function syncZendeskBrandActivity({
 }
 
 /**
- * This activity is responsible for fetching a batch of tickets
- * that are older than the retention period and ready to be deleted.
- */
-export async function getNextOldTicketBatchActivity(
-  connectorId: ModelId
-): Promise<number[]> {
-  const configuration =
-    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
-  if (!configuration) {
-    throw new Error(
-      `[Zendesk] Configuration not found, connectorId: ${connectorId}`
-    );
-  }
-  return ZendeskTicketResource.fetchOutdatedTicketIds({
-    connectorId,
-    expirationDate: new Date(
-      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
-    ),
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
-}
-
-/**
- * This activity is responsible for deleting a batch of tickets given their IDs.
- */
-export async function deleteTicketBatchActivity(
-  connectorId: ModelId,
-  ticketIds: number[]
-): Promise<void> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  await concurrentExecutor(
-    ticketIds,
-    (ticketId) =>
-      deleteTicket({ connectorId, ticketId, dataSourceConfig, loggerArgs }),
-    { concurrency: 10 }
-  );
-}
-
-/**
- * Retrieves the timestamp cursor, which is the start date of the last successful sync.
+ * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
  */
 export async function getZendeskTimestampCursorActivity(
   connectorId: ModelId
@@ -256,6 +196,27 @@ export async function getZendeskTimestampCursorActivity(
   return cursors.timestampCursor
     ? new Date(Math.min(cursors.timestampCursor.getTime(), minAgo))
     : new Date(minAgo);
+}
+
+/**
+ * Sets the timestamp cursor to the start date of the last successful incremental sync.
+ */
+export async function setZendeskTimestampCursorActivity({
+  connectorId,
+  currentSyncDateMs,
+}: {
+  connectorId: ModelId;
+  currentSyncDateMs: number;
+}) {
+  const cursors = await ZendeskTimestampCursors.findOne({
+    where: { connectorId },
+  });
+  if (!cursors) {
+    throw new Error("[Zendesk] Timestamp cursor not found.");
+  }
+  await cursors.update({
+    timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
+  });
 }
 
 /**

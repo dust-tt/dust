@@ -62,7 +62,7 @@ async function upsertWorksheetInDb(
   });
 }
 
-async function upsertTable(
+async function upsertMSTable(
   connector: ConnectorResource,
   internalId: string,
   spreadsheet: microsoftgraph.DriveItem,
@@ -187,7 +187,7 @@ async function processSheet({
     ];
 
     try {
-      await upsertTable(
+      await upsertMSTable(
         connector,
         worksheetInternalId,
         spreadsheet,

@@ -108,4 +108,7 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, { isStreaming: true });
+export default withPublicAPIAuthentication(handler, {
+  isStreaming: true,
+  requiredScopes: { GET: "read:conversation" },
+});

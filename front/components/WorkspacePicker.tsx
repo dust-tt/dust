@@ -2,8 +2,10 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  Label,
 } from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
@@ -23,7 +25,7 @@ export default function WorkspacePicker({
 }: WorkspacePickerProps) {
   return (
     <div className="flex flex-row items-center gap-1 px-3 py-2">
-      <p className="text-xs text-muted-foreground">Workspace:</p>
+      <Label className="text-xs text-muted-foreground">Workspace:</Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -32,17 +34,20 @@ export default function WorkspacePicker({
             isSelect
           />
         </DropdownMenuTrigger>
-
         <DropdownMenuContent>
-          {user.workspaces.map((w) => {
-            return (
-              <DropdownMenuItem
-                key={w.sId}
-                onClick={() => void onWorkspaceUpdate(w)}
-                label={w.name}
-              />
-            );
-          })}
+          <DropdownMenuRadioGroup value={workspace.name}>
+            {user.workspaces.map((w) => {
+              return (
+                <DropdownMenuRadioItem
+                  key={w.sId}
+                  onClick={() => void onWorkspaceUpdate(w)}
+                  value={w.name}
+                >
+                  {w.name}
+                </DropdownMenuRadioItem>
+              );
+            })}
+          </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

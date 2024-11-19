@@ -1,0 +1,103 @@
+name: 'Slack Notification'
+description: 'Send deployment notifications to Slack'
+
+inputs:
+  step:
+    description: 'Deployment step (start/build_success/failure)'
+    required: true
+  component:
+    description: 'Component being deployed'
+    required: true
+  image_tag:
+    description: 'Image tag being deployed'
+    required: true
+  channel:
+    description: 'Slack channel'
+    required: true
+  thread_ts:
+    description: 'Slack thread timestamp'
+    required: false
+  slack_token:
+    description: 'Slack bot token'
+    required: true
+
+outputs:
+  thread_ts:
+    description: "Slack thread timestamp from the initial message"
+    value: ${{ steps.start_notification.outputs.ts }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get author email
+      if: inputs.step == 'start'
+      id: author
+      shell: bash
+      run: |
+        # Get last commit author name and email
+        AUTHOR_NAME=$(git log -1 --format='%an')
+        AUTHOR_EMAIL=$(git log -1 --format='%ae')
+
+        if ! CANONICAL=$(git check-mailmap "$AUTHOR_NAME <$AUTHOR_EMAIL>" 2>/dev/null); then
+          echo "email=$AUTHOR_EMAIL" >> $GITHUB_OUTPUT
+          echo "name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Extract email and name from canonical form
+        CANONICAL_EMAIL=$(echo "$CANONICAL" | grep -o '<.*>' | tr -d '<>')
+        CANONICAL_NAME=$(echo "$CANONICAL" | sed 's/ <.*>//')
+
+        echo "email=$CANONICAL_EMAIL" >> $GITHUB_OUTPUT
+        echo "name=$CANONICAL_NAME" >> $GITHUB_OUTPUT
+
+    - name: Lookup by email
+      if: inputs.step == 'start'
+      id: email
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        errors: true
+        method: users.lookupByEmail
+        token: ${{ inputs.slack_token }}
+        payload: |
+          email: "${{ steps.author.outputs.email }}"
+
+    - name: Get Slack user ID
+      if: inputs.step == 'start' && steps.email.outputs.ok == 'true'
+      id: slack_user
+      shell: bash
+      run: |
+        RESPONSE='${{ steps.email.outputs.response }}'
+        if ! SLACK_ID=$(echo "$RESPONSE" | jq -r '.user.id'); then
+          echo "Failed to extract Slack user ID" >&2
+          exit 0
+        fi
+        echo "id=$SLACK_ID" >> $GITHUB_OUTPUT
+
+    - name: Notify Build And Deploy Start
+      if: inputs.step == 'start'
+      id: start_notification
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          text: |
+            🚀 Starting deployment of ${{ inputs.component }} `${{ inputs.image_tag }}`
+            • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
+            • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
+            • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
+
+    - name: Notify Deploy Failure
+      if: inputs.step == 'failure'
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          thread_ts: "${{ inputs.thread_ts }}"
+          text: |
+            ❌ Build pipeline failed
+            • Check logs: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>

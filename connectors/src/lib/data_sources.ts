@@ -557,7 +557,7 @@ export function sectionLength(
   );
 }
 
-export async function upsertTable({
+export async function upsertTableFromConnectors({
   dataSourceConfig,
   tableId,
   tableName,

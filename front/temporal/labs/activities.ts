@@ -511,10 +511,10 @@ export async function processTranscriptActivity(
     <a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}" 
       style="display: inline-block; 
               padding: 10px 20px; 
-              background-color: #007bff; 
+              background-color: #000000; 
               color: #ffffff; 
               text-decoration: none; 
-              border-radius: 5px; 
+              border-radius: 0.75rem; 
               font-weight: bold;">
       Open this conversation in Dust
     </a>
