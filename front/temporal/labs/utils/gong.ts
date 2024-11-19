@@ -141,7 +141,10 @@ export async function retrieveGongTranscriptContent(
 } | null> {
   if (!transcriptsConfiguration || !transcriptsConfiguration.connectionId) {
     localLogger.error(
-      {},
+      {
+        fileId,
+        transcriptsConfigurationId: transcriptsConfiguration.id,
+      },
       "[processTranscriptActivity] No connectionId found. Skipping."
     );
     throw new Error(
@@ -174,7 +177,10 @@ export async function retrieveGongTranscriptContent(
 
     if (!gongUsers.ok) {
       localLogger.error(
-        {},
+        {
+          fileId,
+          transcriptsConfigurationId: transcriptsConfiguration.id,
+        },
         "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
       );
       return null;
@@ -183,8 +189,11 @@ export async function retrieveGongTranscriptContent(
     const gongUsersData = await gongUsers.json();
 
     if (!gongUsersData || gongUsersData.length === 0) {
-      localLogger.warn(
-        {},
+      localLogger.error(
+        {
+          fileId,
+          transcriptsConfigurationId: transcriptsConfiguration.id,
+        },
         "[retrieveGongTranscripts] No Gong users found. Skipping."
       );
       return null;
@@ -218,7 +227,10 @@ export async function retrieveGongTranscriptContent(
 
   if (!call.ok) {
     localLogger.error(
-      {},
+      {
+        fileId,
+        transcriptsConfigurationId: transcriptsConfiguration.id,
+      },
       "[processTranscriptActivity] Error fetching call from Gong. Skipping."
     );
     throw new Error("Error fetching call from Gong. Skipping.");
@@ -235,18 +247,11 @@ export async function retrieveGongTranscriptContent(
 
   if (!callData) {
     localLogger.error(
-      {},
+      {
+        fileId,
+        transcriptsConfigurationId: transcriptsConfiguration.id,
+      },
       "[processTranscriptActivity] Call data not found from Gong. Skipping."
-    );
-    return null;
-  }
-
-  const gongUser = await findGongUser();
-
-  if (!gongUser) {
-    localLogger.warn(
-      {},
-      "[retrieveGongTranscripts] User not found in Gong. Skipping."
     );
     return null;
   }
@@ -261,10 +266,9 @@ export async function retrieveGongTranscriptContent(
     }
   }
 
-  let userParticipated = true;
-  if (!participantsUsers[gongUser.id]) {
-    userParticipated = false;
-  }
+  const gongUser = await findGongUser();
+  const userParticipated =
+    gongUser && participantsUsers[gongUser.id] ? true : false;
 
   const transcript = await fetch(`https://api.gong.io/v2/calls/transcript`, {
     method: "POST",
@@ -281,7 +285,9 @@ export async function retrieveGongTranscriptContent(
 
   if (!transcript.ok) {
     localLogger.error(
-      {},
+      {
+        fileId,
+      },
       "[processTranscriptActivity] Error fetching transcript from Gong. Skipping."
     );
     throw new Error("Error fetching transcript from Gong. Skipping.");
