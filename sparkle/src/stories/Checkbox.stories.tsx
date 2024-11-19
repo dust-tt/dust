@@ -1,72 +1,102 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+
+import { CHECKBOX_SIZES } from "@sparkle/components/Checkbox";
 
 import {
   Checkbox,
+  type CheckboxProps,
   CheckboxWithText,
   CheckBoxWithTextAndDescription,
 } from "../index_with_tw_base";
 
+const CHECKED_STATES = {
+  unchecked: false,
+  checked: true,
+  partial: "partial",
+} as const;
+
+type ExtendedCheckboxProps = CheckboxProps & {
+  text?: string;
+  description?: string;
+};
+
 const meta = {
   title: "Primitives/Checkbox",
-  component: Checkbox,
-} satisfies Meta<typeof Checkbox>;
+  // We need to cast here as the component expects stricter props
+  component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
+  parameters: {
+    layout: "centered",
+  },
+  argTypes: {
+    size: {
+      description: "The size of the checkbox",
+      options: CHECKBOX_SIZES,
+      control: { type: "select" },
+      table: {
+        defaultValue: { summary: "sm" },
+      },
+    },
+    checked: {
+      description: "The checked state of the checkbox",
+      options: Object.keys(CHECKED_STATES),
+      mapping: CHECKED_STATES,
+      control: { type: "select" },
+      table: {
+        type: { summary: "boolean | 'partial'" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    disabled: {
+      description: "Whether the checkbox is disabled",
+      control: "boolean",
+      table: {
+        defaultValue: { summary: false },
+      },
+    },
+    className: {
+      description: "Additional CSS classes to apply",
+      control: "text",
+    },
+    text: {
+      description: "Optional text label to display next to the checkbox",
+      control: "text",
+    },
+    description: {
+      description:
+        "Optional description text (only shown when text is provided)",
+      control: "text",
+      if: { arg: "text" },
+    },
+    onChange: {
+      description: "Callback when checkbox state changes",
+      action: "changed",
+    },
+  },
+} satisfies Meta<ExtendedCheckboxProps>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-const handleChange = () => {
-  // This function intentionally left blank
-};
-
-export const CheckBoxSizesExample = () => {
-  return (
-    <div className="s-flex s-flex-col s-gap-10">
-      <div className="s-flex s-gap-10">
-        SM
-        <Checkbox onChange={handleChange} />
-        <Checkbox disabled onChange={handleChange} />
-        <Checkbox checked onChange={handleChange} />
-        <Checkbox checked disabled onChange={handleChange} />
-        <Checkbox checked="partial" onChange={handleChange} />
-        <Checkbox checked="partial" disabled onChange={handleChange} />
-      </div>
-      <div className="s-flex s-gap-10">
-        XS
-        <Checkbox size="xs" onChange={handleChange} />
-        <Checkbox size="xs" disabled onChange={handleChange} />
-        <Checkbox size="xs" checked onChange={handleChange} />
-        <Checkbox size="xs" checked disabled onChange={handleChange} />
-        <Checkbox size="xs" checked="partial" onChange={handleChange} />
-        <Checkbox
-          size="xs"
-          checked="partial"
-          disabled
-          onChange={handleChange}
+export const Default: Story = {
+  args: {
+    size: "sm",
+    checked: false,
+    disabled: false,
+  },
+  render: ({ text, description, ...args }) => {
+    if (text && description) {
+      return (
+        <CheckBoxWithTextAndDescription
+          text={text}
+          description={description}
+          {...args}
         />
-      </div>
-    </div>
-  );
-};
-
-export const CheckBoxWithTextExample = () => {
-  return (
-    <div className="s-flex s-gap-10">
-      <CheckboxWithText text="Google Drive" />
-    </div>
-  );
-};
-
-export const CheckBoxWithTextAndDescriptionExample = () => {
-  return (
-    <div className="s-flex s-flex-col s-gap-3">
-      <CheckBoxWithTextAndDescription
-        text="Google Drive"
-        description="This is a nice Google Drive description."
-      />
-      <CheckBoxWithTextAndDescription
-        text="Microsoft"
-        description="This is a nice Microsoft description."
-      />
-    </div>
-  );
+      );
+    }
+    if (text) {
+      return <CheckboxWithText text={text} {...args} />;
+    }
+    return <Checkbox {...args} />;
+  },
 };
