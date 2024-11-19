@@ -515,15 +515,3 @@ async function runZendeskActivityWithPagination(
     cursor = result.afterCursor;
   }
 }
-
-/**
- * Removes the outdated tickets.
- * The retention period is defined in the zendesk_configurations table (in number of days).
- */
-async function cleanupOldZendeskTickets(connectorId: ModelId) {
-  let ticketIds = await getNextOldTicketBatchActivity(connectorId);
-  while (ticketIds.length > 0) {
-    await deleteTicketBatchActivity(connectorId, ticketIds);
-    ticketIds = await getNextOldTicketBatchActivity(connectorId);
-  }
-}
