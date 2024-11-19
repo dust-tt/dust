@@ -73,7 +73,7 @@ export async function allowSyncZendeskBrand({
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections and articles).
+ * Mark a brand as permission "none" (help center and tickets).
  */
 export async function revokeSyncZendeskBrand({
   connectorId,
@@ -94,6 +94,8 @@ export async function revokeSyncZendeskBrand({
     return null;
   }
 
-  await brand.revokeAllPermissions();
+  await brand.revokeHelpCenterPermissions();
+  await brand.revokeTicketsPermissions();
+
   return brand;
 }
