@@ -2,7 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 
 import {
   deleteBrand,
-  deleteCategoryChildren,
+  deleteCategory,
 } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
@@ -269,8 +269,7 @@ export async function syncZendeskCategoryActivity({
 
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
-    await deleteCategoryChildren({ connectorId, dataSourceConfig, categoryId });
-    await categoryInDb.delete();
+    await deleteCategory({ connectorId, dataSourceConfig, categoryId });
     return false;
   }
 
@@ -286,8 +285,7 @@ export async function syncZendeskCategoryActivity({
   const { result: fetchedCategory } =
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
-    await deleteCategoryChildren({ connectorId, categoryId, dataSourceConfig });
-    await categoryInDb.delete();
+    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
     return false;
   }
 

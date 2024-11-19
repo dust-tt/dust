@@ -466,6 +466,16 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
+  static async deleteByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<void> {
+    await ZendeskCategory.destroy({ where: { connectorId, categoryId } });
+  }
+
   static async deleteByBrandId({
     connectorId,
     brandId,

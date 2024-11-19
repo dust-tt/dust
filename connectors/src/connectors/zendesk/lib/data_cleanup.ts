@@ -96,7 +96,7 @@ export async function deleteBrandHelpCenter({
 /**
  * Deletes all the data stored in the db and in the data source relative to a category (articles).
  */
-export async function deleteCategoryChildren({
+export async function deleteCategory({
   connectorId,
   categoryId,
   dataSourceConfig,
@@ -123,4 +123,6 @@ export async function deleteCategoryChildren({
     connectorId,
     categoryId,
   });
+  // deleting the category stored in the db
+  await ZendeskCategoryResource.deleteByCategoryId({ connectorId, categoryId });
 }
