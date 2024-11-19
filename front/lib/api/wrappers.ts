@@ -212,6 +212,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           getRequiredScope(req, opts.requiredScopes)
         );
         if (decoded.isErr()) {
+          logger.error(decoded.error, "Failed to verify Auth0 token");
           return apiError(req, res, {
             status_code: 401,
             api_error: {
@@ -383,6 +384,7 @@ export function withAuth0TokenAuthentication<T>(
         getRequiredScope(req, opts.requiredScopes)
       );
       if (decoded.isErr()) {
+        logger.error(decoded.error, "Failed to verify Auth0 token");
         return apiError(req, res, {
           status_code: 401,
           api_error: {
