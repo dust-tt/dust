@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import parseArgs from "minimist";
 
 import { runCommand } from "@connectors/lib/cli";
+import { getChannels } from "@connectors/connectors/slack/temporal/activities";
 
 const main = async () => {
   // set env var INTERACTIVE=1 to enable interactive mode
@@ -39,7 +40,12 @@ const main = async () => {
   return runCommand(adminCommand);
 };
 
-main()
+const test = async () => {
+  const res = await getChannels(1444, false);
+  console.log(res.length);
+};
+
+test()
   .then((res) => {
     console.log(JSON.stringify(res, null, 2));
     console.error("\x1b[32m%s\x1b[0m", `Done`);

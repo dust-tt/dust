@@ -96,6 +96,16 @@ async function _getChannelsUncached(
     });
     nbCalls++;
 
+    logger.info(
+      {
+        connectorId,
+        returnedChannels: c.channels?.length,
+        nbCalls,
+        inputCursor: nextCursor,
+      },
+      `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
+    );
+
     nextCursor = c?.response_metadata?.next_cursor;
 
     if (c.error) {
@@ -119,15 +129,6 @@ async function _getChannelsUncached(
       }
     }
   } while (nextCursor);
-
-  logger.info(
-    {
-      connectorId,
-      returnedChannels: allChannels.length,
-      nbCalls,
-    },
-    `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
-  );
 
   return allChannels;
 }
