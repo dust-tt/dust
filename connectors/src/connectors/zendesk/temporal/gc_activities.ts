@@ -3,6 +3,7 @@ import type { ModelId } from "@dust-tt/types";
 import {
   deleteBrandHelpCenter,
   deleteBrandTickets,
+  deleteCategory,
 } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -129,6 +130,34 @@ export async function garbageCollectArticleBatchActivity({
     { concurrency: 10 }
   );
   return nextCursor;
+}
+
+/**
+ * This activity is responsible for removing all the empty categories (category with no readable article).
+ */
+export async function garbageCollectCategoriesActivity(connectorId: number) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const categoryIds =
+    await ZendeskCategoryResource.fetchCategoryIdsForConnector(connectorId);
+
+  await concurrentExecutor(
+    categoryIds,
+    async (categoryId) => {
+      const articles = await ZendeskArticleResource.fetchByCategoryIdReadOnly({
+        connectorId,
+        categoryId,
+      });
+      if (articles.length === 0) {
+        await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+      }
+    },
+    { concurrency: 10 }
+  );
 }
 
 /**

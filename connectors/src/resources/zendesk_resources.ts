@@ -397,6 +397,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     };
   }
 
+  static async fetchCategoryIdsForConnector(
+    connectorId: number
+  ): Promise<number[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId },
+    });
+    return categories.map((category) => category.get().categoryId);
+  }
+
   static async fetchByCategoryId({
     connectorId,
     categoryId,

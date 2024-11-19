@@ -34,9 +34,10 @@ const {
   startToCloseTimeout: "2 minutes",
 });
 
-const { garbageCollectBrandActivity } = proxyActivities<typeof gc_activities>({
-  startToCloseTimeout: "5 minutes",
-});
+const { garbageCollectBrandActivity, garbageCollectCategoriesActivity } =
+  proxyActivities<typeof gc_activities>({
+    startToCloseTimeout: "5 minutes",
+  });
 
 const {
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
@@ -433,6 +434,9 @@ export async function zendeskGarbageCollectionWorkflow({
       });
     } while (cursor !== null);
   }
+
+  // deleting the categories that have no article anymore
+  await garbageCollectCategoriesActivity(connectorId);
 
   // cleaning the brands that have no permission on tickets and Help Center or are not on Zendesk anymore
   brandIds = await getZendeskBrandIdsActivity(connectorId);
