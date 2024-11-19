@@ -24,21 +24,15 @@ jobs:
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Initiate a deployment
+      - name: Notify Build And Deploy Start
         id: build_message
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: ./.github/actions/slack-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_CHANNEL_ID }}
-            text: |
-              🚀 Starting deployment of oauth `${{ steps.short_sha.outputs.short_sha }}`
-              • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.short_sha.outputs.short_sha }}>
-              • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
-              • Author: ${{ github.actor }}
-
-              Building image...
+          step: "start"
+          component: "oauth"
+          image_tag: ${{ steps.short_sha.outputs.short_sha }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
@@ -48,20 +42,11 @@ jobs:
       - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh --image-name=oauth --dockerfile-path=./oauth.Dockerfile --working-dir=./core/ --dust-client-facing-url=https://dust.tt
-
-      - name: Notify Deploy Start
-        id: deployment_message
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_CHANNEL_ID }}
-            thread_ts: "${{ steps.build_message.outputs.ts }}"
-            text: |
-              ✅ Image build completed
-              Starting deployment to regions: us-central1
+          ./k8s/cloud-build.sh \
+          --image-name=oauth \
+          --dockerfile-path=./oauth.Dockerfile \
+          --working-dir=./core/ \
+          --dust-client-facing-url=https://dust.tt
 
       - name: Generate a token
         id: generate-token
@@ -86,20 +71,18 @@ jobs:
                 regions: 'us-central1',
                 component: 'oauth',
                 image_tag: '${{ steps.short_sha.outputs.short_sha }}',
-                slack_thread_ts: "${{ steps.build_message.outputs.ts }}",
+                slack_thread_ts: "${{ steps.build_message.outputs.thread_ts }}",
                 slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}'
               }
             });
 
       - name: Notify Failure
         if: failure()
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: ./.github/actions/slack-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            channel: ${{ secrets.SLACK_CHANNEL_ID }}
-            thread_ts: "${{ steps.build_message.outputs.ts }}"
-            text: |
-              ❌ Build pipeline failed
-              Check the workflow logs: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>
+          step: "failure"
+          component: "oauth"
+          image_tag: ${{ steps.short_sha.outputs.short_sha }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ steps.build_message.outputs.thread_ts }}"
