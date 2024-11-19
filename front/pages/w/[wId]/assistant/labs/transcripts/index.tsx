@@ -1,7 +1,9 @@
 import {
   BookOpenIcon,
   Button,
+  ChatBubbleThoughtIcon,
   CloudArrowLeftRightIcon,
+  ContentMessage,
   Dialog,
   Page,
   SliderToggle,
@@ -29,7 +31,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -48,6 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSourcesViews: DataSourceViewType[];
+  hasDefaultStorageConfiguration: boolean;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -56,6 +59,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const dataSourcesViews = (
     await DataSourceViewResource.listByWorkspace(auth)
   ).map((dsv) => dsv.toJSON());
+
+  const defaultStorageConfiguration =
+    await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
+      auth
+    );
+  const hasDefaultStorageConfiguration = !!defaultStorageConfiguration?.id;
 
   if (!owner || !subscription || !user) {
     return {
@@ -75,6 +84,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       dataSourcesViews,
+      hasDefaultStorageConfiguration,
     },
   };
 });
@@ -83,6 +93,7 @@ export default function LabsTranscriptsIndex({
   owner,
   subscription,
   dataSourcesViews,
+  hasDefaultStorageConfiguration,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
   const {
@@ -651,42 +662,57 @@ export default function LabsTranscriptsIndex({
           (transcriptsConfigurationState.isGDriveConnected ||
             transcriptsConfigurationState.isGongConnected) && (
             <>
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader
-                  title="Store transcripts"
-                  description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
-                />
-                <Page.Layout direction="horizontal" gap="xl">
-                  <SliderToggle
-                    selected={storeInFolder}
-                    onClick={() => handleSetStoreInFolder(!storeInFolder)}
+              {(!hasDefaultStorageConfiguration ||
+                (hasDefaultStorageConfiguration &&
+                  transcriptsConfiguration.isDefaultFullStorage)) && (
+                <Page.Layout direction="vertical">
+                  <Page.SectionHeader
+                    title="Store transcripts"
+                    description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
                   />
-                  <Page.P>Enable transcripts storage</Page.P>
-                </Page.Layout>
-                <Page.Layout direction="horizontal">
-                  <div className="w-full">
-                    <div className="overflow-x-auto">
-                      {!isSpacesLoading &&
-                        storeInFolder &&
-                        selectionConfigurations && (
-                          <DataSourceViewsSelector
-                            useCase="transcriptsProcessing"
-                            dataSourceViews={dataSourcesViews}
-                            allowedSpaces={spaces}
-                            owner={owner}
-                            selectionConfigurations={selectionConfigurations}
-                            setSelectionConfigurations={
-                              handleSetSelectionConfigurations
-                            }
-                            viewType={"documents"}
-                            isRootSelectable={true}
-                          />
-                        )}
+                  {transcriptsConfiguration.isDefaultFullStorage && (
+                    <ContentMessage
+                      title="Default storage"
+                      variant="slate"
+                      size="lg"
+                      icon={ChatBubbleThoughtIcon}
+                    >
+                      Your configuration handles the storage of all your
+                      workspace's transcripts. Other users will not have the
+                      possibility to store their own transcripts.
+                    </ContentMessage>
+                  )}
+                  <Page.Layout direction="horizontal" gap="xl">
+                    <SliderToggle
+                      selected={storeInFolder}
+                      onClick={() => handleSetStoreInFolder(!storeInFolder)}
+                    />
+                    <Page.P>Enable transcripts storage</Page.P>
+                  </Page.Layout>
+                  <Page.Layout direction="horizontal">
+                    <div className="w-full">
+                      <div className="overflow-x-auto">
+                        {!isSpacesLoading &&
+                          storeInFolder &&
+                          selectionConfigurations && (
+                            <DataSourceViewsSelector
+                              useCase="transcriptsProcessing"
+                              dataSourceViews={dataSourcesViews}
+                              allowedSpaces={spaces}
+                              owner={owner}
+                              selectionConfigurations={selectionConfigurations}
+                              setSelectionConfigurations={
+                                handleSetSelectionConfigurations
+                              }
+                              viewType={"documents"}
+                              isRootSelectable={true}
+                            />
+                          )}
+                      </div>
                     </div>
-                  </div>
+                  </Page.Layout>
                 </Page.Layout>
-              </Page.Layout>
-
+              )}
               <Page.Layout direction="vertical">
                 <Page.SectionHeader
                   title="Process transcripts automatically"

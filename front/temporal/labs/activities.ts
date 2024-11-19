@@ -20,6 +20,7 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { default as apiConfig } from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -190,7 +191,7 @@ export async function processTranscriptActivity(
 
   let transcriptTitle = "";
   let transcriptContent = "";
-  let doNotProcess = false;
+  let userParticipated = true;
 
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
@@ -212,11 +213,17 @@ export async function processTranscriptActivity(
         localLogger
       );
       if (!gongResult) {
-        doNotProcess = true;
+        localLogger.info(
+          {
+            fileId,
+          },
+          "[processTranscriptActivity] No Gong result found. Stopping."
+        );
         break;
       }
       transcriptTitle = gongResult.transcriptTitle || "";
       transcriptContent = gongResult.transcriptContent || "";
+      userParticipated = gongResult.userParticipated;
       break;
 
     default:
@@ -227,34 +234,17 @@ export async function processTranscriptActivity(
     await transcriptsConfiguration.recordHistory({
       configurationId: transcriptsConfiguration.id,
       fileId,
-      fileName: doNotProcess ? "Not processed" : transcriptTitle,
+      fileName: transcriptTitle,
     });
-
-    if (doNotProcess) {
-      localLogger.info(
-        {},
-        "[processTranscriptActivity] Transcript not to be processed. Stopping."
-      );
-      return;
-    }
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       localLogger.info(
         {},
         "[processTranscriptActivity] History record already exists. Stopping."
       );
-      return; // Already processed.
+      return;
     }
     throw error;
-  }
-
-  // Short transcripts are not useful to process.
-  if (transcriptContent.length < 100) {
-    localLogger.info(
-      { contentLength: transcriptContent.length },
-      "[processTranscriptActivity] Transcript content too short or empty. Skipping."
-    );
-    return;
   }
 
   const owner = auth.workspace();
@@ -268,8 +258,59 @@ export async function processTranscriptActivity(
     return;
   }
 
-  // If storing transcripts is active
-  if (transcriptsConfiguration.dataSourceViewId) {
+  // labs_transcripts_gong_full_storage FF enables storing all Gong transcripts in a single datasource view
+  let gongFullStorageFF = false;
+  let gongFullStorageDataSourceViewId = null;
+  if (transcriptsConfiguration.provider === "gong") {
+    const featureFlags = await getFeatureFlags(owner);
+    gongFullStorageFF = featureFlags.includes(
+      "labs_transcripts_gong_full_storage"
+    );
+
+    if (gongFullStorageFF) {
+      const defaultGongTranscriptsStorageConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
+          auth
+        );
+
+      gongFullStorageDataSourceViewId =
+        defaultGongTranscriptsStorageConfiguration?.dataSourceViewId;
+    }
+  }
+
+  // Decide to store transcript or not (user might not have participated)
+  const shouldStoreTranscript =
+    (transcriptsConfiguration.dataSourceViewId && userParticipated) ||
+    (gongFullStorageFF && gongFullStorageDataSourceViewId);
+
+  // Decide to process transcript or not (user needs to have participated)
+  const shouldProcessTranscript =
+    transcriptsConfiguration.isActive && userParticipated;
+
+  if (shouldStoreTranscript) {
+    localLogger.info(
+      {
+        dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
+        gongFullStorageFF,
+        gongFullStorageDataSourceViewId,
+        transcriptsConfiguration,
+      },
+      "[processTranscriptActivity] Storing transcript to Datasource."
+    );
+
+    const dataSourceViewId =
+      gongFullStorageDataSourceViewId ||
+      transcriptsConfiguration.dataSourceViewId;
+
+    if (!dataSourceViewId) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] No datasource view id found. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
+    }
+
     localLogger.info(
       {
         datasourceViewId: transcriptsConfiguration.dataSourceViewId,
@@ -279,7 +320,7 @@ export async function processTranscriptActivity(
 
     const [datasourceView] = await DataSourceViewResource.fetchByModelIds(
       auth,
-      [transcriptsConfiguration.dataSourceViewId]
+      [dataSourceViewId]
     );
 
     if (!datasourceView) {
@@ -340,10 +381,12 @@ export async function processTranscriptActivity(
     );
   }
 
-  // Is transcripts processing is active
-  if (transcriptsConfiguration.isActive) {
+  if (shouldProcessTranscript) {
     localLogger.info(
-      {},
+      {
+        transcriptTitle,
+        transcriptContentLength: transcriptContent.length,
+      },
       "[processTranscriptActivity] Processing transcript content."
     );
 
