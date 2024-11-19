@@ -2,7 +2,6 @@ import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Label } from "@sparkle/components/Label";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
 
@@ -61,7 +60,7 @@ interface RadioGroupItemProps
     VariantProps<typeof radioStyles> {
   tooltipMessage?: string;
   tooltipAsChild?: boolean;
-  label?: string;
+  label?: React.ReactNode;
 }
 
 const RadioGroupItem = React.forwardRef<
@@ -102,15 +101,11 @@ const RadioGroupItem = React.forwardRef<
         ) : (
           item
         )}
-        {label && <Label>{label}</Label>}
+        {label}
       </div>
     );
 
-    return (
-      <div className={cn("s-group", size === "sm" ? "s-h-5" : "s-h-4")}>
-        {wrappedItem}
-      </div>
-    );
+    return <div className="s-group">{wrappedItem}</div>;
   }
 );
 

@@ -3,6 +3,7 @@ import React from "react";
 
 import {
   Button,
+  FolderIcon,
   Icon,
   Label,
   LockIcon,
@@ -24,21 +25,21 @@ export const RadioGroupExample = () => {
           <RadioGroupItem
             value="option-one"
             id="option-one"
-            label="Option One"
+            label={<Label htmlFor="option-one">Option One</Label>}
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-two"
             id="option-two"
-            label="Option Two"
+            label={<Label htmlFor="option-two">Option Two</Label>}
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-three"
             id="option-three"
-            label="Option Three"
+            label={<Label htmlFor="option-two">Option Three</Label>}
           />
         </div>
       </RadioGroup>
@@ -49,7 +50,7 @@ export const RadioGroupExample = () => {
             id="option-four"
             size="sm"
             tooltipMessage="This is a nice tooltip message"
-            label="Option One"
+            label={<Label htmlFor="option-one">Option One</Label>}
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
@@ -58,7 +59,7 @@ export const RadioGroupExample = () => {
             id="option-five"
             size="sm"
             disabled
-            label="Option Two"
+            label={<Label htmlFor="option-two">Option Two</Label>}
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
@@ -66,7 +67,7 @@ export const RadioGroupExample = () => {
             value="option-six"
             id="option-three"
             size="sm"
-            label="Option Three"
+            label={<Label htmlFor="option-three">Option Three</Label>}
           />
         </div>
       </RadioGroup>
@@ -93,10 +94,15 @@ export const RadioGroupWithChildrenExample = () => {
           <RadioGroupChoice
             value={choice.id}
             iconPosition="start"
-            label={choice.label}
+            label={
+              <div className="s-flex s-items-center s-gap-2">
+                <Icon visual={LockIcon} />
+                <Label>{choice.label}</Label>
+              </div>
+            }
           >
             <div className="s-flex s-items-center s-gap-2 s-border s-border-red-500 s-p-2">
-              <Icon visual={LockIcon} />
+              <Icon visual={FolderIcon} />
               <Label>{choice.label}</Label>
               <Button label="Click me" />
             </div>
