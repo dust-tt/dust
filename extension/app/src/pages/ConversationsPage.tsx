@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useConversations } from "@extension/components/conversation/useConversations";
 import moment from "moment";
+import type { NavigateFunction } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
 type GroupLabel =
@@ -111,7 +112,7 @@ const RenderConversations = ({
 }: {
   conversations: ConversationWithoutContentPublicType[];
   dateLabel: string;
-  navigate: (path: string) => void;
+  navigate: NavigateFunction;
 }) => {
   if (!conversations.length) {
     return null;
@@ -137,7 +138,11 @@ const RenderConversations = ({
           <NavigationListItem
             key={conversation.sId}
             label={getLabel(conversation)}
-            onClick={() => navigate(`/conversations/${conversation.sId}`)}
+            onClick={() => {
+              navigate(`/conversations/${conversation.sId}`, {
+                state: { origin: "conversations" },
+              });
+            }}
           />
         ))}
       </NavigationList>
