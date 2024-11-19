@@ -34,6 +34,7 @@ import {
   assertNever,
   ConversationError,
   getSmallWhitelistedModel,
+  isContentFragmentType,
   isProviderWhitelisted,
   md5,
   removeNulls,
@@ -1768,22 +1769,48 @@ export async function postNewContentFragment(
     return cfBlobRes;
   }
 
+  const supersededContentFragmentId = cf.supersededContentFragmentId;
+  // If the request is superseding an existing content fragment, we need to validate
+  // that it exists and is part of the conversation.
+  if (supersededContentFragmentId) {
+    const found = conversation.content.some((versions) => {
+      const latest = versions[versions.length - 1];
+      return (
+        isContentFragmentType(latest) &&
+        latest.contentFragmentId === supersededContentFragmentId
+      );
+    });
+
+    if (!found) {
+      return new Err(new Error("Superseded content fragment not found."));
+    }
+  }
+
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
-      const contentFragment = await ContentFragmentResource.makeNew(
-        {
-          ...cfBlobRes.value,
-          userId: auth.user()?.id,
-          userContextProfilePictureUrl: context?.profilePictureUrl,
-          userContextEmail: context?.email,
-          userContextFullName: context?.fullName,
-          userContextUsername: context?.username,
-          version: "latest",
-        },
-        t
-      );
+      const fullBlob = {
+        ...cfBlobRes.value,
+        userId: auth.user()?.id,
+        userContextProfilePictureUrl: context?.profilePictureUrl,
+        userContextEmail: context?.email,
+        userContextFullName: context?.fullName,
+        userContextUsername: context?.username,
+      };
+
+      const contentFragment = await (() => {
+        if (supersededContentFragmentId) {
+          return ContentFragmentResource.makeNewVersion(
+            supersededContentFragmentId,
+            fullBlob,
+            t
+          );
+        } else {
+          return ContentFragmentResource.makeNew(fullBlob, t);
+        }
+      })();
+
       const nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {

@@ -1581,6 +1581,8 @@ export const PublicContentFragmentWithContentSchema = z.object({
   contentType: SupportedContentFragmentTypeSchema,
   fileId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.nullable(),
+  // Undocumented for now -- allows to supersede an existing content fragment.
+  supersededContentFragmentId: z.string().optional().nullable(),
 });
 
 export type PublicContentFragmentWithContent = z.infer<
@@ -1594,6 +1596,8 @@ export const PublicContentFragmentWithFileIdSchema = z.object({
   contentType: z.undefined().nullable(),
   fileId: z.string(),
   context: ContentFragmentContextSchema.nullable(),
+  // Undocumented for now -- allows to supersede an existing content fragment.
+  supersededContentFragmentId: z.string().optional().nullable(),
 });
 
 export type PublicContentFragmentWithFileId = z.infer<
