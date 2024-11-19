@@ -34,6 +34,10 @@ const {
   startToCloseTimeout: "2 minutes",
 });
 
+const { garbageCollectBrandActivity } = proxyActivities<typeof gc_activities>({
+  startToCloseTimeout: "5 minutes",
+});
+
 const {
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
   saveZendeskConnectorStartSync,
@@ -41,6 +45,7 @@ const {
   getZendeskTicketsAllowedBrandIdsActivity,
   setZendeskTimestampCursorActivity,
   getZendeskTimestampCursorActivity,
+  getZendeskBrandIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -409,13 +414,14 @@ export async function zendeskGarbageCollectionWorkflow({
 }: {
   connectorId: ModelId;
 }) {
+  // deleting the outdated tickets (deleted tickets are cleaned in the incremental sync)
   let hasMore = true;
   while (hasMore) {
     hasMore = await garbageCollectTicketBatchActivity(connectorId);
   }
 
   // deleting the articles that cannot be found anymore in the Zendesk API
-  const brandIds =
+  let brandIds =
     await getZendeskHelpCenterReadAllowedBrandIdsActivity(connectorId);
   for (const brandId of brandIds) {
     let cursor = null;
@@ -426,6 +432,12 @@ export async function zendeskGarbageCollectionWorkflow({
         cursor,
       });
     } while (cursor !== null);
+  }
+
+  // cleaning the brands that have no permission on tickets and Help Center or are not on Zendesk anymore
+  brandIds = await getZendeskBrandIdsActivity(connectorId);
+  for (const brandId of brandIds) {
+    await garbageCollectBrandActivity({ connectorId, brandId });
   }
 }
 

@@ -1,5 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
 
+import {
+  deleteBrandHelpCenter,
+  deleteBrandTickets,
+} from "@connectors/connectors/zendesk/lib/data_cleanup";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -13,6 +17,8 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
+  ZendeskBrandResource,
+  ZendeskCategoryResource,
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
@@ -123,4 +129,71 @@ export async function garbageCollectArticleBatchActivity({
     { concurrency: 10 }
   );
   return nextCursor;
+}
+
+/**
+ * This activity is responsible for cleaning up a Brand.
+ *
+ * If the Brand is not allowed anymore, it will delete all its data.
+ * If the Help Center has no readable category anymore, we delete the Help Center data.
+ *
+ * @returns the updated permissions of the Brand.
+ */
+export async function garbageCollectBrandActivity({
+  connectorId,
+  brandId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (!brandInDb) {
+    throw new Error(
+      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
+    );
+  }
+
+  // deleting the tickets/help center if not allowed anymore
+  if (brandInDb.ticketsPermission === "none") {
+    await deleteBrandTickets({ connectorId, brandId, dataSourceConfig });
+  }
+  if (brandInDb.helpCenterPermission === "none") {
+    await deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig });
+  }
+
+  // if all rights were revoked, we delete the brand data.
+  if (
+    brandInDb.helpCenterPermission === "none" &&
+    brandInDb.ticketsPermission === "none"
+  ) {
+    await brandInDb.delete();
+    return;
+  }
+
+  // if there are no read permissions on any category, we delete the help center
+  const categoriesWithReadPermissions =
+    await ZendeskCategoryResource.fetchByBrandIdReadOnly({
+      connectorId,
+      brandId,
+    });
+  const noMoreAllowedCategories = categoriesWithReadPermissions.length === 0;
+
+  if (noMoreAllowedCategories) {
+    await deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig });
+    // if the tickets and all children categories are not allowed anymore, we delete the brand data
+    if (brandInDb.ticketsPermission !== "read") {
+      await brandInDb.delete();
+      return;
+    }
+    await brandInDb.revokeHelpCenterPermissions();
+  }
 }
