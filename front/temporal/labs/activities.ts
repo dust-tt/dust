@@ -276,7 +276,7 @@ export async function processTranscriptActivity(
       if (!defaultGongTranscriptsStorageConfiguration) {
         localLogger.error(
           {},
-          "[processTranscriptActivity] No default transcript configuration with a datasource view found while full Gong storage if enabled. Stopping."
+          "[processTranscriptActivity] No default transcript configuration for Gong storage enabled. Stopping."
         );
         await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
         return;

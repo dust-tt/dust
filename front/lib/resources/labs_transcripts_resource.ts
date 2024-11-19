@@ -132,6 +132,26 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
+  async setIsDefaultFullStorage(isDefaultFullStorage: boolean) {
+    if (this.isDefaultFullStorage === isDefaultFullStorage) {
+      return;
+    }
+
+    // Update all other configurations to be false.
+    if (isDefaultFullStorage) {
+      await LabsTranscriptsConfigurationModel.update(
+        { isDefaultFullStorage: false },
+        {
+          where: {
+            workspaceId: this.workspaceId,
+          },
+        }
+      );
+    }
+
+    return this.update({ isDefaultFullStorage });
+  }
+
   async setDataSourceViewId(
     auth: Authenticator,
     dataSourceViewId: string | null
