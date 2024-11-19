@@ -5,7 +5,12 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getUserFromAuth0Token } from "@app/lib/api/auth0";
+import type { MethodType, ScopeType } from "@app/lib/api/auth0";
+import {
+  getRequiredScope,
+  getUserFromAuth0Token,
+  verifyAuth0Token,
+} from "@app/lib/api/auth0";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import {
   Authenticator,
@@ -47,7 +52,7 @@ export function withSessionAuthentication<T>(
           api_error: {
             type: "not_authenticated",
             message:
-              "The user does not have an active session or is not authenticated",
+              "The user does not have an active session or is not authenticated.",
           },
         });
       }
@@ -164,6 +169,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
   opts: {
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: U;
+    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
   } = {}
 ) {
   const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
@@ -201,8 +207,23 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       // Authentification with Auth0 token.
       // Straightforward since the token is attached to the user.
       if (authMethod === "access_token") {
-        const auth = await Authenticator.fromAuth0Token({
+        const decoded = await verifyAuth0Token(
           token,
+          getRequiredScope(req, opts.requiredScopes)
+        );
+        if (decoded.isErr()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The request does not have valid authentication credentials.",
+            },
+          });
+        }
+
+        const auth = await Authenticator.fromAuth0Token({
+          token: decoded.value,
           wId,
         });
         if (auth.user() === null) {
@@ -322,7 +343,10 @@ export function withAuth0TokenAuthentication<T>(
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     user: UserTypeWithWorkspaces
-  ) => Promise<void> | void
+  ) => Promise<void> | void,
+  opts: {
+    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
+  } = {}
 ) {
   return withLogging(
     async (
@@ -354,7 +378,23 @@ export function withAuth0TokenAuthentication<T>(
         });
       }
 
-      const user = await getUserFromAuth0Token(bearerToken);
+      const decoded = await verifyAuth0Token(
+        bearerToken,
+        getRequiredScope(req, opts.requiredScopes)
+      );
+      if (decoded.isErr()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+
+      const user = await getUserFromAuth0Token(decoded.value);
+      // TODO(thomas): user not found : means the user is not registered, display a message to the user and redirects to site
       if (!user) {
         return apiError(req, res, {
           status_code: 401,

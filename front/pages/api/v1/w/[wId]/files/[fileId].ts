@@ -123,4 +123,10 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: {
+    GET: "read:file",
+    POST: "create:file",
+    DELETE: "delete:file",
+  },
+});
