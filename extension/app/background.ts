@@ -272,7 +272,6 @@ const authenticate = async (
     audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
-    prompt: "consent",
   };
 
   const queryString = new URLSearchParams(options).toString();
