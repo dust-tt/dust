@@ -172,14 +172,14 @@ async function handler(
     }
 
     case "POST": {
-      if (!space.canWrite(auth) && !space.canAdministrate(auth)) {
-        // Only admins, or builders who have access to the space, can create a new view.
+      if (!space.canWrite(auth)) {
+        // Only admins, or builders who have to the space, can create a new view
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Access denied: Must be an administrator or builder with space access.",
+              "Only users that are `admins` or `builder` can administrate spaces.",
           },
         });
       }
@@ -210,29 +210,6 @@ async function handler(
           },
         });
       }
-
-      if (isManaged(dataSource) && !space.canAdministrate(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Access denied: Must be an administrator to manage connected data sources.",
-          },
-        });
-      }
-
-      if (!isManaged(dataSource) && !space.canWrite(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Access denied: Must be a builder with space access to create views.",
-          },
-        });
-      }
-
       const existing = await DataSourceViewResource.listForDataSourcesInSpace(
         auth,
         [dataSource],

@@ -539,24 +539,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return getDataSourceViewUsage({ auth, dataSourceView: this });
   };
 
-  // Permissions.
-
-  /**
-   * Determines if the current user has write permissions.
-   * For managed data sources, requires administrative privileges.
-   * For non-managed data sources, requires write privileges.
-   *
-   * @param auth - The authenticator object for the current user
-   * @returns boolean indicating whether the user has write permission
-   */
-  canWrite(auth: Authenticator) {
-    if (isManaged(this.dataSource)) {
-      return this.space.canAdministrate(auth);
-    }
-
-    return this.space.canWrite(auth);
-  }
-
   // Serialization.
 
   toJSON(): DataSourceViewType {
