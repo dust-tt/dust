@@ -2,9 +2,9 @@ import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { Label } from "@sparkle/components/Label";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
-import { Label } from "@sparkle/components/Label";
 
 const radioStyles = cva(
   cn(
@@ -61,7 +61,7 @@ interface RadioGroupItemProps
     VariantProps<typeof radioStyles> {
   tooltipMessage?: string;
   tooltipAsChild?: boolean;
-  label?: string
+  label?: string;
 }
 
 const RadioGroupItem = React.forwardRef<
@@ -69,7 +69,14 @@ const RadioGroupItem = React.forwardRef<
   RadioGroupItemProps
 >(
   (
-    { tooltipMessage, className, size, tooltipAsChild = false, label, ...props },
+    {
+      tooltipMessage,
+      className,
+      size,
+      tooltipAsChild = false,
+      label,
+      ...props
+    },
     ref
   ) => {
     const item = (
@@ -95,16 +102,12 @@ const RadioGroupItem = React.forwardRef<
         ) : (
           item
         )}
-        {label && (
-          <Label>{label}</Label>
-        )}
+        {label && <Label>{label}</Label>}
       </div>
     );
 
     return (
-      <div
-        className={cn("s-group", size === "sm" ? "s-h-5" : "s-h-4")}
-      >
+      <div className={cn("s-group", size === "sm" ? "s-h-5" : "s-h-4")}>
         {wrappedItem}
       </div>
     );
@@ -122,7 +125,9 @@ const RadioGroupChoice = React.forwardRef<
   RadioGroupChoiceProps
 >(({ className, size, iconPosition = "center", children, ...props }, ref) => {
   return (
-    <div className={cn("s-flex s-flex-col", className, `s-items-${iconPosition}`)}>
+    <div
+      className={cn("s-flex s-flex-col", className, `s-items-${iconPosition}`)}
+    >
       <RadioGroupItem
         ref={ref}
         className={cn(radioStyles({ size }))}
