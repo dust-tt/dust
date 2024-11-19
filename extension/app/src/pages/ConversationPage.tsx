@@ -8,14 +8,24 @@ import type { ProtectedRouteChildrenProps } from "@extension/components/auth/Pro
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { FileDropProvider } from "@extension/components/conversation/FileUploaderContext";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 export const ConversationPage = ({
   workspace,
   user,
 }: ProtectedRouteChildrenProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { conversationId } = useParams();
+
+  const [origin, setOrigin] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location.state?.origin) {
+      setOrigin(location.state.origin);
+    }
+  }, [location.state?.origin]);
 
   const { conversation } = usePublicConversation({
     conversationId: conversationId ?? null,
@@ -35,7 +45,13 @@ export const ConversationPage = ({
           <Button
             icon={ChevronLeftIcon}
             variant="ghost"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (origin === "conversations") {
+                navigate("/conversations");
+              } else {
+                navigate("/");
+              }
+            }}
             size="md"
           />
         }
