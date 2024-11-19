@@ -26,6 +26,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
+import logger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
 import {
   retrieveGongTranscriptContent,
@@ -286,6 +287,17 @@ export async function processTranscriptActivity(
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
     transcriptsConfiguration.isActive && userParticipated;
+
+  logger.info(
+    {
+      fileId,
+      transcriptTitle,
+      transcriptContentLength: transcriptContent.length,
+      shouldStoreTranscript,
+      shouldProcessTranscript,
+    },
+    "[processTranscriptActivity] Deciding to store and/or process transcript."
+  );
 
   if (shouldStoreTranscript) {
     localLogger.info(
