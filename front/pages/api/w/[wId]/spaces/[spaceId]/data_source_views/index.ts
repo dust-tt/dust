@@ -179,7 +179,7 @@ async function handler(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Only users that are `admins` or `builder` can administrate spaces.",
+              "Access denied: Must be an administrator or builder with space access.",
           },
         });
       }
@@ -217,7 +217,7 @@ async function handler(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Insufficient permissions: Connected data sources can only be managed by administrators.",
+              "Access denied: Must be an administrator to manage connected data sources.",
           },
         });
       }
@@ -228,7 +228,7 @@ async function handler(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Insufficient permissions: View creation requires both space membership and builder role.",
+              "Access denied: Must be a builder with space access to create views.",
           },
         });
       }

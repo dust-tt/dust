@@ -547,7 +547,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
    * For non-managed data sources, requires write privileges.
    *
    * @param auth - The authenticator object for the current user
-   * @throws {Error} If authenticator is not provided
    * @returns boolean indicating whether the user has write permission
    */
   canWrite(auth: Authenticator) {
