@@ -376,8 +376,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             { connectorId, objectId },
             "[Zendesk] Cannot set permissions for a single article or ticket"
           );
-          throw new Error(
-            "Cannot set permissions for a single article or ticket"
+          return new Err(
+            new Error("Cannot set permissions for a single article or ticket")
           );
         default:
           assertNever(type);
