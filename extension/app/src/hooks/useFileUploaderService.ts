@@ -55,6 +55,15 @@ export function useFileUploaderService() {
   const sendNotification = useSendNotification();
   const dustAPI = useDustAPI();
 
+  const findAvailableTitle = (baseTitle: string, ext: string) => {
+    let count = 1;
+    let title = `${baseTitle}.${ext}`;
+    while (fileBlobs.some((f) => f.filename === title)) {
+      title = `${baseTitle}-${count++}.${ext}`;
+    }
+    return title;
+  };
+
   const handleFilesUpload = async (files: File[], updateBlobs?: boolean) => {
     setIsProcessingFiles(true);
 
@@ -291,22 +300,16 @@ export function useFileUploaderService() {
         });
         return;
       }
-      const messages = conversation?.content.map((m) => m[m.length - 1]) || [];
-      let title = `${tabContent.title}.txt`;
-      if (includeSelectionOnly) {
-        let count = 1;
-        title = `${tabContent.title} (selection).txt`;
-        while (
-          messages.some(
-            (m) => m.type === "content_fragment" && m.title === title
-          ) ||
-          fileBlobs.some((f) => f.filename === title)
-        ) {
-          title = `${tabContent.title} (selection)-${count++}.txt`;
-        }
-      }
+
+      const title = findAvailableTitle(
+        includeSelectionOnly
+          ? `${tabContent.title} (selection)`
+          : `${tabContent.title}`,
+        "txt"
+      );
 
       // Check if the content is already uploaded - compare the title and the size of the content.
+      const messages = conversation?.content.map((m) => m[m.length - 1]) || [];
       const alreadyUploaded = messages.some(
         (m) =>
           m.type === "content_fragment" &&
@@ -345,7 +348,9 @@ export function useFileUploaderService() {
       }
       const response = await fetch(tabContent.screenshot);
       const blob = await response.blob();
-      const file = new File([blob], `${tabContent.title}.jpg`, {
+      const title = findAvailableTitle(`${tabContent.title}`, "jpg");
+
+      const file = new File([blob], title, {
         type: blob.type,
       });
 
