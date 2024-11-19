@@ -33,8 +33,9 @@ import {
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
+  launchZendeskGarbageCollectionWorkflow,
   launchZendeskSyncWorkflow,
-  stopZendeskSyncWorkflow,
+  stopZendeskWorkflows,
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
@@ -68,19 +69,29 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       },
       { subdomain, retentionPeriodDays: 180 }
     );
+    const loggerArgs = {
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceId: dataSourceConfig.dataSourceId,
+    };
 
-    const workflowStartResult = await launchZendeskSyncWorkflow(connector);
-
-    if (workflowStartResult.isErr()) {
+    let result = await launchZendeskSyncWorkflow(connector);
+    if (result.isErr()) {
       await connector.delete();
       logger.error(
-        {
-          workspaceId: dataSourceConfig.workspaceId,
-          error: workflowStartResult.error,
-        },
+        { ...loggerArgs, error: result.error },
         "[Zendesk] Error launching the sync workflow."
       );
-      throw workflowStartResult.error;
+      throw result.error;
+    }
+
+    result = await launchZendeskGarbageCollectionWorkflow(connector);
+    if (result.isErr()) {
+      await connector.delete();
+      logger.error(
+        { ...loggerArgs, error: result.error },
+        "[Zendesk] Error launching the garbage collection workflow."
+      );
+      throw result.error;
     }
 
     return new Ok(connector.id.toString());
@@ -153,7 +164,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    return stopZendeskSyncWorkflow(this.connectorId);
+    return stopZendeskWorkflows(this.connectorId);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
@@ -165,15 +176,24 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    const result = await launchZendeskSyncWorkflow(connector);
+    const loggerArgs = {
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceId: dataSourceConfig.dataSourceId,
+    };
+
+    let result = await launchZendeskSyncWorkflow(connector);
     if (result.isErr()) {
       logger.error(
-        {
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-          error: result.error,
-        },
+        { ...loggerArgs, error: result.error },
         "[Zendesk] Error resuming the sync workflow."
+      );
+      return result;
+    }
+    result = await launchZendeskGarbageCollectionWorkflow(connector);
+    if (result.isErr()) {
+      logger.error(
+        { ...loggerArgs, error: result.error },
+        "[Zendesk] Error resuming the garbage collection workflow."
       );
       return result;
     }
@@ -595,7 +615,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
       connectorId,
     });
-    return launchZendeskSyncWorkflow(connector, { brandIds });
+    const result = await launchZendeskSyncWorkflow(connector, { brandIds });
+    if (result.isErr()) {
+      return result;
+    }
+    return launchZendeskGarbageCollectionWorkflow(connector);
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

@@ -1,21 +1,36 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
+import {
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
-import { QUEUE_NAME } from "@connectors/connectors/zendesk/temporal/config";
+import {
+  GARBAGE_COLLECT_QUEUE_NAME,
+  QUEUE_NAME,
+} from "@connectors/connectors/zendesk/temporal/config";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
-import { zendeskSyncWorkflow } from "@connectors/connectors/zendesk/temporal/workflows";
+import {
+  zendeskGarbageCollectionWorkflow,
+  zendeskSyncWorkflow,
+} from "@connectors/connectors/zendesk/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
   return `zendesk-sync-${connectorId}`;
+}
+
+export function getZendeskGarbageCollectionWorkflowId(
+  connectorId: ModelId
+): string {
+  return `zendesk-gc-${connectorId}`;
 }
 
 export async function launchZendeskSyncWorkflow(
@@ -93,7 +108,7 @@ export async function launchZendeskSyncWorkflow(
   return new Ok(undefined);
 }
 
-export async function stopZendeskSyncWorkflow(
+export async function stopZendeskWorkflows(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
@@ -103,25 +118,53 @@ export async function stopZendeskSyncWorkflow(
       `[Zendesk] Connector not found. ConnectorId: ${connectorId}`
     );
   }
-
-  const workflowId = getZendeskSyncWorkflowId(connectorId);
-
-  try {
-    const handle: WorkflowHandle<typeof zendeskSyncWorkflow> =
-      client.workflow.getHandle(workflowId);
+  const workflowIds = [
+    getZendeskSyncWorkflowId(connectorId),
+    getZendeskGarbageCollectionWorkflowId(connectorId),
+  ];
+  for (const workflowId of workflowIds) {
     try {
-      await handle.terminate();
-    } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
-        throw e;
+      const handle: WorkflowHandle<typeof zendeskSyncWorkflow> =
+        client.workflow.getHandle(workflowId);
+      try {
+        await handle.terminate();
+      } catch (e) {
+        if (!(e instanceof WorkflowNotFoundError)) {
+          throw e;
+        }
       }
+    } catch (e) {
+      logger.error(
+        { workflowId, error: e },
+        "[Zendesk] Failed to stop the workflow."
+      );
+      return new Err(e as Error);
     }
-    return new Ok(undefined);
-  } catch (e) {
-    logger.error(
-      { workflowId, error: e },
-      "[Zendesk] Failed to stop the workflow."
-    );
-    return new Err(e as Error);
   }
+  return new Ok(undefined);
+}
+
+export async function launchZendeskGarbageCollectionWorkflow(
+  connector: ConnectorResource
+): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClient();
+
+  const workflowId = getZendeskGarbageCollectionWorkflowId(connector.id);
+  try {
+    await client.workflow.start(zendeskGarbageCollectionWorkflow, {
+      args: [{ connectorId: connector.id }],
+      taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
+      workflowId,
+      searchAttributes: { connectorId: [connector.id] },
+      memo: { connectorId: connector.id },
+      cronSchedule: "0 3 * * *", // Every day at 3 a.m.
+    });
+  } catch (err: unknown) {
+    // ignoring errors caused by relaunching the gc workflow
+    if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
+      return new Err(err as Error);
+    }
+  }
+
+  return new Ok(undefined);
 }
