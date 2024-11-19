@@ -1,6 +1,7 @@
 import { buffer } from "node:stream/consumers";
 
 import type {
+  ConversationType,
   FileUseCase,
   Result,
   SupportedFileContentType,
@@ -639,7 +640,7 @@ export async function processAndStoreFile(
       });
     }
 
-    const conversationId = r.value.id;
+    const conversation: ConversationType = r.value;
 
     // Upsert the file to the conversation datasource.
     const conversationsSpace =
@@ -648,7 +649,7 @@ export async function processAndStoreFile(
     // Fetch the datasource linked to the conversation...
     let dataSource = await DataSourceResource.fetchByConversationId(
       auth,
-      conversationId
+      conversation.id
     );
 
     if (!dataSource) {
@@ -662,7 +663,7 @@ export async function processAndStoreFile(
         space: conversationsSpace,
         name: name,
         description: "Files uploaded to conversation",
-        conversationId,
+        conversation: conversation,
       });
 
       if (r.isErr()) {
