@@ -93,7 +93,7 @@ export async function allowSyncZendeskHelpCenter({
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections and articles).
+ * Mark a help center as permission "none", optionally alongside all its children (categories and articles).
  */
 export async function forbidSyncZendeskHelpCenter({
   connectorId,
