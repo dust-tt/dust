@@ -20,6 +20,7 @@ export const BUTTON_VARIANTS = [
   "warning",
   "outline",
   "ghost",
+  "ghost-secondary",
 ] as const;
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
@@ -39,6 +40,8 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "s-border s-text-primary-dark s-bg-background s-border-border-dark hover:s-text-primary hover:s-bg-primary-150 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
   ghost:
     "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
+  "ghost-secondary":
+    "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {
@@ -67,6 +70,7 @@ const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
   warning: "light",
   outline: "dark",
   ghost: "dark",
+  "ghost-secondary": "dark",
 };
 
 const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
@@ -75,6 +79,7 @@ const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
   warning: "light",
   outline: "slate400",
   ghost: "slate400",
+  "ghost-secondary": "dark",
 };
 
 export interface MetaButtonProps
