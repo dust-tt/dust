@@ -21,7 +21,7 @@ import { Op } from "sequelize";
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
@@ -538,6 +538,25 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   getUsagesByAgents = async (auth: Authenticator) => {
     return getDataSourceViewUsage({ auth, dataSourceView: this });
   };
+
+  // Permissions.
+
+  /**
+   * Determines if the current user has write permissions.
+   * For managed data sources, requires administrative privileges.
+   * For non-managed data sources, requires write privileges.
+   *
+   * @param auth - The authenticator object for the current user
+   * @throws {Error} If authenticator is not provided
+   * @returns boolean indicating whether the user has write permission
+   */
+  canWrite(auth: Authenticator) {
+    if (isManaged(this.dataSource)) {
+      return this.space.canAdministrate(auth);
+    }
+
+    return this.space.canWrite(auth);
+  }
 
   // Serialization.
 

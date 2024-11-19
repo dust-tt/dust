@@ -172,8 +172,8 @@ async function handler(
     }
 
     case "POST": {
-      if (!space.canWrite(auth)) {
-        // Only admins, or builders who have to the space, can create a new view
+      if (!space.canWrite(auth) && !space.canAdministrate(auth)) {
+        // Only admins, or builders who have access to the space, can create a new view.
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -199,7 +199,7 @@ async function handler(
 
       const { dataSourceId, parentsIn } = bodyValidation.right;
 
-      // Create a new view
+      // Create a new view.
       const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
       if (!dataSource) {
         return apiError(req, res, {
@@ -210,6 +210,29 @@ async function handler(
           },
         });
       }
+
+      if (isManaged(dataSource) && !space.canAdministrate(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Insufficient permissions: Connected data sources can only be managed by administrators.",
+          },
+        });
+      }
+
+      if (!isManaged(dataSource) && !space.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Insufficient permissions: View creation requires both space membership and builder role.",
+          },
+        });
+      }
+
       const existing = await DataSourceViewResource.listForDataSourcesInSpace(
         auth,
         [dataSource],

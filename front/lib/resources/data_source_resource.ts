@@ -487,20 +487,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return getDataSourceUsage({ auth, dataSource: this });
   }
 
-  // Permissions.
-
-  canRead(auth: Authenticator) {
-    return this.space.canRead(auth);
-  }
-
-  canWrite(auth: Authenticator) {
-    return this.space.canWrite(auth);
-  }
-
-  canAdministrate(auth: Authenticator) {
-    return this.space.canAdministrate(auth);
-  }
-
   // sId logic.
 
   get sId(): string {
