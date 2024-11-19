@@ -6,49 +6,23 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  SupportedContentFragmentType,
 } from "@dust-tt/types";
 import {
-  assertNever,
   BaseAction,
   getTablesQueryResultsFileTitle,
   isAgentMessageType,
   isContentFragmentType,
-  isSupportedImageContentType,
   isSupportedPlainTextContentType,
   isTablesQueryActionType,
 } from "@dust-tt/types";
+
+import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
   functionCallId: string | null;
   functionCallName: string | null;
   files: ConversationFileType[];
-}
-
-export function isConversationIncludableFileContentType(
-  contentType: SupportedContentFragmentType
-): boolean {
-  if (isSupportedImageContentType(contentType)) {
-    return false;
-  }
-  switch (contentType) {
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/pdf":
-    case "text/markdown":
-    case "text/plain":
-    case "dust-application/slack":
-      return true;
-
-    case "text/comma-separated-values":
-    case "text/csv":
-    case "text/tab-separated-values":
-    case "text/tsv":
-      return false;
-    default:
-      assertNever(contentType);
-  }
 }
 
 export class ConversationListFilesAction extends BaseAction {
@@ -78,16 +52,15 @@ export class ConversationListFilesAction extends BaseAction {
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content =
-      `List of files included in the conversation with their content type.\n\n` +
+      `List of files attached to the conversation with their content type.\n\n` +
       `- only the files marked as \`includable\` can be included with ` +
-      `the \`include_conversation_files\` tool.\n` +
+      `the \`include_conversation_file\` tool.\n` +
       // TODO(spolu): add mention of viz if enabled and other tools.
       `\n`;
     // TODO(spolu) add file token count, make includabiility dependent on that.
     for (const f of this.files) {
       content +=
-        `<file id="${f.fileId}" ` +
-        `name="${f.title}" type="${f.contentType}" ` +
+        `<file id="${f.fileId}" name="${f.title}" type="${f.contentType}" ` +
         `includable="${isConversationIncludableFileContentType(f.contentType)}"/>\n`;
     }
 
