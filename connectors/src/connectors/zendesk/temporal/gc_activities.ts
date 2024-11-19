@@ -119,7 +119,7 @@ export async function garbageCollectArticleBatchActivity({
     brandId,
   });
 
-  // TODO(2024-11-18 aubin): see if we need to delete in batch
+  // not deleting in batch for now, assuming we won't have that many articles to delete at once
   await concurrentExecutor(
     articleIds,
     async (articleId) => {
