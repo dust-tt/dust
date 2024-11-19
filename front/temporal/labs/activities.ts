@@ -26,7 +26,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
-import logger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
 import {
   retrieveGongTranscriptContent,
@@ -288,7 +287,7 @@ export async function processTranscriptActivity(
   const shouldProcessTranscript =
     transcriptsConfiguration.isActive && userParticipated;
 
-  logger.info(
+  localLogger.info(
     {
       fileId,
       transcriptTitle,
