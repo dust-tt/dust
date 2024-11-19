@@ -157,6 +157,10 @@ export abstract class ResourceWithSpace<
     return this.space.requestedPermissions(opts);
   }
 
+  canAdministrate(auth: Authenticator) {
+    return this.space.canAdministrate(auth);
+  }
+
   canList(auth: Authenticator) {
     return this.space.canList(auth);
   }
