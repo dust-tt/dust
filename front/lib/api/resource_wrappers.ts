@@ -41,17 +41,20 @@ type ResourceHandler<T, U extends ResourceKey> = (
  *  use this wrapper to extract the resource, make the checks, apply the logic
  *  and then call the handler with the resource.
  *
- * e.g. for /w/[wId]/spaces/[spaceId]/... => check the space exists, that it's
- *  not a conversation space, etc. and provide the space resource to the handler.
+ *  see e.g. `withSpaceFromRoute` below
  */
-export function withResourceFromRoute<T, U extends ResourceKey>(
+export function withResourceFetchingFromRoute<T, U extends ResourceKey>(
   handler: ResourceHandler<T, U>,
   resource: U
 ) {
   return resolver[resource](handler);
 }
 
-export function withSpaceFromRoute<T>(handler: ResourceHandler<T, "space">) {
+/**
+ *  for /w/[wId]/spaces/[spaceId]/... => check the space exists, that it's
+ *  not a conversation space, etc. and provide the space resource to the handler.
+ */
+function withSpaceFromRoute<T>(handler: ResourceHandler<T, "space">) {
   return async (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
