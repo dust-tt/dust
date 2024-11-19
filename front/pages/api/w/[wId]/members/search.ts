@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { searchMembers } from "@app/lib/api/workspace";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 

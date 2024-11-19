@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getOffsetPaginationParams } from "@app/lib/api/pagination";
-import { withInternalAPIRouteResource } from "@app/lib/api/wrappers";
+import { withInternalAPIRouteResource } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";

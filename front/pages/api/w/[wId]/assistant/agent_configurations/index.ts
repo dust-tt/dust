@@ -31,7 +31,7 @@ import {
 } from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";

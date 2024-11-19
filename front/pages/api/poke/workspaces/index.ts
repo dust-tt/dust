@@ -10,7 +10,7 @@ import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";

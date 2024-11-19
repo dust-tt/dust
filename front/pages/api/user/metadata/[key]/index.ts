@@ -2,7 +2,7 @@ import type { UserMetadataType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserMetadata, setUserMetadata } from "@app/lib/api/user";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";

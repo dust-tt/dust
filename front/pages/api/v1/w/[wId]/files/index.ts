@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";

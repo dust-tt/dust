@@ -5,7 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { sendEmailWithTemplate } from "@app/lib/api/email";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";

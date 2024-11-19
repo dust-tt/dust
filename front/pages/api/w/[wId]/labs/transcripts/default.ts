@@ -3,7 +3,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";

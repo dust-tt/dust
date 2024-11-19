@@ -10,7 +10,7 @@ import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/m
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { getPaginationParams } from "@app/lib/api/pagination";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 

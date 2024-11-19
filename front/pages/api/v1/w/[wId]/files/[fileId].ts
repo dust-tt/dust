@@ -3,7 +3,7 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { uploadToCloudStorage } from "@app/lib/api/files/upload";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";

@@ -12,7 +12,7 @@ import {
   getInvitation,
   updateInvitationStatusAndRole,
 } from "@app/lib/api/invitation";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 

@@ -5,7 +5,7 @@ import {
   getDustStatusMemoized,
   getProviderStatusMemoized,
 } from "@app/lib/api/status";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getSession } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 

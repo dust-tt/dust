@@ -5,7 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";

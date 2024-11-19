@@ -5,7 +5,7 @@ import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

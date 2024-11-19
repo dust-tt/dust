@@ -8,7 +8,7 @@ import {
   getPendingInvitations,
   updateInvitationStatusAndRole,
 } from "@app/lib/api/invitation";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 

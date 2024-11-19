@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 /**

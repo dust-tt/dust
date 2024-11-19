@@ -10,7 +10,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getOffsetPaginationParams } from "@app/lib/api/pagination";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
