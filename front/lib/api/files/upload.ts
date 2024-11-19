@@ -488,7 +488,7 @@ const maybeApplyPreProcessing: PreprocessingFunction = async (
   return new Ok(undefined);
 };
 
-export async function uploadToCloudStorage(
+export async function processAndStoreFile(
   auth: Authenticator,
   { file, req }: { file: FileResource; req: IncomingMessage }
 ): Promise<
