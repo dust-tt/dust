@@ -404,7 +404,7 @@ async function syncOneFileTextDocument(
     );
   }
   if (documentContent) {
-    const upsertTimestampMs = await upsertDocument(
+    const upsertTimestampMs = await upsertGdriveDocument(
       dataSourceConfig,
       file,
       documentContent,
@@ -429,7 +429,7 @@ async function syncOneFileTextDocument(
   return false;
 }
 
-async function upsertDocument(
+async function upsertGdriveDocument(
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveObjectType,
   documentContent: CoreAPIDataSourceDocumentSection | null,
