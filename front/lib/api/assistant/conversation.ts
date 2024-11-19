@@ -1773,17 +1773,13 @@ export async function postNewContentFragment(
   // If the request is superseding an existing content fragment, we need to validate
   // that it exists and is part of the conversation.
   if (supersededContentFragmentId) {
-    let found = false;
-    for (const versions of conversation.content) {
+    const found = conversation.content.some((versions) => {
       const latest = versions[versions.length - 1];
-      if (
+      return (
         isContentFragmentType(latest) &&
         latest.contentFragmentId === supersededContentFragmentId
-      ) {
-        found = true;
-        break;
-      }
-    }
+      );
+    });
 
     if (!found) {
       return new Err(new Error("Superseded content fragment not found."));
