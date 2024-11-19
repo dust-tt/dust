@@ -211,7 +211,7 @@ export async function getZendeskTicketsAllowedBrandIdsActivity(
 /**
  * Retrieves the categories for a given Brand.
  */
-export async function getZendeskCategoriesActivity({
+export async function fetchZendeskCategoriesActivity({
   connectorId,
   brandId,
 }: {

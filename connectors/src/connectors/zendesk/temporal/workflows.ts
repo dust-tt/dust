@@ -16,7 +16,7 @@ import type {
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
 const {
-  getZendeskCategoriesActivity,
+  fetchZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
   syncZendeskArticleBatchActivity,
@@ -455,7 +455,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const categoryIds = await getZendeskCategoriesActivity({
+  const categoryIds = await fetchZendeskCategoriesActivity({
     connectorId,
     brandId,
   });
