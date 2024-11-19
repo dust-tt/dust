@@ -8,7 +8,7 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { ConversationError, isEmptyString } from "@dust-tt/types";
+import { ConversationError, isEmptyString, removeNulls } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -21,7 +21,9 @@ import {
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 
 /**
@@ -169,6 +171,34 @@ async function handler(
             url: req.url,
           });
         }
+
+        // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
+        // Therefor, we couldn't upsert them to the conversation datasource.
+        // We now update the useCaseMetadata and upsert them to the conversation datasource.
+        const filesIds = removeNulls(
+          resolvedFragments.map((cf) => {
+            if ("fileId" in cf) {
+              return cf.fileId;
+            }
+          })
+        );
+
+        const fileResources = await FileResource.fetchByIds(auth, filesIds);
+        await Promise.all([
+          ...fileResources.map(async (fileResource) => {
+            if (
+              fileResource.useCase === "conversation" &&
+              !fileResource.useCaseMetadata
+            ) {
+              await fileResource.setUseCaseMetadata({
+                conversationId: conversation.sId,
+              });
+
+              return processAndUpsertToDataSource(auth, { file: fileResource });
+            }
+          }),
+        ]);
+
         const { context, ...cf } = resolvedFragment;
         const cfRes = await postNewContentFragment(auth, conversation, cf, {
           username: context?.username || null,

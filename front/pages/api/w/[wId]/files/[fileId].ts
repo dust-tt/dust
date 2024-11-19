@@ -108,26 +108,25 @@ async function handler(
             message: r.error.message,
           },
         });
-      } else {
-        const rUpsert = await processAndUpsertToDataSource(auth, { file });
-
-        // For now, silently log the error
-        if (rUpsert.isErr()) {
-          {
-            logger.warn({
-              fileModelId: file.id,
-              workspaceId: auth.workspace()?.sId,
-              contentType: file.contentType,
-              useCase: file.useCase,
-              useCaseMetadata: file.useCaseMetadata,
-              message: "Failed to upsert the file.",
-              error: rUpsert.error,
-            });
-          }
-        }
-
-        return res.status(200).json({ file: file.toJSON(auth) });
       }
+      const rUpsert = await processAndUpsertToDataSource(auth, { file });
+
+      // For now, silently log the error
+      if (rUpsert.isErr()) {
+        {
+          logger.warn({
+            fileModelId: file.id,
+            workspaceId: auth.workspace()?.sId,
+            contentType: file.contentType,
+            useCase: file.useCase,
+            useCaseMetadata: file.useCaseMetadata,
+            message: "Failed to upsert the file.",
+            error: rUpsert.error,
+          });
+        }
+      }
+
+      return res.status(200).json({ file: file.toJSON(auth) });
     }
 
     default:
