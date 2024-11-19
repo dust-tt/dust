@@ -101,11 +101,7 @@ export async function forbidSyncZendeskBrand({
     return null;
   }
 
-  // revoke permissions for the brand
-  await brand.revokeHelpCenterPermissions();
-  await brand.revokeTicketsPermissions();
-
-  // revoke permissions for all the children resources (help center and tickets)
+  // revoke permissions for the two children resources (help center and tickets + respective children)
   await forbidSyncZendeskHelpCenter({ connectorId, brandId });
   await forbidSyncZendeskTickets({ connectorId, brandId });
 
