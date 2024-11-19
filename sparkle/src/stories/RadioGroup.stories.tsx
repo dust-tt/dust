@@ -21,16 +21,13 @@ export const RadioGroupExample = () => {
     <div className="s-flex s-flex-col s-gap-10">
       <RadioGroup defaultValue="option-one">
         <div className="s-flex s-items-center s-space-x-2">
-          <RadioGroupItem value="option-one" id="option-one" />
-          <Label htmlFor="option-one">Option One</Label>
+          <RadioGroupItem value="option-one" id="option-one" label={<Label htmlFor="option-one">Option One</Label>}/>
         </div>
         <div className="s-flex s-items-center s-space-x-2">
-          <RadioGroupItem value="option-two" id="option-two" />
-          <Label htmlFor="option-two">Option Two</Label>
+          <RadioGroupItem value="option-two" id="option-two" label={<Label htmlFor="option-two">Option Two</Label>}/>
         </div>
         <div className="s-flex s-items-center s-space-x-2">
-          <RadioGroupItem value="option-three" id="option-three" />
-          <Label htmlFor="option-two">Option Three</Label>
+          <RadioGroupItem value="option-three" id="option-three" label={<Label htmlFor="option-two">Option Three</Label>}/>
         </div>
       </RadioGroup>
       <RadioGroup defaultValue="option-one">
@@ -40,8 +37,8 @@ export const RadioGroupExample = () => {
             id="option-four"
             size="sm"
             tooltipMessage="This is a nice tooltip message"
+            label={<Label htmlFor="option-one">Option One</Label>}
           />
-          <Label htmlFor="option-one">Option One</Label>
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
@@ -49,12 +46,16 @@ export const RadioGroupExample = () => {
             id="option-five"
             size="sm"
             disabled
+            label={<Label htmlFor="option-two">Option Two</Label>}
           />
-          <Label htmlFor="option-two">Option Two</Label>
         </div>
         <div className="s-flex s-items-center s-space-x-2">
-          <RadioGroupItem value="option-six" id="option-three" size="sm" />
-          <Label htmlFor="option-three">Option Three</Label>
+          <RadioGroupItem
+            value="option-six"
+            id="option-three"
+            size="sm"
+            label={<Label htmlFor="option-three">Option Three</Label>}
+          />
         </div>
       </RadioGroup>
     </div>
@@ -77,7 +78,7 @@ export const RadioGroupWithChildrenExample = () => {
         onValueChange={(value) => setSelectedChoice(value)}
       >
         {choices.map((choice) => (
-          <RadioGroupChoice value={choice.id} iconPosition="start">
+          <RadioGroupChoice value={choice.id} iconPosition="start" label={<Label>{choice.label}</Label>}>
             <div className="s-flex s-items-center s-gap-2 s-border s-border-red-500 s-p-2">
               <Icon visual={LockIcon} />
               <Label>{choice.label}</Label>
