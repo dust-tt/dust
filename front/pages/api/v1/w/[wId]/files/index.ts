@@ -56,7 +56,7 @@ import { apiError } from "@app/logger/withlogging";
  *                 description: Intended use case for the file, use "conversation"
  *               useCaseMetadata:
  *                 type: string
- *                 description: Metadata for the use case (JSON string)
+ *                 description: (optional) Metadata for the use case, for conversation useCase should be dictionary with conversationId stringified
  *     responses:
  *       200:
  *         description: File upload URL created successfully
