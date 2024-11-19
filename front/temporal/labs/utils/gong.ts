@@ -125,7 +125,11 @@ export async function retrieveGongTranscriptContent(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   fileId: string,
   localLogger: Logger
-): Promise<{ transcriptTitle: string; transcriptContent: string } | null> {
+): Promise<{
+  transcriptTitle: string;
+  transcriptContent: string;
+  userParticipated: boolean;
+} | null> {
   if (!transcriptsConfiguration || !transcriptsConfiguration.connectionId) {
     localLogger.error(
       {},
@@ -248,12 +252,9 @@ export async function retrieveGongTranscriptContent(
     }
   }
 
+  let userParticipated = true;
   if (!participantsUsers[gongUser.id]) {
-    localLogger.info(
-      {},
-      "[processTranscriptActivity] User did not participate in this call. Skipping."
-    );
-    return null;
+    userParticipated = false;
   }
 
   const transcript = await fetch(`https://api.gong.io/v2/calls/transcript`, {
@@ -329,5 +330,5 @@ export async function retrieveGongTranscriptContent(
     }
   );
 
-  return { transcriptTitle, transcriptContent };
+  return { transcriptTitle, transcriptContent, userParticipated };
 }

@@ -7,7 +7,6 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -38,12 +37,13 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static async makeNew(
     blob: Omit<
       CreationAttributes<LabsTranscriptsConfigurationModel>,
-      "isActive"
+      "isActive" | "isDefaultFullStorage"
     >
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
       isActive: false,
+      isDefaultFullStorage: false,
     });
 
     return new LabsTranscriptsConfigurationResource(
@@ -156,17 +156,14 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ dataSourceViewId: dataSourceView.id });
   }
 
-  static async fetchFirstConfigurationWithDatasourceViewForWorkspace(
+  static async fetchDefaultFullStorageConfigurationForWorkspace(
     auth: Authenticator
   ): Promise<LabsTranscriptsConfigurationResource | null> {
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
-        workspaceId: auth.workspace()?.id,
-        dataSourceViewId: {
-          [Op.ne]: null,
-        },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        isDefaultFullStorage: true,
       },
-      order: [["id", "ASC"]],
     });
 
     if (!configuration) {
