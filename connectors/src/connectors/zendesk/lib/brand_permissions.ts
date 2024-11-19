@@ -2,11 +2,11 @@ import type { ModelId } from "@dust-tt/types";
 
 import {
   allowSyncZendeskHelpCenter,
-  revokeSyncZendeskHelpCenter,
+  forbidSyncZendeskHelpCenter,
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import {
   allowSyncZendeskTickets,
-  revokeSyncZendeskTickets,
+  forbidSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -82,7 +82,7 @@ export async function allowSyncZendeskBrand({
 /**
  * Mark a brand as permission "none", with all its children (help center and tickets + children).
  */
-export async function revokeSyncZendeskBrand({
+export async function forbidSyncZendeskBrand({
   connectorId,
   brandId,
 }: {
@@ -96,7 +96,7 @@ export async function revokeSyncZendeskBrand({
   if (!brand) {
     logger.error(
       { brandId },
-      "[Zendesk] Brand not found, could not revoke sync."
+      "[Zendesk] Brand not found, could not disable sync."
     );
     return null;
   }
@@ -106,8 +106,8 @@ export async function revokeSyncZendeskBrand({
   await brand.revokeTicketsPermissions();
 
   // revoke permissions for all the children resources (help center and tickets)
-  await revokeSyncZendeskHelpCenter({ connectorId, brandId });
-  await revokeSyncZendeskTickets({ connectorId, brandId });
+  await forbidSyncZendeskHelpCenter({ connectorId, brandId });
+  await forbidSyncZendeskTickets({ connectorId, brandId });
 
   return brand;
 }

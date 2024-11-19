@@ -95,7 +95,7 @@ export async function allowSyncZendeskHelpCenter({
 /**
  * Mark a help center as permission "none" and all children (collections and articles).
  */
-export async function revokeSyncZendeskHelpCenter({
+export async function forbidSyncZendeskHelpCenter({
   connectorId,
   brandId,
   withChildren = true,
@@ -111,7 +111,7 @@ export async function revokeSyncZendeskHelpCenter({
   if (!brand) {
     logger.error(
       { brandId },
-      "[Zendesk] Brand not found, could not revoke sync."
+      "[Zendesk] Brand not found, could not disable sync."
     );
     return null;
   }
@@ -197,7 +197,7 @@ export async function allowSyncZendeskCategory({
 /**
  * Mark a category with "none" permissions alongside all its children articles.
  */
-export async function revokeSyncZendeskCategory({
+export async function forbidSyncZendeskCategory({
   connectorId,
   categoryId,
 }: {
@@ -212,7 +212,7 @@ export async function revokeSyncZendeskCategory({
   if (!category) {
     logger.error(
       { categoryId },
-      "[Zendesk] Category not found, could not revoke sync."
+      "[Zendesk] Category not found, could not disable sync."
     );
     return null;
   }
@@ -230,7 +230,7 @@ export async function revokeSyncZendeskCategory({
     brandId: category.brandId,
   });
   if (categories.length === 0) {
-    await revokeSyncZendeskHelpCenter({
+    await forbidSyncZendeskHelpCenter({
       connectorId,
       brandId: category.brandId,
       withChildren: false,
