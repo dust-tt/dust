@@ -26,9 +26,6 @@ export const MainPage = ({
     <>
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-2 pb-6">
-          <Link to="https://dust.tt" target="_blank">
-            <LogoHorizontalColorLogo className="h-4 w-16" />
-          </Link>
           {user.workspaces.length > 1 && (
             <div className="flex flex-row items-center gap-2">
               <p className="text-sm text-slate-500">Workspace:</p>
@@ -54,6 +51,11 @@ export const MainPage = ({
               </DropdownMenu>
             </div>
           )}
+        </div>
+        <div className="fixed bottom-4 right-4">
+          <Link to="https://dust.tt" target="_blank">
+            <LogoHorizontalColorLogo className="h-6 w-24" />
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <ConversationsListButton size="md" />
