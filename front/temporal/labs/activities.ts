@@ -280,8 +280,8 @@ export async function processTranscriptActivity(
 
   // Decide to store transcript or not (user might not have participated)
   const shouldStoreTranscript =
-    (transcriptsConfiguration.dataSourceViewId && userParticipated) ||
-    (gongFullStorageFF && gongFullStorageDataSourceViewId);
+    (userParticipated && !!transcriptsConfiguration.dataSourceViewId) ||
+    (gongFullStorageFF && !!gongFullStorageDataSourceViewId);
 
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
@@ -290,8 +290,11 @@ export async function processTranscriptActivity(
   localLogger.info(
     {
       fileId,
-      transcriptTitle,
-      transcriptContentLength: transcriptContent.length,
+      userParticipated,
+      transcriptsConfigurationDataSourceViewId:
+        transcriptsConfiguration.dataSourceViewId,
+      gongFullStorageFF,
+      gongFullStorageDataSourceViewId,
       shouldStoreTranscript,
       shouldProcessTranscript,
     },
