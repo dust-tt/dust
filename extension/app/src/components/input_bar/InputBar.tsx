@@ -41,7 +41,9 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: AgentMentionType[],
-    contentFragments: UploadedContentFragmentType[]
+    contentFragments: (UploadedContentFragmentType & {
+      kind: "attachment" | "tab_content";
+    })[]
   ) => void;
   stickyMentions?: AgentMentionType[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
@@ -81,7 +83,10 @@ export function AssistantInputBar({
   useEffect(() => {
     if (droppedFiles.length > 0) {
       // Handle the dropped files.
-      void fileUploaderService.handleFilesUpload(droppedFiles);
+      void fileUploaderService.handleFilesUpload({
+        files: droppedFiles,
+        kind: "attachment",
+      });
 
       // Clear the dropped files after handling them.
       setDroppedFiles([]);
@@ -193,6 +198,7 @@ export function AssistantInputBar({
       title: cf.filename,
       fileId: cf.fileId,
       url: cf.publicUrl,
+      kind: cf.kind,
     }));
 
     resetEditorText();
@@ -213,10 +219,12 @@ export function AssistantInputBar({
             title: cf.filename,
             fileId: cf.fileId || "",
             url: cf.publicUrl,
+            kind: cf.kind,
           }))
         );
       }
     }
+
     onSubmit(text, mentions, newFiles);
     fileUploaderService.resetUpload();
   };

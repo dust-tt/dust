@@ -15,8 +15,11 @@ import { useDustAPI } from "@extension/lib/dust_api";
 import type { GetActiveTabOptions } from "@extension/lib/messages";
 import { useState } from "react";
 
+type FileBlobKind = "attachment" | "tab_content";
+
 interface FileBlob {
   contentType: SupportedFileContentType;
+  kind: FileBlobKind;
   file: File;
   filename: string;
   id: string;
@@ -64,7 +67,15 @@ export function useFileUploaderService() {
     return title;
   };
 
-  const handleFilesUpload = async (files: File[], updateBlobs?: boolean) => {
+  const handleFilesUpload = async ({
+    files,
+    updateBlobs,
+    kind,
+  }: {
+    files: File[];
+    updateBlobs?: boolean;
+    kind: FileBlobKind;
+  }): Promise<FileBlob[] | undefined> => {
     setIsProcessingFiles(true);
 
     const { totalTextualSize, totalImageSize } = [
@@ -100,7 +111,7 @@ export function useFileUploaderService() {
       return;
     }
 
-    const previewResults = processSelectedFiles(files);
+    const previewResults = processSelectedFiles(files, kind);
     const newFileBlobs = processResults(previewResults, updateBlobs);
 
     const uploadResults = await uploadFiles(newFileBlobs);
@@ -116,11 +127,12 @@ export function useFileUploaderService() {
       (e?.target as HTMLInputElement).files ?? []
     );
 
-    return handleFilesUpload(selectedFiles);
+    return handleFilesUpload({ files: selectedFiles, kind: "attachment" });
   };
 
   const processSelectedFiles = (
-    selectedFiles: File[]
+    selectedFiles: File[],
+    kind: FileBlobKind
   ): Result<FileBlob, FileBlobUploadError>[] => {
     return selectedFiles.reduce(
       (acc, file) => {
@@ -148,7 +160,7 @@ export function useFileUploaderService() {
           return acc;
         }
 
-        acc.push(new Ok(createFileBlob(file, contentType)));
+        acc.push(new Ok(createFileBlob({ file, contentType, kind })));
         return acc;
       },
       [] as (Ok<FileBlob> | Err<FileBlobUploadError>)[]
@@ -326,7 +338,11 @@ export function useFileUploaderService() {
           onUpload();
         }
 
-        const fragments = await handleFilesUpload([file], updateBlobs);
+        const fragments = await handleFilesUpload({
+          files: [file],
+          updateBlobs,
+          kind: "tab_content",
+        });
         if (fragments) {
           fragments.forEach((f) => {
             f.publicUrl = tabContent.url;
@@ -358,7 +374,12 @@ export function useFileUploaderService() {
         onUpload();
       }
 
-      return await handleFilesUpload([file]);
+      return await handleFilesUpload({
+        files: [file],
+        updateBlobs,
+        // TODO(EXT): supersede the screenshot
+        kind: "attachment",
+      });
     }
   };
 
@@ -387,11 +408,17 @@ export function useFileUploaderService() {
 
 export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
 
-const createFileBlob = (
-  file: File,
-  contentType: SupportedFileContentType,
-  preview?: string
-): FileBlob => ({
+const createFileBlob = ({
+  file,
+  contentType,
+  kind,
+  preview,
+}: {
+  file: File;
+  contentType: SupportedFileContentType;
+  kind: "attachment" | "tab_content";
+  preview?: string;
+}): FileBlob => ({
   contentType,
   file,
   filename: file.name,
@@ -399,6 +426,7 @@ const createFileBlob = (
   // Will be set once the file has been uploaded.
   fileId: null,
   isUploading: true,
+  kind,
   preview,
   size: file.size,
 });
