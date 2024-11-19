@@ -58,7 +58,6 @@ export function withSpaceFromRoute<T>(handler: ResourceHandler<T, "space">) {
     auth: Authenticator,
     session: SessionWithUser
   ) => {
-    // Add space to routeParams if it is in the query
     const { spaceId } = req.query;
     if (typeof spaceId !== "string") {
       return apiError(req, res, {
