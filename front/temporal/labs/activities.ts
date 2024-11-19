@@ -20,6 +20,7 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { default as apiConfig } from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -268,8 +269,63 @@ export async function processTranscriptActivity(
     return;
   }
 
+  // labs_transcripts_gong_full_storage FF enables storing all Gong transcripts in a single datasource view
+  let gongFullStorage = false;
+  let gongFullStorageDataSourceViewId = null;
+  if (transcriptsConfiguration.provider === "gong") {
+    const featureFlags = await getFeatureFlags(owner);
+    gongFullStorage = featureFlags.includes(
+      "labs_transcripts_gong_full_storage"
+    );
+
+    if (gongFullStorage) {
+      const defaultTranscriptConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchFirstConfigurationWithDatasourceViewForWorkspace(
+          auth
+        );
+
+      if (!defaultTranscriptConfiguration) {
+        localLogger.error(
+          {},
+          "[processTranscriptActivity] No default transcript configuration with a datasource view found while full Gong storage if enabled. Stopping."
+        );
+        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+        return;
+      }
+
+      gongFullStorageDataSourceViewId =
+        defaultTranscriptConfiguration.dataSourceViewId;
+    }
+  }
+
   // If storing transcripts is active
-  if (transcriptsConfiguration.dataSourceViewId) {
+  if (
+    transcriptsConfiguration.dataSourceViewId ||
+    gongFullStorageDataSourceViewId
+  ) {
+    localLogger.info(
+      {
+        dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
+        gongFullStorage,
+        gongFullStorageDataSourceViewId,
+        transcriptsConfiguration,
+      },
+      "[processTranscriptActivity] Storing transcript to Datasource."
+    );
+
+    const dataSourceViewId =
+      gongFullStorageDataSourceViewId ||
+      transcriptsConfiguration.dataSourceViewId;
+
+    if (!dataSourceViewId) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] No datasource view id found. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
+    }
+
     localLogger.info(
       {
         datasourceViewId: transcriptsConfiguration.dataSourceViewId,
@@ -279,7 +335,7 @@ export async function processTranscriptActivity(
 
     const [datasourceView] = await DataSourceViewResource.fetchByModelIds(
       auth,
-      [transcriptsConfiguration.dataSourceViewId]
+      [dataSourceViewId]
     );
 
     if (!datasourceView) {

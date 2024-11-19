@@ -1,12 +1,13 @@
 import type { LabsConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { CreationAttributes } from "sequelize";
 import type {
   Attributes,
   InferAttributes,
   ModelStatic,
   Transaction,
 } from "sequelize";
-import type { CreationAttributes } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -153,6 +154,29 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     }
 
     return this.update({ dataSourceViewId: dataSourceView.id });
+  }
+
+  static async fetchFirstConfigurationWithDatasourceViewForWorkspace(
+    auth: Authenticator
+  ): Promise<LabsTranscriptsConfigurationResource | null> {
+    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+      where: {
+        workspaceId: auth.workspace()?.id,
+        dataSourceViewId: {
+          [Op.ne]: null,
+        },
+      },
+      order: [["id", "ASC"]],
+    });
+
+    if (!configuration) {
+      return null;
+    }
+
+    return new LabsTranscriptsConfigurationResource(
+      LabsTranscriptsConfigurationModel,
+      configuration.get()
+    );
   }
 
   async delete(
