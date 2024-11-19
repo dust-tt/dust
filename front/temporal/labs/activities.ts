@@ -287,6 +287,17 @@ export async function processTranscriptActivity(
   const shouldProcessTranscript =
     transcriptsConfiguration.isActive && userParticipated;
 
+  localLogger.info(
+    {
+      fileId,
+      transcriptTitle,
+      transcriptContentLength: transcriptContent.length,
+      shouldStoreTranscript,
+      shouldProcessTranscript,
+    },
+    "[processTranscriptActivity] Deciding to store and/or process transcript."
+  );
+
   if (shouldStoreTranscript) {
     localLogger.info(
       {
