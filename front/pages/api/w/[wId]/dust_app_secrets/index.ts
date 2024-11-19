@@ -2,11 +2,11 @@ import type { DustAppSecretType, WithAPIErrorResponse } from "@dust-tt/types";
 import { encrypt, rateLimiter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   getDustAppSecret,
   getDustAppSecrets,
 } from "@app/lib/api/dust_app_secrets";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";

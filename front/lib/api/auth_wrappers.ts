@@ -65,7 +65,7 @@ export function withSessionAuthentication<T>(
 
 /**
  * This function is a wrapper for API routes that require session authentication for a workspace.
- * It must be used on all routes that require workspace authentication (prefix: /w/[wId/]).
+ * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
  *
  * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the user is not a
  * member of the workspace. This is useful for routes that share data across workspaces (eg apps
@@ -149,7 +149,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 
 /**
  * This function is a wrapper for Public API routes that require authentication for a workspace.
- * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId/]).
+ * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId]/).
  *
  * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the key is not a
  * associated with the workspace. This is useful for routes that share data across workspaces (eg apps

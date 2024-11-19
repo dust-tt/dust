@@ -9,11 +9,13 @@ import {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -32,10 +34,11 @@ async function handler(
       | PatchDataSourceConfigurationResponseBody
     >
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { dsId, spaceId } = req.query;
-  if (typeof dsId !== "string" || typeof spaceId !== "string") {
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -46,7 +49,7 @@ async function handler(
   }
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (!dataSource || dataSource.space.sId !== spaceId) {
+  if (!dataSource || dataSource.space.sId !== space.sId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -63,16 +66,6 @@ async function handler(
         type: "data_source_auth_error",
         message:
           "Only the users that have `read` permission for the current space can access a data source configuration.",
-      },
-    });
-  }
-
-  if (dataSource.space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -185,4 +178,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, "space")
+);

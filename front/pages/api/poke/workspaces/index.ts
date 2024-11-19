@@ -9,8 +9,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";

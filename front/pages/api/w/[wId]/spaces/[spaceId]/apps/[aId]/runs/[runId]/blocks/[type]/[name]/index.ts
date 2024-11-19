@@ -2,10 +2,12 @@ import type { BlockType, RunType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -22,10 +24,12 @@ export type GetRunBlockResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetRunBlockResponseBody>>,
-  auth: Authenticator
+
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { aId, spaceId } = req.query;
-  if (typeof spaceId !== "string" || typeof aId !== "string") {
+  const { aId } = req.query;
+  if (typeof aId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -36,22 +40,12 @@ async function handler(
   }
 
   const app = await AppResource.fetchById(auth, aId);
-  if (!app || app.space.sId !== spaceId) {
+  if (!app || app.space.sId !== space.sId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app was not found.",
-      },
-    });
-  }
-
-  if (app.space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -113,4 +107,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, "space")
+);

@@ -1,7 +1,7 @@
 import type { LightWorkspaceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { pokeUpgradeWorkspaceToPlan } from "@app/lib/plans/subscription";
 import { apiError } from "@app/logger/withlogging";

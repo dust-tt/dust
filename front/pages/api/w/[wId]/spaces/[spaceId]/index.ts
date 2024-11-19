@@ -14,13 +14,14 @@ import { uniq } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 type SpaceCategoryInfo = {
@@ -44,30 +45,9 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetSpaceResponseBody | PatchSpaceResponseBody>
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid space id.",
-      },
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you requested was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       const dataSourceViews = await DataSourceViewResource.listBySpace(
@@ -261,4 +241,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, "space")
+);

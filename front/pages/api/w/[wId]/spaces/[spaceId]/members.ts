@@ -4,10 +4,11 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 interface PatchSpaceMembersResponseBody {
@@ -17,30 +18,9 @@ interface PatchSpaceMembersResponseBody {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchSpaceMembersResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid space id.",
-      },
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you requested was not found.",
-      },
-    });
-  }
-
   if (!space.isRegular()) {
     return apiError(req, res, {
       status_code: 400,
@@ -111,4 +91,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, "space")
+);
