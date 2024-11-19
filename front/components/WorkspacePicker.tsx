@@ -5,6 +5,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  Label,
 } from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
@@ -24,7 +25,7 @@ export default function WorkspacePicker({
 }: WorkspacePickerProps) {
   return (
     <div className="flex flex-row items-center gap-1 px-3 py-2">
-      <p className="text-xs text-muted-foreground">Workspace:</p>
+      <Label className="text-xs text-muted-foreground">Workspace:</Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
