@@ -1,7 +1,6 @@
 import { Page } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useCallback } from "react";
