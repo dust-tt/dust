@@ -6,7 +6,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { softDeleteApp } from "@app/lib/api/apps";
-import { withInternalAPIRouteResource } from "@app/lib/api/auth_wrappers";
+import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";

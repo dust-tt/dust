@@ -4,8 +4,8 @@ import { isLeft } from "fp-ts/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
-import { withInternalAPIRouteResource } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";

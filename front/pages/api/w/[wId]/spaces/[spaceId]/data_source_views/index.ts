@@ -14,8 +14,8 @@ import {
   getDataSourcesUsageByCategory,
   getDataSourceViewsUsageByCategory,
 } from "@app/lib/api/agent_data_sources";
+import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
-import { withInternalAPIRouteResource } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";

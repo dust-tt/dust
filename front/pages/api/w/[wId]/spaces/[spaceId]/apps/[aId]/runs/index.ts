@@ -4,8 +4,8 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
-import { withInternalAPIRouteResource } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";

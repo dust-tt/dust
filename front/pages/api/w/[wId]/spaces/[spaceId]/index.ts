@@ -14,8 +14,8 @@ import { uniq } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
+import { withInternalAPIRouteResource } from "@app/lib/api/custom_wrappers";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
-import { withInternalAPIRouteResource } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
