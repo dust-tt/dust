@@ -39,6 +39,7 @@ const {
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskTicketsAllowedBrandIdsActivity,
+  setZendeskTimestampCursorActivity,
   getZendeskTimestampCursorActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
@@ -55,7 +56,7 @@ export async function zendeskSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  await saveZendeskConnectorStartSync({ connectorId });
+  await saveZendeskConnectorStartSync(connectorId);
 
   const brandIds = new Set<number>();
   const brandSignals: ZendeskUpdateSignal[] = [];
@@ -211,7 +212,7 @@ export async function zendeskSyncWorkflow({
     }
   }
 
-  await saveZendeskConnectorSuccessSync({ connectorId, currentSyncDateMs });
+  await saveZendeskConnectorSuccessSync(connectorId, currentSyncDateMs);
 }
 
 /**
@@ -258,6 +259,8 @@ export async function zendeskIncrementalSyncWorkflow({
       })
     );
   }
+
+  await setZendeskTimestampCursorActivity({ connectorId, currentSyncDateMs });
 }
 
 /**
@@ -373,13 +376,13 @@ export async function zendeskCategorySyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const wasCategoryUpdated = await syncZendeskCategoryActivity({
+  const shouldSyncArticles = await syncZendeskCategoryActivity({
     connectorId,
     categoryId,
     currentSyncDateMs,
     brandId,
   });
-  if (wasCategoryUpdated) {
+  if (shouldSyncArticles) {
     await runZendeskActivityWithPagination((cursor) =>
       syncZendeskArticleBatchActivity({
         connectorId,
