@@ -307,7 +307,7 @@ export function useFileUploaderService() {
           : `${tabContent.title}`,
         "txt"
       );
-      console.log(title);
+
       // Check if the content is already uploaded - compare the title and the size of the content.
       const messages = conversation?.content.map((m) => m[m.length - 1]) || [];
       const alreadyUploaded = messages.some(
