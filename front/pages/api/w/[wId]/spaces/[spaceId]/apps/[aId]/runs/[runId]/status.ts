@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -107,4 +108,6 @@ async function handler(
   }
 }
 
-export default withResourceFromRoute(handler, "space");
+export default withSessionAuthenticationForWorkspace(
+  withResourceFromRoute(handler, "space")
+);

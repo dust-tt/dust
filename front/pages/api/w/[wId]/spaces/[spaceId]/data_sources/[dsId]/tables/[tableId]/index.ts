@@ -8,6 +8,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withResourceFromRoute } from "@app/lib/api/custom_wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { upsertTable } from "@app/lib/api/data_sources";
 import { deleteTable } from "@app/lib/api/tables";
 import type { Authenticator } from "@app/lib/auth";
@@ -166,4 +167,6 @@ async function handler(
   }
 }
 
-export default withResourceFromRoute(handler, "space");
+export default withSessionAuthenticationForWorkspace(
+  withResourceFromRoute(handler, "space")
+);
