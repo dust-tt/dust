@@ -67,6 +67,7 @@ export async function garbageCollectTicketBatchActivity(
 
 /**
  * This activity is responsible for fetching and garbage collecting a batch of articles.
+ * Here, garbage collection means deleting articles that are no longer present in Zendesk.
  */
 export async function garbageCollectArticleBatchActivity({
   connectorId,
