@@ -26,7 +26,7 @@ interface ConversationListFilesActionBlob {
   files: ConversationFileType[];
 }
 
-export function isIncludableFileContentType(
+export function isConversationIncludableFileContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
   if (isSupportedImageContentType(contentType)) {
@@ -88,7 +88,7 @@ export class ConversationListFilesAction extends BaseAction {
       content +=
         `<file id="${f.fileId}" ` +
         `name="${f.title}" type="${f.contentType}" ` +
-        `includable="${isIncludableFileContentType(f.contentType)}"/>\n`;
+        `includable="${isConversationIncludableFileContentType(f.contentType)}"/>\n`;
     }
 
     return {

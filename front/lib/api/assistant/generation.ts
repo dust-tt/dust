@@ -277,7 +277,10 @@ async function renderConversationForModelMultiActions({
         // doing a Promise.all for now but might need to be reconsiderd in the future.
         steps[stepIndex].actions.push({
           call: action.renderForFunctionCall(),
-          result: await action.renderForMultiActionsModel(conversation),
+          result: await action.renderForMultiActionsModel({
+            conversation,
+            model,
+          }),
         });
       }
 

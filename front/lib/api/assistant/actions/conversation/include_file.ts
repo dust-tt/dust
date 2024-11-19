@@ -1,22 +1,21 @@
 import type {
-  AgentMessageType,
   ContentFragmentType,
-  ConversationFileType,
-  ConversationListFilesActionType,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
+  ModelConfigurationType,
   ModelId,
 } from "@dust-tt/types";
 import {
   BaseAction,
-  getTablesQueryResultsFileTitle,
-  isAgentMessageType,
   isContentFragmentType,
-  isTablesQueryActionType,
+  isTextContent,
 } from "@dust-tt/types";
-import { isIncludableFileContentType } from "./list_files";
-import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
+
+import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/list_files";
+import {
+  renderContentFragmentForModel,
+} from "@app/lib/resources/content_fragment_resource";
 
 interface ConversationIncludeFilesActionBlob {
   id: ModelId;
@@ -58,14 +57,18 @@ export class ConversationIncludeFilesAction extends BaseAction {
     };
   }
 
-  async renderForMultiActionsModel(
-    conversation: ConversationType
-  ): Promise<FunctionMessageTypeModel> {
+  async renderForMultiActionsModel({
+    conversation,
+    model,
+  }: {
+    conversation: ConversationType;
+    model: ModelConfigurationType;
+  }): Promise<FunctionMessageTypeModel> {
     const m = (conversation.content.flat(1).find((m) => {
       if (
         isContentFragmentType(m) &&
-        isIncludableFileContentType(m.contentType) &&
-        isIncludableFileContentType(m.contentType) &&
+        isConversationIncludableFileContentType(m.contentType) &&
+        isConversationIncludableFileContentType(m.contentType) &&
         m.fileId === this.params.fileId
       ) {
         return true;
@@ -77,16 +80,17 @@ export class ConversationIncludeFilesAction extends BaseAction {
     if (!m) {
       content = `Error: File \`${this.params.fileId}\` not found in conversation`;
     } else {
-      // TODO switch as in content_fragment_resource
-      const content = await getContentFragmentText({
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        messageId: sId,
+      const rRes = await renderContentFragmentForModel(m, conversation, model, {
+        // We're not supposed to get images here and we would not know what to do with them.
+        excludeImages: true,
       });
-
-      content = `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}">\n`;
-      content += `${m.content}\n`;
-      content += `</file>`;
+      if (rRes.isErr()) {
+        content = `Error: ${rRes.error}`;
+      } else if (!isTextContent(rRes.value.content[0])) {
+        content = `Error: File \`${this.params.fileId}\` has no text content`;
+      } else {
+        content = rRes.value.content[0].text;
+      }
     }
 
     return {

@@ -2,6 +2,7 @@ import {
   FunctionCallType,
   FunctionMessageTypeModel,
 } from "../../../front/assistant/generation";
+import { ModelConfigurationType } from "../../../front/lib/assistant";
 import { ModelId } from "../../../shared/model_id";
 import { ConversationType } from "../conversation";
 
@@ -26,7 +27,11 @@ export abstract class BaseAction {
   }
 
   abstract renderForFunctionCall(): FunctionCallType;
-  abstract renderForMultiActionsModel(
-    conversation: ConversationType
-  ): Promise<FunctionMessageTypeModel>;
+  abstract renderForMultiActionsModel({
+    conversation,
+    model,
+  }: {
+    conversation: ConversationType;
+    model: ModelConfigurationType;
+  }): Promise<FunctionMessageTypeModel>;
 }
