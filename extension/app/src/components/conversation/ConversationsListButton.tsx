@@ -9,7 +9,7 @@ export const ConversationsListButton = ({
   const navigate = useNavigate();
   return (
     <Button
-      tooltip="View all conversations"
+      tooltip="View conversations"
       icon={ChatBubbleLeftRightIcon}
       variant="ghost"
       onClick={() => navigate("/conversations")}

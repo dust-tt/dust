@@ -3,7 +3,7 @@ import {
   AttachmentIcon,
   Button,
   CameraIcon,
-  DocumentTextIcon,
+  GlobeAltIcon,
 } from "@dust-tt/sparkle";
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
@@ -51,7 +51,7 @@ export const AttachFragment = ({
       />
       <Button
         icon={AttachmentIcon}
-        tooltip={"Attach file"}
+        tooltip="Attach file"
         variant="ghost"
         size="xs"
         onClick={async () => {
@@ -59,8 +59,8 @@ export const AttachFragment = ({
         }}
       />
       <Button
-        icon={DocumentTextIcon}
-        tooltip={"Attach tab content"}
+        icon={GlobeAltIcon}
+        tooltip="Attach tab content"
         variant="ghost"
         size="xs"
         className={attachPageBlinking ? "animate-[bgblink_200ms_3]" : ""}
@@ -73,7 +73,7 @@ export const AttachFragment = ({
       />
       <Button
         icon={CameraIcon}
-        tooltip={"Attach tab screenshot"}
+        tooltip="Attach tab screenshot"
         variant="ghost"
         size="xs"
         onClick={() =>

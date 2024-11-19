@@ -47,6 +47,7 @@ export const ConversationPage = ({
               href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}/assistant/${conversationId}`}
               target="_blank"
               size="md"
+              tooltip="Open in Dust"
             />
           </div>
         }
