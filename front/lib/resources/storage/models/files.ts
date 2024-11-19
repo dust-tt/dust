@@ -30,6 +30,7 @@ export class FileModel extends Model<
   declare status: FileStatus;
   declare useCase: FileUseCase;
   declare useCaseMetadata: FileUseCaseMetadata | null;
+  declare snippet: string | null;
 
   declare userId: ForeignKey<User["id"]> | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -70,6 +71,11 @@ FileModel.init(
     },
     useCaseMetadata: {
       type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+    snippet: {
+      type: DataTypes.STRING(512),
       allowNull: true,
       defaultValue: null,
     },
