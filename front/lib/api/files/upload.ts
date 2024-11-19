@@ -642,10 +642,6 @@ export async function processAndStoreFile(
 
     const conversation: ConversationType = r.value;
 
-    // Upsert the file to the conversation datasource.
-    const conversationsSpace =
-      await SpaceResource.fetchWorkspaceConversationsSpace(auth);
-
     // Fetch the datasource linked to the conversation...
     let dataSource = await DataSourceResource.fetchByConversationId(
       auth,
@@ -654,6 +650,8 @@ export async function processAndStoreFile(
 
     if (!dataSource) {
       // ...or create a new one.
+      const conversationsSpace =
+        await SpaceResource.fetchWorkspaceConversationsSpace(auth);
 
       // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs are used as secrets to share the conversation within the workspace users.
       const name = `Conversation ${uuidv4()}`;
