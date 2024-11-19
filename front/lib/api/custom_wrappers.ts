@@ -48,7 +48,7 @@ export function withResourceFromRoute<T, U extends ResourceKey>(
   handler: ResourceHandler<T, U>,
   resource: U
 ) {
-  return resolver[resource](handler as ResourceHandler<T, U>);
+  return resolver[resource](handler);
 }
 
 export function withSpaceFromRoute<T>(handler: ResourceHandler<T, "space">) {
