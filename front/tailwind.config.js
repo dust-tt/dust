@@ -192,7 +192,7 @@ module.exports = {
             dark: colors.slate[500],
           },
           background: {
-            DEFAULT: colors.slate[50],
+            DEFAULT: "#F6F8FB",
             dark: colors.slate[900],
           },
         },
@@ -229,7 +229,7 @@ module.exports = {
           200: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
           150: { DEFAULT: "#E9EFF5", dark: "#172033" },
           100: { DEFAULT: colors.slate[100], dark: colors.slate[900] },
-          50: { DEFAULT: colors.slate[50], dark: colors.slate[950] },
+          50: { DEFAULT: "#F6F8FB", dark: colors.slate[950] },
         },
         warning: {
           DEFAULT: colors.red[500],
@@ -280,7 +280,7 @@ module.exports = {
         },
         structure: {
           0: { DEFAULT: colors.white, dark: colors.black },
-          50: { DEFAULT: colors.slate[50], dark: colors.slate[900] },
+          50: { DEFAULT: "#F6F8FB", dark: colors.slate[900] },
           100: { DEFAULT: colors.slate[100], dark: colors.slate[800] },
           150: { DEFAULT: "#E9EFF5", dark: "#172033" },
           200: { DEFAULT: colors.slate[200], dark: colors.slate[700] },

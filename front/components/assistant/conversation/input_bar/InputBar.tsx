@@ -1,4 +1,4 @@
-import { Button, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
+import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
@@ -266,7 +266,7 @@ export function AssistantInputBar({
               "bg-primary-50",
               "transition-all",
               isFloating
-                ? "rounded-3xl border border-border-dark/0 focus-within:border-border-dark focus-within:ring-2 focus-within:ring-highlight-300 focus-within:ring-offset-2"
+                ? "rounded-3xl border border-border-dark focus-within:ring-1 focus-within:ring-highlight-300 sm:border-border-dark/0 sm:focus-within:border-border-dark sm:focus-within:ring-2 sm:focus-within:ring-offset-2"
                 : "border-t",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
@@ -315,7 +315,13 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl pb-2 sm:pb-8">
+    <div
+      className={cn(
+        "sticky bottom-0 z-20 flex max-h-screen w-full",
+        "pb-2",
+        "sm:w-full sm:max-w-4xl sm:pb-8"
+      )}
+    >
       <AssistantInputBar
         owner={owner}
         onSubmit={onSubmit}
