@@ -24,21 +24,21 @@ export const RadioGroupExample = () => {
           <RadioGroupItem
             value="option-one"
             id="option-one"
-            label={<Label htmlFor="option-one">Option One</Label>}
+            label="Option One"
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-two"
             id="option-two"
-            label={<Label htmlFor="option-two">Option Two</Label>}
+            label="Option Two"
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-three"
             id="option-three"
-            label={<Label htmlFor="option-two">Option Three</Label>}
+            label="Option Three"
           />
         </div>
       </RadioGroup>
@@ -49,7 +49,7 @@ export const RadioGroupExample = () => {
             id="option-four"
             size="sm"
             tooltipMessage="This is a nice tooltip message"
-            label={<Label htmlFor="option-one">Option One</Label>}
+            label="Option One"
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
@@ -58,7 +58,7 @@ export const RadioGroupExample = () => {
             id="option-five"
             size="sm"
             disabled
-            label={<Label htmlFor="option-two">Option Two</Label>}
+            label="Option Two"
           />
         </div>
         <div className="s-flex s-items-center s-space-x-2">
@@ -66,7 +66,7 @@ export const RadioGroupExample = () => {
             value="option-six"
             id="option-three"
             size="sm"
-            label={<Label htmlFor="option-three">Option Three</Label>}
+            label="Option Three"
           />
         </div>
       </RadioGroup>
@@ -93,7 +93,7 @@ export const RadioGroupWithChildrenExample = () => {
           <RadioGroupChoice
             value={choice.id}
             iconPosition="start"
-            label={<Label>{choice.label}</Label>}
+            label={choice.label}
           >
             <div className="s-flex s-items-center s-gap-2 s-border s-border-red-500 s-p-2">
               <Icon visual={LockIcon} />
