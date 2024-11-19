@@ -416,64 +416,6 @@ export function withAuth0TokenAuthentication<T>(
   );
 }
 
-/**
- * This function is a wrapper for `spaces/[spaceId]` API routes, that rely on a space
- */
-export function withSpace<T>(
-  handler: (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>,
-    user: UserTypeWithWorkspaces
-  ) => Promise<void> | void
-) {
-  return withLogging(
-    async (
-      req: NextApiRequest,
-      res: NextApiResponse<WithAPIErrorResponse<T>>
-    ) => {
-      const bearerTokenRes = await getBearerToken(req);
-      if (bearerTokenRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "not_authenticated",
-            message:
-              "The request does not have valid authentication credentials.",
-          },
-        });
-      }
-      const bearerToken = bearerTokenRes.value;
-      const authMethod = getAuthType(bearerToken);
-
-      if (authMethod !== "access_token") {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "not_authenticated",
-            message:
-              "The request does not have valid authentication credentials.",
-          },
-        });
-      }
-
-      const user = await getUserFromAuth0Token(bearerToken);
-      if (!user) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "user_not_found",
-            message: "Could not find the user.",
-          },
-        });
-      }
-
-      const userWithWorkspaces = await getUserWithWorkspaces(user);
-
-      return handler(req, res, userWithWorkspaces);
-    }
-  );
-}
-
 // This is a type that represents the resources that can be extracted from an API route
 type RouteResourceName = "space";
 
