@@ -1,8 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
 import {
-  deleteBrandHelpCenter,
-  deleteBrandTickets,
+  deleteBrand,
   deleteCategoryChildren,
 } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
@@ -117,11 +116,7 @@ export async function syncZendeskBrandActivity({
 
   // if the brand is not on Zendesk anymore, we delete it
   if (!fetchedBrand) {
-    await Promise.all([
-      deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig }),
-      deleteBrandTickets({ connectorId, brandId, dataSourceConfig }),
-    ]);
-    await brandInDb.delete();
+    await deleteBrand({ connectorId, brandId, dataSourceConfig });
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 

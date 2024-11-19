@@ -284,7 +284,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
 
   static async deleteByConnectorId(
     connectorId: number,
-    transaction: Transaction
+    transaction?: Transaction
   ) {
     await ZendeskBrand.destroy({ where: { connectorId }, transaction });
   }
