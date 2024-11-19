@@ -464,8 +464,6 @@ const maybeApplyPreProcessing: PreprocessingFunction = async (
 ) => {
   const contentTypeProcessing = processingPerContentType[file.contentType];
   if (!contentTypeProcessing) {
-    await file.markAsReady();
-
     return new Ok(undefined);
   }
 
@@ -473,17 +471,11 @@ const maybeApplyPreProcessing: PreprocessingFunction = async (
   if (processing) {
     const res = await processing(auth, file);
     if (res.isErr()) {
-      await file.markAsFailed();
-
       return res;
     } else {
-      await file.markAsReady();
-
       return new Ok(res.value);
     }
   }
-
-  await file.markAsReady();
 
   return new Ok(undefined);
 };
@@ -550,6 +542,7 @@ export async function processAndStoreFile(
     const maybeFiles = files.file;
 
     if (!maybeFiles || maybeFiles.length === 0) {
+      await file.markAsFailed();
       return new Err({
         name: "dust_error",
         code: "file_type_not_supported",
@@ -559,6 +552,7 @@ export async function processAndStoreFile(
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.startsWith("options.maxTotalFileSize")) {
+        await file.markAsFailed();
         return new Err({
           name: "dust_error",
           code: "file_too_large",
@@ -567,6 +561,7 @@ export async function processAndStoreFile(
       }
     }
 
+    await file.markAsFailed();
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
@@ -576,6 +571,7 @@ export async function processAndStoreFile(
 
   const preProcessingRes = await maybeApplyPreProcessing(auth, file);
   if (preProcessingRes.isErr()) {
+    await file.markAsFailed();
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
@@ -583,37 +579,59 @@ export async function processAndStoreFile(
     });
   }
 
-  // Upsert to the conversation datasource & generate a snippet.
   // TODO(JIT) the tool output flow do not go through this path.
   const jitEnabled = await isJITActionsEnabled(auth);
+  const isJitCompatibleUseCase = file.useCase === "conversation";
+  const hasJitRequiredMetadata =
+    file.useCase === "conversation" &&
+    !!file.useCaseMetadata &&
+    !!file.useCaseMetadata.conversationId;
+  const isJitSupportedContentType = isSupportedPlainTextContentType(
+    file.contentType
+  );
+  const content = preProcessingRes.value;
+
+  const useJit =
+    jitEnabled &&
+    isJitCompatibleUseCase &&
+    hasJitRequiredMetadata &&
+    isJitSupportedContentType &&
+    !!content;
+
+  // Log if JIT is enabled, file type should be supported but we couldn't process it.
   if (
     jitEnabled &&
-    file.useCase === "conversation" &&
-    file.useCaseMetadata &&
-    isSupportedPlainTextContentType(file.contentType)
+    isJitCompatibleUseCase &&
+    isJitSupportedContentType &&
+    !useJit
   ) {
-    const content = preProcessingRes.value;
-
-    // TODO(JIT) instead of erroring (this one and the other below), we should do the checks before and disable JIT if the checks fail.
+    const infos = [];
     if (!content) {
-      return new Err({
-        name: "dust_error",
-        code: "internal_server_error",
-        message: `No content extracted from file for JIT processing, should not happen with JIT. Action: check that the processing function returns the content.`,
-      });
+      infos.push("No content extracted from file for JIT processing.");
     }
 
-    if (!file.useCaseMetadata.conversationId) {
-      return new Err({
-        name: "dust_error",
-        code: "internal_server_error",
-        message: `No conversationId in useCaseMetadata, should not happen with JIT. Action: check that the field useCaseMetadata is correctly set.`,
-      });
+    if (!hasJitRequiredMetadata) {
+      infos.push(
+        `File is missing required metadata for JIT processing: useCase ${file.useCase}, useCaseMetadata ${file.useCaseMetadata}`
+      );
     }
 
+    logger.info(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        infos: infos,
+      },
+      "JIT processing not possible for file."
+    );
+  }
+
+  // Upsert to the conversation datasource & generate a snippet.
+  if (useJit) {
     const r = await getConversation(auth, file.useCaseMetadata.conversationId);
 
     if (r.isErr()) {
+      await file.markAsFailed();
       return new Err({
         name: "dust_error",
         code: "internal_server_error",
@@ -648,6 +666,7 @@ export async function processAndStoreFile(
       });
 
       if (r.isErr()) {
+        await file.markAsFailed();
         return new Err({
           name: "dust_error",
           code: "internal_server_error",
@@ -674,6 +693,7 @@ export async function processAndStoreFile(
     });
 
     if (upsertDocumentRes.isErr()) {
+      await file.markAsFailed();
       return new Err({
         name: "dust_error",
         code: "internal_server_error",
@@ -701,6 +721,7 @@ export async function processAndStoreFile(
       });
 
       if (upsertTableRes.isErr()) {
+        await file.markAsFailed();
         return new Err({
           name: "dust_error",
           code: "internal_server_error",
@@ -711,5 +732,6 @@ export async function processAndStoreFile(
     }
   }
 
+  await file.markAsReady();
   return new Ok(file);
 }
