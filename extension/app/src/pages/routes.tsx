@@ -42,13 +42,7 @@ export const routes = [
     path: "/conversations",
     element: (
       <ProtectedRoute>
-        {({ user, workspace, handleLogout }) => (
-          <ConversationsPage
-            user={user}
-            workspace={workspace}
-            handleLogout={handleLogout}
-          />
-        )}
+        <ConversationsPage />
       </ProtectedRoute>
     ),
   },

@@ -2,13 +2,12 @@ import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import {
   BarHeader,
   Button,
-  ExternalLinkIcon,
+  ChevronLeftIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { useConversations } from "@extension/components/conversation/useConversations";
 import moment from "moment";
 import { useNavigate } from "react-router-dom";
@@ -21,9 +20,7 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-export const ConversationsPage = ({
-  workspace,
-}: ProtectedRouteChildrenProps) => {
+export const ConversationsPage = () => {
   const navigate = useNavigate();
   const { conversations, isConversationsLoading } = useConversations();
 
@@ -81,17 +78,13 @@ export const ConversationsPage = ({
     <>
       <BarHeader
         title="Conversations"
-        rightActions={
+        leftActions={
           <div className="flex flex-row items-right">
             <Button
-              icon={ExternalLinkIcon}
+              icon={ChevronLeftIcon}
               variant="ghost"
-              href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}`}
-              target="_blank"
-            />
-            <BarHeader.ButtonBar
-              variant="close"
-              onClose={() => navigate("/")}
+              onClick={() => navigate("/")}
+              size="md"
             />
           </div>
         }

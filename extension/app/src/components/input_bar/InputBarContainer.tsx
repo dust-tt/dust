@@ -99,7 +99,8 @@ export const InputBarContainer = ({
           contentEditableClasses,
           "scrollbar-hide",
           "overflow-y-auto",
-          "max-h-64"
+          "min-h-32",
+          "max-h-96"
         )}
       />
 
