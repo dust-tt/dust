@@ -6,8 +6,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 /**
@@ -148,10 +150,11 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<DataSourceViewsResponseType>>,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { dsvId, spaceId } = req.query;
-  if (typeof dsvId !== "string" || typeof spaceId !== "string") {
+  const { dsvId } = req.query;
+  if (typeof dsvId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -162,7 +165,7 @@ async function handler(
   }
 
   const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
-  if (!dataSourceView || dataSourceView.space.sId !== spaceId) {
+  if (!dataSourceView || dataSourceView.space.sId !== space.sId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -182,16 +185,6 @@ async function handler(
       api_error: {
         type: "data_source_not_found",
         message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSourceView.space.kind === "conversations") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -260,4 +253,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, "space")
+);

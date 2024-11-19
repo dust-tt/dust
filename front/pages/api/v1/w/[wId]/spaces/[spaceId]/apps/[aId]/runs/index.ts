@@ -21,11 +21,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -174,19 +175,11 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator,
+  space: SpaceResource,
   keyAuth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const keyWorkspaceId = keyAuth.getNonNullableWorkspace().id;
-
-  // Handling the case where `spaceId` is undefined to keep support for the legacy endpoint (not under
-  // space, global space assumed for the auth (the authenticator associated with the app, not the
-  // user)).
-  let { spaceId } = req.query;
-  if (spaceId === undefined) {
-    spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
-  }
-
   const [app, providers, secrets] = await Promise.all([
     AppResource.fetchById(auth, req.query.aId as string),
     Provider.findAll({
@@ -197,22 +190,12 @@ async function handler(
     getDustAppSecrets(auth, true),
   ]);
 
-  if (!app || app.space.sId !== spaceId) {
+  if (!app || app.space.sId !== space.sId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app you're trying to run was not found",
-      },
-    });
-  }
-
-  if (app.space.kind === "conversations") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -516,6 +499,9 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  allowUserOutsideCurrentWorkspace: true,
-});
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, "space"),
+  {
+    allowUserOutsideCurrentWorkspace: true,
+  }
+);
