@@ -132,6 +132,13 @@ async function handler(
           auth,
           dataSourceViewId
         );
+
+        const flags = await getFeatureFlags(owner);
+        if (flags.includes("labs_transcripts_gong_full_storage")) {
+          await transcriptsConfiguration.setIsDefaultFullStorage(
+            !!dataSourceViewId
+          );
+        }
       }
 
       const updatedTranscriptsConfiguration =

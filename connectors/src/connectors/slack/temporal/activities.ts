@@ -93,8 +93,19 @@ async function _getChannelsUncached(
       // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
       limit: 999,
       cursor: nextCursor,
+      exclude_archived: true,
     });
     nbCalls++;
+
+    logger.info(
+      {
+        connectorId,
+        returnedChannels: allChannels.length,
+        currentCursor: nextCursor,
+        nbCalls,
+      },
+      `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
+    );
 
     nextCursor = c?.response_metadata?.next_cursor;
 
@@ -110,24 +121,12 @@ async function _getChannelsUncached(
     }
     for (const channel of c.channels) {
       if (channel && channel.id) {
-        if (channel.is_archived) {
-          continue;
-        }
         if (!joinedOnly || channel.is_member) {
           allChannels.push(channel);
         }
       }
     }
   } while (nextCursor);
-
-  logger.info(
-    {
-      connectorId,
-      returnedChannels: allChannels.length,
-      nbCalls,
-    },
-    `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
-  );
 
   return allChannels;
 }

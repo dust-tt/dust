@@ -1,12 +1,12 @@
 import type { LabsConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { CreationAttributes } from "sequelize";
 import type {
   Attributes,
   InferAttributes,
   ModelStatic,
   Transaction,
 } from "sequelize";
-import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -37,12 +37,13 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static async makeNew(
     blob: Omit<
       CreationAttributes<LabsTranscriptsConfigurationModel>,
-      "isActive"
+      "isActive" | "isDefaultFullStorage"
     >
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
       isActive: false,
+      isDefaultFullStorage: false,
     });
 
     return new LabsTranscriptsConfigurationResource(
@@ -131,6 +132,26 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
+  async setIsDefaultFullStorage(isDefaultFullStorage: boolean) {
+    if (this.isDefaultFullStorage === isDefaultFullStorage) {
+      return;
+    }
+
+    // Update all other configurations to be false.
+    if (isDefaultFullStorage) {
+      await LabsTranscriptsConfigurationModel.update(
+        { isDefaultFullStorage: false },
+        {
+          where: {
+            workspaceId: this.workspaceId,
+          },
+        }
+      );
+    }
+
+    return this.update({ isDefaultFullStorage });
+  }
+
   async setDataSourceViewId(
     auth: Authenticator,
     dataSourceViewId: string | null
@@ -153,6 +174,26 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     }
 
     return this.update({ dataSourceViewId: dataSourceView.id });
+  }
+
+  static async fetchDefaultFullStorageConfigurationForWorkspace(
+    auth: Authenticator
+  ): Promise<LabsTranscriptsConfigurationResource | null> {
+    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        isDefaultFullStorage: true,
+      },
+    });
+
+    if (!configuration) {
+      return null;
+    }
+
+    return new LabsTranscriptsConfigurationResource(
+      LabsTranscriptsConfigurationModel,
+      configuration.get()
+    );
   }
 
   async delete(

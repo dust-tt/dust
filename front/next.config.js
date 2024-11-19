@@ -44,8 +44,7 @@ module.exports = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value:
-              "frame-ancestors 'self' https://*.salesforce.com https://*.force.com;",
+            value: "frame-ancestors 'self'",
           },
           {
             key: "Strict-Transport-Security",

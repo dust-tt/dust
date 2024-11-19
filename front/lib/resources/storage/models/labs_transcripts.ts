@@ -26,6 +26,7 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
+  declare isDefaultFullStorage: boolean;
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -62,6 +63,11 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: true,
     },
     isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    isDefaultFullStorage: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
