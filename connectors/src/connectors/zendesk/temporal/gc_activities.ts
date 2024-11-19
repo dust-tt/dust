@@ -68,9 +68,9 @@ export async function deleteTicketBatchActivity(
 }
 
 /**
- * This activity is responsible for fetching a batch of articles.
+ * This activity is responsible for fetching and garbage collecting a batch of articles.
  */
-export async function getNextArticleBatchActivity({
+export async function garbageCollectArticleBatchActivity({
   connectorId,
   brandId,
   cursor,
@@ -78,27 +78,7 @@ export async function getNextArticleBatchActivity({
   connectorId: ModelId;
   brandId: number;
   cursor: number | null;
-}): Promise<{ articleIds: number[]; cursor: number | null }> {
-  return ZendeskArticleResource.fetchBatchByBrandId({
-    connectorId,
-    brandId,
-    cursor,
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
-}
-
-/**
- * This activity is responsible for garbage collecting a batch of articles given their IDs.
- */
-export async function garbageCollectArticleBatchActivity({
-  connectorId,
-  brandId,
-  articleIds,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-  articleIds: number[];
-}): Promise<void> {
+}): Promise<number | null> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -110,6 +90,18 @@ export async function garbageCollectArticleBatchActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
+
+  const { articleIds, cursor: nextCursor } =
+    await ZendeskArticleResource.fetchBatchByBrandId({
+      connectorId,
+      brandId,
+      cursor,
+      batchSize: ZENDESK_BATCH_SIZE,
+    });
+
+  if (articleIds.length === 0) {
+    return null;
+  }
 
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connector.connectionId)
@@ -131,4 +123,5 @@ export async function garbageCollectArticleBatchActivity({
     },
     { concurrency: 10 }
   );
+  return nextCursor;
 }

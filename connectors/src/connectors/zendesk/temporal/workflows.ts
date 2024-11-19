@@ -9,10 +9,7 @@ import {
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
 import type * as gc_activities from "@connectors/connectors/zendesk/temporal/gc_activities";
-import {
-  garbageCollectArticleBatchActivity,
-  getNextArticleBatchActivity,
-} from "@connectors/connectors/zendesk/temporal/gc_activities";
+import { garbageCollectArticleBatchActivity } from "@connectors/connectors/zendesk/temporal/gc_activities";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
@@ -422,18 +419,11 @@ export async function zendeskGarbageCollectionWorkflow({
     let cursor = null;
 
     do {
-      const { articleIds, cursor: newCursor } =
-        await getNextArticleBatchActivity({
-          connectorId,
-          brandId,
-          cursor,
-        });
-      await garbageCollectArticleBatchActivity({
+      cursor = await garbageCollectArticleBatchActivity({
         connectorId,
         brandId,
-        articleIds,
+        cursor,
       });
-      cursor = newCursor;
     } while (cursor !== null);
   }
 }
