@@ -363,13 +363,24 @@ export async function upsertDocument({
   // Data source operations are performed with our credentials.
   const credentials = dustManagedCredentials();
 
+  const documentId = name;
+  const documentParents = parents || [];
+
+  // Ensure that the documentId is included in the parents as the first item.
+  // remove it if it's already present and add it as the first item.
+  const indexOfDocumentId = documentParents.indexOf(documentId);
+  if (indexOfDocumentId !== -1) {
+    documentParents.splice(indexOfDocumentId, 1);
+  }
+  documentParents.unshift(documentId);
+
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: name,
+    documentId: documentId,
     tags: nonNullTags,
-    parents: parents || [],
+    parents: documentParents,
     sourceUrl,
     // TEMPORARY -- need to unstuck a specific entry
     // TODO(FONTANIERH): remove this once the entry is unstuck
@@ -421,9 +432,13 @@ export async function upsertTable({
   const nonNullTableId = tableId ?? generateRandomModelSId();
   const tableParents: string[] = parents ?? [];
 
-  if (!tableParents.includes(nonNullTableId)) {
-    tableParents.push(nonNullTableId);
+  // Ensure that the nonNullTableId is included in the parents as the first item.
+  // remove it if it's already present and add it as the first item.
+  const indexOfTableId = tableParents.indexOf(nonNullTableId);
+  if (indexOfTableId !== -1) {
+    tableParents.splice(indexOfTableId, 1);
   }
+  tableParents.unshift(nonNullTableId);
 
   const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
@@ -578,9 +593,13 @@ export async function handleDataSourceTableCSVUpsert({
   const tableId = params.tableId ?? generateRandomModelSId();
   const tableParents: string[] = params.parents ?? [];
 
-  if (!tableParents.includes(tableId)) {
-    tableParents.push(tableId);
+  // Ensure that the tableId is included in the parents as the first item.
+  // remove it if it's already present and add it as the first item.
+  const indexOfTableId = tableParents.indexOf(tableId);
+  if (indexOfTableId !== -1) {
+    tableParents.splice(indexOfTableId, 1);
   }
+  tableParents.unshift(tableId);
 
   const flags = await getFeatureFlags(owner);
 
