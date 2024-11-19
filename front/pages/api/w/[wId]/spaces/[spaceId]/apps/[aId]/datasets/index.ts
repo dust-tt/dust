@@ -7,8 +7,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { getDatasets } from "@app/lib/api/datasets";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { AppResource } from "@app/lib/resources/app_resource";

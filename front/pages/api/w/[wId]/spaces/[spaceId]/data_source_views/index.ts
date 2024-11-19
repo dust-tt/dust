@@ -15,8 +15,8 @@ import {
   getDataSourceViewsUsageByCategory,
 } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";

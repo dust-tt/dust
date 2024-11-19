@@ -5,9 +5,9 @@ import type {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getOffsetPaginationParams } from "@app/lib/api/pagination";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
