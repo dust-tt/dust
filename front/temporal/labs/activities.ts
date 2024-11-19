@@ -219,7 +219,7 @@ export async function processTranscriptActivity(
           },
           "[processTranscriptActivity] No Gong result found. Stopping."
         );
-        break;
+        return;
       }
       transcriptTitle = gongResult.transcriptTitle || "";
       transcriptContent = gongResult.transcriptContent || "";
@@ -294,6 +294,8 @@ export async function processTranscriptActivity(
         gongFullStorageFF,
         gongFullStorageDataSourceViewId,
         transcriptsConfiguration,
+        transcriptTitle,
+        transcriptContentLength: transcriptContent.length,
       },
       "[processTranscriptActivity] Storing transcript to Datasource."
     );
@@ -376,6 +378,8 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
+        transcriptTitle,
+        transcriptContentLength: transcriptContent.length,
       },
       "[processTranscriptActivity] Stored transcript to Datasource."
     );
