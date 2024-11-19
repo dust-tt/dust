@@ -1,14 +1,21 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { allowSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
-import { allowSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
+import {
+  allowSyncZendeskHelpCenter,
+  revokeSyncZendeskHelpCenter,
+} from "@connectors/connectors/zendesk/lib/help_center_permissions";
+import {
+  allowSyncZendeskTickets,
+  revokeSyncZendeskTickets,
+} from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 /**
- * Mark a brand as permission "read" and all children (help center and tickets) if specified.
+ * Mark a brand as permission "read", with all its children (help center and tickets + children).
+ * Creates the brand by fetching it from Zendesk if it does not exist in db.
  */
 export async function allowSyncZendeskBrand({
   connectorId,
@@ -73,7 +80,7 @@ export async function allowSyncZendeskBrand({
 }
 
 /**
- * Mark a brand as permission "none" (help center and tickets).
+ * Mark a brand as permission "none", with all its children (help center and tickets + children).
  */
 export async function revokeSyncZendeskBrand({
   connectorId,
@@ -94,8 +101,13 @@ export async function revokeSyncZendeskBrand({
     return null;
   }
 
+  // revoke permissions for the brand
   await brand.revokeHelpCenterPermissions();
   await brand.revokeTicketsPermissions();
+
+  // revoke permissions for all the children resources (help center and tickets)
+  await revokeSyncZendeskHelpCenter({ connectorId, brandId });
+  await revokeSyncZendeskTickets({ connectorId, brandId });
 
   return brand;
 }
