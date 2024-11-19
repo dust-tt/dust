@@ -117,7 +117,9 @@ export async function verifyAuth0Token(
   // TODO(thomas): Remove this when all clients are updated.
   const legacyAudience = `https://${auth0Domain}/api/v2/`;
   const decoded = jwt.decode(accessToken, { json: true });
-  const useLegacy = decoded && decoded.aud === legacyAudience;
+  const useLegacy = !decoded || decoded.aud !== audience;
+
+  logger.info({ useLegacy, audience: decoded?.aud }, "Using legacy audience.");
 
   return new Promise((resolve) => {
     jwt.verify(
