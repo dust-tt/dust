@@ -460,6 +460,20 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
 });
 type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
+const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  params: z.object({
+    fileId: z.string(),
+  }),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  step: z.number(),
+  type: z.literal("conversation_include_file_action"),
+});
+type ConversationIncludeFileActionPublicType = z.infer<
+  typeof ConversationIncludeFileActionTypeSchema
+>;
+
 const ConversationFileTypeSchema = z.object({
   fileId: z.string(),
   title: z.string(),
@@ -855,6 +869,7 @@ const AgentActionTypeSchema = z.union([
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
   ConversationListFilesActionTypeSchema,
+  ConversationIncludeFileActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -961,6 +976,14 @@ const BrowseParamsEventSchema = z.object({
   action: BrowseActionTypeSchema,
 });
 
+const ConversationIncludeFileParamsEventSchema = z.object({
+  type: z.literal("conversation_include_file_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: ConversationIncludeFileActionTypeSchema,
+});
+
 const DustAppRunParamsEventSchema = z.object({
   type: z.literal("dust_app_run_params"),
   created: z.number(),
@@ -1049,6 +1072,7 @@ const AgentActionSpecificEventSchema = z.union([
   ProcessParamsEventSchema,
   WebsearchParamsEventSchema,
   BrowseParamsEventSchema,
+  ConversationIncludeFileParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
