@@ -5,30 +5,10 @@ import {
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import {
   ZendeskArticleResource,
-  ZendeskBrandResource,
   ZendeskCategoryResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-/**
- * Deletes all the data relative to a brand (tickets, help center, categories, articles) in the data source and in the db.
- */
-export async function deleteBrand({
-  connectorId,
-  brandId,
-  dataSourceConfig,
-}: {
-  connectorId: number;
-  brandId: number;
-  dataSourceConfig: DataSourceConfig;
-}) {
-  await Promise.all([
-    deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig }),
-    deleteBrandTickets({ connectorId, brandId, dataSourceConfig }),
-  ]);
-  await ZendeskBrandResource.deleteByConnectorId(connectorId);
-}
 
 /**
  * Deletes all the tickets stored in the db and in the data source relative to a brand.
