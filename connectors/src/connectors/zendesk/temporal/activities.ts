@@ -1,9 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
-import {
-  deleteBrand,
-  deleteCategory,
-} from "@connectors/connectors/zendesk/lib/data_cleanup";
+import { deleteCategory } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
   deleteTicket,
@@ -94,7 +91,6 @@ export async function syncZendeskBrandActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -115,7 +111,8 @@ export async function syncZendeskBrandActivity({
 
   // if the brand is not on Zendesk anymore, we delete it
   if (!fetchedBrand) {
-    await deleteBrand({ connectorId, brandId, dataSourceConfig });
+    await brandInDb.revokeTicketsPermissions();
+    await brandInDb.revokeHelpCenterPermissions();
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
