@@ -28,8 +28,8 @@ const {
 });
 
 const {
-  garbageCollectTicketBatchActivity,
-  garbageCollectArticleBatchActivity,
+  removeOutdatedTicketBatchActivity,
+  removeMissingArticleBatchActivity,
   getZendeskBrandsWithHelpCenterToDeleteActivity,
   getZendeskBrandsWithTicketsToDeleteActivity,
   checkEmptyHelpCentersActivity,
@@ -427,7 +427,7 @@ export async function zendeskGarbageCollectionWorkflow({
   // deleting the outdated tickets (deleted tickets are cleaned in the incremental sync)
   let hasMore = true;
   while (hasMore) {
-    hasMore = await garbageCollectTicketBatchActivity(connectorId);
+    hasMore = await removeOutdatedTicketBatchActivity(connectorId);
   }
 
   // deleting the articles that cannot be found anymore in the Zendesk API
@@ -436,7 +436,7 @@ export async function zendeskGarbageCollectionWorkflow({
   for (const brandId of brandIds) {
     let cursor = null;
     do {
-      cursor = await garbageCollectArticleBatchActivity({
+      cursor = await removeMissingArticleBatchActivity({
         connectorId,
         brandId,
         cursor,

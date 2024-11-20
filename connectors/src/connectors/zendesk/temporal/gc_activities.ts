@@ -68,7 +68,7 @@ export async function getZendeskBrandsWithHelpCenterToDeleteActivity(
  * This activity is responsible for fetching and cleaning up a batch of tickets
  * that are older than the retention period and ready to be deleted.
  */
-export async function garbageCollectTicketBatchActivity(
+export async function removeOutdatedTicketBatchActivity(
   connectorId: ModelId
 ): Promise<boolean> {
   const configuration =
@@ -116,7 +116,7 @@ export async function garbageCollectTicketBatchActivity(
  * This activity is responsible for fetching and garbage collecting a batch of articles.
  * Here, garbage collection means deleting articles that are no longer present in Zendesk.
  */
-export async function garbageCollectArticleBatchActivity({
+export async function removeMissingArticleBatchActivity({
   connectorId,
   brandId,
   cursor,
