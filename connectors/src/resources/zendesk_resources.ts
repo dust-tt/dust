@@ -215,11 +215,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchAllReadOnly({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<ZendeskBrandResource[]> {
+  static async fetchAllReadOnly(
+    connectorId: number
+  ): Promise<ZendeskBrandResource[]> {
     const brands = await ZendeskBrand.findAll({
       where: {
         connectorId,
@@ -232,11 +230,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchAllBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchAllBrandIds(connectorId: number): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId },
       attributes: ["brandId"],
@@ -244,11 +238,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => Number(brand.get().brandId));
   }
 
-  static async fetchHelpCenterReadAllowedBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchHelpCenterReadAllowedBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, helpCenterPermission: "read" },
       attributes: ["brandId"],
@@ -256,23 +248,19 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => Number(brand.get().brandId));
   }
 
-  static async fetchHelpCenterReadForbiddenBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchHelpCenterReadForbiddenBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, helpCenterPermission: "none" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.get().brandId);
+    return brands.map((brand) => Number(brand.get().brandId));
   }
 
-  static async fetchHelpCenterReadAllowedBrands({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<ZendeskBrandResource[]> {
+  static async fetchHelpCenterReadAllowedBrands(
+    connectorId: number
+  ): Promise<ZendeskBrandResource[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, helpCenterPermission: "read" },
       attributes: ["brandId"],
@@ -280,11 +268,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchTicketsAllowedBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchTicketsAllowedBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, ticketsPermission: "read" },
       attributes: ["brandId"],
@@ -292,16 +278,14 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => Number(brand.get().brandId));
   }
 
-  static async fetchTicketsReadForbiddenBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchTicketsReadForbiddenBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, ticketsPermission: "none" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.get().brandId);
+    return brands.map((brand) => Number(brand.get().brandId));
   }
 
   static async deleteBrandsWithNoPermission(
@@ -326,9 +310,10 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   toContentNode(connectorId: number): ContentNode {
+    const { brandId } = this;
     return {
       provider: "zendesk",
-      internalId: getBrandInternalId(connectorId, this.brandId),
+      internalId: getBrandInternalId({ connectorId, brandId }),
       parentInternalId: null,
       type: "folder",
       title: this.name,
@@ -345,10 +330,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   getHelpCenterContentNode(connectorId: number): ContentNode {
+    const { brandId } = this;
     return {
       provider: "zendesk",
-      internalId: getHelpCenterInternalId(connectorId, this.brandId),
-      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      internalId: getHelpCenterInternalId({ connectorId, brandId }),
+      parentInternalId: getBrandInternalId({ connectorId, brandId }),
       type: "folder",
       title: `Help Center`,
       sourceUrl: null,
@@ -360,10 +346,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   getTicketsContentNode(connectorId: number): ContentNode {
+    const { brandId } = this;
     return {
       provider: "zendesk",
-      internalId: getTicketsInternalId(connectorId, this.brandId),
-      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      internalId: getTicketsInternalId({ connectorId, brandId }),
+      parentInternalId: getBrandInternalId({ connectorId, brandId }),
       type: "folder",
       title: `Tickets`,
       sourceUrl: null,
@@ -443,7 +430,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId },
     });
-    return categories.map((category) => category.get().categoryId);
+    return categories.map((category) => Number(category.get().categoryId));
   }
 
   static async fetchByCategoryId({
@@ -502,17 +489,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map(
       (category) => category && new this(this.model, category.get())
     );
-  }
-
-  static async fetchAllReadOnly({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
-      where: { connectorId, permission: "read" },
-    });
-    return categories.map((category) => new this(this.model, category.get()));
   }
 
   static async deleteByCategoryId({
@@ -576,19 +552,16 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number,
     { expandable = false }: { expandable?: boolean } = {}
   ): ContentNode {
+    const { brandId, categoryId, permission } = this;
     return {
       provider: "zendesk",
-      internalId: getCategoryInternalId(
-        connectorId,
-        this.brandId,
-        this.categoryId
-      ),
-      parentInternalId: getHelpCenterInternalId(connectorId, this.brandId),
+      internalId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+      parentInternalId: getHelpCenterInternalId({ connectorId, brandId }),
       type: "folder",
       title: this.name,
       sourceUrl: this.url,
       expandable: expandable,
-      permission: this.permission,
+      permission,
       dustDocumentId: null,
       lastUpdatedAt: this.updatedAt.getTime(),
     };
@@ -596,10 +569,11 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   getParentInternalIds(connectorId: number): string[] {
     /// Categories have two parents: the Help Center and the Brand.
+    const { brandId, categoryId } = this;
     return [
-      getCategoryInternalId(connectorId, this.brandId, this.categoryId),
-      getHelpCenterInternalId(connectorId, this.brandId),
-      getBrandInternalId(connectorId, this.brandId),
+      getCategoryInternalId({ connectorId, brandId, categoryId }),
+      getHelpCenterInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
     ];
   }
 }
@@ -671,10 +645,11 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
   }
 
   toContentNode(connectorId: number): ContentNode {
+    const { brandId, ticketId } = this;
     return {
       provider: "zendesk",
-      internalId: getTicketInternalId(connectorId, this.ticketId),
-      parentInternalId: getTicketsInternalId(connectorId, this.brandId),
+      internalId: getTicketInternalId({ connectorId, ticketId }),
+      parentInternalId: getTicketsInternalId({ connectorId, brandId }),
       type: "file",
       title: this.subject,
       sourceUrl: this.url,
@@ -686,11 +661,12 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
   }
 
   getParentInternalIds(connectorId: number): string[] {
+    const { brandId, ticketId } = this;
     /// Tickets have two parents: the Tickets and the Brand.
     return [
-      getTicketInternalId(connectorId, this.ticketId),
-      getTicketsInternalId(connectorId, this.brandId),
-      getBrandInternalId(connectorId, this.brandId),
+      getTicketInternalId({ connectorId, ticketId }),
+      getTicketsInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
     ];
   }
 
@@ -764,7 +740,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       attributes: ["ticketId"],
       ...(batchSize && { limit: batchSize }),
     });
-    return tickets.map((ticket) => ticket.get().ticketId);
+    return tickets.map((ticket) => Number(ticket.get().ticketId));
   }
 
   static async deleteByTicketId({
@@ -874,14 +850,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   }
 
   toContentNode(connectorId: number): ContentNode {
+    const { brandId, categoryId, articleId } = this;
     return {
       provider: "zendesk",
-      internalId: getArticleInternalId(connectorId, this.articleId),
-      parentInternalId: getCategoryInternalId(
+      internalId: getArticleInternalId({ connectorId, articleId }),
+      parentInternalId: getCategoryInternalId({
         connectorId,
-        this.brandId,
-        this.categoryId
-      ),
+        brandId,
+        categoryId,
+      }),
       type: "file",
       title: this.name,
       sourceUrl: this.url,
@@ -893,12 +870,13 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   }
 
   getParentInternalIds(connectorId: number): string[] {
+    const { brandId, categoryId, articleId } = this;
     /// Articles have three parents: the Category, the Help Center and the Brand.
     return [
-      getArticleInternalId(connectorId, this.articleId),
-      getCategoryInternalId(connectorId, this.brandId, this.categoryId),
-      getHelpCenterInternalId(connectorId, this.brandId),
-      getBrandInternalId(connectorId, this.brandId),
+      getArticleInternalId({ connectorId, articleId }),
+      getCategoryInternalId({ connectorId, brandId, categoryId }),
+      getHelpCenterInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
     ];
   }
 
@@ -996,7 +974,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       where: { connectorId, brandId },
       ...(batchSize && { limit: batchSize }),
     });
-    return articles.map((article) => article.get().articleId);
+    return articles.map((article) => Number(article.get().articleId));
   }
 
   static async deleteByArticleId({
@@ -1029,16 +1007,6 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     categoryId: number;
   }) {
     await ZendeskArticle.destroy({ where: { connectorId, categoryId } });
-  }
-
-  static async deleteByBrandId({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }) {
-    await ZendeskArticle.destroy({ where: { connectorId, brandId } });
   }
 
   static async deleteByConnectorId(

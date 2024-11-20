@@ -31,9 +31,8 @@ import {
 export async function checkEmptyHelpCentersActivity(
   connectorId: ModelId
 ): Promise<void> {
-  const brands = await ZendeskBrandResource.fetchHelpCenterReadAllowedBrands({
-    connectorId,
-  });
+  const brands =
+    await ZendeskBrandResource.fetchHelpCenterReadAllowedBrands(connectorId);
 
   for (const brand of brands) {
     const categoriesWithReadPermissions =
@@ -54,9 +53,7 @@ export async function checkEmptyHelpCentersActivity(
 export async function getZendeskBrandsWithTicketsToDeleteActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchTicketsReadForbiddenBrandIds({
-    connectorId,
-  });
+  return ZendeskBrandResource.fetchTicketsReadForbiddenBrandIds(connectorId);
 }
 
 /**
@@ -65,9 +62,7 @@ export async function getZendeskBrandsWithTicketsToDeleteActivity(
 export async function getZendeskBrandsWithHelpCenterToDeleteActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds({
-    connectorId,
-  });
+  return ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds(connectorId);
 }
 
 /**
@@ -244,7 +239,7 @@ export async function deleteTicketBatchActivity({
     (ticketId) =>
       deleteFromDataSource(
         dataSourceConfig,
-        getTicketInternalId(connectorId, ticketId)
+        getTicketInternalId({ connectorId, ticketId })
       ),
     { concurrency: 10 }
   );
@@ -284,7 +279,7 @@ export async function deleteArticleBatchActivity({
     (articleId) =>
       deleteFromDataSource(
         dataSourceConfig,
-        getArticleInternalId(connectorId, articleId)
+        getArticleInternalId({ connectorId, articleId })
       ),
     { concurrency: 10 }
   );
