@@ -19,7 +19,7 @@ export const config = {
   },
 };
 
-const validActions = ["view", "download", "info"] as const;
+const validActions = ["view", "download"] as const;
 type Action = (typeof validActions)[number];
 
 const VALID_VIEW_VERSIONS: FileVersion[] = [
