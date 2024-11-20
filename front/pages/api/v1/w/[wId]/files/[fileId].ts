@@ -6,7 +6,6 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
-import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -19,13 +18,6 @@ export const config = {
 
 const validActions = ["view", "download"] as const;
 type Action = (typeof validActions)[number];
-
-const VALID_GET_VERSIONS: FileVersion[] = [
-  "original",
-  "processed",
-  "public",
-  "snippet",
-];
 
 /**
  * @ignoreswagger
@@ -63,17 +55,11 @@ async function handler(
         ? (req.query.action as Action)
         : "download";
 
+      // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
-        // Only allow version parameter if the action is view.
-        const version: FileVersion = VALID_GET_VERSIONS.includes(
-          req.query.version as FileVersion
-        )
-          ? (req.query.version as FileVersion)
-          : "original";
-
         const readStream = file.getReadStream({
           auth,
-          version,
+          version: "original",
         });
         readStream.on("error", () => {
           return apiError(req, res, {
