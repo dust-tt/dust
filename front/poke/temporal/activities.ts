@@ -26,7 +26,6 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
@@ -246,11 +245,6 @@ export async function deleteConversationsActivity({
                   });
 
                   await AgentTablesQueryAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentVisualizationAction.destroy({
                     where: { agentMessageId: agentMessage.id },
                     transaction: t,
                   });

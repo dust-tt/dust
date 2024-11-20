@@ -79,8 +79,6 @@ export type AssistantBuilderProcessConfiguration = {
 // Websearch configuration
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet
 
-export type AssistantBuilderVisualizationConfiguration = Record<string, never>; // no relevant params identified yet
-
 // Builder State
 
 export type AssistantBuilderActionConfiguration = (
