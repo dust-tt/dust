@@ -1,8 +1,8 @@
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import * as React from "react";
 
+import { menuStyleClasses } from "@sparkle/components/Dropdown";
 import { Icon } from "@sparkle/components/Icon";
-import { menuStyleClasses } from "@sparkle/components/NewDropdown";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 

@@ -3,6 +3,8 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  Avatar,
+  Button,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -18,27 +20,24 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@sparkle/components/Dropdown";
+  ScrollArea,
+} from "@sparkle/components/";
+import {
+  ArrowDownCircleIcon,
+  ChatBubbleBottomCenterPlusIcon,
+  CloudArrowDownIcon,
+  Cog6ToothIcon,
+  LogoutIcon,
+  MagicIcon,
+  UserGroupIcon,
+  UserIcon,
+} from "@sparkle/icons";
 import {
   AnthropicLogo,
   GithubLogo,
   MistralLogo,
   OpenaiLogo,
 } from "@sparkle/logo/platforms";
-
-import {
-  ArrowDownCircleIcon,
-  Avatar,
-  Button,
-  ChatBubbleBottomCenterPlusIcon,
-  CloudArrowDownIcon,
-  Cog6ToothIcon,
-  LogoutIcon,
-  MagicIcon,
-  ScrollArea,
-  UserGroupIcon,
-  UserIcon,
-} from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Dropdown",
