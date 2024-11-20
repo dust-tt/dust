@@ -34,14 +34,14 @@ const {
   getZendeskBrandsWithTicketsToDeleteActivity,
   checkEmptyHelpCentersActivity,
   deleteBrandsWithNoPermissionActivity,
-  deleteBrandCategoryBatchActivity,
+  deleteCategoryBatchActivity,
 } = proxyActivities<typeof gc_activities>({
   startToCloseTimeout: "2 minutes",
 });
 
 const {
-  deleteBrandTicketBatchActivity,
-  deleteBrandArticleBatchActivity,
+  deleteTicketBatchActivity,
+  deleteArticleBatchActivity,
   removeEmptyCategoriesActivity,
 } = proxyActivities<typeof gc_activities>({
   startToCloseTimeout: "5 minutes",
@@ -456,14 +456,11 @@ export async function zendeskGarbageCollectionWorkflow({
   for (const brandId of brandIds) {
     hasMore = true;
     while (hasMore) {
-      hasMore = await deleteBrandArticleBatchActivity({ connectorId, brandId });
+      hasMore = await deleteArticleBatchActivity({ connectorId, brandId });
     }
     hasMore = true;
     while (hasMore) {
-      hasMore = await deleteBrandCategoryBatchActivity({
-        connectorId,
-        brandId,
-      });
+      hasMore = await deleteCategoryBatchActivity({ connectorId, brandId });
     }
   }
 
@@ -472,7 +469,7 @@ export async function zendeskGarbageCollectionWorkflow({
   for (const brandId of brandIds) {
     let hasMore = true;
     while (hasMore) {
-      hasMore = await deleteBrandTicketBatchActivity({ connectorId, brandId });
+      hasMore = await deleteTicketBatchActivity({ connectorId, brandId });
     }
   }
 

@@ -220,7 +220,7 @@ export async function deleteBrandsWithNoPermissionActivity(
  *
  * @returns `false` if there is no more ticket to process.
  */
-export async function deleteBrandTicketBatchActivity({
+export async function deleteTicketBatchActivity({
   connectorId,
   brandId,
 }: {
@@ -259,7 +259,7 @@ export async function deleteBrandTicketBatchActivity({
  *
  * @returns `false` if there is no more article to process.
  */
-export async function deleteBrandArticleBatchActivity({
+export async function deleteArticleBatchActivity({
   connectorId,
   brandId,
 }: {
@@ -298,7 +298,7 @@ export async function deleteBrandArticleBatchActivity({
  *
  * @returns `false` if there is no more category to process.
  */
-export async function deleteBrandCategoryBatchActivity({
+export async function deleteCategoryBatchActivity({
   connectorId,
   brandId,
 }: {
