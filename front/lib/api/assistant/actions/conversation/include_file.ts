@@ -189,7 +189,7 @@ export class ConversationIncludeFileAction extends BaseAction {
 /**
  * Params generation.
  */
-export class DustAppRunConfigurationServerRunner extends BaseActionConfigurationServerRunner<ConversationIncludeFileConfigurationType> {
+export class ConversationIncludeFileConfigurationServerRunner extends BaseActionConfigurationServerRunner<ConversationIncludeFileConfigurationType> {
   // Generates the action specification for generation of rawInputs passed to `run`.
   async buildSpecification(
     auth: Authenticator,

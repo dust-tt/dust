@@ -12,14 +12,18 @@ import type { Authenticator } from "@app/lib/auth";
 
 export interface BaseActionConfigurationServerRunnerConstructor<
   T extends BaseActionConfigurationServerRunner<V>,
-  V extends AgentActionConfigurationType,
+  V extends
+    | AgentActionConfigurationType
+    | ConversationAgentActionConfigurationType,
 > {
   new (actionConfiguration: V): T;
 }
 
 export interface BaseActionConfigurationStaticMethods<
   T extends BaseActionConfigurationServerRunner<V>,
-  V extends AgentActionConfigurationType,
+  V extends
+    | AgentActionConfigurationType
+    | ConversationAgentActionConfigurationType,
 > {
   fromActionConfiguration(
     this: BaseActionConfigurationServerRunnerConstructor<T, V>,
@@ -30,7 +34,9 @@ export interface BaseActionConfigurationStaticMethods<
 }
 
 export interface BaseActionRunParams {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration:
+    | AgentConfigurationType
+    | ConversationAgentActionConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   rawInputs: Record<
@@ -50,7 +56,9 @@ export abstract class BaseActionConfigurationServerRunner<
 
   static fromActionConfiguration<
     T extends BaseActionConfigurationServerRunner<V>,
-    V extends AgentActionConfigurationType,
+    V extends
+      | AgentActionConfigurationType
+      | ConversationAgentActionConfigurationType,
   >(
     this: BaseActionConfigurationServerRunnerConstructor<T, V>,
     actionConfiguration: V
