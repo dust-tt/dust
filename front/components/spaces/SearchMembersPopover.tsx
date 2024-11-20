@@ -71,7 +71,7 @@ export function SearchMembersPopover({
 
   const addMember = useCallback(
     (member: UserType) => () => {
-      onMembersUpdated([...selectedMembers, member]);
+      onMembersUpdated([member, ...selectedMembers]);
     },
     [selectedMembers, onMembersUpdated]
   );
@@ -85,7 +85,7 @@ export function SearchMembersPopover({
   return (
     <div className="flex flex-col items-end gap-2">
       <PopoverRoot>
-        <PopoverTrigger>
+        <PopoverTrigger asChild>
           <Button label="Add members" icon={UserIcon} size="sm" />
         </PopoverTrigger>
         <PopoverContent className="mr-2 p-4">
