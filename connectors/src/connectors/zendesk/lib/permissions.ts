@@ -117,7 +117,9 @@ async function getBrandChildren(
   });
   if (isReadPermissionsOnly) {
     if (brandInDb?.ticketsPermission === "read") {
-      nodes.push(brandInDb.getTicketsContentNode(connectorId));
+      nodes.push(
+        brandInDb.getTicketsContentNode(connectorId, { expandable: true })
+      );
     }
     if (
       brandInDb?.hasHelpCenter &&

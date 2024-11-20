@@ -345,7 +345,10 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     };
   }
 
-  getTicketsContentNode(connectorId: number): ContentNode {
+  getTicketsContentNode(
+    connectorId: number,
+    { expandable = false }: { expandable?: boolean } = {}
+  ): ContentNode {
     const { brandId } = this;
     return {
       provider: "zendesk",
@@ -354,7 +357,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       type: "folder",
       title: `Tickets`,
       sourceUrl: null,
-      expandable: false,
+      expandable: expandable,
       permission: this.ticketsPermission,
       dustDocumentId: null,
       lastUpdatedAt: null,
