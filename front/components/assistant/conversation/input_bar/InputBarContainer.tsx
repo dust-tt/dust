@@ -139,9 +139,9 @@ const InputBarContainer = ({
                 multiple={true}
               />
               <Button
-                variant="ghost"
+                variant="ghost-secondary"
                 icon={AttachmentIcon}
-                size="xs"
+                size="sm"
                 tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
                 onClick={() => {
                   fileInputRef.current?.click();
@@ -153,7 +153,7 @@ const InputBarContainer = ({
             actions.includes("assistants-list-with-actions")) && (
             <AssistantPicker
               owner={owner}
-              size="xs"
+              size="sm"
               onItemClick={(c) => {
                 editorService.insertMention({ id: c.sId, label: c.name });
               }}
@@ -166,9 +166,9 @@ const InputBarContainer = ({
           {actions.includes("fullscreen") && (
             <div className="hidden sm:flex">
               <Button
-                variant="ghost"
+                variant="ghost-secondary"
                 icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                size="xs"
+                size="sm"
                 onClick={handleExpansionToggle}
               />
             </div>
@@ -177,6 +177,7 @@ const InputBarContainer = ({
         <Button
           size="sm"
           icon={ArrowUpIcon}
+          label="Send"
           variant="highlight"
           disabled={editorService.isEmpty() || disableSendButton}
           onClick={async () => {
