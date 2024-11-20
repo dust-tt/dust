@@ -7,7 +7,6 @@ import type {
 import { Err, isSupportedPlainTextContentType, Ok } from "@dust-tt/types";
 import { Writable } from "stream";
 import { pipeline } from "stream/promises";
-import { v4 as uuidv4 } from "uuid";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
@@ -21,6 +20,7 @@ import type { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
 class MemoryWritable extends Writable {
   private chunks: string[];
@@ -44,17 +44,17 @@ class MemoryWritable extends Writable {
   }
 }
 
-const notSupportedError: PostprocessingFunction = async ({ file }) => {
+const notSupportedError: ProcessingFunction = async ({ file }) => {
   return new Err(
     new Error(
-      "Pre-processing not supported for " +
+      "Processing not supported for " +
         `content type ${file.contentType} and use case ${file.useCase}`
     )
   );
 };
 
 // Upload to dataSource
-const upsertDocumentToDatasource: PostprocessingFunction = async ({
+const upsertDocumentToDatasource: ProcessingFunction = async ({
   auth,
   file,
   content,
@@ -87,7 +87,7 @@ const upsertDocumentToDatasource: PostprocessingFunction = async ({
   return new Ok(undefined);
 };
 
-const upsertTableToDatasource: PostprocessingFunction = async ({
+const upsertTableToDatasource: ProcessingFunction = async ({
   auth,
   file,
   content,
@@ -120,9 +120,9 @@ const upsertTableToDatasource: PostprocessingFunction = async ({
   return new Ok(undefined);
 };
 
-// Preprocessing for file upload.
+// Processing for datasource upserts.
 
-type PostprocessingFunction = ({
+type ProcessingFunction = ({
   auth,
   file,
   content,
@@ -134,15 +134,15 @@ type PostprocessingFunction = ({
   dataSource: DataSourceResource;
 }) => Promise<Result<undefined, Error>>;
 
-type PostprocessingPerUseCase = {
-  [k in FileUseCase]: PostprocessingFunction | undefined;
+type ProcessingPerUseCase = {
+  [k in FileUseCase]: ProcessingFunction | undefined;
 };
 
-type PostprocessingPerContentType = {
-  [k in PlainTextContentType]: PostprocessingPerUseCase | undefined;
+type ProcessingPerContentType = {
+  [k in PlainTextContentType]: ProcessingPerUseCase | undefined;
 };
 
-const processingPerContentType: PostprocessingPerContentType = {
+const processingPerContentType: ProcessingPerContentType = {
   "application/msword": {
     conversation: upsertDocumentToDatasource,
     avatar: notSupportedError,
@@ -190,7 +190,7 @@ const processingPerContentType: PostprocessingPerContentType = {
   },
 };
 
-const maybeApplyProcessing: PostprocessingFunction = async ({
+const maybeApplyProcessing: ProcessingFunction = async ({
   auth,
   content,
   file,
@@ -305,7 +305,7 @@ export async function processAndUpsertToDataSource(
       await SpaceResource.fetchWorkspaceConversationsSpace(auth);
 
     // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs are used as secrets to share the conversation within the workspace users.
-    const name = `Conversation ${uuidv4()}`;
+    const name = generateRandomModelSId("conv-");
     const r = await createDataSourceWithoutProvider(auth, {
       plan: auth.getNonNullablePlan(),
       owner: auth.getNonNullableWorkspace(),
@@ -326,18 +326,18 @@ export async function processAndUpsertToDataSource(
     dataSource = r.value.dataSource;
   }
 
-  const preProcessingRes = await maybeApplyProcessing({
+  const processingRes = await maybeApplyProcessing({
     auth,
     file,
     content,
     dataSource,
   });
 
-  if (preProcessingRes.isErr()) {
+  if (processingRes.isErr()) {
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to process the file : ${preProcessingRes.error}`,
+      message: `Failed to process the file : ${processingRes.error}`,
     });
   }
 

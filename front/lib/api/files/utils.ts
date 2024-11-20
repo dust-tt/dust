@@ -1,12 +1,14 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { ConversationType, Result } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
 import type { Writable } from "stream";
 
+import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 
 export const parseUploadRequest = async (
   file: FileResource,
@@ -75,3 +77,48 @@ export const parseUploadRequest = async (
     });
   }
 };
+
+// When we send the attachments at the conversation creation, we are missing the useCaseMetadata
+// Therefore, we couldn't upsert them to the conversation datasource.
+// We now update the useCaseMetadata and upsert them to the conversation datasource.
+export async function maybeUpsertFileAttachment(
+  auth: Authenticator,
+  {
+    contentFragments,
+    conversation,
+  }: {
+    contentFragments: (
+      | {
+          fileId: string;
+        }
+      | object
+    )[];
+    conversation: ConversationType;
+  }
+) {
+  const filesIds = removeNulls(
+    contentFragments.map((cf) => {
+      if ("fileId" in cf) {
+        return cf.fileId;
+      }
+    })
+  );
+
+  if (filesIds.length > 0) {
+    const fileResources = await FileResource.fetchByIds(auth, filesIds);
+    await Promise.all([
+      ...fileResources.map(async (fileResource) => {
+        if (
+          fileResource.useCase === "conversation" &&
+          !fileResource.useCaseMetadata
+        ) {
+          await fileResource.setUseCaseMetadata({
+            conversationId: conversation.sId,
+          });
+
+          return processAndUpsertToDataSource(auth, { file: fileResource });
+        }
+      }),
+    ]);
+  }
+}

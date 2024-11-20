@@ -22,13 +22,13 @@ import logger from "@app/logger/logger";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
-const notSupportedError: PreprocessingFunction = async (
+const notSupportedError: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
   return new Err(
     new Error(
-      "Pre-processing not supported for " +
+      "Processing not supported for " +
         `content type ${file.contentType} and use case ${file.useCase}`
     )
   );
@@ -36,7 +36,7 @@ const notSupportedError: PreprocessingFunction = async (
 
 // Upload to public bucket.
 
-const uploadToPublicBucket: PreprocessingFunction = async (
+const uploadToPublicBucket: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -70,9 +70,9 @@ const uploadToPublicBucket: PreprocessingFunction = async (
   }
 };
 
-// Images preprocessing.
+// Images processing.
 
-const resizeAndUploadToFileStorage: PreprocessingFunction = async (
+const resizeAndUploadToFileStorage: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -113,7 +113,7 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   }
 };
 
-const extractTextFromFileAndUpload: PreprocessingFunction = async (
+const extractTextFromFileAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -146,7 +146,7 @@ const extractTextFromFileAndUpload: PreprocessingFunction = async (
   }
 };
 
-// CSV preprocessing.
+// CSV processing.
 // We upload the content of the CSV on the processed bucket and the schema in the snippet bucket.
 class CSVColumnAnalyzerTransform extends Transform {
   private rows: CSVRow[] = [];
@@ -164,7 +164,7 @@ class CSVColumnAnalyzerTransform extends Transform {
   }
 }
 
-const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
+const extractContentAndSchemaFromCSV: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -217,10 +217,10 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
   }
 };
 
-// Other text files preprocessing.
+// Other text files processing.
 
 // We don't apply any processing to these files, we just store the raw text.
-const storeRawText: PreprocessingFunction = async (
+const storeRawText: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -255,20 +255,20 @@ const storeRawText: PreprocessingFunction = async (
 
 // Preprocessing for file upload.
 
-type PreprocessingFunction = (
+type ProcessingFunction = (
   auth: Authenticator,
   file: FileResource
 ) => Promise<Result<undefined, Error>>;
 
-type PreprocessingPerUseCase = {
-  [k in FileUseCase]: PreprocessingFunction | undefined;
+type ProcessingPerUseCase = {
+  [k in FileUseCase]: ProcessingFunction | undefined;
 };
 
-type PreprocessingPerContentType = {
-  [k in SupportedFileContentType]: PreprocessingPerUseCase | undefined;
+type ProcessingPerContentType = {
+  [k in SupportedFileContentType]: ProcessingPerUseCase | undefined;
 };
 
-const processingPerContentType: PreprocessingPerContentType = {
+const processingPerContentType: ProcessingPerContentType = {
   "application/msword": {
     conversation: extractTextFromFileAndUpload,
     avatar: notSupportedError,
@@ -326,7 +326,7 @@ const processingPerContentType: PreprocessingPerContentType = {
   },
 };
 
-const maybeApplyPreProcessing: PreprocessingFunction = async (
+const maybeApplyProcessing: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -390,13 +390,13 @@ export async function processAndUploadToCloudStorage(
     return r;
   }
 
-  const preProcessingRes = await maybeApplyPreProcessing(auth, file);
-  if (preProcessingRes.isErr()) {
+  const processingRes = await maybeApplyProcessing(auth, file);
+  if (processingRes.isErr()) {
     await file.markAsFailed();
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to process the file : ${preProcessingRes.error}`,
+      message: `Failed to process the file : ${processingRes.error}`,
     });
   }
 

@@ -8,7 +8,6 @@ import type {
 import {
   ConversationError,
   InternalPostConversationsRequestBodySchema,
-  removeNulls,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -23,9 +22,8 @@ import {
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetConversationsResponseBody = {
@@ -89,32 +87,10 @@ async function handler(
       };
 
       if (contentFragments.length > 0) {
-        // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
-        // Therefor, we couldn't upsert them to the conversation datasource.
-        // We now update the useCaseMetadata and upsert them to the conversation datasource.
-        const filesIds = removeNulls(
-          contentFragments.map((cf) => {
-            if ("fileId" in cf) {
-              return cf.fileId;
-            }
-          })
-        );
-
-        const fileResources = await FileResource.fetchByIds(auth, filesIds);
-        await Promise.all([
-          ...fileResources.map(async (fileResource) => {
-            if (
-              fileResource.useCase === "conversation" &&
-              !fileResource.useCaseMetadata
-            ) {
-              await fileResource.setUseCaseMetadata({
-                conversationId: conversation.sId,
-              });
-
-              return processAndUpsertToDataSource(auth, { file: fileResource });
-            }
-          }),
-        ]);
+        await maybeUpsertFileAttachment(auth, {
+          contentFragments,
+          conversation,
+        });
 
         const newContentFragmentsRes = await Promise.all(
           contentFragments.map((contentFragment) => {
