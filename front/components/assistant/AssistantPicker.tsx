@@ -58,7 +58,7 @@ export function AssistantPicker({
         ) : (
           <Button
             icon={RobotIcon}
-            variant="ghost"
+            variant="ghost-secondary"
             isSelect
             size={size}
             tooltip="Pick an assistant"
