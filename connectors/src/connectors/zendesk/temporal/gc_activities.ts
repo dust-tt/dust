@@ -239,13 +239,14 @@ export async function deleteTicketBatchActivity({
     batchSize: ZENDESK_BATCH_SIZE,
   });
   /// deleting the tickets in the data source
-  await Promise.all(
-    ticketIds.map((ticketId) =>
+  await concurrentExecutor(
+    ticketIds,
+    (ticketId) =>
       deleteFromDataSource(
         dataSourceConfig,
         getTicketInternalId(connectorId, ticketId)
-      )
-    )
+      ),
+    { concurrency: 10 }
   );
   /// deleting the tickets stored in the db
   await ZendeskTicketResource.deleteByTicketIds({ connectorId, ticketIds });
@@ -278,13 +279,14 @@ export async function deleteArticleBatchActivity({
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
-  await Promise.all(
-    articleIds.map((articleId) =>
+  await concurrentExecutor(
+    articleIds,
+    (articleId) =>
       deleteFromDataSource(
         dataSourceConfig,
         getArticleInternalId(connectorId, articleId)
-      )
-    )
+      ),
+    { concurrency: 10 }
   );
   /// deleting the articles stored in the db
   await ZendeskArticleResource.deleteByArticleIds({ connectorId, articleIds });
