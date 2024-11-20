@@ -855,9 +855,12 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     cursor: number | null;
   }): Promise<{ articleIds: number[]; cursor: number | null }> {
     const articles = await ZendeskArticle.findAll({
-      where: { connectorId, brandId },
+      where: {
+        connectorId,
+        brandId,
+        ...(cursor && { id: { [Op.gt]: cursor } }),
+      },
       order: [["id", "ASC"]],
-      ...(cursor && { where: { id: { [Op.gt]: cursor } } }),
       limit: batchSize,
     });
     return {
