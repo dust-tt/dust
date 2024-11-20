@@ -8,20 +8,20 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuSeparator,
-  NewDropdownMenuTrigger,
-  NewSearchInput,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
   ScrollArea,
+  SearchInput,
   Separator,
   Tabs,
   TabsContent,
@@ -228,30 +228,30 @@ export const ChatTab = () => {
   return (
     <ScrollArea className="s-border-box s-h-full s-w-full">
       <div className="s-my-2 s-flex s-w-full s-justify-end s-gap-2 s-px-2">
-        <NewSearchInput name="input" value="" />
+        <SearchInput name="input" value="" />
         <Button
           icon={ChatBubbleBottomCenterTextIcon}
           label="New"
           tooltip="New conversation"
         />
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
             <Button
               variant="outline"
               tooltip="Manage conversation history, assistants..."
               icon={MoreIcon}
             />
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
-            <NewDropdownMenuLabel label="Assistants" />
-            <NewDropdownMenuItem icon={PlusIcon} label="New" />
-            <NewDropdownMenuItem icon={RobotIcon} label="Manage" />
-            <NewDropdownMenuSeparator />
-            <NewDropdownMenuLabel label="Conversations" />
-            <NewDropdownMenuItem icon={PencilSquareIcon} label="Edit" />
-            <NewDropdownMenuItem icon={TrashIcon} label="Remove all" />
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLabel label="Assistants" />
+            <DropdownMenuItem icon={PlusIcon} label="New" />
+            <DropdownMenuItem icon={RobotIcon} label="Manage" />
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel label="Conversations" />
+            <DropdownMenuItem icon={PencilSquareIcon} label="Edit" />
+            <DropdownMenuItem icon={TrashIcon} label="Remove all" />
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <NavigationList className="s-w-full s-px-2">
         {conversationTitles.map((section, sectionIndex) => (
@@ -306,8 +306,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         className
       )}
     >
-      <NewDropdownMenu>
-        <NewDropdownMenuTrigger>
+      <DropdownMenu>
+        <DropdownMenuTrigger>
           <Avatar
             size="sm"
             isRounded
@@ -315,15 +315,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             name="Omar Doe"
             visual="https://cdn.midjourney.com/6f6bd6a2-668e-45ce-ad84-1b74138d751a/0_1.png"
           />
-        </NewDropdownMenuTrigger>
-        <NewDropdownMenuContent>
-          <NewDropdownMenuItem icon={UserIcon} label="User Settings" />
-          <NewDropdownMenuItem icon={LogoutIcon} label="Log out" />
-        </NewDropdownMenuContent>
-      </NewDropdownMenu>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem icon={UserIcon} label="User Settings" />
+          <DropdownMenuItem icon={LogoutIcon} label="Log out" />
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Separator orientation="vertical" />
-      <NewDropdownMenu>
-        <NewDropdownMenuTrigger>
+      <DropdownMenu>
+        <DropdownMenuTrigger>
           <Button
             variant={"ghost"}
             size="sm"
@@ -332,13 +332,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             tooltip="Help, guides and documentation"
             isSelect
           />
-        </NewDropdownMenuTrigger>
-        <NewDropdownMenuContent>
-          <NewDropdownMenuItem icon={RobotIcon} label="Talk to @Helper" />
-          <NewDropdownMenuItem icon={BookOpenIcon} label="Guides" />
-          <NewDropdownMenuItem icon={HandThumbUpIcon} label="Help Center" />
-        </NewDropdownMenuContent>
-      </NewDropdownMenu>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem icon={RobotIcon} label="Talk to @Helper" />
+          <DropdownMenuItem icon={BookOpenIcon} label="Guides" />
+          <DropdownMenuItem icon={HandThumbUpIcon} label="Help Center" />
+        </DropdownMenuContent>
+      </DropdownMenu>
       <div className="s-grow" />
       {isFixed ? (
         <Button
