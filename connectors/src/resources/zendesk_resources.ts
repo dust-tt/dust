@@ -507,17 +507,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     );
   }
 
-  static async fetchAllReadOnly({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
-      where: { connectorId, permission: "read" },
-    });
-    return categories.map((category) => new this(this.model, category.get()));
-  }
-
   static async deleteByCategoryId({
     connectorId,
     categoryId,
@@ -1034,16 +1023,6 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     categoryId: number;
   }) {
     await ZendeskArticle.destroy({ where: { connectorId, categoryId } });
-  }
-
-  static async deleteByBrandId({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }) {
-    await ZendeskArticle.destroy({ where: { connectorId, brandId } });
   }
 
   static async deleteByConnectorId(
