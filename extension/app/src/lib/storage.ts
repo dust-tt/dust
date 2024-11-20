@@ -145,10 +145,12 @@ export const clearStoredData = async (): Promise<void> => {
   });
 };
 
-function getTabContentKey(conversationId: string, rawUrl: string) {
-  const url = new URL(rawUrl);
-  const urlKey = `${url.hostname}${url.pathname}`;
-  return `tabContentContentFragmentId_${conversationId}_${urlKey}`;
+function getTabContentKey(
+  conversationId: string,
+  rawUrl: string,
+  title: string
+) {
+  return `tabContentContentFragmentId_${conversationId}_${rawUrl}_${title}`;
 }
 
 /**
@@ -189,7 +191,7 @@ export const saveFilesContentFragmentIds = async ({
     if (!cf.sourceUrl) {
       continue;
     }
-    const key = getTabContentKey(conversationId, cf.sourceUrl);
+    const key = getTabContentKey(conversationId, cf.sourceUrl, cf.title);
     await chrome.storage.local.set({
       [key]: cf.contentFragmentId,
     });
@@ -207,7 +209,7 @@ export const getFileContentFragmentId = async (
   if (file.kind !== "tab_content" || !file.url) {
     return null;
   }
-  const key = getTabContentKey(conversationId, file.url);
+  const key = getTabContentKey(conversationId, file.url, file.title);
   const result = await chrome.storage.local.get([key]);
   return result[key] ?? null;
 };
