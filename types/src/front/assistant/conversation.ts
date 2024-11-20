@@ -7,6 +7,7 @@ import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
 import { BrowseActionType } from "./actions/browse";
+import { ConversationIncludeFileActionType } from "./actions/conversation/include_file";
 import { ConversationListFilesActionType } from "./actions/conversation/list_files";
 import { WebsearchActionType } from "./actions/websearch";
 
@@ -112,7 +113,9 @@ export type ConfigurableAgentActionType =
   | WebsearchActionType
   | BrowseActionType;
 
-export type ConversationAgentActionType = ConversationListFilesActionType;
+export type ConversationAgentActionType =
+  | ConversationListFilesActionType
+  | ConversationIncludeFileActionType;
 
 export type AgentActionType =
   | ConfigurableAgentActionType
@@ -131,7 +134,8 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
-  conversation_list_files_action: "Listing conversation files",
+  conversation_list_files_action: "Listing files",
+  conversation_include_file_action: "Including file",
 };
 
 /**

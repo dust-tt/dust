@@ -56,6 +56,11 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: () => null,
     runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
   },
+  conversation_include_file_action: {
+    // TODO(spolu): Implement detailsComponent
+    detailsComponent: () => null,
+    runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
+  },
 };
 
 export function getActionSpecification<T extends ActionType>(

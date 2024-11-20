@@ -36,6 +36,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
 
+import { conversationIncludeFileTypesFromAgentMessageIds } from "./actions/conversation/include_file";
 import { processActionTypesFromAgentMessageIds } from "./actions/process";
 import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 
@@ -119,6 +120,7 @@ async function batchRenderAgentMessages(
     agentProcessActions,
     agentWebsearchActions,
     agentBrowseActions,
+    agentConversationIncludeFileActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -147,6 +149,8 @@ async function batchRenderAgentMessages(
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
@@ -167,6 +171,7 @@ async function batchRenderAgentMessages(
         agentProcessActions,
         agentWebsearchActions,
         agentBrowseActions,
+        agentConversationIncludeFileActions,
       ]
         .flat()
         .filter((a) => a.agentMessageId === agentMessage.id)

@@ -198,7 +198,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
-        "Unexpected unauthenticated call to `runWebsearchAction`"
+        "Unexpected unauthenticated call to `runConversationIncludeFileAction`"
       );
     }
 
@@ -223,17 +223,11 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     auth: Authenticator,
     {
       agentConfiguration,
-      conversation,
       agentMessage,
       rawInputs,
       functionCallId,
       step,
-    }: BaseActionRunParams,
-    {
-      spec,
-    }: {
-      spec: AgentActionSpecification;
-    }
+    }: BaseActionRunParams
   ): AsyncGenerator<
     | ConversationIncludeFileParamsEvent
     | ConversationIncludeFileSuccessEvent

@@ -3,6 +3,7 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
+  ConversationAgentActionConfigurationType,
   ConversationType,
   Result,
 } from "@dust-tt/types";
@@ -41,7 +42,9 @@ export interface BaseActionRunParams {
 }
 
 export abstract class BaseActionConfigurationServerRunner<
-  T extends AgentActionConfigurationType,
+  T extends
+    | AgentActionConfigurationType
+    | ConversationAgentActionConfigurationType,
 > {
   constructor(protected readonly actionConfiguration: T) {}
 

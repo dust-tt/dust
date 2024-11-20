@@ -3,7 +3,7 @@ import {
   BrowseParamsEvent,
 } from "../../front/assistant/actions/browse";
 import {
-  ConversationIncludeFileActionType,
+  ConversationIncludeFileConfigurationType,
   ConversationIncludeFileParamsEvent,
 } from "../../front/assistant/actions/conversation/include_file";
 import {
@@ -35,21 +35,21 @@ import {
 } from "../../front/assistant/conversation";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+
 /**
  * Agent Action configuration
  */
 
-// New AgentActionConfigurationType checklist:
-// - Add the type to the union type below
-// - Add model rendering support in `renderConversationForModel`
 export type AgentActionConfigurationType =
   | TablesQueryConfigurationType
   | RetrievalConfigurationType
   | DustAppRunConfigurationType
   | ProcessConfigurationType
   | WebsearchConfigurationType
-  | BrowseConfigurationType
-  | ConversationIncludeFileActionType;
+  | BrowseConfigurationType;
+
+export type ConversationAgentActionConfigurationType =
+  ConversationIncludeFileConfigurationType;
 
 type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
 
