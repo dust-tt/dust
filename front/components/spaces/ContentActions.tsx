@@ -15,13 +15,13 @@ import type {
 } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { ComponentProps, RefObject } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
   useState,
 } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
