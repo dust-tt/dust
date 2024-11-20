@@ -131,9 +131,7 @@ export async function syncZendeskBrandActivity({
 export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds({
-    connectorId,
-  });
+  return ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
 }
 
 /**
@@ -142,9 +140,7 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
 export async function getZendeskTicketsAllowedBrandIdsActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchTicketsAllowedBrandIds({
-    connectorId,
-  });
+  return ZendeskBrandResource.fetchTicketsAllowedBrandIds(connectorId);
 }
 
 /**

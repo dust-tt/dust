@@ -215,11 +215,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchAllReadOnly({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<ZendeskBrandResource[]> {
+  static async fetchAllReadOnly(
+    connectorId: number
+  ): Promise<ZendeskBrandResource[]> {
     const brands = await ZendeskBrand.findAll({
       where: {
         connectorId,
@@ -232,11 +230,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchAllBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchAllBrandIds(connectorId: number): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId },
       attributes: ["brandId"],
@@ -244,11 +238,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => Number(brand.get().brandId));
   }
 
-  static async fetchHelpCenterReadAllowedBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchHelpCenterReadAllowedBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, helpCenterPermission: "read" },
       attributes: ["brandId"],
@@ -256,11 +248,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => Number(brand.get().brandId));
   }
 
-  static async fetchHelpCenterReadForbiddenBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchHelpCenterReadForbiddenBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, helpCenterPermission: "none" },
       attributes: ["brandId"],
@@ -268,11 +258,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => brand.get().brandId);
   }
 
-  static async fetchHelpCenterReadAllowedBrands({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<ZendeskBrandResource[]> {
+  static async fetchHelpCenterReadAllowedBrands(
+    connectorId: number
+  ): Promise<ZendeskBrandResource[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, helpCenterPermission: "read" },
       attributes: ["brandId"],
@@ -280,11 +268,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchTicketsAllowedBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchTicketsAllowedBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, ticketsPermission: "read" },
       attributes: ["brandId"],
@@ -292,11 +278,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => Number(brand.get().brandId));
   }
 
-  static async fetchTicketsReadForbiddenBrandIds({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<number[]> {
+  static async fetchTicketsReadForbiddenBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
       where: { connectorId, ticketsPermission: "none" },
       attributes: ["brandId"],

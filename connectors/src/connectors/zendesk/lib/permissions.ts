@@ -34,7 +34,7 @@ import {
 export async function retrieveAllSelectedNodes(
   connectorId: ModelId
 ): Promise<ContentNode[]> {
-  const brands = await ZendeskBrandResource.fetchAllReadOnly({ connectorId });
+  const brands = await ZendeskBrandResource.fetchAllReadOnly(connectorId);
   const helpCenterNodes: ContentNode[] = brands
     .filter(
       (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
@@ -67,9 +67,8 @@ async function getRootLevelContentNodes(
     isReadPermissionsOnly: boolean;
   }
 ): Promise<ContentNode[]> {
-  const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
-    connectorId,
-  });
+  const brandsInDatabase =
+    await ZendeskBrandResource.fetchAllReadOnly(connectorId);
   if (isReadPermissionsOnly) {
     return brandsInDatabase.map((brand) => brand.toContentNode(connectorId));
   } else {

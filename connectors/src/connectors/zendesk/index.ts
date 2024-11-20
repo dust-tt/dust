@@ -208,9 +208,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
-      connectorId,
-    });
+    const brandIds = await ZendeskBrandResource.fetchAllBrandIds(connectorId);
     const result = await launchZendeskSyncWorkflow(connector, {
       brandIds,
       forceResync: true,
@@ -612,9 +610,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
     await connector.markAsUnpaused();
 
-    const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
-      connectorId,
-    });
+    const brandIds = await ZendeskBrandResource.fetchAllBrandIds(connectorId);
     const result = await launchZendeskSyncWorkflow(connector, { brandIds });
     if (result.isErr()) {
       return result;
