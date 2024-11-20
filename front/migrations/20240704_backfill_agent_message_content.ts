@@ -23,19 +23,19 @@
 //     const messagesToBackfill = (
 //       await frontSequelize.query<AgentMessageToBackfill>(
 //         `
-//         SELECT 
+//         SELECT
 //             m.id as message_id,
 //             am.id as agent_message_id,
 //             am.content as agent_message_content
-//         FROM 
+//         FROM
 //             agent_messages am
 //         INNER JOIN
 //             messages m ON m."agentMessageId" = am.id
 //         LEFT JOIN
 //             agent_message_contents amc ON am.id = amc."agentMessageId"
 //         WHERE
-//             amc.id IS NULL 
-//             AND 
+//             amc.id IS NULL
+//             AND
 //           am.content IS NOT NULL AND am.content != ''
 //         ORDER BY am.id
 //         LIMIT 1000
