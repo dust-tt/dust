@@ -7,7 +7,6 @@ import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_ap
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
@@ -53,9 +52,6 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
     where: { agentMessageId: agentMessageIds },
   });
   await AgentBrowseAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentVisualizationAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 }
