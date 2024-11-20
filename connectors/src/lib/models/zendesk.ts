@@ -9,6 +9,12 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
+function throwOnUnsafeInteger(value: number) {
+  if (!Number.isSafeInteger(value)) {
+    throw new Error(`Value must be a safe integer: ${value}`);
+  }
+}
+
 export class ZendeskTimestampCursors extends Model<
   InferAttributes<ZendeskTimestampCursors>,
   InferCreationAttributes<ZendeskTimestampCursors>
@@ -152,6 +158,7 @@ ZendeskBrand.init(
     brandId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     name: {
       type: DataTypes.STRING,
@@ -242,10 +249,12 @@ ZendeskCategory.init(
     categoryId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     brandId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     name: {
       type: DataTypes.STRING,
@@ -328,14 +337,17 @@ ZendeskArticle.init(
     articleId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     brandId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     categoryId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     name: {
       type: DataTypes.STRING,
@@ -426,22 +438,27 @@ ZendeskTicket.init(
     ticketId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     brandId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     groupId: {
       type: DataTypes.BIGINT,
       allowNull: true,
+      validate: { throwOnUnsafeInteger },
     },
     assigneeId: {
       type: DataTypes.BIGINT,
       allowNull: true,
+      validate: { throwOnUnsafeInteger },
     },
     organizationId: {
       type: DataTypes.BIGINT,
       allowNull: true,
+      validate: { throwOnUnsafeInteger },
     },
     permission: {
       type: DataTypes.STRING,
