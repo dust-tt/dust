@@ -7,11 +7,13 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { upsertTable } from "@app/lib/api/data_sources";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { deleteTable } from "@app/lib/api/tables";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export const config = {
@@ -29,15 +31,12 @@ export type PatchTableResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchTableResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { tableId, dsId, spaceId } = req.query;
+  const { tableId, dsId } = req.query;
 
-  if (
-    typeof dsId !== "string" ||
-    typeof spaceId !== "string" ||
-    typeof tableId !== "string"
-  ) {
+  if (typeof dsId !== "string" || typeof tableId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -51,7 +50,7 @@ async function handler(
 
   if (
     !dataSource ||
-    spaceId !== dataSource.space.sId ||
+    space.sId !== dataSource.space.sId ||
     !dataSource.canRead(auth)
   ) {
     return apiError(req, res, {
@@ -59,16 +58,6 @@ async function handler(
       api_error: {
         type: "data_source_not_found",
         message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -178,4 +167,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, "space")
+);

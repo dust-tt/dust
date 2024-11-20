@@ -14,13 +14,14 @@ import {
   getDataSourcesUsageByCategory,
   getDataSourceViewsUsageByCategory,
 } from "@app/lib/api/agent_data_sources";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetSpaceDataSourceViewsResponseBody<
@@ -44,40 +45,10 @@ async function handler(
       GetSpaceDataSourceViewsResponseBody | PostSpaceDataSourceViewsResponseBody
     >
   >,
-  auth: Authenticator
+
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters `spaceId`.",
-      },
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !space.canList(auth)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you requested was not found.",
-      },
-    });
-  }
-
-  if (space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       const category =
@@ -248,4 +219,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, "space")
+);

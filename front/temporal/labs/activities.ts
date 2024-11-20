@@ -219,7 +219,7 @@ export async function processTranscriptActivity(
           },
           "[processTranscriptActivity] No Gong result found. Stopping."
         );
-        break;
+        return;
       }
       transcriptTitle = gongResult.transcriptTitle || "";
       transcriptContent = gongResult.transcriptContent || "";
@@ -280,12 +280,26 @@ export async function processTranscriptActivity(
 
   // Decide to store transcript or not (user might not have participated)
   const shouldStoreTranscript =
-    (transcriptsConfiguration.dataSourceViewId && userParticipated) ||
-    (gongFullStorageFF && gongFullStorageDataSourceViewId);
+    (userParticipated && !!transcriptsConfiguration.dataSourceViewId) ||
+    (gongFullStorageFF && !!gongFullStorageDataSourceViewId);
 
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
     transcriptsConfiguration.isActive && userParticipated;
+
+  localLogger.info(
+    {
+      fileId,
+      userParticipated,
+      transcriptsConfigurationDataSourceViewId:
+        transcriptsConfiguration.dataSourceViewId,
+      gongFullStorageFF,
+      gongFullStorageDataSourceViewId,
+      shouldStoreTranscript,
+      shouldProcessTranscript,
+    },
+    "[processTranscriptActivity] Deciding to store and/or process transcript."
+  );
 
   if (shouldStoreTranscript) {
     localLogger.info(
@@ -294,6 +308,8 @@ export async function processTranscriptActivity(
         gongFullStorageFF,
         gongFullStorageDataSourceViewId,
         transcriptsConfiguration,
+        transcriptTitle,
+        transcriptContentLength: transcriptContent.length,
       },
       "[processTranscriptActivity] Storing transcript to Datasource."
     );
@@ -376,6 +392,8 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
+        transcriptTitle,
+        transcriptContentLength: transcriptContent.length,
       },
       "[processTranscriptActivity] Stored transcript to Datasource."
     );

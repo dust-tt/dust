@@ -20,7 +20,8 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -169,6 +170,12 @@ async function handler(
             url: req.url,
           });
         }
+
+        await maybeUpsertFileAttachment(auth, {
+          contentFragments: [resolvedFragment],
+          conversation,
+        });
+
         const { context, ...cf } = resolvedFragment;
         const cfRes = await postNewContentFragment(auth, conversation, cf, {
           username: context?.username || null,

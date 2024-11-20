@@ -42,6 +42,11 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "hover:s-text-slate-100 hover:s-text-slate-100" +
     "active:s-text-slate-200 active:s-text-slate-200" +
     "s-text-white/50 s-text-white/50",
+  "ghost-secondary":
+    "s-text-white" +
+    "hover:s-text-slate-100 hover:s-text-slate-100" +
+    "active:s-text-slate-200 active:s-text-slate-200" +
+    "s-text-white/50 s-text-white/50",
 };
 
 const iconButtonVariants = cva(

@@ -8,12 +8,12 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   createEnterpriseConnection,
   deleteEnterpriseConnection,
   getEnterpriseConnectionForWorkspace,
 } from "@app/lib/api/enterprise_connection";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";

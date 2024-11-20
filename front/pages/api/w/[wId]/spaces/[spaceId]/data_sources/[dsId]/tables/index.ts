@@ -4,10 +4,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { upsertTable } from "@app/lib/api/data_sources";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export const config = {
@@ -25,10 +27,11 @@ export type PostTableResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostTableResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { dsId, spaceId } = req.query;
-  if (typeof dsId !== "string" || typeof spaceId !== "string") {
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -41,24 +44,14 @@ async function handler(
   const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId);
   if (
     !dataSource ||
-    spaceId !== dataSource.space.sId ||
-    !dataSource.canRead(auth)
+    !dataSource.canRead(auth) ||
+    dataSource.space.sId !== space.sId
   ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
         message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -133,4 +126,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, "space")
+);

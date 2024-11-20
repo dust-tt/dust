@@ -6,9 +6,11 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { softDeleteApp } from "@app/lib/api/apps";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetOrPostAppResponseBody = {
@@ -23,10 +25,12 @@ const PatchAppBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetOrPostAppResponseBody>>,
-  auth: Authenticator
+
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
-  const { aId, spaceId } = req.query;
-  if (typeof spaceId !== "string" || typeof aId !== "string") {
+  const { aId } = req.query;
+  if (typeof aId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -37,22 +41,12 @@ async function handler(
   }
 
   const app = await AppResource.fetchById(auth, aId);
-  if (!app || app.space.sId !== spaceId || !app.canRead(auth)) {
+  if (!app || app.space.sId !== space.sId || !app.canRead(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app was not found.",
-      },
-    });
-  }
-
-  if (app.space.isConversations()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -140,4 +134,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, "space")
+);

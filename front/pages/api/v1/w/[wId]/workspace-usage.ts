@@ -8,7 +8,7 @@ import { endOfMonth } from "date-fns/endOfMonth";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {

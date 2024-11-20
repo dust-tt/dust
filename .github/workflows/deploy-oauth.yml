@@ -43,10 +43,10 @@ jobs:
         run: |
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
-          --image-name=oauth \
-          --dockerfile-path=./oauth.Dockerfile \
-          --working-dir=./core/ \
-          --dust-client-facing-url=https://dust.tt
+            --image-name=oauth \
+            --dockerfile-path=./oauth.Dockerfile \
+            --working-dir=./core/ \
+            --dust-client-facing-url=https://dust.tt
 
       - name: Generate a token
         id: generate-token

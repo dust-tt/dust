@@ -336,10 +336,11 @@ export async function getPagesAndDatabasesEditedSince({
 }
 
 const NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES = [
-  "object_not_found",
   "unauthorized",
   "restricted_resource",
 ];
+
+const NOTION_NOT_FOUND_ERROR_CODES = ["object_not_found"];
 
 const NOTION_RETRIABLE_ERRORS = ["rate_limited", "internal_server_error"];
 
@@ -431,7 +432,11 @@ export async function isAccessibleAndUnarchived(
             { errorCode: e.code },
             "Skipping page/database due to unauthorized status code."
           );
+          return false;
+        }
 
+        if (NOTION_NOT_FOUND_ERROR_CODES.includes(e.code)) {
+          tryLogger.info({ errorCode: e.code }, "Object not found.");
           return false;
         }
       }
@@ -447,7 +452,8 @@ export async function isAccessibleAndUnarchived(
 async function getBlockParent(
   notionAccessToken: string,
   blockId: string,
-  localLogger: Logger
+  localLogger: Logger,
+  onProgress?: () => Promise<void>
 ): Promise<{
   parentId: string;
   parentType: "database" | "page" | "workspace";
@@ -467,6 +473,9 @@ async function getBlockParent(
   let transient_errors = 0;
 
   for (;;) {
+    if (onProgress) {
+      await onProgress();
+    }
     localLogger.info({ blockId }, "Looking up block parent");
     try {
       const block = await wrapNotionAPITokenErrors(async () =>
@@ -521,7 +530,14 @@ async function getBlockParent(
 
 export const getBlockParentMemoized = cacheWithRedis(
   getBlockParent,
-  (notionAccessToken: string, blockId: string) => {
+  (
+    notionAccessToken: string,
+    blockId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+    localLogger: Logger,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+    onProgress?: () => Promise<void>
+  ) => {
     return blockId;
   },
   60 * 10 * 1000

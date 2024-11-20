@@ -75,7 +75,7 @@ FileModel.init(
       defaultValue: null,
     },
     snippet: {
-      type: DataTypes.STRING(512),
+      type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null,
     },
