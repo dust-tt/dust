@@ -17,7 +17,7 @@ export interface TextareaProps
 }
 
 const textAreaVariants = cva(
-  "s-flex s-w-full s-px-3 s-py-2 s-text-sm s-text-foreground s-bg-muted-background s-ring-offset-background s-border s-border-border-dark/0 s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none focus-visible:s-border-border-dark focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
+  "s-flex s-w-full s-px-3 s-py-2 s-text-sm s-text-foreground s-bg-muted-background s-ring-offset-background s-border s-border-border-dark/50 s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none focus-visible:s-border-border-dark focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
   {
     variants: {
       resize: {
