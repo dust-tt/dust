@@ -292,3 +292,24 @@ export async function deleteBrandArticleBatchActivity({
   /// returning false if we know for sure there isn't any more article to process
   return articleIds.length === ZENDESK_BATCH_SIZE;
 }
+
+/**
+ * Deletes a batch of categories from the db.
+ *
+ * @returns `false` if there is no more category to process.
+ */
+export async function deleteBrandCategoryBatchActivity({
+  connectorId,
+  brandId,
+}: {
+  connectorId: number;
+  brandId: number;
+}): Promise<boolean> {
+  const deletedCount = await ZendeskCategoryResource.deleteByBrandId({
+    connectorId,
+    brandId,
+    batchSize: ZENDESK_BATCH_SIZE,
+  });
+
+  return deletedCount === ZENDESK_BATCH_SIZE;
+}

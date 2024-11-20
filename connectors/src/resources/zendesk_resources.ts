@@ -523,11 +523,16 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   static async deleteByBrandId({
     connectorId,
     brandId,
+    batchSize = null,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<void> {
-    await ZendeskCategory.destroy({ where: { connectorId, brandId } });
+    batchSize?: number | null;
+  }): Promise<number> {
+    return ZendeskCategory.destroy({
+      where: { connectorId, brandId },
+      ...(batchSize && { limit: batchSize }),
+    });
   }
 
   static async deleteByConnectorId(
