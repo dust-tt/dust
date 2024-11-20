@@ -239,6 +239,8 @@ const extractTextFromFile: PreprocessingFunction = async (
       writeStream
     );
 
+    console.log("Content for file", file.fileName, content);
+
     return new Ok(content);
   } catch (err) {
     logger.error(
@@ -492,6 +494,21 @@ const maybeApplyPreProcessing: PreprocessingFunction = async (
   return new Ok(undefined);
 };
 
+const isMarkdownType = (mimetype: string | null): boolean => {
+  if (!mimetype) {
+    return false;
+  }
+
+  const markdownTypes = [
+    "text/markdown",
+    "text/x-markdown",
+    "text/md",
+    "application/markdown",
+    "application/octet-stream",
+  ];
+  return markdownTypes.includes(mimetype) || mimetype.endsWith("/md");
+};
+
 export async function processAndStoreFile(
   auth: Authenticator,
   { file, req }: { file: FileResource; req: IncomingMessage }
@@ -542,11 +559,13 @@ export async function processAndStoreFile(
 
       // Ensure the file is of the correct type.
       filter: function (part) {
-        if (part.mimetype !== file.contentType) {
-          return false;
+        // For markdown files, check both sides are markdown types
+        // Needed because multiple types might check for markdown
+        if (isMarkdownType(file.contentType)) {
+          return isMarkdownType(part.mimetype);
         }
-
-        return true;
+        // For other file types, require exact match
+        return part.mimetype === file.contentType;
       },
     });
     const [, files] = await form.parse(req);

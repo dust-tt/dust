@@ -1,3 +1,4 @@
+import { supportedPlainTextExtensions } from "@dust-tt/client";
 import {
   Button,
   DocumentPlusIcon,
@@ -16,6 +17,8 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
+  CoreAPIDocument,
+  CoreAPILightDocument,
   DataSourceViewType,
   LightContentNode,
   PlanType,
@@ -35,10 +38,37 @@ import React, { useEffect, useRef, useState } from "react";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import type { FileVersion } from "@app/lib/resources/file_resource";
+import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 import { useTable } from "@app/lib/swr/tables";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const MAX_NAME_CHARS = 32;
+
+function isCoreAPIDocumentType(
+  doc: CoreAPIDocument | CoreAPILightDocument
+): doc is CoreAPIDocument {
+  return (
+    "data_source_id" in doc &&
+    "document_id" in doc &&
+    "timestamp" in doc &&
+    "tags" in doc &&
+    "chunks" in doc
+  );
+}
+
+const fetchFileTextContent = async (
+  workspaceId: string,
+  fileId: string,
+  version: FileVersion
+) => {
+  const response = await fetch(
+    `/api/w/${workspaceId}/files/${fileId}?action=view&version=${version}`
+  );
+  if (!response.ok) {
+    return null;
+  }
+  return response.text();
+};
 
 interface DocumentOrTableUploadOrEditModalProps {
   contentNode?: LightContentNode;
@@ -65,9 +95,18 @@ export function DocumentOrTableUploadOrEditModal(
   );
 }
 
+function hasAssociatedFile(document: CoreAPIDocument) {
+  // Return True iff the document has a file associated with it
+  // Next step is to actually get the file info -> unlocks custom icons
+  return (
+    document.document_id &&
+    document.document_id.startsWith("fil_") &&
+    document.tags.some((tag) => tag.startsWith("title:"))
+  );
+}
+
 interface Document {
   name: string;
-  file: File | null;
   text: string;
   tags: string[];
   sourceUrl: string;
@@ -81,12 +120,12 @@ const DocumentUploadorEditModal = ({
   onClose,
   owner,
   plan,
+  initialId,
 }: DocumentOrTableUploadOrEditModalProps) => {
   const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentState, setDocumentState] = useState<Document>({
     name: "",
-    file: null,
     text: "",
     tags: [],
     sourceUrl: "",
@@ -102,19 +141,59 @@ const DocumentUploadorEditModal = ({
     content: false,
   });
   const [uploading, setUploading] = useState(false);
+  const [creatingFile, setCreatingFile] = useState(false);
   const [isValidDocument, setIsValidDocument] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
+  const { document, isDocumentError, isDocumentLoading } =
+    useDataSourceViewDocument({
+      owner: owner,
+      dataSourceView: dataSourceView,
+      documentId: initialId ?? null,
+      disabled: !initialId,
+    });
+
+  useEffect(() => {
+    if (!initialId) {
+      setDocumentState({
+        name: "",
+        text: "",
+        tags: [],
+        sourceUrl: "",
+        fileId: null,
+      });
+    } else if (document && isCoreAPIDocumentType(document)) {
+      // Extract title from tags
+      const titleTagContent = document.tags
+        .find((tag) => tag.startsWith("title:"))
+        ?.split(":")[1];
+
+      setDocumentState((prev) => ({
+        ...prev,
+        name: titleTagContent || initialId,
+        text: document.text ?? "",
+        tags: document.tags,
+        sourceUrl: document.source_url ?? "",
+        fileId: hasAssociatedFile(document) ? document.document_id : null,
+      }));
+    }
+  }, [initialId, document]);
+
   useEffect(() => {
     const isNameValid = !!documentState.name;
-    const isContentValid = !!documentState.text || !!documentState.file;
+    const isContentValid = !!documentState.text;
     setIsValidDocument(isNameValid && isContentValid);
   }, [documentState]);
 
   const handleDocumentUpload = async (document: Document) => {
     setUploading(true);
     try {
-      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+      // Add a "title:"" tag iff none exists
+      // That prevents the title from being overwitten by the file id
+      if (!document.tags.some((tag) => tag.startsWith("title:"))) {
+        document.tags.push(`title:${document.name}`);
+      }
+
       const body = {
         // /!\ Use the fileId as the document name to achieve foreign-key-like behavior
         // This unlocks use case such as file download
@@ -132,8 +211,12 @@ const DocumentUploadorEditModal = ({
       };
       const stringifiedBody = JSON.stringify(body);
 
+      const base = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+      const endpoint = initialId
+        ? `${base}/${encodeURIComponent(document.name)}`
+        : base;
       const res = await fetch(endpoint, {
-        method: "POST",
+        method: initialId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: stringifiedBody,
       });
@@ -144,8 +227,8 @@ const DocumentUploadorEditModal = ({
 
       sendNotification({
         type: "success",
-        title: `Document successfully added`,
-        description: `Document ${document.name} was successfully added"}.`,
+        title: `Document successfully ${initialId ? "updated" : "added"}`,
+        description: `Document ${document.name} was successfully ${initialId ? "updated" : "added"}.`,
       });
     } catch (error) {
       sendNotification({
@@ -157,7 +240,6 @@ const DocumentUploadorEditModal = ({
       setUploading(false);
       setDocumentState({
         name: "",
-        file: null,
         text: "",
         tags: [],
         sourceUrl: "",
@@ -181,30 +263,20 @@ const DocumentUploadorEditModal = ({
     }
   };
 
-  const fetchFileTextContent = async (fileId: string, version: FileVersion) => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/files/${fileId}?action=view&version=${version}`
-    );
-    if (!response.ok) {
-      return null;
-    }
-    return response.text();
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) {
       return;
     }
 
-    setUploading(true);
+    setCreatingFile(true);
     try {
       // Create file
       const fileBlobs = await fileUploaderService.handleFilesUpload([
         selectedFile,
       ]);
       if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
-        setUploading(false);
+        setCreatingFile(false);
         fileUploaderService.resetUpload();
         return new Err(
           new Error(
@@ -215,10 +287,14 @@ const DocumentUploadorEditModal = ({
 
       // fetch file's processed text
       const fileId = fileBlobs[0].fileId;
-      const processedText = await fetchFileTextContent(fileId, "processed");
+      const processedText = await fetchFileTextContent(
+        owner.sId,
+        fileId,
+        "processed"
+      );
       if (!processedText) {
         fileUploaderService.removeFile(fileBlobs[0].fileId);
-        setUploading(false);
+        setCreatingFile(false);
         return new Err(new Error("Error reading file content"));
       }
 
@@ -228,7 +304,7 @@ const DocumentUploadorEditModal = ({
         text: processedText,
         fileId,
       }));
-      setUploading(false);
+      setCreatingFile(false);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -236,7 +312,7 @@ const DocumentUploadorEditModal = ({
         description: error instanceof Error ? error.message : String(error),
       });
     } finally {
-      setUploading(false);
+      setCreatingFile(false);
     }
   };
 
@@ -244,172 +320,190 @@ const DocumentUploadorEditModal = ({
     <Modal
       isOpen={isOpen}
       onClose={() => {
+        fileUploaderService.resetUpload();
         onClose(false);
       }}
-      hasChanged={!uploading && isValidDocument}
+      hasChanged={
+        !isDocumentError &&
+        !isDocumentLoading &&
+        !creatingFile &&
+        isValidDocument
+      }
       variant="side-md"
-      title={`Add document`}
+      title={`${initialId ? "Edit" : "Add"} document`}
       onSave={handleUpload}
       isSaving={uploading}
     >
-      <Page.Vertical align="stretch">
-        <div className="space-y-4 p-4">
-          <div>
-            <Page.SectionHeader title="Document name" />
-            <Input
-              placeholder="Document title"
-              name="name"
-              maxLength={MAX_NAME_CHARS}
-              value={documentState.name}
-              onChange={(e) => {
-                setEditionStatus((prev) => ({ ...prev, name: true }));
-                setDocumentState((prev) => ({
-                  ...prev,
-                  name: e.target.value,
-                }));
-              }}
-              message={
-                !documentState.name && editionStatus.name
-                  ? "You need to provide a name."
-                  : null
-              }
-              messageStatus="error"
-            />
-          </div>
+      {isDocumentLoading ? (
+        <div className="flex justify-center py-4">
+          <Spinner variant="color" size="xs" />
+        </div>
+      ) : (
+        <Page.Vertical align="stretch">
+          {isDocumentError ? (
+            <div className="space-y-4 p-4">Content cannot be loaded.</div>
+          ) : (
+            <div className="space-y-4 p-4">
+              <div>
+                <Page.SectionHeader title="Document name" />
+                <Input
+                  placeholder="Document title"
+                  name="name"
+                  maxLength={MAX_NAME_CHARS}
+                  value={documentState.name}
+                  disabled={!!initialId}
+                  onChange={(e) => {
+                    setEditionStatus((prev) => ({ ...prev, name: true }));
+                    setDocumentState((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }));
+                  }}
+                  message={
+                    !documentState.name && editionStatus.name
+                      ? "You need to provide a name."
+                      : null
+                  }
+                  messageStatus="error"
+                />
+              </div>
 
-          <div>
-            <Page.SectionHeader
-              title="Associated URL"
-              description="The URL of the associated document (if any). Will be used to link users to the original document in assistants citations."
-            />
-            <Input
-              placeholder="https://..."
-              name="sourceUrl"
-              value={documentState.sourceUrl}
-              onChange={(e) =>
-                setDocumentState((prev) => ({
-                  ...prev,
-                  sourceUrl: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <Page.SectionHeader
-              title="Text content"
-              description={`Copy paste content or upload a file (text or PDF). Up to ${
-                plan.limits.dataSources.documents.sizeMb === -1
-                  ? "2"
-                  : plan.limits.dataSources.documents.sizeMb
-              } MB of raw text.`}
-              action={{
-                label: uploading
-                  ? "Uploading..."
-                  : documentState.file
-                    ? documentState.file.name
-                    : "Upload file",
-                variant: "primary",
-                icon: DocumentPlusIcon,
-                onClick: () => fileInputRef.current?.click(),
-              }}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: "none" }}
-              accept=".txt, .pdf, .md, .csv"
-              onChange={handleFileChange}
-            />
-            <TextArea
-              minRows={10}
-              placeholder="Your document content..."
-              value={documentState.text}
-              onChange={(e) => {
-                setEditionStatus((prev) => ({ ...prev, content: true }));
-                setDocumentState((prev) => ({
-                  ...prev,
-                  text: e.target.value,
-                }));
-              }}
-              error={
-                editionStatus.content && !documentState.text
-                  ? "You need to upload a file or specify the content of the document."
-                  : null
-              }
-              showErrorLabel
-            />
-          </div>
-
-          <div>
-            <Page.SectionHeader
-              title="Developer Options"
-              action={{
-                label: developerOptionsVisible ? "Hide" : "Show",
-                variant: "ghost",
-                icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
-                onClick: () =>
-                  setDeveloperOptionsVisible(!developerOptionsVisible),
-              }}
-            />
-            {developerOptionsVisible && (
-              <div className="pt-4">
+              <div>
                 <Page.SectionHeader
-                  title=""
-                  description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
+                  title="Associated URL"
+                  description="The URL of the associated document (if any). Will be used to link users to the original document in assistants citations."
+                />
+                <Input
+                  placeholder="https://..."
+                  name="sourceUrl"
+                  value={documentState.sourceUrl}
+                  onChange={(e) =>
+                    setDocumentState((prev) => ({
+                      ...prev,
+                      sourceUrl: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div>
+                <Page.SectionHeader
+                  title="Text content"
+                  description={`Copy paste content or upload a file (text or PDF). Up to ${
+                    plan.limits.dataSources.documents.sizeMb === -1
+                      ? "2"
+                      : plan.limits.dataSources.documents.sizeMb
+                  } MB of raw text.`}
                   action={{
-                    label: "Add tag",
-                    variant: "ghost",
-                    icon: PlusIcon,
-                    onClick: () =>
-                      setDocumentState((prev) => ({
-                        ...prev,
-                        tags: [...prev.tags, ""],
-                      })),
+                    label: creatingFile
+                      ? "Uploading..."
+                      : documentState.fileId
+                        ? "Replace file"
+                        : "Upload file",
+                    variant: "primary",
+                    icon: DocumentPlusIcon,
+                    onClick: () => fileInputRef.current?.click(),
                   }}
                 />
-                {documentState.tags.map((tag, index) => (
-                  <div key={index} className="flex flex-grow flex-row">
-                    <div className="flex flex-1 flex-row gap-8">
-                      <div className="flex flex-1 flex-col">
-                        <Input
-                          className="w-full"
-                          placeholder="Tag"
-                          name="tag"
-                          value={tag}
-                          onChange={(e) => {
-                            const newTags = [...documentState.tags];
-                            newTags[index] = e.target.value;
-                            setDocumentState((prev) => ({
-                              ...prev,
-                              tags: newTags,
-                            }));
-                          }}
-                        />
-                      </div>
-                      <div className="flex">
-                        <Button
-                          tooltip="Remove"
-                          icon={TrashIcon}
-                          variant="warning"
-                          onClick={() => {
-                            const newTags = [...documentState.tags];
-                            newTags.splice(index, 1);
-                            setDocumentState((prev) => ({
-                              ...prev,
-                              tags: newTags,
-                            }));
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  accept={supportedPlainTextExtensions.join(", ")}
+                  onChange={handleFileChange}
+                />
+                <TextArea
+                  minRows={10}
+                  disabled={creatingFile || !!documentState.fileId}
+                  placeholder="Your document content..."
+                  value={documentState.text}
+                  onChange={(e) => {
+                    setEditionStatus((prev) => ({ ...prev, content: true }));
+                    setDocumentState((prev) => ({
+                      ...prev,
+                      text: e.target.value,
+                    }));
+                  }}
+                  error={
+                    editionStatus.content && !documentState.text
+                      ? "You need to upload a file or specify the content of the document."
+                      : null
+                  }
+                  showErrorLabel
+                />
               </div>
-            )}
-          </div>
-        </div>
-      </Page.Vertical>
+
+              <div>
+                <Page.SectionHeader
+                  title="Developer Options"
+                  action={{
+                    label: developerOptionsVisible ? "Hide" : "Show",
+                    variant: "ghost",
+                    icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
+                    onClick: () =>
+                      setDeveloperOptionsVisible(!developerOptionsVisible),
+                  }}
+                />
+                {developerOptionsVisible && (
+                  <div className="pt-4">
+                    <Page.SectionHeader
+                      title=""
+                      description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
+                      action={{
+                        label: "Add tag",
+                        variant: "ghost",
+                        icon: PlusIcon,
+                        onClick: () =>
+                          setDocumentState((prev) => ({
+                            ...prev,
+                            tags: [...prev.tags, ""],
+                          })),
+                      }}
+                    />
+                    {documentState.tags.map((tag, index) => (
+                      <div key={index} className="flex flex-grow flex-row">
+                        <div className="flex flex-1 flex-row gap-8">
+                          <div className="flex flex-1 flex-col">
+                            <Input
+                              className="w-full"
+                              placeholder="Tag"
+                              name="tag"
+                              value={tag}
+                              onChange={(e) => {
+                                const newTags = [...documentState.tags];
+                                newTags[index] = e.target.value;
+                                setDocumentState((prev) => ({
+                                  ...prev,
+                                  tags: newTags,
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div className="flex">
+                            <Button
+                              tooltip="Remove"
+                              icon={TrashIcon}
+                              variant="warning"
+                              onClick={() => {
+                                const newTags = [...documentState.tags];
+                                newTags.splice(index, 1);
+                                setDocumentState((prev) => ({
+                                  ...prev,
+                                  tags: newTags,
+                                }));
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </Page.Vertical>
+      )}
     </Modal>
   );
 };

@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -16,8 +17,15 @@ export const config = {
   },
 };
 
-const validActions = ["view", "download"] as const;
+const validActions = ["view", "download", "info"] as const;
 type Action = (typeof validActions)[number];
+
+const VALID_VIEW_VERSIONS: FileVersion[] = [
+  "original",
+  "processed",
+  "public",
+  "snippet",
+];
 
 async function handler(
   req: NextApiRequest,
@@ -52,11 +60,17 @@ async function handler(
         ? (req.query.action as Action)
         : "download";
 
-      // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
+        // Get the version of the file.
+        const version: FileVersion =
+          req.query.version &&
+          VALID_VIEW_VERSIONS.includes(req.query.version as FileVersion)
+            ? (req.query.version as FileVersion)
+            : "original";
+
         const readStream = file.getReadStream({
           auth,
-          version: "original",
+          version,
         });
         readStream.on("error", () => {
           return apiError(req, res, {
