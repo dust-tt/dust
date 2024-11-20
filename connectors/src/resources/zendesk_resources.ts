@@ -255,17 +255,26 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => brand.get().brandId);
   }
 
-  static async fetchAllWithHelpCenter({
+  static async fetchHelpCenterReadForbiddenBrandIds({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, helpCenterPermission: "none" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => brand.get().brandId);
+  }
+
+  static async fetchHelpCenterReadAllowedBrands({
     connectorId,
   }: {
     connectorId: number;
   }): Promise<ZendeskBrandResource[]> {
     const brands = await ZendeskBrand.findAll({
-      where: {
-        connectorId,
-        helpCenterPermission: "read",
-        hasHelpCenter: true,
-      },
+      where: { connectorId, helpCenterPermission: "read" },
+      attributes: ["brandId"],
     });
     return brands.map((brand) => new this(this.model, brand.get()));
   }
@@ -282,9 +291,35 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => brand.get().brandId);
   }
 
+  static async fetchTicketsReadForbiddenBrandIds({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, ticketsPermission: "none" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => brand.get().brandId);
+  }
+
+  static async deleteBrandsWithNoPermission(
+    connectorId: number,
+    transaction?: Transaction
+  ) {
+    await ZendeskBrand.destroy({
+      where: {
+        connectorId,
+        helpCenterPermission: "none",
+        ticketsPermission: "none",
+      },
+      transaction,
+    });
+  }
+
   static async deleteByConnectorId(
     connectorId: number,
-    transaction: Transaction
+    transaction?: Transaction
   ) {
     await ZendeskBrand.destroy({ where: { connectorId }, transaction });
   }
@@ -397,6 +432,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     };
   }
 
+  static async fetchCategoryIdsForConnector(
+    connectorId: number
+  ): Promise<number[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId },
+    });
+    return categories.map((category) => category.get().categoryId);
+  }
+
   static async fetchByCategoryId({
     connectorId,
     categoryId,
@@ -466,14 +510,29 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
+  static async deleteByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<void> {
+    await ZendeskCategory.destroy({ where: { connectorId, categoryId } });
+  }
+
   static async deleteByBrandId({
     connectorId,
     brandId,
+    batchSize = null,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<void> {
-    await ZendeskCategory.destroy({ where: { connectorId, brandId } });
+    batchSize?: number | null;
+  }): Promise<number> {
+    return ZendeskCategory.destroy({
+      where: { connectorId, brandId },
+      ...(batchSize && { limit: batchSize }),
+    });
   }
 
   static async deleteByConnectorId(
@@ -679,17 +738,21 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
-  static async fetchByBrandId({
+  static async fetchTicketIdsByBrandId({
     connectorId,
     brandId,
+    batchSize = null,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskTicketResource[]> {
+    batchSize?: number | null;
+  }): Promise<number[]> {
     const tickets = await ZendeskTicket.findAll({
       where: { connectorId, brandId },
+      attributes: ["ticketId"],
+      ...(batchSize && { limit: batchSize }),
     });
-    return tickets.map((ticket) => new this(this.model, ticket.get()));
+    return tickets.map((ticket) => ticket.get().ticketId);
   }
 
   static async deleteByTicketId({
@@ -702,14 +765,16 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     await ZendeskTicket.destroy({ where: { connectorId, ticketId } });
   }
 
-  static async deleteByBrandId({
+  static async deleteByTicketIds({
     connectorId,
-    brandId,
+    ticketIds,
   }: {
     connectorId: number;
-    brandId: number;
+    ticketIds: number[];
   }): Promise<void> {
-    await ZendeskTicket.destroy({ where: { connectorId, brandId } });
+    await ZendeskTicket.destroy({
+      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+    });
   }
 
   static async deleteByConnectorId(
@@ -836,9 +901,12 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     cursor: number | null;
   }): Promise<{ articleIds: number[]; cursor: number | null }> {
     const articles = await ZendeskArticle.findAll({
-      where: { connectorId, brandId },
+      where: {
+        connectorId,
+        brandId,
+        ...(cursor && { id: { [Op.gt]: cursor } }),
+      },
       order: [["id", "ASC"]],
-      ...(cursor && { where: { id: { [Op.gt]: cursor } } }),
       limit: batchSize,
     });
     return {
@@ -899,17 +967,20 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return articles.map((article) => new this(this.model, article.get()));
   }
 
-  static async fetchByBrandId({
+  static async fetchArticleIdsByBrandId({
     connectorId,
     brandId,
+    batchSize = null,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskArticleResource[]> {
+    batchSize?: number | null;
+  }): Promise<number[]> {
     const articles = await ZendeskArticle.findAll({
       where: { connectorId, brandId },
+      ...(batchSize && { limit: batchSize }),
     });
-    return articles.map((article) => new this(this.model, article.get()));
+    return articles.map((article) => article.get().articleId);
   }
 
   static async deleteByArticleId({
@@ -921,6 +992,19 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   }) {
     await ZendeskArticle.destroy({ where: { connectorId, articleId } });
   }
+
+  static async deleteByArticleIds({
+    connectorId,
+    articleIds,
+  }: {
+    connectorId: number;
+    articleIds: number[];
+  }) {
+    await ZendeskArticle.destroy({
+      where: { connectorId, articleId: { [Op.in]: articleIds } },
+    });
+  }
+
   static async deleteByCategoryId({
     connectorId,
     categoryId,
