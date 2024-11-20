@@ -82,13 +82,27 @@ async function _getChannelsUncached(
   connectorId: ModelId,
   joinedOnly: boolean
 ): Promise<Channel[]> {
+  return Promise.all([
+    _getTypedChannelsUncached(connectorId, joinedOnly, "public_channel"),
+    _getTypedChannelsUncached(connectorId, joinedOnly, "private_channel"),
+  ]).then(([publicChannels, privateChannels]) => [
+    ...publicChannels,
+    ...privateChannels,
+  ]);
+}
+
+async function _getTypedChannelsUncached(
+  connectorId: ModelId,
+  joinedOnly: boolean,
+  types: "public_channel" | "private_channel"
+): Promise<Channel[]> {
   const client = await getSlackClient(connectorId);
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
   let nbCalls = 0;
   do {
     const c: ConversationsListResponse = await client.conversations.list({
-      types: "public_channel, private_channel",
+      types,
       // despite the limit being 1000, slack may return fewer channels
       // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
       limit: 999,
