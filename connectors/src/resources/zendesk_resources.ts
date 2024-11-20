@@ -241,7 +241,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.get().brandId);
+    return brands.map((brand) => Number(brand.get().brandId));
   }
 
   static async fetchHelpCenterReadAllowedBrandIds({
@@ -253,7 +253,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, helpCenterPermission: "read" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.get().brandId);
+    return brands.map((brand) => Number(brand.get().brandId));
   }
 
   static async fetchAllWithHelpCenter({
@@ -280,7 +280,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, ticketsPermission: "read" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.get().brandId);
+    return brands.map((brand) => Number(brand.get().brandId));
   }
 
   static async deleteByConnectorId(
@@ -649,7 +649,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       where: { connectorId, ticketUpdatedAt: { [Op.lt]: expirationDate } },
       limit: batchSize,
     });
-    return tickets.map((ticket) => ticket.ticketId);
+    return tickets.map((ticket) => Number(ticket.get().ticketId));
   }
 
   static async fetchByTicketId({
