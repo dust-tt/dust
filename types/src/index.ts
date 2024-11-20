@@ -21,6 +21,7 @@ export * from "./front/api_handlers/public/data_sources";
 export * from "./front/api_handlers/public/spaces";
 export * from "./front/app";
 export * from "./front/assistant/actions/browse";
+export * from "./front/assistant/actions/conversation/include_file";
 export * from "./front/assistant/actions/conversation/list_files";
 export * from "./front/assistant/actions/dust_app_run";
 export * from "./front/assistant/actions/guards";

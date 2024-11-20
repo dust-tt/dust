@@ -4,6 +4,7 @@ import {
   AgentBrowseAction,
   AgentBrowseConfiguration,
 } from "@app/lib/models/assistant/actions/browse";
+import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -24,10 +25,6 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import {
-  AgentVisualizationAction,
-  AgentVisualizationConfiguration,
-} from "@app/lib/models/assistant/actions/visualization";
 import {
   AgentWebsearchAction,
   AgentWebsearchConfiguration,
@@ -139,7 +136,6 @@ async function main() {
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
-  await AgentVisualizationConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -156,7 +152,7 @@ async function main() {
   await AgentProcessAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });
   await AgentBrowseAction.sync({ alter: true });
-  await AgentVisualizationAction.sync({ alter: true });
+  await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });

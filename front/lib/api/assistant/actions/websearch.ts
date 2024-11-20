@@ -68,7 +68,7 @@ export class WebsearchAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "WEBSEARCH OUTPUT:\n";
     if (this.output === null) {
       content += "The web search failed.\n";

@@ -91,7 +91,7 @@ export class ProcessAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
 
     content += "PROCESSED OUTPUTS:\n";

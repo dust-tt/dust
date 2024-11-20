@@ -115,7 +115,8 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     model: ModelStatic<ZendeskBrand>,
     blob: Attributes<ZendeskBrand>
   ) {
-    super(ZendeskBrand, blob);
+    // the IDs used here are stored as BigInts and are between JS max int and PSQL's max INTEGER
+    super(ZendeskBrand, { ...blob, brandId: Number(blob.brandId) });
   }
 
   async postFetchHook(): Promise<void> {
@@ -240,7 +241,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.get().brandId);
+    return brands.map((brand) => Number(brand.get().brandId));
   }
 
   static async fetchHelpCenterReadAllowedBrandIds({
@@ -252,20 +253,29 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, helpCenterPermission: "read" },
       attributes: ["brandId"],
     });
+    return brands.map((brand) => Number(brand.get().brandId));
+  }
+
+  static async fetchHelpCenterReadForbiddenBrandIds({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, helpCenterPermission: "none" },
+      attributes: ["brandId"],
+    });
     return brands.map((brand) => brand.get().brandId);
   }
 
-  static async fetchAllWithHelpCenter({
+  static async fetchHelpCenterReadAllowedBrands({
     connectorId,
   }: {
     connectorId: number;
   }): Promise<ZendeskBrandResource[]> {
     const brands = await ZendeskBrand.findAll({
-      where: {
-        connectorId,
-        helpCenterPermission: "read",
-        hasHelpCenter: true,
-      },
+      where: { connectorId, helpCenterPermission: "read" },
+      attributes: ["brandId"],
     });
     return brands.map((brand) => new this(this.model, brand.get()));
   }
@@ -279,12 +289,38 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, ticketsPermission: "read" },
       attributes: ["brandId"],
     });
+    return brands.map((brand) => Number(brand.get().brandId));
+  }
+
+  static async fetchTicketsReadForbiddenBrandIds({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, ticketsPermission: "none" },
+      attributes: ["brandId"],
+    });
     return brands.map((brand) => brand.get().brandId);
+  }
+
+  static async deleteBrandsWithNoPermission(
+    connectorId: number,
+    transaction?: Transaction
+  ) {
+    await ZendeskBrand.destroy({
+      where: {
+        connectorId,
+        helpCenterPermission: "none",
+        ticketsPermission: "none",
+      },
+      transaction,
+    });
   }
 
   static async deleteByConnectorId(
     connectorId: number,
-    transaction: Transaction
+    transaction?: Transaction
   ) {
     await ZendeskBrand.destroy({ where: { connectorId }, transaction });
   }
@@ -352,7 +388,11 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     model: ModelStatic<ZendeskCategory>,
     blob: Attributes<ZendeskCategory>
   ) {
-    super(ZendeskCategory, blob);
+    super(ZendeskCategory, {
+      ...blob,
+      brandId: Number(blob.brandId), // the IDs used here are stored as BigInts and are between JS max int and PSQL's max INTEGER
+      categoryId: Number(blob.categoryId),
+    });
   }
 
   static async makeNew({
@@ -395,6 +435,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
       connectorId: this.connectorId,
     };
+  }
+
+  static async fetchCategoryIdsForConnector(
+    connectorId: number
+  ): Promise<number[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId },
+    });
+    return categories.map((category) => category.get().categoryId);
   }
 
   static async fetchByCategoryId({
@@ -466,14 +515,29 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
+  static async deleteByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<void> {
+    await ZendeskCategory.destroy({ where: { connectorId, categoryId } });
+  }
+
   static async deleteByBrandId({
     connectorId,
     brandId,
+    batchSize = null,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<void> {
-    await ZendeskCategory.destroy({ where: { connectorId, brandId } });
+    batchSize?: number | null;
+  }): Promise<number> {
+    return ZendeskCategory.destroy({
+      where: { connectorId, brandId },
+      ...(batchSize && { limit: batchSize }),
+    });
   }
 
   static async deleteByConnectorId(
@@ -553,7 +617,14 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     model: ModelStatic<ZendeskTicket>,
     blob: Attributes<ZendeskTicket>
   ) {
-    super(ZendeskTicket, blob);
+    super(ZendeskTicket, {
+      ...blob,
+      brandId: Number(blob.brandId), // the IDs used here are stored as BigInts and are between JS max int and PSQL's max INTEGER
+      ticketId: Number(blob.ticketId),
+      assigneeId: Number(blob.assigneeId),
+      groupId: blob.groupId && Number(blob.groupId),
+      organizationId: blob.organizationId && Number(blob.organizationId),
+    });
   }
 
   static async makeNew({
@@ -637,7 +708,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       where: { connectorId, ticketUpdatedAt: { [Op.lt]: expirationDate } },
       limit: batchSize,
     });
-    return tickets.map((ticket) => ticket.ticketId);
+    return tickets.map((ticket) => Number(ticket.get().ticketId));
   }
 
   static async fetchByTicketId({
@@ -679,17 +750,21 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
-  static async fetchByBrandId({
+  static async fetchTicketIdsByBrandId({
     connectorId,
     brandId,
+    batchSize = null,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskTicketResource[]> {
+    batchSize?: number | null;
+  }): Promise<number[]> {
     const tickets = await ZendeskTicket.findAll({
       where: { connectorId, brandId },
+      attributes: ["ticketId"],
+      ...(batchSize && { limit: batchSize }),
     });
-    return tickets.map((ticket) => new this(this.model, ticket.get()));
+    return tickets.map((ticket) => ticket.get().ticketId);
   }
 
   static async deleteByTicketId({
@@ -702,14 +777,16 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     await ZendeskTicket.destroy({ where: { connectorId, ticketId } });
   }
 
-  static async deleteByBrandId({
+  static async deleteByTicketIds({
     connectorId,
-    brandId,
+    ticketIds,
   }: {
     connectorId: number;
-    brandId: number;
+    ticketIds: number[];
   }): Promise<void> {
-    await ZendeskTicket.destroy({ where: { connectorId, brandId } });
+    await ZendeskTicket.destroy({
+      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+    });
   }
 
   static async deleteByConnectorId(
@@ -746,7 +823,11 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     model: ModelStatic<ZendeskArticle>,
     blob: Attributes<ZendeskArticle>
   ) {
-    super(ZendeskArticle, blob);
+    super(ZendeskArticle, {
+      ...blob,
+      brandId: Number(blob.brandId), // the IDs used here are stored as BIGINTs and are between JS max int and PSQL's max INTEGER
+      articleId: Number(blob.articleId),
+    });
   }
 
   static async makeNew({
@@ -836,9 +917,12 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     cursor: number | null;
   }): Promise<{ articleIds: number[]; cursor: number | null }> {
     const articles = await ZendeskArticle.findAll({
-      where: { connectorId, brandId },
+      where: {
+        connectorId,
+        brandId,
+        ...(cursor && { id: { [Op.gt]: cursor } }),
+      },
       order: [["id", "ASC"]],
-      ...(cursor && { where: { id: { [Op.gt]: cursor } } }),
       limit: batchSize,
     });
     return {
@@ -899,17 +983,20 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return articles.map((article) => new this(this.model, article.get()));
   }
 
-  static async fetchByBrandId({
+  static async fetchArticleIdsByBrandId({
     connectorId,
     brandId,
+    batchSize = null,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskArticleResource[]> {
+    batchSize?: number | null;
+  }): Promise<number[]> {
     const articles = await ZendeskArticle.findAll({
       where: { connectorId, brandId },
+      ...(batchSize && { limit: batchSize }),
     });
-    return articles.map((article) => new this(this.model, article.get()));
+    return articles.map((article) => article.get().articleId);
   }
 
   static async deleteByArticleId({
@@ -921,6 +1008,19 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   }) {
     await ZendeskArticle.destroy({ where: { connectorId, articleId } });
   }
+
+  static async deleteByArticleIds({
+    connectorId,
+    articleIds,
+  }: {
+    connectorId: number;
+    articleIds: number[];
+  }) {
+    await ZendeskArticle.destroy({
+      where: { connectorId, articleId: { [Op.in]: articleIds } },
+    });
+  }
+
   static async deleteByCategoryId({
     connectorId,
     categoryId,

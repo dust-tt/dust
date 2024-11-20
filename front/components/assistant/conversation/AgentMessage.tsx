@@ -197,6 +197,7 @@ export function AgentMessage({
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "conversation_include_file_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });

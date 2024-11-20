@@ -12,8 +12,11 @@ import {
   getTablesQueryResultsFileTitle,
   isAgentMessageType,
   isContentFragmentType,
+  isSupportedPlainTextContentType,
   isTablesQueryActionType,
 } from "@dust-tt/types";
+
+import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
@@ -47,10 +50,18 @@ export class ConversationListFilesAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
-    let content = "CONVERSATION FILES:\n";
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
+    let content =
+      `List of files attached to the conversation with their content type.\n\n` +
+      `- only the files marked as \`includable\` can be included with ` +
+      `the \`include_conversation_file\` tool.\n` +
+      // TODO(spolu): add mention of viz if enabled and other tools.
+      `\n`;
+    // TODO(spolu) add file token count, make includabiility dependent on that.
     for (const f of this.files) {
-      content += `<file id="${f.fileId}" name="${f.title}" type="${f.contentType}" />\n`;
+      content +=
+        `<file id="${f.fileId}" name="${f.title}" type="${f.contentType}" ` +
+        `includable="${isConversationIncludableFileContentType(f.contentType)}"/>\n`;
     }
 
     return {
@@ -69,7 +80,11 @@ export function makeConversationListFilesAction(
   const files: ConversationFileType[] = [];
 
   for (const m of conversation.content.flat(1)) {
-    if (isContentFragmentType(m)) {
+    if (
+      isContentFragmentType(m) &&
+      isSupportedPlainTextContentType(m.contentType) &&
+      m.contentFragmentVersion === "latest"
+    ) {
       if (m.fileId) {
         files.push({
           fileId: m.fileId,
