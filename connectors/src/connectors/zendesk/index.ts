@@ -516,7 +516,10 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       /// Help Centers and tickets are just beneath their brands, so they have one parent.
       case "help-center":
       case "tickets": {
-        return new Ok([internalId, getBrandInternalId(connectorId, objectId)]);
+        return new Ok([
+          internalId,
+          getBrandInternalId({ connectorId, brandId: objectId }),
+        ]);
       }
       case "category": {
         const category = await ZendeskCategoryResource.fetchByCategoryId({
@@ -526,12 +529,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         if (category) {
           return new Ok(category.getParentInternalIds(connectorId));
         } else {
+          const { brandId, categoryId } = objectId;
           logger.error(
-            {
-              connectorId,
-              categoryId: objectId.categoryId,
-              brandId: objectId.brandId,
-            },
+            { connectorId, categoryId, brandId },
             "[Zendesk] Category not found"
           );
           return new Err(new Error("Category not found"));

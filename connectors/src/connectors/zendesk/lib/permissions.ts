@@ -80,7 +80,7 @@ async function getRootLevelContentNodes(
           .find((b) => b.brandId === brand.id)
           ?.toContentNode(connectorId) ?? {
           provider: "zendesk",
-          internalId: getBrandInternalId(connectorId, brand.id),
+          internalId: getBrandInternalId({ connectorId, brandId: brand.id }),
           parentInternalId: null,
           type: "folder",
           title: brand.name || "Brand",
@@ -131,7 +131,7 @@ async function getBrandChildren(
       connectorId
     ) ?? {
       provider: "zendesk",
-      internalId: getTicketsInternalId(connectorId, brandId),
+      internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: parentInternalId,
       type: "folder",
       title: "Tickets",
@@ -152,7 +152,7 @@ async function getBrandChildren(
         connectorId
       ) ?? {
         provider: "zendesk",
-        internalId: getHelpCenterInternalId(connectorId, brandId),
+        internalId: getHelpCenterInternalId({ connectorId, brandId }),
         parentInternalId: parentInternalId,
         type: "folder",
         title: "Help Center",
@@ -210,7 +210,11 @@ async function getHelpCenterChildren(
           .find((c) => c.categoryId === category.id)
           ?.toContentNode(connectorId) ?? {
           provider: "zendesk",
-          internalId: getCategoryInternalId(connectorId, brandId, category.id),
+          internalId: getCategoryInternalId({
+            connectorId,
+            brandId,
+            categoryId: category.id,
+          }),
           parentInternalId: parentInternalId,
           type: "folder",
           title: category.name,

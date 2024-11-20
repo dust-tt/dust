@@ -40,7 +40,7 @@ export async function deleteArticle(
   );
   await deleteFromDataSource(
     dataSourceConfig,
-    getArticleInternalId(connectorId, article.id)
+    getArticleInternalId({ connectorId, articleId: article.id })
   );
   await ZendeskArticleResource.deleteByArticleId({
     connectorId,
@@ -153,7 +153,10 @@ export async function syncArticle({
       updatedAt,
     });
 
-    const documentId = getArticleInternalId(connectorId, article.id);
+    const documentId = getArticleInternalId({
+      connectorId,
+      articleId: article.id,
+    });
 
     await upsertToDatasource({
       dataSourceConfig,

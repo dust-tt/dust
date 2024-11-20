@@ -326,9 +326,10 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   toContentNode(connectorId: number): ContentNode {
+    const { brandId } = this;
     return {
       provider: "zendesk",
-      internalId: getBrandInternalId(connectorId, this.brandId),
+      internalId: getBrandInternalId({ connectorId, brandId }),
       parentInternalId: null,
       type: "folder",
       title: this.name,
@@ -345,10 +346,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   getHelpCenterContentNode(connectorId: number): ContentNode {
+    const { brandId } = this;
     return {
       provider: "zendesk",
-      internalId: getHelpCenterInternalId(connectorId, this.brandId),
-      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      internalId: getHelpCenterInternalId({ connectorId, brandId }),
+      parentInternalId: getBrandInternalId({ connectorId, brandId }),
       type: "folder",
       title: `Help Center`,
       sourceUrl: null,
@@ -360,10 +362,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   getTicketsContentNode(connectorId: number): ContentNode {
+    const { brandId } = this;
     return {
       provider: "zendesk",
-      internalId: getTicketsInternalId(connectorId, this.brandId),
-      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      internalId: getTicketsInternalId({ connectorId, brandId }),
+      parentInternalId: getBrandInternalId({ connectorId, brandId }),
       type: "folder",
       title: `Tickets`,
       sourceUrl: null,
@@ -576,19 +579,16 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number,
     { expandable = false }: { expandable?: boolean } = {}
   ): ContentNode {
+    const { brandId, categoryId, permission } = this;
     return {
       provider: "zendesk",
-      internalId: getCategoryInternalId(
-        connectorId,
-        this.brandId,
-        this.categoryId
-      ),
-      parentInternalId: getHelpCenterInternalId(connectorId, this.brandId),
+      internalId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+      parentInternalId: getHelpCenterInternalId({ connectorId, brandId }),
       type: "folder",
       title: this.name,
       sourceUrl: this.url,
       expandable: expandable,
-      permission: this.permission,
+      permission,
       dustDocumentId: null,
       lastUpdatedAt: this.updatedAt.getTime(),
     };
@@ -596,10 +596,11 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   getParentInternalIds(connectorId: number): string[] {
     /// Categories have two parents: the Help Center and the Brand.
+    const { brandId, categoryId } = this;
     return [
-      getCategoryInternalId(connectorId, this.brandId, this.categoryId),
-      getHelpCenterInternalId(connectorId, this.brandId),
-      getBrandInternalId(connectorId, this.brandId),
+      getCategoryInternalId({ connectorId, brandId, categoryId }),
+      getHelpCenterInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
     ];
   }
 }
@@ -671,10 +672,11 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
   }
 
   toContentNode(connectorId: number): ContentNode {
+    const { brandId, ticketId } = this;
     return {
       provider: "zendesk",
-      internalId: getTicketInternalId(connectorId, this.ticketId),
-      parentInternalId: getTicketsInternalId(connectorId, this.brandId),
+      internalId: getTicketInternalId({ connectorId, ticketId }),
+      parentInternalId: getTicketsInternalId({ connectorId, brandId }),
       type: "file",
       title: this.subject,
       sourceUrl: this.url,
@@ -686,11 +688,12 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
   }
 
   getParentInternalIds(connectorId: number): string[] {
+    const { brandId, ticketId } = this;
     /// Tickets have two parents: the Tickets and the Brand.
     return [
-      getTicketInternalId(connectorId, this.ticketId),
-      getTicketsInternalId(connectorId, this.brandId),
-      getBrandInternalId(connectorId, this.brandId),
+      getTicketInternalId({ connectorId, ticketId }),
+      getTicketsInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
     ];
   }
 
@@ -874,14 +877,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   }
 
   toContentNode(connectorId: number): ContentNode {
+    const { brandId, categoryId, articleId } = this;
     return {
       provider: "zendesk",
-      internalId: getArticleInternalId(connectorId, this.articleId),
-      parentInternalId: getCategoryInternalId(
+      internalId: getArticleInternalId({ connectorId, articleId }),
+      parentInternalId: getCategoryInternalId({
         connectorId,
-        this.brandId,
-        this.categoryId
-      ),
+        brandId,
+        categoryId,
+      }),
       type: "file",
       title: this.name,
       sourceUrl: this.url,
@@ -893,12 +897,13 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   }
 
   getParentInternalIds(connectorId: number): string[] {
+    const { brandId, categoryId, articleId } = this;
     /// Articles have three parents: the Category, the Help Center and the Brand.
     return [
-      getArticleInternalId(connectorId, this.articleId),
-      getCategoryInternalId(connectorId, this.brandId, this.categoryId),
-      getHelpCenterInternalId(connectorId, this.brandId),
-      getBrandInternalId(connectorId, this.brandId),
+      getArticleInternalId({ connectorId, articleId }),
+      getCategoryInternalId({ connectorId, brandId, categoryId }),
+      getHelpCenterInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
     ];
   }
 
