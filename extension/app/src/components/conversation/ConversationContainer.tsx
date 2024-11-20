@@ -283,15 +283,11 @@ export function ConversationContainer({
             )}
             <AssistantInputBar
               owner={owner}
-              onSubmit={async (
-                input,
-                mentions,
-                files: UploadedFileWithKind[]
-              ) => {
-                void (activeConversationId
-                  ? handlePostMessage(input, mentions, files)
-                  : handlePostConversation(input, mentions, files));
-              }}
+              onSubmit={
+                activeConversationId
+                  ? handlePostMessage
+                  : handlePostConversation
+              }
               stickyMentions={stickyMentions}
               isTabIncluded={!!includeContent}
               setIncludeTab={(includeTab) => {
