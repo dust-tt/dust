@@ -698,17 +698,21 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
-  static async fetchByBrandId({
+  static async fetchTicketIdsByBrandId({
     connectorId,
     brandId,
+    batchSize = null,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskTicketResource[]> {
+    batchSize?: number | null;
+  }): Promise<number[]> {
     const tickets = await ZendeskTicket.findAll({
       where: { connectorId, brandId },
+      attributes: ["ticketId"],
+      ...(batchSize && { limit: batchSize }),
     });
-    return tickets.map((ticket) => new this(this.model, ticket.get()));
+    return tickets.map((ticket) => ticket.get().ticketId);
   }
 
   static async deleteByTicketId({
@@ -721,14 +725,16 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     await ZendeskTicket.destroy({ where: { connectorId, ticketId } });
   }
 
-  static async deleteByBrandId({
+  static async deleteByTicketIds({
     connectorId,
-    brandId,
+    ticketIds,
   }: {
     connectorId: number;
-    brandId: number;
+    ticketIds: number[];
   }): Promise<void> {
-    await ZendeskTicket.destroy({ where: { connectorId, brandId } });
+    await ZendeskTicket.destroy({
+      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+    });
   }
 
   static async deleteByConnectorId(

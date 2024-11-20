@@ -2,6 +2,7 @@ import {
   getArticleInternalId,
   getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import {
   ZendeskArticleResource,
@@ -12,8 +13,10 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 /**
  * Deletes all the tickets stored in the db and in the data source relative to a brand.
+ *
+ * @returns `true` if there are more tickets to process.
  */
-export async function deleteBrandTickets({
+export async function deleteBrandTicketBatch({
   connectorId,
   brandId,
   dataSourceConfig,
@@ -21,22 +24,26 @@ export async function deleteBrandTickets({
   connectorId: number;
   brandId: number;
   dataSourceConfig: DataSourceConfig;
-}) {
-  const tickets = await ZendeskTicketResource.fetchByBrandId({
+}): Promise<boolean> {
+  const ticketIds = await ZendeskTicketResource.fetchTicketIdsByBrandId({
     connectorId,
     brandId,
+    batchSize: ZENDESK_BATCH_SIZE,
   });
   /// deleting the tickets in the data source
   await Promise.all(
-    tickets.map((ticket) =>
+    ticketIds.map((ticketId) =>
       deleteFromDataSource(
         dataSourceConfig,
-        getTicketInternalId(ticket.connectorId, ticket.ticketId)
+        getTicketInternalId(connectorId, ticketId)
       )
     )
   );
   /// deleting the tickets stored in the db
-  await ZendeskTicketResource.deleteByBrandId({ connectorId, brandId });
+  await ZendeskTicketResource.deleteByTicketIds({ connectorId, ticketIds });
+
+  /// returning false if we know for sure there isn't any more ticket to process
+  return ticketIds.length === ZENDESK_BATCH_SIZE;
 }
 
 /**

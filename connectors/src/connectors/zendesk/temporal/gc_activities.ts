@@ -2,7 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 
 import {
   deleteBrandHelpCenter,
-  deleteBrandTickets,
+  deleteBrandTicketBatch,
   deleteCategory,
 } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
@@ -193,7 +193,7 @@ export async function garbageCollectBrandActivity({
 
   // deleting the tickets/help center if not allowed anymore
   if (brandInDb.ticketsPermission === "none") {
-    await deleteBrandTickets({ connectorId, brandId, dataSourceConfig });
+    await deleteBrandTicketBatch({ connectorId, brandId, dataSourceConfig });
   }
   if (brandInDb.helpCenterPermission === "none") {
     await deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig });
