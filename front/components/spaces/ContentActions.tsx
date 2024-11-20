@@ -21,6 +21,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
@@ -208,7 +209,8 @@ export const getMenuItems = (
     actions.push({
       label: "Edit",
       icon: PencilSquareIcon,
-      onClick: () => {
+      onClick: (e: ReactMouseEvent) => {
+        e.stopPropagation();
         contentActionsRef.current &&
           contentActionsRef.current?.callAction(
             contentNode.type === "database"
@@ -221,7 +223,8 @@ export const getMenuItems = (
     actions.push({
       label: "Delete",
       icon: TrashIcon,
-      onClick: () => {
+      onClick: (e: ReactMouseEvent) => {
+        e.stopPropagation();
         contentActionsRef.current &&
           contentActionsRef.current?.callAction(
             "DocumentOrTableDeleteDialog",
@@ -240,7 +243,8 @@ export const getMenuItems = (
     actions.push({
       label: "Add to space",
       icon: PlusIcon,
-      onClick: () => {
+      onClick: (e: ReactMouseEvent) => {
+        e.stopPropagation();
         contentActionsRef.current &&
           contentActionsRef.current?.callAction(
             "AddToSpaceDialog",
@@ -267,7 +271,8 @@ const makeViewSourceUrlContentAction = (
     label,
     icon: ExternalLinkIcon,
     disabled: contentNode.sourceUrl === null,
-    onClick: () => {
+    onClick: (e: ReactMouseEvent) => {
+      e.stopPropagation();
       if (contentNode.sourceUrl) {
         window.open(contentNode.sourceUrl, "_blank");
       }
@@ -282,7 +287,8 @@ const makeViewRawContentAction = (
   return {
     label: "View raw content",
     icon: EyeIcon,
-    onClick: () => {
+    onClick: (e: ReactMouseEvent) => {
+      e.stopPropagation();
       contentActionsRef.current &&
         contentActionsRef.current?.callAction(
           "DocumentViewRawContent",
