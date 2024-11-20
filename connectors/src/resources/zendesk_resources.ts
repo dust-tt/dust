@@ -255,7 +255,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, helpCenterPermission: "none" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.get().brandId);
+    return brands.map((brand) => Number(brand.get().brandId));
   }
 
   static async fetchHelpCenterReadAllowedBrands(
@@ -285,7 +285,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, ticketsPermission: "none" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.get().brandId);
+    return brands.map((brand) => Number(brand.get().brandId));
   }
 
   static async deleteBrandsWithNoPermission(
@@ -430,7 +430,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId },
     });
-    return categories.map((category) => category.get().categoryId);
+    return categories.map((category) => Number(category.get().categoryId));
   }
 
   static async fetchByCategoryId({
@@ -740,7 +740,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       attributes: ["ticketId"],
       ...(batchSize && { limit: batchSize }),
     });
-    return tickets.map((ticket) => ticket.get().ticketId);
+    return tickets.map((ticket) => Number(ticket.get().ticketId));
   }
 
   static async deleteByTicketId({
@@ -974,7 +974,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       where: { connectorId, brandId },
       ...(batchSize && { limit: batchSize }),
     });
-    return articles.map((article) => article.get().articleId);
+    return articles.map((article) => Number(article.get().articleId));
   }
 
   static async deleteByArticleId({
