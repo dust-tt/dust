@@ -219,7 +219,7 @@ export function ConversationContainer({
             });
           }
         } else {
-          // Save the content fragment IDs for tab contents to the local storage.
+          // Get all content fragments from the conversation.
           const contentFragments: ContentFragmentType[] = [];
           for (const versions of conversationRes.value.content) {
             const latestVersion = versions[versions.length - 1];
@@ -227,7 +227,7 @@ export function ConversationContainer({
               contentFragments.push(latestVersion);
             }
           }
-
+          // Save the content fragment IDs for tab contents to the local storage.
           await saveFilesContentFragmentIds({
             conversationId: conversationRes.value.sId,
             uploadedFiles: files,
