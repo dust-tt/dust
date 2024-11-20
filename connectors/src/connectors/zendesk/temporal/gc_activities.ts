@@ -48,6 +48,9 @@ export async function checkEmptyHelpCentersActivity(
   }
 }
 
+/**
+ * Retrieves the IDs of the Brands whose tickets are to be deleted.
+ */
 export async function getZendeskBrandsWithTicketsToDeleteActivity(
   connectorId: ModelId
 ): Promise<number[]> {
@@ -56,6 +59,9 @@ export async function getZendeskBrandsWithTicketsToDeleteActivity(
   });
 }
 
+/**
+ * Retrieves the IDs of the Brands whose Help Center is to be deleted.
+ */
 export async function getZendeskBrandsWithHelpCenterToDeleteActivity(
   connectorId: ModelId
 ): Promise<number[]> {
