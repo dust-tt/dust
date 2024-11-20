@@ -39,7 +39,7 @@ export async function deleteTicket({
   );
   await deleteFromDataSource(
     dataSourceConfig,
-    getTicketInternalId(connectorId, ticketId)
+    getTicketInternalId({ connectorId, ticketId })
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
@@ -200,7 +200,10 @@ ${comment.body}`;
       updatedAt: updatedAtDate,
     });
 
-    const documentId = getTicketInternalId(connectorId, ticket.id);
+    const documentId = getTicketInternalId({
+      connectorId,
+      ticketId: ticket.id,
+    });
 
     await upsertToDatasource({
       dataSourceConfig,
