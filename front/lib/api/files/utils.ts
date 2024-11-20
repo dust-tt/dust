@@ -52,7 +52,6 @@ export const parseUploadRequest = async (
       maxFileSize: file.fileSize,
 
       // Ensure the file is of the correct type.
-      // Ensure the file is of the correct type.
       filter: function (part) {
         // For markdown files, check both sides are markdown types
         // Needed because multiple types might check for markdown

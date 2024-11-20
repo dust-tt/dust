@@ -126,9 +126,7 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
       yield content;
     }, writeStream);
 
-    console.log("Content for file", file.fileName, content);
-
-    return new Ok(content);
+    return new Ok(undefined);
   } catch (err) {
     logger.error(
       {
@@ -177,7 +175,6 @@ const extractContentAndSchemaFromCSV: ProcessingFunction = async (
     });
 
     // Process the first stream for processed file
-    const content: string = "";
     const processedPipeline = pipeline(
       readStream.pipe(new PassThrough()),
       file.getWriteStream({
@@ -204,7 +201,7 @@ const extractContentAndSchemaFromCSV: ProcessingFunction = async (
     // Wait for both pipelines to finish
     await Promise.all([processedPipeline, snippetPipeline]);
 
-    return new Ok(content);
+    return new Ok(undefined);
   } catch (err) {
     logger.error(
       {
@@ -261,7 +258,7 @@ const storeRawText: ProcessingFunction = async (
 type ProcessingFunction = (
   auth: Authenticator,
   file: FileResource
-) => Promise<Result<string | undefined, Error>>;
+) => Promise<Result<undefined, Error>>;
 
 type ProcessingPerUseCase = {
   [k in FileUseCase]: ProcessingFunction | undefined;
