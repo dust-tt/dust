@@ -827,7 +827,9 @@ async function* runAction(
     citationsRefsOffset,
   }: {
     configuration: AgentConfigurationType;
-    actionConfiguration: AgentActionConfigurationType | ConversationAgentActionConfigurationType;
+    actionConfiguration:
+      | AgentActionConfigurationType
+      | ConversationAgentActionConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
