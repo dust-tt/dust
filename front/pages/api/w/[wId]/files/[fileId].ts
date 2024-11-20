@@ -5,9 +5,11 @@ import type {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { uploadToCloudStorage } from "@app/lib/api/files/upload";
+import { processAndUploadToCloudStorage } from "@app/lib/api/files/upload";
+import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export const config = {
@@ -96,7 +98,7 @@ async function handler(
     }
 
     case "POST": {
-      const r = await uploadToCloudStorage(auth, { file, req });
+      const r = await processAndUploadToCloudStorage(auth, { file, req });
 
       if (r.isErr()) {
         return apiError(req, res, {
@@ -106,9 +108,29 @@ async function handler(
             message: r.error.message,
           },
         });
-      } else {
-        return res.status(200).json({ file: file.toJSON(auth) });
       }
+
+      // Only upsert immediately in case of conversation
+      if (file.useCase === "conversation") {
+        const rUpsert = await processAndUpsertToDataSource(auth, { file });
+
+        // For now, silently log the error
+        if (rUpsert.isErr()) {
+          {
+            logger.warn({
+              fileModelId: file.id,
+              workspaceId: auth.workspace()?.sId,
+              contentType: file.contentType,
+              useCase: file.useCase,
+              useCaseMetadata: file.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: rUpsert.error,
+            });
+          }
+        }
+      }
+
+      return res.status(200).json({ file: file.toJSON(auth) });
     }
 
     default:

@@ -5,6 +5,7 @@ import type {
 import type {
   ConnectorProvider,
   ConnectorType,
+  ConversationType,
   CoreAPIDataSource,
   CoreAPIDocument,
   CoreAPIError,
@@ -718,12 +719,14 @@ export async function createDataSourceWithoutProvider(
     space,
     name,
     description,
+    conversation,
   }: {
     plan: PlanType;
     owner: WorkspaceType;
     space: SpaceResource;
     name: string;
     description: string | null;
+    conversation?: ConversationType;
   }
 ): Promise<
   Result<
@@ -816,6 +819,7 @@ export async function createDataSourceWithoutProvider(
         dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
         workspaceId: owner.id,
         assistantDefaultSelected: false,
+        conversationId: conversation?.id,
       },
       space
     );

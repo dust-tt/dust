@@ -3,6 +3,7 @@ import type {
   FileUploadedRequestResponseBody,
   FileUploadRequestResponseBody,
   FileUseCase,
+  FileUseCaseMetadata,
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
@@ -15,7 +16,7 @@ import {
   MAX_FILE_SIZES,
   Ok,
 } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
 import { getMimeTypeFromFile } from "@app/lib/file";
 
@@ -51,9 +52,11 @@ const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 export function useFileUploaderService({
   owner,
   useCase,
+  useCaseMetadata,
 }: {
   owner: LightWorkspaceType;
   useCase: FileUseCase;
+  useCaseMetadata?: FileUseCaseMetadata;
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -168,6 +171,7 @@ export function useFileUploaderService({
             fileName: fileBlob.filename,
             fileSize: fileBlob.size,
             useCase,
+            useCaseMetadata,
           }),
         });
       } catch (err) {

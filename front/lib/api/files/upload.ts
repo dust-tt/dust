@@ -1,28 +1,20 @@
-import { buffer } from "node:stream/consumers";
-
 import type {
   FileUseCase,
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
-import {
-  Err,
-  isTextExtractionSupportedContentType,
-  Ok,
-  pagePrefixesPerMimeType,
-  TextExtraction,
-} from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
-import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
-import { PassThrough, Readable, Transform } from "stream";
+import { PassThrough, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
-import config from "@app/lib/api/config";
 import type { CSVRow } from "@app/lib/api/csv";
 import { analyzeCSVColumns } from "@app/lib/api/csv";
+import { extractTextFromFile } from "@app/lib/api/files/text_extraction";
+import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -30,15 +22,13 @@ import logger from "@app/logger/logger";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
-// NotSupported preprocessing
-
-const notSupportedError: PreprocessingFunction = async (
+const notSupportedError: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
   return new Err(
     new Error(
-      "Pre-processing not supported for " +
+      "Processing not supported for " +
         `content type ${file.contentType} and use case ${file.useCase}`
     )
   );
@@ -46,7 +36,7 @@ const notSupportedError: PreprocessingFunction = async (
 
 // Upload to public bucket.
 
-const uploadToPublicBucket: PreprocessingFunction = async (
+const uploadToPublicBucket: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -80,9 +70,9 @@ const uploadToPublicBucket: PreprocessingFunction = async (
   }
 };
 
-// Images preprocessing.
+// Images processing.
 
-const resizeAndUploadToFileStorage: PreprocessingFunction = async (
+const resizeAndUploadToFileStorage: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -123,67 +113,18 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   }
 };
 
-async function createFileTextStream(buffer: Buffer, contentType: string) {
-  if (!isTextExtractionSupportedContentType(contentType)) {
-    throw new Error("unsupported_content_type");
-  }
-
-  const extractionRes = await new TextExtraction(
-    config.getTextExtractionUrl()
-  ).fromBuffer(buffer, contentType);
-
-  if (extractionRes.isErr()) {
-    // We must throw here, stream does not support Result type.
-    throw extractionRes.error;
-  }
-
-  const pages = extractionRes.value;
-
-  const prefix = pagePrefixesPerMimeType[contentType];
-
-  return new Readable({
-    async read() {
-      for (const page of pages) {
-        const pageText = prefix
-          ? `${prefix}: ${page.pageNumber}/${pages.length}\n${page.content}\n\n`
-          : page.content;
-        this.push(pageText);
-      }
-      this.push(null);
-    },
-  });
-}
-
-const extractTextFromFile: PreprocessingFunction = async (
+const extractTextFromFileAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
   try {
-    const readStream = file.getReadStream({
-      auth,
-      version: "original",
-    });
-    // Load file in memory.
-    const arrayBuffer = await buffer(readStream);
+    const content = await extractTextFromFile(auth, file);
+    const writeStream = file.getWriteStream({ auth, version: "processed" });
 
-    const writeStream = file.getWriteStream({
-      auth,
-      version: "processed",
-    });
-    const textStream = await createFileTextStream(
-      arrayBuffer,
-      file.contentType
-    );
-
-    await pipeline(
-      textStream,
-      async function* (source) {
-        for await (const chunk of source) {
-          yield chunk;
-        }
-      },
-      writeStream
-    );
+    // Use pipeline with an async generator
+    await pipeline(async function* () {
+      yield content;
+    }, writeStream);
 
     return new Ok(undefined);
   } catch (err) {
@@ -205,7 +146,7 @@ const extractTextFromFile: PreprocessingFunction = async (
   }
 };
 
-// CSV preprocessing.
+// CSV processing.
 // We upload the content of the CSV on the processed bucket and the schema in the snippet bucket.
 class CSVColumnAnalyzerTransform extends Transform {
   private rows: CSVRow[] = [];
@@ -223,29 +164,23 @@ class CSVColumnAnalyzerTransform extends Transform {
   }
 }
 
-const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
+const extractContentAndSchemaFromCSV: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
-): Promise<Result<undefined, Error>> => {
+) => {
   try {
     const readStream = file.getReadStream({
       auth,
       version: "original",
     });
-    const processedWriteStream = file.getWriteStream({
-      auth,
-      version: "processed",
-    });
-    const schemaWriteStream = file.getWriteStream({
-      auth,
-      version: "snippet",
-      overrideContentType: "application/json",
-    });
 
     // Process the first stream for processed file
     const processedPipeline = pipeline(
       readStream.pipe(new PassThrough()),
-      processedWriteStream
+      file.getWriteStream({
+        auth,
+        version: "processed",
+      })
     );
 
     // Process the second stream for snippet file
@@ -257,7 +192,11 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
         trim: true,
       }),
       new CSVColumnAnalyzerTransform(),
-      schemaWriteStream
+      file.getWriteStream({
+        auth,
+        version: "snippet",
+        overrideContentType: "application/json",
+      })
     );
     // Wait for both pipelines to finish
     await Promise.all([processedPipeline, snippetPipeline]);
@@ -278,10 +217,10 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
   }
 };
 
-// Other text files preprocessing.
+// Other text files processing.
 
 // We don't apply any processing to these files, we just store the raw text.
-const storeRawText: PreprocessingFunction = async (
+const storeRawText: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -296,7 +235,6 @@ const storeRawText: PreprocessingFunction = async (
 
   try {
     await pipeline(readStream, writeStream);
-
     return new Ok(undefined);
   } catch (err) {
     logger.error(
@@ -317,32 +255,32 @@ const storeRawText: PreprocessingFunction = async (
 
 // Preprocessing for file upload.
 
-type PreprocessingFunction = (
+type ProcessingFunction = (
   auth: Authenticator,
   file: FileResource
 ) => Promise<Result<undefined, Error>>;
 
-type PreprocessingPerUseCase = {
-  [k in FileUseCase]: PreprocessingFunction | undefined;
+type ProcessingPerUseCase = {
+  [k in FileUseCase]: ProcessingFunction | undefined;
 };
 
-type PreprocessingPerContentType = {
-  [k in SupportedFileContentType]: PreprocessingPerUseCase | undefined;
+type ProcessingPerContentType = {
+  [k in SupportedFileContentType]: ProcessingPerUseCase | undefined;
 };
 
-const processingPerContentType: PreprocessingPerContentType = {
+const processingPerContentType: ProcessingPerContentType = {
   "application/msword": {
-    conversation: extractTextFromFile,
+    conversation: extractTextFromFileAndUpload,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-    conversation: extractTextFromFile,
+    conversation: extractTextFromFileAndUpload,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "application/pdf": {
-    conversation: extractTextFromFile,
+    conversation: extractTextFromFileAndUpload,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
@@ -388,14 +326,12 @@ const processingPerContentType: PreprocessingPerContentType = {
   },
 };
 
-async function maybeApplyPreProcessing(
+const maybeApplyProcessing: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
-): Promise<Result<undefined, Error>> {
+) => {
   const contentTypeProcessing = processingPerContentType[file.contentType];
   if (!contentTypeProcessing) {
-    await file.markAsReady();
-
     return new Ok(undefined);
   }
 
@@ -403,18 +339,16 @@ async function maybeApplyPreProcessing(
   if (processing) {
     const res = await processing(auth, file);
     if (res.isErr()) {
-      await file.markAsFailed();
-
       return res;
+    } else {
+      return new Ok(undefined);
     }
   }
 
-  await file.markAsReady();
-
   return new Ok(undefined);
-}
+};
 
-export async function uploadToCloudStorage(
+export async function processAndUploadToCloudStorage(
   auth: Authenticator,
   { file, req }: { file: FileResource; req: IncomingMessage }
 ): Promise<
@@ -446,68 +380,26 @@ export async function uploadToCloudStorage(
     });
   }
 
-  try {
-    const form = new IncomingForm({
-      // Stream the uploaded document to the cloud storage.
-      fileWriteStreamHandler: () => {
-        return file.getWriteStream({
-          auth,
-          version: "original",
-        });
-      },
+  const r = await parseUploadRequest(
+    file,
+    req,
+    file.getWriteStream({ auth, version: "original" })
+  );
+  if (r.isErr()) {
+    await file.markAsFailed();
+    return r;
+  }
 
-      // Support only one file upload.
-      maxFiles: 1,
-
-      // Validate the file size.
-      maxFileSize: file.fileSize,
-
-      // Ensure the file is of the correct type.
-      filter: function (part) {
-        if (part.mimetype !== file.contentType) {
-          return false;
-        }
-
-        return true;
-      },
-    });
-    const [, files] = await form.parse(req);
-
-    const maybeFiles = files.file;
-
-    if (!maybeFiles || maybeFiles.length === 0) {
-      return new Err({
-        name: "dust_error",
-        code: "file_type_not_supported",
-        message: "No file uploaded.",
-      });
-    }
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message.startsWith("options.maxTotalFileSize")) {
-        return new Err({
-          name: "dust_error",
-          code: "file_too_large",
-          message: "File is too large.",
-        });
-      }
-    }
-
+  const processingRes = await maybeApplyProcessing(auth, file);
+  if (processingRes.isErr()) {
+    await file.markAsFailed();
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Error uploading file : ${error instanceof Error ? error : new Error(JSON.stringify(error))}`,
+      message: `Failed to process the file : ${processingRes.error}`,
     });
   }
 
-  const preProcessingRes = await maybeApplyPreProcessing(auth, file);
-  if (preProcessingRes.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to process the file : ${preProcessingRes.error}`,
-    });
-  }
-
+  await file.markAsReady();
   return new Ok(file);
 }
