@@ -340,7 +340,7 @@ export function useFileUploaderService() {
         const fragments = await handleFilesUpload({
           files: [file],
           updateBlobs,
-          kind: "tab_content",
+          kind: includeSelectionOnly ? "selection" : "tab_content",
         });
         if (fragments) {
           fragments.forEach((f) => {
