@@ -3,7 +3,6 @@ import type {
   ConversationPublicType,
   LightAgentConfigurationType,
   LightWorkspaceType,
-  UploadedContentFragmentType,
 } from "@dust-tt/client";
 import { Button, StopIcon } from "@dust-tt/sparkle";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
@@ -18,6 +17,7 @@ import { useFileUploaderService } from "@extension/hooks/useFileUploaderService"
 import { useDustAPI } from "@extension/lib/dust_api";
 import type { AttachSelectionMessage } from "@extension/lib/messages";
 import { sendInputBarStatus } from "@extension/lib/messages";
+import type { UploadedFileWithKind } from "@extension/lib/types";
 import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -41,7 +41,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: AgentMentionType[],
-    contentFragments: UploadedContentFragmentType[]
+    contentFragments: UploadedFileWithKind[]
   ) => void;
   stickyMentions?: AgentMentionType[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
@@ -81,7 +81,10 @@ export function AssistantInputBar({
   useEffect(() => {
     if (droppedFiles.length > 0) {
       // Handle the dropped files.
-      void fileUploaderService.handleFilesUpload(droppedFiles);
+      void fileUploaderService.handleFilesUpload({
+        files: droppedFiles,
+        kind: "attachment",
+      });
 
       // Clear the dropped files after handling them.
       setDroppedFiles([]);
@@ -193,6 +196,7 @@ export function AssistantInputBar({
       title: cf.filename,
       fileId: cf.fileId,
       url: cf.publicUrl,
+      kind: cf.kind,
     }));
 
     resetEditorText();
@@ -213,10 +217,12 @@ export function AssistantInputBar({
             title: cf.filename,
             fileId: cf.fileId || "",
             url: cf.publicUrl,
+            kind: cf.kind,
           }))
         );
       }
     }
+
     onSubmit(text, mentions, newFiles);
     fileUploaderService.resetUpload();
   };

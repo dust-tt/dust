@@ -803,6 +803,11 @@ const ContentFragmentSchema = z.object({
   title: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
   context: ContentFragmentContextSchema,
+  contentFragmentId: z.string(),
+  contentFragmentVersion: z.union([
+    z.literal("latest"),
+    z.literal("superseded"),
+  ]),
 });
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 

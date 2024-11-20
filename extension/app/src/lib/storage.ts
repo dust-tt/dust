@@ -1,5 +1,6 @@
-import type { MeResponseType } from "@dust-tt/client";
+import type { ContentFragmentType, MeResponseType } from "@dust-tt/client";
 import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
+import type { UploadedFileWithKind } from "@extension/lib/types";
 
 export type UserTypeWithWorkspaces = MeResponseType["user"];
 
@@ -142,4 +143,73 @@ export const clearStoredData = async (): Promise<void> => {
       }
     );
   });
+};
+
+function getTabContentKey(
+  conversationId: string,
+  rawUrl: string,
+  title: string
+) {
+  return `tabContentContentFragmentId_${conversationId}_${rawUrl}_${title}`;
+}
+
+/**
+ * Saves the mapping between TabContent (based on conversation id and url) and content fragment id.
+ * Doesn't save anything for files that are not tab content.
+ * Needs to be called after calling postMessage or createConversation with:
+ * - the conversation id
+ * - the files that were uploaded (including the "kind", either attachment or tab_content)
+ * - the content fragments that were created
+ *
+ * This mapping is then used such that we supersede existing tab content content fragments
+ * with the newly created ones if it's for the same URL / conversation.
+ */
+export const saveFilesContentFragmentIds = async ({
+  conversationId,
+  uploadedFiles,
+  createdContentFragments,
+}: {
+  conversationId: string;
+  uploadedFiles: UploadedFileWithKind[];
+  createdContentFragments: ContentFragmentType[];
+}) => {
+  const tabContentFileIds = new Set(
+    uploadedFiles.filter((f) => f.kind === "tab_content").map((f) => f.fileId)
+  );
+  if (tabContentFileIds.size === 0) {
+    return;
+  }
+
+  const tabContentContentFragments = createdContentFragments.filter(
+    (cf) =>
+      cf.fileId &&
+      tabContentFileIds.has(cf.fileId) &&
+      cf.contentFragmentVersion === "latest"
+  );
+
+  for (const cf of tabContentContentFragments) {
+    if (!cf.sourceUrl) {
+      continue;
+    }
+    const key = getTabContentKey(conversationId, cf.sourceUrl, cf.title);
+    await chrome.storage.local.set({
+      [key]: cf.contentFragmentId,
+    });
+  }
+};
+
+/**
+ * Retrieves the content fragment ID to supersede for a given file.
+ * Always returns null if the file is not a tab content.
+ */
+export const getFileContentFragmentId = async (
+  conversationId: string,
+  file: UploadedFileWithKind
+): Promise<string | null> => {
+  if (file.kind !== "tab_content" || !file.url) {
+    return null;
+  }
+  const key = getTabContentKey(conversationId, file.url, file.title);
+  const result = await chrome.storage.local.get([key]);
+  return result[key] ?? null;
 };

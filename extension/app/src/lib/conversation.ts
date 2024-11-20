@@ -18,6 +18,7 @@ import { Err, Ok } from "@dust-tt/client";
 import type { GetActiveTabOptions } from "@extension/lib/messages";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
+import type { UploadedFileWithSupersededContentFragmentId } from "@extension/lib/types";
 
 type SubmitMessageError = {
   type:
@@ -194,7 +195,7 @@ export async function postMessage({
   dustAPI,
   conversationId,
   messageData,
-  contentFragments,
+  files,
 }: {
   dustAPI: DustAPI;
   conversationId: string;
@@ -202,8 +203,13 @@ export async function postMessage({
     input: string;
     mentions: AgentMentionType[];
   };
-  contentFragments: UploadedContentFragmentType[];
-}): Promise<Result<{ message: UserMessageType }, SubmitMessageError>> {
+  files: UploadedFileWithSupersededContentFragmentId[];
+}): Promise<
+  Result<
+    { message: UserMessageType; contentFragments: ContentFragmentType[] },
+    SubmitMessageError
+  >
+> {
   const { input, mentions } = messageData;
   const user = await getStoredUser();
 
@@ -215,22 +221,32 @@ export async function postMessage({
       message: "Please log in again.",
     });
   }
-
-  for (const contentFragment of contentFragments) {
-    await dustAPI.postContentFragment({
+  const contentFragments: ContentFragmentType[] = [];
+  for (const file of files) {
+    const res = await dustAPI.postContentFragment({
       conversationId,
       contentFragment: {
-        title: contentFragment.title,
-        fileId: contentFragment.fileId,
-        url: null,
+        title: file.title,
+        fileId: file.fileId,
+        url: file.url ?? null,
         context: {
           username: user.username,
           email: user.email,
           fullName: user.fullName,
           profilePictureUrl: user.image,
         },
+        supersededContentFragmentId: file.supersededContentFragmentId,
       },
     });
+    if (res.isOk()) {
+      contentFragments.push(res.value);
+    } else {
+      return new Err({
+        type: "attachment_upload_error",
+        title: "Your message could not be sent.",
+        message: res.error.message || "Please try again or contact us.",
+      });
+    }
   }
 
   const mRes = await dustAPI.postUserMessage({
@@ -267,7 +283,7 @@ export async function postMessage({
     });
   }
 
-  return new Ok({ message: mRes.value });
+  return new Ok({ message: mRes.value, contentFragments });
 }
 
 export async function retryMessage({
