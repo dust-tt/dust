@@ -153,15 +153,6 @@ export async function getZendeskTimestampCursorActivity(
 }
 
 /**
- * Retrieves the IDs of every brand stored in db.
- */
-export async function getZendeskBrandIdsActivity(
-  connectorId: ModelId
-): Promise<number[]> {
-  return ZendeskBrandResource.fetchAllBrandIds({ connectorId });
-}
-
-/**
  * Sets the timestamp cursor to the start date of the last successful incremental sync.
  */
 export async function setZendeskTimestampCursorActivity({
