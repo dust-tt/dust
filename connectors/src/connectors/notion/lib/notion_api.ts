@@ -336,10 +336,11 @@ export async function getPagesAndDatabasesEditedSince({
 }
 
 const NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES = [
-  "object_not_found",
   "unauthorized",
   "restricted_resource",
 ];
+
+const NOTION_NOT_FOUND_ERROR_CODES = ["object_not_found"];
 
 const NOTION_RETRIABLE_ERRORS = ["rate_limited", "internal_server_error"];
 
@@ -431,7 +432,11 @@ export async function isAccessibleAndUnarchived(
             { errorCode: e.code },
             "Skipping page/database due to unauthorized status code."
           );
+          return false;
+        }
 
+        if (NOTION_NOT_FOUND_ERROR_CODES.includes(e.code)) {
+          tryLogger.info({ errorCode: e.code }, "Object not found.");
           return false;
         }
       }
