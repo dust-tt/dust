@@ -9,8 +9,8 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-function throwOnUnsafeInteger(value: number) {
-  if (!Number.isSafeInteger(value)) {
+function throwOnUnsafeInteger(value: number | null) {
+  if (value !== null && !Number.isSafeInteger(value)) {
     throw new Error(`Value must be a safe integer: ${value}`);
   }
 }
@@ -397,9 +397,9 @@ export class ZendeskTicket extends Model<
   declare brandId: number;
   declare permission: "read" | "none";
 
-  declare assigneeId: number;
-  declare groupId: number;
-  declare organizationId: number;
+  declare assigneeId: number | null;
+  declare groupId: number | null;
+  declare organizationId: number | null;
 
   declare subject: string;
   declare url: string;
