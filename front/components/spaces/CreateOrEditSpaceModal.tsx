@@ -12,7 +12,11 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, SpaceType, UserType } from "@dust-tt/types";
-import type { CellContext, PaginationState } from "@tanstack/react-table";
+import type {
+  CellContext,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -220,8 +224,8 @@ export function CreateOrEditSpaceModal({
               </div>
             )}
           </div>
-          <div className="flex w-full grow flex-col gap-y-2 overflow-y-hidden border-t pt-2">
-            <div className="flex w-full items-center justify-between">
+          <div className="flex w-full flex-col gap-y-2 border-t pt-2">
+            <div className="flex w-full items-center justify-between overflow-visible">
               <Page.SectionHeader title="Restricted Access" />
               <SliderToggle
                 selected={isRestricted}
@@ -294,6 +298,9 @@ function MembersTable({
     pageIndex: 0,
     pageSize: 10,
   });
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "email", desc: false },
+  ]);
 
   const getTableColumns = useCallback(() => {
     const removeMember = (userId: string) => {
@@ -336,7 +343,7 @@ function MembersTable({
             <span className="text-element-700">{info.row.original.email}</span>
           </DataTable.CellContent>
         ),
-        enableSorting: false,
+        enableSorting: true,
       },
       {
         id: "action",
@@ -367,6 +374,8 @@ function MembersTable({
       }}
       pagination={pagination}
       setPagination={setPagination}
+      sorting={sorting}
+      setSorting={setSorting}
       totalRowCount={rows.length}
     />
   );
