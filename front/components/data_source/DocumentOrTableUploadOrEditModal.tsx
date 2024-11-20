@@ -95,23 +95,11 @@ export function DocumentOrTableUploadOrEditModal(
   );
 }
 
-function hasAssociatedFile(document: CoreAPIDocument) {
-  // Return true iff the document has a file associated with it
-  // Faster than actually querying the db
-  return (
-    document.document_id &&
-    document.document_id.startsWith("fil_") &&
-    document.tags.some((tag) => tag.startsWith("title:"))
-  );
-}
-
 interface Document {
   name: string;
   text: string;
   tags: string[];
   sourceUrl: string;
-  // Populated for uploads, because a file is created
-  fileId: string | null;
 }
 
 const DocumentUploadorEditModal = ({
@@ -129,7 +117,6 @@ const DocumentUploadorEditModal = ({
     text: "",
     tags: [],
     sourceUrl: "",
-    fileId: null,
   });
   const fileUploaderService = useFileUploaderService({
     owner,
@@ -160,21 +147,14 @@ const DocumentUploadorEditModal = ({
         text: "",
         tags: [],
         sourceUrl: "",
-        fileId: null,
       });
     } else if (document && isCoreAPIDocumentType(document)) {
-      // Extract title from tags
-      const titleTagContent = document.tags
-        .find((tag) => tag.startsWith("title:"))
-        ?.split(":")[1];
-
       setDocumentState((prev) => ({
         ...prev,
-        name: titleTagContent || initialId,
+        name: initialId,
         text: document.text ?? "",
         tags: document.tags,
         sourceUrl: document.source_url ?? "",
-        fileId: hasAssociatedFile(document) ? document.document_id : null,
       }));
     }
   }, [initialId, document]);
@@ -188,18 +168,8 @@ const DocumentUploadorEditModal = ({
   const handleDocumentUpload = async (document: Document) => {
     setUploading(true);
     try {
-      // Add a "title:"" tag iff none exists
-      // That prevents the title from being overwitten by the file id
-      if (!document.tags.some((tag) => tag.startsWith("title:"))) {
-        document.tags.push(`title:${document.name}`);
-      }
-
       const body = {
-        // /!\ Use the fileId as the document name to achieve foreign-key-like behavior
-        // This unlocks use case such as file download
-        // If pasted text is entered, the name will be the document name
-        // If a document already exists, reuse its id for patching
-        name: initialId ? initialId : document.fileId ?? document.name,
+        name: initialId ? initialId : document.name,
         timestamp: null,
         parents: null,
         section: { prefix: null, content: document.text, sections: [] },
@@ -242,7 +212,6 @@ const DocumentUploadorEditModal = ({
         text: "",
         tags: [],
         sourceUrl: "",
-        fileId: null,
       });
       setEditionStatus({
         content: false,
@@ -297,13 +266,15 @@ const DocumentUploadorEditModal = ({
         return new Err(new Error("Error reading file content"));
       }
 
-      // update text box and fileId -> will be used to link document to file
+      // update text box -> will be used to link document to file
       setDocumentState((prev) => ({
         ...prev,
         text: processedText,
-        fileId,
       }));
       setCreatingFile(false);
+
+      // Delete file
+      fileUploaderService.removeFile(fileBlobs[0].fileId);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -394,11 +365,7 @@ const DocumentUploadorEditModal = ({
                       : plan.limits.dataSources.documents.sizeMb
                   } MB of raw text.`}
                   action={{
-                    label: creatingFile
-                      ? "Uploading..."
-                      : documentState.fileId
-                        ? "Replace file"
-                        : "Upload file",
+                    label: creatingFile ? "Uploading..." : "Upload file",
                     variant: "primary",
                     icon: DocumentPlusIcon,
                     onClick: () => fileInputRef.current?.click(),
@@ -413,7 +380,7 @@ const DocumentUploadorEditModal = ({
                 />
                 <TextArea
                   minRows={10}
-                  disabled={creatingFile || !!documentState.fileId}
+                  disabled={creatingFile}
                   placeholder="Your document content..."
                   value={documentState.text}
                   onChange={(e) => {
