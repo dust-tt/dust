@@ -15,7 +15,7 @@ type BaseActionType =
   | "browse_action"
   | "visualization_action"
   | "conversation_list_files_action"
-  | "conversation_include_files_action";
+  | "conversation_include_file_action";
 
 export abstract class BaseAction {
   readonly id: ModelId;

@@ -82,7 +82,8 @@ export function makeConversationListFilesAction(
   for (const m of conversation.content.flat(1)) {
     if (
       isContentFragmentType(m) &&
-      isSupportedPlainTextContentType(m.contentType)
+      isSupportedPlainTextContentType(m.contentType) &&
+      m.contentFragmentVersion === "latest"
     ) {
       if (m.fileId) {
         files.push({

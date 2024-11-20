@@ -513,7 +513,7 @@ export async function renderContentFragmentForModel(
           {
             type: "text",
             text: renderContentFragmentXml({
-              fileId: sId,
+              fileId: null,
               contentType,
               title,
               version: contentFragmentVersion,

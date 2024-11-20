@@ -3,6 +3,10 @@ import {
   BrowseParamsEvent,
 } from "../../front/assistant/actions/browse";
 import {
+  ConversationIncludeFileActionType,
+  ConversationIncludeFileParamsEvent,
+} from "../../front/assistant/actions/conversation/include_file";
+import {
   DustAppRunBlockEvent,
   DustAppRunConfigurationType,
   DustAppRunParamsEvent,
@@ -44,7 +48,8 @@ export type AgentActionConfigurationType =
   | DustAppRunConfigurationType
   | ProcessConfigurationType
   | WebsearchConfigurationType
-  | BrowseConfigurationType;
+  | BrowseConfigurationType
+  | ConversationIncludeFileActionType;
 
 type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
 
@@ -287,7 +292,8 @@ export type AgentActionSpecificEvent =
   | TablesQueryOutputEvent
   | ProcessParamsEvent
   | WebsearchParamsEvent
-  | BrowseParamsEvent;
+  | BrowseParamsEvent
+  | ConversationIncludeFileParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
