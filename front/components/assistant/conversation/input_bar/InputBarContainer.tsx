@@ -177,7 +177,6 @@ const InputBarContainer = ({
         <Button
           size="sm"
           icon={ArrowUpIcon}
-          label="Send"
           variant="highlight"
           disabled={editorService.isEmpty() || disableSendButton}
           onClick={async () => {
