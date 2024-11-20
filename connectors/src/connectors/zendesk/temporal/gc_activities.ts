@@ -175,7 +175,7 @@ export async function garbageCollectArticleBatchActivity({
 /**
  * This activity is responsible for removing all the empty categories (category with no readable article).
  */
-export async function garbageCollectCategoriesActivity(connectorId: number) {
+export async function removeEmptyCategoriesActivity(connectorId: number) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");

@@ -41,7 +41,7 @@ const {
 const {
   deleteBrandTicketBatchActivity,
   deleteBrandArticleBatchActivity,
-  garbageCollectCategoriesActivity,
+  removeEmptyCategoriesActivity,
 } = proxyActivities<typeof gc_activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -445,7 +445,7 @@ export async function zendeskGarbageCollectionWorkflow({
   }
 
   // deleting the categories that have no article anymore
-  await garbageCollectCategoriesActivity(connectorId);
+  await removeEmptyCategoriesActivity(connectorId);
 
   // updating the permissions of the Help Centers that have no category anymore for a cleanup at the next step
   await checkEmptyHelpCentersActivity(connectorId);
