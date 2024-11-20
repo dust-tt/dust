@@ -57,7 +57,7 @@ export function isConversationIncludableFileContentType(
   }
 }
 
-interface ConversationIncludeFilesActionBlob {
+interface ConversationIncludeFileActionBlob {
   id: ModelId;
   agentMessageId: ModelId;
   params: {
@@ -81,7 +81,7 @@ export class ConversationIncludeFileAction extends BaseAction {
   readonly step: number = -1;
   readonly type = "conversation_include_file_action";
 
-  constructor(blob: ConversationIncludeFilesActionBlob) {
+  constructor(blob: ConversationIncludeFileActionBlob) {
     super(blob.id, "conversation_include_file_action");
 
     this.agentMessageId = blob.agentMessageId;
