@@ -556,6 +556,7 @@ export async function getParsedDatabase(
     if (
       APIResponseError.isAPIResponseError(e) &&
       (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+        NOTION_NOT_FOUND_ERROR_CODES.includes(e.code) ||
         // This happens if the database is a "linked" database - we can't query those so
         // it's not useful to retry.
         e.code === "validation_error")
@@ -956,6 +957,7 @@ export async function retrieveDatabaseChildrenResultPage({
     if (
       APIResponseError.isAPIResponseError(e) &&
       (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+        NOTION_NOT_FOUND_ERROR_CODES.includes(e.code) ||
         e.code === "validation_error")
     ) {
       localLogger.info(
