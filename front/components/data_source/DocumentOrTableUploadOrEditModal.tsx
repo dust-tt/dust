@@ -96,8 +96,8 @@ export function DocumentOrTableUploadOrEditModal(
 }
 
 function hasAssociatedFile(document: CoreAPIDocument) {
-  // Return True iff the document has a file associated with it
-  // Next step is to actually get the file info -> unlocks custom icons
+  // Return true iff the document has a file associated with it
+  // Faster than actually querying the db
   return (
     document.document_id &&
     document.document_id.startsWith("fil_") &&
@@ -198,7 +198,8 @@ const DocumentUploadorEditModal = ({
         // /!\ Use the fileId as the document name to achieve foreign-key-like behavior
         // This unlocks use case such as file download
         // If pasted text is entered, the name will be the document name
-        name: document.fileId ?? document.name,
+        // If a document already exists, reuse its id for patching
+        name: initialId ? initialId : document.fileId ?? document.name,
         timestamp: null,
         parents: null,
         section: { prefix: null, content: document.text, sections: [] },
@@ -212,9 +213,7 @@ const DocumentUploadorEditModal = ({
       const stringifiedBody = JSON.stringify(body);
 
       const base = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
-      const endpoint = initialId
-        ? `${base}/${encodeURIComponent(document.name)}`
-        : base;
+      const endpoint = initialId ? `${base}/${initialId}` : base;
       const res = await fetch(endpoint, {
         method: initialId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
