@@ -5,9 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -71,36 +72,19 @@ export const config = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Handling the case where `spaceId` is undefined to keep support for the legacy endpoint (not under
-  // space, global space assumed for the auth (the authenticator associated with the app, not the
-  // user)).
-  let { spaceId } = req.query;
-  if (spaceId === undefined) {
-    spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
-  }
-
   const app = await AppResource.fetchById(auth, req.query.aId as string);
 
-  if (!app || !app.canRead(auth) || app.space.sId !== spaceId) {
+  if (!app || !app.canRead(auth) || app.space.sId !== space.sId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app you're trying to access was not found",
-      },
-    });
-  }
-
-  if (app.space.kind === "conversations") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
       },
     });
   }
@@ -160,4 +144,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, "space")
+);
