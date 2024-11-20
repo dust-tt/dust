@@ -9,6 +9,7 @@ import {
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
 import type * as gc_activities from "@connectors/connectors/zendesk/temporal/gc_activities";
+import type * as incremental_activities from "@connectors/connectors/zendesk/temporal/incremental_activities";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
@@ -21,10 +22,17 @@ const {
   syncZendeskCategoryActivity,
   syncZendeskArticleBatchActivity,
   syncZendeskTicketBatchActivity,
-  syncZendeskTicketUpdateBatchActivity,
-  syncZendeskArticleUpdateBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
+});
+
+const {
+  setZendeskTimestampCursorActivity,
+  getZendeskTimestampCursorActivity,
+  syncZendeskTicketUpdateBatchActivity,
+  syncZendeskArticleUpdateBatchActivity,
+} = proxyActivities<typeof incremental_activities>({
+  startToCloseTimeout: "1 minutes",
 });
 
 const {
@@ -35,11 +43,6 @@ const {
   checkEmptyHelpCentersActivity,
   deleteBrandsWithNoPermissionActivity,
   deleteCategoryBatchActivity,
-} = proxyActivities<typeof gc_activities>({
-  startToCloseTimeout: "2 minutes",
-});
-
-const {
   deleteTicketBatchActivity,
   deleteArticleBatchActivity,
   removeEmptyCategoriesActivity,
@@ -52,8 +55,6 @@ const {
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskTicketsAllowedBrandIdsActivity,
-  setZendeskTimestampCursorActivity,
-  getZendeskTimestampCursorActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
