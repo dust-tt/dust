@@ -340,9 +340,7 @@ const NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES = [
   "restricted_resource",
 ];
 
-const NOTION_NOT_FOUND_ERROR_CODES = [
-  "object_not_found"
-]
+const NOTION_NOT_FOUND_ERROR_CODES = ["object_not_found"];
 
 const NOTION_RETRIABLE_ERRORS = ["rate_limited", "internal_server_error"];
 
@@ -438,10 +436,7 @@ export async function isAccessibleAndUnarchived(
         }
 
         if (NOTION_NOT_FOUND_ERROR_CODES.includes(e.code)) {
-          tryLogger.info(
-            { errorCode: e.code },
-            "Object not found."
-          );
+          tryLogger.info({ errorCode: e.code }, "Object not found.");
           return false;
         }
       }
