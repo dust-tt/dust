@@ -174,6 +174,9 @@ export const saveFilesContentFragmentIds = async ({
   const tabContentFileIds = new Set(
     uploadedFiles.filter((f) => f.kind === "tab_content").map((f) => f.fileId)
   );
+  if (tabContentFileIds.size === 0) {
+    return;
+  }
 
   const tabContentContentFragments = createdContentFragments.filter(
     (cf) =>
