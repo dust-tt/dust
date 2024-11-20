@@ -1,9 +1,6 @@
-import type {
-  ContentFragmentType,
-  MeResponseType,
-  UploadedContentFragmentType,
-} from "@dust-tt/client";
+import type { ContentFragmentType, MeResponseType } from "@dust-tt/client";
 import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
+import type { UploadedFileWithKind } from "@extension/lib/types";
 
 export type UserTypeWithWorkspaces = MeResponseType["user"];
 
@@ -171,9 +168,7 @@ export const saveFilesContentFragmentIds = async ({
   createdContentFragments,
 }: {
   conversationId: string;
-  uploadedFiles: (UploadedContentFragmentType & {
-    kind: "attachment" | "tab_content";
-  })[];
+  uploadedFiles: UploadedFileWithKind[];
   createdContentFragments: ContentFragmentType[];
 }) => {
   const tabContentFileIds = new Set(
@@ -204,9 +199,7 @@ export const saveFilesContentFragmentIds = async ({
  */
 export const getFileContentFragmentId = async (
   conversationId: string,
-  file: UploadedContentFragmentType & {
-    kind: "attachment" | "tab_content";
-  }
+  file: UploadedFileWithKind
 ): Promise<string | null> => {
   if (file.kind !== "tab_content" || !file.url) {
     return null;

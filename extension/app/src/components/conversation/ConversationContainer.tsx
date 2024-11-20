@@ -31,6 +31,7 @@ import {
   saveFilesContentFragmentIds,
   setConversationsContext,
 } from "@extension/lib/storage";
+import type { UploadedFileWithKind } from "@extension/lib/types";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -100,9 +101,7 @@ export function ConversationContainer({
   const handlePostMessage = async (
     input: string,
     mentions: AgentMentionType[],
-    files: (UploadedContentFragmentType & {
-      kind: "attachment" | "tab_content";
-    })[]
+    files: UploadedFileWithKind[]
   ) => {
     if (!activeConversationId) {
       return null;
@@ -195,9 +194,7 @@ export function ConversationContainer({
       async (
         input: string,
         mentions: AgentMentionType[],
-        files: (UploadedContentFragmentType & {
-          kind: "attachment" | "tab_content";
-        })[]
+        files: UploadedFileWithKind[]
       ) => {
         const conversationRes = await postConversation({
           dustAPI,
@@ -289,9 +286,7 @@ export function ConversationContainer({
               onSubmit={async (
                 input,
                 mentions,
-                files: (UploadedContentFragmentType & {
-                  kind: "attachment" | "tab_content";
-                })[]
+                files: UploadedFileWithKind[]
               ) => {
                 void (activeConversationId
                   ? handlePostMessage(input, mentions, files)

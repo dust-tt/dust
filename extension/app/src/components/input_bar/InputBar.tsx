@@ -3,7 +3,6 @@ import type {
   ConversationPublicType,
   LightAgentConfigurationType,
   LightWorkspaceType,
-  UploadedContentFragmentType,
 } from "@dust-tt/client";
 import { Button, StopIcon } from "@dust-tt/sparkle";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
@@ -18,6 +17,7 @@ import { useFileUploaderService } from "@extension/hooks/useFileUploaderService"
 import { useDustAPI } from "@extension/lib/dust_api";
 import type { AttachSelectionMessage } from "@extension/lib/messages";
 import { sendInputBarStatus } from "@extension/lib/messages";
+import type { UploadedFileWithKind } from "@extension/lib/types";
 import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -41,9 +41,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: AgentMentionType[],
-    contentFragments: (UploadedContentFragmentType & {
-      kind: "attachment" | "tab_content";
-    })[]
+    contentFragments: UploadedFileWithKind[]
   ) => void;
   stickyMentions?: AgentMentionType[];
   additionalAgentConfiguration?: LightAgentConfigurationType;

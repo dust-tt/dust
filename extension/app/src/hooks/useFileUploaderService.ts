@@ -13,13 +13,12 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { getIncludeCurrentTab } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
 import type { GetActiveTabOptions } from "@extension/lib/messages";
+import type { UploadedFileKind } from "@extension/lib/types";
 import { useState } from "react";
-
-type FileBlobKind = "attachment" | "tab_content";
 
 interface FileBlob {
   contentType: SupportedFileContentType;
-  kind: FileBlobKind;
+  kind: UploadedFileKind;
   file: File;
   filename: string;
   id: string;
@@ -74,7 +73,7 @@ export function useFileUploaderService() {
   }: {
     files: File[];
     updateBlobs?: boolean;
-    kind: FileBlobKind;
+    kind: UploadedFileKind;
   }): Promise<FileBlob[] | undefined> => {
     setIsProcessingFiles(true);
 
@@ -132,7 +131,7 @@ export function useFileUploaderService() {
 
   const processSelectedFiles = (
     selectedFiles: File[],
-    kind: FileBlobKind
+    kind: UploadedFileKind
   ): Result<FileBlob, FileBlobUploadError>[] => {
     return selectedFiles.reduce(
       (acc, file) => {
@@ -416,7 +415,7 @@ const createFileBlob = ({
 }: {
   file: File;
   contentType: SupportedFileContentType;
-  kind: "attachment" | "tab_content";
+  kind: UploadedFileKind;
   preview?: string;
 }): FileBlob => ({
   contentType,
