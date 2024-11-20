@@ -12,6 +12,7 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
+  ConversationAgentActionConfigurationType,
   ConversationType,
   GenerationCancelEvent,
   GenerationSuccessEvent,
@@ -23,6 +24,7 @@ import type {
 import {
   assertNever,
   isBrowseConfiguration,
+  isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -825,7 +827,9 @@ async function* runAction(
     citationsRefsOffset,
   }: {
     configuration: AgentConfigurationType;
-    actionConfiguration: AgentActionConfigurationType;
+    actionConfiguration:
+      | AgentActionConfigurationType
+      | ConversationAgentActionConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
@@ -1156,6 +1160,53 @@ async function* runAction(
           };
           return;
         case "browse_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isConversationIncludeFileConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "conversation_include_file_params":
+          yield event;
+          break;
+        case "conversation_include_file_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "conversation_include_file_success":
           yield {
             type: "agent_action_success",
             created: event.created,

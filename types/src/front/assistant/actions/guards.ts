@@ -3,6 +3,10 @@ import {
   BrowseConfigurationType,
 } from "../../../front/assistant/actions/browse";
 import {
+  ConversationIncludeFileActionType,
+  ConversationIncludeFileConfigurationType,
+} from "../../../front/assistant/actions/conversation/include_file";
+import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
@@ -135,6 +139,23 @@ export function isBrowseActionType(
   arg: AgentActionType
 ): arg is BrowseActionType {
   return arg.type === "browse_action";
+}
+
+export function isConversationIncludeFileConfiguration(
+  arg: unknown
+): arg is ConversationIncludeFileConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "conversation_include_file_configuration"
+  );
+}
+
+export function isConversationIncludeFileConfigurationActionType(
+  arg: AgentActionType
+): arg is ConversationIncludeFileActionType {
+  return arg.type === "conversation_include_file_action";
 }
 
 export function throwIfInvalidAgentConfiguration(

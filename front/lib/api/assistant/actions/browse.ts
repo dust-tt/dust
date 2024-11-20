@@ -64,7 +64,7 @@ export class BrowseAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "BROWSE OUTPUT:\n";
     if (this.output === null) {
       content += "The browse failed.\n";

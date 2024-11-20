@@ -170,7 +170,7 @@ export class RetrievalAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
     if (!this.documents?.length) {
       content += "(retrieval failed)\n";
