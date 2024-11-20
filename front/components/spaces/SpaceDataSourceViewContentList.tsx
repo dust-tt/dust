@@ -211,7 +211,8 @@ export const SpaceDataSourceViewContentList = ({
     [setPagination, setViewType, viewType, pagination.pageSize]
   );
 
-  const isServerPagination = !isManaged(dataSourceView.dataSource);
+  const isServerPagination =
+    !isManaged(dataSourceView.dataSource) && !dataSourceSearch;
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
