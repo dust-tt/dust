@@ -2,7 +2,6 @@ import type {
   AgentMentionType,
   ContentFragmentType,
   LightWorkspaceType,
-  UploadedContentFragmentType,
 } from "@dust-tt/client";
 import { Page, useSendNotification } from "@dust-tt/sparkle";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
@@ -31,7 +30,10 @@ import {
   saveFilesContentFragmentIds,
   setConversationsContext,
 } from "@extension/lib/storage";
-import type { UploadedFileWithKind } from "@extension/lib/types";
+import type {
+  UploadedFileWithKind,
+  UploadedFileWithSupersededContentFragmentId,
+} from "@extension/lib/types";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -110,9 +112,8 @@ export function ConversationContainer({
     try {
       await mutateConversation(
         async (currentConversation) => {
-          const contentFragmentFiles: (UploadedContentFragmentType & {
-            supersededContentFragmentId?: string;
-          })[] = [];
+          const contentFragmentFiles: UploadedFileWithSupersededContentFragmentId[] =
+            [];
 
           for (const file of files) {
             // Get the content fragment ID to supersede for a given file.
