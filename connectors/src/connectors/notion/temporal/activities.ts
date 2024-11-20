@@ -1193,7 +1193,8 @@ export async function updateParentsFields(connectorId: ModelId) {
     connectorId,
     notionPageIds,
     notionDatabaseIds,
-    newParentsLastUpdatedAt.getTime().toString()
+    newParentsLastUpdatedAt.getTime().toString(),
+    async () => heartbeat()
   );
 
   await notionConnectorState.update({
@@ -1793,7 +1794,10 @@ export async function renderAndUpsertPageFromCache({
           connector.id,
           parentDb.notionDatabaseId,
           [],
-          runTimestamp.toString()
+          runTimestamp.toString(),
+          async () => {
+            await heartbeat();
+          }
         );
 
         await ignoreTablesError(
@@ -1892,7 +1896,10 @@ export async function renderAndUpsertPageFromCache({
       const blockParent = await getBlockParentMemoized(
         accessToken,
         parentId,
-        localLogger
+        localLogger,
+        async () => {
+          await heartbeat();
+        }
       );
       if (blockParent) {
         parentType = blockParent.parentType;
@@ -1985,7 +1992,10 @@ export async function renderAndUpsertPageFromCache({
       connectorId,
       pageId,
       [],
-      runTimestamp.toString()
+      runTimestamp.toString(),
+      async () => {
+        await heartbeat();
+      }
     );
 
     const content = await renderDocumentTitleAndContent({
@@ -2495,7 +2505,8 @@ export async function upsertDatabaseStructuredDataFromCache({
     connector.id,
     databaseId,
     [],
-    runTimestamp.toString()
+    runTimestamp.toString(),
+    async () => heartbeat()
   );
 
   localLogger.info("Upserting Notion Database as Table.");

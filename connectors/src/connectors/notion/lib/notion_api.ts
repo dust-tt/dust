@@ -452,7 +452,8 @@ export async function isAccessibleAndUnarchived(
 async function getBlockParent(
   notionAccessToken: string,
   blockId: string,
-  localLogger: Logger
+  localLogger: Logger,
+  onProgress?: () => Promise<void>
 ): Promise<{
   parentId: string;
   parentType: "database" | "page" | "workspace";
@@ -472,6 +473,9 @@ async function getBlockParent(
   let transient_errors = 0;
 
   for (;;) {
+    if (onProgress) {
+      await onProgress();
+    }
     localLogger.info({ blockId }, "Looking up block parent");
     try {
       const block = await wrapNotionAPITokenErrors(async () =>
@@ -526,7 +530,14 @@ async function getBlockParent(
 
 export const getBlockParentMemoized = cacheWithRedis(
   getBlockParent,
-  (notionAccessToken: string, blockId: string) => {
+  (
+    notionAccessToken: string,
+    blockId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+    localLogger: Logger,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+    onProgress?: () => Promise<void>
+  ) => {
     return blockId;
   },
   60 * 10 * 1000
