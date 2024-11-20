@@ -48,7 +48,7 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark/0 s-bg-muted-background s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark/50 s-bg-muted-background s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
     "placeholder:s-text-muted-foreground",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-border-border-dark"
