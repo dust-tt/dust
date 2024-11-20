@@ -30,14 +30,21 @@ const {
 const {
   garbageCollectTicketBatchActivity,
   garbageCollectArticleBatchActivity,
+  getZendeskBrandsWithHelpCenterToDeleteActivity,
+  getZendeskBrandsWithTicketsToDeleteActivity,
+  checkEmptyHelpCentersActivity,
+  deleteBrandsWithNoPermissionActivity,
 } = proxyActivities<typeof gc_activities>({
   startToCloseTimeout: "2 minutes",
 });
 
-const { garbageCollectBrandActivity, garbageCollectCategoriesActivity } =
-  proxyActivities<typeof gc_activities>({
-    startToCloseTimeout: "5 minutes",
-  });
+const {
+  deleteBrandTicketBatchActivity,
+  deleteBrandArticleBatchActivity,
+  garbageCollectCategoriesActivity,
+} = proxyActivities<typeof gc_activities>({
+  startToCloseTimeout: "5 minutes",
+});
 
 const {
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
@@ -46,7 +53,6 @@ const {
   getZendeskTicketsAllowedBrandIdsActivity,
   setZendeskTimestampCursorActivity,
   getZendeskTimestampCursorActivity,
-  getZendeskBrandIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -408,6 +414,9 @@ export async function zendeskCategorySyncWorkflow({
  * - Outdated tickets.
  * - Articles that cannot be found anymore in the Zendesk API.
  * - Categories that have no article anymore.
+ * - Permissions of the Help Centers that have no category anymore (allows a cleanup at the next step).
+ * - Articles of the brands that have no permission on their Help Center anymore.
+ * - Tickets of the brands that have no permission on tickets anymore.
  * - Brands that have no permission on tickets and Help Center anymore.
  */
 export async function zendeskGarbageCollectionWorkflow({
@@ -438,11 +447,29 @@ export async function zendeskGarbageCollectionWorkflow({
   // deleting the categories that have no article anymore
   await garbageCollectCategoriesActivity(connectorId);
 
-  // cleaning the brands that have no permission on tickets and Help Center or are not on Zendesk anymore
-  brandIds = await getZendeskBrandIdsActivity(connectorId);
+  // updating the permissions of the Help Centers that have no category anymore for a cleanup at the next step
+  await checkEmptyHelpCentersActivity(connectorId);
+
+  // cleaning the articles of the brands that have no permission on their Help Center anymore
+  brandIds = await getZendeskBrandsWithHelpCenterToDeleteActivity(connectorId);
   for (const brandId of brandIds) {
-    await garbageCollectBrandActivity({ connectorId, brandId });
+    hasMore = true;
+    while (hasMore) {
+      hasMore = await deleteBrandArticleBatchActivity({ connectorId, brandId });
+    }
   }
+
+  // cleaning the tickets of the brands that have no permission on tickets anymore
+  brandIds = await getZendeskBrandsWithTicketsToDeleteActivity(connectorId);
+  for (const brandId of brandIds) {
+    let hasMore = true;
+    while (hasMore) {
+      hasMore = await deleteBrandTicketBatchActivity({ connectorId, brandId });
+    }
+  }
+
+  // deleting the brands that have no permissions anymore
+  await deleteBrandsWithNoPermissionActivity(connectorId);
 }
 
 /**

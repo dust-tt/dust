@@ -1,10 +1,10 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { deleteCategory } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import {
-  deleteBrandHelpCenter,
-  deleteBrandTicketBatch,
-  deleteCategory,
-} from "@connectors/connectors/zendesk/lib/data_cleanup";
+  getArticleInternalId,
+  getTicketInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -15,6 +15,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
@@ -23,6 +24,45 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+
+/**
+ * Looks for empty Help Centers (no category with read permissions) and removes their permissions.
+ */
+export async function checkEmptyHelpCentersActivity(
+  connectorId: ModelId
+): Promise<void> {
+  const brands = await ZendeskBrandResource.fetchHelpCenterReadAllowedBrands({
+    connectorId,
+  });
+
+  for (const brand of brands) {
+    const categoriesWithReadPermissions =
+      await ZendeskCategoryResource.fetchByBrandIdReadOnly({
+        connectorId,
+        brandId: brand.brandId,
+      });
+    const noMoreAllowedCategories = categoriesWithReadPermissions.length === 0;
+    if (noMoreAllowedCategories) {
+      await brand.revokeHelpCenterPermissions();
+    }
+  }
+}
+
+export async function getZendeskBrandsWithTicketsToDeleteActivity(
+  connectorId: ModelId
+): Promise<number[]> {
+  return ZendeskBrandResource.fetchTicketsReadForbiddenBrandIds({
+    connectorId,
+  });
+}
+
+export async function getZendeskBrandsWithHelpCenterToDeleteActivity(
+  connectorId: ModelId
+): Promise<number[]> {
+  return ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds({
+    connectorId,
+  });
+}
 
 /**
  * This activity is responsible for fetching and cleaning up a batch of tickets
@@ -161,68 +201,88 @@ export async function garbageCollectCategoriesActivity(connectorId: number) {
 }
 
 /**
- * This activity is responsible for cleaning up a Brand.
- *
- * If the Brand is not allowed anymore, it will delete all its data.
- * If the Help Center has no readable category anymore, we delete the Help Center data.
- *
- * @returns the updated permissions of the Brand.
+ * This activity is responsible for cleaning up Brands that have no permission anymore.
  */
-export async function garbageCollectBrandActivity({
+export async function deleteBrandsWithNoPermissionActivity(
+  connectorId: ModelId
+): Promise<void> {
+  await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
+}
+
+/**
+ * Deletes a batch of tickets from the db and the data source for a brand.
+ *
+ * @returns `false` if there is no more ticket to process.
+ */
+export async function deleteBrandTicketBatchActivity({
   connectorId,
   brandId,
 }: {
-  connectorId: ModelId;
+  connectorId: number;
   brandId: number;
-}): Promise<void> {
+}): Promise<boolean> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+  const ticketIds = await ZendeskTicketResource.fetchTicketIdsByBrandId({
     connectorId,
     brandId,
+    batchSize: ZENDESK_BATCH_SIZE,
   });
-  if (!brandInDb) {
-    throw new Error(
-      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
-    );
-  }
+  /// deleting the tickets in the data source
+  await Promise.all(
+    ticketIds.map((ticketId) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getTicketInternalId(connectorId, ticketId)
+      )
+    )
+  );
+  /// deleting the tickets stored in the db
+  await ZendeskTicketResource.deleteByTicketIds({ connectorId, ticketIds });
 
-  // deleting the tickets/help center if not allowed anymore
-  if (brandInDb.ticketsPermission === "none") {
-    await deleteBrandTicketBatch({ connectorId, brandId, dataSourceConfig });
-  }
-  if (brandInDb.helpCenterPermission === "none") {
-    await deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig });
-  }
+  /// returning false if we know for sure there isn't any more ticket to process
+  return ticketIds.length === ZENDESK_BATCH_SIZE;
+}
 
-  // if all rights were revoked, we delete the brand data.
-  if (
-    brandInDb.helpCenterPermission === "none" &&
-    brandInDb.ticketsPermission === "none"
-  ) {
-    await brandInDb.delete();
-    return;
+/**
+ * Deletes a batch of articles from the db and the data source for a brand.
+ *
+ * @returns `false` if there is no more article to process.
+ */
+export async function deleteBrandArticleBatchActivity({
+  connectorId,
+  brandId,
+}: {
+  connectorId: number;
+  brandId: number;
+}): Promise<boolean> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
   }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  // if there are no read permissions on any category, we delete the help center
-  const categoriesWithReadPermissions =
-    await ZendeskCategoryResource.fetchByBrandIdReadOnly({
-      connectorId,
-      brandId,
-    });
-  const noMoreAllowedCategories = categoriesWithReadPermissions.length === 0;
+  /// deleting the articles in the data source
+  const articleIds = await ZendeskArticleResource.fetchArticleIdsByBrandId({
+    connectorId,
+    brandId,
+    batchSize: ZENDESK_BATCH_SIZE,
+  });
+  await Promise.all(
+    articleIds.map((articleId) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getArticleInternalId(connectorId, articleId)
+      )
+    )
+  );
+  /// deleting the articles stored in the db
+  await ZendeskArticleResource.deleteByArticleIds({ connectorId, articleIds });
 
-  if (noMoreAllowedCategories) {
-    await deleteBrandHelpCenter({ connectorId, brandId, dataSourceConfig });
-    // if the tickets and all children categories are not allowed anymore, we delete the brand data
-    if (brandInDb.ticketsPermission !== "read") {
-      await brandInDb.delete();
-      return;
-    }
-    await brandInDb.revokeHelpCenterPermissions();
-  }
+  /// returning false if we know for sure there isn't any more article to process
+  return articleIds.length === ZENDESK_BATCH_SIZE;
 }
