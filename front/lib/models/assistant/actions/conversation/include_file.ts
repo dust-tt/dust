@@ -21,6 +21,7 @@ export class AgentConversationIncludeFileAction extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare fileId: string;
+  declare tokensCount: number | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;
 
@@ -47,6 +48,10 @@ AgentConversationIncludeFileAction.init(
     fileId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    tokensCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     functionCallId: {
       type: DataTypes.STRING,
