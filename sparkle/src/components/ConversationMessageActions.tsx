@@ -262,7 +262,7 @@ function ThumbsSelector({
         onClick={() => selectThumb("down")}
         className={`s-p-1.5 disabled:s-opacity-50 disabled:s-cursor-not-allowed hover:s-text-blue-600 ${selectedThumb === "down" ? "s-text-blue-600" : ""}`}
       >
-        <HandThumbDownIcon className="h-4 w-4" />
+        <HandThumbDownIcon className="s-h-4 s-w-4" />
       </button>
       <Modal
         isOpen={isThumbDownModalOpened}
