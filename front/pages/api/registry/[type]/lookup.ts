@@ -183,6 +183,7 @@ async function handleDataSourceView(
 
   // This check is meant to block access to "conversations" space through a
   // datasource block in a dust app, which could lead to data leaks, see related PR
+  // https://github.com/dust-tt/dust/pull/8815
   // Only case in which this is allowed is for our packaged apps, via a system
   // key, in particular "assistant-retrieval-v2" that needs access to the
   // conversation space
@@ -239,6 +240,7 @@ async function handleDataSource(
 
   // This check is meant to block access to "conversations" space through a
   // datasource block in a dust app, which could lead to data leaks, see related PR
+  // https://github.com/dust-tt/dust/pull/8815
   // Only case in which this is allowed is for our packaged apps, via a system
   // key, in particular "assistant-retrieval-v2" that needs access to the
   // conversation space
