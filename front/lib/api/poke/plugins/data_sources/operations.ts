@@ -70,6 +70,10 @@ export const connectorOperationsPlugin = createPlugin(
     if (res.isErr()) {
       return new Err(new Error(res.error.message));
     }
-    return new Ok("Operation successful.");
+
+    return new Ok({
+      display: "text",
+      value: `Operation ${op} executed successfully on connector ${connectorId}.`,
+    });
   }
 );

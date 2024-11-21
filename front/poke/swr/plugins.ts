@@ -89,7 +89,9 @@ export function useRunPokePlugin({
     urlSearchParams.append("workspaceId", workspaceResource.workspace.sId);
   }
 
-  const doRunPlugin = async (args: object): Promise<Result<string, string>> => {
+  const doRunPlugin = async (
+    args: object
+  ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
     const res = await fetch(
       `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
       {
