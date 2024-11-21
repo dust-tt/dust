@@ -399,7 +399,8 @@ async function renderFromFileId(
               title,
               version: contentFragmentVersion,
               content:
-                "[Image content interpreted by a vision-enabled model. Description not available in this context.]",
+                "[Image content interpreted by a vision-enabled model. " +
+                "Description not available in this context.]",
             }),
           },
         ],
@@ -465,7 +466,8 @@ export async function renderContentFragmentForModel(
   try {
     // Render content based on fragment type:
     // - If the fragment is superseded by another content fragment, don't render the content.
-    // - If the fragment is a file, render it from the file. For large CSV files, render a snippet version (CSV schema).
+    // - If the fragment is a file, render it from the file. For large CSV files, render a snippet
+    //   version (CSV schema).
     // - If the fragment is not a file (public API), always render the full content.
     if (message.contentFragmentVersion === "superseded") {
       return new Ok({
@@ -549,5 +551,8 @@ function renderContentFragmentXml({
   version: string;
   content: string;
 }) {
-  return `<attachment id="${fileId}" type="${contentType}" title="${title}" version="${version}">\n${content}\n</attachment>`;
+  return (
+    `<attachment id="${fileId}" type="${contentType}" title="${title}" version="${version}">` +
+    `\n${content}\n</attachment>`
+  );
 }

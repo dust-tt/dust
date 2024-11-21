@@ -80,6 +80,9 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin(
       return new Err(gcRes.error);
     }
 
-    return new Ok("Document garbage collected successfully.");
+    return new Ok({
+      display: "text",
+      value: `Document ${documentId} garbage collected successfully.`,
+    });
   }
 );

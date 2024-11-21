@@ -1,10 +1,11 @@
 import { BaseAction } from "../../../../front/assistant/actions/index";
+import { SupportedContentFragmentType } from "../../../../front/content_fragment";
 import { ModelId } from "../../../../shared/model_id";
 
 export type ConversationFileType = {
   fileId: string;
   title: string;
-  contentType: string;
+  contentType: SupportedContentFragmentType;
 };
 
 export interface ConversationListFilesActionType extends BaseAction {

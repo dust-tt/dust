@@ -263,6 +263,21 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return dataSource ?? null;
   }
 
+  static async fetchByConversationId(
+    auth: Authenticator,
+    conversationId: number,
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource | null> {
+    const [dataSource] = await this.baseFetch(auth, options, {
+      where: {
+        conversationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return dataSource ?? null;
+  }
+
   // TODO(DATASOURCE_SID): remove
   static async fetchByNames(
     auth: Authenticator,

@@ -1,7 +1,7 @@
 import type {
   AgentMentionType,
+  ContentFragmentType,
   LightWorkspaceType,
-  UploadedContentFragmentType,
 } from "@dust-tt/client";
 import { Page, useSendNotification } from "@dust-tt/sparkle";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
@@ -26,8 +26,14 @@ import { getRandomGreetingForName } from "@extension/lib/greetings";
 import type { StoredUser } from "@extension/lib/storage";
 import {
   getConversationContext,
+  getFileContentFragmentId,
+  saveFilesContentFragmentIds,
   setConversationsContext,
 } from "@extension/lib/storage";
+import type {
+  UploadedFileWithKind,
+  UploadedFileWithSupersededContentFragmentId,
+} from "@extension/lib/types";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -97,24 +103,49 @@ export function ConversationContainer({
   const handlePostMessage = async (
     input: string,
     mentions: AgentMentionType[],
-    contentFragments: UploadedContentFragmentType[]
+    files: UploadedFileWithKind[]
   ) => {
     if (!activeConversationId) {
       return null;
     }
-    const messageData = { input, mentions, contentFragments: [] };
+    const messageData = { input, mentions };
     try {
       await mutateConversation(
         async (currentConversation) => {
+          const contentFragmentFiles: UploadedFileWithSupersededContentFragmentId[] =
+            [];
+
+          for (const file of files) {
+            // Get the content fragment ID to supersede for a given file.
+            // Only for tab contents, we re-use the content fragment ID based on the URL and conversation ID.
+            const supersededContentFragmentId: string | undefined =
+              (await getFileContentFragmentId(activeConversationId, file)) ??
+              undefined;
+
+            contentFragmentFiles.push({
+              fileId: file.fileId,
+              title: file.title,
+              url: file.url,
+              supersededContentFragmentId,
+            });
+          }
+
           const result = await postMessage({
             dustAPI,
             conversationId: activeConversationId,
             messageData,
-            contentFragments,
+            files: contentFragmentFiles,
           });
 
           if (result.isOk()) {
-            const { message } = result.value;
+            const { message, contentFragments } = result.value;
+
+            // Save content fragment IDs for tab contents to the local storage.
+            await saveFilesContentFragmentIds({
+              conversationId: activeConversationId,
+              uploadedFiles: files,
+              createdContentFragments: contentFragments,
+            });
 
             return updateConversationWithOptimisticData(
               currentConversation,
@@ -164,7 +195,7 @@ export function ConversationContainer({
       async (
         input: string,
         mentions: AgentMentionType[],
-        contentFragments: UploadedContentFragmentType[]
+        files: UploadedFileWithKind[]
       ) => {
         const conversationRes = await postConversation({
           dustAPI,
@@ -172,7 +203,11 @@ export function ConversationContainer({
             input,
             mentions,
           },
-          contentFragments,
+          contentFragments: files.map((f) => ({
+            fileId: f.fileId,
+            title: f.title,
+            url: f.url,
+          })),
         });
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
@@ -185,6 +220,21 @@ export function ConversationContainer({
             });
           }
         } else {
+          // Get all content fragments from the conversation.
+          const contentFragments: ContentFragmentType[] = [];
+          for (const versions of conversationRes.value.content) {
+            const latestVersion = versions[versions.length - 1];
+            if (latestVersion.type === "content_fragment") {
+              contentFragments.push(latestVersion);
+            }
+          }
+          // Save the content fragment IDs for tab contents to the local storage.
+          await saveFilesContentFragmentIds({
+            conversationId: conversationRes.value.sId,
+            uploadedFiles: files,
+            createdContentFragments: contentFragments,
+          });
+
           await setConversationsContext({
             [conversationRes.value.sId]: {
               includeCurrentPage: !!includeContent,

@@ -35,7 +35,7 @@ type ChipProps = {
 
 const sizeVariants: Record<ChipSizeType, string> = {
   xs: "s-rounded-lg s-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
-  sm: "s-rounded-xl s-h-9 s-text-sm s-font-semibold s-px-3 s-gap-2.5",
+  sm: "s-rounded-xl s-h-9 s-text-sm s-font-medium s-px-3 s-gap-2.5",
 };
 
 const backgroundVariants: Record<ChipColorType, string> = {

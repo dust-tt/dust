@@ -2,7 +2,9 @@ import {
   FunctionCallType,
   FunctionMessageTypeModel,
 } from "../../../front/assistant/generation";
+import { ModelConfigurationType } from "../../../front/lib/assistant";
 import { ModelId } from "../../../shared/model_id";
+import { ConversationType } from "../conversation";
 
 type BaseActionType =
   | "dust_app_run_action"
@@ -12,7 +14,8 @@ type BaseActionType =
   | "websearch_action"
   | "browse_action"
   | "visualization_action"
-  | "conversation_list_files_action";
+  | "conversation_list_files_action"
+  | "conversation_include_file_action";
 
 export abstract class BaseAction {
   readonly id: ModelId;
@@ -24,5 +27,11 @@ export abstract class BaseAction {
   }
 
   abstract renderForFunctionCall(): FunctionCallType;
-  abstract renderForMultiActionsModel(): FunctionMessageTypeModel;
+  abstract renderForMultiActionsModel({
+    conversation,
+    model,
+  }: {
+    conversation: ConversationType;
+    model: ModelConfigurationType;
+  }): Promise<FunctionMessageTypeModel>;
 }

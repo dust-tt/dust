@@ -34,7 +34,7 @@ import {
 export async function retrieveAllSelectedNodes(
   connectorId: ModelId
 ): Promise<ContentNode[]> {
-  const brands = await ZendeskBrandResource.fetchAllReadOnly({ connectorId });
+  const brands = await ZendeskBrandResource.fetchAllReadOnly(connectorId);
   const helpCenterNodes: ContentNode[] = brands
     .filter(
       (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
@@ -47,7 +47,7 @@ export async function retrieveAllSelectedNodes(
   const ticketNodes: ContentNode[] = brands
     .filter((brand) => brand.ticketsPermission === "read")
     .map((brand) => ({
-      ...brand.getTicketsContentNode(connectorId),
+      ...brand.getTicketsContentNode(connectorId, { expandable: true }),
       title: `${brand.name} - Tickets`, // adding the name of the brand since this will be named "Tickets" otherwise
     }));
 
@@ -67,9 +67,8 @@ async function getRootLevelContentNodes(
     isReadPermissionsOnly: boolean;
   }
 ): Promise<ContentNode[]> {
-  const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
-    connectorId,
-  });
+  const brandsInDatabase =
+    await ZendeskBrandResource.fetchAllReadOnly(connectorId);
   if (isReadPermissionsOnly) {
     return brandsInDatabase.map((brand) => brand.toContentNode(connectorId));
   } else {
@@ -80,7 +79,7 @@ async function getRootLevelContentNodes(
           .find((b) => b.brandId === brand.id)
           ?.toContentNode(connectorId) ?? {
           provider: "zendesk",
-          internalId: getBrandInternalId(connectorId, brand.id),
+          internalId: getBrandInternalId({ connectorId, brandId: brand.id }),
           parentInternalId: null,
           type: "folder",
           title: brand.name || "Brand",
@@ -118,7 +117,9 @@ async function getBrandChildren(
   });
   if (isReadPermissionsOnly) {
     if (brandInDb?.ticketsPermission === "read") {
-      nodes.push(brandInDb.getTicketsContentNode(connectorId));
+      nodes.push(
+        brandInDb.getTicketsContentNode(connectorId, { expandable: true })
+      );
     }
     if (
       brandInDb?.hasHelpCenter &&
@@ -131,7 +132,7 @@ async function getBrandChildren(
       connectorId
     ) ?? {
       provider: "zendesk",
-      internalId: getTicketsInternalId(connectorId, brandId),
+      internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: parentInternalId,
       type: "folder",
       title: "Tickets",
@@ -152,7 +153,7 @@ async function getBrandChildren(
         connectorId
       ) ?? {
         provider: "zendesk",
-        internalId: getHelpCenterInternalId(connectorId, brandId),
+        internalId: getHelpCenterInternalId({ connectorId, brandId }),
         parentInternalId: parentInternalId,
         type: "folder",
         title: "Help Center",
@@ -210,7 +211,11 @@ async function getHelpCenterChildren(
           .find((c) => c.categoryId === category.id)
           ?.toContentNode(connectorId) ?? {
           provider: "zendesk",
-          internalId: getCategoryInternalId(connectorId, brandId, category.id),
+          internalId: getCategoryInternalId({
+            connectorId,
+            brandId,
+            categoryId: category.id,
+          }),
           parentInternalId: parentInternalId,
           type: "folder",
           title: category.name,

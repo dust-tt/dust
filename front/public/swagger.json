@@ -922,7 +922,8 @@
                   "contentType",
                   "fileName",
                   "fileSize",
-                  "useCase"
+                  "useCase",
+                  "useCaseMetadata"
                 ],
                 "properties": {
                   "contentType": {
@@ -940,6 +941,10 @@
                   "useCase": {
                     "type": "string",
                     "description": "Intended use case for the file, use \"conversation\""
+                  },
+                  "useCaseMetadata": {
+                    "type": "string",
+                    "description": "(optional) Metadata for the use case, for conversation useCase should be dictionary with conversationId stringified"
                   }
                 }
               }

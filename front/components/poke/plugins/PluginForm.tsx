@@ -31,11 +31,12 @@ type FallbackArgs = Record<string, unknown>;
 type FormValues<T> = T extends t.TypeC<any> ? t.TypeOf<T> : FallbackArgs;
 
 interface PluginFormProps {
+  disabled?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];
   onSubmit: (args: FormValues<any>) => Promise<void>;
 }
 
-export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
+export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const argsCodec = useMemo(() => {
@@ -83,12 +84,16 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
 
   return (
     <PokeForm {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="max-w-[600px] space-y-8"
+      >
         {Object.entries(manifest.args).map(([key, arg]) => (
           <PokeFormField
             key={key}
             control={form.control}
             name={key}
+            disabled={disabled}
             render={({ field }) => (
               <PokeFormItem>
                 <div

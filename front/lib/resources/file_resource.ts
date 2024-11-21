@@ -4,6 +4,7 @@
 import type {
   FileType,
   FileTypeWithUploadUrl,
+  FileUseCaseMetadata,
   LightWorkspaceType,
   ModelId,
   Result,
@@ -282,6 +283,18 @@ export class FileResource extends BaseResource<FileModel> {
         .file(this.getCloudStoragePath(auth, version))
         .createReadStream();
     }
+  }
+
+  setUseCaseMetadata(metadata: FileUseCaseMetadata) {
+    return this.update({ useCaseMetadata: metadata });
+  }
+
+  setSnippet(snippet: string) {
+    return this.update({ snippet });
+  }
+
+  isUsableForJITActions(): boolean {
+    return this.snippet !== null;
   }
 
   // Serialization logic.

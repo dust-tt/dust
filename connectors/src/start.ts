@@ -11,7 +11,10 @@ import { runIntercomWorker } from "./connectors/intercom/temporal/worker";
 import { runNotionWorker } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { runWebCrawlerWorker } from "./connectors/webcrawler/temporal/worker";
-import { runZendeskWorker } from "./connectors/zendesk/temporal/worker";
+import {
+  runZendeskGarbageCollectionWorker,
+  runZendeskWorker,
+} from "./connectors/zendesk/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
@@ -47,6 +50,9 @@ runIntercomWorker().catch((err) =>
 );
 runZendeskWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running zendesk worker")
+);
+runZendeskGarbageCollectionWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running zendesk gc worker")
 );
 runWebCrawlerWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running webcrawler worker")

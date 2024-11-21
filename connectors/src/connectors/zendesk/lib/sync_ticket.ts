@@ -39,7 +39,7 @@ export async function deleteTicket({
   );
   await deleteFromDataSource(
     dataSourceConfig,
-    getTicketInternalId(connectorId, ticketId)
+    getTicketInternalId({ connectorId, ticketId })
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
@@ -85,9 +85,12 @@ export async function syncTicket({
     !ticketInDb.lastUpsertedTs ||
     ticketInDb.lastUpsertedTs < updatedAtDate;
 
+  // ticket.url is the json api url, we need to convert it to the web url
+  const ticketUrl = ticket.url.replace("/api/v2/", "/").replace(".json", "");
+
   const commonTicketData = {
     subject: ticket.subject,
-    url: ticket.url,
+    url: ticketUrl,
     assigneeId: ticket.assignee_id,
     groupId: ticket.group_id,
     organizationId: ticket.organization_id,
@@ -106,7 +109,7 @@ export async function syncTicket({
       },
     });
   } else {
-    await ticketInDb.update(commonTicketData);
+    await ticketInDb.update({ ...commonTicketData, permission: "read" });
   }
 
   if (!shouldPerformUpsertion) {
@@ -200,7 +203,10 @@ ${comment.body}`;
       updatedAt: updatedAtDate,
     });
 
-    const documentId = getTicketInternalId(connectorId, ticket.id);
+    const documentId = getTicketInternalId({
+      connectorId,
+      ticketId: ticket.id,
+    });
 
     await upsertToDatasource({
       dataSourceConfig,

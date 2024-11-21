@@ -13,10 +13,12 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { getIncludeCurrentTab } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
 import type { GetActiveTabOptions } from "@extension/lib/messages";
+import type { UploadedFileKind } from "@extension/lib/types";
 import { useState } from "react";
 
 interface FileBlob {
   contentType: SupportedFileContentType;
+  kind: UploadedFileKind;
   file: File;
   filename: string;
   id: string;
@@ -49,7 +51,7 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
 const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
 const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 
-export function useFileUploaderService() {
+export function useFileUploaderService(conversationId?: string) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const sendNotification = useSendNotification();
@@ -64,7 +66,15 @@ export function useFileUploaderService() {
     return title;
   };
 
-  const handleFilesUpload = async (files: File[], updateBlobs?: boolean) => {
+  const handleFilesUpload = async ({
+    files,
+    updateBlobs,
+    kind,
+  }: {
+    files: File[];
+    updateBlobs?: boolean;
+    kind: UploadedFileKind;
+  }): Promise<FileBlob[] | undefined> => {
     setIsProcessingFiles(true);
 
     const { totalTextualSize, totalImageSize } = [
@@ -100,7 +110,7 @@ export function useFileUploaderService() {
       return;
     }
 
-    const previewResults = processSelectedFiles(files);
+    const previewResults = processSelectedFiles(files, kind);
     const newFileBlobs = processResults(previewResults, updateBlobs);
 
     const uploadResults = await uploadFiles(newFileBlobs);
@@ -116,11 +126,12 @@ export function useFileUploaderService() {
       (e?.target as HTMLInputElement).files ?? []
     );
 
-    return handleFilesUpload(selectedFiles);
+    return handleFilesUpload({ files: selectedFiles, kind: "attachment" });
   };
 
   const processSelectedFiles = (
-    selectedFiles: File[]
+    selectedFiles: File[],
+    kind: UploadedFileKind
   ): Result<FileBlob, FileBlobUploadError>[] => {
     return selectedFiles.reduce(
       (acc, file) => {
@@ -148,7 +159,7 @@ export function useFileUploaderService() {
           return acc;
         }
 
-        acc.push(new Ok(createFileBlob(file, contentType)));
+        acc.push(new Ok(createFileBlob({ file, contentType, kind })));
         return acc;
       },
       [] as (Ok<FileBlob> | Err<FileBlobUploadError>)[]
@@ -165,6 +176,11 @@ export function useFileUploaderService() {
         fileName: fileBlob.filename,
         fileSize: fileBlob.size,
         useCase: "conversation",
+        useCaseMetadata: conversationId
+          ? {
+              conversationId: conversationId,
+            }
+          : undefined,
         fileObject: fileBlob.file,
       });
       if (fileRes.isErr()) {
@@ -326,7 +342,11 @@ export function useFileUploaderService() {
           onUpload();
         }
 
-        const fragments = await handleFilesUpload([file], updateBlobs);
+        const fragments = await handleFilesUpload({
+          files: [file],
+          updateBlobs,
+          kind: includeSelectionOnly ? "selection" : "tab_content",
+        });
         if (fragments) {
           fragments.forEach((f) => {
             f.publicUrl = tabContent.url;
@@ -358,7 +378,12 @@ export function useFileUploaderService() {
         onUpload();
       }
 
-      return await handleFilesUpload([file]);
+      return await handleFilesUpload({
+        files: [file],
+        updateBlobs,
+        // TODO(EXT): supersede the screenshot
+        kind: "attachment",
+      });
     }
   };
 
@@ -387,11 +412,17 @@ export function useFileUploaderService() {
 
 export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
 
-const createFileBlob = (
-  file: File,
-  contentType: SupportedFileContentType,
-  preview?: string
-): FileBlob => ({
+const createFileBlob = ({
+  file,
+  contentType,
+  kind,
+  preview,
+}: {
+  file: File;
+  contentType: SupportedFileContentType;
+  kind: UploadedFileKind;
+  preview?: string;
+}): FileBlob => ({
   contentType,
   file,
   filename: file.name,
@@ -399,6 +430,7 @@ const createFileBlob = (
   // Will be set once the file has been uploaded.
   fileId: null,
   isUploading: true,
+  kind,
   preview,
   size: file.size,
 });

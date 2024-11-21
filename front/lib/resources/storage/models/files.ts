@@ -1,6 +1,7 @@
 import type {
   FileStatus,
   FileUseCase,
+  FileUseCaseMetadata,
   SupportedFileContentType,
 } from "@dust-tt/types";
 import type {
@@ -28,6 +29,8 @@ export class FileModel extends Model<
   declare fileSize: number;
   declare status: FileStatus;
   declare useCase: FileUseCase;
+  declare useCaseMetadata: FileUseCaseMetadata | null;
+  declare snippet: string | null;
 
   declare userId: ForeignKey<User["id"]> | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -65,6 +68,16 @@ FileModel.init(
     useCase: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    useCaseMetadata: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+    snippet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

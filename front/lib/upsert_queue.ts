@@ -39,6 +39,11 @@ export const EnqueueUpsertDocument = t.type({
   upsertContext: t.union([UpsertContextSchema, t.null]),
 });
 
+const DetectedHeaders = t.type({
+  header: t.array(t.string),
+  rowIndex: t.number,
+});
+
 export const EnqueueUpsertTable = t.type({
   workspaceId: t.string,
   dataSourceId: t.string,
@@ -51,6 +56,7 @@ export const EnqueueUpsertTable = t.type({
   csv: t.union([t.string, t.null]),
   truncate: t.boolean,
   useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
+  detectedHeaders: t.union([DetectedHeaders, t.undefined]),
 });
 
 type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;

@@ -460,10 +460,23 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
 });
 type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
+const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  params: z.object({
+    fileId: z.string(),
+  }),
+  tokensCount: z.number().nullable(),
+  fileTitle: z.string().nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  step: z.number(),
+  type: z.literal("conversation_include_file_action"),
+});
+
 const ConversationFileTypeSchema = z.object({
   fileId: z.string(),
   title: z.string(),
-  contentType: z.string(),
+  contentType: SupportedContentFragmentTypeSchema,
 });
 
 const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
@@ -803,6 +816,11 @@ const ContentFragmentSchema = z.object({
   title: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
   context: ContentFragmentContextSchema,
+  contentFragmentId: z.string(),
+  contentFragmentVersion: z.union([
+    z.literal("latest"),
+    z.literal("superseded"),
+  ]),
 });
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
@@ -855,6 +873,7 @@ const AgentActionTypeSchema = z.union([
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
   ConversationListFilesActionTypeSchema,
+  ConversationIncludeFileActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -961,6 +980,14 @@ const BrowseParamsEventSchema = z.object({
   action: BrowseActionTypeSchema,
 });
 
+const ConversationIncludeFileParamsEventSchema = z.object({
+  type: z.literal("conversation_include_file_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: ConversationIncludeFileActionTypeSchema,
+});
+
 const DustAppRunParamsEventSchema = z.object({
   type: z.literal("dust_app_run_params"),
   created: z.number(),
@@ -1049,6 +1076,7 @@ const AgentActionSpecificEventSchema = z.union([
   ProcessParamsEventSchema,
   WebsearchParamsEventSchema,
   BrowseParamsEventSchema,
+  ConversationIncludeFileParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -2046,6 +2074,11 @@ export const FileUploadUrlRequestSchema = z.object({
   fileName: z.string(),
   fileSize: z.number(),
   useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
+  useCaseMetadata: z
+    .object({
+      conversationId: z.string(),
+    })
+    .optional(),
 });
 export type FileUploadUrlRequestType = z.infer<
   typeof FileUploadUrlRequestSchema

@@ -85,7 +85,7 @@ export class TablesQueryAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     const partialOutput: Omit<FunctionMessageTypeModel, "content"> = {
       role: "function" as const,
       name: this.functionCallName ?? DEFAULT_TABLES_QUERY_ACTION_NAME,

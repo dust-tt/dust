@@ -5,47 +5,66 @@ import logger from "@connectors/logger/logger";
 /**
  * Conversion from an id to an internalId.
  */
-export function getBrandInternalId(
-  connectorId: ModelId,
-  brandId: number
-): string {
+export function getBrandInternalId({
+  connectorId,
+  brandId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+}): string {
   return `zendesk-brand-${connectorId}-${brandId}`;
 }
 
-export function getHelpCenterInternalId(
-  connectorId: ModelId,
-  brandId: number
-): string {
+export function getHelpCenterInternalId({
+  connectorId,
+  brandId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+}): string {
   return `zendesk-help-center-${connectorId}-${brandId}`;
 }
 
-export function getCategoryInternalId(
-  connectorId: ModelId,
-  brandId: number,
-  categoryId: number
-): string {
+export function getCategoryInternalId({
+  connectorId,
+  brandId,
+  categoryId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  categoryId: number;
+}): string {
   return `zendesk-category-${connectorId}-${brandId}-${categoryId}`;
 }
 
-export function getArticleInternalId(
-  connectorId: ModelId,
-  articleId: number
-): string {
+export function getArticleInternalId({
+  connectorId,
+  articleId,
+}: {
+  connectorId: ModelId;
+  articleId: number;
+}): string {
   return `zendesk-article-${connectorId}-${articleId}`;
 }
 
-export function getTicketsInternalId(
-  connectorId: ModelId,
-  brandId: number
-): string {
+export function getTicketsInternalId({
+  connectorId,
+  brandId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+}): string {
   return `zendesk-tickets-${connectorId}-${brandId}`;
 }
 
-export function getTicketInternalId(
-  connectorId: ModelId,
-  teamId: number
-): string {
-  return `zendesk-ticket-${connectorId}-${teamId}`;
+export function getTicketInternalId({
+  connectorId,
+  ticketId,
+}: {
+  connectorId: ModelId;
+  ticketId: number;
+}): string {
+  return `zendesk-ticket-${connectorId}-${ticketId}`;
 }
 
 /**

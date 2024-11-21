@@ -40,6 +40,7 @@ import { apiError } from "@app/logger/withlogging";
  *               - fileName
  *               - fileSize
  *               - useCase
+ *               - useCaseMetadata
  *             properties:
  *               contentType:
  *                 type: string
@@ -53,6 +54,9 @@ import { apiError } from "@app/logger/withlogging";
  *               useCase:
  *                 type: string
  *                 description: Intended use case for the file, use "conversation"
+ *               useCaseMetadata:
+ *                 type: string
+ *                 description: (optional) Metadata for the use case, for conversation useCase should be dictionary with conversationId stringified
  *     responses:
  *       200:
  *         description: File upload URL created successfully
@@ -111,7 +115,8 @@ async function handler(
         });
       }
 
-      const { contentType, fileName, fileSize, useCase } = r.data;
+      const { contentType, fileName, fileSize, useCase, useCaseMetadata } =
+        r.data;
 
       if (!isSupportedFileContentType(contentType)) {
         return apiError(req, res, {
@@ -150,6 +155,7 @@ async function handler(
         userId: user.id,
         workspaceId: owner.id,
         useCase,
+        useCaseMetadata: useCaseMetadata,
       });
 
       res.status(200).json({ file: file.toPublicJSONWithUploadUrl(auth) });
