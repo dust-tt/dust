@@ -15,8 +15,12 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
+import {
+  ZendeskBrandResource,
+  ZendeskCategoryResource,
+} from "@connectors/resources/zendesk_resources";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
@@ -89,6 +93,12 @@ export async function syncZendeskArticleUpdateBatchActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
+  const brand = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  const hasHelpCenterPermissions = brand?.helpCenterPermission === "read";
+
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
@@ -114,10 +124,36 @@ export async function syncZendeskArticleUpdateBatchActivity({
       );
 
       if (section.category_id) {
-        const category = await ZendeskCategoryResource.fetchByCategoryId({
+        let category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
           categoryId: section.category_id,
         });
+        /// fetching and adding the category to the db if it is newly created, and the Help Center is selected
+        if (!category && hasHelpCenterPermissions) {
+          const { category_id: categoryId } = section;
+          const { result: fetchedCategory } =
+            await zendeskApiClient.helpcenter.categories.show(categoryId);
+          if (fetchedCategory) {
+            category = await ZendeskCategoryResource.makeNew({
+              blob: {
+                connectorId,
+                brandId,
+                name: fetchedCategory.name || "Category",
+                categoryId,
+                permission: "read",
+                url: fetchedCategory.html_url,
+                description: fetchedCategory.description,
+              },
+            });
+          } else {
+            /// ignoring these to proceed with the other articles, but these might have to be checked at some point
+            logger.error(
+              { article, categoryId },
+              "[Zendesk] Category could not be fetched."
+            );
+          }
+        }
+        /// syncing the article if the category exists and is selected
         if (category && category.permission === "read") {
           return syncArticle({
             connectorId,
