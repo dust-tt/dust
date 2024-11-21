@@ -4,7 +4,6 @@ import type {
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
-  AgentActionType,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentContentEvent,
@@ -32,14 +31,9 @@ import {
   isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import assert from "assert";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  getJITActions,
-  isJITActionsEnabled,
-} from "@app/lib/api/assistant//jit_actions";
-import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
+import { getEmulatedAndJITActions } from "@app/lib/api/assistant//jit_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import {
@@ -58,8 +52,6 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
-
-import { makeConversationIncludeFileConfiguration } from "./actions/conversation/include_file";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -94,13 +86,6 @@ export async function* runAgent(
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unreachable: could not find owner workspace for agent");
-  }
-
-  // Add JIT actions for available files in the conversation.
-  if (await isJITActionsEnabled(auth)) {
-    fullConfiguration.actions = fullConfiguration.actions.concat(
-      await getJITActions(auth, { conversation })
-    );
   }
 
   const stream = runMultiActionsAgentLoop(
@@ -309,38 +294,6 @@ async function* runMultiActionsAgentLoop(
   }
 }
 
-async function getEmulatedAndJITActions(
-  auth: Authenticator,
-  {
-    agentMessage,
-    conversation,
-  }: { agentMessage: AgentMessageType; conversation: ConversationType }
-): Promise<{
-  emulatedActions: AgentActionType[];
-  jitActions: ConversationAgentActionConfigurationType[];
-}> {
-  const emulatedActions: AgentActionType[] = [];
-  const jitActions: ConversationAgentActionConfigurationType[] = [];
-
-  if (await isJITActionsEnabled(auth)) {
-    const a = makeConversationListFilesAction({
-      agentMessage,
-      conversation,
-    });
-    if (a) {
-      emulatedActions.push(a);
-      jitActions.push(makeConversationIncludeFileConfiguration());
-    }
-  }
-
-  // We ensure that all emulated actions are injected with step -1.
-  assert(
-    emulatedActions.every((a) => a.step === -1),
-    "Emulated actions must have step -1"
-  );
-  return { emulatedActions, jitActions };
-}
-
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 async function* runMultiActionsAgent(
@@ -403,6 +356,15 @@ async function* runMultiActionsAgent(
     fallbackPrompt += ".";
   }
 
+  const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
+    agentMessage,
+    conversation,
+  });
+
+  if (!isLastGenerationIteration) {
+    availableActions = availableActions.concat(jitActions);
+  }
+
   const prompt = await constructPromptMultiActions(auth, {
     userMessage,
     conversation,
@@ -413,15 +375,6 @@ async function* runMultiActionsAgent(
   });
 
   const MIN_GENERATION_TOKENS = 2048;
-
-  const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
-    agentMessage,
-    conversation,
-  });
-
-  if (!isLastGenerationIteration) {
-    availableActions = availableActions.concat(jitActions);
-  }
 
   // Prepend emulated actions to the current agent message before rendering the conversation for the
   // model.

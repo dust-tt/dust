@@ -1,7 +1,10 @@
 import type {
   AgentActionConfigurationType,
+  AgentActionType,
+  AgentMessageType,
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
+  ConversationAgentActionConfigurationType,
   ConversationFileType,
   ConversationType,
   FunctionCallType,
@@ -27,7 +30,10 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/types";
+import assert from "assert";
 
+import { makeConversationIncludeFileConfiguration } from "@app/lib/api/assistant/actions/conversation/include_file";
+import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
 import {
   getTextContentFromMessage,
   getTextRepresentationFromMessages,
@@ -92,65 +98,116 @@ export function listFiles(
   return files;
 }
 
-export async function getJITActions(
+async function getJITActions(
   auth: Authenticator,
-  { conversation }: { conversation: ConversationType }
-): Promise<AgentActionConfigurationType[]> {
-  const actions: AgentActionConfigurationType[] = [];
+  {
+    conversation,
+    files,
+  }: { conversation: ConversationType; files: ConversationFileType[] }
+): Promise<
+  (AgentActionConfigurationType | ConversationAgentActionConfigurationType)[]
+> {
+  const actions: (
+    | AgentActionConfigurationType
+    | ConversationAgentActionConfigurationType
+  )[] = [];
 
-  if (await isJITActionsEnabled(auth)) {
-    const files = listFiles(conversation);
-    if (files.length > 0) {
-      const filesUsableForJIT = files.filter((f) => !!f.snippet);
+  if (files.length > 0) {
+    // quey_conversation_tables
+    const filesUsableForJIT = files.filter((f) => !!f.snippet);
 
-      if (filesUsableForJIT.length > 0) {
-        // Get the datasource view for the conversation.
-        const dataSourceView = await DataSourceViewResource.fetchByConversation(
-          auth,
-          conversation
+    if (filesUsableForJIT.length > 0) {
+      // Get the datasource view for the conversation.
+      const dataSourceView = await DataSourceViewResource.fetchByConversation(
+        auth,
+        conversation
+      );
+
+      if (!dataSourceView) {
+        logger.warn(
+          {
+            conversationId: conversation.sId,
+            fileIds: filesUsableForJIT.map((f) => f.fileId),
+            workspaceId: conversation.owner.sId,
+          },
+          "No default datasource view found for conversation when trying to get JIT actions"
         );
 
-        if (!dataSourceView) {
-          logger.warn(
-            {
-              conversationId: conversation.sId,
-              fileIds: filesUsableForJIT.map((f) => f.fileId),
-              workspaceId: conversation.owner.sId,
-            },
-            "No default datasource view found for conversation when trying to get JIT actions"
-          );
+        return [];
+      }
 
-          return [];
-        }
+      // Check tables for the table query action.
+      const filesUsableAsTableQuery = filesUsableForJIT.filter(
+        (f) => f.contentType === "text/csv" // TODO: there should not be a hardcoded value here
+      );
 
-        // Check tables for the table query action.
-        const filesUsableAsTableQuery = filesUsableForJIT.filter(
-          (f) => f.contentType === "text/csv" // TODO: there should not be a hardcoded value here
-        );
-
-        if (filesUsableAsTableQuery.length > 0) {
-          // TODO(jit) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
-          const action: TablesQueryConfigurationType = {
-            description: filesUsableAsTableQuery
-              .map((f) => `tableId: ${f.fileId}\n${f.snippet}`)
-              .join("\n\n"),
-            type: "tables_query_configuration",
-            id: -1,
-            name: "query_conversation_tables",
-            sId: generateRandomModelSId(),
-            tables: filesUsableAsTableQuery.map((f) => ({
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              dataSourceViewId: dataSourceView.sId,
-              tableId: f.fileId,
-            })),
-          };
-          actions.push(action);
-        }
+      if (filesUsableAsTableQuery.length > 0) {
+        // TODO(jit) Shall we look for an existing table query action and update it instead of
+        // creating a new one? This would allow join between the tables.
+        const action: TablesQueryConfigurationType = {
+          description: filesUsableAsTableQuery
+            .map((f) => `tableId: ${f.fileId}\n${f.snippet}`)
+            .join("\n\n"),
+          type: "tables_query_configuration",
+          id: -1,
+          name: "query_conversation_tables",
+          sId: generateRandomModelSId(),
+          tables: filesUsableAsTableQuery.map((f) => ({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            dataSourceViewId: dataSourceView.sId,
+            tableId: f.fileId,
+          })),
+        };
+        actions.push(action);
       }
     }
+
+    // conversation_include_file_action
+    actions.push(makeConversationIncludeFileConfiguration());
   }
 
   return actions;
+}
+
+export async function getEmulatedAndJITActions(
+  auth: Authenticator,
+  {
+    agentMessage,
+    conversation,
+  }: { agentMessage: AgentMessageType; conversation: ConversationType }
+): Promise<{
+  emulatedActions: AgentActionType[];
+  jitActions: (
+    | AgentActionConfigurationType
+    | ConversationAgentActionConfigurationType
+  )[];
+}> {
+  const emulatedActions: AgentActionType[] = [];
+  let jitActions: (
+    | AgentActionConfigurationType
+    | ConversationAgentActionConfigurationType
+  )[] = [];
+
+  if (await isJITActionsEnabled(auth)) {
+    const files = listFiles(conversation);
+
+    const a = makeConversationListFilesAction({
+      agentMessage,
+      files,
+    });
+    if (a) {
+      emulatedActions.push(a);
+    }
+
+    jitActions = await getJITActions(auth, { conversation, files });
+  }
+
+  // We ensure that all emulated actions are injected with step -1.
+  assert(
+    emulatedActions.every((a) => a.step === -1),
+    "Emulated actions must have step -1"
+  );
+  return { emulatedActions, jitActions };
 }
 
 /**
