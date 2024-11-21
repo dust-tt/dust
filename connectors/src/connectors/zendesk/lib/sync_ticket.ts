@@ -85,9 +85,12 @@ export async function syncTicket({
     !ticketInDb.lastUpsertedTs ||
     ticketInDb.lastUpsertedTs < updatedAtDate;
 
+  // ticket.url is the json api url, we need to convert it to the web url
+  const ticketUrl = ticket.url.replace("/api/v2/", "/").replace(".json", "");
+
   const commonTicketData = {
     subject: ticket.subject,
-    url: ticket.url,
+    url: ticketUrl,
     assigneeId: ticket.assignee_id,
     groupId: ticket.group_id,
     organizationId: ticket.organization_id,
