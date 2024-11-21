@@ -6,7 +6,6 @@ import {
   EmojiMartData,
   EmojiPicker,
 } from "@sparkle/components/EmojiPicker";
-import { Modal } from "@sparkle/components/Modal";
 import { Page } from "@sparkle/components/Page";
 import {
   Popover,
