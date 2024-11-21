@@ -162,7 +162,8 @@ export type AgentsGetViewType =
   | "published"
   | "global"
   | "admin_internal"
-  | "archived";
+  | "archived"
+  | "favorites";
 
 export type AgentUsageType = {
   messageCount: number;

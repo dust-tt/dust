@@ -181,6 +181,7 @@ function determineGlobalAgentIdsToFetch(
     case "global":
     case "list":
     case "all":
+    case "favorites":
     case "admin_internal":
       return undefined; // undefined means all global agents will be fetched
     default:
@@ -214,6 +215,15 @@ async function fetchGlobalAgentConfigurationForView(
   ) {
     // All global agents in global and agent views.
     return matchingGlobalAgents;
+  }
+
+  if (agentsGetView === "favorites") {
+    const favoriteStates = await getFavoriteStates(auth, {
+      configurationIds: matchingGlobalAgents.map((a) => a.sId),
+    });
+    return matchingGlobalAgents.filter(
+      (a) => favoriteStates.get(a.sId) && a.status === "active"
+    );
   }
 
   // If not in global or agent view, filter out global agents that are not active.
@@ -329,6 +339,31 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
 
       return [...sharedAssistants, ...userAssistants];
+
+    case "favorites":
+      const userId = auth.user()?.id;
+      if (!userId) {
+        return [];
+      }
+      const relations = await AgentUserRelation.findAll({
+        where: {
+          userId,
+          favorite: true,
+        },
+      });
+
+      const sIds = relations.map((r) => r.agentConfiguration);
+      if (sIds.length === 0) {
+        return [];
+      }
+
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: {
+          ...baseWhereConditions,
+          sId: { [Op.in]: sIds },
+        },
+      });
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
         return AgentConfiguration.findAll({
@@ -529,6 +564,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     throw new Error(
       "`list` or `assistants-search` view is specific to a user."
     );
+  }
+  if (agentsGetView === "favorites" && !user) {
+    throw new Error("`favorites` view is specific to a user.");
   }
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
