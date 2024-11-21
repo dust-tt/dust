@@ -7,7 +7,6 @@ import {
   EmojiPicker,
 } from "@sparkle/components/EmojiPicker";
 import { Modal } from "@sparkle/components/Modal";
-import { Page } from "@sparkle/components/Page";
 import { Popover } from "@sparkle/components/Popover";
 import { TextArea } from "@sparkle/components/TextArea";
 import {
@@ -248,19 +247,19 @@ function ThumbsSelector({
   return (
     <div
       ref={containerRef}
-      className="s-inline-flex s-h-7 s-items-center s-justify-center s-gap-2 s-whitespace-nowrap s-rounded-lg s-border s-border-border-dark s-bg-background s-px-2.5 s-text-xs s-font-medium s-text-primary-dark s-ring-offset-background s-transition-colors hover:s-border-primary-150 hover:s-bg-primary-150 hover:s-text-primary focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 active:s-bg-primary-300 disabled:s-pointer-events-none disabled:s-border-structure-100 disabled:s-text-primary-muted"
+      className="s-inline-flex s-h-7 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-border s-border-border-dark s-bg-background s-px-2.5 s-text-xs s-font-medium s-text-primary-dark s-ring-offset-background s-transition-colors hover:s-border-primary-150 hover:s-bg-primary-150 hover:s-text-primary focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 active:s-bg-primary-300 disabled:s-pointer-events-none disabled:s-border-structure-100 disabled:s-text-primary-muted"
     >
       <button
         disabled={isSubmittingThumb}
         onClick={() => selectThumb("up")}
-        className={`s-p-1.5 disabled:s-opacity-50 disabled:s-cursor-not-allowed hover:s-text-blue-600 ${selectedThumb === "up" ? "s-text-blue-600" : ""}`}
+        className={`s-p-1.5 hover:s-text-blue-600 disabled:s-cursor-not-allowed disabled:s-opacity-50 ${selectedThumb === "up" ? "s-text-blue-600" : ""}`}
       >
         <HandThumbUpIcon className="s-h-4 s-w-4" />
       </button>
       <button
         disabled={isSubmittingThumb}
         onClick={() => selectThumb("down")}
-        className={`s-p-1.5 disabled:s-opacity-50 disabled:s-cursor-not-allowed hover:s-text-blue-600 ${selectedThumb === "down" ? "s-text-blue-600" : ""}`}
+        className={`s-p-1.5 hover:s-text-blue-600 disabled:s-cursor-not-allowed disabled:s-opacity-50 ${selectedThumb === "down" ? "s-text-blue-600" : ""}`}
       >
         <HandThumbDownIcon className="s-h-4 s-w-4" />
       </button>
