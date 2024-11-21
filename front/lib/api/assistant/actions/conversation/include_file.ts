@@ -14,7 +14,7 @@ import type {
   Result,
   SupportedContentFragmentType,
 } from "@dust-tt/types";
-import { CoreAPI, Ok } from "@dust-tt/types";
+import { CoreAPI, Err, Ok } from "@dust-tt/types";
 import {
   assertNever,
   BaseAction,
@@ -26,6 +26,7 @@ import {
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import config from "@app/lib/api/config";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
@@ -63,6 +64,7 @@ interface ConversationIncludeFileActionBlob {
   params: {
     fileId: string;
   };
+  tokensCount: number | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -75,6 +77,7 @@ export class ConversationIncludeFileAction extends BaseAction {
   readonly params: {
     fileId: string;
   };
+  readonly tokensCount: number | null = null;
   readonly contentFragments: null[] = [];
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -89,6 +92,48 @@ export class ConversationIncludeFileAction extends BaseAction {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+  }
+
+  static async fileContentFromConversation(
+    fileId: string,
+    conversation: ConversationType,
+    model: ModelConfigurationType
+  ): Promise<Result<string, string>> {
+    // Note on `contentFragmentVersion`: two content fragment versions are created with different
+    // fileIds. So we accept here rendering content fragments that are superseded. This will mean
+    // that past actions on a previous version of a content fragment will correctly render the
+    // content as being superseded showing the model that a new version available. The fileId of
+    // that new version will be different but the title will likely be the same and the model should
+    // be able to undertstand the state of affair.
+    const m = (conversation.content.flat(1).find((m) => {
+      if (
+        isContentFragmentType(m) &&
+        isConversationIncludableFileContentType(m.contentType) &&
+        m.fileId === fileId
+      ) {
+        return true;
+      }
+      return false;
+    }) || null) as ContentFragmentType | null;
+
+    if (!m) {
+      return new Err(`File \`${fileId}\` not found in conversation`);
+    }
+
+    const rRes = await renderContentFragmentForModel(m, conversation, model, {
+      // We're not supposed to get images here and we would not know what to do with them.
+      excludeImages: true,
+    });
+
+    if (rRes.isErr()) {
+      return new Err(`${rRes.error}`);
+    }
+    if (!isTextContent(rRes.value.content[0])) {
+      return new Err(`File \`${fileId}\` has no text content`);
+    }
+    const text = rRes.value.content[0].text;
+
+    return new Ok(text);
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -115,52 +160,18 @@ export class ConversationIncludeFileAction extends BaseAction {
       };
     };
 
-    // Note on `contentFragmentVersion`: two content fragment versions are created with different
-    // fileIds. So we accept here rendering content fragments that are superseded. This will mean
-    // that past actions on a previous version of a content fragment will correctly render the
-    // content as being superseded showing the model that a new version available. The fileId of
-    // that new version will be different but the title will likely be the same and the model should
-    // be able to undertstand the state of affair.
-    const m = (conversation.content.flat(1).find((m) => {
-      if (
-        isContentFragmentType(m) &&
-        isConversationIncludableFileContentType(m.contentType) &&
-        m.fileId === this.params.fileId
-      ) {
-        return true;
-      }
-      return false;
-    }) || null) as ContentFragmentType | null;
-
-    if (!m) {
-      return finalize(
-        `Error: File \`${this.params.fileId}\` not found in conversation`
+    const textRes =
+      await ConversationIncludeFileAction.fileContentFromConversation(
+        this.params.fileId,
+        conversation,
+        model
       );
+    if (textRes.isErr()) {
+      return finalize(`Error: ${textRes.error}`);
     }
 
-    const rRes = await renderContentFragmentForModel(m, conversation, model, {
-      // We're not supposed to get images here and we would not know what to do with them.
-      excludeImages: true,
-    });
-
-    if (rRes.isErr()) {
-      return finalize(`Error: ${rRes.error}`);
-    }
-    if (!isTextContent(rRes.value.content[0])) {
-      return finalize(
-        `Error: File \`${this.params.fileId}\` has no text content`
-      );
-    }
-    const text = rRes.value.content[0].text;
-
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const tokensRes = await coreAPI.tokenize({
-      text,
-      providerId: model.providerId,
-      modelId: model.modelId,
-    });
-    if (tokensRes.isErr()) {
-      return finalize(`Error: ${tokensRes.error}`);
+    if (this.tokensCount === null) {
+      return finalize(`Error: the file content was not tokenized`);
     }
 
     // We include a file only if it's smaller than the context size divided by
@@ -173,7 +184,7 @@ export class ConversationIncludeFileAction extends BaseAction {
     // attempts to include 1.
     // TODO(spolu): test this scenario.
     if (
-      tokensRes.value.tokens.length >
+      this.tokensCount >
       model.contextSize / CONTEXT_SIZE_DIVISOR_FOR_INCLUDE
     ) {
       return finalize(
@@ -182,7 +193,7 @@ export class ConversationIncludeFileAction extends BaseAction {
       );
     }
 
-    return finalize(text);
+    return finalize(textRes.value);
   }
 }
 
@@ -223,6 +234,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
     auth: Authenticator,
     {
       agentConfiguration,
+      conversation,
       agentMessage,
       rawInputs,
       functionCallId,
@@ -278,6 +290,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
         params: {
           fileId,
         },
+        tokensCount: null,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
@@ -285,8 +298,55 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
       }),
     };
 
-    // TODO(spolu): check here that the fileId is includable and exists
-    // TODO(spolu): compute tokens here to save time on all conversation rendering later
+    const model = getSupportedModelConfig(agentConfiguration.model);
+    const textRes =
+      await ConversationIncludeFileAction.fileContentFromConversation(
+        fileId,
+        conversation,
+        model
+      );
+    if (textRes.isErr()) {
+      // We error here if the file was not found which will interrupt the agent loop. We might want
+      // to consider letting this error go through here in the future if it happens non trivially
+      // frequently so that we can present the failure in the action result instead (to give a
+      // chance to the model to recover).
+      yield {
+        type: "conversation_include_file_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "conversation_include_file_error",
+          message: `Error including conversation file: ${textRes.error}`,
+        },
+      };
+      return;
+    }
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const tokensRes = await coreAPI.tokenize({
+      text: textRes.value,
+      providerId: model.providerId,
+      modelId: model.modelId,
+    });
+
+    if (tokensRes.isErr()) {
+      yield {
+        type: "conversation_include_file_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "conversation_include_file_error",
+          message: `Error including conversation file: ${tokensRes.error}`,
+        },
+      };
+      return;
+    }
+
+    // Store the tokens count on the action model for use in the rendering of the action for the
+    // model.
+    await action.update({ tokensCount: tokensRes.value.tokens.length });
 
     yield {
       type: "conversation_include_file_success",
@@ -298,6 +358,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
         params: {
           fileId,
         },
+        tokensCount: tokensRes.value.tokens.length,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
@@ -328,6 +389,7 @@ export async function conversationIncludeFileTypesFromAgentMessageIds(
     return new ConversationIncludeFileAction({
       id: action.id,
       params: { fileId: action.fileId },
+      tokensCount: action.tokensCount,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,

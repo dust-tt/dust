@@ -465,14 +465,12 @@ const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   params: z.object({
     fileId: z.string(),
   }),
+  tokensCount: z.number().nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   step: z.number(),
   type: z.literal("conversation_include_file_action"),
 });
-type ConversationIncludeFileActionPublicType = z.infer<
-  typeof ConversationIncludeFileActionTypeSchema
->;
 
 const ConversationFileTypeSchema = z.object({
   fileId: z.string(),
