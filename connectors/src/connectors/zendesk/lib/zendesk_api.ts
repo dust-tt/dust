@@ -135,7 +135,7 @@ async function fetchFromZendeskWithRetries({
     response = await rawResponse.json();
   } catch (e) {
     logger.error(
-      { rawResponse },
+      { rawResponse, status: rawResponse.status, text: rawResponse.text },
       "[Zendesk] Error parsing Zendesk API response"
     );
     throw new Error("Error parsing Zendesk API response");
