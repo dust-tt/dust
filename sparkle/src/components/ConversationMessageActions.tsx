@@ -213,12 +213,10 @@ function ConversationMessageThumbsSelector({
   isSubmittingThumb,
 }: ConversationMessageThumbSelectorProps) {
   return (
-    <>
-      <ThumbsSelector
-        isSubmittingThumb={isSubmittingThumb}
-        onSubmitThumb={onSubmitThumb}
-      />
-    </>
+    <ThumbsSelector
+      isSubmittingThumb={isSubmittingThumb}
+      onSubmitThumb={onSubmitThumb}
+    />
   );
 }
 
@@ -226,6 +224,10 @@ function ThumbsSelector({
   isSubmittingThumb = false,
   onSubmitThumb,
 }: ConversationMessageThumbSelectorProps) {
+  const [selectedThumb, setSelectedThumb] =
+    React.useState<ThumbReaction | null>(null);
+  const [feedback, setFeedback] = React.useState<string | null>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectThumb = async (thumb: ThumbReaction) => {
@@ -240,34 +242,25 @@ function ThumbsSelector({
     await onSubmitThumb({ thumb, isToRemove: false });
   };
 
-  const [selectedThumb, setSelectedThumb] =
-    React.useState<ThumbReaction | null>(null);
-  const [feedback, setFeedback] = React.useState<string | null>(null);
-  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-
   return (
     <div ref={containerRef} className="s-flex s-items-center">
       <PopoverRoot open={isPopoverOpen}>
         <PopoverTrigger asChild>
           <div className="s-flex s-items-center">
             <Button
-              variant="outline"
+              variant={selectedThumb === "up" ? "highlight" : "outline"}
               size="xs"
               disabled={isSubmittingThumb}
               onClick={() => selectThumb("up")}
-              className={cn("s-rounded-r-none s-border-r-0", 
-                selectedThumb === "up" ? "s-text-blue-600" : ""
-              )}
+              className={"s-rounded-r-none s-border-r-0"}
               icon={HandThumbUpIcon}
             />
             <Button
-              variant="outline"
+              variant={selectedThumb === "down" ? "highlight" : "outline"}
               size="xs"
               disabled={isSubmittingThumb}
               onClick={() => selectThumb("down")}
-              className={`s-rounded-l-none s-border-l-0 ${
-                selectedThumb === "down" ? "s-text-blue-600" : ""
-              }`}
+              className={"s-rounded-l-none s-border-l-0"}
               icon={HandThumbDownIcon}
             />
           </div>
