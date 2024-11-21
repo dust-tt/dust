@@ -294,7 +294,7 @@ function ThumbsSelector({
               <Button
                 variant="primary"
                 label="Submit feedback"
-                onClick={async (e) => {
+                onClick={async () => {
                   await onSubmitThumb({
                     thumb: selectedThumb ?? "up",
                     isToRemove: false,
