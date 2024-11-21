@@ -17,9 +17,9 @@ import type {
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
 const {
-  fetchZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
+  syncZendeskCategoryBatchActivity,
   syncZendeskArticleBatchActivity,
   syncZendeskTicketBatchActivity,
 } = proxyActivities<typeof activities>({
@@ -52,9 +52,9 @@ const {
 });
 
 const {
-  getZendeskHelpCenterReadAllowedBrandIdsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
+  getZendeskHelpCenterReadAllowedBrandIdsActivity,
   getZendeskTicketsAllowedBrandIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
@@ -499,21 +499,22 @@ async function runZendeskBrandHelpCenterSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const categoryIds = await fetchZendeskCategoriesActivity({
-    connectorId,
-    brandId,
-  });
   const categoryIdsToSync = new Set<number>();
-  for (const categoryId of categoryIds) {
-    const wasCategoryUpdated = await syncZendeskCategoryActivity({
+
+  let cursor: string | null = null; // cursor involved in the pagination of the API
+  let hasMore = true;
+  while (hasMore) {
+    const result = await syncZendeskCategoryBatchActivity({
       connectorId,
-      categoryId,
-      currentSyncDateMs,
       brandId,
+      currentSyncDateMs,
+      cursor,
     });
-    if (wasCategoryUpdated) {
-      categoryIdsToSync.add(categoryId);
-    }
+    hasMore = result.hasMore || false;
+    cursor = result.afterCursor;
+    result.categoriesToUpdate.forEach((categoryId) =>
+      categoryIdsToSync.add(categoryId)
+    );
   }
 
   for (const categoryId of categoryIdsToSync) {

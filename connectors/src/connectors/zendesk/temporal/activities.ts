@@ -1,12 +1,14 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
+import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchZendeskArticlesInCategory,
+  fetchZendeskCategoriesInBrand,
   fetchZendeskTicketsInBrand,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
@@ -143,34 +145,71 @@ export async function getZendeskTicketsAllowedBrandIdsActivity(
 }
 
 /**
- * Retrieves the categories for a given Brand.
+ * This activity is responsible for syncing a batch of Categories.
+ * It does not sync the articles inside the Category, only the Category data in itself.
+ *
+ * It is going to update the Categories if they have changed on Zendesk
  */
-export async function fetchZendeskCategoriesActivity({
+export async function syncZendeskCategoryBatchActivity({
   connectorId,
   brandId,
+  currentSyncDateMs,
+  cursor,
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<number[]> {
+  currentSyncDateMs: number;
+  cursor: string | null;
+}): Promise<{
+  categoriesToUpdate: number[];
+  hasMore: boolean;
+  afterCursor: string | null;
+}> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
-  const client = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
-  );
-  await changeZendeskClientSubdomain(client, { connectorId, brandId });
-  const categories = await client.helpcenter.categories.list();
 
-  return categories.map((category) => category.id);
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    brandId,
+    connectorId,
+  });
+
+  const {
+    categories,
+    meta: { after_cursor, has_more },
+  } = await fetchZendeskCategoriesInBrand({
+    brandSubdomain,
+    accessToken,
+    pageSize: ZENDESK_BATCH_SIZE,
+    cursor,
+  });
+
+  await concurrentExecutor(
+    categories,
+    async (category) =>
+      syncCategory({ connectorId, brandId, category, currentSyncDateMs }),
+    {
+      concurrency: 10,
+    }
+  );
+
+  return {
+    categoriesToUpdate: categories.map((category) => category.id),
+    hasMore: has_more,
+    afterCursor: after_cursor,
+  };
 }
 
 /**
- * This activity is responsible for syncing a Category.
+ * This activity is responsible for syncing a single Category.
  * It does not sync the articles inside the Category, only the Category data in itself.
  *
- * It is going to update the name of the Category if it has changed.
- * If the Category is not allowed anymore, it will delete all its data.
+ * It is going to update the name, description and URL of the Category if they have changed.
  * If the Category is not present on Zendesk anymore, it will delete all its data as well.
  *
  * @returns true if the Category was updated and should be synced, false otherwise.
@@ -224,6 +263,8 @@ export async function syncZendeskCategoryActivity({
   // otherwise, we update the category name and lastUpsertedTs
   await categoryInDb.update({
     name: fetchedCategory.name || "Category",
+    url: fetchedCategory.html_url,
+    description: fetchedCategory.description,
     lastUpsertedTs: new Date(currentSyncDateMs),
   });
   return true;
