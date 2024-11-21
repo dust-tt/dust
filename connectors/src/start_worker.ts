@@ -16,13 +16,19 @@ import {
   runNotionWorker,
 } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
-import { runZendeskWorker } from "./connectors/zendesk/temporal/worker";
+import {
+  runZendeskGarbageCollectionWorker,
+  runZendeskWorker,
+} from "./connectors/zendesk/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
 
-type WorkerType = ConnectorProvider | "notion_garbage_collector";
+type WorkerType =
+  | ConnectorProvider
+  | "notion_garbage_collector"
+  | "zendesk_garbage_collector";
 
 const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   confluence: runConfluenceWorker,
@@ -36,6 +42,7 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   webcrawler: runWebCrawlerWorker,
   snowflake: runSnowflakeWorker,
   zendesk: runZendeskWorker,
+  zendesk_garbage_collector: runZendeskGarbageCollectionWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
