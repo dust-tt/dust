@@ -130,9 +130,16 @@ async function fetchFromZendeskWithRetries({
       );
     }
   }
-  const text = await rawResponse.text();
-  const response = JSON.parse(text);
-
+  let response;
+  try {
+    response = await rawResponse.json();
+  } catch (e) {
+    logger.error(
+      { rawResponse },
+      "[Zendesk] Error parsing Zendesk API response"
+    );
+    throw new Error("Error parsing Zendesk API response");
+  }
   if (!rawResponse.ok) {
     if (response.type === "error.list" && response.errors?.length) {
       const error = response.errors[0];
@@ -143,8 +150,8 @@ async function fetchFromZendeskWithRetries({
         return null;
       }
     }
-    logger.error({ response }, "[Zendesk] Zendesk API error");
-    throw new Error(`Zendesk API error: ${text}`);
+    logger.error({ rawResponse }, "[Zendesk] Zendesk API error");
+    throw new Error("Zendesk API error.");
   }
 
   return response;
