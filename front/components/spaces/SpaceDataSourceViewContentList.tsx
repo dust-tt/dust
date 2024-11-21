@@ -212,7 +212,7 @@ export const SpaceDataSourceViewContentList = ({
   );
 
   const isServerPagination =
-    !isManaged(dataSourceView.dataSource) && !dataSourceSearch;
+    dataSourceView.dataSource.connectorProvider == null && !dataSourceSearch
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
