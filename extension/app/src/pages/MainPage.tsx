@@ -33,6 +33,7 @@ export const MainPage = ({
                 <DropdownMenuTrigger asChild>
                   <Button
                     label={workspace ? workspace.name : "Select workspace"}
+                    size="xs"
                     variant="ghost"
                     isSelect
                   />
