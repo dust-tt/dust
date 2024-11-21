@@ -504,6 +504,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
   let cursor: string | null = null; // cursor involved in the pagination of the API
   let hasMore = true;
   while (hasMore) {
+    // not using runZendeskActivityWithPagination because we need to add result.categoriesToUpdate to the Set
     const result = await syncZendeskCategoryBatchActivity({
       connectorId,
       brandId,
