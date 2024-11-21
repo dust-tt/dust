@@ -63,7 +63,7 @@ export function AssistantInputBar({
       void sendInputBarStatus(true);
       const listener = async (message: AttachSelectionMessage) => {
         const { type } = message;
-        if (type === "ATTACH_TAB") {
+        if (type === "EXT_ATTACH_TAB") {
           // Handle message
           void fileUploaderService.uploadContentTab(message);
         }
@@ -204,7 +204,7 @@ export function AssistantInputBar({
     if (isTabIncluded) {
       const files = await fileUploaderService.uploadContentTab({
         includeContent: true,
-        includeScreenshot: false,
+        includeCapture: false,
         conversation,
         updateBlobs: false,
         onUpload: () => {

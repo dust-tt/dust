@@ -18,7 +18,7 @@ export const RunPage = () => {
 
       const files = await fileUploaderService.uploadContentTab({
         includeContent: params.includeContent,
-        includeScreenshot: params.includeScreenshot,
+        includeCapture: params.includeCapture,
         includeSelectionOnly: params.includeSelectionOnly,
         updateBlobs: false,
       });
