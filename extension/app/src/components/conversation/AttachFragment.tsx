@@ -67,7 +67,7 @@ export const AttachFragment = ({
         onClick={() =>
           fileUploaderService.uploadContentTab({
             includeContent: true,
-            includeScreenshot: false,
+            includeCapture: false,
           })
         }
       />
@@ -79,7 +79,7 @@ export const AttachFragment = ({
         onClick={() =>
           fileUploaderService.uploadContentTab({
             includeContent: false,
-            includeScreenshot: true,
+            includeCapture: true,
           })
         }
       />

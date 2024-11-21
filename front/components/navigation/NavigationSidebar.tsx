@@ -56,10 +56,7 @@ export const NavigationSidebar = React.forwardRef<
   );
 
   return (
-    <div
-      ref={ref}
-      className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50"
-    >
+    <div ref={ref} className="flex min-w-0 grow flex-col bg-structure-50">
       <div className="flex flex-col">
         {user && user.workspaces.length > 1 ? (
           <WorkspacePicker

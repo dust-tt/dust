@@ -11,6 +11,8 @@ import type {
   Auth0AuthorizeResponse,
   AuthBackgroundMessage,
   AuthBackgroundResponse,
+  CaptureMesssage,
+  CaptureResponse,
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
@@ -93,12 +95,12 @@ const getActionHandler = (menuItemId: string | number) => {
         if (state.port) {
           const params = JSON.stringify({
             includeContent: true,
-            includeScreenshot: false,
+            includeCapture: false,
             text: ":mention[dust]{sId=dust} summarize this page.",
             configurationId: "dust",
           });
           state.port.postMessage({
-            type: "ROUTE_CHANGE",
+            type: "EXT_ROUTE_CHANGE",
             pathname: "/run",
             search: `?${params}`,
           });
@@ -108,9 +110,9 @@ const getActionHandler = (menuItemId: string | number) => {
       return () => {
         if (state.port) {
           state.port.postMessage({
-            type: "ATTACH_TAB",
+            type: "EXT_ATTACH_TAB",
             includeContent: true,
-            includeScreenshot: false,
+            includeCapture: false,
           });
         }
       };
@@ -118,9 +120,9 @@ const getActionHandler = (menuItemId: string | number) => {
       return () => {
         if (state.port) {
           state.port.postMessage({
-            type: "ATTACH_TAB",
+            type: "EXT_ATTACH_TAB",
             includeContent: false,
-            includeScreenshot: true,
+            includeCapture: true,
           });
         }
       };
@@ -128,9 +130,9 @@ const getActionHandler = (menuItemId: string | number) => {
       return () => {
         if (state.port) {
           state.port.postMessage({
-            type: "ATTACH_TAB",
+            type: "EXT_ATTACH_TAB",
             includeContent: true,
-            includeScreenshot: false,
+            includeCapture: false,
             includeSelectionOnly: true,
           });
         }
@@ -155,6 +157,14 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
   }
 });
 
+function capture(sendResponse: (x: CaptureResponse) => void) {
+  return chrome.tabs.captureVisibleTab(function (dataURI) {
+    if (dataURI) {
+      sendResponse({ dataURI });
+    }
+  });
+}
+
 /**
  * Listener for messages sent from the react app to the background script.
  * For now we use messages to authenticate the user.
@@ -164,12 +174,14 @@ chrome.runtime.onMessage.addListener(
     message:
       | AuthBackgroundMessage
       | GetActiveTabBackgroundMessage
+      | CaptureMesssage
       | InputBarStatusMessage,
     sender,
     sendResponse: (
       response:
         | Auth0AuthorizeResponse
         | AuthBackgroundResponse
+        | CaptureResponse
         | GetActiveTabBackgroundResponse
     ) => void
   ) => {
@@ -194,6 +206,10 @@ chrome.runtime.onMessage.addListener(
       case "SIGN_CONNECT":
         return true;
 
+      case "CAPTURE":
+        capture(sendResponse);
+        return true;
+
       case "GET_ACTIVE_TAB":
         chrome.tabs.query(
           { active: true, currentWindow: true },
@@ -206,32 +222,60 @@ chrome.runtime.onMessage.addListener(
             }
 
             const includeContent = message.includeContent ?? true;
-            const includeScreenshot = message.includeScreenshot ?? false;
-            try {
-              const capture = includeScreenshot
-                ? await chrome.tabs.captureVisibleTab()
-                : undefined;
+            const includeCapture = message.includeCapture ?? false;
+            const [mimetypeExecution] = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: () => document.contentType,
+            });
 
-              const [result] = includeContent
-                ? await chrome.scripting.executeScript(
-                    message.includeSelectionOnly
-                      ? {
-                          target: { tabId: tab.id },
-                          func: () => window.getSelection()?.toString(),
-                        }
-                      : {
-                          target: { tabId: tab.id },
-                          func: extractPage(tab.url || ""),
-                        }
-                  )
-                : [undefined];
+            try {
+              let captures: string[] | undefined;
+              if (includeCapture) {
+                if (mimetypeExecution.result === "text/html") {
+                  // Full page capture
+                  await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ["page.js"],
+                  });
+                  captures = await new Promise((resolve) => {
+                    if (state?.port && tab?.id) {
+                      chrome.tabs.sendMessage(
+                        tab.id,
+                        { type: "PAGE_CAPTURE_FULL_PAGE" },
+                        resolve
+                      );
+                    }
+                  });
+                } else {
+                  captures = [
+                    await new Promise<string>((resolve) => {
+                      chrome.tabs.captureVisibleTab(resolve);
+                    }),
+                  ];
+                }
+              }
+              let content: string | undefined;
+              if (includeContent) {
+                if (message.includeSelectionOnly) {
+                  const [execution] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => window.getSelection()?.toString(),
+                  });
+                  content = execution?.result ?? "no content.";
+                } else {
+                  // TODO - handle non-HTML content. For now we just extract the page content.
+                  const [execution] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: extractPage(tab.url || ""),
+                  });
+                  content = execution?.result ?? "no content.";
+                }
+              }
               sendResponse({
                 title: tab.title || "",
                 url: tab.url || "",
-                content: includeContent
-                  ? (result?.result ?? "no content.")
-                  : undefined,
-                screenshot: capture,
+                content,
+                captures,
               });
             } catch (error) {
               log("Error getting active tab content:", error);
@@ -240,6 +284,7 @@ chrome.runtime.onMessage.addListener(
           }
         );
         return true;
+
       case "INPUT_BAR_STATUS":
         // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
         state.inputBarReady = message.available;

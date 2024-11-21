@@ -164,7 +164,7 @@ export default function AppLayout({
               </div>
             </div>
 
-            <div className="flex h-[calc(100%-5rem)] w-full flex-col items-center px-6">
+            <div className="flex h-[calc(100%-5rem)] w-full flex-col items-center px-4 sm:px-8">
               {isWideMode ? (
                 loaded && children
               ) : (

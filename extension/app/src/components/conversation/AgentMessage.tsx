@@ -55,6 +55,7 @@ import {
 } from "@extension/components/markdown/MentionBlock";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { useEventSource } from "@extension/hooks/useEventSource";
+import { assertNeverAndIgnore } from "@extension/lib/assertNeverAndIgnore";
 import { retryMessage } from "@extension/lib/conversation";
 import {
   useCallback,
@@ -221,6 +222,7 @@ export function AgentMessage({
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "conversation_include_file_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -270,13 +272,17 @@ export function AgentMessage({
             });
             break;
           default:
-            assertNever(event.classification);
+            // Log message and do nothing. Don't crash if a new token classification is not handled here.
+            assertNeverAndIgnore(event.classification);
+            break;
         }
         break;
       }
 
       default:
-        assertNever(event);
+        // Log message and do nothing. Don't crash if a new event type is not handled here.
+        assertNeverAndIgnore(event);
+        break;
     }
   }, []);
 
