@@ -248,7 +248,7 @@ function ThumbsSelector({
   return (
     <div ref={containerRef} className="s-flex s-items-center">
       <PopoverRoot open={isPopoverOpen}>
-        <PopoverTrigger>
+        <PopoverTrigger asChild>
           <div className="s-flex s-items-center">
             <Button
               variant="outline"
