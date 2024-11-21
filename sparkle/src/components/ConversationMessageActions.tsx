@@ -6,19 +6,38 @@ import {
   EmojiMartData,
   EmojiPicker,
 } from "@sparkle/components/EmojiPicker";
+import { Modal } from "@sparkle/components/Modal";
+import { Page } from "@sparkle/components/Page";
 import { Popover } from "@sparkle/components/Popover";
-import { ReactionIcon } from "@sparkle/icons/solid";
+import { TextArea } from "@sparkle/components/TextArea";
+import {
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+  ReactionIcon,
+} from "@sparkle/icons/solid";
 import { cn } from "@sparkle/lib/utils";
 
 type ConversationMessageActionsProps = {
   buttons?: React.ReactElement<typeof Button>[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
+  messageThumbs?: boolean;
 };
 
 export function ConversationMessageActions({
   buttons = [],
   messageEmoji,
+  messageThumbs,
 }: ConversationMessageActionsProps) {
+  if (messageThumbs) {
+    buttons.push(
+      <ConversationMessageThumbsSelector
+        key="thumbs-selector"
+        onSubmitThumb={async (e) => console.log("onSubmitThumb", e)}
+        isSubmittingThumb={false}
+      />
+    );
+  }
+
   if (messageEmoji) {
     buttons.push(
       <ConversationMessageEmojiSelector
@@ -48,6 +67,15 @@ export interface ConversationMessageEmojiSelectorProps {
   reactions: EmojoReaction[];
   onSubmitEmoji: (p: { emoji: string; isToRemove: boolean }) => Promise<void>;
   isSubmittingEmoji: boolean;
+}
+
+export interface ConversationMessageThumbSelectorProps {
+  onSubmitThumb: (p: {
+    thumb: string;
+    isToRemove: boolean;
+    feedback?: string | null;
+  }) => Promise<void>;
+  isSubmittingThumb: boolean;
 }
 
 function ConversationMessageEmojiSelector({
@@ -172,5 +200,104 @@ function EmojiSelector({
         />
       }
     />
+  );
+}
+
+function ConversationMessageThumbsSelector({
+  onSubmitThumb,
+  isSubmittingThumb,
+}: ConversationMessageThumbSelectorProps) {
+  return (
+    <>
+      <ThumbsSelector
+        isSubmittingThumb={isSubmittingThumb}
+        onSubmitThumb={onSubmitThumb}
+      />
+    </>
+  );
+}
+
+function ThumbsSelector({
+  isSubmittingThumb = false,
+  onSubmitThumb,
+}: ConversationMessageThumbSelectorProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectThumb = async (thumb: "up" | "down") => {
+    if (selectedThumb === thumb) {
+      setSelectedThumb(null);
+      await onSubmitThumb({ thumb, isToRemove: true });
+      return;
+    }
+
+    if (thumb === "down") {
+      setIsThumbDownModalOpened(true);
+      return;
+    }
+    setSelectedThumb(thumb);
+    await onSubmitThumb({ thumb, isToRemove: false });
+  };
+
+  const [selectedThumb, setSelectedThumb] = React.useState<
+    "up" | "down" | null
+  >(null);
+  const [isThumbDownModalOpened, setIsThumbDownModalOpened] =
+    React.useState(false);
+  const [feedback, setFeedback] = React.useState<string | null>(null);
+
+  return (
+    <div
+      ref={containerRef}
+      className="s-inline-flex s-h-7 s-items-center s-justify-center s-gap-2 s-whitespace-nowrap s-rounded-lg s-border s-border-border-dark s-bg-background s-px-2.5 s-text-xs s-font-medium s-text-primary-dark s-ring-offset-background s-transition-colors hover:s-border-primary-150 hover:s-bg-primary-150 hover:s-text-primary focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 active:s-bg-primary-300 disabled:s-pointer-events-none disabled:s-border-structure-100 disabled:s-text-primary-muted"
+    >
+      <button
+        disabled={isSubmittingThumb}
+        onClick={() => selectThumb("up")}
+        className={`p-1.5 disabled:opacity-50 disabled:cursor-not-allowed hover:s-text-blue-600 ${selectedThumb === "up" ? "s-text-blue-600" : ""}`}
+      >
+        <HandThumbUpIcon className="h-4 w-4" />
+      </button>
+      <button
+        disabled={isSubmittingThumb}
+        onClick={() => selectThumb("down")}
+        className={`p-1.5 disabled:opacity-50 disabled:cursor-not-allowed hover:s-text-blue-600 ${selectedThumb === "down" ? "s-text-blue-600" : ""}`}
+      >
+        <HandThumbDownIcon className="h-4 w-4" />
+      </button>
+      <Modal
+        isOpen={isThumbDownModalOpened}
+        onClose={() => setIsThumbDownModalOpened(false)}
+        hasChanged={false}
+        variant="side-sm"
+        title="Feedback"
+      >
+        <div className="py-8">
+          <TextArea
+            placeholder="What was unsatisfactory about this answer?"
+            className="mt-4"
+            value={feedback ?? ""}
+            onChange={(e) => setFeedback(e.target.value)}
+          />
+          <Page.P>Your feedback goes the the assistant's builder:</Page.P>
+
+          <div className="s-mt-4">
+            <Button
+              variant="primary"
+              label="Submit feedback"
+              size="sm"
+              onClick={async () => {
+                await onSubmitThumb({
+                  thumb: "down",
+                  isToRemove: false,
+                  feedback: feedback,
+                });
+                setSelectedThumb("down");
+                setIsThumbDownModalOpened(false);
+              }}
+            />
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 }

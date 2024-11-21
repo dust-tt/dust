@@ -60,6 +60,12 @@ const meta = {
         type: "object",
       },
     },
+    messageThumbs: {
+      description: "Whether to show the thumbs selector",
+      control: {
+        type: "boolean",
+      },
+    },
   },
 } satisfies Meta<React.ComponentProps<typeof ConversationMessageActions>>;
 
@@ -70,7 +76,6 @@ export const ExamplePicker: Story = {
   args: {
     buttons,
     messageEmoji,
+    messageThumbs: true,
   },
 };
-
-<ConversationMessageActions buttons={buttons} messageEmoji={messageEmoji} />;
