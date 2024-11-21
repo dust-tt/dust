@@ -20,7 +20,8 @@ const ACTION_RUNNING_LABELS: Record<AgentActionPublicType["type"], string> = {
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
-  conversation_list_files_action: "Listing conversation files",
+  conversation_list_files_action: "Listing files",
+  conversation_include_file_action: "Including file ",
 };
 
 export function AgentMessageActions({
