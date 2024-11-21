@@ -21,7 +21,6 @@ import type {
   CoreAPILightDocument,
   DataSourceViewType,
   LightContentNode,
-  LightWorkspaceType,
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -38,8 +37,8 @@ import React, { useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import type { FileVersion } from "@app/lib/resources/file_resource";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
+import { useFileProcessedContent } from "@app/lib/swr/file";
 import { useTable } from "@app/lib/swr/tables";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
@@ -56,20 +55,6 @@ function isCoreAPIDocumentType(
     "chunks" in doc
   );
 }
-
-const fetchFileTextContent = async (
-  owner: LightWorkspaceType,
-  fileId: string,
-  version: FileVersion
-) => {
-  const response = await fetch(
-    `/api/w/${owner.sId}/files/${fileId}?action=view&version=${version}`
-  );
-  if (!response.ok) {
-    return null;
-  }
-  return response.text();
-};
 
 interface DocumentOrTableUploadOrEditModalProps {
   contentNode?: LightContentNode;
@@ -129,8 +114,7 @@ const DocumentUploadOrEditModal = ({
     content: false,
   });
   const [isUpserting, setIsUpserting] = useState(false);
-  const [isGettingProcessedContent, setIsGettingProcessedContent] =
-    useState(false);
+
   const [isValidDocument, setIsValidDocument] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
@@ -141,6 +125,29 @@ const DocumentUploadOrEditModal = ({
       documentId: initialId ?? null,
       disabled: !initialId,
     });
+
+  // Get the processed file content from the file API
+  // Allows using Tika parser to extract text from files
+  const [fileId, setFileId] = useState<string | null>(null);
+  const { isContentLoading } = useFileProcessedContent(owner, fileId ?? "", {
+    disabled: !fileId,
+    onSuccess: async (response) => {
+      const content = await response.text();
+      setDocumentState((prev) => ({
+        ...prev,
+        text: content ?? "",
+      }));
+    },
+    onError: (error) => {
+      fileUploaderService.resetUpload();
+      sendNotification({
+        type: "error",
+        title: "Error fetching document content",
+        description: error instanceof Error ? error.message : String(error),
+      });
+    },
+    shouldRetryOnError: false,
+  });
 
   useEffect(() => {
     if (!initialId) {
@@ -234,19 +241,27 @@ const DocumentUploadOrEditModal = ({
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) {
+    // Enforce single file upload
+    const files = e.target.files;
+    if (files && files.length > 1) {
+      sendNotification({
+        type: "error",
+        title: "Multiple files",
+        description: "Please upload only one file at a time.",
+      });
       return;
     }
 
-    setIsGettingProcessedContent(true);
     try {
       // Create a file -> Allows to get processed text content from Tika via the file API.
+      const selectedFile = files?.[0];
+      if (!selectedFile) {
+        return;
+      }
       const fileBlobs = await fileUploaderService.handleFilesUpload([
         selectedFile,
       ]);
       if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
-        setIsGettingProcessedContent(false);
         fileUploaderService.resetUpload();
         return new Err(
           new Error(
@@ -255,33 +270,14 @@ const DocumentUploadOrEditModal = ({
         );
       }
 
-      // fetch file's processed text
-      const fileId = fileBlobs[0].fileId;
-      const processedText = await fetchFileTextContent(
-        owner,
-        fileId,
-        "processed"
-      );
-      if (!processedText) {
-        fileUploaderService.removeFile(fileBlobs[0].fileId);
-        setIsGettingProcessedContent(false);
-        return new Err(new Error("Error reading file content"));
-      }
-
-      // update text box -> will be used to link document to file
-      setDocumentState((prev) => ({
-        ...prev,
-        text: processedText,
-      }));
-      setIsGettingProcessedContent(false);
+      // triggers content extraction -> documentState.text update
+      setFileId(fileBlobs[0].fileId);
     } catch (error) {
       sendNotification({
         type: "error",
         title: "Error uploading file",
         description: error instanceof Error ? error.message : String(error),
       });
-    } finally {
-      setIsGettingProcessedContent(false);
     }
   };
 
@@ -295,7 +291,8 @@ const DocumentUploadOrEditModal = ({
       hasChanged={
         !isDocumentError &&
         !isDocumentLoading &&
-        !isGettingProcessedContent &&
+        !isContentLoading &&
+        !fileUploaderService.isProcessingFiles &&
         isValidDocument
       }
       variant="side-md"
@@ -364,13 +361,15 @@ const DocumentUploadOrEditModal = ({
                       : plan.limits.dataSources.documents.sizeMb
                   } MB of raw text.`}
                   action={{
-                    label: isGettingProcessedContent
-                      ? "Uploading..."
-                      : "Upload file",
+                    label:
+                      fileUploaderService.isProcessingFiles || isContentLoading
+                        ? "Uploading..."
+                        : "Upload file",
                     variant: "primary",
                     icon: DocumentPlusIcon,
                     onClick: () => fileInputRef.current?.click(),
-                    isLoading: isGettingProcessedContent,
+                    isLoading:
+                      fileUploaderService.isProcessingFiles || isContentLoading,
                   }}
                 />
                 <input
@@ -382,7 +381,9 @@ const DocumentUploadOrEditModal = ({
                 />
                 <TextArea
                   minRows={10}
-                  disabled={isGettingProcessedContent}
+                  disabled={
+                    isContentLoading || fileUploaderService.isProcessingFiles
+                  }
                   placeholder="Your document content..."
                   value={documentState.text}
                   onChange={(e) => {
