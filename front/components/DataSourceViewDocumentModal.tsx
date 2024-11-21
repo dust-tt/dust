@@ -19,12 +19,13 @@ export default function DataSourceViewDocumentModal({
   onClose,
   owner,
 }: DataSourceViewDocumentModalProps) {
-  const { document, isDocumentLoading, isDocumentError } = useDataSourceViewDocument({
-    documentId,
-    dataSourceView,
-    owner,
-  });
-  console.log(isDocumentError)
+  const { document, isDocumentLoading, isDocumentError } =
+    useDataSourceViewDocument({
+      documentId,
+      dataSourceView,
+      owner,
+    });
+  console.log(isDocumentError);
 
   const { title, text } = useMemo(() => {
     if (!document) {
