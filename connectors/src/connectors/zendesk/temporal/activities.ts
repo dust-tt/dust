@@ -211,8 +211,6 @@ export async function syncZendeskCategoryBatchActivity({
  *
  * It is going to update the name, description and URL of the Category if they have changed.
  * If the Category is not present on Zendesk anymore, it will delete all its data as well.
- *
- * @returns true if the Category was updated and should be synced, false otherwise.
  */
 export async function syncZendeskCategoryActivity({
   connectorId,
@@ -224,7 +222,7 @@ export async function syncZendeskCategoryActivity({
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-}): Promise<boolean> {
+}): Promise<{ shouldSyncArticles: boolean }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -241,7 +239,7 @@ export async function syncZendeskCategoryActivity({
 
   // if all rights were revoked, we have nothing to sync
   if (categoryInDb.permission === "none") {
-    return false;
+    return { shouldSyncArticles: false };
   }
 
   const zendeskApiClient = createZendeskClient(
@@ -257,7 +255,7 @@ export async function syncZendeskCategoryActivity({
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
     await categoryInDb.revokePermissions();
-    return false;
+    return { shouldSyncArticles: false };
   }
 
   // otherwise, we update the category name and lastUpsertedTs
@@ -267,7 +265,7 @@ export async function syncZendeskCategoryActivity({
     description: fetchedCategory.description,
     lastUpsertedTs: new Date(currentSyncDateMs),
   });
-  return true;
+  return { shouldSyncArticles: true };
 }
 
 /**

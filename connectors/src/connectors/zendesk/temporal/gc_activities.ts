@@ -71,7 +71,7 @@ export async function getZendeskBrandsWithHelpCenterToDeleteActivity(
  */
 export async function removeOutdatedTicketBatchActivity(
   connectorId: ModelId
-): Promise<boolean> {
+): Promise<{ hasMore: boolean }> {
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
@@ -88,7 +88,7 @@ export async function removeOutdatedTicketBatchActivity(
   });
 
   if (ticketIds.length === 0) {
-    return false;
+    return { hasMore: false };
   }
 
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -110,7 +110,7 @@ export async function removeOutdatedTicketBatchActivity(
     { concurrency: 10 }
   );
 
-  return ticketIds.length === ZENDESK_BATCH_SIZE; // true iff there are more tickets to process
+  return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE }; // true iff there are more tickets to process
 }
 
 /**
@@ -178,7 +178,7 @@ export async function removeMissingArticleBatchActivity({
  */
 export async function removeForbiddenCategoriesActivity(
   connectorId: number
-): Promise<boolean> {
+): Promise<{ hasMore: boolean }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -194,7 +194,7 @@ export async function removeForbiddenCategoriesActivity(
   for (const categoryId of categoryIds) {
     await deleteCategory({ connectorId, categoryId, dataSourceConfig });
   }
-  return categoryIds.length === batchSize;
+  return { hasMore: categoryIds.length === batchSize };
 }
 
 /**
@@ -240,8 +240,6 @@ export async function deleteBrandsWithNoPermissionActivity(
 
 /**
  * Deletes a batch of tickets from the db and the data source for a brand.
- *
- * @returns `false` if there is no more ticket to process.
  */
 export async function deleteTicketBatchActivity({
   connectorId,
@@ -249,7 +247,7 @@ export async function deleteTicketBatchActivity({
 }: {
   connectorId: number;
   brandId: number;
-}): Promise<boolean> {
+}): Promise<{ hasMore: boolean }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -275,13 +273,11 @@ export async function deleteTicketBatchActivity({
   await ZendeskTicketResource.deleteByTicketIds({ connectorId, ticketIds });
 
   /// returning false if we know for sure there isn't any more ticket to process
-  return ticketIds.length === ZENDESK_BATCH_SIZE;
+  return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE };
 }
 
 /**
  * Deletes a batch of articles from the db and the data source for a brand.
- *
- * @returns `false` if there is no more article to process.
  */
 export async function deleteArticleBatchActivity({
   connectorId,
@@ -289,7 +285,7 @@ export async function deleteArticleBatchActivity({
 }: {
   connectorId: number;
   brandId: number;
-}): Promise<boolean> {
+}): Promise<{ hasMore: boolean }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -315,13 +311,11 @@ export async function deleteArticleBatchActivity({
   await ZendeskArticleResource.deleteByArticleIds({ connectorId, articleIds });
 
   /// returning false if we know for sure there isn't any more article to process
-  return articleIds.length === ZENDESK_BATCH_SIZE;
+  return { hasMore: articleIds.length === ZENDESK_BATCH_SIZE };
 }
 
 /**
  * Deletes a batch of categories from the db.
- *
- * @returns `false` if there is no more category to process.
  */
 export async function deleteCategoryBatchActivity({
   connectorId,
@@ -329,12 +323,12 @@ export async function deleteCategoryBatchActivity({
 }: {
   connectorId: number;
   brandId: number;
-}): Promise<boolean> {
+}): Promise<{ hasMore: boolean }> {
   const deletedCount = await ZendeskCategoryResource.deleteByBrandId({
     connectorId,
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
 
-  return deletedCount === ZENDESK_BATCH_SIZE;
+  return { hasMore: deletedCount === ZENDESK_BATCH_SIZE };
 }
