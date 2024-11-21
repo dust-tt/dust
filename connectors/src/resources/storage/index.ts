@@ -1,4 +1,7 @@
+import assert from "node:assert";
+
 import { isDevelopment } from "@dust-tt/types";
+import types, { builtins } from "pg-types";
 import { Sequelize } from "sequelize";
 
 import logger from "@connectors/logger/logger";
@@ -11,6 +14,14 @@ const { DB_LOGGING_ENABLED = false } = process.env;
 function sequelizeLogger(message: string) {
   console.log(message.replace("Executing (default): ", ""));
 }
+
+types.setTypeParser(builtins.INT8, function (val) {
+  assert(
+    Number.isSafeInteger(Number(val)),
+    `Found a value stored as a BIGINT that is not a safe integer: ${val}`
+  );
+  return Number(val);
+});
 
 export const sequelizeConnection = new Sequelize(
   dbConfig.getRequiredDatabaseURI(),

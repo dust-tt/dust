@@ -115,8 +115,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     model: ModelStatic<ZendeskBrand>,
     blob: Attributes<ZendeskBrand>
   ) {
-    // the IDs used here are stored as BigInts and are between JS max int and PSQL's max INTEGER
-    super(ZendeskBrand, { ...blob, brandId: Number(blob.brandId) });
+    super(ZendeskBrand, blob);
   }
 
   async postFetchHook(): Promise<void> {
@@ -378,11 +377,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     model: ModelStatic<ZendeskCategory>,
     blob: Attributes<ZendeskCategory>
   ) {
-    super(ZendeskCategory, {
-      ...blob,
-      brandId: Number(blob.brandId), // the IDs used here are stored as BigInts and are between JS max int and PSQL's max INTEGER
-      categoryId: Number(blob.categoryId),
-    });
+    super(ZendeskCategory, blob);
   }
 
   static async makeNew({
@@ -594,14 +589,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     model: ModelStatic<ZendeskTicket>,
     blob: Attributes<ZendeskTicket>
   ) {
-    super(ZendeskTicket, {
-      ...blob,
-      brandId: Number(blob.brandId), // the IDs used here are stored as BigInts and are between JS max int and PSQL's max INTEGER
-      ticketId: Number(blob.ticketId),
-      assigneeId: Number(blob.assigneeId),
-      groupId: blob.groupId && Number(blob.groupId),
-      organizationId: blob.organizationId && Number(blob.organizationId),
-    });
+    super(ZendeskTicket, blob);
   }
 
   static async makeNew({
@@ -802,11 +790,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     model: ModelStatic<ZendeskArticle>,
     blob: Attributes<ZendeskArticle>
   ) {
-    super(ZendeskArticle, {
-      ...blob,
-      brandId: Number(blob.brandId), // the IDs used here are stored as BIGINTs and are between JS max int and PSQL's max INTEGER
-      articleId: Number(blob.articleId),
-    });
+    super(ZendeskArticle, blob);
   }
 
   static async makeNew({
