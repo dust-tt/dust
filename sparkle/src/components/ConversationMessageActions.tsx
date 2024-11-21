@@ -7,7 +7,13 @@ import {
   EmojiPicker,
 } from "@sparkle/components/EmojiPicker";
 import { Modal } from "@sparkle/components/Modal";
-import { Popover } from "@sparkle/components/Popover";
+import { Page } from "@sparkle/components/Page";
+import {
+  Popover,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@sparkle/components/Popover";
 import { TextArea } from "@sparkle/components/TextArea";
 import {
   HandThumbDownIcon,
@@ -226,74 +232,87 @@ function ThumbsSelector({
   const selectThumb = async (thumb: ThumbReaction) => {
     if (selectedThumb === thumb) {
       setSelectedThumb(null);
+      setIsPopoverOpen(false);
       await onSubmitThumb({ thumb, isToRemove: true });
       return;
     }
-
-    if (thumb === "down") {
-      setIsThumbDownModalOpened(true);
-      return;
-    }
     setSelectedThumb(thumb);
+    setIsPopoverOpen(true);
     await onSubmitThumb({ thumb, isToRemove: false });
   };
 
   const [selectedThumb, setSelectedThumb] =
     React.useState<ThumbReaction | null>(null);
-  const [isThumbDownModalOpened, setIsThumbDownModalOpened] =
-    React.useState(false);
   const [feedback, setFeedback] = React.useState<string | null>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
   return (
     <div
       ref={containerRef}
       className="s-inline-flex s-h-7 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-border s-border-border-dark s-bg-background s-px-2.5 s-text-xs s-font-medium s-text-primary-dark s-ring-offset-background s-transition-colors hover:s-border-primary-150 hover:s-bg-primary-150 hover:s-text-primary focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 active:s-bg-primary-300 disabled:s-pointer-events-none disabled:s-border-structure-100 disabled:s-text-primary-muted"
     >
-      <button
-        disabled={isSubmittingThumb}
-        onClick={() => selectThumb("up")}
-        className={`s-p-1.5 hover:s-text-blue-600 disabled:s-cursor-not-allowed disabled:s-opacity-50 ${selectedThumb === "up" ? "s-text-blue-600" : ""}`}
-      >
-        <HandThumbUpIcon className="s-h-4 s-w-4" />
-      </button>
-      <button
-        disabled={isSubmittingThumb}
-        onClick={() => selectThumb("down")}
-        className={`s-p-1.5 hover:s-text-blue-600 disabled:s-cursor-not-allowed disabled:s-opacity-50 ${selectedThumb === "down" ? "s-text-blue-600" : ""}`}
-      >
-        <HandThumbDownIcon className="s-h-4 s-w-4" />
-      </button>
-      <Modal
-        isOpen={isThumbDownModalOpened}
-        onClose={() => setIsThumbDownModalOpened(false)}
-        hasChanged={false}
-        variant="side-sm"
-        title="Feedback"
-      >
-        <div className="s-py-8">
-          <TextArea
-            placeholder="What was unsatisfactory about this answer?"
-            className="s-mt-4"
-            value={feedback ?? ""}
-            onChange={(e) => setFeedback(e.target.value)}
-          />
-          <div className="s-mt-4">
-            <Button
-              variant="primary"
-              label="Submit feedback"
-              onClick={async () => {
-                setSelectedThumb("down");
-                setIsThumbDownModalOpened(false);
-                await onSubmitThumb({
-                  thumb: "down",
-                  isToRemove: false,
-                  feedback: feedback,
-                });
-              }}
-            />
+      <PopoverRoot open={isPopoverOpen}>
+        <PopoverTrigger>
+          <div className="s-flex s-items-center">
+            <button
+              disabled={isSubmittingThumb}
+              onClick={() => selectThumb("up")}
+              className={`s-p-1.5 hover:s-text-blue-600 disabled:s-cursor-not-allowed disabled:s-opacity-50 ${
+                selectedThumb === "up" ? "s-text-blue-600" : ""
+              }`}
+            >
+              <HandThumbUpIcon className="s-h-4 s-w-4" />
+            </button>
+            <button
+              disabled={isSubmittingThumb}
+              onClick={() => selectThumb("down")}
+              className={`s-p-1.5 hover:s-text-blue-600 disabled:s-cursor-not-allowed disabled:s-opacity-50 ${
+                selectedThumb === "down" ? "s-text-blue-600" : ""
+              }`}
+            >
+              <HandThumbDownIcon className="s-h-4 s-w-4" />
+            </button>
           </div>
-        </div>
-      </Modal>
+        </PopoverTrigger>
+        <PopoverContent fullWidth={true}>
+          <div className="s-w-80 s-p-4">
+            <Page.H variant="h6">
+              {selectedThumb === "up"
+                ? "🎉 Glad you liked it! Tell us more?"
+                : "🫠 You can help make the answers better!"}
+            </Page.H>
+            <TextArea
+              placeholder={
+                selectedThumb === "up"
+                  ? "What did you like?"
+                  : "Tell us what went wrong so we can make this assistant better."
+              }
+              className="s-mt-4"
+              value={feedback ?? ""}
+              onChange={(e) => setFeedback(e.target.value)}
+            />
+            <div className="s-mt-4 s-flex s-justify-between s-gap-2">
+              <Button
+                variant="primary"
+                label="Submit feedback"
+                onClick={async (e) => {
+                  await onSubmitThumb({
+                    thumb: selectedThumb ?? "up",
+                    isToRemove: false,
+                    feedback: feedback,
+                  });
+                  setIsPopoverOpen(false);
+                }}
+              />
+              <Button
+                variant="ghost"
+                label="Cancel"
+                onClick={() => setIsPopoverOpen(false)}
+              />
+            </div>
+          </div>
+        </PopoverContent>
+      </PopoverRoot>
     </div>
   );
 }
