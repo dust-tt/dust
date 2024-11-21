@@ -23,7 +23,7 @@ const {
   syncZendeskArticleBatchActivity,
   syncZendeskTicketBatchActivity,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "15 minutes",
 });
 
 const {
@@ -32,7 +32,7 @@ const {
   syncZendeskTicketUpdateBatchActivity,
   syncZendeskArticleUpdateBatchActivity,
 } = proxyActivities<typeof incremental_activities>({
-  startToCloseTimeout: "1 minutes",
+  startToCloseTimeout: "5 minutes",
 });
 
 const {
@@ -48,7 +48,7 @@ const {
   removeForbiddenCategoriesActivity,
   removeEmptyCategoriesActivity,
 } = proxyActivities<typeof gc_activities>({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "15 minutes",
 });
 
 const {
@@ -57,7 +57,7 @@ const {
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
   getZendeskTicketsAllowedBrandIdsActivity,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "1 minute",
+  startToCloseTimeout: "5 minutes",
 });
 
 /**
