@@ -211,19 +211,25 @@ export async function removeMissingArticleBatchActivity({
 /**
  * This activity is responsible for removing the categories that have no read permissions.
  */
-export async function removeForbiddenCategoriesActivity(connectorId: number) {
+export async function removeForbiddenCategoriesActivity(
+  connectorId: number
+): Promise<boolean> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
   const categoryIds =
-    await ZendeskCategoryResource.fetchReadForbiddenCategoryIds(connectorId);
-
+    await ZendeskCategoryResource.fetchReadForbiddenCategoryIds({
+      connectorId,
+      batchSize,
+    });
   for (const categoryId of categoryIds) {
     await deleteCategory({ connectorId, categoryId, dataSourceConfig });
   }
+  return categoryIds.length === batchSize;
 }
 
 /**

@@ -422,12 +422,17 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     };
   }
 
-  static async fetchReadForbiddenCategoryIds(
-    connectorId: number
-  ): Promise<number[]> {
+  static async fetchReadForbiddenCategoryIds({
+    connectorId,
+    batchSize,
+  }: {
+    connectorId: number;
+    batchSize: number;
+  }): Promise<number[]> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, permission: "none" },
       attributes: ["categoryId"],
+      limit: batchSize,
     });
     return categories.map((category) => Number(category.get().categoryId));
   }

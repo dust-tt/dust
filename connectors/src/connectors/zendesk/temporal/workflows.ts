@@ -448,7 +448,10 @@ export async function zendeskGarbageCollectionWorkflow({
   }
 
   // deleting the categories that have no permission anymore
-  await removeForbiddenCategoriesActivity(connectorId);
+  hasMore = true;
+  while (hasMore) {
+    hasMore = await removeForbiddenCategoriesActivity(connectorId);
+  }
 
   // deleting the categories that have no article anymore
   await removeEmptyCategoriesActivity(connectorId);
