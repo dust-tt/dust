@@ -99,6 +99,7 @@ async function handler(
         {
           pluginId,
           author: auth.getNonNullableUser().email,
+          args: pluginArgsValidation.right,
         },
         "Running Poke plugin."
       );

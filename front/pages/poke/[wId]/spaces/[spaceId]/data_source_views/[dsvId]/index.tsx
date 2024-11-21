@@ -46,9 +46,9 @@ export default function DataSourceViewPage({
   owner,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="flex flex-row gap-6">
+    <div className="flex flex-row gap-x-6">
       <ViewDataSourceViewTable dataSourceView={dataSourceView} owner={owner} />
-      <div className="flex flex-grow flex-col">
+      <div className="mt-4 flex grow flex-col">
         <PluginList
           resourceType="data_source_views"
           workspaceResource={{
