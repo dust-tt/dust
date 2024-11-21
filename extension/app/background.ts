@@ -223,42 +223,58 @@ chrome.runtime.onMessage.addListener(
 
             const includeContent = message.includeContent ?? true;
             const includeCapture = message.includeCapture ?? false;
+            const [mimetypeExecution] = await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: () => document.contentType,
+            });
+
             try {
               let captures: string[] | undefined;
               if (includeCapture) {
-                await chrome.scripting.executeScript({
-                  target: { tabId: tab.id },
-                  files: ["page.js"],
-                });
-                captures = await new Promise((resolve) => {
-                  if (state?.port && tab?.id) {
-                    chrome.tabs.sendMessage(
-                      tab.id,
-                      { type: "PAGE_CAPTURE_FULL_PAGE" },
-                      resolve
-                    );
-                  }
-                });
+                if (mimetypeExecution.result === "text/html") {
+                  // Full page capture
+                  await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ["page.js"],
+                  });
+                  captures = await new Promise((resolve) => {
+                    if (state?.port && tab?.id) {
+                      chrome.tabs.sendMessage(
+                        tab.id,
+                        { type: "PAGE_CAPTURE_FULL_PAGE" },
+                        resolve
+                      );
+                    }
+                  });
+                } else {
+                  captures = [
+                    await new Promise<string>((resolve) => {
+                      chrome.tabs.captureVisibleTab(resolve);
+                    }),
+                  ];
+                }
               }
-              const [result] = includeContent
-                ? await chrome.scripting.executeScript(
-                    message.includeSelectionOnly
-                      ? {
-                          target: { tabId: tab.id },
-                          func: () => window.getSelection()?.toString(),
-                        }
-                      : {
-                          target: { tabId: tab.id },
-                          func: extractPage(tab.url || ""),
-                        }
-                  )
-                : [undefined];
+              let content: string | undefined;
+              if (includeContent) {
+                if (message.includeSelectionOnly) {
+                  const [execution] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => window.getSelection()?.toString(),
+                  });
+                  content = execution?.result ?? "no content.";
+                } else {
+                  // TODO - handle non-HTML content. For now we just extract the page content.
+                  const [execution] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: extractPage(tab.url || ""),
+                  });
+                  content = execution?.result ?? "no content.";
+                }
+              }
               sendResponse({
                 title: tab.title || "",
                 url: tab.url || "",
-                content: includeContent
-                  ? (result?.result ?? "no content.")
-                  : undefined,
+                content,
                 captures,
               });
             } catch (error) {
