@@ -47,7 +47,7 @@ export async function retrieveAllSelectedNodes(
   const ticketNodes: ContentNode[] = brands
     .filter((brand) => brand.ticketsPermission === "read")
     .map((brand) => ({
-      ...brand.getTicketsContentNode(connectorId),
+      ...brand.getTicketsContentNode(connectorId, { expandable: true }),
       title: `${brand.name} - Tickets`, // adding the name of the brand since this will be named "Tickets" otherwise
     }));
 
@@ -117,7 +117,9 @@ async function getBrandChildren(
   });
   if (isReadPermissionsOnly) {
     if (brandInDb?.ticketsPermission === "read") {
-      nodes.push(brandInDb.getTicketsContentNode(connectorId));
+      nodes.push(
+        brandInDb.getTicketsContentNode(connectorId, { expandable: true })
+      );
     }
     if (
       brandInDb?.hasHelpCenter &&
