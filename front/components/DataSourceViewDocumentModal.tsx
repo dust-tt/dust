@@ -19,11 +19,12 @@ export default function DataSourceViewDocumentModal({
   onClose,
   owner,
 }: DataSourceViewDocumentModalProps) {
-  const { document, isDocumentLoading } = useDataSourceViewDocument({
+  const { document, isDocumentLoading, isDocumentError } = useDataSourceViewDocument({
     documentId,
     dataSourceView,
     owner,
   });
+  console.log(isDocumentError)
 
   const { title, text } = useMemo(() => {
     if (!document) {
@@ -55,7 +56,7 @@ export default function DataSourceViewDocumentModal({
               <Spinner variant="dark" size="md" />
             </div>
           )}
-          {!isDocumentLoading && !document && (
+          {!isDocumentLoading && isDocumentError && (
             <div className="flex flex-col gap-2 py-8">
               <Label className="text-warning-500">
                 Unable to retrieve document.
