@@ -59,6 +59,8 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
+import { makeConversationIncludeFileConfiguration } from "./actions/conversation/include_file";
+
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
 
@@ -307,30 +309,36 @@ async function* runMultiActionsAgentLoop(
   }
 }
 
-async function getEmulatedAgentMessageActions(
+async function getEmulatedAndJITActions(
   auth: Authenticator,
   {
     agentMessage,
     conversation,
   }: { agentMessage: AgentMessageType; conversation: ConversationType }
-): Promise<AgentActionType[]> {
-  const actions: AgentActionType[] = [];
+): Promise<{
+  emulatedActions: AgentActionType[];
+  jitActions: ConversationAgentActionConfigurationType[];
+}> {
+  const emulatedActions: AgentActionType[] = [];
+  const jitActions: ConversationAgentActionConfigurationType[] = [];
+
   if (await isJITActionsEnabled(auth)) {
     const a = makeConversationListFilesAction({
       agentMessage,
       conversation,
     });
     if (a) {
-      actions.push(a);
+      emulatedActions.push(a);
+      jitActions.push(makeConversationIncludeFileConfiguration());
     }
   }
 
   // We ensure that all emulated actions are injected with step -1.
   assert(
-    actions.every((a) => a.step === -1),
+    emulatedActions.every((a) => a.step === -1),
     "Emulated actions must have step -1"
   );
-  return actions;
+  return { emulatedActions, jitActions };
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
@@ -403,10 +411,14 @@ async function* runMultiActionsAgent(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  const emulatedActions = await getEmulatedAgentMessageActions(auth, {
+  const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
     agentMessage,
     conversation,
   });
+
+  if (!isLastGenerationIteration) {
+    availableActions = availableActions.concat(jitActions);
+  }
 
   // Prepend emulated actions to the current agent message before rendering the conversation for the
   // model.
