@@ -9,9 +9,9 @@ import logger from "@connectors/logger/logger";
 import * as activities from "./activities";
 import { GARBAGE_COLLECT_QUEUE_NAME, QUEUE_NAME } from "./config";
 
-export async function runZendeskWorker() {
+export async function runZendeskWorkers() {
   const { connection, namespace } = await getTemporalWorkerConnection();
-  const worker = await Worker.create({
+  const syncWorker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
@@ -35,12 +35,9 @@ export async function runZendeskWorker() {
     },
   });
 
-  await worker.run();
-}
+  await syncWorker.run();
 
-export async function runZendeskGarbageCollectionWorker() {
-  const { connection, namespace } = await getTemporalWorkerConnection();
-  const worker = await Worker.create({
+  const gcWorker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
@@ -64,5 +61,5 @@ export async function runZendeskGarbageCollectionWorker() {
     },
   });
 
-  await worker.run();
+  await gcWorker.run();
 }
