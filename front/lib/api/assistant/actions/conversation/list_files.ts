@@ -7,16 +7,11 @@ import type {
   FunctionMessageTypeModel,
   ModelId,
 } from "@dust-tt/types";
-import {
-  BaseAction,
-  getTablesQueryResultsFileTitle,
-  isAgentMessageType,
-  isContentFragmentType,
-  isSupportedPlainTextContentType,
-  isTablesQueryActionType,
-} from "@dust-tt/types";
+import { BaseAction } from "@dust-tt/types";
+import _ from "lodash";
 
 import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
+import { listFiles } from "@app/lib/api/assistant/jit_actions";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
@@ -59,8 +54,14 @@ export class ConversationListFilesAction extends BaseAction {
       `\n`;
     for (const f of this.files) {
       content +=
-        `<file id="${f.fileId}" name="${f.title}" type="${f.contentType}" ` +
-        `includable="${isConversationIncludableFileContentType(f.contentType)}"/>\n`;
+        `<file id="${f.fileId}" name="${_.escape(f.title)}" type="${f.contentType}" ` +
+        `includable="${isConversationIncludableFileContentType(f.contentType)}" queryable="${!!f.snippet}"`;
+
+      if (f.snippet) {
+        content += ` snippet="${_.escape(f.snippet)}"`;
+      }
+
+      content += "/>\n";
     }
 
     return {
@@ -72,39 +73,14 @@ export class ConversationListFilesAction extends BaseAction {
   }
 }
 
-export function makeConversationListFilesAction(
-  agentMessage: AgentMessageType,
-  conversation: ConversationType
-): ConversationListFilesActionType | null {
-  const files: ConversationFileType[] = [];
-
-  for (const m of conversation.content.flat(1)) {
-    if (
-      isContentFragmentType(m) &&
-      isSupportedPlainTextContentType(m.contentType) &&
-      m.contentFragmentVersion === "latest"
-    ) {
-      if (m.fileId) {
-        files.push({
-          fileId: m.fileId,
-          title: m.title,
-          contentType: m.contentType,
-        });
-      }
-    } else if (isAgentMessageType(m)) {
-      for (const a of m.actions) {
-        if (isTablesQueryActionType(a)) {
-          if (a.resultsFileId && a.resultsFileSnippet) {
-            files.push({
-              fileId: a.resultsFileId,
-              contentType: "text/csv",
-              title: getTablesQueryResultsFileTitle({ output: a.output }),
-            });
-          }
-        }
-      }
-    }
-  }
+export function makeConversationListFilesAction({
+  agentMessage,
+  conversation,
+}: {
+  agentMessage: AgentMessageType;
+  conversation: ConversationType;
+}): ConversationListFilesActionType | null {
+  const files: ConversationFileType[] = listFiles(conversation);
 
   if (files.length === 0) {
     return null;

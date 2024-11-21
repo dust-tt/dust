@@ -203,7 +203,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return this.update({ sourceUrl });
   }
 
-  renderFromMessage({
+  async renderFromMessage({
     auth,
     conversationId,
     message,
@@ -211,7 +211,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     auth: Authenticator;
     conversationId: string;
     message: Message;
-  }): ContentFragmentType {
+  }): Promise<ContentFragmentType> {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
@@ -226,11 +226,22 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       contentFormat: "text",
     });
 
+    let fileSid: string | null = null;
+    let snippet: string | null = null;
+
+    if (this.fileId) {
+      const file = await FileResource.fetchByModelId(this.fileId);
+      fileSid = file?.sId ?? null;
+
+      // Note: For CSV files outputted by tools, we have a "snippet" version of the output with the first rows stored in GCP, maybe it's better than our "summary" snippet stored on File.
+      // Need more testing, for now we are using the "summary" snippet.
+      snippet = file?.snippet ?? null;
+    }
+
     return {
       id: message.id,
-      fileId: this.fileId
-        ? FileResource.modelIdToSId({ id: this.fileId, workspaceId: owner.id })
-        : null,
+      fileId: fileSid,
+      snippet: snippet,
       sId: message.sId,
       created: message.createdAt.getTime(),
       type: "content_fragment",
