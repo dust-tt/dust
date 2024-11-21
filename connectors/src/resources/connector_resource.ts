@@ -12,6 +12,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 
+import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type {
   ConnectorProviderConfigurationResource,
@@ -23,7 +24,6 @@ import { getConnectorProviderStrategy } from "@connectors/resources/connector/st
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import logger from "@connectors/logger/logger";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
