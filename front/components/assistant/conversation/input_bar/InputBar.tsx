@@ -5,6 +5,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { useFocusWithin } from 'react-aria';
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -56,37 +57,24 @@ export function AssistantInputBar({
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
-  const handleFocusWithin = (event: FocusEvent) => {
-    if (
-      rainbowEffectRef.current &&
-      rainbowEffectRef.current.contains(event.target as Node)
-    ) {
-      setIsFocused(true);
-    }
-  };
-
-  const handleBlurWithin = (event: FocusEvent) => {
-    if (
-      rainbowEffectRef.current &&
-      !rainbowEffectRef.current.contains(event.relatedTarget as Node)
-    ) {
-      setIsFocused(false);
-    }
-  };
-
   useEffect(() => {
-    const currentRef = rainbowEffectRef.current;
-    if (currentRef) {
-      currentRef.addEventListener("focusin", handleFocusWithin);
-      currentRef.addEventListener("focusout", handleBlurWithin);
+    const container = rainbowEffectRef.current;
+    if (!container) {
+      return;
     }
+
+    const onFocusIn = () => setIsFocused(true);
+    const onFocusOut = () => setIsFocused(false);
+
+    container.addEventListener("focusin", onFocusIn);
+    container.addEventListener("focusout", onFocusOut);
+
     return () => {
-      if (currentRef) {
-        currentRef.removeEventListener("focusin", handleFocusWithin);
-        currentRef.removeEventListener("focusout", handleBlurWithin);
-      }
+      container.removeEventListener("focusin", onFocusIn);
+      container.removeEventListener("focusout", onFocusOut);
     };
   }, []);
+
   const { mutateConversation } = useConversation({
     conversationId,
     workspaceId: owner.sId,
