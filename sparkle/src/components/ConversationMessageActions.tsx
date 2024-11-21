@@ -255,9 +255,9 @@ function ThumbsSelector({
               size="xs"
               disabled={isSubmittingThumb}
               onClick={() => selectThumb("up")}
-              className={`s-rounded-r-none s-border-r-0 ${
+              className={cn("s-rounded-r-none s-border-r-0", 
                 selectedThumb === "up" ? "s-text-blue-600" : ""
-              }`}
+              )}
               icon={HandThumbUpIcon}
             />
             <Button
