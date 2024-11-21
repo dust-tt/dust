@@ -280,7 +280,7 @@ export async function syncZendeskArticleBatchActivity({
     articles,
     meta: { after_cursor, has_more },
   } = await fetchZendeskArticlesInCategory({
-    subdomain: brandSubdomain,
+    brandSubdomain,
     accessToken,
     categoryId: category.categoryId,
     pageSize: ZENDESK_BATCH_SIZE,
