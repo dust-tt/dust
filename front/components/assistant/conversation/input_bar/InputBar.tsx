@@ -5,7 +5,6 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useFocusWithin } from 'react-aria';
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
