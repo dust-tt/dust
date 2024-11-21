@@ -1,11 +1,11 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { deleteCategory } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import {
   getArticleInternalId,
   getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
+import { deleteCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
@@ -174,6 +174,30 @@ export async function removeMissingArticleBatchActivity({
 }
 
 /**
+ * This activity is responsible for removing the categories that have no read permissions.
+ */
+export async function removeForbiddenCategoriesActivity(
+  connectorId: number
+): Promise<boolean> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
+  const categoryIds =
+    await ZendeskCategoryResource.fetchReadForbiddenCategoryIds({
+      connectorId,
+      batchSize,
+    });
+  for (const categoryId of categoryIds) {
+    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+  }
+  return categoryIds.length === batchSize;
+}
+
+/**
  * This activity is responsible for removing all the empty categories (category with no readable article).
  */
 export async function removeEmptyCategoriesActivity(connectorId: number) {
@@ -186,6 +210,7 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
   const categoryIds =
     await ZendeskCategoryResource.fetchCategoryIdsForConnector(connectorId);
 
+  const categoriesToDelete = new Set<number>();
   await concurrentExecutor(
     categoryIds,
     async (categoryId) => {
@@ -194,11 +219,14 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
         categoryId,
       });
       if (articles.length === 0) {
-        await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+        categoriesToDelete.add(categoryId);
       }
     },
     { concurrency: 10 }
   );
+  for (const categoryId of categoriesToDelete) {
+    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+  }
 }
 
 /**

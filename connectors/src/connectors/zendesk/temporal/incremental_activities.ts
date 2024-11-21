@@ -109,7 +109,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
   });
 
   const { articles, end_time, next_page } = await fetchRecentlyUpdatedArticles({
-    subdomain: brandSubdomain,
+    brandSubdomain,
     accessToken,
     startTime,
   });
@@ -214,7 +214,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
 
   const { tickets, after_cursor, end_of_stream } =
     await fetchRecentlyUpdatedTickets({
-      subdomain: brandSubdomain,
+      brandSubdomain,
       accessToken,
       ...(cursor ? { cursor } : { startTime }),
     });
