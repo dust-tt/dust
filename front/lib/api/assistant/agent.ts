@@ -358,7 +358,10 @@ async function* runMultiActionsAgent(
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
-    availableActions: AgentActionConfigurationType[];
+    availableActions: (
+      | AgentActionConfigurationType
+      | ConversationAgentActionConfigurationType
+    )[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
   }
