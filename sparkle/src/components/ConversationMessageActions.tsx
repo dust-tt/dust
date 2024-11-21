@@ -274,7 +274,7 @@ function ThumbsSelector({
         <div className="py-8">
           <TextArea
             placeholder="What was unsatisfactory about this answer?"
-            className="mt-4"
+            className="s-mt-4"
             value={feedback ?? ""}
             onChange={(e) => setFeedback(e.target.value)}
           />
