@@ -6,6 +6,7 @@ import { createClient } from "node-zendesk";
 
 import type {
   ZendeskFetchedArticle,
+  ZendeskFetchedCategory,
   ZendeskFetchedTicket,
 } from "@connectors/@types/node-zendesk";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -147,6 +148,40 @@ async function fetchFromZendeskWithRetries({
   }
 
   return response;
+}
+
+/**
+ * Fetches a batch of categories from the Zendesk API.
+ */
+export async function fetchZendeskCategoriesInBrand({
+  brandSubdomain,
+  accessToken,
+  pageSize,
+  cursor = null,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+  categoryId: number;
+  pageSize: number;
+  cursor: string | null;
+}): Promise<{
+  categories: ZendeskFetchedCategory[];
+  meta: { has_more: boolean; after_cursor: string };
+}> {
+  assert(
+    pageSize <= 100,
+    `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
+  );
+
+  const response = await fetchFromZendeskWithRetries({
+    url:
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}` +
+      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+    accessToken,
+  });
+  return (
+    response || { categories: [], meta: { has_more: false, after_cursor: "" } }
+  );
 }
 
 /**
