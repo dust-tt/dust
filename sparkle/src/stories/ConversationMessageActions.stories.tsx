@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ConversationMessageEmojiSelectorProps } from "@sparkle/components/ConversationMessageActions";
+import {
+  ConversationMessageEmojiSelectorProps,
+  ConversationMessageThumbSelectorProps,
+} from "@sparkle/components/ConversationMessageActions";
 
 import {
   ArrowPathIcon,
@@ -46,6 +49,13 @@ const messageEmoji: ConversationMessageEmojiSelectorProps = {
   isSubmittingEmoji: false,
 };
 
+const messageThumb: ConversationMessageThumbSelectorProps = {
+  onSubmitThumb: async (element) => {
+    console.log("Thumb clicked", element);
+  },
+  isSubmittingThumb: false,
+};
+
 const meta = {
   title: "Primitives/ConversationMessageActions",
   component: ConversationMessageActions,
@@ -60,6 +70,12 @@ const meta = {
         type: "object",
       },
     },
+    messageThumb: {
+      description: "Whether to show the thumbs selector",
+      control: {
+        type: "object",
+      },
+    },
   },
 } satisfies Meta<React.ComponentProps<typeof ConversationMessageActions>>;
 
@@ -70,7 +86,6 @@ export const ExamplePicker: Story = {
   args: {
     buttons,
     messageEmoji,
+    messageThumb,
   },
 };
-
-<ConversationMessageActions buttons={buttons} messageEmoji={messageEmoji} />;
