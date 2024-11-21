@@ -246,31 +246,30 @@ function ThumbsSelector({
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
   return (
-    <div
-      ref={containerRef}
-      className="s-inline-flex s-h-7 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-border s-border-border-dark s-bg-background s-px-2.5 s-text-xs s-font-medium s-text-primary-dark s-ring-offset-background s-transition-colors hover:s-border-primary-150 hover:s-bg-primary-150 hover:s-text-primary focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 active:s-bg-primary-300 disabled:s-pointer-events-none disabled:s-border-structure-100 disabled:s-text-primary-muted"
-    >
+    <div ref={containerRef} className="s-flex s-items-center">
       <PopoverRoot open={isPopoverOpen}>
         <PopoverTrigger>
           <div className="s-flex s-items-center">
-            <button
+            <Button
+              variant="outline"
+              size="xs"
               disabled={isSubmittingThumb}
               onClick={() => selectThumb("up")}
-              className={`s-p-1.5 hover:s-text-blue-600 disabled:s-cursor-not-allowed disabled:s-opacity-50 ${
+              className={`s-rounded-r-none s-border-r-0 ${
                 selectedThumb === "up" ? "s-text-blue-600" : ""
               }`}
-            >
-              <HandThumbUpIcon className="s-h-4 s-w-4" />
-            </button>
-            <button
+              icon={HandThumbUpIcon}
+            />
+            <Button
+              variant="outline"
+              size="xs"
               disabled={isSubmittingThumb}
               onClick={() => selectThumb("down")}
-              className={`s-p-1.5 hover:s-text-blue-600 disabled:s-cursor-not-allowed disabled:s-opacity-50 ${
+              className={`s-rounded-l-none s-border-l-0 ${
                 selectedThumb === "down" ? "s-text-blue-600" : ""
               }`}
-            >
-              <HandThumbDownIcon className="s-h-4 s-w-4" />
-            </button>
+              icon={HandThumbDownIcon}
+            />
           </div>
         </PopoverTrigger>
         <PopoverContent fullWidth={true}>
