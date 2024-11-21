@@ -57,12 +57,17 @@ export function useFileUploaderService(conversationId?: string) {
   const sendNotification = useSendNotification();
   const dustAPI = useDustAPI();
 
-  const findAvailableTitle = (baseTitle: string, ext: string) => {
+  const findAvailableTitle = (
+    baseTitle: string,
+    ext: string,
+    existingTitles: string[]
+  ) => {
     let count = 1;
     let title = `${baseTitle}.${ext}`;
-    while (fileBlobs.some((f) => f.filename === title)) {
+    while (existingTitles.includes(title)) {
       title = `${baseTitle}-${count++}.${ext}`;
     }
+    existingTitles.push(title);
     return title;
   };
 
@@ -282,7 +287,7 @@ export function useFileUploaderService(conversationId?: string) {
     updateBlobs,
     includeContent,
     includeSelectionOnly,
-    includeScreenshot,
+    includeCapture,
     onUpload,
   }: {
     conversation?: ConversationPublicType;
@@ -292,7 +297,7 @@ export function useFileUploaderService(conversationId?: string) {
     const tabContentRes = await getIncludeCurrentTab({
       includeContent,
       includeSelectionOnly,
-      includeScreenshot,
+      includeCapture,
     });
 
     if (tabContentRes && tabContentRes.isErr()) {
@@ -306,6 +311,8 @@ export function useFileUploaderService(conversationId?: string) {
 
     const tabContent =
       tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
+
+    const existingTitles = fileBlobs.map((f) => f.filename);
 
     if (includeContent) {
       if (!tabContent?.content) {
@@ -321,7 +328,8 @@ export function useFileUploaderService(conversationId?: string) {
         includeSelectionOnly
           ? `${tabContent.title} (selection)`
           : `${tabContent.title}`,
-        "txt"
+        "txt",
+        existingTitles
       );
 
       // Check if the content is already uploaded - compare the title and the size of the content.
@@ -357,8 +365,8 @@ export function useFileUploaderService(conversationId?: string) {
       }
     }
 
-    if (includeScreenshot) {
-      if (!tabContent?.screenshot) {
+    if (includeCapture) {
+      if (!tabContent?.captures) {
         sendNotification({
           title: "Cannot get tab content",
           description: "No content found.",
@@ -366,20 +374,31 @@ export function useFileUploaderService(conversationId?: string) {
         });
         return;
       }
-      const response = await fetch(tabContent.screenshot);
-      const blob = await response.blob();
-      const title = findAvailableTitle(`${tabContent.title}`, "jpg");
 
-      const file = new File([blob], title, {
-        type: blob.type,
-      });
+      const blobs = await Promise.all(
+        tabContent.captures.map(async (c) => {
+          const response = await fetch(c);
+          return await response.blob();
+        })
+      );
+
+      const files = blobs.map(
+        (blob) =>
+          new File(
+            [blob],
+            findAvailableTitle(`${tabContent.title}`, "jpg", existingTitles),
+            {
+              type: blob.type,
+            }
+          )
+      );
 
       if (onUpload) {
         onUpload();
       }
 
       return await handleFilesUpload({
-        files: [file],
+        files,
         updateBlobs,
         // TODO(EXT): supersede the screenshot
         kind: "attachment",
