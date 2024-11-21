@@ -136,9 +136,13 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   }
 
   static async fetchByIds(type: ConnectorProvider, ids: (ModelId | string)[]) {
-    const parsedIds = ids.map((id) =>
-      typeof id === "string" ? parseInt(id, 10) : id
-    );
+    const parsedIds = ids
+      .map((id) => (typeof id === "string" ? parseInt(id, 10) : id))
+      .filter((id) => !isNaN(id));
+
+    if (parsedIds.length === 0) {
+      return [];
+    }
 
     const blobs = await ConnectorResource.model.findAll({
       where: {
