@@ -35,7 +35,10 @@ import {
 import assert from "assert";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { isJITActionsEnabled } from "@app/lib/api/assistant//jit_actions";
+import {
+  getJITActions,
+  isJITActionsEnabled,
+} from "@app/lib/api/assistant//jit_actions";
 import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
 import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
@@ -90,6 +93,11 @@ export async function* runAgent(
   if (!owner) {
     throw new Error("Unreachable: could not find owner workspace for agent");
   }
+
+  // Add JIT actions for available files in the conversation.
+  fullConfiguration.actions = fullConfiguration.actions.concat(
+    await getJITActions(auth, { conversation })
+  );
 
   const stream = runMultiActionsAgentLoop(
     auth,
@@ -306,7 +314,10 @@ async function getEmulatedAgentMessageActions(
 ): Promise<AgentActionType[]> {
   const actions: AgentActionType[] = [];
   if (await isJITActionsEnabled(auth)) {
-    const a = makeConversationListFilesAction(agentMessage, conversation);
+    const a = await makeConversationListFilesAction(auth, {
+      agentMessage,
+      conversation,
+    });
     if (a) {
       actions.push(a);
     }

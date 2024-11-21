@@ -6,6 +6,7 @@ export type ConversationFileType = {
   fileId: string;
   title: string;
   contentType: SupportedContentFragmentType;
+  snippet?: string;
 };
 
 export interface ConversationListFilesActionType extends BaseAction {

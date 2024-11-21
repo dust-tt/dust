@@ -11,6 +11,7 @@ import {
   isSupportedPlainTextContentType,
   Ok,
   removeNulls,
+  slugify,
 } from "@dust-tt/types";
 import { Writable } from "stream";
 import { pipeline } from "stream/promises";
@@ -163,7 +164,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   const tableId = file.sId; // Use the file sId as the table id to make it easy to track the table back to the file.
   const upsertTableRes = await upsertTable({
     tableId,
-    name: file.fileName,
+    name: slugify(file.fileName),
     description: "Table uploaded from file",
     truncate: true,
     csv: content,

@@ -1,6 +1,8 @@
 import type {
+  AgentActionConfigurationType,
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
+  ConversationFileType,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -8,14 +10,18 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   Result,
+  TablesQueryConfigurationType,
 } from "@dust-tt/types";
 import {
   assertNever,
   Err,
+  getTablesQueryResultsFileTitle,
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isDevelopment,
+  isSupportedPlainTextContentType,
+  isTablesQueryActionType,
   isTextContent,
   isUserMessageType,
   Ok,
@@ -29,6 +35,10 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
@@ -45,6 +55,129 @@ export async function isJITActionsEnabled(
     }
   }
   return use;
+}
+
+export async function listFiles(
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationType }
+): Promise<ConversationFileType[]> {
+  const files: ConversationFileType[] = [];
+  for (const m of conversation.content.flat(1)) {
+    if (
+      isContentFragmentType(m) &&
+      isSupportedPlainTextContentType(m.contentType) &&
+      m.contentFragmentVersion === "latest"
+    ) {
+      if (m.fileId) {
+        files.push({
+          fileId: m.fileId,
+          title: m.title,
+          contentType: m.contentType,
+        });
+      }
+    } else if (isAgentMessageType(m)) {
+      for (const a of m.actions) {
+        if (isTablesQueryActionType(a)) {
+          if (a.resultsFileId && a.resultsFileSnippet) {
+            files.push({
+              fileId: a.resultsFileId,
+              contentType: "text/csv",
+              title: getTablesQueryResultsFileTitle({ output: a.output }),
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Fetch the snippets
+  const fileIds = files.map((f) => f.fileId);
+  const fileResources = await FileResource.fetchByIds(auth, fileIds);
+  for (const f of files) {
+    const fileResource = fileResources.find((fr) => fr.sId === f.fileId);
+    if (fileResource && fileResource.snippet) {
+      f.snippet = fileResource.snippet;
+    }
+  }
+
+  return files;
+}
+
+export async function getJITActions(
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationType }
+): Promise<AgentActionConfigurationType[]> {
+  const actions: AgentActionConfigurationType[] = [];
+
+  if (await isJITActionsEnabled(auth)) {
+    const files = await listFiles(auth, { conversation });
+    if (files.length > 0) {
+      const filesUsableForJIT = files.filter((f) => !!f.snippet);
+
+      if (filesUsableForJIT.length > 0) {
+        // Get the datasource view for the conversation.
+        const dataSource = await DataSourceResource.fetchByConversationId(
+          auth,
+          conversation.id
+        );
+
+        if (!dataSource) {
+          logger.warn(
+            {
+              conversationId: conversation.sId,
+              fileIds: filesUsableForJIT.map((f) => f.fileId),
+              workspaceId: conversation.owner.sId,
+            },
+            "No datasource found for conversation when trying to get JIT actions."
+          );
+          return [];
+        }
+
+        const dataSourceView = (
+          await DataSourceViewResource.listForDataSources(auth, [dataSource])
+        ).find((dsv) => dsv.isDefault());
+
+        if (!dataSourceView) {
+          logger.warn(
+            {
+              conversationId: conversation.sId,
+              fileIds: filesUsableForJIT.map((f) => f.fileId),
+              workspaceId: conversation.owner.sId,
+            },
+            "No default datasource view found for conversation when trying to get JIT actions"
+          );
+
+          return [];
+        }
+
+        // Check tables for the table query action.
+        const filesUsableAsTableQuery = filesUsableForJIT.filter(
+          (f) => f.contentType == "text/csv" // TODO: there should not be a hardcoded value here
+        );
+
+        if (filesUsableAsTableQuery.length > 0) {
+          // TODO(jit) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
+          const action: TablesQueryConfigurationType = {
+            description: filesUsableAsTableQuery
+              .map((f) => `tableId: ${f.fileId}\n${f.snippet}`)
+              .join("\n\n"),
+            type: "tables_query_configuration",
+            id: -1,
+            name: "query_conversation_tables",
+            sId: generateRandomModelSId(),
+            tables: filesUsableAsTableQuery.map((f) => ({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              dataSourceViewId: dataSourceView.sId,
+              tableId: f.fileId,
+            })),
+          };
+          actions.push(action);
+        }
+      }
+    }
+  }
+
+  return actions;
 }
 
 /**
