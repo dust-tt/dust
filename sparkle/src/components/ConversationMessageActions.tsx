@@ -279,6 +279,7 @@ function ThumbsSelector({
                   : "Tell us what went wrong so we can make this assistant better."
               }
               className="s-mt-4"
+              rows={3}
               value={feedback ?? ""}
               onChange={(e) => setFeedback(e.target.value)}
             />
