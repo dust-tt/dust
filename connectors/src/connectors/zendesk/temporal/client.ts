@@ -99,7 +99,7 @@ export async function launchZendeskSyncWorkflow(
       signal: zendeskUpdatesSignal,
       signalArgs: [signals],
       memo: { connectorId: connector.id },
-      cronSchedule: "*/5 * * * *", // Every 5 minutes.
+      cronSchedule: "*/30 * * * *", // Every 30 minutes.
     });
   } catch (err) {
     return new Err(err as Error);
