@@ -279,7 +279,7 @@ function ThumbsSelector({
             <Page.H variant="h6">
               {selectedThumb === "up"
                 ? "🎉 Glad you liked it! Tell us more?"
-                : "🫠 You can help make the answers better!"}
+                : "🫠 Help make the answers better!"}
             </Page.H>
             <TextArea
               placeholder={
