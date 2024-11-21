@@ -307,6 +307,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "conversation-file-summarizer": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "iy1pjLCMzZ",
+      appHash:
+        "0cd0a82dcfaa327b2d5d1f645a314ea885e995a12921a1024ee96b92e8f15768",
+      appSpaceId: PRODUCTION_DUST_APPS_SPACE_ID,
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: false,
+      },
+    },
+  },
 });
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;
