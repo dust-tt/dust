@@ -5,6 +5,7 @@ import type { ReactElement } from "react";
 
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import PokeLayout from "@app/pages/poke/PokeLayout";
@@ -45,18 +46,29 @@ export default function DataSourceViewPage({
   owner,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="flex flex-row gap-6">
+    <div className="flex flex-row gap-x-6">
       <ViewDataSourceViewTable dataSourceView={dataSourceView} owner={owner} />
-      <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
-        <DataSourceViewSelector
-          owner={owner}
-          readonly
-          selectionConfiguration={defaultSelectionConfiguration(dataSourceView)}
-          setSelectionConfigurations={() => {}}
-          useContentNodes={usePokeDataSourceViewContentNodes}
-          viewType="documents"
-          isRootSelectable={true}
+      <div className="mt-4 flex grow flex-col">
+        <PluginList
+          resourceType="data_source_views"
+          workspaceResource={{
+            workspace: owner,
+            resourceId: dataSourceView.sId,
+          }}
         />
+        <div className="border-material-200 my-4 rounded-lg border p-4">
+          <DataSourceViewSelector
+            owner={owner}
+            readonly
+            selectionConfiguration={defaultSelectionConfiguration(
+              dataSourceView
+            )}
+            setSelectionConfigurations={() => {}}
+            useContentNodes={usePokeDataSourceViewContentNodes}
+            viewType="documents"
+            isRootSelectable={true}
+          />
+        </div>
       </div>
     </div>
   );

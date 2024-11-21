@@ -109,7 +109,7 @@ export async function syncTicket({
       },
     });
   } else {
-    await ticketInDb.update(commonTicketData);
+    await ticketInDb.update({ ...commonTicketData, permission: "read" });
   }
 
   if (!shouldPerformUpsertion) {

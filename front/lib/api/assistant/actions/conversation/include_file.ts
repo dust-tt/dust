@@ -1,6 +1,7 @@
 import type {
   AgentActionSpecification,
   ContentFragmentType,
+  ConversationFileType,
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileErrorEvent,
@@ -65,6 +66,7 @@ interface ConversationIncludeFileActionBlob {
     fileId: string;
   };
   tokensCount: number | null;
+  fileTitle: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -78,6 +80,7 @@ export class ConversationIncludeFileAction extends BaseAction {
     fileId: string;
   };
   readonly tokensCount: number | null = null;
+  readonly fileTitle: string | null = null;
   readonly contentFragments: null[] = [];
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -94,11 +97,11 @@ export class ConversationIncludeFileAction extends BaseAction {
     this.step = blob.step;
   }
 
-  static async fileContentFromConversation(
+  static async fileFromConversation(
     fileId: string,
     conversation: ConversationType,
     model: ModelConfigurationType
-  ): Promise<Result<string, string>> {
+  ): Promise<Result<{ file: ConversationFileType; content: string }, string>> {
     // Note on `contentFragmentVersion`: two content fragment versions are created with different
     // fileIds. So we accept here rendering content fragments that are superseded. This will mean
     // that past actions on a previous version of a content fragment will correctly render the
@@ -133,7 +136,14 @@ export class ConversationIncludeFileAction extends BaseAction {
     }
     const text = rRes.value.content[0].text;
 
-    return new Ok(text);
+    return new Ok({
+      file: {
+        fileId,
+        title: m.title,
+        contentType: m.contentType,
+      },
+      content: text,
+    });
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -160,12 +170,11 @@ export class ConversationIncludeFileAction extends BaseAction {
       };
     };
 
-    const textRes =
-      await ConversationIncludeFileAction.fileContentFromConversation(
-        this.params.fileId,
-        conversation,
-        model
-      );
+    const textRes = await ConversationIncludeFileAction.fileFromConversation(
+      this.params.fileId,
+      conversation,
+      model
+    );
     if (textRes.isErr()) {
       return finalize(`Error: ${textRes.error}`);
     }
@@ -189,11 +198,11 @@ export class ConversationIncludeFileAction extends BaseAction {
     ) {
       return finalize(
         // TODO(spolu): refer to the tool exactly
-        `Error: File \`${this.params.fileId}\` has too many tokens to be included, use semantic search instead.`
+        `Error: File \`${this.params.fileId}\` has too many tokens to be included, use semantic search on the conversation files instead.`
       );
     }
 
-    return finalize(textRes.value);
+    return finalize(textRes.value.content);
   }
 }
 
@@ -291,6 +300,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
           fileId,
         },
         tokensCount: null,
+        fileTitle: null,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
@@ -299,13 +309,12 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
     };
 
     const model = getSupportedModelConfig(agentConfiguration.model);
-    const textRes =
-      await ConversationIncludeFileAction.fileContentFromConversation(
-        fileId,
-        conversation,
-        model
-      );
-    if (textRes.isErr()) {
+    const fileRes = await ConversationIncludeFileAction.fileFromConversation(
+      fileId,
+      conversation,
+      model
+    );
+    if (fileRes.isErr()) {
       // We error here if the file was not found which will interrupt the agent loop. We might want
       // to consider letting this error go through here in the future if it happens non trivially
       // frequently so that we can present the failure in the action result instead (to give a
@@ -317,7 +326,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
         messageId: agentMessage.sId,
         error: {
           code: "conversation_include_file_error",
-          message: `Error including conversation file: ${textRes.error}`,
+          message: `Error including conversation file: ${fileRes.error}`,
         },
       };
       return;
@@ -325,7 +334,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const tokensRes = await coreAPI.tokenize({
-      text: textRes.value,
+      text: fileRes.value.content,
       providerId: model.providerId,
       modelId: model.modelId,
     });
@@ -344,9 +353,12 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
       return;
     }
 
-    // Store the tokens count on the action model for use in the rendering of the action for the
-    // model.
-    await action.update({ tokensCount: tokensRes.value.tokens.length });
+    // Store the tokens count and file title on the action model for use in the rendering of the
+    // action for the model (token count) and the rendering of the action details (file title).
+    await action.update({
+      tokensCount: tokensRes.value.tokens.length,
+      fileTitle: fileRes.value.file.title,
+    });
 
     yield {
       type: "conversation_include_file_success",
@@ -359,6 +371,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
           fileId,
         },
         tokensCount: tokensRes.value.tokens.length,
+        fileTitle: fileRes.value.file.title,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
@@ -390,6 +403,7 @@ export async function conversationIncludeFileTypesFromAgentMessageIds(
       id: action.id,
       params: { fileId: action.fileId },
       tokensCount: action.tokensCount,
+      fileTitle: action.fileTitle,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,

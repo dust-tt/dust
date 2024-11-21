@@ -57,7 +57,6 @@ export class ConversationListFilesAction extends BaseAction {
       `the \`include_conversation_file\` tool.\n` +
       // TODO(spolu): add mention of viz if enabled and other tools.
       `\n`;
-    // TODO(spolu) add file token count, make includabiility dependent on that.
     for (const f of this.files) {
       content +=
         `<file id="${f.fileId}" name="${f.title}" type="${f.contentType}" ` +

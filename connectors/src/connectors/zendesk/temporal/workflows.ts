@@ -17,9 +17,9 @@ import type {
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
 const {
-  fetchZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
+  syncZendeskCategoryBatchActivity,
   syncZendeskArticleBatchActivity,
   syncZendeskTicketBatchActivity,
 } = proxyActivities<typeof activities>({
@@ -45,15 +45,16 @@ const {
   deleteCategoryBatchActivity,
   deleteTicketBatchActivity,
   deleteArticleBatchActivity,
+  removeForbiddenCategoriesActivity,
   removeEmptyCategoriesActivity,
 } = proxyActivities<typeof gc_activities>({
   startToCloseTimeout: "5 minutes",
 });
 
 const {
-  getZendeskHelpCenterReadAllowedBrandIdsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
+  getZendeskHelpCenterReadAllowedBrandIdsActivity,
   getZendeskTicketsAllowedBrandIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
@@ -390,7 +391,7 @@ export async function zendeskCategorySyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const shouldSyncArticles = await syncZendeskCategoryActivity({
+  const { shouldSyncArticles } = await syncZendeskCategoryActivity({
     connectorId,
     categoryId,
     currentSyncDateMs,
@@ -427,9 +428,10 @@ export async function zendeskGarbageCollectionWorkflow({
   connectorId: ModelId;
 }) {
   // deleting the outdated tickets (deleted tickets are cleaned in the incremental sync)
-  let hasMore = true;
-  while (hasMore) {
-    hasMore = await removeOutdatedTicketBatchActivity(connectorId);
+  let hasMoreTickets = true;
+  while (hasMoreTickets) {
+    const { hasMore } = await removeOutdatedTicketBatchActivity(connectorId);
+    hasMoreTickets = hasMore;
   }
 
   // deleting the articles that cannot be found anymore in the Zendesk API
@@ -446,6 +448,13 @@ export async function zendeskGarbageCollectionWorkflow({
     } while (cursor !== null);
   }
 
+  // deleting the categories that have no permission anymore
+  let hasMoreCategories = true;
+  while (hasMoreCategories) {
+    const { hasMore } = await removeForbiddenCategoriesActivity(connectorId);
+    hasMoreCategories = hasMore;
+  }
+
   // deleting the categories that have no article anymore
   await removeEmptyCategoriesActivity(connectorId);
 
@@ -455,22 +464,34 @@ export async function zendeskGarbageCollectionWorkflow({
   // cleaning the articles and categories of the brands that have no permission on their Help Center anymore
   brandIds = await getZendeskBrandsWithHelpCenterToDeleteActivity(connectorId);
   for (const brandId of brandIds) {
-    hasMore = true;
-    while (hasMore) {
-      hasMore = await deleteArticleBatchActivity({ connectorId, brandId });
+    let hasMoreArticles = true;
+    while (hasMoreArticles) {
+      const { hasMore } = await deleteArticleBatchActivity({
+        connectorId,
+        brandId,
+      });
+      hasMoreArticles = hasMore;
     }
-    hasMore = true;
-    while (hasMore) {
-      hasMore = await deleteCategoryBatchActivity({ connectorId, brandId });
+    let hasMoreCategories = true;
+    while (hasMoreCategories) {
+      const { hasMore } = await deleteCategoryBatchActivity({
+        connectorId,
+        brandId,
+      });
+      hasMoreCategories = hasMore;
     }
   }
 
   // cleaning the tickets of the brands that have no permission on tickets anymore
   brandIds = await getZendeskBrandsWithTicketsToDeleteActivity(connectorId);
   for (const brandId of brandIds) {
-    let hasMore = true;
-    while (hasMore) {
-      hasMore = await deleteTicketBatchActivity({ connectorId, brandId });
+    let hasMoreTickets = true;
+    while (hasMoreTickets) {
+      const { hasMore } = await deleteTicketBatchActivity({
+        connectorId,
+        brandId,
+      });
+      hasMoreTickets = hasMore;
     }
   }
 
@@ -492,21 +513,23 @@ async function runZendeskBrandHelpCenterSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const categoryIds = await fetchZendeskCategoriesActivity({
-    connectorId,
-    brandId,
-  });
   const categoryIdsToSync = new Set<number>();
-  for (const categoryId of categoryIds) {
-    const wasCategoryUpdated = await syncZendeskCategoryActivity({
+
+  let cursor: string | null = null; // cursor involved in the pagination of the API
+  let hasMore = true;
+  while (hasMore) {
+    // not using runZendeskActivityWithPagination because we need to add result.categoriesToUpdate to the Set
+    const result = await syncZendeskCategoryBatchActivity({
       connectorId,
-      categoryId,
-      currentSyncDateMs,
       brandId,
+      currentSyncDateMs,
+      cursor,
     });
-    if (wasCategoryUpdated) {
-      categoryIdsToSync.add(categoryId);
-    }
+    hasMore = result.hasMore || false;
+    cursor = result.afterCursor;
+    result.categoriesToUpdate.forEach((categoryId) =>
+      categoryIdsToSync.add(categoryId)
+    );
   }
 
   for (const categoryId of categoryIdsToSync) {

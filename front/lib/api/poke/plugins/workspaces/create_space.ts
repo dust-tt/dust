@@ -49,6 +49,9 @@ export const createSpacePlugin = createPlugin(
 
     const space = spaceRes.value;
 
-    return new Ok(`Space ${space.name} created successfully`);
+    return new Ok({
+      display: "text",
+      value: `Space ${space.name} created successfully`,
+    });
   }
 );

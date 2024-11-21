@@ -16,7 +16,8 @@ export interface ConversationIncludeFileActionType extends BaseAction {
   params: {
     fileId: string;
   };
-  // TODO(spolu) store the agentMesssage modeId?
+  tokensCount: number | null;
+  fileTitle: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;

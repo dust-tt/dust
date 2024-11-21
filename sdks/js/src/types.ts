@@ -466,6 +466,7 @@ const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
     fileId: z.string(),
   }),
   tokensCount: z.number().nullable(),
+  fileTitle: z.string().nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   step: z.number(),
