@@ -212,7 +212,7 @@ export const getMenuItems = (
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current &&
-          contentActionsRef.current?.callAction(
+          contentActionsRef.current.callAction(
             contentNode.type === "database"
               ? "TableUploadOrEdit"
               : "DocumentUploadOrEdit",
@@ -226,7 +226,7 @@ export const getMenuItems = (
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current &&
-          contentActionsRef.current?.callAction(
+          contentActionsRef.current.callAction(
             "DocumentOrTableDeleteDialog",
             contentNode
           );
@@ -246,10 +246,7 @@ export const getMenuItems = (
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current &&
-          contentActionsRef.current?.callAction(
-            "AddToSpaceDialog",
-            contentNode
-          );
+          contentActionsRef.current.callAction("AddToSpaceDialog", contentNode);
       },
     });
   }
@@ -290,7 +287,7 @@ const makeViewRawContentAction = (
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
       contentActionsRef.current &&
-        contentActionsRef.current?.callAction(
+        contentActionsRef.current.callAction(
           "DocumentViewRawContent",
           contentNode
         );
