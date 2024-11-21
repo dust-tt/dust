@@ -173,7 +173,7 @@ export async function fetchZendeskCategoriesActivity({
  * If the Category is not allowed anymore, it will delete all its data.
  * If the Category is not present on Zendesk anymore, it will delete all its data as well.
  *
- * @returns true if the Category was updated, false if it was deleted.
+ * @returns true if the Category was updated and should be synced, false otherwise.
  */
 export async function syncZendeskCategoryActivity({
   connectorId,
@@ -200,7 +200,7 @@ export async function syncZendeskCategoryActivity({
     );
   }
 
-  // if all rights were revoked, we delete the category data.
+  // if all rights were revoked, we have nothing to sync
   if (categoryInDb.permission === "none") {
     return false;
   }
