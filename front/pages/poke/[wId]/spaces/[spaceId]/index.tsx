@@ -7,7 +7,6 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { MembersDataTable } from "@app/components/poke/members/table";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
