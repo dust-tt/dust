@@ -2,6 +2,7 @@ import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
+import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
@@ -57,8 +58,7 @@ const actionsSpecification: ActionSpecifications = {
     runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
   },
   conversation_include_file_action: {
-    // TODO(spolu): Implement detailsComponent
-    detailsComponent: () => null,
+    detailsComponent: ConversationIncludeFileActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
   },
 };
