@@ -247,7 +247,7 @@ export async function zendeskIncrementalSyncWorkflow({
 
   const startTimeMs = cursor
     ? new Date(cursor).getTime() // recasting the date since error may occur during Temporal's serialization
-    : currentSyncDateMs - 1000 * 60 * 5; // 5 min ago, previous scheduled execution
+    : currentSyncDateMs - 1000 * 60 * 30; // 30 min ago, previous scheduled execution
   const startTime = Math.floor(startTimeMs / 1000);
 
   for (const brandId of helpCenterBrandIds) {
