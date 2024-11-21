@@ -158,7 +158,7 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
 });
 
 function capture(sendResponse: (x: CaptureResponse) => void) {
-  return chrome.tabs.captureVisibleTab({ format: "png" }, function (dataURI) {
+  return chrome.tabs.captureVisibleTab(function (dataURI) {
     if (dataURI) {
       sendResponse({ dataURI });
     }
