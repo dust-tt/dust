@@ -76,12 +76,12 @@ async function generateSnippet(
   }
 
   const config = cloneBaseConfig(
-    DustProdActionRegistry["content-summarizer"].config
+    DustProdActionRegistry["conversation-file-summarizer"].config
   );
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
 
-  const res = await runAction(auth, "content-summarizer", config, [
+  const res = await runAction(auth, "conversation-file-summarizer", config, [
     {
       content: content,
     },

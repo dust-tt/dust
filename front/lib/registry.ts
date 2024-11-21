@@ -307,7 +307,7 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "content-summarizer": {
+  "conversation-file-summarizer": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "iy1pjLCMzZ",
