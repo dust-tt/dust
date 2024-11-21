@@ -255,7 +255,7 @@ function ThumbsSelector({
         onClick={() => selectThumb("up")}
         className={`p-1.5 disabled:opacity-50 disabled:cursor-not-allowed hover:s-text-blue-600 ${selectedThumb === "up" ? "s-text-blue-600" : ""}`}
       >
-        <HandThumbUpIcon className="h-4 w-4" />
+        <HandThumbUpIcon className="s-h-4 s-w-4" />
       </button>
       <button
         disabled={isSubmittingThumb}
