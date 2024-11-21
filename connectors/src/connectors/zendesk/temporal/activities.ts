@@ -1,6 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { deleteCategory } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -191,7 +190,6 @@ export async function syncZendeskCategoryActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     categoryId,
@@ -204,7 +202,6 @@ export async function syncZendeskCategoryActivity({
 
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
-    await deleteCategory({ connectorId, dataSourceConfig, categoryId });
     return false;
   }
 
@@ -216,11 +213,11 @@ export async function syncZendeskCategoryActivity({
     brandId,
   });
 
-  // if the category is not on Zendesk anymore, we delete it
+  // if the category is not on Zendesk anymore, we remove its permissions
   const { result: fetchedCategory } =
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
-    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+    await categoryInDb.revokePermissions();
     return false;
   }
 

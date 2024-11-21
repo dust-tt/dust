@@ -1,6 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { deleteCategory } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import {
   getArticleInternalId,
   getTicketInternalId,
@@ -24,6 +23,42 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+/**
+ * Deletes all the data stored in the db and in the data source relative to a category (articles).
+ */
+export async function deleteCategory({
+  connectorId,
+  categoryId,
+  dataSourceConfig,
+}: {
+  connectorId: number;
+  categoryId: number;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  /// deleting the articles in the data source
+  const articles = await ZendeskArticleResource.fetchByCategoryId({
+    connectorId,
+    categoryId,
+  });
+  await concurrentExecutor(
+    articles,
+    (article) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getArticleInternalId({ connectorId, articleId: article.articleId })
+      ),
+    { concurrency: 10 }
+  );
+  /// deleting the articles stored in the db
+  await ZendeskArticleResource.deleteByCategoryId({
+    connectorId,
+    categoryId,
+  });
+  // deleting the category stored in the db
+  await ZendeskCategoryResource.deleteByCategoryId({ connectorId, categoryId });
+}
 
 /**
  * Looks for empty Help Centers (no category with read permissions) and removes their permissions.
@@ -174,6 +209,24 @@ export async function removeMissingArticleBatchActivity({
 }
 
 /**
+ * This activity is responsible for removing the categories that have no read permissions.
+ */
+export async function removeForbiddenCategoriesActivity(connectorId: number) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const categoryIds =
+    await ZendeskCategoryResource.fetchReadForbiddenCategoryIds(connectorId);
+
+  for (const categoryId of categoryIds) {
+    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+  }
+}
+
+/**
  * This activity is responsible for removing all the empty categories (category with no readable article).
  */
 export async function removeEmptyCategoriesActivity(connectorId: number) {
@@ -186,6 +239,7 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
   const categoryIds =
     await ZendeskCategoryResource.fetchCategoryIdsForConnector(connectorId);
 
+  const categoriesToDelete = new Set<number>();
   await concurrentExecutor(
     categoryIds,
     async (categoryId) => {
@@ -194,11 +248,14 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
         categoryId,
       });
       if (articles.length === 0) {
-        await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+        categoriesToDelete.add(categoryId);
       }
     },
     { concurrency: 10 }
   );
+  for (const categoryId of categoriesToDelete) {
+    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+  }
 }
 
 /**

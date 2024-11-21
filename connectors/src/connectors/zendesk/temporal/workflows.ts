@@ -45,6 +45,7 @@ const {
   deleteCategoryBatchActivity,
   deleteTicketBatchActivity,
   deleteArticleBatchActivity,
+  removeForbiddenCategoriesActivity,
   removeEmptyCategoriesActivity,
 } = proxyActivities<typeof gc_activities>({
   startToCloseTimeout: "5 minutes",
@@ -445,6 +446,9 @@ export async function zendeskGarbageCollectionWorkflow({
       });
     } while (cursor !== null);
   }
+
+  // deleting the categories that have no permission anymore
+  await removeForbiddenCategoriesActivity(connectorId);
 
   // deleting the categories that have no article anymore
   await removeEmptyCategoriesActivity(connectorId);
