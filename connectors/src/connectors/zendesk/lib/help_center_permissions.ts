@@ -151,6 +151,39 @@ export async function allowSyncZendeskCategory({
     const zendeskApiClient = createZendeskClient(
       await getZendeskSubdomainAndAccessToken(connectionId)
     );
+
+    /// creating the brand if missing
+    const brand = await ZendeskBrandResource.fetchByBrandId({
+      connectorId,
+      brandId,
+    });
+    if (!brand) {
+      const {
+        result: { brand: fetchedBrand },
+      } = await zendeskApiClient.brand.show(brandId);
+
+      if (!fetchedBrand) {
+        logger.error(
+          { connectorId, brandId },
+          "[Zendesk] Brand could not be fetched."
+        );
+        return null;
+      }
+
+      await ZendeskBrandResource.makeNew({
+        blob: {
+          subdomain: fetchedBrand.subdomain,
+          connectorId: connectorId,
+          brandId: fetchedBrand.id,
+          name: fetchedBrand.name || "Brand",
+          ticketsPermission: "none",
+          helpCenterPermission: "read",
+          hasHelpCenter: fetchedBrand.has_help_center,
+          url: fetchedBrand.url,
+        },
+      });
+    }
+
     await changeZendeskClientSubdomain(zendeskApiClient, {
       connectorId,
       brandId,
