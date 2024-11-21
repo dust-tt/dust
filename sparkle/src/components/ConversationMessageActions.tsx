@@ -20,20 +20,20 @@ import { cn } from "@sparkle/lib/utils";
 type ConversationMessageActionsProps = {
   buttons?: React.ReactElement<typeof Button>[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
-  messageThumbs?: boolean;
+  messageThumb?: ConversationMessageThumbSelectorProps;
 };
 
 export function ConversationMessageActions({
   buttons = [],
   messageEmoji,
-  messageThumbs,
+  messageThumb,
 }: ConversationMessageActionsProps) {
-  if (messageThumbs) {
+  if (messageThumb) {
     buttons.push(
       <ConversationMessageThumbsSelector
         key="thumbs-selector"
-        onSubmitThumb={async (e) => console.log("onSubmitThumb", e)}
-        isSubmittingThumb={false}
+        onSubmitThumb={messageThumb.onSubmitThumb}
+        isSubmittingThumb={messageThumb.isSubmittingThumb}
       />
     );
   }
@@ -69,6 +69,7 @@ export interface ConversationMessageEmojiSelectorProps {
   isSubmittingEmoji: boolean;
 }
 
+export type ThumbReaction = "up" | "down";
 export interface ConversationMessageThumbSelectorProps {
   onSubmitThumb: (p: {
     thumb: string;
@@ -223,7 +224,7 @@ function ThumbsSelector({
 }: ConversationMessageThumbSelectorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectThumb = async (thumb: "up" | "down") => {
+  const selectThumb = async (thumb: ThumbReaction) => {
     if (selectedThumb === thumb) {
       setSelectedThumb(null);
       await onSubmitThumb({ thumb, isToRemove: true });
@@ -238,9 +239,8 @@ function ThumbsSelector({
     await onSubmitThumb({ thumb, isToRemove: false });
   };
 
-  const [selectedThumb, setSelectedThumb] = React.useState<
-    "up" | "down" | null
-  >(null);
+  const [selectedThumb, setSelectedThumb] =
+    React.useState<ThumbReaction | null>(null);
   const [isThumbDownModalOpened, setIsThumbDownModalOpened] =
     React.useState(false);
   const [feedback, setFeedback] = React.useState<string | null>(null);
@@ -278,21 +278,18 @@ function ThumbsSelector({
             value={feedback ?? ""}
             onChange={(e) => setFeedback(e.target.value)}
           />
-          <Page.P>Your feedback goes the the assistant's builder:</Page.P>
-
           <div className="s-mt-4">
             <Button
               variant="primary"
               label="Submit feedback"
-              size="sm"
               onClick={async () => {
+                setSelectedThumb("down");
+                setIsThumbDownModalOpened(false);
                 await onSubmitThumb({
                   thumb: "down",
                   isToRemove: false,
                   feedback: feedback,
                 });
-                setSelectedThumb("down");
-                setIsThumbDownModalOpened(false);
               }}
             />
           </div>
