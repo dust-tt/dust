@@ -55,7 +55,7 @@ import {
 } from "@extension/components/markdown/MentionBlock";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { useEventSource } from "@extension/hooks/useEventSource";
-import { assertNeverAndIgnore } from "@extension/lib/asserNever";
+import { assertNeverAndIgnore } from "@extension/lib/assertNeverAndIgnore";
 import { retryMessage } from "@extension/lib/conversation";
 import {
   useCallback,
