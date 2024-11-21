@@ -23,6 +23,7 @@ import { getConnectorProviderStrategy } from "@connectors/resources/connector/st
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import logger from "@connectors/logger/logger";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -137,7 +138,16 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
   static async fetchByIds(type: ConnectorProvider, ids: (ModelId | string)[]) {
     const parsedIds = ids
-      .map((id) => (typeof id === "string" ? parseInt(id, 10) : id))
+      .map((id) => {
+        const parsed = typeof id === "string" ? parseInt(id, 10) : id;
+        if (isNaN(parsed)) {
+          logger.error(
+            { originalId: id, type },
+            "Received invalid connector ID (NaN)"
+          );
+        }
+        return parsed;
+      })
       .filter((id) => !isNaN(id));
 
     if (parsedIds.length === 0) {
