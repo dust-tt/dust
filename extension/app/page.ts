@@ -34,8 +34,8 @@ declare global {
 }
 (function () {
   const CAPTURE_DELAY = 150;
-  const MAX_PRIMARY_DIMENSION = 1500 * 2,
-    MAX_SECONDARY_DIMENSION = 400 * 2,
+  const MAX_PRIMARY_DIMENSION = 15000 * 2,
+    MAX_SECONDARY_DIMENSION = 4000 * 2,
     MAX_AREA = MAX_PRIMARY_DIMENSION * MAX_SECONDARY_DIMENSION;
 
   if (!window.hasScreenCapturePage) {
