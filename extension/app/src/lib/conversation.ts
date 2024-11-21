@@ -337,7 +337,7 @@ export const getIncludeCurrentTab = async (params: GetActiveTabOptions) => {
   const backgroundRes = await sendGetActiveTabMessage(params);
   if (
     (params.includeContent && !backgroundRes.content) ||
-    (params.includeScreenshot && !backgroundRes.screenshot) ||
+    (params.includeCapture && !backgroundRes.captures) ||
     !backgroundRes.url ||
     !backgroundRes.title
   ) {
