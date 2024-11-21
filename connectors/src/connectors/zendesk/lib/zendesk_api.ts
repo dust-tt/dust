@@ -131,8 +131,13 @@ async function fetchFromZendeskWithRetries({
     }
   }
   const text = await rawResponse.text();
-  const response = JSON.parse(text);
-
+  let response;
+  try {
+    response = JSON.parse(text);
+  } catch (e) {
+    logger.error({ text }, "[Zendesk] Error parsing Zendesk API response");
+    throw new Error(`Error parsing Zendesk API response: ${text}`);
+  }
   if (!rawResponse.ok) {
     if (response.type === "error.list" && response.errors?.length) {
       const error = response.errors[0];
