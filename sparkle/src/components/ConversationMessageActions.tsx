@@ -271,7 +271,7 @@ function ThumbsSelector({
         variant="side-sm"
         title="Feedback"
       >
-        <div className="py-8">
+        <div className="s-py-8">
           <TextArea
             placeholder="What was unsatisfactory about this answer?"
             className="s-mt-4"
