@@ -10,21 +10,6 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 
-const isMarkdownType = (mimetype: string | null): boolean => {
-  if (!mimetype) {
-    return false;
-  }
-
-  const markdownTypes = [
-    "text/markdown",
-    "text/x-markdown",
-    "text/md",
-    "application/markdown",
-    "application/octet-stream",
-  ];
-  return markdownTypes.includes(mimetype) || mimetype.endsWith("/md");
-};
-
 export const parseUploadRequest = async (
   file: FileResource,
   req: IncomingMessage,
@@ -53,12 +38,6 @@ export const parseUploadRequest = async (
 
       // Ensure the file is of the correct type.
       filter: function (part) {
-        // For markdown files, check both sides are markdown types
-        // Needed because multiple types might check for markdown
-        if (isMarkdownType(file.contentType)) {
-          return isMarkdownType(part.mimetype);
-        }
-        // For other file types, require exact match
         return part.mimetype === file.contentType;
       },
     });

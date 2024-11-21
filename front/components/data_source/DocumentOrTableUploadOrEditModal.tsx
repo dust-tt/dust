@@ -21,6 +21,7 @@ import type {
   CoreAPILightDocument,
   DataSourceViewType,
   LightContentNode,
+  LightWorkspaceType,
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -57,12 +58,12 @@ function isCoreAPIDocumentType(
 }
 
 const fetchFileTextContent = async (
-  workspaceId: string,
+  owner: LightWorkspaceType,
   fileId: string,
   version: FileVersion
 ) => {
   const response = await fetch(
-    `/api/w/${workspaceId}/files/${fileId}?action=view&version=${version}`
+    `/api/w/${owner.sId}/files/${fileId}?action=view&version=${version}`
   );
   if (!response.ok) {
     return null;
@@ -91,7 +92,7 @@ export function DocumentOrTableUploadOrEditModal(
   return isTable ? (
     <TableUploadOrEditModal {...props} initialId={initialId} />
   ) : (
-    <DocumentUploadorEditModal {...props} initialId={initialId} />
+    <DocumentUploadOrEditModal {...props} initialId={initialId} />
   );
 }
 
@@ -102,7 +103,7 @@ interface Document {
   sourceUrl: string;
 }
 
-const DocumentUploadorEditModal = ({
+const DocumentUploadOrEditModal = ({
   dataSourceView,
   isOpen,
   onClose,
@@ -127,8 +128,9 @@ const DocumentUploadorEditModal = ({
     name: false,
     content: false,
   });
-  const [uploading, setUploading] = useState(false);
-  const [creatingFile, setCreatingFile] = useState(false);
+  const [isUpserting, setIsUpserting] = useState(false);
+  const [isGettingProcessedContent, setIsGettingProcessedContent] =
+    useState(false);
   const [isValidDocument, setIsValidDocument] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
@@ -161,15 +163,15 @@ const DocumentUploadorEditModal = ({
 
   useEffect(() => {
     const isNameValid = !!documentState.name;
-    const isContentValid = !!documentState.text;
+    const isContentValid = documentState.text.length > 0;
     setIsValidDocument(isNameValid && isContentValid);
   }, [documentState]);
 
   const handleDocumentUpload = async (document: Document) => {
-    setUploading(true);
+    setIsUpserting(true);
     try {
       const body = {
-        name: initialId ? initialId : document.name,
+        name: initialId ?? document.name,
         timestamp: null,
         parents: null,
         section: { prefix: null, content: document.text, sections: [] },
@@ -206,7 +208,7 @@ const DocumentUploadorEditModal = ({
         description: `An error occurred: ${error instanceof Error ? error.message : String(error)}.`,
       });
     } finally {
-      setUploading(false);
+      setIsUpserting(false);
       setDocumentState({
         name: "",
         text: "",
@@ -237,14 +239,14 @@ const DocumentUploadorEditModal = ({
       return;
     }
 
-    setCreatingFile(true);
+    setIsGettingProcessedContent(true);
     try {
-      // Create file
+      // Create a file -> Allows to get processed text content from Tika via the file API.
       const fileBlobs = await fileUploaderService.handleFilesUpload([
         selectedFile,
       ]);
       if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
-        setCreatingFile(false);
+        setIsGettingProcessedContent(false);
         fileUploaderService.resetUpload();
         return new Err(
           new Error(
@@ -256,13 +258,13 @@ const DocumentUploadorEditModal = ({
       // fetch file's processed text
       const fileId = fileBlobs[0].fileId;
       const processedText = await fetchFileTextContent(
-        owner.sId,
+        owner,
         fileId,
         "processed"
       );
       if (!processedText) {
         fileUploaderService.removeFile(fileBlobs[0].fileId);
-        setCreatingFile(false);
+        setIsGettingProcessedContent(false);
         return new Err(new Error("Error reading file content"));
       }
 
@@ -271,10 +273,7 @@ const DocumentUploadorEditModal = ({
         ...prev,
         text: processedText,
       }));
-      setCreatingFile(false);
-
-      // Delete file
-      fileUploaderService.removeFile(fileBlobs[0].fileId);
+      setIsGettingProcessedContent(false);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -282,7 +281,7 @@ const DocumentUploadorEditModal = ({
         description: error instanceof Error ? error.message : String(error),
       });
     } finally {
-      setCreatingFile(false);
+      setIsGettingProcessedContent(false);
     }
   };
 
@@ -296,13 +295,13 @@ const DocumentUploadorEditModal = ({
       hasChanged={
         !isDocumentError &&
         !isDocumentLoading &&
-        !creatingFile &&
+        !isGettingProcessedContent &&
         isValidDocument
       }
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} document`}
       onSave={handleUpload}
-      isSaving={uploading}
+      isSaving={isUpserting}
     >
       {isDocumentLoading ? (
         <div className="flex justify-center py-4">
@@ -365,10 +364,13 @@ const DocumentUploadorEditModal = ({
                       : plan.limits.dataSources.documents.sizeMb
                   } MB of raw text.`}
                   action={{
-                    label: creatingFile ? "Uploading..." : "Upload file",
+                    label: isGettingProcessedContent
+                      ? "Uploading..."
+                      : "Upload file",
                     variant: "primary",
                     icon: DocumentPlusIcon,
                     onClick: () => fileInputRef.current?.click(),
+                    isLoading: isGettingProcessedContent,
                   }}
                 />
                 <input
@@ -380,7 +382,7 @@ const DocumentUploadorEditModal = ({
                 />
                 <TextArea
                   minRows={10}
-                  disabled={creatingFile}
+                  disabled={isGettingProcessedContent}
                   placeholder="Your document content..."
                   value={documentState.text}
                   onChange={(e) => {
@@ -499,7 +501,7 @@ const TableUploadOrEditModal = ({
     name: false,
     description: false,
   });
-  const [uploading, setUploading] = useState(false);
+  const [isUpserting, setIsUpserting] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
   const [isValidTable, setIsValidTable] = useState(false);
   const [useAppForHeaderDetection, setUseAppForHeaderDetection] =
@@ -536,7 +538,7 @@ const TableUploadOrEditModal = ({
   }, [tableState]);
 
   const handleTableUpload = async (table: Table) => {
-    setUploading(true);
+    setIsUpserting(true);
     try {
       const fileContent = table.file
         ? await handleFileUploadToText(table.file)
@@ -591,7 +593,7 @@ const TableUploadOrEditModal = ({
         description: `An error occurred: ${error instanceof Error ? error.message : String(error)}.`,
       });
     } finally {
-      setUploading(false);
+      setIsUpserting(false);
     }
   };
 
@@ -610,7 +612,7 @@ const TableUploadOrEditModal = ({
       return;
     }
 
-    setUploading(true);
+    setIsUpserting(true);
     try {
       if (selectedFile.size > MAX_FILE_SIZES.plainText) {
         sendNotification({
@@ -618,7 +620,7 @@ const TableUploadOrEditModal = ({
           title: "File too large",
           description: `Please upload a file smaller than ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`,
         });
-        setUploading(false);
+        setIsUpserting(false);
         return;
       }
 
@@ -631,7 +633,7 @@ const TableUploadOrEditModal = ({
         description: error instanceof Error ? error.message : String(error),
       });
     } finally {
-      setUploading(false);
+      setIsUpserting(false);
     }
   };
 
@@ -645,7 +647,7 @@ const TableUploadOrEditModal = ({
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} table`}
       onSave={handleUpload}
-      isSaving={uploading}
+      isSaving={isUpserting}
     >
       {isTableLoading ? (
         <div className="flex justify-center py-4">
@@ -715,7 +717,7 @@ const TableUploadOrEditModal = ({
                   title="CSV File"
                   description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`}
                   action={{
-                    label: uploading
+                    label: isUpserting
                       ? "Uploading..."
                       : tableState.file
                         ? tableState.file.name

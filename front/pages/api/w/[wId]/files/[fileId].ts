@@ -19,15 +19,33 @@ export const config = {
   },
 };
 
-const validActions = ["view", "download"] as const;
-type Action = (typeof validActions)[number];
-
+// Declared here because endpoint-specific.
+//TODO: Create an enum for this class
 const VALID_VIEW_VERSIONS: FileVersion[] = [
   "original",
   "processed",
   "public",
   "snippet",
 ];
+function isValidViewVersion(
+  // Because coming from the URL, it can be a string or an array of strings.
+  version: string | string[] | undefined
+): version is FileVersion {
+  return (
+    typeof version === "string" &&
+    VALID_VIEW_VERSIONS.includes(version as FileVersion)
+  );
+}
+
+// Declared here because endpoint-specific.
+const VALID_ACTIONS = ["view", "download"] as const;
+type Action = (typeof VALID_ACTIONS)[number];
+function isValidAction(
+  // Because coming from the URL, it can be a string or an array of strings.
+  action: string | string[] | undefined
+): action is Action {
+  return typeof action === "string" && VALID_ACTIONS.includes(action as Action);
+}
 
 async function handler(
   req: NextApiRequest,
@@ -58,17 +76,15 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const action: Action = validActions.includes(req.query.action as Action)
-        ? (req.query.action as Action)
+      const action = isValidAction(req.query.action)
+        ? req.query.action
         : "download";
 
       if (action === "view") {
         // Get the version of the file.
-        const version: FileVersion =
-          req.query.version &&
-          VALID_VIEW_VERSIONS.includes(req.query.version as FileVersion)
-            ? (req.query.version as FileVersion)
-            : "original";
+        const version = isValidViewVersion(req.query.version)
+          ? req.query.version
+          : "original";
 
         const readStream = file.getReadStream({
           auth,
