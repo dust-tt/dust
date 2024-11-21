@@ -180,28 +180,38 @@ async function handleDataSourceView(
     auth,
     dataSourceViewId
   );
-  if (!dataSourceView) {
+
+  // This check is meant to block access to "conversations" space through a
+  // datasource block in a dust app, which could lead to data leaks, see related PR
+  // https://github.com/dust-tt/dust/pull/8815
+  // Only case in which this is allowed is for our packaged apps, via a system
+  // key, in particular "assistant-retrieval-v2" that needs access to the
+  // conversation space
+  const forbiddenAccessToConversations =
+    dataSourceView?.space?.kind === "conversations" && !auth.isSystemKey();
+
+  if (!dataSourceView || forbiddenAccessToConversations) {
     return new Err(new Error("Data source view not found."));
   }
 
-  if (dataSourceView.canRead(auth)) {
-    const { dataSource } = dataSourceView;
-
-    return new Ok({
-      project_id: parseInt(dataSource.dustAPIProjectId),
-      data_source_id: dataSource.dustAPIDataSourceId,
-      view_filter: {
-        tags: null,
-        parents: {
-          in: dataSourceView.parentsIn,
-          not: null,
-        },
-        timestamp: null,
-      },
-    });
+  if (!dataSourceView.canRead(auth)) {
+    return new Err(new Error("No access to data source view."));
   }
 
-  return new Err(new Error("No access to data source view."));
+  const { dataSource } = dataSourceView;
+
+  return new Ok({
+    project_id: parseInt(dataSource.dustAPIProjectId),
+    data_source_id: dataSource.dustAPIDataSourceId,
+    view_filter: {
+      tags: null,
+      parents: {
+        in: dataSourceView.parentsIn,
+        not: null,
+      },
+      timestamp: null,
+    },
+  });
 }
 
 async function handleDataSource(
@@ -227,7 +237,17 @@ async function handleDataSource(
     // TODO(DATASOURCE_SID): Clean-up
     { origin: "registry_lookup" }
   );
-  if (!dataSource) {
+
+  // This check is meant to block access to "conversations" space through a
+  // datasource block in a dust app, which could lead to data leaks, see related PR
+  // https://github.com/dust-tt/dust/pull/8815
+  // Only case in which this is allowed is for our packaged apps, via a system
+  // key, in particular "assistant-retrieval-v2" that needs access to the
+  // conversation space
+  const forbiddenAccessToConversations =
+    dataSource?.space?.kind === "conversations" && !auth.isSystemKey();
+
+  if (!dataSource || forbiddenAccessToConversations) {
     return new Err(new Error("Data source not found."));
   }
 
