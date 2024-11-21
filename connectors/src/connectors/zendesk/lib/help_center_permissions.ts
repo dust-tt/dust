@@ -94,11 +94,9 @@ export async function allowSyncZendeskHelpCenter({
 export async function forbidSyncZendeskHelpCenter({
   connectorId,
   brandId,
-  withChildren = true,
 }: {
   connectorId: ModelId;
   brandId: number;
-  withChildren?: boolean;
 }): Promise<ZendeskBrandResource | null> {
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -116,16 +114,14 @@ export async function forbidSyncZendeskHelpCenter({
   await brand.revokeHelpCenterPermissions();
 
   // revoking the permissions for all the children categories and articles
-  if (withChildren) {
-    await ZendeskCategoryResource.revokePermissionsForBrand({
-      connectorId,
-      brandId,
-    });
-    await ZendeskArticleResource.revokePermissionsForBrand({
-      connectorId,
-      brandId,
-    });
-  }
+  await ZendeskCategoryResource.revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  });
+  await ZendeskArticleResource.revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  });
 
   return brand;
 }
