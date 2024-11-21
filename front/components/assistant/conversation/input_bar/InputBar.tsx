@@ -1,4 +1,4 @@
-import { Button, StopIcon } from "@dust-tt/sparkle";
+import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
@@ -38,7 +38,6 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-  isFloatingWithoutMargin = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -54,6 +53,27 @@ export function AssistantInputBar({
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
 }) {
+  const [isFocused, setIsFocused] = useState(false);
+  const rainbowEffectRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = rainbowEffectRef.current;
+    if (!container) {
+      return;
+    }
+
+    const onFocusIn = () => setIsFocused(true);
+    const onFocusOut = () => setIsFocused(false);
+
+    container.addEventListener("focusin", onFocusIn);
+    container.addEventListener("focusout", onFocusOut);
+
+    return () => {
+      container.removeEventListener("focusin", onFocusIn);
+      container.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
+
   const { mutateConversation } = useConversation({
     conversationId,
     workspaceId: owner.sId,
@@ -205,7 +225,7 @@ export function AssistantInputBar({
   }, [isStopping, generationContext.generatingMessages, conversationId]);
 
   return (
-    <div className="flex w-full flex-col">
+    <div className={cn("flex w-full flex-col", isFloating && "sm:px-3")}>
       {generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       ) && (
@@ -221,27 +241,26 @@ export function AssistantInputBar({
         </div>
       )}
 
-      <div
-        className={classNames(
-          "flex flex-1 px-0",
-          isFloating ? (isFloatingWithoutMargin ? "" : "sm:px-4") : ""
-        )}
-      >
-        <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
+      <div ref={rainbowEffectRef} className="flex w-full flex-col">
+        <RainbowEffect
+          className="w-full"
+          containerClassName="w-full"
+          size={isFocused ? "large" : "medium"}
+          disabled={!isFloating}
+        >
           <div
             className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
-              "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-2 sm:flex-row sm:pl-5",
+              "bg-primary-50",
               "transition-all",
               isFloating
-                ? "sm:rounded-2xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
-                : "",
+                ? "rounded-3xl border border-border-dark focus-within:ring-1 focus-within:ring-highlight-300 sm:border-border-dark/50 sm:focus-within:border-border-dark sm:focus-within:ring-2 sm:focus-within:ring-offset-2"
+                : "border-t",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
               <InputBarCitations fileUploaderService={fileUploaderService} />
-
               <InputBarContainer
                 actions={actions}
                 disableAutoFocus={disableAutoFocus}
@@ -256,7 +275,7 @@ export function AssistantInputBar({
               />
             </div>
           </div>
-        </div>
+        </RainbowEffect>
       </div>
     </div>
   );
@@ -284,7 +303,13 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
+    <div
+      className={cn(
+        "sticky bottom-0 z-20 flex max-h-screen w-full",
+        "pb-2",
+        "sm:w-full sm:max-w-4xl sm:pb-8"
+      )}
+    >
       <AssistantInputBar
         owner={owner}
         onSubmit={onSubmit}
