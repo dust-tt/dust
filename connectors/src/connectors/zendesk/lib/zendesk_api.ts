@@ -134,6 +134,13 @@ async function fetchFromZendeskWithRetries({
   try {
     response = await rawResponse.json();
   } catch (e) {
+    if (rawResponse.status === 404) {
+      logger.error(
+        { rawResponse, text: rawResponse.text },
+        "[Zendesk] Zendesk API 404 error"
+      );
+      return null;
+    }
     logger.error(
       { rawResponse, status: rawResponse.status, text: rawResponse.text },
       "[Zendesk] Error parsing Zendesk API response"
