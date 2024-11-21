@@ -41,6 +41,7 @@ export type ContentFragmentType = {
   id: ModelId;
   sId: string;
   fileId: string | null;
+  snippet: string | null;
   created: number;
   type: "content_fragment";
   visibility: MessageVisibility;

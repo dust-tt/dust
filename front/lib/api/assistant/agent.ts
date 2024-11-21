@@ -95,9 +95,11 @@ export async function* runAgent(
   }
 
   // Add JIT actions for available files in the conversation.
-  fullConfiguration.actions = fullConfiguration.actions.concat(
-    await getJITActions(auth, { conversation })
-  );
+  if (await isJITActionsEnabled(auth)) {
+    fullConfiguration.actions = fullConfiguration.actions.concat(
+      await getJITActions(auth, { conversation })
+    );
+  }
 
   const stream = runMultiActionsAgentLoop(
     auth,
@@ -314,7 +316,7 @@ async function getEmulatedAgentMessageActions(
 ): Promise<AgentActionType[]> {
   const actions: AgentActionType[] = [];
   if (await isJITActionsEnabled(auth)) {
-    const a = await makeConversationListFilesAction(auth, {
+    const a = makeConversationListFilesAction({
       agentMessage,
       conversation,
     });

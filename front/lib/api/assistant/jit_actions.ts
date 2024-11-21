@@ -35,9 +35,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
@@ -57,10 +55,9 @@ export async function isJITActionsEnabled(
   return use;
 }
 
-export async function listFiles(
-  auth: Authenticator,
-  { conversation }: { conversation: ConversationType }
-): Promise<ConversationFileType[]> {
+export function listFiles(
+  conversation: ConversationType
+): ConversationFileType[] {
   const files: ConversationFileType[] = [];
   for (const m of conversation.content.flat(1)) {
     if (
@@ -73,6 +70,7 @@ export async function listFiles(
           fileId: m.fileId,
           title: m.title,
           contentType: m.contentType,
+          snippet: m.snippet,
         });
       }
     } else if (isAgentMessageType(m)) {
@@ -83,20 +81,11 @@ export async function listFiles(
               fileId: a.resultsFileId,
               contentType: "text/csv",
               title: getTablesQueryResultsFileTitle({ output: a.output }),
+              snippet: null, // This means that we can't use it for JIT actions (the resultsFileSnippet is not the same snippet)
             });
           }
         }
       }
-    }
-  }
-
-  // Fetch the snippets
-  const fileIds = files.map((f) => f.fileId);
-  const fileResources = await FileResource.fetchByIds(auth, fileIds);
-  for (const f of files) {
-    const fileResource = fileResources.find((fr) => fr.sId === f.fileId);
-    if (fileResource && fileResource.snippet) {
-      f.snippet = fileResource.snippet;
     }
   }
 
@@ -110,32 +99,16 @@ export async function getJITActions(
   const actions: AgentActionConfigurationType[] = [];
 
   if (await isJITActionsEnabled(auth)) {
-    const files = await listFiles(auth, { conversation });
+    const files = listFiles(conversation);
     if (files.length > 0) {
       const filesUsableForJIT = files.filter((f) => !!f.snippet);
 
       if (filesUsableForJIT.length > 0) {
         // Get the datasource view for the conversation.
-        const dataSource = await DataSourceResource.fetchByConversationId(
+        const dataSourceView = await DataSourceViewResource.fetchByConversation(
           auth,
-          conversation.id
+          conversation
         );
-
-        if (!dataSource) {
-          logger.warn(
-            {
-              conversationId: conversation.sId,
-              fileIds: filesUsableForJIT.map((f) => f.fileId),
-              workspaceId: conversation.owner.sId,
-            },
-            "No datasource found for conversation when trying to get JIT actions."
-          );
-          return [];
-        }
-
-        const dataSourceView = (
-          await DataSourceViewResource.listForDataSources(auth, [dataSource])
-        ).find((dsv) => dsv.isDefault());
 
         if (!dataSourceView) {
           logger.warn(
@@ -152,7 +125,7 @@ export async function getJITActions(
 
         // Check tables for the table query action.
         const filesUsableAsTableQuery = filesUsableForJIT.filter(
-          (f) => f.contentType == "text/csv" // TODO: there should not be a hardcoded value here
+          (f) => f.contentType === "text/csv" // TODO: there should not be a hardcoded value here
         );
 
         if (filesUsableAsTableQuery.length > 0) {

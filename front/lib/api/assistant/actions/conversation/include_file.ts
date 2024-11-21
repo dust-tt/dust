@@ -141,6 +141,7 @@ export class ConversationIncludeFileAction extends BaseAction {
         fileId,
         title: m.title,
         contentType: m.contentType,
+        snippet: m.snippet,
       },
       content: text,
     });

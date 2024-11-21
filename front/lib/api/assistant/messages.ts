@@ -259,15 +259,22 @@ async function batchRenderContentFragment(
     );
   }
 
-  return messagesWithContentFragment.map((message: Message) => {
-    const contentFragment = ContentFragmentResource.fromMessage(message);
+  return Promise.all(
+    messagesWithContentFragment.map(async (message: Message) => {
+      const contentFragment = ContentFragmentResource.fromMessage(message);
+      const render = await contentFragment.renderFromMessage({
+        auth,
+        conversationId,
+        message,
+      });
 
-    return {
-      m: contentFragment.renderFromMessage({ auth, conversationId, message }),
-      rank: message.rank,
-      version: message.version,
-    };
-  });
+      return {
+        m: render,
+        rank: message.rank,
+        version: message.version,
+      };
+    })
+  );
 }
 
 /**

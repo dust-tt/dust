@@ -2,6 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
+  ConversationType,
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
@@ -355,6 +356,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     );
 
     return dataSourceViews ?? null;
+  }
+
+  static async fetchByConversation(
+    auth: Authenticator,
+    conversation: ConversationType
+  ): Promise<DataSourceViewResource | null> {
+    // Fetch the data source view associated with the datasource that is associated with the conversation.
+    const dataSource = await DataSourceResource.fetchByConversationId(
+      auth,
+      conversation.id
+    );
+    if (!dataSource) {
+      return null;
+    }
+
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          kind: "default",
+          dataSourceId: dataSource.id,
+        },
+      }
+    );
+
+    return dataSourceViews[0] ?? null;
   }
 
   static async search(

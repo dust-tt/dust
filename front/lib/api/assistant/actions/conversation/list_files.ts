@@ -12,7 +12,6 @@ import _ from "lodash";
 
 import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { listFiles } from "@app/lib/api/assistant/jit_actions";
-import type { Authenticator } from "@app/lib/auth";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
@@ -74,14 +73,14 @@ export class ConversationListFilesAction extends BaseAction {
   }
 }
 
-export async function makeConversationListFilesAction(
-  auth: Authenticator,
-  {
-    agentMessage,
-    conversation,
-  }: { agentMessage: AgentMessageType; conversation: ConversationType }
-): Promise<ConversationListFilesActionType | null> {
-  const files: ConversationFileType[] = await listFiles(auth, { conversation });
+export function makeConversationListFilesAction({
+  agentMessage,
+  conversation,
+}: {
+  agentMessage: AgentMessageType;
+  conversation: ConversationType;
+}): ConversationListFilesActionType | null {
+  const files: ConversationFileType[] = listFiles(conversation);
 
   if (files.length === 0) {
     return null;
