@@ -326,6 +326,11 @@ export async function syncZendeskArticleBatchActivity({
     cursor,
   });
 
+  logger.info(
+    { ...loggerArgs, articlesSynced: articles.length },
+    `[Zendesk] Processing ${articles.length} articles in batch`
+  );
+
   const sections = await zendeskApiClient.helpcenter.sections.list();
   const users = await zendeskApiClient.users.list();
 
