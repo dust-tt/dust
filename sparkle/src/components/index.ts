@@ -93,6 +93,7 @@ export { RainbowEffect } from "./RainbowEffect";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
 export type { SearchbarProps } from "./Searchbar";
 export { Searchbar } from "./Searchbar";
+export { SearchInput } from "./SearchInput";
 export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
