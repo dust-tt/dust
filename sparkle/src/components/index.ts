@@ -24,7 +24,10 @@ export { ContentMessage } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
 export type { ConversationMessageSizeType } from "./ConversationMessage";
 export { ConversationMessage } from "./ConversationMessage";
-export type { ConversationMessageEmojiSelectorProps } from "./ConversationMessageActions";
+export type {
+  ConversationMessageEmojiSelectorProps,
+  ConversationMessageThumbSelectorProps,
+} from "./ConversationMessageActions";
 export { ConversationMessageActions } from "./ConversationMessageActions";
 export { ConversationMessageContent } from "./ConversationMessageContent";
 export { ConversationMessageHeader } from "./ConversationMessageHeader";
