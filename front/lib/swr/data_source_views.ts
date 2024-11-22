@@ -11,7 +11,7 @@ import {
   appendPaginationParams,
   fetcher,
   fetcherMultiple,
-  postFetcher,
+  fetcherWithBody,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
@@ -151,7 +151,11 @@ export function useDataSourceViewContentNodes({
           return undefined;
         }
 
-        return postFetcher([url, { internalIds, parentId, viewType }]);
+        return fetcherWithBody([
+          url,
+          { internalIds, parentId, viewType },
+          "POST",
+        ]);
       },
       {
         ...swrOptions,

@@ -37,6 +37,10 @@ import React, { useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
+import {
+  useCreateDataSourceDocumentMutation,
+  useUpdateDataSourceDocumentMutation,
+} from "@app/lib/swr/data_source_documents";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 import { useFileProcessedContent } from "@app/lib/swr/file";
 import { useTable } from "@app/lib/swr/tables";
@@ -113,7 +117,6 @@ const DocumentUploadOrEditModal = ({
     name: false,
     content: false,
   });
-  const [isUpserting, setIsUpserting] = useState(false);
 
   const [isValidDocument, setIsValidDocument] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
@@ -149,84 +152,91 @@ const DocumentUploadOrEditModal = ({
     shouldRetryOnError: false,
   });
 
-  useEffect(() => {
-    if (!initialId) {
-      setDocumentState({
-        name: "",
-        text: "",
-        tags: [],
-        sourceUrl: "",
-      });
-    } else if (document && isCoreAPIDocumentType(document)) {
-      setDocumentState((prev) => ({
-        ...prev,
-        name: initialId,
-        text: document.text ?? "",
-        tags: document.tags,
-        sourceUrl: document.source_url ?? "",
-      }));
-    }
-  }, [initialId, document]);
+  // Side effects of upserting the data source document
+  const onUpsertSuccess = () => {
+    sendNotification({
+      type: "success",
+      title: `Document successfully ${initialId ? "updated" : "added"}`,
+      description: `Document ${documentState.name} was successfully ${
+        initialId ? "updated" : "added"
+      }.`,
+    });
+    onClose(true);
+    setDocumentState({
+      name: "",
+      text: "",
+      tags: [],
+      sourceUrl: "",
+    });
+    setEditionStatus({
+      content: false,
+      name: false,
+    });
+  };
 
-  useEffect(() => {
-    const isNameValid = !!documentState.name;
-    const isContentValid = documentState.text.length > 0;
-    setIsValidDocument(isNameValid && isContentValid);
-  }, [documentState]);
+  const onUpsertError = (error: unknown) => {
+    sendNotification({
+      type: "error",
+      title: "Error upserting document",
+      description: error instanceof Error ? error.message : String(error),
+    });
+    console.error(error);
+  };
+
+  const onUpsertSettled = () => {
+    fileUploaderService.resetUpload();
+  };
+
+  // Upsert documents to the data source
+  const patchDocumentMutation = useUpdateDataSourceDocumentMutation(
+    owner,
+    dataSourceView,
+    initialId ?? "",
+    {
+      onSuccess: (_data, _key, _config) => {
+        onUpsertSuccess();
+        onUpsertSettled();
+      },
+      onError: (_err, _key, _config) => {
+        onUpsertError(err);
+        onUpsertSettled();
+      },
+    }
+  );
+
+  const createDocumentMutation = useCreateDataSourceDocumentMutation(
+    owner,
+    dataSourceView,
+    {
+      onSuccess: (_data, _key, _config) => {
+        onUpsertSuccess();
+        onUpsertSettled();
+      },
+      onError: (_err, _key, _config) => {
+        onUpsertError(err);
+        onUpsertSettled();
+      },
+    }
+  );
 
   const handleDocumentUpload = async (document: Document) => {
-    setIsUpserting(true);
-    try {
-      const body = {
-        name: initialId ?? document.name,
-        timestamp: null,
-        parents: null,
-        section: { prefix: null, content: document.text, sections: [] },
-        text: null,
-        source_url: document.sourceUrl || undefined,
-        tags: document.tags.filter(Boolean),
-        light_document_output: true,
-        upsert_context: null,
-        async: false,
-      };
-      const stringifiedBody = JSON.stringify(body);
+    const body = {
+      name: initialId ?? document.name,
+      timestamp: null,
+      parents: null,
+      section: { prefix: null, content: document.text, sections: [] },
+      text: null,
+      source_url: document.sourceUrl || undefined,
+      tags: document.tags.filter(Boolean),
+      light_document_output: true,
+      upsert_context: null,
+      async: false,
+    };
 
-      const base = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
-      const endpoint = initialId ? `${base}/${initialId}` : base;
-      const res = await fetch(endpoint, {
-        method: initialId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: stringifiedBody,
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to upsert document");
-      }
-
-      sendNotification({
-        type: "success",
-        title: `Document successfully ${initialId ? "updated" : "added"}`,
-        description: `Document ${document.name} was successfully ${initialId ? "updated" : "added"}.`,
-      });
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Error upserting document",
-        description: `An error occurred: ${error instanceof Error ? error.message : String(error)}.`,
-      });
-    } finally {
-      setIsUpserting(false);
-      setDocumentState({
-        name: "",
-        text: "",
-        tags: [],
-        sourceUrl: "",
-      });
-      setEditionStatus({
-        content: false,
-        name: false,
-      });
-      fileUploaderService.resetUpload();
+    if (initialId) {
+      await patchDocumentMutation.trigger({ documentBody: body });
+    } else {
+      await createDocumentMutation.trigger({ documentBody: body });
     }
   };
 
@@ -281,6 +291,33 @@ const DocumentUploadOrEditModal = ({
     }
   };
 
+  // Effect: Set the document state when the document is loaded
+  useEffect(() => {
+    if (!initialId) {
+      setDocumentState({
+        name: "",
+        text: "",
+        tags: [],
+        sourceUrl: "",
+      });
+    } else if (document && isCoreAPIDocumentType(document)) {
+      setDocumentState((prev) => ({
+        ...prev,
+        name: initialId,
+        text: document.text ?? "",
+        tags: document.tags,
+        sourceUrl: document.source_url ?? "",
+      }));
+    }
+  }, [initialId, document]);
+
+  // Effect: Validate the document state
+  useEffect(() => {
+    const isNameValid = !!documentState.name;
+    const isContentValid = documentState.text.length > 0;
+    setIsValidDocument(isNameValid && isContentValid);
+  }, [documentState]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -298,7 +335,9 @@ const DocumentUploadOrEditModal = ({
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} document`}
       onSave={handleUpload}
-      isSaving={isUpserting}
+      isSaving={
+        patchDocumentMutation.isMutating || createDocumentMutation.isMutating
+      }
     >
       {isDocumentLoading ? (
         <div className="flex justify-center py-4">
