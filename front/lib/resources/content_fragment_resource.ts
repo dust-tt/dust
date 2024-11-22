@@ -1,6 +1,7 @@
 import type {
   ContentFragmentMessageTypeModel,
   ContentFragmentType,
+  ContentFragmentVersion,
   ConversationType,
   ModelConfigurationType,
   ModelId,
@@ -393,7 +394,7 @@ async function renderFromFileId(
     model: ModelConfigurationType;
     title: string;
     textBytes: number | null;
-    contentFragmentVersion: string;
+    contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
   if (isSupportedImageContentFragmentType(contentType)) {
@@ -459,6 +460,79 @@ async function renderFromFileId(
       ],
     });
   }
+}
+
+// Render only a tag to specifiy that a content fragment was injected at a given position except for
+// images when the model support them.
+export async function renderLightContentFragmentForModel(
+  message: ContentFragmentType,
+  conversation: ConversationType,
+  model: ModelConfigurationType,
+  {
+    excludeImages,
+  }: {
+    excludeImages: boolean;
+  }
+): Promise<ContentFragmentMessageTypeModel> {
+  const { contentType, fileId, title, contentFragmentVersion } = message;
+
+  if (fileId && isSupportedImageContentFragmentType(contentType)) {
+    if (excludeImages || !model.supportsVision) {
+      return {
+        role: "content_fragment",
+        name: `inject_${contentType}`,
+        content: [
+          {
+            type: "text",
+            text: renderContentFragmentXml({
+              fileId: null,
+              contentType,
+              title,
+              version: contentFragmentVersion,
+              content:
+                "[Image content interpreted by a vision-enabled model. " +
+                "Description not available in this context.]",
+            }),
+          },
+        ],
+      };
+    }
+
+    const signedUrl = await getSignedUrlForProcessedContent(
+      conversation.owner,
+      fileId
+    );
+
+    return {
+      role: "content_fragment",
+      name: `inject_${contentType}`,
+      content: [
+        {
+          type: "image_url",
+          image_url: {
+            url: signedUrl,
+          },
+        },
+      ],
+    };
+  }
+
+  return {
+    role: "content_fragment",
+    name: `attach_${contentType}`,
+    content: [
+      {
+        type: "text",
+        text: renderContentFragmentXml({
+          fileId,
+          contentType,
+          title,
+          version: contentFragmentVersion,
+          content: null,
+        }),
+      },
+    ],
+  };
 }
 
 export async function renderContentFragmentForModel(
@@ -559,11 +633,14 @@ function renderContentFragmentXml({
   fileId: string | null;
   contentType: string;
   title: string;
-  version: string;
-  content: string;
+  version: ContentFragmentVersion;
+  content: string | null;
 }) {
-  return (
-    `<attachment id="${fileId}" type="${contentType}" title="${title}" version="${version}">` +
-    `\n${content}\n</attachment>`
-  );
+  let tag = `<attachment id="${fileId}" type="${contentType}" title="${title}" version="${version}"`;
+  if (content) {
+    tag += `>\n${content}\n</attachment>`;
+  } else {
+    tag += "/>";
+  }
+  return tag;
 }
