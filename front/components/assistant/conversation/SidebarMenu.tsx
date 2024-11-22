@@ -369,13 +369,17 @@ const RenderConversation = ({
       {isMultiSelect ? (
         <div className="flex items-center px-2 py-2">
           <Checkbox
+            id={`conversation-${conversation.sId}`}
             className="bg-white"
             checked={selectedConversations.includes(conversation)}
             onCheckedChange={() => toggleConversationSelection(conversation)}
           />
-          <span className="ml-2 text-sm text-muted-foreground">
+          <Label
+            htmlFor={`conversation-${conversation.sId}`}
+            className="ml-2 text-sm font-light text-muted-foreground"
+          >
             {conversationLabel}
-          </span>
+          </Label>
         </div>
       ) : (
         <NavigationListItem
