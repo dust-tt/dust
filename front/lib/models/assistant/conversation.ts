@@ -1,4 +1,5 @@
 import type {
+  AgentMessageFeedbackType,
   AgentMessageStatus,
   ConversationVisibility,
   MessageVisibility,
@@ -14,6 +15,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -327,6 +329,73 @@ AgentMessage.init(
   },
   {
     modelName: "agent_message",
+    sequelize: frontSequelize,
+  }
+);
+
+export class AgentMessageFeedback extends Model<
+  InferAttributes<AgentMessageFeedback>,
+  InferCreationAttributes<AgentMessageFeedback>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationVersion: number;
+  declare agentConfigurationVersionDate: string;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+
+  declare thumbDirection: AgentMessageFeedbackType;
+  declare content: string | null;
+}
+
+AgentMessageFeedback.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    agentConfigurationVersion: {
+      type: DataTypes.NUMBER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    agentConfigurationVersionDate: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    agentMessageId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    thumbDirection: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    content: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "agent_message_feedback",
     sequelize: frontSequelize,
   }
 );
