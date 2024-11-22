@@ -117,10 +117,24 @@ pub async fn load_tables_from_identifiers(
         .unique()
         .collect::<Vec<_>>();
 
+    // This check is meant to block access to "conversations" space through a
+    // datasource block in a dust app, which could lead to data leaks, see related issue
+    // https://github.com/dust-tt/tasks/issues/1658
+    // Only case in which this is allowed is for our packaged apps, via a system
+    // key, in particular "assistant-retrieval-v2" that needs access to the
+    // conversation space
+    let allow_conversations_data_source =
+        env.credentials.get("DUST_IS_SYSTEM_RUN") == Some(&String::from("true"));
+
     // Get a vec of the corresponding project ids for each (workspace_id, data_source_id) pair.
     let project_ids_view_filters = try_join_all(data_source_identifiers.iter().map(
         |(workspace_id, data_source_or_view_id)| {
-            get_data_source_project_and_view_filter(workspace_id, data_source_or_view_id, env)
+            get_data_source_project_and_view_filter(
+                workspace_id,
+                data_source_or_view_id,
+                env,
+                allow_conversations_data_source,
+            )
         },
     ))
     .await?;
