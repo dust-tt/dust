@@ -1,5 +1,5 @@
 import type {
-  AgentMessageFeedbackType,
+  AgentMessageFeedbackDirection,
   AgentMessageStatus,
   ConversationVisibility,
   MessageVisibility,
@@ -347,7 +347,7 @@ export class AgentMessageFeedback extends Model<
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<User["id"]>;
 
-  declare thumbDirection: AgentMessageFeedbackType;
+  declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
 }
 

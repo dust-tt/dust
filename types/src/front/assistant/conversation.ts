@@ -127,7 +127,7 @@ export type AgentMessageStatus =
   | "failed"
   | "cancelled";
 
-export type AgentMessageFeedbackType = "up" | "down";
+export type AgentMessageFeedbackDirection = "up" | "down";
 
 export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   dust_app_run_action: "Running App",
