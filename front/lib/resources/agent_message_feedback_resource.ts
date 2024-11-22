@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { UserResource } from "@app/lib/resources/user_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -57,15 +58,15 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }
 
   static async fetchByUserAndMessageId({
-    userId,
+    user,
     agentMessageId,
   }: {
-    userId: string;
+    user: UserResource;
     agentMessageId: string;
   }): Promise<AgentMessageFeedbackResource | null> {
     const agentMessageFeedback = await AgentMessageFeedback.findOne({
       where: {
-        userId,
+        userId: user.id,
         agentMessageId,
       },
     });
@@ -102,6 +103,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       return new Err(error as Error);
     }
   }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
