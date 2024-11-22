@@ -187,7 +187,7 @@ chrome.runtime.onMessage.addListener(
   ) => {
     switch (message.type) {
       case "AUTHENTICATE":
-        void authenticate(sendResponse);
+        void authenticate(message, sendResponse);
         return true; // Keep the message channel open for async response.
 
       case "REFRESH_TOKEN":
@@ -303,6 +303,7 @@ chrome.runtime.onMessage.addListener(
  * Authenticate the user using Auth0.
  */
 const authenticate = async (
+  { forceLogin }: AuthBackgroundMessage,
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
@@ -317,6 +318,7 @@ const authenticate = async (
     audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
+    prompt: forceLogin ? "login" : "",
   };
 
   const queryString = new URLSearchParams(options).toString();

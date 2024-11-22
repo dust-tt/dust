@@ -12,6 +12,7 @@ export type AuthBackgroundResponse = {
 
 export type AuthBackgroundMessage = {
   type: "AUTHENTICATE" | "REFRESH_TOKEN" | "LOGOUT" | "SIGN_CONNECT";
+  forceLogin?: boolean;
   refreshToken?: string;
 };
 
@@ -77,9 +78,11 @@ const sendMessage = <T, U>(message: T): Promise<U> => {
  * Messages to the background script to authenticate, refresh tokens, and logout.
  */
 
-export const sendAuthMessage = (): Promise<Auth0AuthorizeResponse> => {
+export const sendAuthMessage = (
+  forceLogin?: boolean
+): Promise<Auth0AuthorizeResponse> => {
   return new Promise((resolve, reject) => {
-    const message: AuthBackgroundMessage = { type: "AUTHENTICATE" };
+    const message: AuthBackgroundMessage = { type: "AUTHENTICATE", forceLogin };
     chrome.runtime.sendMessage(
       message,
       (response: Auth0AuthorizeResponse | undefined) => {

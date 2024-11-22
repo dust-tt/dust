@@ -396,14 +396,12 @@ export function withAuth0TokenAuthentication<T>(
       }
 
       const user = await getUserFromAuth0Token(decoded.value);
-      // TODO(thomas): user not found : means the user is not registered, display a message to the user and redirects to site
       if (!user) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
-            type: "not_authenticated",
-            message:
-              "The user does not have an active session or is not authenticated.",
+            type: "user_not_found",
+            message: "The user is not registered.",
           },
         });
       }

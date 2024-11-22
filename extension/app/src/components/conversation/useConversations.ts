@@ -1,7 +1,7 @@
-import { logout } from "@extension/lib/auth";
+import { useAuthErrorCheck } from "@extension/lib/auth";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 export function useConversations() {
   const dustAPI = useDustAPI();
@@ -18,11 +18,7 @@ export function useConversations() {
     conversationsFetcher
   );
 
-  useEffect(() => {
-    if (error?.type === "not_authenticated") {
-      void logout();
-    }
-  }, [error]);
+  useAuthErrorCheck(error);
 
   return {
     conversations: useMemo(() => data ?? [], [data]),

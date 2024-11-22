@@ -1,7 +1,7 @@
-import { logout } from "@extension/lib/auth";
+import { useAuthErrorCheck } from "@extension/lib/auth";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 export function usePublicAgentConfigurations() {
   const dustAPI = useDustAPI();
@@ -20,11 +20,7 @@ export function usePublicAgentConfigurations() {
       agentConfigurationsFetcher
     );
 
-  useEffect(() => {
-    if (error?.type === "not_authenticated") {
-      void logout();
-    }
-  }, [error]);
+  useAuthErrorCheck(error);
 
   return {
     agentConfigurations: useMemo(() => data ?? [], [data]),

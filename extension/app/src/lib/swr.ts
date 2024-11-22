@@ -1,4 +1,4 @@
-import { logout } from "@extension/lib/auth";
+import { useAuthErrorCheck } from "@extension/lib/auth";
 import { getAccessToken } from "@extension/lib/storage";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
@@ -75,6 +75,8 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     [key, mutateKeysWithSameUrl, result]
   );
 
+  useAuthErrorCheck(result.error);
+
   if (disabled) {
     // When disabled, as the key is null, the mutate function is not working
     // so we need to provide a custom mutate function that will work
@@ -92,7 +94,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   }
 }
 
-const resHandler = async (res: Response) => {
+export const resHandler = async (res: Response) => {
   if (res.status < 300) {
     return res.json();
   }
@@ -104,8 +106,7 @@ const resHandler = async (res: Response) => {
     error = resJson.error;
 
     if (error?.type === "not_authenticated") {
-      error = "User not found, logging out.";
-      await logout();
+      error = error.message;
     }
   } catch (e) {
     console.error("Error parsing response: ", e);

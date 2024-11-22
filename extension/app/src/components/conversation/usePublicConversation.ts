@@ -1,8 +1,7 @@
 import type { ConversationPublicType } from "@dust-tt/client";
-import { logout } from "@extension/lib/auth";
+import { useAuthErrorCheck } from "@extension/lib/auth";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
-import { useEffect } from "react";
 import type { KeyedMutator } from "swr";
 
 export function usePublicConversation({
@@ -36,11 +35,7 @@ export function usePublicConversation({
     conversationFetcher
   );
 
-  useEffect(() => {
-    if (error?.type === "not_authenticated") {
-      void logout();
-    }
-  }, [error]);
+  useAuthErrorCheck(error);
 
   return {
     conversation: data ? data : null,
