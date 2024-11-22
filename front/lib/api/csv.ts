@@ -106,17 +106,19 @@ export function generateCSVSnippet(content: string): string {
   // Max number of characters in the snippet.
   const MAX_SNIPPET_CHARS = 16384;
 
+  const totalRecords = content.split("\n").length - 1; // Avoid parsing the whole file before truncating
   const records = parse(content, {
     columns: true,
     skip_empty_lines: true,
     trim: true,
+    to: 256, // Limit the number of records to parse
   });
 
-  if (records.length === 0) {
+  if (totalRecords === 0) {
     return "TOTAL_LINES: 0\n(empty result set)\n";
   }
 
-  let snippetOutput = `TOTAL_LINES: ${records.length}\n`;
+  let snippetOutput = `TOTAL_LINES: ${totalRecords}\n`;
   let currentCharCount = snippetOutput.length;
   let linesIncluded = 0;
 
@@ -135,7 +137,7 @@ export function generateCSVSnippet(content: string): string {
     if (remainingChars > 0) {
       snippetOutput += header.slice(0, remainingChars) + truncationString;
     }
-    snippetOutput += endOfSnippetString(records.length);
+    snippetOutput += endOfSnippetString(totalRecords);
     return snippetOutput;
   }
 
@@ -159,7 +161,7 @@ export function generateCSVSnippet(content: string): string {
     }
   }
 
-  const linesOmitted = records.length - linesIncluded;
+  const linesOmitted = totalRecords - linesIncluded;
   snippetOutput += endOfSnippetString(linesOmitted);
 
   return snippetOutput;
