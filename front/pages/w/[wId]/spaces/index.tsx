@@ -1,4 +1,5 @@
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_selection";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 // This endpoint is used as a pass through to redirect to the global space.
@@ -13,6 +14,21 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
       };
     }
 
+    // Try to go to the last selected space.
+    const selection = getPersistedNavigationSelection(context.req.cookies);
+    if (selection.lastSpaceId) {
+      const space = await SpaceResource.fetchById(auth, selection.lastSpaceId);
+      if (space) {
+        return {
+          redirect: {
+            destination: `/w/${owner.sId}/spaces/${space.sId}`,
+            permanent: false,
+          },
+        };
+      }
+    }
+
+    // Fall back to the global space.
     const space = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     if (!space) {
       return {
