@@ -10,7 +10,7 @@ import {
   RocketIcon,
   ScrollArea,
   ScrollBar,
-  Searchbar,
+  SearchInput,
   StarIcon,
   Tabs,
   TabsList,
@@ -139,9 +139,8 @@ export function AssistantBrowser({
         id="search-container"
         className="flex w-full flex-row items-center justify-center gap-2 px-4 align-middle"
       >
-        <Searchbar
+        <SearchInput
           name="search"
-          size="sm"
           placeholder="Search (Name)"
           value={assistantSearch}
           onChange={setAssistantSearch}

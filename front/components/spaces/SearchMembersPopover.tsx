@@ -5,7 +5,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   ScrollArea,
-  Searchbar,
+  SearchInput,
   Separator,
   UserIcon,
 } from "@dust-tt/sparkle";
@@ -89,7 +89,7 @@ export function SearchMembersPopover({
           <Button label="Add members" icon={UserIcon} size="sm" />
         </PopoverTrigger>
         <PopoverContent className="mr-2 p-4">
-          <Searchbar
+          <SearchInput
             name="search"
             placeholder="Search members (email)"
             value={searchTerm}

@@ -6,7 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Searchbar,
+  SearchInput,
   Spinner,
   useHashParam,
   usePaginationFromUrl,
@@ -379,7 +379,7 @@ export const SpaceDataSourceViewContentList = ({
       >
         {!isEmpty && (
           <>
-            <Searchbar
+            <SearchInput
               name="search"
               placeholder="Search (Name)"
               value={dataSourceSearch}
