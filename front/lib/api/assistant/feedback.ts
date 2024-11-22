@@ -1,31 +1,37 @@
 import type {
-  ConversationMessageReactions,
   ConversationType,
   ConversationWithoutContentType,
-  MessageReactionType,
   Result,
 } from "@dust-tt/types";
 import type { UserType } from "@dust-tt/types";
 import { ConversationError, Err, Ok } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import {
-  Message,
-  MessageReaction,
+  AgentMessage,
+  AgentMessageFeedback,
 } from "@app/lib/models/assistant/conversation";
+import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 
 /**
- * We retrieve the reactions for a whole conversation, not just a single message.
+ * We retrieve the feedbacks for a whole conversation, not just a single message.
  */
-export async function getUserMessageFeedback(
+
+export type ConversationMessageFeedback = {
+  messageId: string;
+  agentMessageId: string;
+  feedback: AgentMessageFeedback[];
+}[];
+
+export async function getUserConversationFeedbacks(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
-): Promise<Result<ConversationMessageReactions, ConversationError>> {
+): Promise<Result<ConversationMessageFeedback, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -38,52 +44,49 @@ export async function getUserMessageFeedback(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
+      agentMessageId: {
+        [Op.ne]: null,
+      },
     },
     attributes: ["sId"],
-    include: [
-      {
-        model: MessageReaction,
-        as: "reactions",
-        required: false,
-      },
-    ],
   });
 
-  return new Ok(
-    messages.map((m) => ({
-      messageId: m.sId,
-      reactions: _renderMessageReactions(m.reactions || []),
-    }))
-  );
-}
-
-function _renderMessageReactions(
-  reactions: MessageReaction[]
-): MessageReactionType[] {
-  return reactions.reduce<MessageReactionType[]>(
-    (acc: MessageReactionType[], r: MessageReaction) => {
-      const reaction = acc.find((r2) => r2.emoji === r.reaction);
-      if (reaction) {
-        reaction.users.push({
-          userId: r.userId,
-          username: r.userContextUsername,
-          fullName: r.userContextFullName,
-        });
-      } else {
-        acc.push({
-          emoji: r.reaction,
-          users: [
-            {
-              userId: r.userId,
-              username: r.userContextUsername,
-              fullName: r.userContextFullName,
-            },
-          ],
-        });
-      }
-      return acc;
+  const agentMessages = await AgentMessage.findAll({
+    where: {
+      id: {
+        [Op.in]: messages
+          .map((m) => m.agentMessageId)
+          .filter((id): id is number => id !== null),
+      },
     },
-    []
+  });
+
+  const feedbacks = await AgentMessageFeedback.findAll({
+    where: {
+      agentMessageId: {
+        [Op.in]: agentMessages.map((m) => m.id),
+      },
+    },
+  });
+
+  const feedbacksByMessageId = feedbacks.reduce<
+    Record<number, AgentMessageFeedback[]>
+  >((acc, feedback) => {
+    if (!acc[feedback.agentMessageId]) {
+      acc[feedback.agentMessageId] = [];
+    }
+    acc[feedback.agentMessageId].push(feedback);
+    return acc;
+  }, {});
+
+  return new Ok(
+    messages
+      .filter((m) => m.agentMessageId !== null)
+      .map((m) => ({
+        messageId: m.sId,
+        agentMessageId: m.agentMessageId!.toString(),
+        feedback: feedbacksByMessageId[m.agentMessageId!] ?? [],
+      }))
   );
 }
 

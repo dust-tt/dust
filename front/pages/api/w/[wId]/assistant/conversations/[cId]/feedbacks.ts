@@ -42,13 +42,13 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const reactionsRes = await getMessageReactions(auth, conversation);
+      const feedbacksRes = await getMessageReactions(auth, conversation);
 
-      if (reactionsRes.isErr()) {
-        return apiErrorForConversation(req, res, reactionsRes.error);
+      if (feedbacksRes.isErr()) {
+        return apiErrorForConversation(req, res, feedbacksRes.error);
       }
 
-      const reactions = reactionsRes.value;
+      const reactions = feedbacksRes.value;
 
       res.status(200).json({ reactions });
       return;
