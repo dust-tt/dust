@@ -369,7 +369,7 @@ AgentMessageFeedback.init(
       defaultValue: DataTypes.NOW,
     },
     agentConfigurationVersion: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
     },
