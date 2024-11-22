@@ -157,7 +157,10 @@ async function fetchFromZendeskWithRetries({
         return null;
       }
     }
-    logger.error({ rawResponse }, "[Zendesk] Zendesk API error");
+    logger.error(
+      { rawResponse, response, status: rawResponse.status },
+      "[Zendesk] Zendesk API error"
+    );
     throw new Error("Zendesk API error.");
   }
 
