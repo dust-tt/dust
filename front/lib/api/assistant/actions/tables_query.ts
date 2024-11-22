@@ -25,6 +25,7 @@ import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { generateCSVSnippet } from "@app/lib/api/csv";
 import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -37,9 +38,6 @@ import logger from "@app/logger/logger";
 // Need a model with at least 32k to run tables query.
 const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
-
-// Max number of characters in the snippet.
-const MAX_SNIPPET_CHARS = 16384;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -622,54 +620,5 @@ async function getTablesQueryOutputCsvFileAndSnippet(
     contentType: "text/csv",
   });
 
-  if (results.length === 0) {
-    return { file, snippet: "TOTAL_LINES: 0\n(empty result set)\n" };
-  }
-
-  let snippetOutput = `TOTAL_LINES: ${results.length}\n`;
-  let currentCharCount = snippetOutput.length;
-  let linesIncluded = 0;
-
-  const truncationString = "(...truncated)";
-  const endOfSnippetString = (omitted: number) =>
-    omitted > 0 ? `\n(${omitted} lines omitted)\n` : "\n(end of file)\n";
-
-  // Process header
-  const header = csvOutput.split("\n")[0];
-  if (currentCharCount + header.length + 1 <= MAX_SNIPPET_CHARS) {
-    snippetOutput += header + "\n";
-    currentCharCount += header.length + 1;
-  } else {
-    const remainingChars =
-      MAX_SNIPPET_CHARS - currentCharCount - truncationString.length;
-    if (remainingChars > 0) {
-      snippetOutput += header.slice(0, remainingChars) + truncationString;
-    }
-    snippetOutput += endOfSnippetString(results.length);
-    return { file, snippet: snippetOutput };
-  }
-
-  // Process data rows
-  for (const row of results) {
-    const rowCsv = await toCsv([row], { header: false });
-    const trimmedRowCsv = rowCsv.trim(); // Remove trailing newline
-    if (currentCharCount + trimmedRowCsv.length + 1 <= MAX_SNIPPET_CHARS) {
-      snippetOutput += trimmedRowCsv + "\n";
-      currentCharCount += trimmedRowCsv.length + 1;
-      linesIncluded++;
-    } else {
-      const remainingChars =
-        MAX_SNIPPET_CHARS - currentCharCount - truncationString.length;
-      if (remainingChars > 0) {
-        snippetOutput +=
-          trimmedRowCsv.slice(0, remainingChars) + truncationString;
-        linesIncluded++;
-      }
-      break;
-    }
-  }
-
-  const linesOmitted = results.length - linesIncluded;
-  snippetOutput += endOfSnippetString(linesOmitted);
-  return { file, snippet: snippetOutput };
+  return { file, snippet: file.snippet ?? generateCSVSnippet(csvOutput) };
 }

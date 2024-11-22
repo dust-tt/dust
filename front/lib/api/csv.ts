@@ -1,3 +1,6 @@
+import { parse } from "csv-parse/sync";
+import { stringify } from "csv-stringify/sync";
+
 const POSSIBLE_VALUES_MAX_LEN = 32;
 const POSSIBLE_VALUES_MAX_COUNT = 16;
 
@@ -97,4 +100,67 @@ export function analyzeCSVColumns(
   });
 
   return columnTypes;
+}
+
+export function generateCSVSnippet(content: string): string {
+  // Max number of characters in the snippet.
+  const MAX_SNIPPET_CHARS = 16384;
+
+  const records = parse(content, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  });
+
+  if (records.length === 0) {
+    return "TOTAL_LINES: 0\n(empty result set)\n";
+  }
+
+  let snippetOutput = `TOTAL_LINES: ${records.length}\n`;
+  let currentCharCount = snippetOutput.length;
+  let linesIncluded = 0;
+
+  const truncationString = "(...truncated)";
+  const endOfSnippetString = (omitted: number) =>
+    omitted > 0 ? `\n(${omitted} lines omitted)\n` : "\n(end of file)\n";
+
+  // Process header
+  const header = stringify([records[0]], { header: true }).split("\n")[0];
+  if (currentCharCount + header.length + 1 <= MAX_SNIPPET_CHARS) {
+    snippetOutput += header + "\n";
+    currentCharCount += header.length + 1;
+  } else {
+    const remainingChars =
+      MAX_SNIPPET_CHARS - currentCharCount - truncationString.length;
+    if (remainingChars > 0) {
+      snippetOutput += header.slice(0, remainingChars) + truncationString;
+    }
+    snippetOutput += endOfSnippetString(records.length);
+    return snippetOutput;
+  }
+
+  // Process data rows
+  for (const row of records) {
+    const rowCsv = stringify([row], { header: false });
+    const trimmedRowCsv = rowCsv.trim(); // Remove trailing newline
+    if (currentCharCount + trimmedRowCsv.length + 1 <= MAX_SNIPPET_CHARS) {
+      snippetOutput += trimmedRowCsv + "\n";
+      currentCharCount += trimmedRowCsv.length + 1;
+      linesIncluded++;
+    } else {
+      const remainingChars =
+        MAX_SNIPPET_CHARS - currentCharCount - truncationString.length;
+      if (remainingChars > 0) {
+        snippetOutput +=
+          trimmedRowCsv.slice(0, remainingChars) + truncationString;
+        linesIncluded++;
+      }
+      break;
+    }
+  }
+
+  const linesOmitted = records.length - linesIncluded;
+  snippetOutput += endOfSnippetString(linesOmitted);
+
+  return snippetOutput;
 }

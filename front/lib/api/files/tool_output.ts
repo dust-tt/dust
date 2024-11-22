@@ -1,6 +1,8 @@
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
+import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
+import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 
@@ -48,6 +50,13 @@ export async function internalCreateToolOutputCsvFile(
   ]);
 
   await fileResource.markAsReady();
+
+  if (await isJITActionsEnabled(auth)) {
+    await processAndUpsertToDataSource(auth, {
+      file: fileResource,
+      optionalContent: content,
+    });
+  }
 
   return fileResource;
 }
