@@ -50,15 +50,18 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           isToRemove: boolean;
           feedback?: string | null;
         }) => {
+          // If we have feedback content, means we already have a feedback
+          const method = isToRemove ? "DELETE" : feedback ? "PATCH" : "POST";
+
           const res = await fetch(
             `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
             {
-              method: isToRemove ? "DELETE" : "POST",
+              method,
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                thumb,
+                thumbDirection: thumb,
                 feedback,
               }),
             }

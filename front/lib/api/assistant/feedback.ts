@@ -1,5 +1,4 @@
 import type {
-  AgentMessageFeedbackDirection,
   ConversationMessageReactions,
   ConversationType,
   ConversationWithoutContentType,
@@ -10,6 +9,7 @@ import type { UserType } from "@dust-tt/types";
 import { ConversationError, Err, Ok } from "@dust-tt/types";
 
 import { canAccessConversation } from "@app/lib/api/assistant/conversation";
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
@@ -96,13 +96,13 @@ export async function createMessageFeedback(
     messageId,
     conversation,
     user,
-    direction,
+    thumbDirection,
     content,
   }: {
     messageId: string;
     conversation: ConversationType | ConversationWithoutContentType;
     user: UserType;
-    direction: AgentMessageFeedbackDirection;
+    thumbDirection: AgentMessageFeedbackDirection;
     content?: string;
   }
 ): Promise<boolean | null> {
@@ -140,16 +140,59 @@ export async function createMessageFeedback(
     return null;
   }
 
-  const newReaction = await AgentMessageFeedbackResource.makeNew({
+  const newFeedback = await AgentMessageFeedbackResource.makeNew({
     agentConfigurationId: agentConfiguration.id,
     agentMessageId: message.id,
     userId: user.id,
-    thumbDirection: direction,
+    thumbDirection,
     content,
-    agentConfigurationVersion: agentConfiguration.version,
-    agentConfigurationVersionDate: agentConfiguration.updatedAt,
   });
-  return newReaction !== null;
+  return newFeedback !== null;
+}
+
+export async function updateMessageFeedbackContent(
+  auth: Authenticator,
+  {
+    messageId,
+    conversation,
+    user,
+    content,
+  }: {
+    messageId: string;
+    conversation: ConversationType | ConversationWithoutContentType;
+    user: UserType;
+    content: string;
+  }
+): Promise<boolean | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const message = await Message.findOne({
+    where: {
+      sId: messageId,
+      conversationId: conversation.id,
+    },
+  });
+
+  if (!message || !message.agentMessage) {
+    return null;
+  }
+
+  const feedback =
+    await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
+      user,
+      agentMessage: message.agentMessage,
+    });
+
+  if (!feedback) {
+    return null;
+  }
+
+  const updatedFeedback = await feedback.updateContent(content);
+
+  return updatedFeedback.isOk();
 }
 
 /**
@@ -180,14 +223,15 @@ export async function deleteMessageFeedback(
     },
   });
 
-  if (!message) {
+  if (!message || !message.agentMessage) {
     return null;
   }
 
-  const feedback = await AgentMessageFeedbackResource.fetchByUserAndMessageId({
-    userId: user.id,
-    agentMessageId: message.id,
-  });
+  const feedback =
+    await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
+      user,
+      agentMessage: message.agentMessage,
+    });
 
   if (!feedback) {
     return null;

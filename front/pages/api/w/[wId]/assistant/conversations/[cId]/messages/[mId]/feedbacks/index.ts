@@ -1,34 +1,32 @@
-import type {
-  AgentMessageFeedbackDirection,
-  AgentMessageFeedbackType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   createMessageFeedback,
   deleteMessageFeedback,
+  updateMessageFeedbackContent,
 } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export const MessageFeedbackRequestBodySchema = t.type({
-  direction: t.string,
-  content: t.union([t.string, t.undefined]),
+  thumbDirection: t.string,
+  feedback: t.union([t.string, t.undefined]),
 });
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<
-      { feedback: AgentMessageFeedbackType } | { success: boolean }
-    >
+    WithAPIErrorResponse<{
+      success: boolean;
+    }>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -85,11 +83,31 @@ async function handler(
         messageId,
         conversation,
         user,
-        direction: bodyValidation.right
-          .direction as AgentMessageFeedbackDirection,
+        thumbDirection: bodyValidation.right
+          .thumbDirection as AgentMessageFeedbackDirection,
       });
 
       if (created) {
+        res.status(200).json({ success: true });
+        return;
+      }
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "The message you're trying to react to does not exist.",
+        },
+      });
+
+    case "PATCH":
+      const updated = await updateMessageFeedbackContent(auth, {
+        messageId,
+        conversation,
+        user,
+        content: bodyValidation.right.feedback || "",
+      });
+
+      if (updated) {
         res.status(200).json({ success: true });
         return;
       }
