@@ -22,22 +22,22 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
  * We retrieve the feedbacks for a whole conversation, not just a single message.
  */
 
-export type ConversationMessageFeedback = {
+export type ConversationMessageFeedbacks = {
   messageId: string;
   agentMessageId: string;
   feedback: AgentMessageFeedback[];
 }[];
 
-export async function getUserConversationFeedbacks(
+export async function getConversationUserFeedbacks(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
-): Promise<Result<ConversationMessageFeedback, ConversationError>> {
+): Promise<Result<ConversationMessageFeedbacks, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-
-  if (!canAccessConversation(auth, conversation)) {
+  const user = auth.user();
+  if (!canAccessConversation(auth, conversation) || !user) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
@@ -63,6 +63,7 @@ export async function getUserConversationFeedbacks(
 
   const feedbacks = await AgentMessageFeedback.findAll({
     where: {
+      userId: user.id,
       agentMessageId: {
         [Op.in]: agentMessages.map((m) => m.id),
       },

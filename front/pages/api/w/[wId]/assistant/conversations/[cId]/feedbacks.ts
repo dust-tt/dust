@@ -1,12 +1,10 @@
-import type {
-  ConversationMessageReactions,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getMessageReactions } from "@app/lib/api/assistant/reaction";
+import type { ConversationMessageFeedbacks } from "@app/lib/api/assistant/feedback";
+import { getConversationUserFeedbacks } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -14,7 +12,7 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<{ reactions: ConversationMessageReactions }>
+    WithAPIErrorResponse<{ feedbacks: ConversationMessageFeedbacks }>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -42,15 +40,18 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const feedbacksRes = await getMessageReactions(auth, conversation);
+      const feedbacksRes = await getConversationUserFeedbacks(
+        auth,
+        conversation
+      );
 
       if (feedbacksRes.isErr()) {
         return apiErrorForConversation(req, res, feedbacksRes.error);
       }
 
-      const reactions = feedbacksRes.value;
+      const feedbacks = feedbacksRes.value;
 
-      res.status(200).json({ reactions });
+      res.status(200).json({ feedbacks });
       return;
 
     default:
