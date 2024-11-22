@@ -33,7 +33,7 @@ import {
   maxFileSizeToHumanReadable,
   parseAndStringifyCsv,
 } from "@dust-tt/types";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -153,7 +153,7 @@ const DocumentUploadOrEditModal = ({
   });
 
   // Side effects of upserting the data source document
-  const onUpsertSuccess = () => {
+  const onUpsertSuccess = useCallback(() => {
     sendNotification({
       type: "success",
       title: `Document successfully ${initialId ? "updated" : "added"}`,
@@ -172,20 +172,23 @@ const DocumentUploadOrEditModal = ({
       content: false,
       name: false,
     });
-  };
+  }, [documentState, initialId, onClose, sendNotification]);
 
-  const onUpsertError = (error: unknown) => {
-    sendNotification({
-      type: "error",
-      title: "Error upserting document",
-      description: error instanceof Error ? error.message : String(error),
-    });
-    console.error(error);
-  };
+  const onUpsertError = useCallback(
+    (error: unknown) => {
+      sendNotification({
+        type: "error",
+        title: "Error upserting document",
+        description: error instanceof Error ? error.message : String(error),
+      });
+      console.error(error);
+    },
+    [sendNotification]
+  );
 
-  const onUpsertSettled = () => {
+  const onUpsertSettled = useCallback(() => {
     fileUploaderService.resetUpload();
-  };
+  }, [fileUploaderService]);
 
   // Upsert documents to the data source
   const patchDocumentMutation = useUpdateDataSourceDocumentMutation(
@@ -219,28 +222,31 @@ const DocumentUploadOrEditModal = ({
     }
   );
 
-  const handleDocumentUpload = async (document: Document) => {
-    const body = {
-      name: initialId ?? document.name,
-      timestamp: null,
-      parents: null,
-      section: { prefix: null, content: document.text, sections: [] },
-      text: null,
-      source_url: document.sourceUrl || undefined,
-      tags: document.tags.filter(Boolean),
-      light_document_output: true,
-      upsert_context: null,
-      async: false,
-    };
+  const handleDocumentUpload = useCallback(
+    async (document: Document) => {
+      const body = {
+        name: initialId ?? document.name,
+        timestamp: null,
+        parents: null,
+        section: { prefix: null, content: document.text, sections: [] },
+        text: null,
+        source_url: document.sourceUrl || undefined,
+        tags: document.tags.filter(Boolean),
+        light_document_output: true,
+        upsert_context: null,
+        async: false,
+      };
 
-    if (initialId) {
-      await patchDocumentMutation.trigger({ documentBody: body });
-    } else {
-      await createDocumentMutation.trigger({ documentBody: body });
-    }
-  };
+      if (initialId) {
+        await patchDocumentMutation.trigger({ documentBody: body });
+      } else {
+        await createDocumentMutation.trigger({ documentBody: body });
+      }
+    },
+    [createDocumentMutation, patchDocumentMutation, initialId]
+  );
 
-  const handleUpload = async () => {
+  const handleUpload = useCallback(async () => {
     try {
       // Create Data Source Document
       await handleDocumentUpload(documentState);
@@ -248,48 +254,51 @@ const DocumentUploadOrEditModal = ({
     } catch (error) {
       console.error(error);
     }
-  };
+  }, [handleDocumentUpload, documentState, onClose]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Enforce single file upload
-    const files = e.target.files;
-    if (files && files.length > 1) {
-      sendNotification({
-        type: "error",
-        title: "Multiple files",
-        description: "Please upload only one file at a time.",
-      });
-      return;
-    }
-
-    try {
-      // Create a file -> Allows to get processed text content from Tika via the file API.
-      const selectedFile = files?.[0];
-      if (!selectedFile) {
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Enforce single file upload
+      const files = e.target.files;
+      if (files && files.length > 1) {
+        sendNotification({
+          type: "error",
+          title: "Multiple files",
+          description: "Please upload only one file at a time.",
+        });
         return;
       }
-      const fileBlobs = await fileUploaderService.handleFilesUpload([
-        selectedFile,
-      ]);
-      if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
-        fileUploaderService.resetUpload();
-        return new Err(
-          new Error(
-            "Error uploading file. Please try again or contact support."
-          )
-        );
-      }
 
-      // triggers content extraction -> documentState.text update
-      setFileId(fileBlobs[0].fileId);
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Error uploading file",
-        description: error instanceof Error ? error.message : String(error),
-      });
-    }
-  };
+      try {
+        // Create a file -> Allows to get processed text content via the file API.
+        const selectedFile = files?.[0];
+        if (!selectedFile) {
+          return;
+        }
+        const fileBlobs = await fileUploaderService.handleFilesUpload([
+          selectedFile,
+        ]);
+        if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
+          fileUploaderService.resetUpload();
+          return new Err(
+            new Error(
+              "Error uploading file. Please try again or contact support."
+            )
+          );
+        }
+
+        // triggers content extraction -> documentState.text update
+        setFileId(fileBlobs[0].fileId);
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Error uploading file",
+          description: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+    [fileUploaderService, sendNotification]
+  );
 
   // Effect: Set the document state when the document is loaded
   useEffect(() => {

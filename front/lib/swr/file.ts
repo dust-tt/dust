@@ -5,17 +5,21 @@ import { useSWRWithDefaults } from "@app/lib/swr/swr";
 
 export function useFileProcessedContent(
   owner: LightWorkspaceType,
-  fileId: string,
+  fileId: string | null,
   config?: SWRConfiguration & {
     disabled?: boolean;
   }
 ) {
+  const isDisabled = config?.disabled || fileId === null;
+
   const {
     data: response,
     error,
     mutate,
   } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`,
+    isDisabled
+      ? null
+      : `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`,
     // Stream fetcher -> don't try to parse the stream
     // Wait for initial response to trigger swr error handling
     async (...args) => {
@@ -31,8 +35,8 @@ export function useFileProcessedContent(
   return {
     // Do not extract text from the response -> Allows streaming on client side
     content: () => response ?? null,
-    isContentLoading: config?.disabled ? false : !error && !response,
-    isContentError: config?.disabled ? false : error,
+    isContentLoading: isDisabled ? false : !error && !response,
+    isContentError: isDisabled ? false : error,
     mutateFileProcessedContent: mutate,
   };
 }
