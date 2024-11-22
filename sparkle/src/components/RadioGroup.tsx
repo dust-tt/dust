@@ -60,6 +60,7 @@ interface RadioGroupItemProps
     VariantProps<typeof radioStyles> {
   tooltipMessage?: string;
   tooltipAsChild?: boolean;
+  label?: React.ReactNode;
 }
 
 const RadioGroupItem = React.forwardRef<
@@ -67,7 +68,14 @@ const RadioGroupItem = React.forwardRef<
   RadioGroupItemProps
 >(
   (
-    { tooltipMessage, className, size, tooltipAsChild = false, ...props },
+    {
+      tooltipMessage,
+      className,
+      size,
+      tooltipAsChild = false,
+      label,
+      ...props
+    },
     ref
   ) => {
     const item = (
@@ -81,10 +89,9 @@ const RadioGroupItem = React.forwardRef<
         />
       </RadioGroupPrimitive.Item>
     );
-    return (
-      <div
-        className={cn("s-group", size === "sm" ? "s-h-5 s-w-5" : "s-h-4 s-w-4")}
-      >
+
+    const wrappedItem = (
+      <div className="s-flex s-items-center s-gap-2">
         {tooltipMessage ? (
           <Tooltip
             triggerAsChild={tooltipAsChild}
@@ -94,11 +101,13 @@ const RadioGroupItem = React.forwardRef<
         ) : (
           item
         )}
+        {label}
       </div>
     );
+
+    return <div className="s-w-full s-group">{wrappedItem}</div>;
   }
 );
-RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
 
 type IconPosition = "start" | "center" | "end";
 
@@ -111,7 +120,9 @@ const RadioGroupChoice = React.forwardRef<
   RadioGroupChoiceProps
 >(({ className, size, iconPosition = "center", children, ...props }, ref) => {
   return (
-    <div className={cn("s-flex", className, `s-items-${iconPosition}`)}>
+    <div
+      className={cn("s-flex s-flex-col", className, `s-items-${iconPosition}`)}
+    >
       <RadioGroupItem
         ref={ref}
         className={cn(radioStyles({ size }))}
