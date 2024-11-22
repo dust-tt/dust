@@ -165,7 +165,7 @@ ZendeskBrand.init(
       allowNull: false,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     subdomain: {
@@ -257,7 +257,7 @@ ZendeskCategory.init(
       validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     description: {
@@ -265,7 +265,7 @@ ZendeskCategory.init(
       allowNull: true,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     permission: {
@@ -350,11 +350,11 @@ ZendeskArticle.init(
       validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     permission: {
@@ -428,7 +428,7 @@ ZendeskTicket.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     subject: {
