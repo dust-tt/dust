@@ -37,8 +37,6 @@ export async function runZendeskWorkers() {
     },
   });
 
-  await syncWorker.run();
-
   const gcWorker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: { ...activities, ...gc_activities },
@@ -63,5 +61,6 @@ export async function runZendeskWorkers() {
     },
   });
 
-  await gcWorker.run();
+  // the run is blocking, we need to launch both workers in parallel
+  await Promise.all([syncWorker.run(), gcWorker.run()]);
 }
