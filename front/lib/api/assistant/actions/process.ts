@@ -16,12 +16,14 @@ import type {
 } from "@dust-tt/types";
 import {
   BaseAction,
+  getProcessResultsFileTitle,
   isDevelopment,
   Ok,
   PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
 import assert from "assert";
+import { stringify } from "csv-stringify";
 import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -35,6 +37,7 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import apiConfig from "@app/lib/api/config";
+import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
@@ -44,6 +47,7 @@ import {
   PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 interface ProcessActionBlob {
@@ -54,6 +58,7 @@ interface ProcessActionBlob {
   };
   schema: ProcessSchemaPropertyType[];
   outputs: ProcessActionOutputsType | null;
+  resultsFileId: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -66,6 +71,7 @@ export class ProcessAction extends BaseAction {
   };
   readonly schema: ProcessSchemaPropertyType[];
   readonly outputs: ProcessActionOutputsType | null;
+  readonly resultsFileId: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
@@ -81,6 +87,7 @@ export class ProcessAction extends BaseAction {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+    this.resultsFileId = blob.resultsFileId;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -93,6 +100,8 @@ export class ProcessAction extends BaseAction {
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
+
+    // TODO: Render link to file and include snippet intead
 
     content += "PROCESSED OUTPUTS:\n";
 
@@ -234,6 +243,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        resultsFileId: null,
       }),
     };
 
@@ -427,8 +437,28 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }
     }
 
+    const updateParams: {
+      resultsFileId: number | null;
+    } = {
+      resultsFileId: null,
+    };
+
+    if (outputs) {
+      const fileTitle = getProcessResultsFileTitle({
+        outputs,
+      });
+
+      const { file } = await getProcessOutputCsvFileAndSnippet(auth, {
+        title: fileTitle,
+        outputs,
+      });
+
+      updateParams.resultsFileId = file.id;
+    }
+
     // Update ProcessAction with the output of the last block.
     await action.update({
+      ...updateParams,
       outputs,
       runId: await dustRunId,
     });
@@ -458,6 +488,12 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        resultsFileId: updateParams.resultsFileId
+          ? FileResource.modelIdToSId({
+              id: updateParams.resultsFileId,
+              workspaceId: owner.id,
+            })
+          : null,
       }),
     };
   }
@@ -501,8 +537,11 @@ async function processActionSpecification({
 // should not be used outside of api/assistant. We allow a ModelId interface here because for
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function processActionTypesFromAgentMessageIds(
+  auth: Authenticator,
   agentMessageIds: ModelId[]
 ): Promise<ProcessActionType[]> {
+  const owner = auth.getNonNullableWorkspace();
+
   const models = await AgentProcessAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
@@ -529,6 +568,53 @@ export async function processActionTypesFromAgentMessageIds(
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       step: action.step,
+      resultsFileId: action.resultsFileId
+        ? FileResource.modelIdToSId({
+            id: action.resultsFileId,
+            workspaceId: owner.id,
+          })
+        : null,
     });
   });
+}
+
+async function getProcessOutputCsvFileAndSnippet(
+  auth: Authenticator,
+  {
+    title,
+    outputs,
+  }: {
+    title: string;
+    outputs: ProcessActionOutputsType;
+  }
+): Promise<{
+  file: FileResource;
+  snippet: string;
+}> {
+  const toCsv = (
+    records: unknown[],
+    options: { header: boolean } = { header: true }
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      stringify(records, options, (err, data) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(data);
+      });
+    });
+  };
+
+  const csvOutput = await toCsv(outputs.data);
+  console.log(csvOutput);
+
+  const file = await internalCreateToolOutputCsvFile(auth, {
+    title,
+    content: csvOutput,
+    contentType: "text/csv",
+  });
+
+  // Do snippet
+
+  return { file, snippet: "" };
 }

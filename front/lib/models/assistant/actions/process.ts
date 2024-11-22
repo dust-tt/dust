@@ -14,6 +14,7 @@ import { DataTypes, Model } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 
 export class AgentProcessConfiguration extends Model<
   InferAttributes<AgentProcessConfiguration>,
@@ -149,6 +150,7 @@ export class AgentProcessAction extends Model<
   declare functionCallName: string | null;
 
   declare step: number;
+  declare resultsFileId: ForeignKey<FileModel["id"]> | null;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
@@ -236,4 +238,13 @@ AgentProcessAction.belongsTo(AgentMessage, {
 });
 AgentMessage.hasMany(AgentProcessAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+FileModel.hasMany(AgentProcessAction, {
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentProcessAction.belongsTo(FileModel, {
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
 });

@@ -46,6 +46,16 @@ export function renderSchemaPropertiesAsJSONSchema(
   return jsonSchema;
 }
 
+export function getProcessResultsFileTitle({
+  outputs,
+}: {
+  outputs: ProcessActionOutputsType;
+}): string {
+  // TODO Generate a proper name
+  console.log("getProcessResultsFileTitle", outputs);
+  return "extracted_data.csv";
+}
+
 export type ProcessTagsFilter = {
   in: string[];
 };
@@ -90,6 +100,7 @@ export interface ProcessActionType extends BaseAction {
   functionCallName: string | null;
   step: number;
   type: "process_action";
+  resultsFileId: string | null;
 }
 
 /**

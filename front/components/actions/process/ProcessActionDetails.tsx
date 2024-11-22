@@ -1,10 +1,17 @@
 import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
-import { Chip, Collapsible, ScanIcon, Tooltip } from "@dust-tt/sparkle";
+import {
+  Chip,
+  Citation,
+  Collapsible,
+  ScanIcon,
+  Tooltip,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import { CodeBlock } from "@dust-tt/sparkle";
 import { ContentBlockWrapper } from "@dust-tt/sparkle";
 import type { ProcessActionType } from "@dust-tt/types";
 import { PROCESS_ACTION_TOP_K } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
@@ -12,7 +19,25 @@ import type { ActionDetailsComponentBaseProps } from "@app/components/actions/ty
 export function ProcessActionDetails({
   action,
   defaultOpen,
+  owner,
 }: ActionDetailsComponentBaseProps<ProcessActionType>) {
+  const sendNotification = useSendNotification();
+  const handleDownload = useCallback(() => {
+    try {
+      const downloadUrl = `/api/w/${owner.sId}/files/${action.resultsFileId}?action=download`;
+      // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
+      // to cloud storage.
+      window.open(downloadUrl, "_blank");
+    } catch (error) {
+      console.error("Download failed:", error);
+      sendNotification({
+        title: "Download Failed",
+        type: "error",
+        description: "An error occurred while opening the download link.",
+      });
+    }
+  }, [action.resultsFileId, sendNotification, owner.sId]);
+
   return (
     <ActionDetailsWrapper
       actionName="Extract data"
@@ -24,10 +49,18 @@ export function ProcessActionDetails({
           <span className="text-sm font-bold text-slate-900">Query</span>
           <ProcessActionQuery action={action} />
         </div>
-        <div>
+
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-bold text-slate-900">Results</span>
+          {action.resultsFileId && (
+            <div onClick={handleDownload} className="py-2">
+              <Citation size="xs" title="extracted_data.csv" />
+            </div>
+          )}
+
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-bold text-slate-900">Results</span>
+              <span className="text-sm font-bold text-slate-900">Content</span>
             </Collapsible.Button>
             <Collapsible.Panel>
               <ProcessActionOutputDetails action={action} />
