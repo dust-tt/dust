@@ -24,6 +24,10 @@ import {
   isTextContent,
 } from "@dust-tt/types";
 
+import {
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import config from "@app/lib/api/config";
@@ -151,7 +155,8 @@ export class ConversationIncludeFileAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "include_conversation_file",
+      name:
+        this.functionCallName ?? DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
       arguments: JSON.stringify(this.params),
     };
   }
@@ -166,7 +171,9 @@ export class ConversationIncludeFileAction extends BaseAction {
     const finalize = (content: string) => {
       return {
         role: "function" as const,
-        name: this.functionCallName ?? "include_conversation_file",
+        name:
+          this.functionCallName ??
+          DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
         function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
         content,
       };
@@ -226,7 +233,8 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
 
     return new Ok({
       name,
-      description: description || "Retrieve the content of a file attachment",
+      description:
+        description ?? DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
       inputs: [
         {
           name: "fileId",
@@ -423,8 +431,7 @@ export function makeConversationIncludeFileConfiguration(): ConversationIncludeF
     id: -1,
     sId: generateRandomModelSId(),
     type: "conversation_include_file_configuration",
-    name: "include_conversation_file",
-    description:
-      "Retrieve and read an includable conversation file as returned by `list_conversation_files`",
+    name: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+    description: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
   };
 }
