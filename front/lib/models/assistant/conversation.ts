@@ -392,17 +392,14 @@ AgentMessageFeedback.init(
   }
 );
 
-AgentMessageFeedback.belongsTo(AgentConfiguration, {
-  as: "agentConfiguration",
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+AgentConfiguration.hasMany(AgentMessageFeedback, {
+  onDelete: "RESTRICT",
 });
-AgentMessageFeedback.belongsTo(AgentMessage, {
-  as: "agentMessage",
-  foreignKey: { name: "agentMessageId", allowNull: false },
+AgentMessage.hasMany(AgentMessageFeedback, {
+  onDelete: "RESTRICT",
 });
-AgentMessageFeedback.belongsTo(User, {
-  as: "user",
-  foreignKey: { name: "userId", allowNull: false },
+User.hasMany(AgentMessageFeedback, {
+  onDelete: "RESTRICT",
 });
 
 export class Message extends Model<
