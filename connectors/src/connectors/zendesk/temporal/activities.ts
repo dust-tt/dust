@@ -331,8 +331,11 @@ export async function syncZendeskArticleBatchActivity({
     `[Zendesk] Processing ${articles.length} articles in batch`
   );
 
-  const sections = await zendeskApiClient.helpcenter.sections.list();
-  const users = await zendeskApiClient.users.list();
+  const sections =
+    await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
+  const { result: users } = await zendeskApiClient.users.showMany(
+    articles.map((article) => article.author_id)
+  );
 
   await concurrentExecutor(
     articles,
