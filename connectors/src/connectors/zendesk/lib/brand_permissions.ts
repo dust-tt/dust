@@ -58,7 +58,7 @@ export async function allowSyncZendeskBrand({
         brandId: fetchedBrand.id,
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
-        helpCenterPermission: "read",
+        helpCenterPermission: fetchedBrand.has_help_center ? "read" : "none",
         hasHelpCenter: fetchedBrand.has_help_center,
         url: fetchedBrand.url,
       },

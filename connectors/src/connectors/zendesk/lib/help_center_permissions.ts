@@ -32,7 +32,7 @@ export async function allowSyncZendeskHelpCenter({
     brandId,
   });
 
-  if (brand) {
+  if (brand && brand.hasHelpCenter) {
     await brand.grantHelpCenterPermissions();
   } else {
     // fetching the brand from Zendesk
@@ -55,7 +55,7 @@ export async function allowSyncZendeskHelpCenter({
         brandId: fetchedBrand.id,
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "none",
-        helpCenterPermission: "read",
+        helpCenterPermission: fetchedBrand.has_help_center ? "read" : "none",
         hasHelpCenter: fetchedBrand.has_help_center,
         url: fetchedBrand.url,
       },
