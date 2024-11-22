@@ -1,5 +1,4 @@
 import type {
-  ConversationMessageReactions,
   FetchConversationMessagesResponse,
   MessageWithContentFragmentsType,
   UserType,
@@ -16,7 +15,6 @@ interface MessageGroupProps {
   hideReactions: boolean;
   isInModal: boolean;
   owner: WorkspaceType;
-  reactions: ConversationMessageReactions;
   prevFirstMessageId: string | null;
   prevFirstMessageRef: React.RefObject<HTMLDivElement>;
   user: UserType;
@@ -36,7 +34,6 @@ export default function MessageGroup({
   hideReactions,
   isInModal,
   owner,
-  reactions,
   prevFirstMessageId,
   prevFirstMessageRef,
   user,
@@ -70,7 +67,6 @@ export default function MessageGroup({
           isInModal={isInModal}
           message={message}
           owner={owner}
-          reactions={reactions}
           ref={
             message.sId === prevFirstMessageId ? prevFirstMessageRef : undefined
           }

@@ -1,6 +1,7 @@
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  ModelId,
   Result,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";

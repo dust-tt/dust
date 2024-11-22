@@ -1,6 +1,6 @@
 import type {
-  ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
+  ConversationMessageThumbSelectorProps,
 } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
@@ -83,7 +83,7 @@ interface AgentMessageProps {
   isInModal: boolean;
   isLastMessage: boolean;
   message: AgentMessageType;
-  messageEmoji?: ConversationMessageEmojiSelectorProps;
+  messageThumb?: ConversationMessageThumbSelectorProps;
   owner: WorkspaceType;
   user: UserType;
   size: ConversationMessageSizeType;
@@ -100,7 +100,7 @@ export function AgentMessage({
   isInModal,
   isLastMessage,
   message,
-  messageEmoji,
+  messageThumb,
   owner,
   user,
   size,
@@ -464,7 +464,7 @@ export function AgentMessage({
       name={`@${agentConfiguration.name}`}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      messageEmoji={messageEmoji}
+      messageThumb={messageThumb}
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">

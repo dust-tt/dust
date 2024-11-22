@@ -1,7 +1,6 @@
 import type { CitationType } from "@dust-tt/sparkle";
 import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import type {
-  ConversationMessageReactions,
   MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
@@ -21,7 +20,6 @@ interface MessageItemProps {
   isLastMessage: boolean;
   message: MessageWithContentFragmentsType;
   owner: WorkspaceType;
-  reactions: ConversationMessageReactions;
   user: UserType;
 }
 
@@ -34,40 +32,40 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isLastMessage,
       message,
       owner,
-      reactions,
       user,
     }: MessageItemProps,
     ref
   ) {
     const { sId, type } = message;
 
-    const convoReactions = reactions.find((r) => r.messageId === sId);
-    const messageReactions = convoReactions?.reactions || [];
     const { mutate } = useSWRConfig();
-    const { submit: onSubmitEmoji, isSubmitting: isSubmittingEmoji } =
+    const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
       useSubmitFunction(
         async ({
-          emoji,
+          thumb,
           isToRemove,
+          feedback,
         }: {
-          emoji: string;
+          thumb: string;
           isToRemove: boolean;
+          feedback?: string | null;
         }) => {
           const res = await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/reactions`,
+            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
             {
               method: isToRemove ? "DELETE" : "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                reaction: emoji,
+                thumb,
+                feedback,
               }),
             }
           );
           if (res.ok) {
             await mutate(
-              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
+              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/feedbacks`
             );
           }
         }
@@ -77,16 +75,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    const messageEmoji = hideReactions
+    const messageThumb = hideReactions
       ? undefined
       : {
-          reactions: messageReactions.map((reaction) => ({
-            emoji: reaction.emoji,
-            hasReacted: reaction.users.some((u) => u.userId === user.id),
-            count: reaction.users.length,
-          })),
-          onSubmitEmoji,
-          isSubmittingEmoji,
+          onSubmitThumb,
+          isSubmittingThumb,
         };
 
     switch (type) {
@@ -152,7 +145,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isInModal={isInModal}
               isLastMessage={isLastMessage}
               message={message}
-              messageEmoji={messageEmoji}
+              messageThumb={messageThumb}
               owner={owner}
               user={user}
               size={isInModal ? "compact" : "normal"}

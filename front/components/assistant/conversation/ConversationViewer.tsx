@@ -30,7 +30,6 @@ import {
   useConversation,
   useConversationMessages,
   useConversationParticipants,
-  useConversationReactions,
   useConversations,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
@@ -93,11 +92,6 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
-  });
-
-  const { reactions } = useConversationReactions({
-    workspaceId: owner.sId,
-    conversationId,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({
@@ -349,7 +343,6 @@ const ConversationViewer = React.forwardRef<
               hideReactions={hideReactions}
               isInModal={isInModal}
               owner={owner}
-              reactions={reactions}
               prevFirstMessageId={prevFirstMessageId}
               prevFirstMessageRef={prevFirstMessageRef}
               user={user}
