@@ -24,3 +24,7 @@ export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION = `Retrieve an
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
   "query_conversation_tables";
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION = `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
+
+export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
+  "search_conversation_files";
+export const DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION = `Search within the 'searchable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;

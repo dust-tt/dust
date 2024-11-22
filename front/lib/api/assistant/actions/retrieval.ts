@@ -1,5 +1,5 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -290,7 +290,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       citationsRefsOffset,
     }: {
       stepActionIndex: number;
-      stepActions: AgentActionConfigurationType[];
+      stepActions: ActionConfigurationType[];
       citationsRefsOffset: number;
     }
   ): AsyncGenerator<

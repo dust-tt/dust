@@ -9,6 +9,7 @@ import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 
 export const parseUploadRequest = async (
   file: FileResource,
@@ -116,7 +117,21 @@ export async function maybeUpsertFileAttachment(
             conversationId: conversation.sId,
           });
 
-          return processAndUpsertToDataSource(auth, { file: fileResource });
+          const r = await processAndUpsertToDataSource(auth, {
+            file: fileResource,
+          });
+          if (r.isErr()) {
+            // For now, silently log the error
+            logger.warn({
+              fileModelId: fileResource.id,
+              workspaceId: conversation.owner.sId,
+              contentType: fileResource.contentType,
+              useCase: fileResource.useCase,
+              useCaseMetadata: fileResource.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: r.error,
+            });
+          }
         }
       }),
     ]);

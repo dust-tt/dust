@@ -1,5 +1,5 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionsEvent,
   AgentActionSpecification,
   AgentActionSpecificEvent,
@@ -11,7 +11,6 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
-  ConversationAgentActionConfigurationType,
   ConversationType,
   GenerationCancelEvent,
   GenerationSuccessEvent,
@@ -311,10 +310,7 @@ async function* runMultiActionsAgent(
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
-    availableActions: (
-      | AgentActionConfigurationType
-      | ConversationAgentActionConfigurationType
-    )[];
+    availableActions: ActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
   }
@@ -714,10 +710,9 @@ async function* runMultiActionsAgent(
   }
 
   const actions: AgentActionsEvent["actions"] = [];
-  const agentActions = agentConfiguration.actions;
 
   for (const a of output.actions) {
-    const action = agentActions.find((ac) => ac.name === a.name);
+    const action = availableActions.find((ac) => ac.name === a.name);
 
     if (!action) {
       logger.error(
@@ -808,9 +803,7 @@ async function* runAction(
     citationsRefsOffset,
   }: {
     configuration: AgentConfigurationType;
-    actionConfiguration:
-      | AgentActionConfigurationType
-      | ConversationAgentActionConfigurationType;
+    actionConfiguration: ActionConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
@@ -819,7 +812,7 @@ async function* runAction(
     functionCallId: string | null;
     step: number;
     stepActionIndex: number;
-    stepActions: AgentActionConfigurationType[];
+    stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
   }
 ): AsyncGenerator<

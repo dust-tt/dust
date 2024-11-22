@@ -10,7 +10,6 @@ import { BaseAction } from "@dust-tt/types";
 import _ from "lodash";
 
 import { DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
@@ -53,9 +52,7 @@ export class ConversationListFilesAction extends BaseAction {
       // TODO(spolu): add mention of viz if enabled and other tools.
       `\n`;
     for (const f of this.files) {
-      content +=
-        `<file id="${f.fileId}" name="${_.escape(f.title)}" type="${f.contentType}" ` +
-        `includable="${isConversationIncludableFileContentType(f.contentType)}" queryable="${!!f.snippet}"`;
+      content += `<file id="${f.fileId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
 
       if (f.snippet) {
         content += ` snippet="${_.escape(f.snippet)}"`;

@@ -1,10 +1,9 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionType,
   AgentMessageType,
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
-  ConversationAgentActionConfigurationType,
   ConversationFileType,
   ConversationType,
   FunctionCallType,
@@ -13,6 +12,8 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   Result,
+  RetrievalConfigurationType,
+  SupportedContentFragmentType,
   TablesQueryConfigurationType,
 } from "@dust-tt/types";
 import {
@@ -23,6 +24,7 @@ import {
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isDevelopment,
+  isSupportedImageContentType,
   isSupportedPlainTextContentType,
   isTablesQueryActionType,
   isUserMessageType,
@@ -34,8 +36,13 @@ import assert from "assert";
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
-import { makeConversationIncludeFileConfiguration } from "@app/lib/api/assistant/actions/conversation/include_file";
+import {
+  isConversationIncludableFileContentType,
+  makeConversationIncludeFileConfiguration,
+} from "@app/lib/api/assistant/actions/conversation/include_file";
 import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
 import {
   getTextContentFromMessage,
@@ -64,6 +71,58 @@ export async function isJITActionsEnabled(
   return use;
 }
 
+function isConversationQueryableFileContentType(
+  contentType: SupportedContentFragmentType
+): boolean {
+  if (isSupportedImageContentType(contentType)) {
+    return false;
+  }
+  // For now we only allow including text files.
+  switch (contentType) {
+    case "application/msword":
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/pdf":
+    case "text/markdown":
+    case "text/plain":
+    case "dust-application/slack":
+    case "text/tab-separated-values":
+    case "text/tsv":
+      return false;
+
+    case "text/comma-separated-values":
+    case "text/csv":
+      return true;
+    default:
+      assertNever(contentType);
+  }
+}
+
+function isConversationSearchableFileContentType(
+  contentType: SupportedContentFragmentType
+): boolean {
+  if (isSupportedImageContentType(contentType)) {
+    return false;
+  }
+  // For now we only allow including text files.
+  switch (contentType) {
+    case "application/msword":
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/pdf":
+    case "text/markdown":
+    case "text/plain":
+    case "dust-application/slack":
+    case "text/tab-separated-values":
+    case "text/tsv":
+      return true;
+
+    case "text/comma-separated-values":
+    case "text/csv":
+      return false;
+    default:
+      assertNever(contentType);
+  }
+}
+
 export function listFiles(
   conversation: ConversationType
 ): ConversationFileType[] {
@@ -75,22 +134,37 @@ export function listFiles(
       m.contentFragmentVersion === "latest"
     ) {
       if (m.fileId) {
+        const isUsableForJIT = m.snippet !== null;
         files.push({
           fileId: m.fileId,
           title: m.title,
           contentType: m.contentType,
           snippet: m.snippet,
+          isUsableForJIT: isUsableForJIT,
+          isIncludable: isConversationIncludableFileContentType(m.contentType),
+          isQueryable:
+            isUsableForJIT &&
+            isConversationQueryableFileContentType(m.contentType),
+          isSearchable:
+            isUsableForJIT &&
+            isConversationSearchableFileContentType(m.contentType),
         });
       }
     } else if (isAgentMessageType(m)) {
       for (const a of m.actions) {
         if (isTablesQueryActionType(a)) {
           if (a.resultsFileId && a.resultsFileSnippet) {
+            const contentType = "text/csv";
             files.push({
               fileId: a.resultsFileId,
-              contentType: "text/csv",
+              contentType: contentType,
               title: getTablesQueryResultsFileTitle({ output: a.output }),
-              snippet: null, // This means that we can't use it for JIT actions (the resultsFileSnippet is not the same snippet)
+              snippet: null, // the resultsFileSnippet is not the same snippet
+              isUsableForJIT: false,
+              isIncludable:
+                isConversationIncludableFileContentType(contentType),
+              isQueryable: false,
+              isSearchable: false,
             });
           }
         }
@@ -107,17 +181,11 @@ async function getJITActions(
     conversation,
     files,
   }: { conversation: ConversationType; files: ConversationFileType[] }
-): Promise<
-  (AgentActionConfigurationType | ConversationAgentActionConfigurationType)[]
-> {
-  const actions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[] = [];
+): Promise<ActionConfigurationType[]> {
+  const actions: ActionConfigurationType[] = [];
 
   if (files.length > 0) {
-    // quey_conversation_tables
-    const filesUsableForJIT = files.filter((f) => !!f.snippet);
+    const filesUsableForJIT = files.filter((f) => f.isUsableForJIT);
 
     if (filesUsableForJIT.length > 0) {
       // Get the datasource view for the conversation.
@@ -141,15 +209,13 @@ async function getJITActions(
 
       // Check tables for the table query action.
       const filesUsableAsTableQuery = filesUsableForJIT.filter(
-        (f) => f.contentType === "text/csv" // TODO: there should not be a hardcoded value here
+        (f) => f.isQueryable
       );
 
       if (filesUsableAsTableQuery.length > 0) {
-        // TODO(JIT) Shall we look for an existing table query action and update it instead of
-        // creating a new one? This would allow join between the tables.
+        // TODO(JIT) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
         const action: TablesQueryConfigurationType = {
-          // The description here is the description of the data, a meta description of the action
-          // is prepended automatically.
+          // The description here is the description of the data, a meta description of the action is prepended automatically.
           description:
             DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
           type: "tables_query_configuration",
@@ -161,6 +227,32 @@ async function getJITActions(
             dataSourceViewId: dataSourceView.sId,
             tableId: f.fileId,
           })),
+        };
+        actions.push(action);
+      }
+
+      // Check files for the retrieval query action.
+      const filesUsableAsRetrievalQuery = filesUsableForJIT.filter(
+        (f) => f.isSearchable
+      );
+
+      if (filesUsableAsRetrievalQuery.length > 0) {
+        const action: RetrievalConfigurationType = {
+          description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
+          type: "retrieval_configuration",
+          id: -1,
+          name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+          sId: generateRandomModelSId(),
+          topK: "auto",
+          query: "auto",
+          relativeTimeFrame: "auto",
+          dataSources: [
+            {
+              workspaceId: conversation.owner.sId,
+              dataSourceViewId: dataSourceView.sId,
+              filter: { parents: null },
+            },
+          ],
         };
         actions.push(action);
       }
@@ -181,16 +273,10 @@ export async function getEmulatedAndJITActions(
   }: { agentMessage: AgentMessageType; conversation: ConversationType }
 ): Promise<{
   emulatedActions: AgentActionType[];
-  jitActions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[];
+  jitActions: ActionConfigurationType[];
 }> {
   const emulatedActions: AgentActionType[] = [];
-  let jitActions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[] = [];
+  let jitActions: ActionConfigurationType[] = [];
 
   if (await isJITActionsEnabled(auth)) {
     const files = listFiles(conversation);
