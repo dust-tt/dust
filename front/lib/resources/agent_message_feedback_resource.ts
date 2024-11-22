@@ -1,4 +1,8 @@
-import type { Result } from "@dust-tt/types";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { CreationAttributes, Transaction } from "sequelize";
 import type { Attributes, ModelStatic } from "sequelize";
@@ -40,13 +44,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }
 
   static async listByAgentConfigurationId({
-    agentConfigurationId,
+    agentConfiguration,
   }: {
-    agentConfigurationId: string;
+    agentConfiguration: AgentConfigurationType;
   }): Promise<AgentMessageFeedbackResource[] | null> {
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
-        agentConfigurationId,
+        agentConfigurationId: agentConfiguration.id,
       },
       order: [["id", "DESC"]],
     });
@@ -57,17 +61,17 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static async fetchByUserAndMessageId({
+  static async fetchByUserAndMessage({
     user,
-    agentMessageId,
+    agentMessage,
   }: {
     user: UserResource;
-    agentMessageId: string;
+    agentMessage: AgentMessageType;
   }): Promise<AgentMessageFeedbackResource | null> {
     const agentMessageFeedback = await AgentMessageFeedback.findOne({
       where: {
         userId: user.id,
-        agentMessageId,
+        agentMessageId: agentMessage.id,
       },
     });
 
