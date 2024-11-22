@@ -3,6 +3,7 @@ import { Err, Ok } from "@dust-tt/types";
 import type { CreationAttributes, Transaction } from "sequelize";
 import type { Attributes, ModelStatic } from "sequelize";
 
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
@@ -81,11 +82,15 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  async updateContent(content: string): Promise<Result<undefined, Error>> {
+  async updateContentAndThumbDirection(
+    content: string,
+    thumbDirection: AgentMessageFeedbackDirection
+  ): Promise<Result<undefined, Error>> {
     try {
       await this.model.update(
         {
           content,
+          thumbDirection,
         },
         {
           where: {

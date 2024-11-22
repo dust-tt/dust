@@ -12,6 +12,7 @@ import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import {
   Message,
   MessageReaction,
@@ -90,7 +91,7 @@ function _renderMessageReactions(
  * We create a feedback for a single message.
  * As user can be null (user from Slack), we also store the user context, as we do for messages.
  */
-export async function createMessageFeedback(
+export async function createOrUpdateMessageFeedback(
   auth: Authenticator,
   {
     messageId,
@@ -118,11 +119,15 @@ export async function createMessageFeedback(
     },
   });
 
-  if (!message) {
+  if (!message || !message.agentMessageId) {
     return null;
   }
 
-  const agentMessage = message.agentMessage;
+  const agentMessage = await AgentMessage.findOne({
+    where: {
+      id: message.agentMessageId,
+    },
+  });
 
   if (!agentMessage) {
     return null;
@@ -140,59 +145,30 @@ export async function createMessageFeedback(
     return null;
   }
 
-  const newFeedback = await AgentMessageFeedbackResource.makeNew({
-    agentConfigurationId: agentConfiguration.id,
-    agentMessageId: message.id,
-    userId: user.id,
-    thumbDirection,
-    content,
-  });
-  return newFeedback !== null;
-}
-
-export async function updateMessageFeedbackContent(
-  auth: Authenticator,
-  {
-    messageId,
-    conversation,
-    user,
-    content,
-  }: {
-    messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
-    user: UserType;
-    content: string;
-  }
-): Promise<boolean | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const message = await Message.findOne({
-    where: {
-      sId: messageId,
-      conversationId: conversation.id,
-    },
-  });
-
-  if (!message || !message.agentMessage) {
-    return null;
-  }
-
   const feedback =
     await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
       user,
-      agentMessage: message.agentMessage,
+      agentMessage,
     });
 
-  if (!feedback) {
-    return null;
+  if (feedback) {
+    const updatedFeedback = await feedback.updateContentAndThumbDirection(
+      content ?? "",
+      thumbDirection
+    );
+
+    return updatedFeedback.isOk();
+  } else {
+    const newFeedback = await AgentMessageFeedbackResource.makeNew({
+      workspaceId: owner.id,
+      agentConfigurationId: agentConfiguration.id,
+      agentMessageId: agentMessage.id,
+      userId: user.id,
+      thumbDirection,
+      content,
+    });
+    return newFeedback !== null;
   }
-
-  const updatedFeedback = await feedback.updateContent(content);
-
-  return updatedFeedback.isOk();
 }
 
 /**

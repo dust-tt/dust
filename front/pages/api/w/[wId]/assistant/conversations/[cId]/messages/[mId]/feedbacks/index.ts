@@ -8,9 +8,8 @@ import { getConversationWithoutContent } from "@app/lib/api/assistant/conversati
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
-  createMessageFeedback,
+  createOrUpdateMessageFeedback,
   deleteMessageFeedback,
-  updateMessageFeedbackContent,
 } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -79,12 +78,13 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const created = await createMessageFeedback(auth, {
+      const created = await createOrUpdateMessageFeedback(auth, {
         messageId,
         conversation,
         user,
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
+        content: bodyValidation.right.feedback || "",
       });
 
       if (created) {
@@ -95,27 +95,8 @@ async function handler(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "The message you're trying to react to does not exist.",
-        },
-      });
-
-    case "PATCH":
-      const updated = await updateMessageFeedbackContent(auth, {
-        messageId,
-        conversation,
-        user,
-        content: bodyValidation.right.feedback || "",
-      });
-
-      if (updated) {
-        res.status(200).json({ success: true });
-        return;
-      }
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "The message you're trying to react to does not exist.",
+          message:
+            "The message you're trying to give feedback to does not exist.",
         },
       });
 
@@ -133,7 +114,8 @@ async function handler(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "The message you're trying to react to does not exist.",
+          message:
+            "The message you're trying to give feedback to does not exist.",
         },
       });
 
