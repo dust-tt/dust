@@ -33,7 +33,7 @@ import {
 import assert from "assert";
 
 import {
-  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DESCRIPTION,
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/api/assistant/actions/conversation/include_file";
@@ -149,7 +149,10 @@ async function getJITActions(
         // TODO(JIT) Shall we look for an existing table query action and update it instead of
         // creating a new one? This would allow join between the tables.
         const action: TablesQueryConfigurationType = {
-          description: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DESCRIPTION,
+          // The description here is the description of the data, a meta description of the action
+          // is prepended automatically.
+          description:
+            DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
           type: "tables_query_configuration",
           id: -1,
           name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
