@@ -91,8 +91,6 @@ export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupChoice, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
-export type { SearchbarProps } from "./Searchbar";
-export { Searchbar } from "./Searchbar";
 export { SearchInput } from "./SearchInput";
 export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
