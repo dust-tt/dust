@@ -21,8 +21,9 @@ import type {
 } from "@dust-tt/types";
 import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useCallback } from "react";
+import { useCallback, useContext } from "react";
 
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
@@ -35,6 +36,13 @@ export function HelpDropdown({
 }) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const { setSelectedAssistant, setAnimate } = useContext(InputBarContext);
+
+  const handleAskHelp = () => {
+    setSelectedAssistant({ configurationId: GLOBAL_AGENTS_SID.HELPER });
+    setAnimate(true);
+  };
 
   const { submit: handleHelpSubmit } = useSubmitFunction(
     useCallback(
@@ -80,7 +88,12 @@ export function HelpDropdown({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" label="Help" icon={HeartIcon} isSelect />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <DropdownMenuLabel label="Learn about Dust" />
         <DropdownMenuItem
           label="Quickstart Guide"
@@ -113,7 +126,7 @@ export function HelpDropdown({
           label="Ask @help"
           description="Ask anything about Dust"
           icon={ChatBubbleLeftRightIcon}
-          onClick={() => void handleHelpSubmit("How can I use Dust?", [])}
+          onClick={() => void handleAskHelp()}
         />
         <DropdownMenuItem
           label="How to invite new users?"
