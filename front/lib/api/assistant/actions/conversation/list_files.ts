@@ -2,7 +2,6 @@ import type {
   AgentMessageType,
   ConversationFileType,
   ConversationListFilesActionType,
-  ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -11,7 +10,6 @@ import { BaseAction } from "@dust-tt/types";
 import _ from "lodash";
 
 import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
-import { listFiles } from "@app/lib/api/assistant/jit_actions";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
@@ -75,13 +73,11 @@ export class ConversationListFilesAction extends BaseAction {
 
 export function makeConversationListFilesAction({
   agentMessage,
-  conversation,
+  files,
 }: {
   agentMessage: AgentMessageType;
-  conversation: ConversationType;
+  files: ConversationFileType[];
 }): ConversationListFilesActionType | null {
-  const files: ConversationFileType[] = listFiles(conversation);
-
   if (files.length === 0) {
     return null;
   }

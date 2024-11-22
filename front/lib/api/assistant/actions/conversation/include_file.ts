@@ -31,6 +31,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
 export function isConversationIncludableFileContentType(
@@ -411,4 +412,19 @@ export async function conversationIncludeFileTypesFromAgentMessageIds(
       step: action.step,
     });
   });
+}
+
+/**
+ * JIT action configration construction
+ */
+
+export function makeConversationIncludeFileConfiguration(): ConversationIncludeFileConfigurationType {
+  return {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "conversation_include_file_configuration",
+    name: "include_conversation_file",
+    description:
+      "Retrieve and read an includable conversation file as returned by `list_conversation_files`",
+  };
 }
