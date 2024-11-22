@@ -6,6 +6,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  CoreAPI,
   Err,
   getSmallWhitelistedModel,
   isSupportedPlainTextContentType,
@@ -19,6 +20,7 @@ import { pipeline } from "stream/promises";
 import { runAction } from "@app/lib/actions/server";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
+import config from "@app/lib/api/config";
 import {
   createDataSourceWithoutProvider,
   upsertDocument,
@@ -31,6 +33,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import logger from "@app/logger/logger";
 
 class MemoryWritable extends Writable {
   private chunks: string[];
@@ -76,20 +79,59 @@ async function generateSnippet(
     );
   }
 
-  const config = cloneBaseConfig(
+  const appConfig = cloneBaseConfig(
     DustProdActionRegistry["conversation-file-summarizer"].config
   );
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
+  appConfig.MODEL.provider_id = model.providerId;
+  appConfig.MODEL.model_id = model.modelId;
 
-  const res = await runAction(auth, "conversation-file-summarizer", config, [
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const resTokenize = await coreAPI.tokenize({
+    text: content,
+    providerId: model.providerId,
+    modelId: model.modelId,
+  });
+
+  if (resTokenize.isErr()) {
+    return new Err(
+      new Error(
+        `Error tokenizing content: ${resTokenize.error.code} ${resTokenize.error.message}`
+      )
+    );
+  }
+
+  const tokensCount = resTokenize.value.tokens.length;
+  const allowedTokens = model.contextSize * 0.9;
+  if (tokensCount > allowedTokens) {
+    // Truncate the content to the context size * 0.9 using cross product
+    const truncateLength = Math.floor(
+      (allowedTokens * content.length) / tokensCount
+    );
+
+    logger.warn(
+      {
+        tokensCount,
+        contentLength: content.length,
+        contextSize: model.contextSize,
+      },
+      `Truncating content to ${truncateLength} characters`
+    );
+
+    content = content.slice(0, truncateLength);
+  }
+
+  const res = await runAction(auth, "conversation-file-summarizer", appConfig, [
     {
       content: content,
     },
   ]);
 
   if (res.isErr()) {
-    return new Err(new Error(`Error generating snippet: ${res.error}`));
+    return new Err(
+      new Error(
+        `Error generating snippet: ${res.error.type} ${res.error.message}`
+      )
+    );
   }
 
   const {
