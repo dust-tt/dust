@@ -11,16 +11,17 @@ export type NavigationSelectionType = {
 export const NAVIGATION_SELECTION_COOKIE_NAME = "navigationSelection";
 
 export const usePersistedNavigationSelection = () => {
+  // We use cookies instead of local storage because we need to access from SSR
   const [cookies, setCookie] = useCookies([NAVIGATION_SELECTION_COOKIE_NAME]);
 
   const setNavigationSelection = useCallback(
     (selection: NavigationSelectionType) => {
       const existingSelection = cookies.navigationSelection;
 
-      const newSelection = {
+      const newSelection: NavigationSelectionType = {
         ...existingSelection,
         ...selection,
-      } as NavigationSelectionType;
+      };
 
       setCookie(
         NAVIGATION_SELECTION_COOKIE_NAME,

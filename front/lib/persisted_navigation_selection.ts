@@ -1,3 +1,4 @@
+import { safeParseJSON } from "@dust-tt/types";
 import type { NextApiRequestCookies } from "next/dist/server/api-utils";
 
 import type { NavigationSelectionType } from "@app/hooks/usePersistedNavigationSelection";
@@ -13,10 +14,11 @@ export const getPersistedNavigationSelection = (
     return {};
   }
 
-  try {
-    return JSON.parse(selectionCookie) as NavigationSelectionType;
-  } catch (error) {
-    console.error("Failed to parse navigation selection cookie:", error);
+  const r = safeParseJSON(selectionCookie);
+  if (r.isErr()) {
+    console.error("Failed to parse navigation selection cookie:", r.error);
     return {};
+  } else {
+    return r.value as NavigationSelectionType;
   }
 };
