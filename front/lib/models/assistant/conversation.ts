@@ -15,7 +15,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -345,6 +345,7 @@ export class AgentMessageFeedback extends Model<
   declare agentConfigurationVersion: number;
   declare agentConfigurationVersionDate: string;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare userId: ForeignKey<User["id"]>;
 
   declare thumbDirection: AgentMessageFeedbackType;
   declare content: string | null;
@@ -367,10 +368,6 @@ AgentMessageFeedback.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    agentConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     agentConfigurationVersion: {
       type: DataTypes.NUMBER,
       allowNull: false,
@@ -380,10 +377,6 @@ AgentMessageFeedback.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: 0,
-    },
-    agentMessageId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     thumbDirection: {
       type: DataTypes.STRING,
@@ -399,6 +392,19 @@ AgentMessageFeedback.init(
     sequelize: frontSequelize,
   }
 );
+
+AgentMessageFeedback.belongsTo(AgentConfiguration, {
+  as: "agentConfiguration",
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+AgentMessageFeedback.belongsTo(AgentMessage, {
+  as: "agentMessage",
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+AgentMessageFeedback.belongsTo(User, {
+  as: "user",
+  foreignKey: { name: "userId", allowNull: false },
+});
 
 export class Message extends Model<
   InferAttributes<Message>,
