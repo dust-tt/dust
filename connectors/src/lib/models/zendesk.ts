@@ -258,7 +258,7 @@ ZendeskCategory.init(
       validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     description: {
@@ -351,7 +351,7 @@ ZendeskArticle.init(
       validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     url: {
