@@ -28,13 +28,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   static async makeNew(
     blob: CreationAttributes<AgentMessageFeedback>
   ): Promise<AgentMessageFeedbackResource> {
-    const configuration = await AgentMessageFeedback.create({
+    const agentMessageFeedback = await AgentMessageFeedback.create({
       ...blob,
     });
 
     return new AgentMessageFeedbackResource(
       AgentMessageFeedback,
-      configuration.get()
+      agentMessageFeedback.get()
     );
   }
 
@@ -43,16 +43,16 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }: {
     agentConfigurationId: string;
   }): Promise<AgentMessageFeedbackResource[] | null> {
-    const configuration = await AgentMessageFeedback.findAll({
+    const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
         agentConfigurationId,
       },
       order: [["id", "DESC"]],
     });
 
-    return configuration.map(
-      (config) =>
-        new AgentMessageFeedbackResource(AgentMessageFeedback, config.get())
+    return agentMessageFeedback.map(
+      (feedback) =>
+        new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
     );
   }
 
@@ -63,20 +63,20 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     userId: string;
     agentMessageId: string;
   }): Promise<AgentMessageFeedbackResource | null> {
-    const configuration = await AgentMessageFeedback.findOne({
+    const agentMessageFeedback = await AgentMessageFeedback.findOne({
       where: {
         userId,
         agentMessageId,
       },
     });
 
-    if (!configuration) {
+    if (!agentMessageFeedback) {
       return null;
     }
 
     return new AgentMessageFeedbackResource(
       AgentMessageFeedback,
-      configuration.get()
+      agentMessageFeedback.get()
     );
   }
 

@@ -389,6 +389,21 @@ AgentMessageFeedback.init(
   {
     modelName: "agent_message_feedback",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentConfigurationId"],
+      },
+      {
+        fields: ["agentMessageId"],
+      },
+      {
+        fields: ["userId"],
+      },
+      {
+        fields: ["agentConfigurationId", "agentMessageId", "userId"],
+        unique: true,
+      },
+    ],
   }
 );
 
