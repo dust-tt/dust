@@ -96,6 +96,8 @@ export class ConversationIncludeFileAction extends BaseAction {
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
+    this.tokensCount = blob.tokensCount;
+    this.fileTitle = blob.fileTitle;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
