@@ -22,11 +22,13 @@ export async function getVisualizationPrompt({
   // If `jit_conversations_actions` is enabled we rely on the `conversations_list_files` emulated
   // actions to make the list of files available to the agent.
   if (await isJITActionsEnabled(auth)) {
-    return visualizationSystemPrompt;
+    return visualizationSystemPrompt(true);
   }
 
   const contentFragmentMessages: Array<ContentFragmentType> = [];
-  for (const m of conversation.content.flat(1)) {
+  for (const versions of conversation.content) {
+    const m = versions[versions.length - 1];
+
     if (isContentFragmentType(m)) {
       contentFragmentMessages.push(m);
     }
@@ -39,10 +41,12 @@ export async function getVisualizationPrompt({
     "sId"
   );
 
-  let prompt = visualizationSystemPrompt.trim() + "\n\n";
+  let prompt = visualizationSystemPrompt(false).trim() + "\n\n";
 
   const fileAttachments: string[] = [];
-  for (const m of conversation.content.flat(1)) {
+  for (const versions of conversation.content) {
+    const m = versions[versions.length - 1];
+
     if (isContentFragmentType(m)) {
       if (!m.fileId || !contentFragmentFileBySid[m.fileId]) {
         continue;
@@ -79,7 +83,7 @@ export async function getVisualizationPrompt({
   return prompt;
 }
 
-export const visualizationSystemPrompt = `\
+export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
 Guidelines using the :::visualization tag:
@@ -108,8 +112,8 @@ Guidelines using the :::visualization tag:
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
-- Using files from the conversation when available:
- - Files from the conversation can be accessed using the \`useFile()\` hook.
+- Using ${jitActionsEnabled ? "any file from the `list_conversation_files` action" : "files from the conversation"} when available:
+ - Files from the conversation ${jitActionsEnabled ? "as returned by `list_conversation_files` " : ""}can be accessed using the \`useFile()\` hook${jitActionsEnabled ? " (all files can be accessed by the hook irrespective of their status)" : ""}.
  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
  - Always use \`papaparse\` to parse CSV files.
  - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
@@ -139,7 +143,7 @@ if (file) {
 }
 \`\`\`
 
-\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags in the conversation history.
+\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags ${jitActionsEnabled ? "returned by the `list_conversation_files` action" : "in the conversation history"}.
 
 Example using the \`triggerUserFileDownload\` hook:
 

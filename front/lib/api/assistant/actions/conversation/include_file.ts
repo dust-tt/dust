@@ -115,8 +115,10 @@ export class ConversationIncludeFileAction extends BaseAction {
     // that past actions on a previous version of a content fragment will correctly render the
     // content as being superseded showing the model that a new version available. The fileId of
     // that new version will be different but the title will likely be the same and the model should
-    // be able to undertstand the state of affair.
-    const m = (conversation.content.flat(1).find((m) => {
+    // be able to undertstand the state of affair. We use content.flat() to consider all versions of
+    // messages here (to support rendering a file that was part of an old version of a previous
+    // message).
+    const m = (conversation.content.flat().find((m) => {
       if (
         isContentFragmentType(m) &&
         isConversationIncludableFileContentType(m.contentType) &&
@@ -128,7 +130,9 @@ export class ConversationIncludeFileAction extends BaseAction {
     }) || null) as ContentFragmentType | null;
 
     if (!m) {
-      return new Err(`File \`${fileId}\` not found in conversation`);
+      return new Err(
+        `File \`${fileId}\` not includable or not found in conversation`
+      );
     }
 
     const rRes = await renderContentFragmentForModel(m, conversation, model, {

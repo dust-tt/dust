@@ -127,7 +127,9 @@ export function listFiles(
   conversation: ConversationType
 ): ConversationFileType[] {
   const files: ConversationFileType[] = [];
-  for (const m of conversation.content.flat(1)) {
+  for (const versions of conversation.content) {
+    const m = versions[versions.length - 1];
+
     if (
       isContentFragmentType(m) &&
       isSupportedPlainTextContentType(m.contentType) &&
