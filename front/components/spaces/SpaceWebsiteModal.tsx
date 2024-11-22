@@ -654,7 +654,7 @@ const AdvancedSettingsModal = ({
           <div className="flex flex-col gap-4">
             {headers.map((header, index) => (
               <div key={index} className="flex gap-2">
-                <div className="flex grow flex-col gap-1">
+                <div className="flex grow flex-col gap-1 px-1">
                   <Input
                     placeholder="Header Name"
                     value={header.key}

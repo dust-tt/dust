@@ -208,7 +208,7 @@ export function CreateOrEditSpaceModal({
       onSave={onSave}
     >
       <Page.Vertical gap="md" sizing="grow">
-        <div className="flex w-full flex-col gap-y-4 overflow-y-hidden">
+        <div className="flex w-full flex-col gap-y-4 overflow-y-hidden px-1">
           <div className="mb-4 flex w-full flex-col gap-y-2 pt-2">
             <Page.SectionHeader title="Name" />
             <Input
