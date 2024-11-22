@@ -112,8 +112,8 @@ Guidelines using the :::visualization tag:
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
-- Using files from the ${jitActionsEnabled ? "`list_conversation_files` action" : "conversation"} when available:
- - Files from the conversation ${jitActionsEnabled ? "as returned by `list_conversation_files` " : ""}can be accessed using the \`useFile()\` hook.
+- Using ${jitActionsEnabled ? "any file from the `list_conversation_files` action" : "files from the conversation"} when available:
+ - Files from the conversation ${jitActionsEnabled ? "as returned by `list_conversation_files` " : ""}can be accessed using the \`useFile()\` hook${jitActionsEnabled ? " (all files can be accessed by the hook irrespective of their status)" : ""}.
  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
  - Always use \`papaparse\` to parse CSV files.
  - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
