@@ -72,11 +72,6 @@ export async function syncArticle({
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
 }) {
-  logger.info(
-    { ...loggerArgs, connectorId, article },
-    "[Zendesk] Syncing article." // TODO(2024-11-22 aubin): remove this log once investigated
-  );
-
   let articleInDb = await ZendeskArticleResource.fetchByArticleId({
     connectorId,
     articleId: article.id,
