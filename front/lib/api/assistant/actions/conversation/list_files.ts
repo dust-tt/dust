@@ -9,6 +9,7 @@ import type {
 import { BaseAction } from "@dust-tt/types";
 import _ from "lodash";
 
+import { DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
 
 interface ConversationListFilesActionBlob {
@@ -38,7 +39,8 @@ export class ConversationListFilesAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "list_conversation_files",
+      name:
+        this.functionCallName ?? DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
       arguments: JSON.stringify({}),
     };
   }
@@ -64,7 +66,8 @@ export class ConversationListFilesAction extends BaseAction {
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? "list_conversation_files",
+      name:
+        this.functionCallName ?? DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -84,7 +87,7 @@ export function makeConversationListFilesAction({
 
   return new ConversationListFilesAction({
     functionCallId: "call_" + Math.random().toString(36).substring(7),
-    functionCallName: "list_conversation_files",
+    functionCallName: DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
     files,
     agentMessageId: agentMessage.agentMessageId,
   });

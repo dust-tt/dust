@@ -32,6 +32,10 @@ import {
 } from "@dust-tt/types";
 import assert from "assert";
 
+import {
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/constants";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
 import {
@@ -142,15 +146,16 @@ async function getJITActions(
       );
 
       if (filesUsableAsTableQuery.length > 0) {
-        // TODO(jit) Shall we look for an existing table query action and update it instead of
+        // TODO(JIT) Shall we look for an existing table query action and update it instead of
         // creating a new one? This would allow join between the tables.
         const action: TablesQueryConfigurationType = {
-          description: filesUsableAsTableQuery
-            .map((f) => `tableId: ${f.fileId}\n${f.snippet}`)
-            .join("\n\n"),
+          // The description here is the description of the data, a meta description of the action
+          // is prepended automatically.
+          description:
+            DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
           type: "tables_query_configuration",
           id: -1,
-          name: "query_conversation_tables",
+          name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
           sId: generateRandomModelSId(),
           tables: filesUsableAsTableQuery.map((f) => ({
             workspaceId: auth.getNonNullableWorkspace().sId,
