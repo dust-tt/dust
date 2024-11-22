@@ -343,7 +343,7 @@ export class AgentMessageFeedback extends Model<
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
   declare agentConfigurationVersion: number;
-  declare agentConfigurationVersionDate: string;
+  declare agentConfigurationVersionDate: Date;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<User["id"]>;
 
@@ -374,9 +374,8 @@ AgentMessageFeedback.init(
       defaultValue: 0,
     },
     agentConfigurationVersionDate: {
-      type: DataTypes.STRING,
+      type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: 0,
     },
     thumbDirection: {
       type: DataTypes.STRING,
