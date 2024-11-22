@@ -459,7 +459,9 @@ export default function SpaceWebsiteModal({
                         iconPosition="center"
                         className="gap-2 text-sm"
                         label={
-                          <Label className="text-sm font-light">Follow all the links within the domain</Label>
+                          <Label className="text-sm font-light">
+                            Follow all the links within the domain
+                          </Label>
                         }
                       ></RadioGroupChoice>
                     </RadioGroup>

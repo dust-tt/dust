@@ -5,6 +5,7 @@ import {
   Icon,
   IconButton,
   Input,
+  Label,
   LockIcon,
   Modal,
   Page,
@@ -606,12 +607,14 @@ function CreateEnterpriseConnectionModal({
               }}
               className="flex-col gap-2"
             >
-              <RadioGroupChoice value="okta">
-                <span className="pl-1">Okta SSO</span>
-              </RadioGroupChoice>
-              <RadioGroupChoice value="waad">
-                <span className="pl-1">Microsoft Entra Id</span>
-              </RadioGroupChoice>
+              <RadioGroupChoice
+                value="okta"
+                label={<Label className="pl-1">Okta SSO</Label>}
+              ></RadioGroupChoice>
+              <RadioGroupChoice
+                value="waad"
+                label={<Label className="pl-1">Microsoft Entra Id</Label>}
+              ></RadioGroupChoice>
             </RadioGroup>
           </div>
         )}
