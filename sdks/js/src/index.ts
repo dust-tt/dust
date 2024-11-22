@@ -3,6 +3,7 @@ import { z } from "zod";
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentConfigurationViewType,
   AgentErrorEvent,
   AgentMessageSuccessEvent,
   APIError,
@@ -482,9 +483,13 @@ export class DustAPI {
     return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations() {
+  async getAgentConfigurations(view?: AgentConfigurationViewType) {
+    const path = view
+      ? `assistant/agent_configurations?view=${view}`
+      : "assistant/agent_configurations";
+
     const res = await this.request({
-      path: "assistant/agent_configurations",
+      path,
       method: "GET",
     });
 
