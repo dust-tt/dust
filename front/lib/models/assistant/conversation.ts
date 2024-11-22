@@ -343,8 +343,6 @@ export class AgentMessageFeedback extends Model<
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
-  declare agentConfigurationVersion: number;
-  declare agentConfigurationVersionDate: Date;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<User["id"]>;
 
@@ -371,15 +369,6 @@ AgentMessageFeedback.init(
     },
     workspaceId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    agentConfigurationVersion: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-    },
-    agentConfigurationVersionDate: {
-      type: DataTypes.DATE,
       allowNull: false,
     },
     thumbDirection: {
