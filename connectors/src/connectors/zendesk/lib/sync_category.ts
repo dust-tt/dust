@@ -63,16 +63,13 @@ export async function syncCategory({
     connectorId,
     categoryId: category.id,
   });
-  const updatableFields = {
-    name: category.name || "Category",
-    url: category.html_url,
-    description: category.description,
-    lastUpsertedTs: new Date(currentSyncDateMs),
-  };
   if (!categoryInDb) {
     await ZendeskCategoryResource.makeNew({
       blob: {
-        ...updatableFields,
+        name: category.name || "Category",
+        url: category.html_url,
+        description: category.description,
+        lastUpsertedTs: new Date(currentSyncDateMs),
         connectorId,
         brandId,
         categoryId: category.id,
@@ -80,6 +77,11 @@ export async function syncCategory({
       },
     });
   } else {
-    await categoryInDb.update(updatableFields);
+    await categoryInDb.update({
+      name: category.name || "Category",
+      url: category.html_url,
+      description: category.description,
+      lastUpsertedTs: new Date(currentSyncDateMs),
+    });
   }
 }
