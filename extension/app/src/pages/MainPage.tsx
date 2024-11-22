@@ -92,23 +92,21 @@ export const MainPage = ({
         </div>
       </div>
       <div className="h-full w-full pt-28 max-w-4xl mx-auto flex justify-center">
-        <div className="flex flex-col items-center">
-          <FileDropProvider>
-            <DropzoneContainer
-              description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
-              title="Attach files to the conversation"
-            >
-              <InputBarProvider>
-                <ConversationContainer
-                  owner={workspace}
-                  conversationId={null}
-                  user={user}
-                />
-                <AssistantFavorites />
-              </InputBarProvider>
-            </DropzoneContainer>
-          </FileDropProvider>
-        </div>
+        <FileDropProvider>
+          <DropzoneContainer
+            description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+            title="Attach files to the conversation"
+          >
+            <InputBarProvider>
+              <ConversationContainer
+                owner={workspace}
+                conversationId={null}
+                user={user}
+              />
+              <AssistantFavorites />
+            </InputBarProvider>
+          </DropzoneContainer>
+        </FileDropProvider>
       </div>
     </>
   );
