@@ -8,6 +8,7 @@ export function ConversationIncludeFileActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<ConversationIncludeFileActionType>) {
+  console.log(action);
   const { fileTitle } = action;
   return (
     <ActionDetailsWrapper
@@ -16,16 +17,9 @@ export function ConversationIncludeFileActionDetails({
       visual={MagnifyingGlassIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-slate-900">File</span>
-          <div className="text-sm font-normal text-slate-500">
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-normal text-slate-500">
-                Reading file ${fileTitle || "(no title)"}.
-              </p>
-            </div>
-          </div>
-        </div>
+        <p className="text-sm font-normal text-slate-500">
+          {fileTitle || "(no file name available)"}
+        </p>
       </div>
     </ActionDetailsWrapper>
   );
