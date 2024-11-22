@@ -137,7 +137,7 @@ async function fetchFromZendeskWithRetries({
     if (rawResponse.status === 404) {
       logger.error(
         { rawResponse, text: rawResponse.text },
-        `[Zendesk] Zendesk API 404 error on: ${url}`
+        `[Zendesk] Zendesk API 404 error on: ${url.split("api/v2")[1]}`
       );
       return null;
     }
@@ -158,7 +158,12 @@ async function fetchFromZendeskWithRetries({
       }
     }
     logger.error(
-      { rawResponse, response, status: rawResponse.status },
+      {
+        rawResponse,
+        response,
+        status: rawResponse.status,
+        endpoint: url.split("api/v2")[1],
+      },
       "[Zendesk] Zendesk API error"
     );
     throw new Error("Zendesk API error.");
