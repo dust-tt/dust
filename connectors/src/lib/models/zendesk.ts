@@ -125,11 +125,12 @@ export class ZendeskBrand extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare brandId: number;
+
   declare helpCenterPermission: "read" | "none";
   declare ticketsPermission: "read" | "none";
-
   declare name: string;
   declare url: string;
+
   declare subdomain: string;
   declare hasHelpCenter: boolean;
 
@@ -307,8 +308,8 @@ export class ZendeskArticle extends Model<
   declare articleId: number;
   declare brandId: number;
   declare categoryId: number;
-  declare permission: "read" | "none";
 
+  declare permission: "read" | "none";
   declare name: string;
   declare url: string;
 
@@ -395,12 +396,8 @@ export class ZendeskTicket extends Model<
 
   declare ticketId: number;
   declare brandId: number;
+
   declare permission: "read" | "none";
-
-  declare assigneeId: number | null;
-  declare groupId: number | null;
-  declare organizationId: number | null;
-
   declare subject: string;
   declare url: string;
 
@@ -443,21 +440,6 @@ ZendeskTicket.init(
     brandId: {
       type: DataTypes.BIGINT,
       allowNull: false,
-      validate: { throwOnUnsafeInteger },
-    },
-    groupId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      validate: { throwOnUnsafeInteger },
-    },
-    assigneeId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      validate: { throwOnUnsafeInteger },
-    },
-    organizationId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
       validate: { throwOnUnsafeInteger },
     },
     permission: {
