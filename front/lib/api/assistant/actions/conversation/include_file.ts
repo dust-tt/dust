@@ -53,10 +53,10 @@ export function isConversationIncludableFileContentType(
     case "text/markdown":
     case "text/plain":
     case "dust-application/slack":
-      return true;
-
     case "text/comma-separated-values":
     case "text/csv":
+      return true;
+
     case "text/tab-separated-values":
     case "text/tsv":
       return false;

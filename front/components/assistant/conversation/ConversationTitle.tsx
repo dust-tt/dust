@@ -11,8 +11,11 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { ConversationType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { isDevelopment } from "@dust-tt/types";
+import { BugIcon } from "lucide-react";
+import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
 import React, { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -31,6 +34,7 @@ export function ConversationTitle({
   shareLink: string;
   onDelete?: (conversationId: string) => void;
 }) {
+  const router = useRouter();
   const { mutate } = useSWRConfig();
 
   const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
@@ -189,6 +193,21 @@ export function ConversationTitle({
                 />
               )}
             </div>
+            {isDevelopment() && (
+              <div className="hidden lg:flex">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  tooltip="Debug in Poke"
+                  icon={BugIcon}
+                  onClick={() =>
+                    void router.push(
+                      `/poke/${conversation.owner.sId}/conversations/${conversation.sId}`
+                    )
+                  }
+                />
+              </div>
+            )}
             <Popover
               popoverTriggerAsChild
               trigger={

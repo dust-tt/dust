@@ -20,7 +20,6 @@ import { pipeline } from "stream/promises";
 import { runAction } from "@app/lib/actions/server";
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import config from "@app/lib/api/config";
-import { generateCSVSnippet } from "@app/lib/api/csv";
 import {
   createDataSourceWithoutProvider,
   upsertDocument,
@@ -78,7 +77,13 @@ async function generateSnippet(
     contentType === "text/csv" ||
     contentType === "text/comma-separated-values"
   ) {
-    const snippet = generateCSVSnippet(content);
+    // Parse only the headers from the CSV file
+    const headers = content.split("\n")[0];
+
+    let snippet = `CSV file with headers: ${headers}`;
+    if (snippet.length > 256) {
+      snippet = snippet.slice(0, 242) + "... (truncated)";
+    }
 
     return new Ok(snippet);
   } else {
@@ -289,12 +294,12 @@ const processingPerContentType: ProcessingPerContentType = {
   "text/comma-separated-values": {
     conversation: upsertTableToDatasource,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: upsertTableToDatasource,
   },
   "text/csv": {
     conversation: upsertTableToDatasource,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: upsertTableToDatasource,
   },
   "text/markdown": {
     conversation: upsertDocumentToDatasource,
@@ -381,11 +386,11 @@ export async function processAndUpsertToDataSource(
     }
   >
 > {
-  // TODO(JIT) the tool output flow do not go through this path.
   const jitEnabled = await isJITActionsEnabled(auth);
-  const isJitCompatibleUseCase = file.useCase === "conversation";
+  const isJitCompatibleUseCase =
+    file.useCase === "conversation" || file.useCase === "tool_output";
   const hasJitRequiredMetadata =
-    file.useCase === "conversation" &&
+    isJitCompatibleUseCase &&
     !!file.useCaseMetadata &&
     !!file.useCaseMetadata.conversationId;
   const isJitSupportedContentType = isSupportedPlainTextContentType(

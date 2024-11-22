@@ -1,4 +1,5 @@
 import type {
+  ActionGeneratedFileType,
   AgentActionSpecification,
   DustAppParameters,
   FunctionCallType,
@@ -32,6 +33,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -49,6 +51,7 @@ interface TablesQueryActionBlob {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  generatedFiles: ActionGeneratedFileType[];
 }
 
 export class TablesQueryAction extends BaseAction {
@@ -63,7 +66,7 @@ export class TablesQueryAction extends BaseAction {
   readonly type = "tables_query_action";
 
   constructor(blob: TablesQueryActionBlob) {
-    super(blob.id, "tables_query_action");
+    super(blob.id, "tables_query_action", blob.generatedFiles);
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
@@ -187,9 +190,32 @@ export async function tableQueryTypesFromAgentMessageIds(
     where: {
       agentMessageId: agentMessageIds,
     },
+    include: [
+      {
+        model: FileModel,
+        as: "resultsFile",
+      },
+    ],
   });
 
   return actions.map((action) => {
+    const resultsFile: ActionGeneratedFileType | null = action.resultsFile
+      ? {
+          fileId: FileResource.modelIdToSId({
+            id: action.resultsFile.id,
+            workspaceId: owner.id,
+          }),
+          title: getTablesQueryResultsFileTitle({
+            output: action.output as Record<
+              string,
+              string | number | boolean
+            > | null,
+          }),
+          contentType: action.resultsFile.contentType,
+          snippet: action.resultsFile.snippet,
+        }
+      : null;
+
     return new TablesQueryAction({
       id: action.id,
       params: action.params as DustAppParameters,
@@ -198,13 +224,9 @@ export async function tableQueryTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
-      resultsFileId: action.resultsFileId
-        ? FileResource.modelIdToSId({
-            id: action.resultsFileId,
-            workspaceId: owner.id,
-          })
-        : null,
+      resultsFileId: resultsFile ? resultsFile.fileId : null,
       resultsFileSnippet: action.resultsFileSnippet,
+      generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
 }
@@ -306,6 +328,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         step: action.step,
         resultsFileId: null,
         resultsFileSnippet: null,
+        generatedFiles: [],
       }),
     };
 
@@ -505,6 +528,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
                 step: action.step,
                 resultsFileId: null,
                 resultsFileSnippet: null,
+                generatedFiles: [],
               }),
             };
           }
@@ -531,6 +555,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       output: null,
     };
 
+    let resultFile: ActionGeneratedFileType | null = null;
+
     if (
       "results" in sanitizedOutput &&
       Array.isArray(sanitizedOutput.results)
@@ -544,9 +570,17 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         auth,
         {
           title: queryTitle,
+          conversationId: conversation.sId,
           results,
         }
       );
+
+      resultFile = {
+        fileId: file.sId,
+        title: queryTitle,
+        contentType: file.contentType,
+        snippet: file.snippet,
+      };
 
       delete sanitizedOutput.results;
       updateParams.resultsFileId = file.id;
@@ -573,13 +607,9 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,
         step: action.step,
-        resultsFileId: updateParams.resultsFileId
-          ? FileResource.modelIdToSId({
-              id: updateParams.resultsFileId,
-              workspaceId: owner.id,
-            })
-          : null,
+        resultsFileId: resultFile?.fileId ?? null,
         resultsFileSnippet: updateParams.resultsFileSnippet,
+        generatedFiles: resultFile ? [resultFile] : [],
       }),
     };
     return;
@@ -590,9 +620,11 @@ async function getTablesQueryOutputCsvFileAndSnippet(
   auth: Authenticator,
   {
     title,
+    conversationId,
     results,
   }: {
     title: string;
+    conversationId: string;
     results: Array<Record<string, string | number | boolean>>;
   }
 ): Promise<{
@@ -616,9 +648,10 @@ async function getTablesQueryOutputCsvFileAndSnippet(
 
   const file = await internalCreateToolOutputCsvFile(auth, {
     title,
+    conversationId: conversationId,
     content: csvOutput,
     contentType: "text/csv",
   });
 
-  return { file, snippet: file.snippet ?? generateCSVSnippet(csvOutput) };
+  return { file, snippet: generateCSVSnippet(csvOutput) };
 }

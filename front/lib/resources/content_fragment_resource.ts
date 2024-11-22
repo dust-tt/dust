@@ -383,6 +383,7 @@ async function renderFromFileId(
     contentType,
     excludeImages,
     fileId,
+    forceFullCSVInclude,
     model,
     title,
     textBytes,
@@ -391,6 +392,7 @@ async function renderFromFileId(
     contentType: string;
     excludeImages: boolean;
     fileId: string;
+    forceFullCSVInclude: boolean;
     model: ModelConfigurationType;
     title: string;
     textBytes: number | null;
@@ -436,6 +438,7 @@ async function renderFromFileId(
   } else {
     const shouldRetrieveSnippetVersion =
       contentType === "text/csv" &&
+      !forceFullCSVInclude &&
       textBytes &&
       textBytes > MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT;
 
@@ -579,6 +582,7 @@ export async function renderContentFragmentForModel(
         contentType,
         excludeImages,
         fileId,
+        forceFullCSVInclude: message.snippet != null, // JIT
         model,
         title,
         textBytes,

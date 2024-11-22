@@ -106,7 +106,7 @@ export function generateCSVSnippet(content: string): string {
   // Max number of characters in the snippet.
   const MAX_SNIPPET_CHARS = 16384;
 
-  const totalRecords = content.split("\n").length - 1; // Avoid parsing the whole file before truncating
+  const totalRecords = content.trim().split("\n").length - 1; // Avoid parsing the whole file before truncating
   const records = parse(content, {
     columns: true,
     skip_empty_lines: true,
