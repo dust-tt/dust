@@ -131,7 +131,22 @@ interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   sheetCloseClassName?: string;
 }
 
-const SheetFooter = ({
+const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => (
+  <ScrollArea className="s-w-full s-flex-grow">
+    <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground">
+      {children}
+    </div>
+  </ScrollArea>
+);
+SheetContainer.displayName = "SheetContainer";
+
+interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+  leftButtonProps?: React.ComponentProps<typeof Button>;
+  rightButtonProps?: React.ComponentProps<typeof Button>;
+  sheetCloseClassName?: string;
+}
+
+const SheetContainer = ({
   className,
   children,
   leftButtonProps,
@@ -164,6 +179,17 @@ const SheetFooter = ({
       ))}
     {children}
   </div>
+);
+SheetContainer.displayName = "SheetContainer";
+
+const SheetFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn("s-flex s-flex-row s-justify-end s-gap-2 s-pt-4", className)}
+    {...props}
+  />
 );
 SheetFooter.displayName = "SheetFooter";
 
