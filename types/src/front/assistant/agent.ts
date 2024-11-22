@@ -48,8 +48,12 @@ export type AgentActionConfigurationType =
   | WebsearchConfigurationType
   | BrowseConfigurationType;
 
-export type ConversationAgentActionConfigurationType =
+type ConversationAgentActionConfigurationType =
   ConversationIncludeFileConfigurationType;
+
+export type ActionConfigurationType =
+  | AgentActionConfigurationType
+  | ConversationAgentActionConfigurationType;
 
 type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
 
@@ -330,7 +334,7 @@ export type AgentActionsEvent = {
   created: number;
   runId: string;
   actions: Array<{
-    action: AgentActionConfigurationType;
+    action: ActionConfigurationType;
     inputs: Record<string, string | boolean | number>;
     specification: AgentActionSpecification | null;
     functionCallId: string | null;

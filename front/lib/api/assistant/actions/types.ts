@@ -1,9 +1,8 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
-  ConversationAgentActionConfigurationType,
   ConversationType,
   Result,
 } from "@dust-tt/types";
@@ -12,18 +11,14 @@ import type { Authenticator } from "@app/lib/auth";
 
 export interface BaseActionConfigurationServerRunnerConstructor<
   T extends BaseActionConfigurationServerRunner<V>,
-  V extends
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType,
+  V extends ActionConfigurationType,
 > {
   new (actionConfiguration: V): T;
 }
 
 export interface BaseActionConfigurationStaticMethods<
   T extends BaseActionConfigurationServerRunner<V>,
-  V extends
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType,
+  V extends ActionConfigurationType,
 > {
   fromActionConfiguration(
     this: BaseActionConfigurationServerRunnerConstructor<T, V>,
@@ -46,17 +41,13 @@ export interface BaseActionRunParams {
 }
 
 export abstract class BaseActionConfigurationServerRunner<
-  T extends
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType,
+  T extends ActionConfigurationType,
 > {
   constructor(protected readonly actionConfiguration: T) {}
 
   static fromActionConfiguration<
     T extends BaseActionConfigurationServerRunner<V>,
-    V extends
-      | AgentActionConfigurationType
-      | ConversationAgentActionConfigurationType,
+    V extends ActionConfigurationType,
   >(
     this: BaseActionConfigurationServerRunnerConstructor<T, V>,
     actionConfiguration: V

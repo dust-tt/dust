@@ -1,10 +1,9 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionType,
   AgentMessageType,
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
-  ConversationAgentActionConfigurationType,
   ConversationFileType,
   ConversationType,
   FunctionCallType,
@@ -183,13 +182,8 @@ async function getJITActions(
     conversation,
     files,
   }: { conversation: ConversationType; files: ConversationFileType[] }
-): Promise<
-  (AgentActionConfigurationType | ConversationAgentActionConfigurationType)[]
-> {
-  const actions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[] = [];
+): Promise<ActionConfigurationType[]> {
+  const actions: ActionConfigurationType[] = [];
 
   if (files.length > 0) {
     const filesUsableForJIT = files.filter((f) => f.isUsableForJIT);
@@ -220,8 +214,9 @@ async function getJITActions(
       );
 
       if (filesUsableAsTableQuery.length > 0) {
-        // TODO(jit) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
+        // TODO(JIT) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
         const action: TablesQueryConfigurationType = {
+          // The description here is the description of the data, a meta description of the action is prepended automatically.
           description:
             DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
           type: "tables_query_configuration",
@@ -279,16 +274,10 @@ export async function getEmulatedAndJITActions(
   }: { agentMessage: AgentMessageType; conversation: ConversationType }
 ): Promise<{
   emulatedActions: AgentActionType[];
-  jitActions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[];
+  jitActions: ActionConfigurationType[];
 }> {
   const emulatedActions: AgentActionType[] = [];
-  let jitActions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[] = [];
+  let jitActions: ActionConfigurationType[] = [];
 
   if (await isJITActionsEnabled(auth)) {
     const files = listFiles(conversation);

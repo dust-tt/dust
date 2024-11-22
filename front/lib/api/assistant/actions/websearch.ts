@@ -1,5 +1,5 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionSpecification,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -137,7 +137,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       citationsRefsOffset,
     }: {
       stepActionIndex: number;
-      stepActions: AgentActionConfigurationType[];
+      stepActions: ActionConfigurationType[];
       citationsRefsOffset: number;
     }
   ): AsyncGenerator<
