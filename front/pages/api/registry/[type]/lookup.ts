@@ -80,9 +80,13 @@ async function handler(
   const dustGroupIds = rawDustGroupIds.split(",");
 
   // by default, data sources from the "conversations" space are not allowed
-  // except for our packaged dust-apps called internally, see https://github.com/dust-tt/tasks/issues/1658
-  const allowConversationsDataSources =
-    req.query.allow_conversations_data_sources === "true";
+  // except for our packaged dust-apps called internally, see
+  // https://github.com/dust-tt/tasks/issues/1658 in particular
+  // "assistant-retrieval-v2" that needs access to the conversation space we
+  // determine that we are on packaged apps by checking whether this is a system
+  // run
+
+  const allowConversationsDataSources = req.query.is_system_run === "true";
 
   switch (req.method) {
     case "GET":

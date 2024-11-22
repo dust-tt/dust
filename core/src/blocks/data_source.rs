@@ -82,13 +82,7 @@ impl DataSource {
         filter: Option<SearchFilter>,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
-        // This check is meant to block access to "conversations" space through a
-        // datasource block in a dust app, which could lead to data leaks, see related issue
-        // https://github.com/dust-tt/tasks/issues/1658
-        // Only case in which this is allowed is for our packaged apps, via a system
-        // key, in particular "assistant-retrieval-v2" that needs access to the
-        // conversation space
-        let allow_conversations_data_source =
+        let is_system_run =
             env.credentials.get("DUST_IS_SYSTEM_RUN") == Some(&String::from("true"));
 
         let (data_source_project, view_filter, data_source_id) =
@@ -96,7 +90,7 @@ impl DataSource {
                 &workspace_id,
                 &data_source_or_data_source_view_id,
                 env,
-                allow_conversations_data_source,
+                is_system_run,
             )
             .await?;
 
