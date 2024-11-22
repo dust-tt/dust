@@ -48,7 +48,6 @@ export const useAuthHook = () => {
       await handleLogout();
       return;
     }
-
     setTokens(savedTokens.value);
     setAuthError(null);
     scheduleTokenRefresh(savedTokens.value.expiresAt);
@@ -70,11 +69,11 @@ export const useAuthHook = () => {
     const handleStorageChange = (changes: {
       [key: string]: chrome.storage.StorageChange;
     }) => {
-      if (changes.accessToken && !changes.accessToken.newValue) {
-        console.log("Access token removed from storage.");
-        setTokens(null);
-        setUser(null);
-      }
+      // if (changes.accessToken && !changes.accessToken.newValue) {
+      //   console.log("Access token removed from storage.");
+      //   setTokens(null);
+      //   setUser(null);
+      // }
     };
     chrome.storage.local.onChanged.addListener(handleStorageChange);
     return () =>

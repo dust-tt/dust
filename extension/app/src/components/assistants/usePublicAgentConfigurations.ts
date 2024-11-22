@@ -20,7 +20,7 @@ export function usePublicAgentConfigurations() {
       agentConfigurationsFetcher
     );
 
-  useAuthErrorCheck(error);
+  useAuthErrorCheck(error, mutate);
 
   return {
     agentConfigurations: useMemo(() => data ?? [], [data]),

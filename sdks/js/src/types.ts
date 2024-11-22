@@ -1203,9 +1203,9 @@ const APIErrorTypeSchema = FlexibleEnumSchema([
   "connector_provider_not_supported",
   "connector_update_error",
   "connector_update_unauthorized",
+  "content_too_large",
   "conversation_access_restricted",
   "conversation_not_found",
-  "content_too_large",
   "data_source_auth_error",
   "data_source_document_not_found",
   "data_source_error",
@@ -1215,6 +1215,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema([
   "data_source_view_not_found",
   "dataset_not_found",
   "dust_app_secret_not_found",
+  "expired_oauth_token_error",
   "feature_flag_already_exists",
   "feature_flag_not_found",
   "file_not_found",
@@ -1224,6 +1225,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema([
   "group_not_found",
   "internal_server_error",
   "invalid_api_key_error",
+  "invalid_oauth_token_error",
   "invalid_pagination_parameters",
   "invalid_request_error",
   "invalid_rows_request_error",
@@ -1246,6 +1248,8 @@ const APIErrorTypeSchema = FlexibleEnumSchema([
   "rate_limit_error",
   "run_error",
   "run_not_found",
+  "space_already_exists",
+  "space_not_found",
   "stripe_invalid_product_id_error",
   "subscription_not_found",
   "subscription_payment_failed",
@@ -1261,8 +1265,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema([
   "unexpected_network_error",
   "unexpected_response_format",
   "user_not_found",
-  "space_already_exists",
-  "space_not_found",
   "workspace_auth_error",
   "workspace_not_found",
   "workspace_not_found",
@@ -1418,7 +1420,7 @@ export type DustAppRunFunctionCallArgumentsTokensEvent = z.infer<
   typeof DustAppRunFunctionCallArgumentsTokensEventSchema
 >;
 export type DustAPICredentials = {
-  apiKey: string;
+  apiKey: string | (() => string | null | Promise<string | null>);
   workspaceId: string;
   extraHeaders?: Record<string, string>;
   groupIds?: string[];

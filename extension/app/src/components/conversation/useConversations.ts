@@ -19,7 +19,7 @@ export function useConversations() {
     conversationsFetcher
   );
 
-  useAuthErrorCheck(error);
+  useAuthErrorCheck(error, mutate);
 
   return {
     conversations: useMemo(() => data ?? [], [data]),

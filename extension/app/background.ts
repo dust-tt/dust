@@ -25,11 +25,13 @@ const state: {
   port: chrome.runtime.Port | undefined;
   extensionReady: boolean;
   inputBarReady: boolean;
+  refreshingToken: boolean;
   lastHandler: (() => void) | undefined;
 } = {
   port: undefined,
   extensionReady: false,
   inputBarReady: false,
+  refreshingToken: false,
   lastHandler: undefined,
 };
 
@@ -198,7 +200,6 @@ chrome.runtime.onMessage.addListener(
         }
         void refreshToken(message.refreshToken, sendResponse);
         return true;
-
       case "LOGOUT":
         logout(sendResponse);
         return true; // Keep the message channel open.
@@ -364,35 +365,42 @@ const refreshToken = async (
   refreshToken: string,
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
-  try {
-    const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
-    const response = await fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        client_id: AUTH0_CLIENT_ID,
-        refresh_token: refreshToken,
-      }),
-    });
+  if (state.refreshingToken) {
+    return false;
+  } else {
+    state.refreshingToken = true;
+    try {
+      const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
+      const response = await fetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: AUTH0_CLIENT_ID,
+          refresh_token: refreshToken,
+        }),
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(
+          `Token refresh failed: ${data.error} - ${data.error_description}`
+        );
+      }
+
       const data = await response.json();
-      throw new Error(
-        `Token refresh failed: ${data.error} - ${data.error_description}`
-      );
+      sendResponse({
+        idToken: data.id_token,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token || refreshToken,
+        expiresIn: data.expires_in,
+      });
+    } catch (error) {
+      log("Token refresh failed: unknown error", error);
+      sendResponse({ success: false });
+    } finally {
+      state.refreshingToken = false;
     }
-
-    const data = await response.json();
-    sendResponse({
-      idToken: data.id_token,
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token || refreshToken,
-      expiresIn: data.expires_in,
-    });
-  } catch (error) {
-    log("Token refresh failed: unknown error", error);
-    sendResponse({ success: false });
   }
 };
 

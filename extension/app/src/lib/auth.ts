@@ -21,7 +21,11 @@ import { useEffect } from "react";
 
 const log = console.error;
 
-type AuthErrorCode = "user_not_found" | "not_authenticated";
+type AuthErrorCode =
+  | "user_not_found"
+  | "not_authenticated"
+  | "invalid_oauth_token_error"
+  | "expired_oauth_token_error";
 
 export class AuthError extends Error {
   readonly type = "AuthError";

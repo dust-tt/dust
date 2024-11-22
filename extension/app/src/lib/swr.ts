@@ -75,7 +75,10 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     [key, mutateKeysWithSameUrl, result]
   );
 
-  useAuthErrorCheck(result.error);
+  useAuthErrorCheck(
+    result.error,
+    disabled ? myMutateWhenDisabled : result.mutate
+  );
 
   if (disabled) {
     // When disabled, as the key is null, the mutate function is not working

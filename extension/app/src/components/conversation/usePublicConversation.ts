@@ -36,7 +36,7 @@ export function usePublicConversation({
     conversationFetcher
   );
 
-  useAuthErrorCheck(error);
+  useAuthErrorCheck(error, mutate);
 
   return {
     conversation: data ? data : null,

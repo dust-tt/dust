@@ -1,5 +1,5 @@
 import type { LightWorkspaceType } from "@dust-tt/client";
-import { useAuth } from "@extension/components/auth/useAuth";
+import { useAuthHook } from "@extension/components/auth/useAuth";
 import type { AuthError } from "@extension/lib/auth";
 import type { StoredUser } from "@extension/lib/storage";
 import type { ReactNode } from "react";
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     handleLogin,
     handleLogout,
     handleSelectWorkspace,
-  } = useAuth();
+  } = useAuthHook();
 
   return (
     <AuthContext.Provider
