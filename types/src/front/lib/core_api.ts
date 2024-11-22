@@ -312,7 +312,7 @@ export class CoreAPI {
           "Content-Type": "application/json",
           "X-Dust-Workspace-Id": workspace.sId,
           "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
-          "X-Dust-IsSystem": isSystemKey ? "true" : "false",
+          "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
         },
         body: JSON.stringify({
           run_type: runType,
@@ -359,7 +359,7 @@ export class CoreAPI {
           "Content-Type": "application/json",
           "X-Dust-Workspace-Id": workspace.sId,
           "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
-          "X-Dust-IsSystem": isSystemKey ? "true" : "false",
+          "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
         },
         body: JSON.stringify({
           run_type: runType,

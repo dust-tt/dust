@@ -807,7 +807,7 @@ async fn runs_create(
     };
 
     // If the run is made by a system key, it's a system run
-    match headers.get("X-Dust-IsSystem") {
+    match headers.get("X-Dust-IsSystemRun") {
         Some(v) => match v.to_str() {
             Ok(v) => {
                 credentials.insert("DUST_IS_SYSTEM_RUN".to_string(), v.to_string());
@@ -874,7 +874,7 @@ async fn runs_create_stream(
     };
 
     // If the run is made by a system key, it's a system run
-    match headers.get("X-Dust-IsSystem") {
+    match headers.get("X-Dust-IsSystemRun") {
         Some(v) => match v.to_str() {
             Ok(v) => {
                 credentials.insert("DUST_IS_SYSTEM_RUN".to_string(), v.to_string());
