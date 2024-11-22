@@ -1,5 +1,4 @@
 import type {
-  AgentMessageFeedbackDirection,
   AgentMessageStatus,
   ConversationVisibility,
   MessageVisibility,
@@ -15,6 +14,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { User } from "@app/lib/models/user";
