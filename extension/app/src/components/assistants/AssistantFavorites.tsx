@@ -37,7 +37,7 @@ export function AssistantFavorites() {
   return (
     <div className="text-left w-full pt-2 pb-12">
       <Page.SectionHeader title="Favorites" />
-      <div className="relative grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="relative grid w-full grid-cols-1 sm:grid-cols-2 gap-2">
         {agentConfigurations.map(
           ({ sId, name, pictureUrl, lastAuthors, description }) => (
             <AssistantPreview
@@ -48,6 +48,7 @@ export function AssistantFavorites() {
               description={description}
               variant="minimal"
               onClick={() => handleAssistantClick(sId)}
+              hasAction={false}
             />
           )
         )}

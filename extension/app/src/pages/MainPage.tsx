@@ -55,9 +55,11 @@ export const MainPage = ({
             </div>
           )}
         </div>
-        <div className="fixed bottom-4 right-4">
+        <div className="fixed bottom-0 right-0 z-10">
           <Link to="https://dust.tt" target="_blank">
-            <LogoHorizontalColorLogo className="h-6 w-24" />
+            <div className="rounded-tl-2xl border-t border-l border-gray-200 bg-white p-4">
+              <LogoHorizontalColorLogo className="h-6 w-24" />
+            </div>
           </Link>
         </div>
         <div className="flex items-center gap-2">
@@ -90,23 +92,21 @@ export const MainPage = ({
         </div>
       </div>
       <div className="h-full w-full pt-28 max-w-4xl mx-auto flex justify-center">
-        <div className="flex flex-col items-center">
-          <FileDropProvider>
-            <DropzoneContainer
-              description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
-              title="Attach files to the conversation"
-            >
-              <InputBarProvider>
-                <ConversationContainer
-                  owner={workspace}
-                  conversationId={null}
-                  user={user}
-                />
-                <AssistantFavorites />
-              </InputBarProvider>
-            </DropzoneContainer>
-          </FileDropProvider>
-        </div>
+        <FileDropProvider>
+          <DropzoneContainer
+            description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+            title="Attach files to the conversation"
+          >
+            <InputBarProvider>
+              <ConversationContainer
+                owner={workspace}
+                conversationId={null}
+                user={user}
+              />
+              <AssistantFavorites />
+            </InputBarProvider>
+          </DropzoneContainer>
+        </FileDropProvider>
       </div>
     </>
   );
