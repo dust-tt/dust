@@ -852,9 +852,9 @@ impl DataSource {
             .filter(|ci| !embeddings.contains_key(&ci.hash))
             .collect::<Vec<_>>();
 
-        // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
+        // Chunk splits into a vectors of 128 chunks (Vec<Vec<String>>)
         let chunked_splits = splits_to_embbed
-            .chunks(8)
+            .chunks(128)
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<_>>();
 
