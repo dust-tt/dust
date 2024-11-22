@@ -16,6 +16,10 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 
+function getEndpointFromUrl(url: string): string {
+  return url.split("api/v2")[1] as string;
+}
+
 export function createZendeskClient({
   accessToken,
   subdomain,
@@ -137,7 +141,7 @@ async function fetchFromZendeskWithRetries({
     if (rawResponse.status === 404) {
       logger.error(
         { rawResponse, text: rawResponse.text },
-        `[Zendesk] Zendesk API 404 error on: ${url.split("api/v2")[1]}`
+        `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
       );
       return null;
     }
@@ -162,7 +166,7 @@ async function fetchFromZendeskWithRetries({
         rawResponse,
         response,
         status: rawResponse.status,
-        endpoint: url.split("api/v2")[1],
+        endpoint: getEndpointFromUrl(url),
       },
       "[Zendesk] Zendesk API error"
     );
