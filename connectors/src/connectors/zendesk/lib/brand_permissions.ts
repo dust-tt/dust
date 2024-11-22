@@ -26,14 +26,16 @@ export async function allowSyncZendeskBrand({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  const brand = await ZendeskBrandResource.fetchByBrandId({
+  let brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
 
   if (brand) {
     await brand.grantTicketsPermissions();
-    await brand.grantHelpCenterPermissions();
+    if (brand.hasHelpCenter) {
+      await brand.grantHelpCenterPermissions();
+    }
   } else {
     // fetching the brand from Zendesk
     const zendeskApiClient = createZendeskClient(
@@ -51,7 +53,7 @@ export async function allowSyncZendeskBrand({
       return false;
     }
 
-    await ZendeskBrandResource.makeNew({
+    brand = await ZendeskBrandResource.makeNew({
       blob: {
         subdomain: fetchedBrand.subdomain,
         connectorId: connectorId,
@@ -65,11 +67,13 @@ export async function allowSyncZendeskBrand({
     });
   }
 
-  await allowSyncZendeskHelpCenter({
-    connectorId,
-    connectionId,
-    brandId,
-  });
+  if (brand?.hasHelpCenter) {
+    await allowSyncZendeskHelpCenter({
+      connectorId,
+      connectionId,
+      brandId,
+    });
+  }
   await allowSyncZendeskTickets({
     connectorId,
     connectionId,
