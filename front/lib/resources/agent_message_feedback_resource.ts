@@ -81,11 +81,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  async updateContent({
-    content,
-  }: {
-    content: string;
-  }): Promise<Result<undefined, Error>> {
+  async updateContent(content: string): Promise<Result<undefined, Error>> {
     try {
       await this.model.update(
         {
