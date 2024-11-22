@@ -192,8 +192,7 @@ async function getJITActions(
   )[] = [];
 
   if (files.length > 0) {
-    // quey_conversation_tables
-    const filesUsableForJIT = files.filter((f) => !!f.snippet);
+    const filesUsableForJIT = files.filter((f) => f.isUsableForJIT);
 
     if (filesUsableForJIT.length > 0) {
       // Get the datasource view for the conversation.
@@ -216,8 +215,8 @@ async function getJITActions(
       }
 
       // Check tables for the table query action.
-      const filesUsableAsTableQuery = filesUsableForJIT.filter((f) =>
-        isConversationQueryableFileContentType(f.contentType)
+      const filesUsableAsTableQuery = filesUsableForJIT.filter(
+        (f) => f.isQueryable
       );
 
       if (filesUsableAsTableQuery.length > 0) {
@@ -239,8 +238,8 @@ async function getJITActions(
       }
 
       // Check files for the retrieval query action.
-      const filesUsableAsRetrievalQuery = filesUsableForJIT.filter((f) =>
-        isConversationSearchableFileContentType(f.contentType)
+      const filesUsableAsRetrievalQuery = filesUsableForJIT.filter(
+        (f) => f.isSearchable
       );
 
       if (filesUsableAsRetrievalQuery.length > 0) {

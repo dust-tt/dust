@@ -1,7 +1,6 @@
 import type {
   AgentActionSpecification,
   ContentFragmentType,
-  ConversationFileType,
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileErrorEvent,
@@ -106,7 +105,9 @@ export class ConversationIncludeFileAction extends BaseAction {
     fileId: string,
     conversation: ConversationType,
     model: ModelConfigurationType
-  ): Promise<Result<{ file: ConversationFileType; content: string }, string>> {
+  ): Promise<
+    Result<{ fileId: string; title: string; content: string }, string>
+  > {
     // Note on `contentFragmentVersion`: two content fragment versions are created with different
     // fileIds. So we accept here rendering content fragments that are superseded. This will mean
     // that past actions on a previous version of a content fragment will correctly render the
@@ -142,12 +143,8 @@ export class ConversationIncludeFileAction extends BaseAction {
     const text = rRes.value.content[0].text;
 
     return new Ok({
-      file: {
-        fileId,
-        title: m.title,
-        contentType: m.contentType,
-        snippet: m.snippet,
-      },
+      fileId,
+      title: m.title,
       content: text,
     });
   }
@@ -367,7 +364,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
     // action for the model (token count) and the rendering of the action details (file title).
     await action.update({
       tokensCount: tokensRes.value.tokens.length,
-      fileTitle: fileRes.value.file.title,
+      fileTitle: fileRes.value.title,
     });
 
     yield {
@@ -381,7 +378,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
           fileId,
         },
         tokensCount: tokensRes.value.tokens.length,
-        fileTitle: fileRes.value.file.title,
+        fileTitle: fileRes.value.title,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
