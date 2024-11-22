@@ -55,9 +55,11 @@ export const MainPage = ({
             </div>
           )}
         </div>
-        <div className="fixed bottom-4 right-4">
+        <div className="fixed bottom-0 right-0 z-10">
           <Link to="https://dust.tt" target="_blank">
-            <LogoHorizontalColorLogo className="h-6 w-24" />
+            <div className="rounded-tl-2xl border-t border-l border-gray-200 bg-white p-4">
+              <LogoHorizontalColorLogo className="h-6 w-24" />
+            </div>
           </Link>
         </div>
         <div className="flex items-center gap-2">

@@ -48,6 +48,7 @@ export function AssistantFavorites() {
               description={description}
               variant="minimal"
               onClick={() => handleAssistantClick(sId)}
+              hasAction={false}
             />
           )
         )}
