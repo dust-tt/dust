@@ -298,6 +298,7 @@ async function handler(
           inputs,
           credentials,
           secrets,
+          isSystemKey: auth.isSystemKey(),
         }
       );
 

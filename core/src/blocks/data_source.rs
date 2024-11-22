@@ -82,11 +82,15 @@ impl DataSource {
         filter: Option<SearchFilter>,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
+        let is_system_run =
+            env.credentials.get("DUST_IS_SYSTEM_RUN") == Some(&String::from("true"));
+
         let (data_source_project, view_filter, data_source_id) =
             get_data_source_project_and_view_filter(
                 &workspace_id,
                 &data_source_or_data_source_view_id,
                 env,
+                is_system_run,
             )
             .await?;
 
