@@ -88,7 +88,12 @@ export function HelpDropdown({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" label="Help" icon={HeartIcon} isSelect />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <DropdownMenuLabel label="Learn about Dust" />
         <DropdownMenuItem
           label="Quickstart Guide"
