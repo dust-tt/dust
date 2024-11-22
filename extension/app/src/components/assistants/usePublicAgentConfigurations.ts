@@ -1,4 +1,4 @@
-import { useAuthErrorCheck } from "@extension/lib/auth";
+import { useAuthErrorCheck } from "@extension/hooks/useAuthErrorCheck";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
 import { useMemo } from "react";

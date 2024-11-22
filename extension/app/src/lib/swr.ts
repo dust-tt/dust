@@ -1,4 +1,4 @@
-import { useAuthErrorCheck } from "@extension/lib/auth";
+import { useAuthErrorCheck } from "@extension/hooks/useAuthErrorCheck";
 import { getAccessToken } from "@extension/lib/storage";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
