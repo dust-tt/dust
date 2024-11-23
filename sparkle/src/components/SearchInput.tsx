@@ -7,7 +7,7 @@ import { cn } from "@sparkle/lib/utils";
 export interface SearchInputProps {
   placeholder?: string;
   value: string | null;
-  onChange?: (value: string) => void;
+  onChange: (value: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   name: string;
   disabled?: boolean;
@@ -28,7 +28,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     ref
   ) => {
     const clearInputField = () => {
-      onChange?.("");
+      onChange("");
     };
 
     return (
@@ -39,14 +39,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           placeholder={placeholder}
           value={value}
           onChange={(e) => {
-            onChange?.(e.target.value);
+            onChange(e.target.value);
           }}
           onKeyDown={onKeyDown}
           disabled={disabled}
           ref={ref}
         />
         <div className="s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-1">
-          {value && onChange ? (
+          {value ? (
             <Button
               icon={XMarkIcon}
               variant="ghost"
