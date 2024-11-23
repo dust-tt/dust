@@ -8,7 +8,7 @@ import {
   FolderIcon,
   PencilSquareIcon,
   RobotIcon,
-  Searchbar,
+  SearchInput,
   Spinner,
   TrashIcon,
   usePaginationFromUrl,
@@ -409,7 +409,7 @@ export const SpaceResourcesList = ({
         )}
       >
         {rows.length > 0 && (
-          <Searchbar
+          <SearchInput
             name="search"
             ref={searchBarRef}
             placeholder="Search (Name)"

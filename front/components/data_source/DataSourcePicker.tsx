@@ -4,7 +4,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   ScrollArea,
-  Searchbar,
+  SearchInput,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
@@ -151,7 +151,7 @@ export default function DataSourcePicker({
 
             {(spaceDataSourceViews || []).length > 0 && (
               <PopoverContent className="mr-2 p-4">
-                <Searchbar
+                <SearchInput
                   name="search"
                   placeholder="Search"
                   value={searchFilter}

@@ -4,7 +4,7 @@ import {
   CommandLineIcon,
   DataTable,
   PlusIcon,
-  Searchbar,
+  SearchInput,
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
@@ -106,7 +106,7 @@ export const SpaceAppsList = ({
       ) : (
         <>
           <div className="flex gap-2">
-            <Searchbar
+            <SearchInput
               name="search"
               ref={searchBarRef}
               placeholder="Search (Name)"

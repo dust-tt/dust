@@ -4,7 +4,7 @@ import {
   ExternalLinkIcon,
   IconButton,
   ListCheckIcon,
-  Searchbar,
+  SearchInput,
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
@@ -282,7 +282,7 @@ function ContentNodeTreeChildren({
         <>
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
-              <Searchbar
+              <SearchInput
                 name="search"
                 placeholder="Search..."
                 value={search}

@@ -13,7 +13,7 @@ import {
   GlobeAltIcon,
   PlusIcon,
   RobotIcon,
-  Searchbar,
+  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -157,7 +157,7 @@ export const SpaceCategoriesList = ({
       >
         {rows.length > 0 && (
           <div className="flex w-full gap-2">
-            <Searchbar
+            <SearchInput
               name="search"
               placeholder="Search (Name)"
               value={dataSourceSearch}

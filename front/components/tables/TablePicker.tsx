@@ -3,7 +3,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   ScrollArea,
-  Searchbar,
+  SearchInput,
   Separator,
 } from "@dust-tt/sparkle";
 import type {
@@ -115,7 +115,7 @@ export default function TablePicker({
 
             {(tables || []).length > 0 && (
               <PopoverContent className="mr-2 p-4">
-                <Searchbar
+                <SearchInput
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
