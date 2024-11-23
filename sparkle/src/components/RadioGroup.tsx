@@ -105,7 +105,7 @@ const RadioGroupItem = React.forwardRef<
       </div>
     );
 
-    return <div className="s-w-full s-group">{wrappedItem}</div>;
+    return <div className="s-group s-w-full">{wrappedItem}</div>;
   }
 );
 
