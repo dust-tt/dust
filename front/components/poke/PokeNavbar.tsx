@@ -31,6 +31,9 @@ export const PokeNavbar: React.FC = () => (
         <Link href="/poke/templates">
           <div className="text-stucture-300 text-sm italic">Templates</div>
         </Link>
+        <Link href="/poke/plugins">
+          <div className="text-stucture-300 text-sm italic">Plugins</div>
+        </Link>
       </div>
     </div>
     <PokeSearchCommand />
