@@ -30,7 +30,7 @@ export const createWorkspacePlugin = createPlugin(
       },
     },
   },
-  async (pokeAuth, _, args) => {
+  async (auth, _, args) => {
     const { enableAutoJoin = false } = args;
 
     const email = args.email.trim();
@@ -49,17 +49,19 @@ export const createWorkspacePlugin = createPlugin(
       isVerified: enableAutoJoin,
     });
 
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const newWorkspaceAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
 
-    const subscription = auth.subscription();
+    const subscription = newWorkspaceAuth.subscription();
     if (!subscription) {
       return new Err(new Error("The workspace does not have a subscription."));
     }
 
-    const invitationRes = await handleMembershipInvitations(auth, {
-      owner: auth.getNonNullableWorkspace(),
+    const invitationRes = await handleMembershipInvitations(newWorkspaceAuth, {
+      owner: newWorkspaceAuth.getNonNullableWorkspace(),
       // Dust admin user who invited the new user.
-      user: pokeAuth.getNonNullableUser(),
+      user: auth.getNonNullableUser(),
       subscription,
       invitationRequests: [
         {
@@ -74,7 +76,6 @@ export const createWorkspacePlugin = createPlugin(
     }
 
     const [result] = invitationRes.value;
-
     if (!result.success) {
       return new Err(new Error(result.error_message));
     }
