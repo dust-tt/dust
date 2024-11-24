@@ -588,7 +588,13 @@ impl DataSource {
         text: Section,
         preserve_system_tags: bool,
     ) -> Result<Document> {
-        let full_text = text.full_text();
+        // converting NULL byte ('\0') to an empty string ("")
+        let full_text = text.full_text().replace('\0', "");
+        let text = Section {
+            prefix: text.prefix.map(|p| p.replace('\0', "")),
+            content: text.content.map(|c| c.replace('\0', "")),
+            sections: text.sections,
+        };
         // Disallow preserve_system_tags=true if tags contains a string starting with the system
         // tag prefix prevents having duplicate system tags or have users accidentally add system
         // tags (from UI/API).
