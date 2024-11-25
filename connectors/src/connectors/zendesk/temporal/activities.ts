@@ -179,11 +179,7 @@ export async function syncZendeskCategoryBatchActivity({
     connectorId,
   });
 
-  const {
-    categories,
-    meta: { has_more: hasMore },
-    links: { next: nextLink },
-  } = await fetchZendeskCategoriesInBrand(
+  const { categories, hasMore, nextLink } = await fetchZendeskCategoriesInBrand(
     accessToken,
     url ? { url } : { brandSubdomain, pageSize: ZENDESK_BATCH_SIZE }
   );
@@ -314,11 +310,7 @@ export async function syncZendeskArticleBatchActivity({
     connectorId,
   });
 
-  const {
-    articles,
-    meta: { has_more: hasMore },
-    links: { next: nextLink },
-  } = await fetchZendeskArticlesInCategory(
+  const { articles, hasMore, nextLink } = await fetchZendeskArticlesInCategory(
     category,
     accessToken,
     url ? { url } : { brandSubdomain, pageSize: ZENDESK_BATCH_SIZE }
@@ -397,11 +389,7 @@ export async function syncZendeskTicketBatchActivity({
     brandId,
   });
 
-  const {
-    results,
-    meta: { has_more: hasMore },
-    links: { next: nextLink },
-  } = await fetchZendeskTicketsInBrand(
+  const { tickets, hasMore, nextLink } = await fetchZendeskTicketsInBrand(
     accessToken,
     url
       ? { url }
@@ -412,7 +400,7 @@ export async function syncZendeskTicketBatchActivity({
         }
   );
 
-  if (results.length === 0) {
+  if (tickets.length === 0) {
     logger.info(
       { ...loggerArgs, ticketsSynced: 0 },
       `[Zendesk] No tickets to process in batch - stopping.`
@@ -423,7 +411,7 @@ export async function syncZendeskTicketBatchActivity({
   const users = await zendeskApiClient.users.list();
 
   const res = await concurrentExecutor(
-    results,
+    tickets,
     async (ticket) => {
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
 

@@ -193,8 +193,8 @@ export async function fetchZendeskCategoriesInBrand(
     | { brandSubdomain?: never; pageSize?: never; url: string }
 ): Promise<{
   categories: ZendeskFetchedCategory[];
-  meta: { has_more: boolean };
-  links: { next: string | null };
+  hasMore: boolean;
+  nextLink: string | null;
 }> {
   const response = await fetchFromZendeskWithRetries({
     url:
@@ -202,13 +202,11 @@ export async function fetchZendeskCategoriesInBrand(
       `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}`,
     accessToken,
   });
-  return (
-    response || {
-      categories: [],
-      meta: { has_more: false },
-      links: { next: "" },
-    }
-  );
+  return {
+    categories: response.categories,
+    hasMore: response.meta.has_more,
+    nextLink: response.links.next,
+  };
 }
 
 /**
@@ -224,21 +222,19 @@ export async function fetchRecentlyUpdatedArticles({
   startTime: number;
 }): Promise<{
   articles: ZendeskFetchedArticle[];
-  next_page: string | null;
-  end_time: number;
+  nextLink: string | null;
+  endTime: number;
 }> {
   // this endpoint retrieves changes in content despite what is mentioned in the documentation.
   const response = await fetchFromZendeskWithRetries({
     url: `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
     accessToken,
   });
-  return (
-    response || {
-      articles: [],
-      next_page: null,
-      end_time: startTime,
-    }
-  );
+  return {
+    articles: response.articles,
+    nextLink: response.next_page,
+    endTime: response.end_time,
+  };
 }
 
 /**
@@ -256,8 +252,8 @@ export async function fetchZendeskArticlesInCategory(
     | { brandSubdomain?: never; pageSize?: never; url: string }
 ): Promise<{
   articles: ZendeskFetchedArticle[];
-  meta: { has_more: boolean };
-  links: { next: string | null };
+  hasMore: boolean;
+  nextLink: string | null;
 }> {
   const response = await fetchFromZendeskWithRetries({
     url:
@@ -265,9 +261,11 @@ export async function fetchZendeskArticlesInCategory(
       `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${category.categoryId}/articles?page[size]=${pageSize}`,
     accessToken,
   });
-  return (
-    response || { articles: [], meta: { has_more: false }, links: { next: "" } }
-  );
+  return {
+    articles: response.articles,
+    hasMore: response.meta.has_more,
+    nextLink: response.links.next,
+  };
 }
 
 /**
@@ -284,8 +282,8 @@ export async function fetchRecentlyUpdatedTickets(
     | { brandSubdomain?: never; startTime?: never; url: string }
 ): Promise<{
   tickets: ZendeskFetchedTicket[];
-  end_of_stream: boolean;
-  after_url: string | null;
+  hasMore: boolean;
+  nextLink: string | null;
 }> {
   const response = await fetchFromZendeskWithRetries({
     url:
@@ -293,7 +291,11 @@ export async function fetchRecentlyUpdatedTickets(
       `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json?start_time=${startTime}`,
     accessToken,
   });
-  return response || { tickets: [], end_of_stream: false, after_url: "" };
+  return {
+    tickets: response.tickets,
+    hasMore: !response.end_of_stream,
+    nextLink: response.after_url,
+  };
 }
 
 /**
@@ -321,9 +323,9 @@ export async function fetchZendeskTicketsInBrand(
         url: string;
       }
 ): Promise<{
-  results: ZendeskFetchedTicket[];
-  meta: { has_more: boolean };
-  links: { next: string | null };
+  tickets: ZendeskFetchedTicket[];
+  hasMore: boolean;
+  nextLink: string | null;
 }> {
   const response = await fetchFromZendeskWithRetries({
     url:
@@ -334,9 +336,11 @@ export async function fetchZendeskTicketsInBrand(
     accessToken,
   });
 
-  return (
-    response || { results: [], meta: { has_more: false }, links: { next: "" } }
-  );
+  return {
+    tickets: response.results,
+    hasMore: response.meta.has_more,
+    nextLink: response.links.next,
+  };
 }
 
 /**

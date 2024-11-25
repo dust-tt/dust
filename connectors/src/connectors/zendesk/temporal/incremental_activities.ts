@@ -108,7 +108,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
     brandId,
   });
 
-  const { articles, end_time, next_page } = await fetchRecentlyUpdatedArticles({
+  const { articles, endTime, nextLink } = await fetchRecentlyUpdatedArticles({
     brandSubdomain,
     accessToken,
     startTime,
@@ -171,7 +171,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
-  return next_page !== null ? end_time : null;
+  return nextLink !== null ? endTime : null;
 }
 
 /**
@@ -212,11 +212,10 @@ export async function syncZendeskTicketUpdateBatchActivity({
     brandId,
   });
 
-  const { tickets, end_of_stream, after_url } =
-    await fetchRecentlyUpdatedTickets(
-      accessToken,
-      url ? { url } : { brandSubdomain, startTime }
-    );
+  const { tickets, hasMore, nextLink } = await fetchRecentlyUpdatedTickets(
+    accessToken,
+    url ? { url } : { brandSubdomain, startTime }
+  );
 
   await concurrentExecutor(
     tickets,
@@ -248,5 +247,5 @@ export async function syncZendeskTicketUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
-  return { hasMore: !end_of_stream, nextLink: after_url };
+  return { hasMore, nextLink };
 }
