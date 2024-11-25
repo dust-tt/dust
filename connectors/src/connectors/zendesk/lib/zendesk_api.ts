@@ -196,11 +196,6 @@ export async function fetchZendeskCategoriesInBrand({
   categories: ZendeskFetchedCategory[];
   meta: { has_more: boolean; after_cursor: string };
 }> {
-  assert(
-    pageSize <= 100,
-    `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
-  );
-
   const response = await fetchFromZendeskWithRetries({
     url:
       `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?` +
@@ -262,11 +257,6 @@ export async function fetchZendeskArticlesInCategory({
   articles: ZendeskFetchedArticle[];
   meta: { has_more: boolean; after_cursor: string };
 }> {
-  assert(
-    pageSize <= 100,
-    `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
-  );
-
   const response = await fetchFromZendeskWithRetries({
     url:
       `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?` +
@@ -340,11 +330,6 @@ export async function fetchZendeskTicketsInBrand({
   tickets: ZendeskFetchedTicket[];
   meta: { has_more: boolean; after_cursor: string };
 }> {
-  assert(
-    pageSize <= 100,
-    `pageSize must be at most 100 (current value: ${pageSize})`
-  );
-
   const searchQuery = encodeURIComponent(
     `status:solved updated>${retentionPeriodDays}days`
   );
