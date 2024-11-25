@@ -214,6 +214,30 @@ export type IntercomForceResyncArticlesResponseType = t.TypeOf<
  * </ Intercom>
  */
 
+/**
+ * <Zendesk>
+ */
+export const ZendeskCommandSchema = t.type({
+  majorCommand: t.literal("zendesk"),
+  command: t.literal("check-is-admin"),
+  args: t.type({
+    connectorId: t.union([t.number, t.undefined]),
+  }),
+});
+
+export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
+export const ZendeskCheckIsAdminResponseSchema = t.type({
+  userRole: t.string,
+  userActive: t.boolean,
+  userIsAdmin: t.boolean,
+});
+export type ZendeskCheckIsAdminResponseType = t.TypeOf<
+  typeof ZendeskCheckIsAdminResponseSchema
+>;
+/**
+ * </Zendesk>
+ */
+
 export const MicrosoftCommandSchema = t.type({
   majorCommand: t.literal("microsoft"),
   command: t.union([
@@ -243,6 +267,7 @@ export const AdminCommandSchema = t.union([
   SlackCommandSchema,
   TemporalCommandSchema,
   WebcrawlerCommandSchema,
+  ZendeskCommandSchema,
 ]);
 
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
