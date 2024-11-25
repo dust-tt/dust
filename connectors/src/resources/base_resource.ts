@@ -36,9 +36,7 @@ export abstract class BaseResource<M extends Model> {
     id: number | string
   ): Promise<T | null> {
     const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
-    if (isNaN(parsedId)) {
-      return null;
-    }
+
     const blob = await this.model.findByPk(parsedId);
     if (!blob) {
       return null;
