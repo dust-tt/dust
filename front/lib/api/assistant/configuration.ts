@@ -371,9 +371,9 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
             workspaceId: owner.id,
             ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
             sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
+            ...(agentsGetView.allVersions ? {} : { status: "active" }),
           },
           order: [["version", "DESC"]],
-          ...(agentsGetView.allVersions ? {} : { status: "active" }),
         });
       }
       assertNever(agentsGetView);
