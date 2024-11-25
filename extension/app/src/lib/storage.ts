@@ -47,11 +47,6 @@ export const getStoredTokens = async (): Promise<StoredTokens | null> => {
   return null;
 };
 
-export const getAccessToken = async (): Promise<string | null> => {
-  const result = await chrome.storage.local.get(["accessToken"]);
-  return result.accessToken ?? null;
-};
-
 type ConversationContext = {
   includeCurrentPage: boolean;
 };

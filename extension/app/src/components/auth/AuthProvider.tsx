@@ -1,5 +1,6 @@
 import type { LightWorkspaceType } from "@dust-tt/client";
 import { useAuthHook } from "@extension/components/auth/useAuth";
+import type { AuthError } from "@extension/lib/auth";
 import type { StoredUser } from "@extension/lib/storage";
 import type { ReactNode } from "react";
 import React, { createContext, useContext } from "react";
@@ -7,11 +8,13 @@ import React, { createContext, useContext } from "react";
 type AuthContextType = {
   token: string | null;
   isAuthenticated: boolean;
+  authError: AuthError | null;
+  setAuthError: (error: AuthError | null) => void;
   user: StoredUser | null;
   workspace: LightWorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
-  handleLogin: () => void;
+  handleLogin: (isForceLogin: boolean) => void;
   handleLogout: () => void;
   handleSelectWorkspace: (workspaceId: string) => void;
 };
@@ -22,6 +25,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const {
     token,
     isAuthenticated,
+    authError,
+    setAuthError,
     user,
     workspace,
     isUserSetup,
@@ -36,6 +41,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         token,
         isAuthenticated,
+        authError,
+        setAuthError,
         user,
         workspace,
         isUserSetup,

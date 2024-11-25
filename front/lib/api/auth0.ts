@@ -3,7 +3,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { ManagementClient } from "auth0";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
-import jwt from "jsonwebtoken";
+import jwt, { TokenExpiredError } from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 import type { NextApiRequest } from "next";
 

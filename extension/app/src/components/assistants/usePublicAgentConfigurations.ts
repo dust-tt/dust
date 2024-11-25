@@ -1,8 +1,7 @@
 import type { AgentConfigurationViewType } from "@dust-tt/client";
-import { logout } from "@extension/lib/auth";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 export function usePublicAgentConfigurations(
   view?: AgentConfigurationViewType
@@ -22,12 +21,6 @@ export function usePublicAgentConfigurations(
       ["getAgentConfigurations", dustAPI.workspaceId(), view],
       agentConfigurationsFetcher
     );
-
-  useEffect(() => {
-    if (error?.type === "not_authenticated") {
-      void logout();
-    }
-  }, [error]);
 
   return {
     agentConfigurations: useMemo(() => data ?? [], [data]),

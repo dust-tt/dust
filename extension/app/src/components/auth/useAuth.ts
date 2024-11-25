@@ -1,6 +1,8 @@
+import type { AuthError } from "@extension/lib/auth";
 import { login, logout, refreshToken } from "@extension/lib/auth";
 import type { StoredTokens, StoredUser } from "@extension/lib/storage";
 import {
+  clearStoredData,
   getStoredTokens,
   getStoredUser,
   saveSelectedWorkspace,
@@ -15,8 +17,9 @@ export const useAuthHook = () => {
     () => !!(tokens?.accessToken && tokens.expiresAt > Date.now()),
     [tokens]
   );
-
   const [user, setUser] = useState<StoredUser | null>(null);
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+
   const isUserSetup = !!(user && user.sId && user.selectedWorkspace);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -30,6 +33,7 @@ export const useAuthHook = () => {
       return;
     }
     setTokens(null);
+    setAuthError(null);
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
     }
@@ -38,13 +42,15 @@ export const useAuthHook = () => {
 
   const handleRefreshToken = useCallback(async () => {
     const savedTokens = await refreshToken();
-    if (!savedTokens) {
+    if (savedTokens.isErr()) {
+      setAuthError(savedTokens.error);
       log("Refresh token: No access token received.");
       await handleLogout();
       return;
     }
-    setTokens(savedTokens);
-    scheduleTokenRefresh(savedTokens.expiresAt);
+    setTokens(savedTokens.value);
+    setAuthError(null);
+    scheduleTokenRefresh(savedTokens.value.expiresAt);
   }, [handleLogout]);
 
   const scheduleTokenRefresh = useCallback(
@@ -107,20 +113,27 @@ export const useAuthHook = () => {
     };
   }, [handleRefreshToken, scheduleTokenRefresh]);
 
-  const handleLogin = useCallback(async () => {
-    setIsLoading(true);
+  const handleLogin = useCallback(
+    async (isForceLogin?: boolean) => {
+      setIsLoading(true);
 
-    const response = await login();
-    if (!response) {
-      // TODO(EXT): User facing error message if login failed.
+      const response = await login(isForceLogin);
+      if (response.isErr()) {
+        setAuthError(response.error);
+        setIsLoading(false);
+        void clearStoredData();
+        return;
+      }
+
+      const { tokens, user } = response.value;
+      setTokens(tokens);
+      setAuthError(null);
+      scheduleTokenRefresh(tokens.expiresAt);
+      setUser(user);
       setIsLoading(false);
-      return;
-    }
-    setTokens(response.tokens);
-    scheduleTokenRefresh(response.tokens.expiresAt);
-    setUser(response.user);
-    setIsLoading(false);
-  }, [scheduleTokenRefresh]);
+    },
+    [scheduleTokenRefresh]
+  );
 
   const handleSelectWorkspace = async (workspaceId: string) => {
     const updatedUser = await saveSelectedWorkspace(workspaceId);
@@ -130,6 +143,8 @@ export const useAuthHook = () => {
   return {
     token: tokens?.accessToken ?? null,
     isAuthenticated,
+    setAuthError,
+    authError,
     user,
     workspace: user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
     isUserSetup,

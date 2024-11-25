@@ -15,9 +15,10 @@ import type {
   UserType,
 } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { getAccessToken } from "@extension/lib/auth";
 import type { GetActiveTabOptions } from "@extension/lib/messages";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
-import { getAccessToken, getStoredUser } from "@extension/lib/storage";
+import { getStoredUser } from "@extension/lib/storage";
 import type { UploadedFileWithSupersededContentFragmentId } from "@extension/lib/types";
 
 type SubmitMessageError = {
