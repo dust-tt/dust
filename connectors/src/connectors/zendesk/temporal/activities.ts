@@ -14,6 +14,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
@@ -328,29 +329,38 @@ export async function syncZendeskArticleBatchActivity({
     `[Zendesk] Processing ${articles.length} articles in batch`
   );
 
-  const sections =
-    await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
-  const { result: users } = await zendeskApiClient.users.showMany(
-    articles.map((article) => article.author_id)
-  );
+  try {
+    const sections =
+      await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
+    const { result: users } = await zendeskApiClient.users.showMany(
+      articles.map((article) => article.author_id)
+    );
 
-  await concurrentExecutor(
-    articles,
-    (article) =>
-      syncArticle({
-        connectorId,
-        category,
-        article,
-        section:
-          sections.find((section) => section.id === article.section_id) || null,
-        user: users.find((user) => user.id === article.author_id) || null,
-        dataSourceConfig,
-        currentSyncDateMs,
-        loggerArgs,
-        forceResync,
-      }),
-    { concurrency: 10 }
-  );
+    await concurrentExecutor(
+      articles,
+      (article) =>
+        syncArticle({
+          connectorId,
+          category,
+          article,
+          section:
+            sections.find((section) => section.id === article.section_id) ||
+            null,
+          user: users.find((user) => user.id === article.author_id) || null,
+          dataSourceConfig,
+          currentSyncDateMs,
+          loggerArgs,
+          forceResync,
+        }),
+      { concurrency: 10 }
+    );
+  } catch (e: unknown) {
+    // @ts-expect-error check out https://github.com/blakmatrix/node-zendesk/blob/fa069d927bd418ee2058bb7bb913f9414e395110/src/clients/helpers.js#L262
+    if (e.statusCode === 403) {
+      throw new ExternalOAuthTokenError();
+    }
+    throw e;
+  }
   return { hasMore, nextLink };
 }
 
