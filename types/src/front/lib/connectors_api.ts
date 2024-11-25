@@ -393,8 +393,8 @@ export class ConnectorsAPI {
     const parsedId = parseInt(connectorId, 10);
     if (isNaN(parsedId)) {
       const err: ConnectorsAPIError = {
-          type: "invalid_request_error",
-          message: "Invalid connector ID",
+        type: "invalid_request_error",
+        message: "Invalid connector ID",
       };
       return new Err(err);
     }
