@@ -186,6 +186,7 @@ export function useCreateDataSourceViewDocument(
     invalidateCacheEntries
   );
 
+  // Note that this url is not used for fetch -> There is no need to invalidate it on practice.
   const createUrl = getUrl({
     method: "POST",
     owner,

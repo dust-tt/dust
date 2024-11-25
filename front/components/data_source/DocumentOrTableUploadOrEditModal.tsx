@@ -238,6 +238,7 @@ const DocumentUploadOrEditModal = ({
         async: false,
       };
 
+      // These mutations do the fetch and mutate, all at once
       if (initialId) {
         await patchDocumentMutation.trigger({ documentBody: body });
       } else {
