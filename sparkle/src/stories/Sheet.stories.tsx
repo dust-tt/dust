@@ -160,8 +160,236 @@ export function SheetCustom() {
               </div>
             </div>
           </SheetHeader>
+          <SheetContainer>Hello world</SheetContainer>
+          <SheetFooter>
+            <Button type="submit" label="Cancel" variant="outline" />
+            <Button type="submit" label="Save" variant="highlight" />
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+export function SheetCustom() {
+  return (
+    <div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" label="Edit demo" />
+        </SheetTrigger>
+        <SheetContent>
+          <SheetHeader hideButton>
+            <SheetTitle>About me</SheetTitle>
+          </SheetHeader>
           <SheetContainer>
-            <TextArea />
+            <div className="s-flex s-flex-col s-gap-6">
+              <Input label="Firstname" placeholder="John" />
+              <Input label="Lastname" placeholder="Doe" />
+            </div>
+          </SheetContainer>
+          <SheetFooter
+            sheetCloseClassName="s-flex s-gap-2"
+            leftButtonProps={{ label: "Cancel", variant: "warning" }}
+            rightButtonProps={{ label: "Save", disabled: true }}
+          />
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+export function ContentDemo() {
+  return (
+    <div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" label="Content demo" />
+        </SheetTrigger>
+        <SheetContent size="xl">
+          <SheetHeader>
+            <Page.Header
+              icon={RocketIcon}
+              title={<>Quick Guide for new members</>}
+            />
+          </SheetHeader>
+          <SheetContainer>
+            <QIG />
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+export function SheetCustom() {
+  return (
+    <div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" label="Assistant Demo" />
+        </SheetTrigger>
+        <SheetContent>
+          <SheetHeader>
+            <div className="s-flex s-flex-col s-gap-2">
+              <Avatar
+                size="md"
+                name="Aria Doe"
+                visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+              />
+              <div className="s-flex s-flex-col s-gap-0">
+                <SheetTitle>@coucou</SheetTitle>
+                <SheetDescription>
+                  The assistant that allways says hello.
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+          <SheetContainer>Hello world</SheetContainer>
+          <SheetFooter>
+            <Button type="submit" label="Cancel" variant="outline" />
+            <Button type="submit" label="Save" variant="highlight" />
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+export function SheetCustom() {
+  return (
+    <div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" label="Edit demo" />
+        </SheetTrigger>
+        <SheetContent>
+          <SheetHeader hideButton>
+            <SheetTitle>About me</SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-gap-6">
+              <Input label="Firstname" placeholder="John" />
+              <Input label="Lastname" placeholder="Doe" />
+            </div>
+          </SheetContainer>
+          <SheetFooter
+            sheetCloseClassName="s-flex s-gap-2"
+            leftButtonProps={{ label: "Cancel", variant: "warning" }}
+            rightButtonProps={{ label: "Save", disabled: true }}
+          />
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+export function ContentDemo() {
+  return (
+    <div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" label="Content demo" />
+        </SheetTrigger>
+        <SheetContent size="xl">
+          <SheetHeader>
+            <Page.Header
+              icon={RocketIcon}
+              title={<>Quick Guide for new members</>}
+            />
+          </SheetHeader>
+          <SheetContainer>
+            <QIG />
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+export function SheetCustom() {
+  return (
+    <div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" label="Assistant Demo" />
+        </SheetTrigger>
+        <SheetContent>
+          <SheetHeader>
+            <div className="s-flex s-flex-col s-gap-2">
+              <Avatar
+                size="md"
+                name="Aria Doe"
+                visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+              />
+              <div className="s-flex s-flex-col s-gap-0">
+                <SheetTitle>@coucou</SheetTitle>
+                <SheetDescription>
+                  The assistant that allways says hello.
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+          <SheetContainer>
+            <h1>Summarized Ideas from Slack Thread</h1>
+
+            <h2>Create a "@WhoCan" Assistant</h2>
+            <p>
+              Develop an assistant that is pre-installed in workspaces, with
+              real-time knowledge of all accessible workspace assistants. This
+              would help users discover existing assistants more easily.
+            </p>
+            <h2>Improve Assistant Discovery</h2>
+            <p>
+              Implement features like a "Find the right assistant" button and
+              improve the experience when users hit "enter" without mentioning
+              an assistant. This could lead to a guided conversation to help
+              users find the appropriate assistant based on their needs.
+            </p>
+            <h2>Assistant Orchestration</h2>
+            <p>
+              Enable assistants to call other assistants as actions, which could
+              enhance orchestration and functionality.
+            </p>
+            <h2>Onboarding Assistant</h2>
+            <p>
+              Introduce an onboarding assistant that engages with users the
+              first time they log in, asks questions, and suggests useful
+              assistants. Companies could customize this onboarding experience.
+            </p>
+            <h2>Prompt Versioning</h2>
+            <p>
+              Consider implementing prompt versioning to manage the frequent
+              duplication of assistants.
+            </p>
+            <h2>Assistant Routing and Knowledge</h2>
+            <p>
+              Develop a personal assistant for users that could serve as a
+              default assistant, capable of routing to the right assistant, and
+              having general company and personal knowledge.
+            </p>
+            <h2>Customizable Onboarding</h2>
+            <p>
+              Allow companies to customize the onboarding assistant to include
+              tasks like scheduling chats with colleagues and guiding through
+              the onboarding process.
+            </p>
+            <h2>Dataset for Descriptions</h2>
+            <p>
+              Experiment with using a dataset that includes a summary of tools,
+              configurations, and assistant popularity to improve search and
+              discovery.
+            </p>
+            <h2>Risk of Infinite Loops</h2>
+            <p>
+              Address potential risks like infinite loops when implementing
+              assistant-to-assistant calling.
+            </p>
+            <h2>Enhance Onboarding with Assistants</h2>
+            <p>
+              Draw inspiration from Notion's success in onboarding, potentially
+              replacing traditional methods with assistant-guided processes.
+            </p>
           </SheetContainer>
         </SheetContent>
       </Sheet>

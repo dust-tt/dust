@@ -102,6 +102,7 @@ const SheetHeader = ({
   ...props
 }: SheetHeaderProps) => (
   <div
+    style={{ boxShadow: "0px 0px 12px 12px #FFF" }}
     className={cn(
       "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale",
       className
@@ -187,7 +188,10 @@ const SheetFooter = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("s-flex s-flex-row s-justify-end s-gap-2 s-pt-4", className)}
+    className={cn(
+      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-5 s-py-3",
+      className
+    )}
     {...props}
   />
 );
