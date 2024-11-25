@@ -6,6 +6,7 @@ import type {
   ZendeskFetchedArticle,
   ZendeskFetchedCategory,
   ZendeskFetchedTicket,
+  ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
@@ -348,4 +349,22 @@ export async function fetchZendeskTicketsInBrand({
         },
       }
     : { tickets: [], meta: { has_more: false, after_cursor: "" } };
+}
+
+/**
+ * Fetches the current user through a call to `/users/me`.
+ */
+export async function fetchZendeskCurrentUser({
+  subdomain,
+  accessToken,
+}: {
+  subdomain: string;
+  accessToken: string;
+}): Promise<ZendeskFetchedUser> {
+  const response = await fetch(
+    `https://${subdomain}.zendesk.com/api/v2/users/me`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const data = await response.json();
+  return data.user;
 }
