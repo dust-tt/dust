@@ -80,7 +80,7 @@ export type ConversationMessageFeedbackType = {
   feedbackContent: string | null;
 };
 export interface ConversationMessageFeedbackSelectorProps {
-  feedback: ConversationMessageFeedbackType;
+  feedback: ConversationMessageFeedbackType | undefined;
   onSubmitThumb: (
     p: ConversationMessageFeedbackType & {
       isToRemove: boolean;
