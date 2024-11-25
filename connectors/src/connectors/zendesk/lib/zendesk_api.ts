@@ -1,5 +1,3 @@
-import assert from "node:assert";
-
 import type { ModelId } from "@dust-tt/types";
 import type { Client } from "node-zendesk";
 import { createClient } from "node-zendesk";
