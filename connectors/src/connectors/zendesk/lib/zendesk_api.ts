@@ -203,7 +203,11 @@ export async function fetchZendeskCategoriesInBrand(
     accessToken,
   });
   return (
-    response || { categories: [], meta: { has_more: false, after_cursor: "" } }
+    response || {
+      categories: [],
+      meta: { has_more: false },
+      links: { next: "" },
+    }
   );
 }
 
