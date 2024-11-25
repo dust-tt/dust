@@ -211,6 +211,7 @@ export async function fetchZendeskCategoriesInBrand(
 
 /**
  * Fetches a batch of the recently updated articles from the Zendesk API using the incremental API endpoint.
+ * https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/
  */
 export async function fetchRecentlyUpdatedArticles({
   brandSubdomain,
