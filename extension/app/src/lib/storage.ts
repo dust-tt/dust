@@ -1,4 +1,5 @@
 import type { ContentFragmentType, MeResponseType } from "@dust-tt/client";
+import { refreshToken } from "@extension/lib/auth";
 import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
 import type { UploadedFileWithKind } from "@extension/lib/types";
 
@@ -48,8 +49,15 @@ export const getStoredTokens = async (): Promise<StoredTokens | null> => {
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
-  const result = await chrome.storage.local.get(["accessToken"]);
-  return result.accessToken ?? null;
+  let tokens = await getStoredTokens();
+  if (!tokens || !tokens.accessToken || tokens.expiresAt < Date.now()) {
+    const refreshRes = await refreshToken();
+    if (refreshRes.isOk()) {
+      tokens = refreshRes.value;
+    }
+  }
+
+  return tokens?.accessToken ?? null;
 };
 
 type ConversationContext = {
