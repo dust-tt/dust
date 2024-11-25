@@ -26,6 +26,8 @@ import {
 import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
@@ -209,8 +211,9 @@ export class ConversationIncludeFileAction extends BaseAction {
       model.contextSize / CONTEXT_SIZE_DIVISOR_FOR_INCLUDE
     ) {
       return finalize(
-        // TODO(spolu): refer to the tool exactly
-        `Error: File \`${this.params.fileId}\` has too many tokens to be included, use semantic search on the conversation files instead.`
+        `Error: File \`${this.params.fileId}\` has too many tokens to be included, ` +
+          `use the \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\` or ` +
+          `\`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\` actions instead.`
       );
     }
 
