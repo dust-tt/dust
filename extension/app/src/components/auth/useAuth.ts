@@ -45,7 +45,6 @@ export const useAuthHook = () => {
     if (savedTokens.isErr()) {
       setAuthError(savedTokens.error);
       log("Refresh token: No access token received.");
-      await handleLogout();
       return;
     }
     setTokens(savedTokens.value);
