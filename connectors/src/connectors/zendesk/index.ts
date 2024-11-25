@@ -208,9 +208,15 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
+    // syncing all the brands syncs tickets and whole help centers when selected
     const brandIds = await ZendeskBrandResource.fetchAllBrandIds(connectorId);
+    // syncing individual categories syncs all the categories that were selected
+    const categoryIds =
+      await ZendeskCategoryResource.fetchIdsForConnector(connectorId);
+
     const result = await launchZendeskSyncWorkflow(connector, {
       brandIds,
+      categoryIds,
       forceResync: true,
     });
 

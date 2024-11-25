@@ -443,13 +443,17 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => Number(category.get().categoryId));
   }
 
-  static async fetchCategoryIdsForConnector(
+  static async fetchIdsForConnector(
     connectorId: number
-  ): Promise<number[]> {
+  ): Promise<{ categoryId: number; brandId: number }[]> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId },
+      attributes: ["categoryId", "brandId"],
     });
-    return categories.map((category) => Number(category.get().categoryId));
+    return categories.map((category) => {
+      const { categoryId, brandId } = category.get();
+      return { categoryId, brandId };
+    });
   }
 
   static async fetchByCategoryId({
