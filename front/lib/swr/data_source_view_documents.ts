@@ -13,6 +13,33 @@ import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wI
 import type { PostDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents";
 import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 
+// Centralized way to get urls -> reduces key-related inconcistencies
+const getUrl = ({
+  method,
+  owner,
+  dataSourceView,
+  documentId,
+}: {
+  method: "POST" | "GET" | "PATCH";
+  owner: LightWorkspaceType;
+  dataSourceView: DataSourceViewType;
+  documentId?: string;
+}) => {
+  if ((method == "GET" || method == "PATCH") && !documentId) {
+    throw new Error("Cannot get or patch a document without a documentId");
+  }
+
+  const baseUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}`;
+  switch (method) {
+    case "POST":
+      return `${baseUrl}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+    case "PATCH":
+      return `${baseUrl}/data_sources/${dataSourceView.dataSource.sId}/documents/${encodeURIComponent(documentId!)}`;
+    case "GET":
+      return `${baseUrl}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId!)}`;
+  }
+};
+
 export function useDataSourceViewDocument({
   dataSourceView,
   documentId,
@@ -28,7 +55,12 @@ export function useDataSourceViewDocument({
     fetcher;
   const url =
     dataSourceView && documentId
-      ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
+      ? getUrl({
+          method: "GET",
+          owner,
+          dataSourceView,
+          documentId,
+        })
       : null;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -108,7 +140,14 @@ export function useUpdateDataSourceViewDocument(
     invalidateCacheEntries
   );
 
-  const patchUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents/${documentName}`;
+  const patchUrl = documentName
+    ? getUrl({
+        method: "PATCH",
+        owner,
+        dataSourceView,
+        documentId: documentName,
+      })
+    : null;
   return useSWRMutation(patchUrl, sendPatchRequest, decoratedOptions);
 }
 
@@ -147,6 +186,10 @@ export function useCreateDataSourceViewDocument(
     invalidateCacheEntries
   );
 
-  const createUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+  const createUrl = getUrl({
+    method: "POST",
+    owner,
+    dataSourceView,
+  });
   return useSWRMutation(createUrl, sendPostRequest, decoratedOptions);
 }
