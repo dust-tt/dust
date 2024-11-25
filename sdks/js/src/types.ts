@@ -2169,7 +2169,7 @@ export function isRetrievalActionType(
 export function isWebsearchActionType(
   action: AgentActionPublicType
 ): action is WebsearchActionPublicType {
-  return action.type === "retrieval_action";
+  return action.type === "websearch_action";
 }
 
 export function isTablesQueryActionType(
