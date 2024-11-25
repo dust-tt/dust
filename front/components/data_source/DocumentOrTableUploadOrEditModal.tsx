@@ -130,7 +130,6 @@ const DocumentUploadOrEditModal = ({
     });
 
   // Get the processed file content from the file API
-  // Allows using Tika parser to extract text from files
   const [fileId, setFileId] = useState<string | null>(null);
   const { isContentLoading } = useFileProcessedContent(owner, fileId ?? null, {
     disabled: !fileId,

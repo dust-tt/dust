@@ -3,6 +3,7 @@ import type {
   PatchDataSourceWithNameDocumentRequestBody,
   PostDataSourceWithNameDocumentRequestBody,
 } from "@dust-tt/types";
+import assert from "assert";
 import type { Fetcher } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
@@ -14,6 +15,13 @@ import type { PostDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[sp
 import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 
 // Centralized way to get urls -> reduces key-related inconcistencies
+function getUrlHasValidParameters(
+  method: "POST" | "GET" | "PATCH",
+  documentId?: string
+): documentId is string {
+  // Only require documentId for GET and PATCH methods
+  return method === "POST" || !!documentId;
+}
 const getUrl = ({
   method,
   owner,
@@ -25,18 +33,19 @@ const getUrl = ({
   dataSourceView: DataSourceViewType;
   documentId?: string;
 }) => {
-  if ((method == "GET" || method == "PATCH") && !documentId) {
-    throw new Error("Cannot get or patch a document without a documentId");
-  }
+  assert(
+    getUrlHasValidParameters(method, documentId),
+    "Cannot get or patch a document without a documentId"
+  );
 
   const baseUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}`;
   switch (method) {
     case "POST":
       return `${baseUrl}/data_sources/${dataSourceView.dataSource.sId}/documents`;
     case "PATCH":
-      return `${baseUrl}/data_sources/${dataSourceView.dataSource.sId}/documents/${encodeURIComponent(documentId!)}`;
+      return `${baseUrl}/data_sources/${dataSourceView.dataSource.sId}/documents/${encodeURIComponent(documentId)}`;
     case "GET":
-      return `${baseUrl}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId!)}`;
+      return `${baseUrl}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`;
   }
 };
 
