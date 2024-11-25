@@ -351,26 +351,21 @@ function AdvancedSettings({
     alert("Unsupported model");
   }
 
-  const [bestPerformingModelConfig, otherModelsConfig] =
-    USED_MODEL_CONFIGS.reduce<
-      [ModelConfigurationType[], ModelConfigurationType[]]
-    >(
-      ([best, others], m) => {
-        if (
-          (m.largeModel && !isUpgraded(plan)) ||
-          !isProviderWhitelisted(owner, m.providerId)
-        ) {
-          return [best, others];
-        }
-        if (isBestPerformingModel(m.modelId)) {
-          best.push(m);
-        } else {
-          others.push(m);
-        }
-        return [best, others];
-      },
-      [[], []]
-    );
+  const bestPerformingModelConfigs: ModelConfigurationType[] = [];
+  const otherModelConfigs: ModelConfigurationType[] = [];
+  for (const modelConfig of USED_MODEL_CONFIGS) {
+    if (
+      !isProviderWhitelisted(owner, modelConfig.providerId) ||
+      (modelConfig.largeModel && !isUpgraded(plan))
+    ) {
+      continue;
+    }
+    if (isBestPerformingModel(modelConfig.modelId)) {
+      bestPerformingModelConfigs.push(modelConfig);
+    } else {
+      otherModelConfigs.push(modelConfig);
+    }
+  }
 
   return (
     <Popover
@@ -403,9 +398,9 @@ function AdvancedSettings({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea className="max-h-[300px]">
+                <ScrollArea className="max-h-[300px] overflow-y-scroll">
                   <ModelList
-                    modelConfigs={bestPerformingModelConfig}
+                    modelConfigs={bestPerformingModelConfigs}
                     onClick={(modelSettings) => {
                       setGenerationSettings({
                         ...generationSettings,
@@ -415,7 +410,7 @@ function AdvancedSettings({
                   />
                   <DropdownMenuLabel label="Other models" />
                   <ModelList
-                    modelConfigs={otherModelsConfig}
+                    modelConfigs={otherModelConfigs}
                     onClick={(modelSettings) => {
                       setGenerationSettings({
                         ...generationSettings,
