@@ -38,6 +38,7 @@ import {
   stopZendeskWorkflows,
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -181,25 +182,30 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       dataSourceId: dataSourceConfig.dataSourceId,
     };
 
-    let result = await launchZendeskSyncWorkflow(connector);
-    if (result.isErr()) {
+    const syncResult = await this.sync();
+    if (syncResult.isErr()) {
       logger.error(
-        { ...loggerArgs, error: result.error },
+        { ...loggerArgs, error: syncResult.error },
         "[Zendesk] Error resuming the sync workflow."
       );
-      return result;
+      return syncResult;
     }
-    result = await launchZendeskGarbageCollectionWorkflow(connector);
-    if (result.isErr()) {
+    const gcResult = await launchZendeskGarbageCollectionWorkflow(connector);
+    if (gcResult.isErr()) {
       logger.error(
-        { ...loggerArgs, error: result.error },
+        { ...loggerArgs, error: gcResult.error },
         "[Zendesk] Error resuming the garbage collection workflow."
       );
-      return result;
+      return gcResult;
     }
     return new Ok(undefined);
   }
 
+  /**
+   * Launches a full re-sync workflow for the connector,
+   * restarting workflows with the signals necessary to resync every resource selected by the user.
+   * It sends signals for all the brands and for all the categories whose Help Center is not selected as a whole.
+   */
   async sync(): Promise<Result<string, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -208,9 +214,31 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
+    // syncing all the brands syncs tickets and whole help centers when selected
     const brandIds = await ZendeskBrandResource.fetchAllBrandIds(connectorId);
+    const noReadHelpCenterBrandIds =
+      await ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds(
+        connectorId
+      );
+    // syncing individual categories syncs for ones where the Help Center is not selected as a whole
+    const categoryIds = (
+      await concurrentExecutor(
+        noReadHelpCenterBrandIds,
+        async (brandId) => {
+          const categoryIds =
+            await ZendeskCategoryResource.fetchReadOnlyCategoryIdsByBrandId({
+              connectorId,
+              brandId,
+            });
+          return categoryIds.map((categoryId) => ({ categoryId, brandId }));
+        },
+        { concurrency: 10 }
+      )
+    ).flat();
+
     const result = await launchZendeskSyncWorkflow(connector, {
       brandIds,
+      categoryIds,
       forceResync: true,
     });
 
@@ -611,13 +639,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
     await connector.markAsUnpaused();
-
-    const brandIds = await ZendeskBrandResource.fetchAllBrandIds(connectorId);
-    const result = await launchZendeskSyncWorkflow(connector, { brandIds });
-    if (result.isErr()) {
-      return result;
-    }
-    return launchZendeskGarbageCollectionWorkflow(connector);
+    return this.resume();
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

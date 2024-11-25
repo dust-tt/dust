@@ -336,14 +336,10 @@ export async function retryMessage({
 
 export const getIncludeCurrentTab = async (params: GetActiveTabOptions) => {
   const backgroundRes = await sendGetActiveTabMessage(params);
-  if (
-    (params.includeContent && !backgroundRes.content) ||
-    (params.includeCapture && !backgroundRes.captures) ||
-    !backgroundRes.url ||
-    !backgroundRes.title
-  ) {
+  const error = backgroundRes.error;
+  if (error) {
     console.error("Failed to get content from the current tab.");
-    return new Err(new Error("Failed to get content from the current tab."));
+    return new Err(new Error(error));
   }
   return new Ok(backgroundRes);
 };

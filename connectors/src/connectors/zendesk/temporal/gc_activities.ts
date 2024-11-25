@@ -207,8 +207,9 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const categoryIds =
-    await ZendeskCategoryResource.fetchCategoryIdsForConnector(connectorId);
+  const categoryIds = (
+    await ZendeskCategoryResource.fetchIdsForConnector(connectorId)
+  ).map(({ categoryId }) => categoryId);
 
   const categoriesToDelete = new Set<number>();
   await concurrentExecutor(

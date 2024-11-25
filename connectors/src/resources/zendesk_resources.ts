@@ -443,13 +443,17 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => Number(category.get().categoryId));
   }
 
-  static async fetchCategoryIdsForConnector(
+  static async fetchIdsForConnector(
     connectorId: number
-  ): Promise<number[]> {
+  ): Promise<{ categoryId: number; brandId: number }[]> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId },
+      attributes: ["categoryId", "brandId"],
     });
-    return categories.map((category) => Number(category.get().categoryId));
+    return categories.map((category) => {
+      const { categoryId, brandId } = category.get();
+      return { categoryId, brandId };
+    });
   }
 
   static async fetchByCategoryId({
@@ -480,19 +484,18 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     );
   }
 
-  static async fetchByBrandId({
+  static async fetchReadOnlyCategoryIdsByBrandId({
     connectorId,
     brandId,
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskCategoryResource[]> {
+  }): Promise<number[]> {
     const categories = await ZendeskCategory.findAll({
-      where: { connectorId, brandId },
+      where: { connectorId, brandId, permission: "read" },
+      attributes: ["categoryId"],
     });
-    return categories.map(
-      (category) => category && new this(this.model, category.get())
-    );
+    return categories.map((category) => category.get().categoryId);
   }
 
   static async fetchByBrandIdReadOnly({
