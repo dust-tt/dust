@@ -222,7 +222,7 @@ export async function fetchRecentlyUpdatedArticles({
   startTime: number;
 }): Promise<{
   articles: ZendeskFetchedArticle[];
-  nextLink: string | null;
+  hasMore: boolean;
   endTime: number;
 }> {
   // this endpoint retrieves changes in content, not only in metadata despite what is mentioned in the documentation.
@@ -232,7 +232,7 @@ export async function fetchRecentlyUpdatedArticles({
   });
   return {
     articles: response.articles,
-    nextLink: response.next_page,
+    hasMore: response.next_page !== null || response.articles.length === 0,
     endTime: response.end_time,
   };
 }

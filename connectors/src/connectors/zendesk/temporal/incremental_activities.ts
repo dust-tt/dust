@@ -108,7 +108,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
     brandId,
   });
 
-  const { articles, endTime, nextLink } = await fetchRecentlyUpdatedArticles({
+  const { articles, hasMore, endTime } = await fetchRecentlyUpdatedArticles({
     brandSubdomain,
     accessToken,
     startTime,
@@ -171,7 +171,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
-  return nextLink !== null ? endTime : null;
+  return hasMore ? endTime : null;
 }
 
 /**
