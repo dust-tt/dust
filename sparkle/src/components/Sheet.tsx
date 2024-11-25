@@ -110,7 +110,7 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetPrimitive.Close className="s-absolute s-right-4 s-top-4">
+    <SheetPrimitive.Close className="s-absolute s-right-2 s-top-4">
       <Button icon={XMarkIcon} variant="ghost" size="sm" />
     </SheetPrimitive.Close>
   </div>
