@@ -9,6 +9,7 @@ use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+    data_sources::node::Node,
     databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
@@ -260,6 +261,16 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
+
+    // Data Sources Nodes
+    async fn upsert_data_source_node(&self, data_source_id: &str, node: &Node) -> Result<()>;
+    async fn get_data_source_node(
+        &self,
+        data_source_id: &str,
+        node_id: &str,
+    ) -> Result<Option<Node>>;
+    async fn delete_data_source_node(&self, data_source_id: &str, node_id: &str) -> Result<()>;
+
     // LLM Cache
     async fn llm_cache_get(
         &self,
@@ -499,10 +510,11 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        id                           BIGSERIAL PRIMARY KEY,
        data_source                  BIGINT NOT NULL,
        created                      BIGINT NOT NULL,
+       timestamp                    BIGINT NOT NULL,
        node_id                      TEXT NOT NULL,
        title                        TEXT NOT NULL,
        mimeType                     TEXT NOT NULL,
-       parents                      TEXT[],
+       parents                      TEXT[] NOT NULL,
        document                     BIGINT,
        table                        BIGINT,
        folder                       BIGINT,
