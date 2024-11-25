@@ -114,10 +114,10 @@ export const useAuthHook = () => {
   }, [handleRefreshToken, scheduleTokenRefresh]);
 
   const handleLogin = useCallback(
-    async (forceLogin?: boolean) => {
+    async (isForceLogin?: boolean) => {
       setIsLoading(true);
 
-      const response = await login(forceLogin);
+      const response = await login(isForceLogin);
       if (response.isErr()) {
         setAuthError(response.error);
         setIsLoading(false);

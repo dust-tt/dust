@@ -14,7 +14,7 @@ type AuthContextType = {
   workspace: LightWorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
-  handleLogin: (forceLogin: boolean) => void;
+  handleLogin: (isForceLogin: boolean) => void;
   handleLogout: () => void;
   handleSelectWorkspace: (workspaceId: string) => void;
 };

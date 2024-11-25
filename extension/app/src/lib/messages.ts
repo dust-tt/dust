@@ -12,7 +12,7 @@ export type AuthBackgroundResponse = {
 
 export type AuthBackgroundMessage = {
   type: "AUTHENTICATE" | "REFRESH_TOKEN" | "LOGOUT" | "SIGN_CONNECT";
-  forceLogin?: boolean;
+  isForceLogin?: boolean;
   refreshToken?: string;
 };
 
@@ -79,10 +79,13 @@ const sendMessage = <T, U>(message: T): Promise<U> => {
  */
 
 export const sendAuthMessage = (
-  forceLogin?: boolean
+  isForceLogin?: boolean
 ): Promise<Auth0AuthorizeResponse> => {
   return new Promise((resolve, reject) => {
-    const message: AuthBackgroundMessage = { type: "AUTHENTICATE", forceLogin };
+    const message: AuthBackgroundMessage = {
+      type: "AUTHENTICATE",
+      isForceLogin,
+    };
     chrome.runtime.sendMessage(
       message,
       (response: Auth0AuthorizeResponse | undefined) => {
