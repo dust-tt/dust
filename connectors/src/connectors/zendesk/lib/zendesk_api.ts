@@ -382,7 +382,7 @@ export async function fetchArticleMetadata(
     return { section, user };
   } catch (e: unknown) {
     logger.error(
-      { article, error: e },
+      { articleId: article.id, error: e },
       "[Zendesk] Error fetching article metadata"
     );
     // @ts-expect-error check out https://github.com/blakmatrix/node-zendesk/blob/fa069d927bd418ee2058bb7bb913f9414e395110/src/clients/helpers.js#L262
