@@ -27,15 +27,12 @@ import {
  */
 export async function getZendeskTimestampCursorActivity(
   connectorId: ModelId
-): Promise<Date | null> {
-  let cursors = await ZendeskTimestampCursors.findOne({
+): Promise<Date> {
+  const cursors = await ZendeskTimestampCursors.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    cursors = await ZendeskTimestampCursors.create({
-      connectorId,
-      timestampCursor: null, // start date of the last successful sync, null for now since we do not know it will succeed
-    });
+    throw new Error("[Zendesk] Timestamp cursor not found.");
   }
   // we get a StartTimeTooRecent error before 1 minute
   const minAgo = Date.now() - 60 * 1000; // 1 minute ago

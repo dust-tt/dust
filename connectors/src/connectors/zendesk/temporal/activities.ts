@@ -27,7 +27,9 @@ import {
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
  */
-export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
+export async function zendeskConnectorStartSync(
+  connectorId: ModelId
+): Promise<{ isInitialSync: boolean }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -36,6 +38,8 @@ export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
   if (res.isErr()) {
     throw res.error;
   }
+
+  return { isInitialSync: !connector.lastSyncSuccessfulTime };
 }
 
 /**

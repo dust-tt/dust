@@ -8,6 +8,7 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
+import { zendeskConnectorStartSync } from "@connectors/connectors/zendesk/temporal/activities";
 import type * as gc_activities from "@connectors/connectors/zendesk/temporal/gc_activities";
 import type * as incremental_activities from "@connectors/connectors/zendesk/temporal/incremental_activities";
 import type {
@@ -52,7 +53,6 @@ const {
 });
 
 const {
-  saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
   getZendeskTicketsAllowedBrandIdsActivity,
@@ -71,7 +71,7 @@ export async function zendeskSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  await saveZendeskConnectorStartSync(connectorId);
+  const { isInitialSync } = await zendeskConnectorStartSync(connectorId);
 
   const brandIds = new Set<number>();
   const brandSignals: ZendeskUpdateSignal[] = [];
@@ -130,8 +130,8 @@ export async function zendeskSyncWorkflow({
 
   const currentSyncDateMs = new Date().getTime();
 
-  // If we got no signal, then we're on the scheduled execution
   if (
+    !isInitialSync &&
     brandIds.size === 0 &&
     brandHelpCenterIds.size === 0 &&
     brandTicketsIds.size === 0 &&
@@ -246,9 +246,7 @@ export async function zendeskIncrementalSyncWorkflow({
     getZendeskHelpCenterReadAllowedBrandIdsActivity(connectorId),
   ]);
 
-  const startTimeMs = cursor
-    ? new Date(cursor).getTime() // recasting the date since error may occur during Temporal's serialization
-    : currentSyncDateMs - 1000 * 60 * 30; // 30 min ago, previous scheduled execution
+  const startTimeMs = new Date(cursor).getTime(); // recasting the date since error may occur during Temporal's serialization
   const startTime = Math.floor(startTimeMs / 1000);
 
   for (const brandId of helpCenterBrandIds) {
