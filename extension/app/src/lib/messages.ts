@@ -12,12 +12,13 @@ export type AuthBackgroundResponse = {
 
 export type AuthBackgroundMessage = {
   type: "AUTHENTICATE" | "REFRESH_TOKEN" | "LOGOUT" | "SIGN_CONNECT";
+  isForceLogin?: boolean;
   refreshToken?: string;
 };
 
 export type GetActiveTabOptions = {
   includeContent: boolean;
-  includeScreenshot: boolean;
+  includeCapture: boolean;
   includeSelectionOnly?: boolean;
 };
 
@@ -29,22 +30,35 @@ export type GetActiveTabBackgroundResponse = {
   title: string;
   url: string;
   content?: string;
-  screenshot?: string;
+  captures?: string[];
+  error?: string;
 };
-
-export type AttachSelectionMessage = {
-  type: "ATTACH_TAB";
-} & GetActiveTabOptions;
 
 export type InputBarStatusMessage = {
   type: "INPUT_BAR_STATUS";
   available: boolean;
 };
 
+export type CaptureMesssage = {
+  type: "CAPTURE";
+};
+
+export type CaptureResponse = {
+  dataURI: string;
+};
+
+export type AttachSelectionMessage = {
+  type: "EXT_ATTACH_TAB";
+} & GetActiveTabOptions;
+
 export type RouteChangeMesssage = {
-  type: "ROUTE_CHANGE";
+  type: "EXT_ROUTE_CHANGE";
   pathname: string;
   search: string;
+};
+
+export type CaptureFullPageMessage = {
+  type: "PAGE_CAPTURE_FULL_PAGE";
 };
 
 const sendMessage = <T, U>(message: T): Promise<U> => {
@@ -65,9 +79,14 @@ const sendMessage = <T, U>(message: T): Promise<U> => {
  * Messages to the background script to authenticate, refresh tokens, and logout.
  */
 
-export const sendAuthMessage = (): Promise<Auth0AuthorizeResponse> => {
+export const sendAuthMessage = (
+  isForceLogin?: boolean
+): Promise<Auth0AuthorizeResponse> => {
   return new Promise((resolve, reject) => {
-    const message: AuthBackgroundMessage = { type: "AUTHENTICATE" };
+    const message: AuthBackgroundMessage = {
+      type: "AUTHENTICATE",
+      isForceLogin,
+    };
     chrome.runtime.sendMessage(
       message,
       (response: Auth0AuthorizeResponse | undefined) => {
@@ -163,10 +182,10 @@ export const sendInputBarStatus = (available: boolean) => {
 // Messages from background script to content script
 
 export const sendAttachSelection = (
-  opts: GetActiveTabOptions = { includeContent: true, includeScreenshot: false }
+  opts: GetActiveTabOptions = { includeContent: true, includeCapture: false }
 ) => {
   return sendMessage<AttachSelectionMessage, void>({
-    type: "ATTACH_TAB",
+    type: "EXT_ATTACH_TAB",
     ...opts,
   });
 };

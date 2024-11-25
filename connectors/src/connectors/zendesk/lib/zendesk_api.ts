@@ -1,12 +1,12 @@
-import assert from "node:assert";
-
 import type { ModelId } from "@dust-tt/types";
 import type { Client } from "node-zendesk";
 import { createClient } from "node-zendesk";
 
 import type {
   ZendeskFetchedArticle,
+  ZendeskFetchedCategory,
   ZendeskFetchedTicket,
+  ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
@@ -14,6 +14,13 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
+
+/**
+ * Retrieves the endpoint part from a URL used to call the Zendesk API.
+ */
+function getEndpointFromUrl(url: string): string {
+  return url.split("api/v2")[1] as string;
+}
 
 export function createZendeskClient({
   accessToken,
@@ -129,9 +136,23 @@ async function fetchFromZendeskWithRetries({
       );
     }
   }
-  const text = await rawResponse.text();
-  const response = JSON.parse(text);
-
+  let response;
+  try {
+    response = await rawResponse.json();
+  } catch (e) {
+    if (rawResponse.status === 404) {
+      logger.error(
+        { rawResponse, text: rawResponse.text },
+        `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
+      );
+      return null;
+    }
+    logger.error(
+      { rawResponse, status: rawResponse.status, text: rawResponse.text },
+      "[Zendesk] Error parsing Zendesk API response"
+    );
+    throw new Error("Error parsing Zendesk API response");
+  }
   if (!rawResponse.ok) {
     if (response.type === "error.list" && response.errors?.length) {
       const error = response.errors[0];
@@ -142,22 +163,59 @@ async function fetchFromZendeskWithRetries({
         return null;
       }
     }
-    logger.error({ response }, "[Zendesk] Zendesk API error");
-    throw new Error(`Zendesk API error: ${text}`);
+    logger.error(
+      {
+        rawResponse,
+        response,
+        status: rawResponse.status,
+        endpoint: getEndpointFromUrl(url),
+      },
+      "[Zendesk] Zendesk API error"
+    );
+    throw new Error("Zendesk API error.");
   }
 
   return response;
 }
 
 /**
+ * Fetches a batch of categories from the Zendesk API.
+ */
+export async function fetchZendeskCategoriesInBrand({
+  brandSubdomain,
+  accessToken,
+  pageSize,
+  cursor = null,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+  pageSize: number;
+  cursor: string | null;
+}): Promise<{
+  categories: ZendeskFetchedCategory[];
+  meta: { has_more: boolean; after_cursor: string };
+}> {
+  const response = await fetchFromZendeskWithRetries({
+    url:
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?` +
+      (cursor ? `page[after]=${encodeURIComponent(cursor)}&` : "") +
+      `page[size]=${pageSize}`,
+    accessToken,
+  });
+  return (
+    response || { categories: [], meta: { has_more: false, after_cursor: "" } }
+  );
+}
+
+/**
  * Fetches a batch of the recently updated articles from the Zendesk API using the incremental API endpoint.
  */
 export async function fetchRecentlyUpdatedArticles({
-  subdomain,
+  brandSubdomain,
   accessToken,
   startTime, // start time in Unix epoch time, in seconds
 }: {
-  subdomain: string;
+  brandSubdomain: string;
   accessToken: string;
   startTime: number;
 }): Promise<{
@@ -167,7 +225,7 @@ export async function fetchRecentlyUpdatedArticles({
 }> {
   // this endpoint retrieves changes in content despite what is mentioned in the documentation.
   const response = await fetchFromZendeskWithRetries({
-    url: `https://${subdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
+    url: `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
     accessToken,
   });
   return (
@@ -183,13 +241,13 @@ export async function fetchRecentlyUpdatedArticles({
  * Fetches a batch of articles in a category from the Zendesk API.
  */
 export async function fetchZendeskArticlesInCategory({
-  subdomain,
+  brandSubdomain,
   accessToken,
   categoryId,
   pageSize,
   cursor = null,
 }: {
-  subdomain: string;
+  brandSubdomain: string;
   accessToken: string;
   categoryId: number;
   pageSize: number;
@@ -198,15 +256,11 @@ export async function fetchZendeskArticlesInCategory({
   articles: ZendeskFetchedArticle[];
   meta: { has_more: boolean; after_cursor: string };
 }> {
-  assert(
-    pageSize <= 100,
-    `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
-  );
-
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${subdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?` +
+      (cursor ? `page[after]=${encodeURIComponent(cursor)}&` : "") +
+      `page[size]=${pageSize}`,
     accessToken,
   });
   return (
@@ -218,19 +272,19 @@ export async function fetchZendeskArticlesInCategory({
  * Fetches a batch of the recently updated tickets from the Zendesk API using the incremental API endpoint.
  */
 export async function fetchRecentlyUpdatedTickets({
-  subdomain,
+  brandSubdomain,
   accessToken,
   startTime = null,
   cursor = null,
 }: // pass either a cursor or a start time, but not both
 | {
-      subdomain: string;
+      brandSubdomain: string;
       accessToken: string;
       startTime: number | null;
       cursor?: never;
     }
   | {
-      subdomain: string;
+      brandSubdomain: string;
       accessToken: string;
       startTime?: never;
       cursor: string | null;
@@ -241,7 +295,7 @@ export async function fetchRecentlyUpdatedTickets({
 }> {
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${subdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json` +
+      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json` +
       (cursor ? `?cursor=${encodeURIComponent(cursor)}` : "") +
       (startTime ? `?start_time=${startTime}` : ""),
     accessToken,
@@ -275,18 +329,14 @@ export async function fetchZendeskTicketsInBrand({
   tickets: ZendeskFetchedTicket[];
   meta: { has_more: boolean; after_cursor: string };
 }> {
-  assert(
-    pageSize <= 100,
-    `pageSize must be at most 100 (current value: ${pageSize})`
-  );
-
   const searchQuery = encodeURIComponent(
     `status:solved updated>${retentionPeriodDays}days`
   );
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?query=${searchQuery}&filter[type]=ticket&page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket` +
+      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : "") +
+      `&page[size]=${pageSize}&query=${searchQuery}`,
     accessToken,
   });
 
@@ -299,4 +349,22 @@ export async function fetchZendeskTicketsInBrand({
         },
       }
     : { tickets: [], meta: { has_more: false, after_cursor: "" } };
+}
+
+/**
+ * Fetches the current user through a call to `/users/me`.
+ */
+export async function fetchZendeskCurrentUser({
+  subdomain,
+  accessToken,
+}: {
+  subdomain: string;
+  accessToken: string;
+}): Promise<ZendeskFetchedUser> {
+  const response = await fetch(
+    `https://${subdomain}.zendesk.com/api/v2/users/me`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const data = await response.json();
+  return data.user;
 }

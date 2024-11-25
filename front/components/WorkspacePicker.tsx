@@ -12,6 +12,8 @@ import type {
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 
+import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+
 interface WorkspacePickerProps {
   onWorkspaceUpdate: (w: LightWorkspaceType) => void;
   user: UserTypeWithWorkspaces;
@@ -23,6 +25,8 @@ export default function WorkspacePicker({
   user,
   workspace,
 }: WorkspacePickerProps) {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
+
   return (
     <div className="flex flex-row items-center gap-1 px-3 py-2">
       <Label className="text-xs text-muted-foreground">Workspace:</Label>
@@ -40,7 +44,10 @@ export default function WorkspacePicker({
               return (
                 <DropdownMenuRadioItem
                   key={w.sId}
-                  onClick={() => void onWorkspaceUpdate(w)}
+                  onClick={() => {
+                    setNavigationSelection({ lastWorkspaceId: w.sId });
+                    void onWorkspaceUpdate(w);
+                  }}
                   value={w.name}
                 >
                   {w.name}

@@ -1,18 +1,14 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { deleteCategory } from "@connectors/connectors/zendesk/lib/data_cleanup";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
-import {
-  deleteTicket,
-  syncTicket,
-} from "@connectors/connectors/zendesk/lib/sync_ticket";
+import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
+import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
-  fetchRecentlyUpdatedArticles,
-  fetchRecentlyUpdatedTickets,
   fetchZendeskArticlesInCategory,
+  fetchZendeskCategoriesInBrand,
   fetchZendeskTicketsInBrand,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
@@ -131,57 +127,12 @@ export async function syncZendeskBrandActivity({
 }
 
 /**
- * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
- */
-export async function getZendeskTimestampCursorActivity(
-  connectorId: ModelId
-): Promise<Date | null> {
-  let cursors = await ZendeskTimestampCursors.findOne({
-    where: { connectorId },
-  });
-  if (!cursors) {
-    cursors = await ZendeskTimestampCursors.create({
-      connectorId,
-      timestampCursor: null, // start date of the last successful sync, null for now since we do not know it will succeed
-    });
-  }
-  // we get a StartTimeTooRecent error before 1 minute
-  const minAgo = Date.now() - 60 * 1000; // 1 minute ago
-  return cursors.timestampCursor
-    ? new Date(Math.min(cursors.timestampCursor.getTime(), minAgo))
-    : new Date(minAgo);
-}
-
-/**
- * Sets the timestamp cursor to the start date of the last successful incremental sync.
- */
-export async function setZendeskTimestampCursorActivity({
-  connectorId,
-  currentSyncDateMs,
-}: {
-  connectorId: ModelId;
-  currentSyncDateMs: number;
-}) {
-  const cursors = await ZendeskTimestampCursors.findOne({
-    where: { connectorId },
-  });
-  if (!cursors) {
-    throw new Error("[Zendesk] Timestamp cursor not found.");
-  }
-  await cursors.update({
-    timestampCursor: new Date(currentSyncDateMs), // setting this as the start date of the sync (last successful sync)
-  });
-}
-
-/**
  * Retrieves the IDs of every brand stored in db that has read permissions on their Help Center.
  */
 export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds({
-    connectorId,
-  });
+  return ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
 }
 
 /**
@@ -190,43 +141,76 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
 export async function getZendeskTicketsAllowedBrandIdsActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchTicketsAllowedBrandIds({
-    connectorId,
-  });
+  return ZendeskBrandResource.fetchTicketsAllowedBrandIds(connectorId);
 }
 
 /**
- * Retrieves the categories for a given Brand.
+ * This activity is responsible for syncing a batch of Categories.
+ * It does not sync the articles inside the Category, only the Category data in itself.
+ *
+ * It is going to update the Categories if they have changed on Zendesk
  */
-export async function fetchZendeskCategoriesActivity({
+export async function syncZendeskCategoryBatchActivity({
   connectorId,
   brandId,
+  currentSyncDateMs,
+  cursor,
 }: {
   connectorId: ModelId;
   brandId: number;
-}): Promise<number[]> {
+  currentSyncDateMs: number;
+  cursor: string | null;
+}): Promise<{
+  categoriesToUpdate: number[];
+  hasMore: boolean;
+  afterCursor: string | null;
+}> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
-  const client = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
-  );
-  await changeZendeskClientSubdomain(client, { connectorId, brandId });
-  const categories = await client.helpcenter.categories.list();
 
-  return categories.map((category) => category.id);
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    brandId,
+    connectorId,
+  });
+
+  const {
+    categories,
+    meta: { after_cursor, has_more },
+  } = await fetchZendeskCategoriesInBrand({
+    brandSubdomain,
+    accessToken,
+    pageSize: ZENDESK_BATCH_SIZE,
+    cursor,
+  });
+
+  await concurrentExecutor(
+    categories,
+    async (category) =>
+      syncCategory({ connectorId, brandId, category, currentSyncDateMs }),
+    {
+      concurrency: 10,
+    }
+  );
+
+  return {
+    categoriesToUpdate: categories.map((category) => category.id),
+    hasMore: has_more,
+    afterCursor: after_cursor,
+  };
 }
 
 /**
- * This activity is responsible for syncing a Category.
+ * This activity is responsible for syncing a single Category.
  * It does not sync the articles inside the Category, only the Category data in itself.
  *
- * It is going to update the name of the Category if it has changed.
- * If the Category is not allowed anymore, it will delete all its data.
+ * It is going to update the name, description and URL of the Category if they have changed.
  * If the Category is not present on Zendesk anymore, it will delete all its data as well.
- *
- * @returns true if the Category was updated, false if it was deleted.
  */
 export async function syncZendeskCategoryActivity({
   connectorId,
@@ -238,12 +222,11 @@ export async function syncZendeskCategoryActivity({
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-}): Promise<boolean> {
+}): Promise<{ shouldSyncArticles: boolean }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     categoryId,
@@ -254,10 +237,9 @@ export async function syncZendeskCategoryActivity({
     );
   }
 
-  // if all rights were revoked, we delete the category data.
+  // if all rights were revoked, we have nothing to sync
   if (categoryInDb.permission === "none") {
-    await deleteCategory({ connectorId, dataSourceConfig, categoryId });
-    return false;
+    return { shouldSyncArticles: false };
   }
 
   const zendeskApiClient = createZendeskClient(
@@ -268,20 +250,22 @@ export async function syncZendeskCategoryActivity({
     brandId,
   });
 
-  // if the category is not on Zendesk anymore, we delete it
+  // if the category is not on Zendesk anymore, we remove its permissions
   const { result: fetchedCategory } =
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
-    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
-    return false;
+    await categoryInDb.revokePermissions();
+    return { shouldSyncArticles: false };
   }
 
   // otherwise, we update the category name and lastUpsertedTs
   await categoryInDb.update({
     name: fetchedCategory.name || "Category",
+    url: fetchedCategory.html_url,
+    description: fetchedCategory.description,
     lastUpsertedTs: new Date(currentSyncDateMs),
   });
-  return true;
+  return { shouldSyncArticles: true };
 }
 
 /**
@@ -335,15 +319,23 @@ export async function syncZendeskArticleBatchActivity({
     articles,
     meta: { after_cursor, has_more },
   } = await fetchZendeskArticlesInCategory({
-    subdomain: brandSubdomain,
+    brandSubdomain,
     accessToken,
     categoryId: category.categoryId,
     pageSize: ZENDESK_BATCH_SIZE,
     cursor,
   });
 
-  const sections = await zendeskApiClient.helpcenter.sections.list();
-  const users = await zendeskApiClient.users.list();
+  logger.info(
+    { ...loggerArgs, articlesSynced: articles.length },
+    `[Zendesk] Processing ${articles.length} articles in batch`
+  );
+
+  const sections =
+    await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
+  const { result: users } = await zendeskApiClient.users.showMany(
+    articles.map((article) => article.author_id)
+  );
 
   await concurrentExecutor(
     articles,
@@ -454,159 +446,4 @@ export async function syncZendeskTicketBatchActivity({
     afterCursor: meta.after_cursor,
     hasMore: meta.has_more,
   };
-}
-
-/**
- * This activity is responsible for syncing the next batch of recently updated articles to process.
- * It is based on the incremental endpoint, which returns a diff.
- * @returns The next start time if there is any more data to fetch, null otherwise.
- */
-export async function syncZendeskArticleUpdateBatchActivity({
-  connectorId,
-  brandId,
-  currentSyncDateMs,
-  startTime,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-  currentSyncDateMs: number;
-  startTime: number;
-}): Promise<number | null> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
-  );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
-    connectorId,
-    brandId,
-  });
-
-  const { articles, end_time, next_page } = await fetchRecentlyUpdatedArticles({
-    subdomain: brandSubdomain,
-    accessToken,
-    startTime,
-  });
-
-  await concurrentExecutor(
-    articles,
-    async (article) => {
-      const { result: section } =
-        await zendeskApiClient.helpcenter.sections.show(article.section_id);
-      const { result: user } = await zendeskApiClient.users.show(
-        article.author_id
-      );
-
-      if (section.category_id) {
-        const category = await ZendeskCategoryResource.fetchByCategoryId({
-          connectorId,
-          categoryId: section.category_id,
-        });
-        if (category && category.permission === "read") {
-          return syncArticle({
-            connectorId,
-            category,
-            article,
-            section,
-            user,
-            dataSourceConfig,
-            currentSyncDateMs,
-            loggerArgs,
-            forceResync: false,
-          });
-        }
-      }
-    },
-    { concurrency: 10 }
-  );
-  return next_page !== null ? end_time : null;
-}
-
-/**
- * This activity is responsible for syncing the next batch of recently updated tickets to process.
- * It is based on the incremental endpoint, which returns a diff.
- */
-export async function syncZendeskTicketUpdateBatchActivity({
-  connectorId,
-  brandId,
-  startTime,
-  currentSyncDateMs,
-  cursor,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-  startTime: number;
-  currentSyncDateMs: number;
-  cursor: string | null;
-}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
-  );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
-    connectorId,
-    brandId,
-  });
-
-  const { tickets, after_cursor, end_of_stream } =
-    await fetchRecentlyUpdatedTickets({
-      subdomain: brandSubdomain,
-      accessToken,
-      ...(cursor ? { cursor } : { startTime }),
-    });
-
-  await concurrentExecutor(
-    tickets,
-    async (ticket) => {
-      if (ticket.status === "deleted") {
-        return deleteTicket({
-          connectorId,
-          ticketId: ticket.id,
-          dataSourceConfig,
-          loggerArgs,
-        });
-      } else if (ticket.status === "solved") {
-        const comments = await zendeskApiClient.tickets.getComments(ticket.id);
-        const { result: users } = await zendeskApiClient.users.showMany(
-          comments.map((c) => c.author_id)
-        );
-        return syncTicket({
-          connectorId,
-          ticket,
-          brandId,
-          users,
-          comments,
-          dataSourceConfig,
-          currentSyncDateMs,
-          loggerArgs,
-          forceResync: false,
-        });
-      }
-    },
-    { concurrency: 10 }
-  );
-  return { hasMore: !end_of_stream, afterCursor: after_cursor };
 }

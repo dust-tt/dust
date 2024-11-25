@@ -1,6 +1,7 @@
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import type { ModelId } from "@dust-tt/types";
 import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
+import { stripNullBytes } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
@@ -469,11 +470,14 @@ function formatDocumentContent({
   const parsedUrl = new URL(url);
   const urlWithoutQuery = `${parsedUrl.origin}/${parsedUrl.pathname}`;
 
+  const sanitizedContent = stripNullBytes(content);
+  const sanitizedTitle = stripNullBytes(title);
+
   return {
     prefix: `URL: ${urlWithoutQuery.slice(0, URL_MAX_LENGTH)}${
       urlWithoutQuery.length > URL_MAX_LENGTH ? "..." : ""
     }\n`,
-    content: `TITLE: ${title.substring(0, TITLE_MAX_LENGTH)}\n${content}`,
+    content: `TITLE: ${sanitizedTitle.substring(0, TITLE_MAX_LENGTH)}\n${sanitizedContent}`,
     sections: [],
   };
 }

@@ -1,6 +1,7 @@
 import {
   Button,
   Input,
+  Label,
   LogoSquareColorLogo,
   Page,
   RadioGroup,
@@ -171,12 +172,14 @@ export default function Welcome({
               onValueChange={setAdminInterest}
               className="flex flex-col gap-2 sm:flex-row"
             >
-              <RadioGroupChoice value="personnal" iconPosition="center">
-                <span className="pl-1">Just for me</span>
-              </RadioGroupChoice>
-              <RadioGroupChoice value="team" iconPosition="center">
-                <span className="pl-1">For me and my team</span>
-              </RadioGroupChoice>
+              <RadioGroupChoice
+                value="personnal"
+                label={<Label className="pl-1">Just for me</Label>}
+              ></RadioGroupChoice>
+              <RadioGroupChoice
+                value="team"
+                label={<Label className="pl-1">For me and my team</Label>}
+              ></RadioGroupChoice>
             </RadioGroup>
           </div>
         )}
@@ -189,15 +192,18 @@ export default function Welcome({
             onValueChange={setExpertise}
             className="flex flex-col gap-2 sm:flex-row"
           >
-            <RadioGroupChoice value="beginner" iconPosition="center">
-              <span className="pl-1">Nothing!</span>
-            </RadioGroupChoice>
-            <RadioGroupChoice value="intermediate" iconPosition="center">
-              <span className="pl-1">I know the basics</span>
-            </RadioGroupChoice>
-            <RadioGroupChoice value="advanced" iconPosition="center">
-              <span className="pl-1">I'm a pro</span>
-            </RadioGroupChoice>
+            <RadioGroupChoice
+              value="beginner"
+              label={<Label className="pl-1">Nothing!</Label>}
+            ></RadioGroupChoice>
+            <RadioGroupChoice
+              value="intermediate"
+              label={<Label className="pl-1">I know the basics</Label>}
+            ></RadioGroupChoice>
+            <RadioGroupChoice
+              value="advanced"
+              label={<Label className="pl-1">I'm a pro</Label>}
+            ></RadioGroupChoice>
           </RadioGroup>
         </div>
         <div className="flex justify-end">

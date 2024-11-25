@@ -7,7 +7,6 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { MembersDataTable } from "@app/components/poke/members/table";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -75,14 +74,7 @@ export default function DataSourceViewPage({
   return (
     <div className="flex flex-row gap-x-6">
       <ViewSpaceViewTable space={space} />
-      <div className="mt-4 flex flex-1 flex-col">
-        <PluginList
-          resourceType="spaces"
-          workspaceResource={{
-            workspace: owner,
-            resourceId: space.sId,
-          }}
-        />
+      <div className="flex grow flex-col">
         <MembersDataTable members={members} owner={owner} readonly />
       </div>
     </div>

@@ -6,7 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Searchbar,
+  SearchInput,
   Spinner,
   useHashParam,
   usePaginationFromUrl,
@@ -212,7 +212,7 @@ export const SpaceDataSourceViewContentList = ({
   );
 
   const isServerPagination =
-    !isManaged(dataSourceView.dataSource) && !dataSourceSearch;
+    isFolder(dataSourceView.dataSource) && !dataSourceSearch;
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
@@ -379,7 +379,7 @@ export const SpaceDataSourceViewContentList = ({
       >
         {!isEmpty && (
           <>
-            <Searchbar
+            <SearchInput
               name="search"
               placeholder="Search (Name)"
               value={dataSourceSearch}

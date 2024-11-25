@@ -8,12 +8,14 @@ import logger from "@connectors/logger/logger";
 
 import * as activities from "./activities";
 import { QUEUE_NAME } from "./config";
+import * as gc_activities from "./gc_activities";
+import * as incremental_activities from "./incremental_activities";
 
-export async function runZendeskWorker() {
+export async function runZendeskWorkers() {
   const { connection, namespace } = await getTemporalWorkerConnection();
-  const worker = await Worker.create({
+  const syncWorker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
-    activities,
+    activities: { ...activities, ...incremental_activities, ...gc_activities },
     taskQueue: QUEUE_NAME,
     connection,
     reuseV8Context: true,
@@ -35,5 +37,5 @@ export async function runZendeskWorker() {
     },
   });
 
-  await worker.run();
+  await syncWorker.run();
 }

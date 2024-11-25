@@ -37,6 +37,7 @@ import {
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   Conversation,
   ConversationParticipant,
   Mention,
@@ -141,6 +142,7 @@ async function main() {
 
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
+  await AgentMessageFeedback.sync({ alter: true });
   await ContentFragmentModel.sync({ alter: true });
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });

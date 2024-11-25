@@ -39,7 +39,7 @@ export async function deleteTicket({
   );
   await deleteFromDataSource(
     dataSourceConfig,
-    getTicketInternalId(connectorId, ticketId)
+    getTicketInternalId({ connectorId, ticketId })
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
@@ -85,20 +85,13 @@ export async function syncTicket({
     !ticketInDb.lastUpsertedTs ||
     ticketInDb.lastUpsertedTs < updatedAtDate;
 
-  const commonTicketData = {
-    subject: ticket.subject,
-    url: ticket.url,
-    assigneeId: ticket.assignee_id,
-    groupId: ticket.group_id,
-    organizationId: ticket.organization_id,
-    lastUpsertedTs: new Date(currentSyncDateMs),
-    ticketUpdatedAt: updatedAtDate,
-  };
-
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
-        ...commonTicketData,
+        subject: ticket.subject,
+        url: ticket.url.replace("/api/v2/", "/").replace(".json", ""), // converting the API URL into the web URL
+        lastUpsertedTs: new Date(currentSyncDateMs),
+        ticketUpdatedAt: updatedAtDate,
         ticketId: ticket.id,
         brandId,
         permission: "read",
@@ -106,7 +99,13 @@ export async function syncTicket({
       },
     });
   } else {
-    await ticketInDb.update(commonTicketData);
+    await ticketInDb.update({
+      subject: ticket.subject,
+      url: ticket.url.replace("/api/v2/", "/").replace(".json", ""), // converting the API URL into the web URL
+      lastUpsertedTs: new Date(currentSyncDateMs),
+      ticketUpdatedAt: updatedAtDate,
+      permission: "read",
+    });
   }
 
   if (!shouldPerformUpsertion) {
@@ -200,7 +199,10 @@ ${comment.body}`;
       updatedAt: updatedAtDate,
     });
 
-    const documentId = getTicketInternalId(connectorId, ticket.id);
+    const documentId = getTicketInternalId({
+      connectorId,
+      ticketId: ticket.id,
+    });
 
     await upsertToDatasource({
       dataSourceConfig,

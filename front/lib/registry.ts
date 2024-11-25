@@ -95,7 +95,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "953b79fe89",
       appHash:
-        "728a97c7ca63b974620170dad91d632d5fc966d3a537a4526d27648f18af61d5",
+        "3240c3804948d0587b1f4051e0101b9f2731c212856b8c3cd46d5268b3479fb0",
       appSpaceId: PRODUCTION_DUST_APPS_SPACE_ID,
     },
     config: {
@@ -304,6 +304,22 @@ export const DustProdActionRegistry = createActionRegistry({
         // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
         use_stream: true,
+      },
+    },
+  },
+  "conversation-file-summarizer": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "iy1pjLCMzZ",
+      appHash:
+        "0cd0a82dcfaa327b2d5d1f645a314ea885e995a12921a1024ee96b92e8f15768",
+      appSpaceId: PRODUCTION_DUST_APPS_SPACE_ID,
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: false,
       },
     },
   },

@@ -2,21 +2,19 @@ import type {
   AgentMessageType,
   ConversationFileType,
   ConversationListFilesActionType,
-  ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
 } from "@dust-tt/types";
-import {
-  BaseAction,
-  getTablesQueryResultsFileTitle,
-  isAgentMessageType,
-  isContentFragmentType,
-  isSupportedPlainTextContentType,
-  isTablesQueryActionType,
-} from "@dust-tt/types";
+import { BaseAction } from "@dust-tt/types";
+import _ from "lodash";
 
-import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
+import {
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/constants";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
@@ -45,75 +43,53 @@ export class ConversationListFilesAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "list_conversation_files",
+      name:
+        this.functionCallName ?? DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
       arguments: JSON.stringify({}),
     };
   }
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content =
-      `List of files attached to the conversation with their content type.\n\n` +
-      `- only the files marked as \`includable\` can be included with ` +
-      `the \`include_conversation_file\` tool.\n` +
-      // TODO(spolu): add mention of viz if enabled and other tools.
+      `List of files attached to the conversation with their content type and status (includable, queryable, searchable).\n\n` +
+      `// includable: can be rerieved with the \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\` action.\n` +
+      `// queryable: can be queried with the \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\` action.\n` +
+      `// searchable: can be searched with the \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\` action.\n` +
       `\n`;
-    // TODO(spolu) add file token count, make includabiility dependent on that.
     for (const f of this.files) {
-      content +=
-        `<file id="${f.fileId}" name="${f.title}" type="${f.contentType}" ` +
-        `includable="${isConversationIncludableFileContentType(f.contentType)}"/>\n`;
+      content += `<file id="${f.fileId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
+
+      if (f.snippet) {
+        content += ` snippet="${_.escape(f.snippet)}"`;
+      }
+
+      content += "/>\n";
     }
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? "list_conversation_files",
+      name:
+        this.functionCallName ?? DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
   }
 }
 
-export function makeConversationListFilesAction(
-  agentMessage: AgentMessageType,
-  conversation: ConversationType
-): ConversationListFilesActionType | null {
-  const files: ConversationFileType[] = [];
-
-  for (const m of conversation.content.flat(1)) {
-    if (
-      isContentFragmentType(m) &&
-      isSupportedPlainTextContentType(m.contentType) &&
-      m.contentFragmentVersion === "latest"
-    ) {
-      if (m.fileId) {
-        files.push({
-          fileId: m.fileId,
-          title: m.title,
-          contentType: m.contentType,
-        });
-      }
-    } else if (isAgentMessageType(m)) {
-      for (const a of m.actions) {
-        if (isTablesQueryActionType(a)) {
-          if (a.resultsFileId && a.resultsFileSnippet) {
-            files.push({
-              fileId: a.resultsFileId,
-              contentType: "text/csv",
-              title: getTablesQueryResultsFileTitle({ output: a.output }),
-            });
-          }
-        }
-      }
-    }
-  }
-
+export function makeConversationListFilesAction({
+  agentMessage,
+  files,
+}: {
+  agentMessage: AgentMessageType;
+  files: ConversationFileType[];
+}): ConversationListFilesActionType | null {
   if (files.length === 0) {
     return null;
   }
 
   return new ConversationListFilesAction({
     functionCallId: "call_" + Math.random().toString(36).substring(7),
-    functionCallName: "list_conversation_files",
+    functionCallName: DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
     files,
     agentMessageId: agentMessage.agentMessageId,
   });

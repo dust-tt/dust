@@ -165,7 +165,7 @@ ZendeskBrand.init(
       allowNull: false,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     subdomain: {
@@ -257,7 +257,7 @@ ZendeskCategory.init(
       validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     description: {
@@ -265,7 +265,7 @@ ZendeskCategory.init(
       allowNull: true,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     permission: {
@@ -350,11 +350,11 @@ ZendeskArticle.init(
       validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     permission: {
@@ -397,10 +397,6 @@ export class ZendeskTicket extends Model<
   declare brandId: number;
   declare permission: "read" | "none";
 
-  declare assigneeId: number | null;
-  declare groupId: number | null;
-  declare organizationId: number | null;
-
   declare subject: string;
   declare url: string;
 
@@ -428,7 +424,7 @@ ZendeskTicket.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     subject: {
@@ -443,21 +439,6 @@ ZendeskTicket.init(
     brandId: {
       type: DataTypes.BIGINT,
       allowNull: false,
-      validate: { throwOnUnsafeInteger },
-    },
-    groupId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      validate: { throwOnUnsafeInteger },
-    },
-    assigneeId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      validate: { throwOnUnsafeInteger },
-    },
-    organizationId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
       validate: { throwOnUnsafeInteger },
     },
     permission: {

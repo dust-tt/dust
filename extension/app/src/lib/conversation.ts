@@ -15,9 +15,10 @@ import type {
   UserType,
 } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { getAccessToken } from "@extension/lib/auth";
 import type { GetActiveTabOptions } from "@extension/lib/messages";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
-import { getAccessToken, getStoredUser } from "@extension/lib/storage";
+import { getStoredUser } from "@extension/lib/storage";
 import type { UploadedFileWithSupersededContentFragmentId } from "@extension/lib/types";
 
 type SubmitMessageError = {
@@ -335,14 +336,10 @@ export async function retryMessage({
 
 export const getIncludeCurrentTab = async (params: GetActiveTabOptions) => {
   const backgroundRes = await sendGetActiveTabMessage(params);
-  if (
-    (params.includeContent && !backgroundRes.content) ||
-    (params.includeScreenshot && !backgroundRes.screenshot) ||
-    !backgroundRes.url ||
-    !backgroundRes.title
-  ) {
+  const error = backgroundRes.error;
+  if (error) {
     console.error("Failed to get content from the current tab.");
-    return new Err(new Error("Failed to get content from the current tab."));
+    return new Err(new Error(error));
   }
   return new Ok(backgroundRes);
 };

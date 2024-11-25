@@ -64,18 +64,6 @@ async function _getParents(
       return parents;
     case "page":
     case "database": {
-      if (seen.includes(pageOrDbId)) {
-        logger.error(
-          {
-            connectorId,
-            pageOrDbId,
-            seen,
-            parentId: pageOrDb.parentId,
-          },
-          "getParents infinite loop"
-        );
-        return parents.concat(seen);
-      }
       seen.push(pageOrDbId);
       if (!pageOrDb.parentId) {
         logger.error(
@@ -87,6 +75,18 @@ async function _getParents(
           "getParents parentId is undefined"
         );
         throw new Error("getParent parentId is undefined");
+      }
+      if (seen.includes(pageOrDb.parentId)) {
+        logger.error(
+          {
+            connectorId,
+            pageOrDbId,
+            seen,
+            parentId: pageOrDb.parentId,
+          },
+          "getParents infinite loop"
+        );
+        return parents.concat(seen);
       }
       if (onProgress) {
         await onProgress();

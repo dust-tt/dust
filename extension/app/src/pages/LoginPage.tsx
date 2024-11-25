@@ -19,6 +19,7 @@ export const LoginPage = () => {
   const {
     user,
     isAuthenticated,
+    authError,
     isUserSetup,
     handleLogin,
     handleSelectWorkspace,
@@ -52,12 +53,40 @@ export const LoginPage = () => {
             <LogoHorizontalColorLogo className="h-12 w-48" />
             <Page.Header title="Get more done, faster, with the power of your assistants at your fingertips." />
           </div>
-          <div className="text-center">
+          {authError && authError.code === "user_not_found" && (
+            <>
+              <div className="text-center">
+                Please sign up to start using Dust extension.
+              </div>
+            </>
+          )}
+          {authError && authError.code !== "user_not_found" && (
+            <div className="text-center">{authError.message}</div>
+          )}
+
+          <div className="text-center gap-2 flex">
+            {authError && authError.code === "user_not_found" && (
+              <Link to="https://dust.tt/home">
+                <Button
+                  icon={LoginIcon}
+                  variant="primary"
+                  label="Sign up"
+                  onClick={() => {
+                    window.open(
+                      "https://dust.tt/api/auth/login?returnTo=/api/login&screen_hint=signup",
+                      "_blank"
+                    );
+                  }}
+                  size="md"
+                />
+              </Link>
+            )}
+
             <Button
               icon={LoginIcon}
               variant="primary"
               label="Sign in"
-              onClick={handleLogin}
+              onClick={() => handleLogin(!!authError)}
               disabled={isLoading}
               size="md"
             />

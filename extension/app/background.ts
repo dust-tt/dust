@@ -11,6 +11,8 @@ import type {
   Auth0AuthorizeResponse,
   AuthBackgroundMessage,
   AuthBackgroundResponse,
+  CaptureMesssage,
+  CaptureResponse,
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
@@ -23,11 +25,13 @@ const state: {
   port: chrome.runtime.Port | undefined;
   extensionReady: boolean;
   inputBarReady: boolean;
+  refreshingToken: boolean;
   lastHandler: (() => void) | undefined;
 } = {
   port: undefined,
   extensionReady: false,
   inputBarReady: false,
+  refreshingToken: false,
   lastHandler: undefined,
 };
 
@@ -93,12 +97,12 @@ const getActionHandler = (menuItemId: string | number) => {
         if (state.port) {
           const params = JSON.stringify({
             includeContent: true,
-            includeScreenshot: false,
+            includeCapture: false,
             text: ":mention[dust]{sId=dust} summarize this page.",
             configurationId: "dust",
           });
           state.port.postMessage({
-            type: "ROUTE_CHANGE",
+            type: "EXT_ROUTE_CHANGE",
             pathname: "/run",
             search: `?${params}`,
           });
@@ -108,9 +112,9 @@ const getActionHandler = (menuItemId: string | number) => {
       return () => {
         if (state.port) {
           state.port.postMessage({
-            type: "ATTACH_TAB",
+            type: "EXT_ATTACH_TAB",
             includeContent: true,
-            includeScreenshot: false,
+            includeCapture: false,
           });
         }
       };
@@ -118,9 +122,9 @@ const getActionHandler = (menuItemId: string | number) => {
       return () => {
         if (state.port) {
           state.port.postMessage({
-            type: "ATTACH_TAB",
+            type: "EXT_ATTACH_TAB",
             includeContent: false,
-            includeScreenshot: true,
+            includeCapture: true,
           });
         }
       };
@@ -128,9 +132,9 @@ const getActionHandler = (menuItemId: string | number) => {
       return () => {
         if (state.port) {
           state.port.postMessage({
-            type: "ATTACH_TAB",
+            type: "EXT_ATTACH_TAB",
             includeContent: true,
-            includeScreenshot: false,
+            includeCapture: false,
             includeSelectionOnly: true,
           });
         }
@@ -155,6 +159,14 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
   }
 });
 
+function capture(sendResponse: (x: CaptureResponse) => void) {
+  return chrome.tabs.captureVisibleTab(function (dataURI) {
+    if (dataURI) {
+      sendResponse({ dataURI });
+    }
+  });
+}
+
 /**
  * Listener for messages sent from the react app to the background script.
  * For now we use messages to authenticate the user.
@@ -164,18 +176,20 @@ chrome.runtime.onMessage.addListener(
     message:
       | AuthBackgroundMessage
       | GetActiveTabBackgroundMessage
+      | CaptureMesssage
       | InputBarStatusMessage,
     sender,
     sendResponse: (
       response:
         | Auth0AuthorizeResponse
         | AuthBackgroundResponse
+        | CaptureResponse
         | GetActiveTabBackgroundResponse
     ) => void
   ) => {
     switch (message.type) {
       case "AUTHENTICATE":
-        void authenticate(sendResponse);
+        void authenticate(message, sendResponse);
         return true; // Keep the message channel open for async response.
 
       case "REFRESH_TOKEN":
@@ -186,12 +200,15 @@ chrome.runtime.onMessage.addListener(
         }
         void refreshToken(message.refreshToken, sendResponse);
         return true;
-
       case "LOGOUT":
         logout(sendResponse);
         return true; // Keep the message channel open.
 
       case "SIGN_CONNECT":
+        return true;
+
+      case "CAPTURE":
+        capture(sendResponse);
         return true;
 
       case "GET_ACTIVE_TAB":
@@ -205,41 +222,78 @@ chrome.runtime.onMessage.addListener(
               return;
             }
 
-            const includeContent = message.includeContent ?? true;
-            const includeScreenshot = message.includeScreenshot ?? false;
             try {
-              const capture = includeScreenshot
-                ? await chrome.tabs.captureVisibleTab()
-                : undefined;
+              const includeContent = message.includeContent ?? true;
+              const includeCapture = message.includeCapture ?? false;
+              const [mimetypeExecution] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => document.contentType,
+              });
 
-              const [result] = includeContent
-                ? await chrome.scripting.executeScript(
-                    message.includeSelectionOnly
-                      ? {
-                          target: { tabId: tab.id },
-                          func: () => window.getSelection()?.toString(),
-                        }
-                      : {
-                          target: { tabId: tab.id },
-                          func: extractPage(tab.url || ""),
-                        }
-                  )
-                : [undefined];
+              let captures: string[] | undefined;
+              if (includeCapture) {
+                if (mimetypeExecution.result === "text/html") {
+                  // Full page capture
+                  await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ["page.js"],
+                  });
+                  captures = await new Promise((resolve) => {
+                    if (state?.port && tab?.id) {
+                      chrome.tabs.sendMessage(
+                        tab.id,
+                        { type: "PAGE_CAPTURE_FULL_PAGE" },
+                        resolve
+                      );
+                    }
+                  });
+                } else {
+                  captures = [
+                    await new Promise<string>((resolve) => {
+                      chrome.tabs.captureVisibleTab(resolve);
+                    }),
+                  ];
+                }
+              }
+              let content: string | undefined;
+              if (includeContent) {
+                if (message.includeSelectionOnly) {
+                  const [execution] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => window.getSelection()?.toString(),
+                  });
+                  content = execution?.result ?? "no content.";
+                } else {
+                  // TODO - handle non-HTML content. For now we just extract the page content.
+                  const [execution] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: extractPage(tab.url || ""),
+                  });
+                  content = execution?.result ?? "no content.";
+                }
+              }
               sendResponse({
                 title: tab.title || "",
                 url: tab.url || "",
-                content: includeContent
-                  ? (result?.result ?? "no content.")
-                  : undefined,
-                screenshot: capture,
+                content,
+                captures,
               });
             } catch (error) {
               log("Error getting active tab content:", error);
-              sendResponse({ url: tab.url || "", content: "", title: "" });
+              sendResponse({
+                url: tab.url || "",
+                content: "",
+                title: "",
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to get content from the current tab.",
+              });
             }
           }
         );
         return true;
+
       case "INPUT_BAR_STATUS":
         // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
         state.inputBarReady = message.available;
@@ -247,7 +301,7 @@ chrome.runtime.onMessage.addListener(
           state.lastHandler();
           state.lastHandler = undefined;
         }
-        return true;
+        return false;
       default:
         log(`Unknown message: ${message}.`);
     }
@@ -258,6 +312,7 @@ chrome.runtime.onMessage.addListener(
  * Authenticate the user using Auth0.
  */
 const authenticate = async (
+  { isForceLogin }: AuthBackgroundMessage,
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
@@ -272,6 +327,7 @@ const authenticate = async (
     audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
+    prompt: isForceLogin ? "login" : "",
   };
 
   const queryString = new URLSearchParams(options).toString();
@@ -317,35 +373,42 @@ const refreshToken = async (
   refreshToken: string,
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
-  try {
-    const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
-    const response = await fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        client_id: AUTH0_CLIENT_ID,
-        refresh_token: refreshToken,
-      }),
-    });
+  if (state.refreshingToken) {
+    return false;
+  } else {
+    state.refreshingToken = true;
+    try {
+      const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
+      const response = await fetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: AUTH0_CLIENT_ID,
+          refresh_token: refreshToken,
+        }),
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(
+          `Token refresh failed: ${data.error} - ${data.error_description}`
+        );
+      }
+
       const data = await response.json();
-      throw new Error(
-        `Token refresh failed: ${data.error} - ${data.error_description}`
-      );
+      sendResponse({
+        idToken: data.id_token,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token || refreshToken,
+        expiresIn: data.expires_in,
+      });
+    } catch (error) {
+      log("Token refresh failed: unknown error", error);
+      sendResponse({ success: false });
+    } finally {
+      state.refreshingToken = false;
     }
-
-    const data = await response.json();
-    sendResponse({
-      idToken: data.id_token,
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token || refreshToken,
-      expiresIn: data.expires_in,
-    });
-  } catch (error) {
-    log("Token refresh failed: unknown error", error);
-    sendResponse({ success: false });
   }
 };
 

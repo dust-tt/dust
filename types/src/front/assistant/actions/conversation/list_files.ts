@@ -6,6 +6,11 @@ export type ConversationFileType = {
   fileId: string;
   title: string;
   contentType: SupportedContentFragmentType;
+  snippet: string | null;
+  isUsableForJIT: boolean;
+  isIncludable: boolean;
+  isSearchable: boolean;
+  isQueryable: boolean;
 };
 
 export interface ConversationListFilesActionType extends BaseAction {

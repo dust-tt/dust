@@ -3,7 +3,7 @@ import {
   AttachmentIcon,
   Button,
   CameraIcon,
-  GlobeAltIcon,
+  DocumentPlusIcon,
 } from "@dust-tt/sparkle";
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
@@ -59,7 +59,7 @@ export const AttachFragment = ({
         }}
       />
       <Button
-        icon={GlobeAltIcon}
+        icon={DocumentPlusIcon}
         tooltip="Attach tab content"
         variant="ghost"
         size="xs"
@@ -67,7 +67,7 @@ export const AttachFragment = ({
         onClick={() =>
           fileUploaderService.uploadContentTab({
             includeContent: true,
-            includeScreenshot: false,
+            includeCapture: false,
           })
         }
       />
@@ -79,7 +79,7 @@ export const AttachFragment = ({
         onClick={() =>
           fileUploaderService.uploadContentTab({
             includeContent: false,
-            includeScreenshot: true,
+            includeCapture: true,
           })
         }
       />

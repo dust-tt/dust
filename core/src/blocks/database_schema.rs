@@ -117,10 +117,17 @@ pub async fn load_tables_from_identifiers(
         .unique()
         .collect::<Vec<_>>();
 
+    let is_system_run = env.credentials.get("DUST_IS_SYSTEM_RUN") == Some(&String::from("true"));
+
     // Get a vec of the corresponding project ids for each (workspace_id, data_source_id) pair.
     let project_ids_view_filters = try_join_all(data_source_identifiers.iter().map(
         |(workspace_id, data_source_or_view_id)| {
-            get_data_source_project_and_view_filter(workspace_id, data_source_or_view_id, env)
+            get_data_source_project_and_view_filter(
+                workspace_id,
+                data_source_or_view_id,
+                env,
+                is_system_run,
+            )
         },
     ))
     .await?;

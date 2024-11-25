@@ -20,7 +20,8 @@ const ACTION_RUNNING_LABELS: Record<AgentActionPublicType["type"], string> = {
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
-  conversation_list_files_action: "Listing conversation files",
+  conversation_list_files_action: "Listing files",
+  conversation_include_file_action: "Including file ",
 };
 
 export function AgentMessageActions({
@@ -76,7 +77,7 @@ function ActionDetails({
 
   return label ? (
     <div key={label} className="animate-fadeIn duration-1000 fade-out">
-      <Chip size="sm" color="purple">
+      <Chip size="sm" color="slate">
         <div
           className={classNames(
             "flex flex-row items-center gap-x-2",

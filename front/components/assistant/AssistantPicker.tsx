@@ -58,7 +58,7 @@ export function AssistantPicker({
         ) : (
           <Button
             icon={RobotIcon}
-            variant="ghost"
+            variant="ghost-secondary"
             isSelect
             size={size}
             tooltip="Pick an assistant"
@@ -70,7 +70,6 @@ export function AssistantPicker({
           ref={searchbarRef}
           placeholder="Search"
           name="input"
-          size="xs"
           value={searchText}
           onChange={setSearchText}
           onKeyDown={(e) => {

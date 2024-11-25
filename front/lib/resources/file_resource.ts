@@ -289,6 +289,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ useCaseMetadata: metadata });
   }
 
+  setSnippet(snippet: string) {
+    return this.update({ snippet });
+  }
+
   // Serialization logic.
 
   toJSON(auth: Authenticator): FileType {

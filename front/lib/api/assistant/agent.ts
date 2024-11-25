@@ -1,10 +1,9 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionsEvent,
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
-  AgentActionType,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentContentEvent,
@@ -12,7 +11,6 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
-  ConversationAgentActionConfigurationType,
   ConversationType,
   GenerationCancelEvent,
   GenerationSuccessEvent,
@@ -32,11 +30,9 @@ import {
   isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import assert from "assert";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { isJITActionsEnabled } from "@app/lib/api/assistant//jit_actions";
-import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
+import { getEmulatedAndJITActions } from "@app/lib/api/assistant//jit_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import {
@@ -297,29 +293,6 @@ async function* runMultiActionsAgentLoop(
   }
 }
 
-async function getEmulatedAgentMessageActions(
-  auth: Authenticator,
-  {
-    agentMessage,
-    conversation,
-  }: { agentMessage: AgentMessageType; conversation: ConversationType }
-): Promise<AgentActionType[]> {
-  const actions: AgentActionType[] = [];
-  if (await isJITActionsEnabled(auth)) {
-    const a = makeConversationListFilesAction(agentMessage, conversation);
-    if (a) {
-      actions.push(a);
-    }
-  }
-
-  // We ensure that all emulated actions are injected with step -1.
-  assert(
-    actions.every((a) => a.step === -1),
-    "Emulated actions must have step -1"
-  );
-  return actions;
-}
-
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 async function* runMultiActionsAgent(
@@ -337,7 +310,7 @@ async function* runMultiActionsAgent(
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
-    availableActions: AgentActionConfigurationType[];
+    availableActions: ActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
   }
@@ -379,6 +352,15 @@ async function* runMultiActionsAgent(
     fallbackPrompt += ".";
   }
 
+  const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
+    agentMessage,
+    conversation,
+  });
+
+  if (!isLastGenerationIteration) {
+    availableActions = availableActions.concat(jitActions);
+  }
+
   const prompt = await constructPromptMultiActions(auth, {
     userMessage,
     conversation,
@@ -389,11 +371,6 @@ async function* runMultiActionsAgent(
   });
 
   const MIN_GENERATION_TOKENS = 2048;
-
-  const emulatedActions = await getEmulatedAgentMessageActions(auth, {
-    agentMessage,
-    conversation,
-  });
 
   // Prepend emulated actions to the current agent message before rendering the conversation for the
   // model.
@@ -733,10 +710,9 @@ async function* runMultiActionsAgent(
   }
 
   const actions: AgentActionsEvent["actions"] = [];
-  const agentActions = agentConfiguration.actions;
 
   for (const a of output.actions) {
-    const action = agentActions.find((ac) => ac.name === a.name);
+    const action = availableActions.find((ac) => ac.name === a.name);
 
     if (!action) {
       logger.error(
@@ -827,9 +803,7 @@ async function* runAction(
     citationsRefsOffset,
   }: {
     configuration: AgentConfigurationType;
-    actionConfiguration:
-      | AgentActionConfigurationType
-      | ConversationAgentActionConfigurationType;
+    actionConfiguration: ActionConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
@@ -838,7 +812,7 @@ async function* runAction(
     functionCallId: string | null;
     step: number;
     stepActionIndex: number;
-    stepActions: AgentActionConfigurationType[];
+    stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
   }
 ): AsyncGenerator<

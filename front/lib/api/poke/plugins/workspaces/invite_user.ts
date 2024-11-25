@@ -66,6 +66,9 @@ export const inviteUser = createPlugin(
       return new Err(new Error(result.error_message));
     }
 
-    return new Ok(`Invitation sent to ${result.email}.`);
+    return new Ok({
+      display: "text",
+      value: `Invitation sent to ${result.email}.`,
+    });
   }
 );

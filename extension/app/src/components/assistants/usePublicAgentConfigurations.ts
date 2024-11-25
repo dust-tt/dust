@@ -1,13 +1,15 @@
-import { logout } from "@extension/lib/auth";
+import type { AgentConfigurationViewType } from "@dust-tt/client";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
-export function usePublicAgentConfigurations() {
+export function usePublicAgentConfigurations(
+  view?: AgentConfigurationViewType
+) {
   const dustAPI = useDustAPI();
 
   const agentConfigurationsFetcher = async () => {
-    const res = await dustAPI.getAgentConfigurations();
+    const res = await dustAPI.getAgentConfigurations(view);
     if (res.isOk()) {
       return res.value;
     }
@@ -16,15 +18,9 @@ export function usePublicAgentConfigurations() {
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      ["getAgentConfigurations", dustAPI.workspaceId()],
+      ["getAgentConfigurations", dustAPI.workspaceId(), view],
       agentConfigurationsFetcher
     );
-
-  useEffect(() => {
-    if (error?.type === "not_authenticated") {
-      void logout();
-    }
-  }, [error]);
 
   return {
     agentConfigurations: useMemo(() => data ?? [], [data]),

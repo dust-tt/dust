@@ -1832,14 +1832,13 @@ export async function postNewContentFragment(
       return { contentFragment, messageRow };
     }
   );
+  const render = await contentFragment.renderFromMessage({
+    auth,
+    conversationId: conversation.sId,
+    message: messageRow,
+  });
 
-  return new Ok(
-    contentFragment.renderFromMessage({
-      auth,
-      conversationId: conversation.sId,
-      message: messageRow,
-    })
-  );
+  return new Ok(render);
 }
 
 async function* streamRunAgentEvents(

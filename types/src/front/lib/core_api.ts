@@ -101,6 +101,7 @@ type CoreAPICreateRunParams = {
   config: RunConfig;
   credentials: CredentialsType;
   secrets: DustAppSecretType[];
+  isSystemKey?: boolean;
 };
 
 type GetDatasetResponse = {
@@ -300,6 +301,7 @@ export class CoreAPI {
       config,
       credentials,
       secrets,
+      isSystemKey,
     }: CoreAPICreateRunParams
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await this._fetchWithError(
@@ -310,6 +312,7 @@ export class CoreAPI {
           "Content-Type": "application/json",
           "X-Dust-Workspace-Id": workspace.sId,
           "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
+          "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
         },
         body: JSON.stringify({
           run_type: runType,
@@ -340,6 +343,7 @@ export class CoreAPI {
       config,
       credentials,
       secrets,
+      isSystemKey,
     }: CoreAPICreateRunParams
   ): Promise<
     CoreAPIResponse<{
@@ -355,6 +359,7 @@ export class CoreAPI {
           "Content-Type": "application/json",
           "X-Dust-Workspace-Id": workspace.sId,
           "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
+          "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
         },
         body: JSON.stringify({
           run_type: runType,

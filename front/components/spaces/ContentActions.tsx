@@ -15,6 +15,7 @@ import type {
 } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { ComponentProps, RefObject } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import React, {
   useCallback,
   useEffect,
@@ -208,9 +209,10 @@ export const getMenuItems = (
     actions.push({
       label: "Edit",
       icon: PencilSquareIcon,
-      onClick: () => {
+      onClick: (e: ReactMouseEvent) => {
+        e.stopPropagation();
         contentActionsRef.current &&
-          contentActionsRef.current?.callAction(
+          contentActionsRef.current.callAction(
             contentNode.type === "database"
               ? "TableUploadOrEdit"
               : "DocumentUploadOrEdit",
@@ -221,9 +223,10 @@ export const getMenuItems = (
     actions.push({
       label: "Delete",
       icon: TrashIcon,
-      onClick: () => {
+      onClick: (e: ReactMouseEvent) => {
+        e.stopPropagation();
         contentActionsRef.current &&
-          contentActionsRef.current?.callAction(
+          contentActionsRef.current.callAction(
             "DocumentOrTableDeleteDialog",
             contentNode
           );
@@ -240,12 +243,10 @@ export const getMenuItems = (
     actions.push({
       label: "Add to space",
       icon: PlusIcon,
-      onClick: () => {
+      onClick: (e: ReactMouseEvent) => {
+        e.stopPropagation();
         contentActionsRef.current &&
-          contentActionsRef.current?.callAction(
-            "AddToSpaceDialog",
-            contentNode
-          );
+          contentActionsRef.current.callAction("AddToSpaceDialog", contentNode);
       },
     });
   }
@@ -267,7 +268,8 @@ const makeViewSourceUrlContentAction = (
     label,
     icon: ExternalLinkIcon,
     disabled: contentNode.sourceUrl === null,
-    onClick: () => {
+    onClick: (e: ReactMouseEvent) => {
+      e.stopPropagation();
       if (contentNode.sourceUrl) {
         window.open(contentNode.sourceUrl, "_blank");
       }
@@ -282,9 +284,10 @@ const makeViewRawContentAction = (
   return {
     label: "View raw content",
     icon: EyeIcon,
-    onClick: () => {
+    onClick: (e: ReactMouseEvent) => {
+      e.stopPropagation();
       contentActionsRef.current &&
-        contentActionsRef.current?.callAction(
+        contentActionsRef.current.callAction(
           "DocumentViewRawContent",
           contentNode
         );

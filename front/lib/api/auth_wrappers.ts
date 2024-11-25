@@ -3,6 +3,7 @@ import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
+import type { TokenExpiredError } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { MethodType, ScopeType } from "@app/lib/api/auth0";
@@ -212,11 +213,22 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           getRequiredScope(req, opts.requiredScopes)
         );
         if (decoded.isErr()) {
+          const error = decoded.error;
+          if ((error as TokenExpiredError).expiredAt) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "expired_oauth_token_error",
+                message: "The access token expired.",
+              },
+            });
+          }
+
           logger.error(decoded.error, "Failed to verify Auth0 token");
           return apiError(req, res, {
             status_code: 401,
             api_error: {
-              type: "not_authenticated",
+              type: "invalid_oauth_token_error",
               message:
                 "The request does not have valid authentication credentials.",
             },
@@ -231,7 +243,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           return apiError(req, res, {
             status_code: 401,
             api_error: {
-              type: "not_authenticated",
+              type: "user_not_found",
               message:
                 "The user does not have an active session or is not authenticated.",
             },
@@ -384,11 +396,22 @@ export function withAuth0TokenAuthentication<T>(
         getRequiredScope(req, opts.requiredScopes)
       );
       if (decoded.isErr()) {
+        const error = decoded.error;
+        if ((error as TokenExpiredError).expiredAt) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "expired_oauth_token_error",
+              message: "The access token expired.",
+            },
+          });
+        }
+
         logger.error(decoded.error, "Failed to verify Auth0 token");
         return apiError(req, res, {
           status_code: 401,
           api_error: {
-            type: "not_authenticated",
+            type: "invalid_oauth_token_error",
             message:
               "The request does not have valid authentication credentials.",
           },
@@ -396,14 +419,12 @@ export function withAuth0TokenAuthentication<T>(
       }
 
       const user = await getUserFromAuth0Token(decoded.value);
-      // TODO(thomas): user not found : means the user is not registered, display a message to the user and redirects to site
       if (!user) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
-            type: "not_authenticated",
-            message:
-              "The user does not have an active session or is not authenticated.",
+            type: "user_not_found",
+            message: "The user is not registered.",
           },
         });
       }

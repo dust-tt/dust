@@ -8,12 +8,8 @@ import { ConversationViewer } from "@extension/components/conversation/Conversat
 import { GenerationContextProvider } from "@extension/components/conversation/GenerationContextProvider";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
-import { DropzoneContainer } from "@extension/components/DropzoneContainer";
 import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
-import {
-  InputBarContext,
-  InputBarProvider,
-} from "@extension/components/input_bar/InputBarContext";
+import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import {
   createPlaceholderUserMessage,
@@ -260,35 +256,25 @@ export function ConversationContainer({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
-  return (
-    <InputBarProvider>
+  if (activeConversationId) {
+    return (
       <GenerationContextProvider>
-        <DropzoneContainer
-          description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
-          title="Attach files to the conversation"
-        >
-          {activeConversationId && (
+        <div className="h-full flex flex-col">
+          <div className="flex-1">
             <ConversationViewer
               conversationId={activeConversationId}
               owner={owner}
               user={user}
               onStickyMentionsChange={onStickyMentionsChange}
             />
-          )}
-          <div className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl pb-4">
-            {!activeConversationId && (
-              <div className="pb-2">
-                <Page.Header title={greeting} />
-                <Page.SectionHeader title="Start a conversation" />
-              </div>
-            )}
+          </div>
+          <div
+            id="assistant-input-header"
+            className="sticky bottom-0 z-20 pb-2 w-full bg-white"
+          >
             <AssistantInputBar
               owner={owner}
-              onSubmit={
-                activeConversationId
-                  ? handlePostMessage
-                  : handlePostConversation
-              }
+              onSubmit={handlePostMessage}
               stickyMentions={stickyMentions}
               isTabIncluded={!!includeContent}
               setIncludeTab={(includeTab) => {
@@ -297,13 +283,40 @@ export function ConversationContainer({
               conversation={conversation ?? undefined}
             />
           </div>
+
           <ReachedLimitPopup
             isOpened={planLimitReached}
             onClose={() => setPlanLimitReached(false)}
-            isTrialing={false} // TODO(Ext): Properly handle this from loading the subscription.
+            isTrialing={false}
           />
-        </DropzoneContainer>
+        </div>
       </GenerationContextProvider>
-    </InputBarProvider>
+    );
+  }
+
+  return (
+    <GenerationContextProvider>
+      <div className="pb-2 w-full">
+        <Page.Header title={greeting} />
+        <Page.SectionHeader title="Start a conversation" />
+      </div>
+      <div id="assistant-input-header" className="w-full pb-4">
+        <AssistantInputBar
+          owner={owner}
+          onSubmit={handlePostConversation}
+          stickyMentions={stickyMentions}
+          isTabIncluded={!!includeContent}
+          setIncludeTab={(includeTab) => {
+            setIncludeContent(includeTab);
+          }}
+          conversation={conversation ?? undefined}
+        />
+      </div>
+      <ReachedLimitPopup
+        isOpened={planLimitReached}
+        onClose={() => setPlanLimitReached(false)}
+        isTrialing={false} // TODO(Ext): Properly handle this from loading the subscription.
+      />
+    </GenerationContextProvider>
   );
 }

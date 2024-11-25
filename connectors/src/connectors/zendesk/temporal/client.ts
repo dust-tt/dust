@@ -6,10 +6,7 @@ import {
   WorkflowNotFoundError,
 } from "@temporalio/client";
 
-import {
-  GARBAGE_COLLECT_QUEUE_NAME,
-  QUEUE_NAME,
-} from "@connectors/connectors/zendesk/temporal/config";
+import { QUEUE_NAME } from "@connectors/connectors/zendesk/temporal/config";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
@@ -99,7 +96,7 @@ export async function launchZendeskSyncWorkflow(
       signal: zendeskUpdatesSignal,
       signalArgs: [signals],
       memo: { connectorId: connector.id },
-      cronSchedule: "*/5 * * * *", // Every 5 minutes.
+      cronSchedule: "*/30 * * * *", // Every 30 minutes.
     });
   } catch (err) {
     return new Err(err as Error);
@@ -153,7 +150,7 @@ export async function launchZendeskGarbageCollectionWorkflow(
   try {
     await client.workflow.start(zendeskGarbageCollectionWorkflow, {
       args: [{ connectorId: connector.id }],
-      taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
+      taskQueue: QUEUE_NAME,
       workflowId,
       searchAttributes: { connectorId: [connector.id] },
       memo: { connectorId: connector.id },

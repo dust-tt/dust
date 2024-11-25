@@ -24,7 +24,10 @@ export { ContentMessage } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
 export type { ConversationMessageSizeType } from "./ConversationMessage";
 export { ConversationMessage } from "./ConversationMessage";
-export type { ConversationMessageEmojiSelectorProps } from "./ConversationMessageActions";
+export type {
+  ConversationMessageEmojiSelectorProps,
+  ConversationMessageThumbSelectorProps,
+} from "./ConversationMessageActions";
 export { ConversationMessageActions } from "./ConversationMessageActions";
 export { ConversationMessageContent } from "./ConversationMessageContent";
 export { ConversationMessageHeader } from "./ConversationMessageHeader";
@@ -88,8 +91,7 @@ export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupChoice, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
-export type { SearchbarProps } from "./Searchbar";
-export { Searchbar } from "./Searchbar";
+export { SearchInput } from "./SearchInput";
 export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";

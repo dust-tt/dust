@@ -42,7 +42,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     if (port) {
       const listener = (message: RouteChangeMesssage) => {
         const { type } = message;
-        if (type === "ROUTE_CHANGE") {
+        if (type === "EXT_ROUTE_CHANGE") {
           navigate({ pathname: message.pathname, search: message.search });
           return false;
         }

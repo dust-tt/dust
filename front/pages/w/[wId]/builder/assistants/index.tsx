@@ -7,7 +7,7 @@ import {
   PlusIcon,
   Popup,
   RobotIcon,
-  Searchbar,
+  SearchInput,
   SliderToggle,
   Tabs,
   TabsList,
@@ -240,7 +240,7 @@ export default function WorkspaceAssistants({
         <Page.Header title="Manage Assistants" icon={RobotIcon} />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
-            <Searchbar
+            <SearchInput
               ref={searchBarRef}
               name="search"
               placeholder="Search (Name)"

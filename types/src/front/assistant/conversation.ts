@@ -135,7 +135,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
   conversation_list_files_action: "Listing files",
-  conversation_include_file_action: "Including file",
+  conversation_include_file_action: "Reading file",
 };
 
 /**

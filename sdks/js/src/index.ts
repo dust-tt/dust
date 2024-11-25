@@ -3,6 +3,7 @@ import { z } from "zod";
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentConfigurationViewType,
   AgentErrorEvent,
   AgentMessageSuccessEvent,
   APIError,
@@ -133,6 +134,13 @@ export class DustAPI {
       : this._url;
   }
 
+  async getApiKey(): Promise<string | null> {
+    if (typeof this._credentials.apiKey === "function") {
+      return this._credentials.apiKey();
+    }
+    return this._credentials.apiKey;
+  }
+
   /**
    * Fetches the current user's information from the API.
    *
@@ -147,7 +155,7 @@ export class DustAPI {
     // This method call directly _fetchWithError and _resultFromResponse as it's a little special : it doesn't live under the workspace resource.
     const headers: RequestInit["headers"] = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${this._credentials.apiKey}`,
+      Authorization: `Bearer ${await this.getApiKey()}`,
     };
 
     const res = await this._fetchWithError(`${this.apiUrl()}/api/v1/me`, {
@@ -177,7 +185,7 @@ export class DustAPI {
 
     const headers: RequestInit["headers"] = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${this._credentials.apiKey}`,
+      Authorization: `Bearer ${await this.getApiKey()}`,
     };
     if (this._credentials.groupIds) {
       headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
@@ -482,9 +490,13 @@ export class DustAPI {
     return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations() {
+  async getAgentConfigurations(view?: AgentConfigurationViewType) {
+    const path = view
+      ? `assistant/agent_configurations?view=${view}`
+      : "assistant/agent_configurations";
+
     const res = await this.request({
-      path: "assistant/agent_configurations",
+      path,
       method: "GET",
     });
 
@@ -823,7 +835,7 @@ export class DustAPI {
       uploadResult = await fetch(file.uploadUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${this._credentials.apiKey}`,
+          Authorization: `Bearer ${await this.getApiKey()}`,
         },
         body: formData,
       });

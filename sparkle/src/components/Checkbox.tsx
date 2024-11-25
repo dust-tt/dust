@@ -8,6 +8,14 @@ import { cn } from "@sparkle/lib/utils";
 import { Icon } from "./Icon";
 import { Label } from "./Label";
 
+export const CHECKBOX_SIZES = ["xs", "sm"] as const;
+type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
+
+const checkboxSizeVariant: Record<CheckboxSizeType, string> = {
+  xs: "s-h-4 s-w-4 s-rounded",
+  sm: "s-h-5 s-w-5 s-rounded-md",
+};
+
 const checkboxStyles = cva(
   cn(
     "s-shrink-0 s-peer s-border s-text-foreground s-border-border-darker",
@@ -22,10 +30,7 @@ const checkboxStyles = cva(
         partial: "data-[state=checked]:s-bg-muted-foreground",
         false: "",
       },
-      size: {
-        xs: "s-h-4 s-w-4 s-rounded",
-        sm: "s-h-5 s-w-5 s-rounded-md",
-      },
+      size: checkboxSizeVariant,
     },
     defaultVariants: {
       size: "sm",

@@ -6,19 +6,42 @@ import {
   EmojiMartData,
   EmojiPicker,
 } from "@sparkle/components/EmojiPicker";
-import { Popover } from "@sparkle/components/Popover";
-import { ReactionIcon } from "@sparkle/icons/solid";
+import { Page } from "@sparkle/components/Page";
+import {
+  Popover,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@sparkle/components/Popover";
+import { TextArea } from "@sparkle/components/TextArea";
+import {
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+  ReactionIcon,
+} from "@sparkle/icons/solid";
 import { cn } from "@sparkle/lib/utils";
 
 type ConversationMessageActionsProps = {
   buttons?: React.ReactElement<typeof Button>[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
+  messageThumb?: ConversationMessageThumbSelectorProps;
 };
 
 export function ConversationMessageActions({
   buttons = [],
   messageEmoji,
+  messageThumb,
 }: ConversationMessageActionsProps) {
+  if (messageThumb) {
+    buttons.push(
+      <ConversationMessageThumbsSelector
+        key="thumbs-selector"
+        onSubmitThumb={messageThumb.onSubmitThumb}
+        isSubmittingThumb={messageThumb.isSubmittingThumb}
+      />
+    );
+  }
+
   if (messageEmoji) {
     buttons.push(
       <ConversationMessageEmojiSelector
@@ -48,6 +71,16 @@ export interface ConversationMessageEmojiSelectorProps {
   reactions: EmojoReaction[];
   onSubmitEmoji: (p: { emoji: string; isToRemove: boolean }) => Promise<void>;
   isSubmittingEmoji: boolean;
+}
+
+export type ThumbReaction = "up" | "down";
+export interface ConversationMessageThumbSelectorProps {
+  onSubmitThumb: (p: {
+    thumb: string;
+    isToRemove: boolean;
+    feedback?: string | null;
+  }) => Promise<void>;
+  isSubmittingThumb: boolean;
 }
 
 function ConversationMessageEmojiSelector({
@@ -172,5 +205,106 @@ function EmojiSelector({
         />
       }
     />
+  );
+}
+
+function ConversationMessageThumbsSelector({
+  onSubmitThumb,
+  isSubmittingThumb,
+}: ConversationMessageThumbSelectorProps) {
+  return (
+    <ThumbsSelector
+      isSubmittingThumb={isSubmittingThumb}
+      onSubmitThumb={onSubmitThumb}
+    />
+  );
+}
+
+function ThumbsSelector({
+  isSubmittingThumb = false,
+  onSubmitThumb,
+}: ConversationMessageThumbSelectorProps) {
+  const [selectedThumb, setSelectedThumb] =
+    React.useState<ThumbReaction | null>(null);
+  const [feedback, setFeedback] = React.useState<string | null>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectThumb = async (thumb: ThumbReaction) => {
+    if (selectedThumb === thumb) {
+      setSelectedThumb(null);
+      setIsPopoverOpen(false);
+      await onSubmitThumb({ thumb, isToRemove: true });
+      return;
+    }
+    setSelectedThumb(thumb);
+    setIsPopoverOpen(true);
+    await onSubmitThumb({ thumb, isToRemove: false });
+  };
+
+  return (
+    <div ref={containerRef} className="s-flex s-items-center">
+      <PopoverRoot open={isPopoverOpen}>
+        <PopoverTrigger asChild>
+          <div className="s-flex s-items-center">
+            <Button
+              variant={selectedThumb === "up" ? "highlight" : "outline"}
+              size="xs"
+              disabled={isSubmittingThumb}
+              onClick={() => selectThumb("up")}
+              className={"s-rounded-r-none s-border-r-0"}
+              icon={HandThumbUpIcon}
+            />
+            <Button
+              variant={selectedThumb === "down" ? "highlight" : "outline"}
+              size="xs"
+              disabled={isSubmittingThumb}
+              onClick={() => selectThumb("down")}
+              className={"s-rounded-l-none s-border-l-0"}
+              icon={HandThumbDownIcon}
+            />
+          </div>
+        </PopoverTrigger>
+        <PopoverContent fullWidth={true}>
+          <div className="s-w-80 s-p-4">
+            <Page.H variant="h6">
+              {selectedThumb === "up"
+                ? "🎉 Glad you liked it! Tell us more?"
+                : "🫠 Help make the answers better!"}
+            </Page.H>
+            <TextArea
+              placeholder={
+                selectedThumb === "up"
+                  ? "What did you like?"
+                  : "Tell us what went wrong so we can make this assistant better."
+              }
+              className="s-mt-4"
+              rows={3}
+              value={feedback ?? ""}
+              onChange={(e) => setFeedback(e.target.value)}
+            />
+            <div className="s-mt-4 s-flex s-justify-between s-gap-2">
+              <Button
+                variant="primary"
+                label="Submit feedback"
+                onClick={async () => {
+                  await onSubmitThumb({
+                    thumb: selectedThumb ?? "up",
+                    isToRemove: false,
+                    feedback: feedback,
+                  });
+                  setIsPopoverOpen(false);
+                }}
+              />
+              <Button
+                variant="ghost"
+                label="Cancel"
+                onClick={() => setIsPopoverOpen(false)}
+              />
+            </div>
+          </div>
+        </PopoverContent>
+      </PopoverRoot>
+    </div>
   );
 }
