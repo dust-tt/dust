@@ -108,7 +108,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
     brandId,
   });
 
-  const { articles, end_time, next_page } = await fetchRecentlyUpdatedArticles({
+  const { articles, hasMore, endTime } = await fetchRecentlyUpdatedArticles({
     brandSubdomain,
     accessToken,
     startTime,
@@ -171,7 +171,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
-  return next_page !== null ? end_time : null;
+  return hasMore ? endTime : null;
 }
 
 /**
@@ -183,14 +183,14 @@ export async function syncZendeskTicketUpdateBatchActivity({
   brandId,
   startTime,
   currentSyncDateMs,
-  cursor,
+  url,
 }: {
   connectorId: ModelId;
   brandId: number;
   startTime: number;
   currentSyncDateMs: number;
-  cursor: string | null;
-}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
+  url: string | null;
+}): Promise<{ hasMore: boolean; nextLink: string | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -212,12 +212,10 @@ export async function syncZendeskTicketUpdateBatchActivity({
     brandId,
   });
 
-  const { tickets, after_cursor, end_of_stream } =
-    await fetchRecentlyUpdatedTickets({
-      brandSubdomain,
-      accessToken,
-      ...(cursor ? { cursor } : { startTime }),
-    });
+  const { tickets, hasMore, nextLink } = await fetchRecentlyUpdatedTickets(
+    accessToken,
+    url ? { url } : { brandSubdomain, startTime }
+  );
 
   await concurrentExecutor(
     tickets,
@@ -249,5 +247,5 @@ export async function syncZendeskTicketUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
-  return { hasMore: !end_of_stream, afterCursor: after_cursor };
+  return { hasMore, nextLink };
 }

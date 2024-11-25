@@ -10,6 +10,7 @@ import type {
 } from "@connectors/@types/node-zendesk";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
+import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
@@ -181,34 +182,36 @@ async function fetchFromZendeskWithRetries({
 /**
  * Fetches a batch of categories from the Zendesk API.
  */
-export async function fetchZendeskCategoriesInBrand({
-  brandSubdomain,
-  accessToken,
-  pageSize,
-  cursor = null,
-}: {
-  brandSubdomain: string;
-  accessToken: string;
-  pageSize: number;
-  cursor: string | null;
-}): Promise<{
+export async function fetchZendeskCategoriesInBrand(
+  accessToken: string,
+  {
+    brandSubdomain,
+    pageSize,
+    url,
+  }:
+    | { brandSubdomain: string; pageSize: number; url?: never }
+    | { brandSubdomain?: never; pageSize?: never; url: string }
+): Promise<{
   categories: ZendeskFetchedCategory[];
-  meta: { has_more: boolean; after_cursor: string };
+  hasMore: boolean;
+  nextLink: string | null;
 }> {
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?` +
-      (cursor ? `page[after]=${encodeURIComponent(cursor)}&` : "") +
-      `page[size]=${pageSize}`,
+      url ?? // using the URL if we got one, reconstructing it otherwise
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}`,
     accessToken,
   });
-  return (
-    response || { categories: [], meta: { has_more: false, after_cursor: "" } }
-  );
+  return {
+    categories: response.categories,
+    hasMore: response.meta.has_more,
+    nextLink: response.links.next,
+  };
 }
 
 /**
  * Fetches a batch of the recently updated articles from the Zendesk API using the incremental API endpoint.
+ * https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/
  */
 export async function fetchRecentlyUpdatedArticles({
   brandSubdomain,
@@ -220,135 +223,125 @@ export async function fetchRecentlyUpdatedArticles({
   startTime: number;
 }): Promise<{
   articles: ZendeskFetchedArticle[];
-  next_page: string | null;
-  end_time: number;
+  hasMore: boolean;
+  endTime: number;
 }> {
-  // this endpoint retrieves changes in content despite what is mentioned in the documentation.
+  // this endpoint retrieves changes in content, not only in metadata despite what is mentioned in the documentation.
   const response = await fetchFromZendeskWithRetries({
     url: `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
     accessToken,
   });
-  return (
-    response || {
-      articles: [],
-      next_page: null,
-      end_time: startTime,
-    }
-  );
+  return {
+    articles: response.articles,
+    hasMore: response.next_page !== null || response.articles.length === 0,
+    endTime: response.end_time,
+  };
 }
 
 /**
  * Fetches a batch of articles in a category from the Zendesk API.
  */
-export async function fetchZendeskArticlesInCategory({
-  brandSubdomain,
-  accessToken,
-  categoryId,
-  pageSize,
-  cursor = null,
-}: {
-  brandSubdomain: string;
-  accessToken: string;
-  categoryId: number;
-  pageSize: number;
-  cursor: string | null;
-}): Promise<{
+export async function fetchZendeskArticlesInCategory(
+  category: ZendeskCategoryResource,
+  accessToken: string,
+  {
+    brandSubdomain,
+    pageSize,
+    url,
+  }:
+    | { brandSubdomain: string; pageSize: number; url?: never }
+    | { brandSubdomain?: never; pageSize?: never; url: string }
+): Promise<{
   articles: ZendeskFetchedArticle[];
-  meta: { has_more: boolean; after_cursor: string };
+  hasMore: boolean;
+  nextLink: string | null;
 }> {
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?` +
-      (cursor ? `page[after]=${encodeURIComponent(cursor)}&` : "") +
-      `page[size]=${pageSize}`,
+      url ?? // using the URL if we got one, reconstructing it otherwise
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${category.categoryId}/articles?page[size]=${pageSize}`,
     accessToken,
   });
-  return (
-    response || { articles: [], meta: { has_more: false, after_cursor: "" } }
-  );
+  return {
+    articles: response.articles,
+    hasMore: response.meta.has_more,
+    nextLink: response.links.next,
+  };
 }
 
 /**
  * Fetches a batch of the recently updated tickets from the Zendesk API using the incremental API endpoint.
  */
-export async function fetchRecentlyUpdatedTickets({
-  brandSubdomain,
-  accessToken,
-  startTime = null,
-  cursor = null,
-}: // pass either a cursor or a start time, but not both
-| {
-      brandSubdomain: string;
-      accessToken: string;
-      startTime: number | null;
-      cursor?: never;
-    }
-  | {
-      brandSubdomain: string;
-      accessToken: string;
-      startTime?: never;
-      cursor: string | null;
-    }): Promise<{
+export async function fetchRecentlyUpdatedTickets(
+  accessToken: string,
+  {
+    brandSubdomain,
+    startTime,
+    url,
+  }:
+    | { brandSubdomain: string; startTime: number; url?: never }
+    | { brandSubdomain?: never; startTime?: never; url: string }
+): Promise<{
   tickets: ZendeskFetchedTicket[];
-  end_of_stream: boolean;
-  after_cursor: string;
+  hasMore: boolean;
+  nextLink: string | null;
 }> {
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json` +
-      (cursor ? `?cursor=${encodeURIComponent(cursor)}` : "") +
-      (startTime ? `?start_time=${startTime}` : ""),
+      url ?? // using the URL if we got one, reconstructing it otherwise
+      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json?start_time=${startTime}`,
     accessToken,
   });
-  return (
-    response || {
-      tickets: [],
-      end_of_stream: false,
-      after_cursor: "",
-    }
-  );
+  return {
+    tickets: response.tickets,
+    hasMore: !response.end_of_stream,
+    nextLink: response.after_url,
+  };
 }
 
 /**
  * Fetches a batch of tickets from the Zendesk API.
  * Only fetches tickets that have been solved, and that were updated within the retention period.
  */
-export async function fetchZendeskTicketsInBrand({
-  brandSubdomain,
-  accessToken,
-  pageSize,
-  cursor,
-  retentionPeriodDays,
-}: {
-  brandSubdomain: string;
-  accessToken: string;
-  pageSize: number;
-  cursor: string | null;
-  retentionPeriodDays: number;
-}): Promise<{
+export async function fetchZendeskTicketsInBrand(
+  accessToken: string,
+  {
+    brandSubdomain,
+    pageSize,
+    retentionPeriodDays,
+    url,
+  }:
+    | {
+        brandSubdomain: string;
+        pageSize: number;
+        retentionPeriodDays: number;
+        url?: never;
+      }
+    | {
+        brandSubdomain?: never;
+        pageSize?: never;
+        retentionPeriodDays?: never;
+        url: string;
+      }
+): Promise<{
   tickets: ZendeskFetchedTicket[];
-  meta: { has_more: boolean; after_cursor: string };
+  hasMore: boolean;
+  nextLink: string | null;
 }> {
-  const searchQuery = encodeURIComponent(
-    `status:solved updated>${retentionPeriodDays}days`
-  );
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : "") +
-      `&page[size]=${pageSize}&query=${searchQuery}`,
+      url ?? // using the URL if we got one, reconstructing it otherwise
+      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket&page[size]=${pageSize}&query=${encodeURIComponent(
+        `status:solved updated>${retentionPeriodDays}days`
+      )}`,
     accessToken,
   });
 
-  return response
-    ? {
-        tickets: response.results || [],
-        meta: {
-          has_more: !!response.meta?.has_more,
-          after_cursor: response.meta?.after_cursor || "",
-        },
-      }
-    : { tickets: [], meta: { has_more: false, after_cursor: "" } };
+  return {
+    tickets: response.results,
+    hasMore: response.meta.has_more,
+    nextLink: response.links.next,
+  };
 }
 
 /**

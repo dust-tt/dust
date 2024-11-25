@@ -264,13 +264,13 @@ export async function zendeskIncrementalSyncWorkflow({
   }
 
   for (const brandId of ticketBrandIds) {
-    await runZendeskActivityWithPagination((cursor) =>
+    await runZendeskActivityWithPagination((url) =>
       syncZendeskTicketUpdateBatchActivity({
         connectorId,
         startTime,
         brandId,
         currentSyncDateMs,
-        cursor,
+        url,
       })
     );
   }
@@ -398,13 +398,13 @@ export async function zendeskCategorySyncWorkflow({
     brandId,
   });
   if (shouldSyncArticles) {
-    await runZendeskActivityWithPagination((cursor) =>
+    await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
         forceResync,
-        cursor,
+        url,
       })
     );
   }
@@ -515,7 +515,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
 }) {
   const categoryIdsToSync = new Set<number>();
 
-  let cursor: string | null = null; // cursor involved in the pagination of the API
+  let url: string | null = null; // next URL returned by the API
   let hasMore = true;
   while (hasMore) {
     // not using runZendeskActivityWithPagination because we need to add result.categoriesToUpdate to the Set
@@ -523,23 +523,23 @@ async function runZendeskBrandHelpCenterSyncActivities({
       connectorId,
       brandId,
       currentSyncDateMs,
-      cursor,
+      url,
     });
     hasMore = result.hasMore || false;
-    cursor = result.afterCursor;
+    url = result.nextLink;
     result.categoriesToUpdate.forEach((categoryId) =>
       categoryIdsToSync.add(categoryId)
     );
   }
 
   for (const categoryId of categoryIdsToSync) {
-    await runZendeskActivityWithPagination((cursor) =>
+    await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
         forceResync,
-        cursor,
+        url,
       })
     );
   }
@@ -559,13 +559,13 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  await runZendeskActivityWithPagination((cursor) =>
+  await runZendeskActivityWithPagination((url) =>
     syncZendeskTicketBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,
       forceResync,
-      cursor,
+      url,
     })
   );
 }
@@ -576,14 +576,14 @@ async function runZendeskBrandTicketsSyncActivities({
 async function runZendeskActivityWithPagination(
   activity: (
     cursor: string | null
-  ) => Promise<{ hasMore: boolean; afterCursor: string | null }>
+  ) => Promise<{ hasMore: boolean; nextLink: string | null }>
 ): Promise<void> {
-  let cursor: string | null = null; // cursor involved in the pagination of the API
+  let url: string | null = null; // next URL returned by the API
   let hasMore = true;
 
   while (hasMore) {
-    const result = await activity(cursor);
+    const result = await activity(url);
     hasMore = result.hasMore || false;
-    cursor = result.afterCursor;
+    url = result.nextLink;
   }
 }
