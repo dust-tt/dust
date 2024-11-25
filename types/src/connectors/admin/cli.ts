@@ -267,6 +267,7 @@ export const AdminCommandSchema = t.union([
   SlackCommandSchema,
   TemporalCommandSchema,
   WebcrawlerCommandSchema,
+  ZendeskCommandSchema,
 ]);
 
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
