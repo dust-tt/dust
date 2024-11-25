@@ -563,7 +563,7 @@ export function AgentMessage({
         {agentMessage.chainOfThought?.length ? (
           <ContentMessage
             title="Assistant thoughts"
-            variant="purple"
+            variant="slate"
             icon={ChatBubbleThoughtIcon}
           >
             {agentMessage.chainOfThought}
