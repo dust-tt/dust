@@ -256,31 +256,54 @@ export function ConversationContainer({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
+  if (activeConversationId) {
+    return (
+      <GenerationContextProvider>
+        <div className="h-full flex flex-col">
+          <div className="flex-1">
+            <ConversationViewer
+              conversationId={activeConversationId}
+              owner={owner}
+              user={user}
+              onStickyMentionsChange={onStickyMentionsChange}
+            />
+          </div>
+          <div
+            id="assistant-input-header"
+            className="sticky bottom-0 z-20 pb-2 w-full bg-white"
+          >
+            <AssistantInputBar
+              owner={owner}
+              onSubmit={handlePostMessage}
+              stickyMentions={stickyMentions}
+              isTabIncluded={!!includeContent}
+              setIncludeTab={(includeTab) => {
+                setIncludeContent(includeTab);
+              }}
+              conversation={conversation ?? undefined}
+            />
+          </div>
+
+          <ReachedLimitPopup
+            isOpened={planLimitReached}
+            onClose={() => setPlanLimitReached(false)}
+            isTrialing={false}
+          />
+        </div>
+      </GenerationContextProvider>
+    );
+  }
+
   return (
     <GenerationContextProvider>
-      {activeConversationId && (
-        <ConversationViewer
-          conversationId={activeConversationId}
-          owner={owner}
-          user={user}
-          onStickyMentionsChange={onStickyMentionsChange}
-        />
-      )}
-      <div
-        id="assistant-input-header"
-        className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl pb-4"
-      >
-        {!activeConversationId && (
-          <div className="pb-2">
-            <Page.Header title={greeting} />
-            <Page.SectionHeader title="Start a conversation" />
-          </div>
-        )}
+      <div className="pb-2 w-full">
+        <Page.Header title={greeting} />
+        <Page.SectionHeader title="Start a conversation" />
+      </div>
+      <div id="assistant-input-header" className="w-full pb-4">
         <AssistantInputBar
           owner={owner}
-          onSubmit={
-            activeConversationId ? handlePostMessage : handlePostConversation
-          }
+          onSubmit={handlePostConversation}
           stickyMentions={stickyMentions}
           isTabIncluded={!!includeContent}
           setIncludeTab={(includeTab) => {

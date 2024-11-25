@@ -77,7 +77,7 @@ function ActionDetails({
 
   return label ? (
     <div key={label} className="animate-fadeIn duration-1000 fade-out">
-      <Chip size="sm" color="purple">
+      <Chip size="sm" color="slate">
         <div
           className={classNames(
             "flex flex-row items-center gap-x-2",
