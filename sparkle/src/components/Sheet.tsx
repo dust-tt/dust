@@ -52,14 +52,12 @@ const sheetVariants = cva(
 );
 
 interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
-  size?: SheetSizeType;
-}
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ className, children, size, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content
@@ -67,7 +65,8 @@ const SheetContent = React.forwardRef<
       className={cn(
         "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500",
         "s-flex s-flex-col",
-        "s-inset-y-0 s-right-0 s-h-full s-w-full data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right sm:s-max-w-md",
+        "s-inset-y-0 s-right-0 s-h-full s-w-full data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right",
+        sizeClasses[size],
         className
       )}
       {...props}
@@ -97,7 +96,7 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetPrimitive.Close className="s-absolute s-right-4 s-top-4">
+    <SheetPrimitive.Close className="s-absolute s-right-2 s-top-4">
       <Button icon={XMarkIcon} variant="ghost" size="sm" />
     </SheetPrimitive.Close>
   </div>
