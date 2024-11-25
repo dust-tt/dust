@@ -222,14 +222,14 @@ chrome.runtime.onMessage.addListener(
               return;
             }
 
-            const includeContent = message.includeContent ?? true;
-            const includeCapture = message.includeCapture ?? false;
-            const [mimetypeExecution] = await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              func: () => document.contentType,
-            });
-
             try {
+              const includeContent = message.includeContent ?? true;
+              const includeCapture = message.includeCapture ?? false;
+              const [mimetypeExecution] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => document.contentType,
+              });
+
               let captures: string[] | undefined;
               if (includeCapture) {
                 if (mimetypeExecution.result === "text/html") {
@@ -280,7 +280,15 @@ chrome.runtime.onMessage.addListener(
               });
             } catch (error) {
               log("Error getting active tab content:", error);
-              sendResponse({ url: tab.url || "", content: "", title: "" });
+              sendResponse({
+                url: tab.url || "",
+                content: "",
+                title: "",
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to get content from the current tab.",
+              });
             }
           }
         );
