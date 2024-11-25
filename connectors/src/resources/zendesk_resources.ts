@@ -484,21 +484,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     );
   }
 
-  static async fetchByBrandId({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
-      where: { connectorId, brandId },
-    });
-    return categories.map(
-      (category) => category && new this(this.model, category.get())
-    );
-  }
-
   static async fetchReadOnlyCategoryIdsByBrandId({
     connectorId,
     brandId,
