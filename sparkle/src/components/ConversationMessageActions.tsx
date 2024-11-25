@@ -24,20 +24,20 @@ import { cn } from "@sparkle/lib/utils";
 type ConversationMessageActionsProps = {
   buttons?: React.ReactElement<typeof Button>[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
-  messageThumb?: ConversationMessageThumbSelectorProps;
+  messageFeedback?: ConversationMessageFeedbackSelectorProps;
 };
 
 export function ConversationMessageActions({
   buttons = [],
   messageEmoji,
-  messageThumb,
+  messageFeedback,
 }: ConversationMessageActionsProps) {
-  if (messageThumb) {
+  if (messageFeedback) {
     buttons.push(
       <ConversationMessageThumbsSelector
         key="thumbs-selector"
-        onSubmitThumb={messageThumb.onSubmitThumb}
-        isSubmittingThumb={messageThumb.isSubmittingThumb}
+        onSubmitThumb={messageFeedback.onSubmitThumb}
+        isSubmittingThumb={messageFeedback.isSubmittingThumb}
       />
     );
   }
@@ -74,7 +74,7 @@ export interface ConversationMessageEmojiSelectorProps {
 }
 
 export type ThumbReaction = "up" | "down";
-export interface ConversationMessageThumbSelectorProps {
+export interface ConversationMessageFeedbackSelectorProps {
   onSubmitThumb: (p: {
     thumb: string;
     isToRemove: boolean;
@@ -211,7 +211,7 @@ function EmojiSelector({
 function ConversationMessageThumbsSelector({
   onSubmitThumb,
   isSubmittingThumb,
-}: ConversationMessageThumbSelectorProps) {
+}: ConversationMessageFeedbackSelectorProps) {
   return (
     <ThumbsSelector
       isSubmittingThumb={isSubmittingThumb}
@@ -223,7 +223,7 @@ function ConversationMessageThumbsSelector({
 function ThumbsSelector({
   isSubmittingThumb = false,
   onSubmitThumb,
-}: ConversationMessageThumbSelectorProps) {
+}: ConversationMessageFeedbackSelectorProps) {
   const [selectedThumb, setSelectedThumb] =
     React.useState<ThumbReaction | null>(null);
   const [feedback, setFeedback] = React.useState<string | null>(null);

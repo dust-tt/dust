@@ -3,7 +3,7 @@ import React from "react";
 
 import {
   ConversationMessageEmojiSelectorProps,
-  ConversationMessageThumbSelectorProps,
+  ConversationMessageFeedbackSelectorProps,
 } from "@sparkle/components/ConversationMessageActions";
 
 import {
@@ -49,7 +49,7 @@ const messageEmoji: ConversationMessageEmojiSelectorProps = {
   isSubmittingEmoji: false,
 };
 
-const messageThumb: ConversationMessageThumbSelectorProps = {
+const messageFeedback: ConversationMessageFeedbackSelectorProps = {
   onSubmitThumb: async (element) => {
     console.log("Thumb clicked", element);
   },
@@ -70,7 +70,7 @@ const meta = {
         type: "object",
       },
     },
-    messageThumb: {
+    messageFeedback: {
       description: "Whether to show the thumbs selector",
       control: {
         type: "object",
@@ -86,6 +86,6 @@ export const ExamplePicker: Story = {
   args: {
     buttons,
     messageEmoji,
-    messageThumb,
+    messageFeedback,
   },
 };
