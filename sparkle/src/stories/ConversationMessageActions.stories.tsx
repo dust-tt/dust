@@ -80,14 +80,14 @@ const ExamplePickerComponent = () => {
     []
   );
 
-  const [messageFeedback, setMessageThumb] =
+  const [messageFeedback, setMessageFeedback] =
     React.useState<ConversationMessageFeedbackSelectorProps>({
       feedback: {
         thumb: "up",
         feedbackContent: null,
       },
       onSubmitThumb: async (element) => {
-        setMessageThumb((prev) => ({
+        setMessageFeedback((prev) => ({
           ...prev,
           feedback: {
             thumb: element.thumb,
