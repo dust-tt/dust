@@ -12,6 +12,7 @@ export type CredentialsType = {
   ANTHROPIC_API_KEY?: string;
   MISTRAL_API_KEY?: string;
   TEXTSYNTH_API_KEY?: string;
+  SEARCHAPI_API_KEY?: string;
   SERP_API_KEY?: string;
   SERPER_API_KEY?: string;
   BROWSERLESS_API_KEY?: string;

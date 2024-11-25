@@ -73,6 +73,12 @@ type ServiceProvider = {
 
 export const serviceProviders: ServiceProvider[] = [
   {
+    providerId: "searchapi",
+    name: "SearchApi",
+    built: true,
+    enabled: false,
+  },
+  {
     providerId: "serpapi",
     name: "SerpApi (Google Search)",
     built: true,
