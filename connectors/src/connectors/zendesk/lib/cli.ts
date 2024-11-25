@@ -1,5 +1,7 @@
-import type { ZendeskCommandType } from "@dust-tt/types";
-import type { ZendeskCheckIsAdminResponseType } from "@dust-tt/types/src";
+import type {
+  ZendeskCheckIsAdminResponseType,
+  ZendeskCommandType,
+} from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { fetchZendeskCurrentUser } from "@connectors/connectors/zendesk/lib/zendesk_api";
