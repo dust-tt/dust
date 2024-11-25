@@ -1,6 +1,7 @@
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import type { ModelId } from "@dust-tt/types";
 import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
+import { stripNullBytes } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
@@ -15,7 +16,6 @@ import {
   isPrivateIp,
   isTopFolder,
   stableIdForUrl,
-  stripNullBytes,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
   MAX_BLOCKED_RATIO,
