@@ -15,6 +15,7 @@ import {
   isPrivateIp,
   isTopFolder,
   stableIdForUrl,
+  stripNullBytes,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
   MAX_BLOCKED_RATIO,
@@ -469,11 +470,14 @@ function formatDocumentContent({
   const parsedUrl = new URL(url);
   const urlWithoutQuery = `${parsedUrl.origin}/${parsedUrl.pathname}`;
 
+  const sanitizedContent = stripNullBytes(content);
+  const sanitizedTitle = stripNullBytes(title);
+
   return {
     prefix: `URL: ${urlWithoutQuery.slice(0, URL_MAX_LENGTH)}${
       urlWithoutQuery.length > URL_MAX_LENGTH ? "..." : ""
     }\n`,
-    content: `TITLE: ${title.substring(0, TITLE_MAX_LENGTH)}\n${content}`,
+    content: `TITLE: ${sanitizedTitle.substring(0, TITLE_MAX_LENGTH)}\n${sanitizedContent}`,
     sections: [],
   };
 }
