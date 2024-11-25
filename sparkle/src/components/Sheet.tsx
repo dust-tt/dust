@@ -110,9 +110,9 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetClose asChild className="s-absolute s-right-3 s-top-4">
-      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
-    </SheetClose>
+    <SheetPrimitive.Close className="s-absolute s-right-4 s-top-4">
+      <Button icon={XMarkIcon} variant="ghost" size="sm" />
+    </SheetPrimitive.Close>
   </div>
 );
 SheetHeader.displayName = "SheetHeader";
@@ -189,7 +189,7 @@ const SheetFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-5 s-py-3",
+      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3",
       className
     )}
     {...props}
