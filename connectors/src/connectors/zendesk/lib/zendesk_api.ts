@@ -348,8 +348,9 @@ export async function fetchZendeskTicketsInBrand({
   );
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?query=${searchQuery}&filter[type]=ticket&page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket` +
+      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : "") +
+      `&page[size]=${pageSize}&query=${searchQuery}`,
     accessToken,
   });
 
