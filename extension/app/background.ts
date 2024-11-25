@@ -293,7 +293,7 @@ chrome.runtime.onMessage.addListener(
           state.lastHandler();
           state.lastHandler = undefined;
         }
-        return true;
+        return false;
       default:
         log(`Unknown message: ${message}.`);
     }
