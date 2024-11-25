@@ -26,7 +26,7 @@ export type { ConversationMessageSizeType } from "./ConversationMessage";
 export { ConversationMessage } from "./ConversationMessage";
 export type {
   ConversationMessageEmojiSelectorProps,
-  ConversationMessageThumbSelectorProps,
+  ConversationMessageFeedbackSelectorProps,
 } from "./ConversationMessageActions";
 export { ConversationMessageActions } from "./ConversationMessageActions";
 export { ConversationMessageContent } from "./ConversationMessageContent";

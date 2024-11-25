@@ -4,7 +4,7 @@ import { Button } from "@sparkle/components";
 import {
   ConversationMessageActions,
   ConversationMessageEmojiSelectorProps,
-  ConversationMessageThumbSelectorProps,
+  ConversationMessageFeedbackSelectorProps,
 } from "@sparkle/components/ConversationMessageActions";
 import { ConversationMessageContent } from "@sparkle/components/ConversationMessageContent";
 import { ConversationMessageHeader } from "@sparkle/components/ConversationMessageHeader";
@@ -30,7 +30,7 @@ type ConversationMessageProps = {
   children?: React.ReactNode;
   citations?: React.ReactElement[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
-  messageThumb?: ConversationMessageThumbSelectorProps;
+  messageThumb?: ConversationMessageFeedbackSelectorProps;
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
