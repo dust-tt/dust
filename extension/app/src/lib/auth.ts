@@ -1,6 +1,5 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import { useAuth } from "@extension/components/auth/AuthProvider";
 import {
   sendAuthMessage,
   sendRefreshTokenMessage,
@@ -17,7 +16,6 @@ import {
   saveTokens,
   saveUser,
 } from "@extension/lib/storage";
-import { useEffect } from "react";
 
 const log = console.error;
 
@@ -115,14 +113,4 @@ const fetchMe = async (
     return new Err(new AuthError(me.error.type, me.error.message));
   }
   return new Ok(me);
-};
-
-export const useAuthErrorCheck = (error: any) => {
-  const { setAuthError } = useAuth();
-  useEffect(() => {
-    if (error?.type === "not_authenticated") {
-      setAuthError(error);
-      void logout();
-    }
-  }, [error]);
 };
