@@ -8,7 +8,6 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
-import { zendeskConnectorStartSync } from "@connectors/connectors/zendesk/temporal/activities";
 import type * as gc_activities from "@connectors/connectors/zendesk/temporal/gc_activities";
 import type * as incremental_activities from "@connectors/connectors/zendesk/temporal/incremental_activities";
 import type {
@@ -53,6 +52,7 @@ const {
 });
 
 const {
+  zendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
   getZendeskTicketsAllowedBrandIdsActivity,
