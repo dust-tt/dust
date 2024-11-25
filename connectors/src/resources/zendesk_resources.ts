@@ -499,6 +499,20 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     );
   }
 
+  static async fetchReadOnlyCategoryIdsByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<number[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId, permission: "read" },
+      attributes: ["categoryId"],
+    });
+    return categories.map((category) => category.get().categoryId);
+  }
+
   static async fetchByBrandIdReadOnly({
     connectorId,
     brandId,
