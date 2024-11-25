@@ -398,7 +398,7 @@ export async function syncZendeskTicketBatchActivity({
   });
 
   const {
-    tickets,
+    results,
     meta: { has_more: hasMore },
     links: { next: nextLink },
   } = await fetchZendeskTicketsInBrand(
@@ -412,7 +412,7 @@ export async function syncZendeskTicketBatchActivity({
         }
   );
 
-  if (tickets.length === 0) {
+  if (results.length === 0) {
     logger.info(
       { ...loggerArgs, ticketsSynced: 0 },
       `[Zendesk] No tickets to process in batch - stopping.`
@@ -423,7 +423,7 @@ export async function syncZendeskTicketBatchActivity({
   const users = await zendeskApiClient.users.list();
 
   const res = await concurrentExecutor(
-    tickets,
+    results,
     async (ticket) => {
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
 

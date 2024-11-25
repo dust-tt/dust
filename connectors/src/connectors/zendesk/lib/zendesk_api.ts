@@ -325,7 +325,7 @@ export async function fetchZendeskTicketsInBrand(
         url: string;
       }
 ): Promise<{
-  tickets: ZendeskFetchedTicket[];
+  results: ZendeskFetchedTicket[];
   meta: { has_more: boolean };
   links: { next: string | null };
 }> {
@@ -339,7 +339,7 @@ export async function fetchZendeskTicketsInBrand(
   });
 
   return (
-    response || { tickets: [], meta: { has_more: false }, links: { next: "" } }
+    response || { results: [], meta: { has_more: false }, links: { next: "" } }
   );
 }
 
