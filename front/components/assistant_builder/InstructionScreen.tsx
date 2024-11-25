@@ -398,7 +398,7 @@ function AdvancedSettings({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea className="max-h-[300px] overflow-y-scroll">
+                <ScrollArea className="h-[300px]">
                   <ModelList
                     modelConfigs={bestPerformingModelConfigs}
                     onClick={(modelSettings) => {
