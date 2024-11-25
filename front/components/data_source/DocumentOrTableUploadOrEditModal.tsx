@@ -196,11 +196,11 @@ const DocumentUploadOrEditModal = ({
     dataSourceView,
     initialId ?? "",
     {
-      onSuccess: (_data, _key, _config) => {
+      onSuccess: () => {
         onUpsertSuccess();
         onUpsertSettled();
       },
-      onError: (_err, _key, _config) => {
+      onError: (err) => {
         onUpsertError(err);
         onUpsertSettled();
       },
