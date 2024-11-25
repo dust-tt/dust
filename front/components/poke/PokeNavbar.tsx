@@ -1,4 +1,4 @@
-import { Logo } from "@dust-tt/sparkle";
+import { Button, Logo } from "@dust-tt/sparkle";
 import { isDevelopment } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -25,12 +25,9 @@ export const PokeNavbar: React.FC = () => (
         <Logo type="colored-grey" className="-mr-5 h-4 w-32 p-0" />
       </Link>
       <div className="flex flex-row gap-4">
-        <Link href="/poke/plans">
-          <div className="text-stucture-300 text-sm italic">Plans</div>
-        </Link>
-        <Link href="/poke/templates">
-          <div className="text-stucture-300 text-sm italic">Templates</div>
-        </Link>
+        <Button href="/poke/plans" variant="ghost" label="Plans" />
+        <Button href="/poke/templates" variant="ghost" label="Templates" />
+        <Button href="/poke/plugins" variant="ghost" label="Plugins" />
       </div>
     </div>
     <PokeSearchCommand />
