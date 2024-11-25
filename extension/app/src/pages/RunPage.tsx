@@ -27,7 +27,9 @@ export const RunPage = () => {
         dustAPI,
         messageData: {
           input: params.text,
-          mentions: [{ configurationId: params.configurationId }],
+          mentions: params.configurationIds.map((cId: any) => ({
+            configurationId: cId,
+          })),
         },
         contentFragments: files
           ? files.map((cf) => ({

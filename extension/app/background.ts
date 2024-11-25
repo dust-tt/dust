@@ -1,5 +1,9 @@
 import type { PendingUpdate } from "@extension/lib/storage";
-import { savePendingUpdate } from "@extension/lib/storage";
+import {
+  getSavedConfigurations,
+  saveConfigurations,
+  savePendingUpdate,
+} from "@extension/lib/storage";
 
 import {
   AUTH0_CLIENT_DOMAIN,
@@ -16,6 +20,7 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
+  UpdateSavedAssistantConfigurations,
 } from "./src/lib/messages";
 import { generatePKCE } from "./src/lib/utils";
 
@@ -51,11 +56,20 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
  */
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-  chrome.contextMenus.create({
-    id: "ask_dust",
-    title: "Ask @dust to summarize this page",
-    contexts: ["all"],
-  });
+
+  void createContextMenus();
+});
+
+const createContextMenus = async () => {
+  const configurations = await getSavedConfigurations();
+  chrome.contextMenus.removeAll();
+  for (const configuration of configurations) {
+    chrome.contextMenus.create({
+      id: configuration.id,
+      title: configuration.description,
+      contexts: ["all"],
+    });
+  }
   chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
@@ -72,7 +86,7 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Add selection to conversation",
     contexts: ["selection"],
   });
-});
+};
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "sidepanel-connection") {
@@ -91,54 +105,58 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 const getActionHandler = (menuItemId: string | number) => {
-  switch (menuItemId) {
-    case "ask_dust":
-      return () => {
-        if (state.port) {
-          const params = JSON.stringify({
-            includeContent: true,
-            includeCapture: false,
-            text: ":mention[dust]{sId=dust} summarize this page.",
-            configurationId: "dust",
-          });
-          state.port.postMessage({
-            type: "EXT_ROUTE_CHANGE",
-            pathname: "/run",
-            search: `?${params}`,
-          });
-        }
-      };
-    case "add_tab_content":
-      return () => {
-        if (state.port) {
-          state.port.postMessage({
-            type: "EXT_ATTACH_TAB",
-            includeContent: true,
-            includeCapture: false,
-          });
-        }
-      };
-    case "add_tab_screenshot":
-      return () => {
-        if (state.port) {
-          state.port.postMessage({
-            type: "EXT_ATTACH_TAB",
-            includeContent: false,
-            includeCapture: true,
-          });
-        }
-      };
-    case "add_selection":
-      return () => {
-        if (state.port) {
-          state.port.postMessage({
-            type: "EXT_ATTACH_TAB",
-            includeContent: true,
-            includeCapture: false,
-            includeSelectionOnly: true,
-          });
-        }
-      };
+  if (menuItemId.toString().startsWith("ask_dust_")) {
+    return async () => {
+      const configurations = await getSavedConfigurations();
+      const conf = configurations.find((c) => c.id === menuItemId.toString());
+      if (state.port && conf) {
+        const params = JSON.stringify({
+          includeContent: conf.includeContent,
+          includeCapture: conf.includeCapture,
+          text: conf.text,
+          configurationIds: conf.configurationIds,
+        });
+        state.port.postMessage({
+          type: "EXT_ROUTE_CHANGE",
+          pathname: "/run",
+          search: `?${params}`,
+        });
+      }
+    };
+  } else {
+    switch (menuItemId) {
+      case "add_tab_content":
+        return () => {
+          if (state.port) {
+            state.port.postMessage({
+              type: "EXT_ATTACH_TAB",
+              includeContent: true,
+              includeCapture: false,
+            });
+          }
+        };
+      case "add_tab_screenshot":
+        return () => {
+          if (state.port) {
+            state.port.postMessage({
+              type: "EXT_ATTACH_TAB",
+              includeContent: false,
+              includeCapture: true,
+            });
+          }
+        };
+      case "add_selection":
+        return () => {
+          if (state.port) {
+            state.port.postMessage({
+              type: "EXT_ATTACH_TAB",
+              includeContent: true,
+              includeCapture: false,
+              includeSelectionOnly: true,
+            });
+          }
+        };
+    }
   }
 };
 
@@ -176,6 +194,7 @@ chrome.runtime.onMessage.addListener(
     message:
       | AuthBackgroundMessage
       | GetActiveTabBackgroundMessage
+      | UpdateSavedAssistantConfigurations
       | CaptureMesssage
       | InputBarStatusMessage,
     sender,
@@ -210,6 +229,14 @@ chrome.runtime.onMessage.addListener(
       case "CAPTURE":
         capture(sendResponse);
         return true;
+
+      case "UPDATE_SAVED_CONFIGURATIONS":
+        const doIt = async () => {
+          await saveConfigurations(message.configurations);
+          void createContextMenus();
+        };
+        void doIt();
+        return false;
 
       case "GET_ACTIVE_TAB":
         chrome.tabs.query(

@@ -9,6 +9,7 @@ import React, { useEffect, useRef } from "react";
 
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[];
+  isFirstMessageGroup: boolean;
   isLastMessageGroup: boolean;
   conversationId: string;
   hideReactions: boolean;
@@ -26,6 +27,7 @@ export const LAST_MESSAGE_GROUP_ID = "last-message-group";
 
 export default function MessageGroup({
   messages,
+  isFirstMessageGroup,
   isLastMessageGroup,
   conversationId,
   hideReactions,
@@ -64,6 +66,9 @@ export default function MessageGroup({
           owner={owner}
           reactions={reactions}
           user={user}
+          isFirstMessage={
+            isFirstMessageGroup && messages.at(0)?.sId === message.sId
+          }
           isLastMessage={
             isLastMessageGroup && messages.at(-1)?.sId === message.sId
           }

@@ -150,11 +150,13 @@ export function ConversationViewer({
       {/* Invisible span to detect when the user has scrolled to the top of the list. */}
       {conversation &&
         typedGroupedMessages.map((typedGroup, index) => {
+          const isFirstGroup = index === 0;
           const isLastGroup = index === typedGroupedMessages.length - 1;
           return (
             <MessageGroup
               key={`typed-group-${index}`}
               messages={typedGroup}
+              isFirstMessageGroup={isFirstGroup}
               isLastMessageGroup={isLastGroup}
               conversationId={conversationId}
               hideReactions={true}

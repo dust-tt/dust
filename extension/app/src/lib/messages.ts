@@ -1,3 +1,4 @@
+import type { SavedAssistantConfiguration } from "@extension/lib/storage";
 import { saveTokens } from "@extension/lib/storage";
 
 export type Auth0AuthorizeResponse = {
@@ -38,6 +39,11 @@ export type InputBarStatusMessage = {
   available: boolean;
 };
 
+export type UpdateSavedAssistantConfigurations = {
+  type: "UPDATE_SAVED_CONFIGURATIONS";
+  configurations: SavedAssistantConfiguration[];
+};
+
 export type CaptureMesssage = {
   type: "CAPTURE";
 };
@@ -60,7 +66,7 @@ export type CaptureFullPageMessage = {
   type: "PAGE_CAPTURE_FULL_PAGE";
 };
 
-const sendMessage = <T, U>(message: T): Promise<U> => {
+export const sendMessage = <T, U>(message: T): Promise<U> => {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response: U | undefined) => {
       if (chrome.runtime.lastError) {
