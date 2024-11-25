@@ -1,4 +1,4 @@
-import { getAccessToken } from "@extension/lib/storage";
+import { getAccessToken } from "@extension/lib/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 const RECONNECT_DELAY = 5000; // 5 seconds.
 import { EventSourcePolyfill } from "event-source-polyfill";

@@ -96,9 +96,20 @@ export const refreshToken = async (): Promise<
     return new Ok(await saveTokens(response));
   } catch (error) {
     log("Refresh token: unknown error.", error);
-    await logout();
     return new Err(new AuthError("not_authenticated", error?.toString()));
   }
+};
+
+export const getAccessToken = async (): Promise<string | null> => {
+  let tokens = await getStoredTokens();
+  if (!tokens || !tokens.accessToken || tokens.expiresAt < Date.now()) {
+    const refreshRes = await refreshToken();
+    if (refreshRes.isOk()) {
+      tokens = refreshRes.value;
+    }
+  }
+
+  return tokens?.accessToken ?? null;
 };
 
 // Fetch me sends a request to the /me route to get the user info.

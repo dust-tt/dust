@@ -1,5 +1,4 @@
 import type { AgentConfigurationViewType } from "@dust-tt/client";
-import { useAuthErrorCheck } from "@extension/hooks/useAuthErrorCheck";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
 import { useMemo } from "react";
@@ -22,8 +21,6 @@ export function usePublicAgentConfigurations(
       ["getAgentConfigurations", dustAPI.workspaceId(), view],
       agentConfigurationsFetcher
     );
-
-  useAuthErrorCheck(error, mutate);
 
   return {
     agentConfigurations: useMemo(() => data ?? [], [data]),

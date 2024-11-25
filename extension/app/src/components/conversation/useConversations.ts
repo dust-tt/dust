@@ -1,5 +1,3 @@
-import { useAuthErrorCheck } from "@extension/hooks/useAuthErrorCheck";
-import {} from "@extension/lib/auth";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
 import { useMemo } from "react";
@@ -18,8 +16,6 @@ export function useConversations() {
     ["getConversations", dustAPI.workspaceId()],
     conversationsFetcher
   );
-
-  useAuthErrorCheck(error, mutate);
 
   return {
     conversations: useMemo(() => data ?? [], [data]),

@@ -1,6 +1,6 @@
 import { DustAPI } from "@dust-tt/client";
 import { useAuth } from "@extension/components/auth/AuthProvider";
-import { getAccessToken } from "@extension/lib/storage";
+import { getAccessToken } from "@extension/lib/auth";
 
 export const useDustAPI = () => {
   const { token, isAuthenticated, isUserSetup, user, workspace } = useAuth();

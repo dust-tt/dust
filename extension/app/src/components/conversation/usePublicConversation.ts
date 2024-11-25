@@ -1,5 +1,4 @@
 import type { ConversationPublicType } from "@dust-tt/client";
-import { useAuthErrorCheck } from "@extension/hooks/useAuthErrorCheck";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
 import type { KeyedMutator } from "swr";
@@ -34,8 +33,6 @@ export function usePublicConversation({
       : null,
     conversationFetcher
   );
-
-  useAuthErrorCheck(error, mutate);
 
   return {
     conversation: data ? data : null,
