@@ -11,11 +11,13 @@ import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 interface MessageItemProps {
   conversationId: string;
   hideReactions: boolean;
+  messageFeedback: AgentMessageFeedbackType | undefined;
   isInModal: boolean;
   isLastMessage: boolean;
   message: MessageWithContentFragmentsType;
@@ -28,6 +30,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     {
       conversationId,
       hideReactions,
+      messageFeedback,
       isInModal,
       isLastMessage,
       message,
@@ -146,6 +149,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isLastMessage={isLastMessage}
               message={message}
               messageThumb={messageThumb}
+              messageFeedback={messageFeedback}
               owner={owner}
               user={user}
               size={isInModal ? "compact" : "normal"}

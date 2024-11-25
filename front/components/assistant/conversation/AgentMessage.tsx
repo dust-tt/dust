@@ -71,6 +71,7 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 function cleanUpCitations(message: string): string {
@@ -84,6 +85,7 @@ interface AgentMessageProps {
   isLastMessage: boolean;
   message: AgentMessageType;
   messageThumb?: ConversationMessageThumbSelectorProps;
+  messageFeedback?: AgentMessageFeedbackType;
   owner: WorkspaceType;
   user: UserType;
   size: ConversationMessageSizeType;
@@ -101,10 +103,15 @@ export function AgentMessage({
   isLastMessage,
   message,
   messageThumb,
+  messageFeedback,
   owner,
   user,
   size,
 }: AgentMessageProps) {
+  // temp
+  const feedback = messageFeedback;
+  console.log("got feedback in agentMessage", feedback);
+
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 

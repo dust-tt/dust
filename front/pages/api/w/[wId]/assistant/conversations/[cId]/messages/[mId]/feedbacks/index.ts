@@ -101,6 +101,7 @@ async function handler(
       });
 
     case "DELETE":
+      console.log("DELETE MESSAGE FEEDBACK", messageId, user.id);
       const deleted = await deleteMessageFeedback(auth, {
         messageId,
         conversation,

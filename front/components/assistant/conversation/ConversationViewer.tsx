@@ -28,6 +28,7 @@ import {
 } from "@app/lib/client/conversation/event_handlers";
 import {
   useConversation,
+  useConversationFeedbacks,
   useConversationMessages,
   useConversationParticipants,
   useConversations,
@@ -186,6 +187,11 @@ const ConversationViewer = React.forwardRef<
 
   const { ref: viewRef, inView: isTopOfListVisible } = useInView();
 
+  const { feedbacks } = useConversationFeedbacks({
+    conversationId: conversationId ?? "",
+    workspaceId: owner.sId,
+  });
+
   // On page load or when new data is loaded, check if the top of the list
   // is visible and there is more data to load. If so, set the current
   // highest message ID and increment the page number to load more data.
@@ -340,6 +346,7 @@ const ConversationViewer = React.forwardRef<
               messages={typedGroup}
               isLastMessageGroup={isLastGroup}
               conversationId={conversationId}
+              feedbacks={feedbacks}
               hideReactions={hideReactions}
               isInModal={isInModal}
               owner={owner}

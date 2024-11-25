@@ -3,8 +3,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import type { ConversationMessageFeedbacks } from "@app/lib/api/assistant/feedback";
-import { getConversationUserFeedbacks } from "@app/lib/api/assistant/feedback";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import { getConversationFeedbacksForUser } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -12,7 +12,7 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<{ feedbacks: ConversationMessageFeedbacks }>
+    WithAPIErrorResponse<{ feedbacks: AgentMessageFeedbackType[] }>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -40,7 +40,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const feedbacksRes = await getConversationUserFeedbacks(
+      const feedbacksRes = await getConversationFeedbacksForUser(
         auth,
         conversation
       );

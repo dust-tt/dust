@@ -22,16 +22,19 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
  * We retrieve the feedbacks for a whole conversation, not just a single message.
  */
 
-export type ConversationMessageFeedbacks = {
+export type AgentMessageFeedbackType = {
+  id: number;
   messageId: string;
-  agentMessageId: string;
-  feedback: AgentMessageFeedback[];
-}[];
+  agentMessageId: number;
+  userId: number;
+  thumbDirection: AgentMessageFeedbackDirection;
+  content: string | null;
+};
 
-export async function getConversationUserFeedbacks(
+export async function getConversationFeedbacksForUser(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
-): Promise<Result<ConversationMessageFeedbacks, ConversationError>> {
+): Promise<Result<AgentMessageFeedbackType[], ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -48,7 +51,7 @@ export async function getConversationUserFeedbacks(
         [Op.ne]: null,
       },
     },
-    attributes: ["sId"],
+    attributes: ["sId", "agentMessageId"],
   });
 
   const agentMessages = await AgentMessage.findAll({
@@ -69,26 +72,21 @@ export async function getConversationUserFeedbacks(
       },
     },
   });
-
-  const feedbacksByMessageId = feedbacks.reduce<
-    Record<number, AgentMessageFeedback[]>
-  >((acc, feedback) => {
-    if (!acc[feedback.agentMessageId]) {
-      acc[feedback.agentMessageId] = [];
-    }
-    acc[feedback.agentMessageId].push(feedback);
-    return acc;
-  }, {});
-
-  return new Ok(
-    messages
-      .filter((m) => m.agentMessageId !== null)
-      .map((m) => ({
-        messageId: m.sId,
-        agentMessageId: m.agentMessageId!.toString(),
-        feedback: feedbacksByMessageId[m.agentMessageId!] ?? [],
-      }))
+  const feedbacksByMessageId = feedbacks.map(
+    (feedback) =>
+      ({
+        id: feedback.id,
+        messageId: messages.find(
+          (m) => m.agentMessageId === feedback.agentMessageId
+        )!.sId,
+        agentMessageId: feedback.agentMessageId,
+        userId: feedback.userId,
+        thumbDirection: feedback.thumbDirection,
+        content: feedback.content,
+      }) as AgentMessageFeedbackType
   );
+
+  return new Ok(feedbacksByMessageId);
 }
 
 /**
@@ -201,16 +199,27 @@ export async function deleteMessageFeedback(
       sId: messageId,
       conversationId: conversation.id,
     },
+    attributes: ["agentMessageId"],
   });
 
-  if (!message || !message.agentMessage) {
+  if (!message || !message.agentMessageId) {
+    return null;
+  }
+
+  const agentMessage = await AgentMessage.findOne({
+    where: {
+      id: message.agentMessageId,
+    },
+  });
+
+  if (!agentMessage) {
     return null;
   }
 
   const feedback =
     await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
       user,
-      agentMessage: message.agentMessage,
+      agentMessage,
     });
 
   if (!feedback) {
