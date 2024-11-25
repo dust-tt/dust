@@ -93,3 +93,7 @@ export function safeParseJSON(str: string): Result<object | null, Error> {
     return new Err(new Error("Unexpected error: JSON parsing failed."));
   }
 }
+
+export function stripNullBytes(text: string): string {
+  return text.replace(/\0/g, "");
+}
