@@ -181,21 +181,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       dataSourceId: dataSourceConfig.dataSourceId,
     };
 
-    let result = await launchZendeskSyncWorkflow(connector);
-    if (result.isErr()) {
+    const syncResult = await this.sync();
+    if (syncResult.isErr()) {
       logger.error(
-        { ...loggerArgs, error: result.error },
+        { ...loggerArgs, error: syncResult.error },
         "[Zendesk] Error resuming the sync workflow."
       );
-      return result;
+      return syncResult;
     }
-    result = await launchZendeskGarbageCollectionWorkflow(connector);
-    if (result.isErr()) {
+    const gcResult = await launchZendeskGarbageCollectionWorkflow(connector);
+    if (gcResult.isErr()) {
       logger.error(
-        { ...loggerArgs, error: result.error },
+        { ...loggerArgs, error: gcResult.error },
         "[Zendesk] Error resuming the garbage collection workflow."
       );
-      return result;
+      return gcResult;
     }
     return new Ok(undefined);
   }
