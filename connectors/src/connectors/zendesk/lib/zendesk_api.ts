@@ -225,7 +225,7 @@ export async function fetchRecentlyUpdatedArticles({
   nextLink: string | null;
   endTime: number;
 }> {
-  // this endpoint retrieves changes in content despite what is mentioned in the documentation.
+  // this endpoint retrieves changes in content, not only in metadata despite what is mentioned in the documentation.
   const response = await fetchFromZendeskWithRetries({
     url: `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
     accessToken,
