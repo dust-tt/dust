@@ -64,7 +64,12 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
-      className={cn(sheetVariants({ size }), className)}
+      className={cn(
+        "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500",
+        "s-flex s-flex-col",
+        "s-inset-y-0 s-right-0 s-h-full s-w-full data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right sm:s-max-w-md",
+        className
+      )}
       {...props}
     >
       {children}
@@ -92,9 +97,9 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetClose asChild className="s-absolute s-right-3 s-top-4">
-      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
-    </SheetClose>
+    <SheetPrimitive.Close className="s-absolute s-right-4 s-top-4">
+      <Button icon={XMarkIcon} variant="ghost" size="sm" />
+    </SheetPrimitive.Close>
   </div>
 );
 SheetHeader.displayName = "SheetHeader";
@@ -171,7 +176,7 @@ const SheetFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-5 s-py-3",
+      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3",
       className
     )}
     {...props}
