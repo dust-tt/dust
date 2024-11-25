@@ -31,6 +31,7 @@ export type GetActiveTabBackgroundResponse = {
   url: string;
   content?: string;
   captures?: string[];
+  error?: string;
 };
 
 export type InputBarStatusMessage = {
