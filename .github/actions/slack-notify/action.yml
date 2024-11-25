@@ -56,7 +56,7 @@ runs:
       id: email
       uses: slackapi/slack-github-action@v2.0.0
       with:
-        errors: true
+        errors: false
         method: users.lookupByEmail
         token: ${{ inputs.slack_token }}
         payload: |
