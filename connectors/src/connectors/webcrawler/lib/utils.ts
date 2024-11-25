@@ -134,5 +134,5 @@ export function isPrivateIp(ip: string) {
 }
 
 export function stripNullBytes(text: string): string {
-  return text.replace("/\0/g", "");
+  return text.replace(/\0/g, "");
 }
