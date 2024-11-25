@@ -14,6 +14,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -330,6 +332,84 @@ AgentMessage.init(
     sequelize: frontSequelize,
   }
 );
+
+export class AgentMessageFeedback extends Model<
+  InferAttributes<AgentMessageFeedback>,
+  InferCreationAttributes<AgentMessageFeedback>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare userId: ForeignKey<User["id"]>;
+
+  declare thumbDirection: AgentMessageFeedbackDirection;
+  declare content: string | null;
+}
+
+AgentMessageFeedback.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    workspaceId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    thumbDirection: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "agent_message_feedback",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentConfigurationId"],
+      },
+      {
+        fields: ["agentMessageId"],
+      },
+      {
+        fields: ["userId"],
+      },
+      {
+        fields: ["agentConfigurationId", "agentMessageId", "userId"],
+        unique: true,
+      },
+    ],
+  }
+);
+
+AgentConfiguration.hasMany(AgentMessageFeedback, {
+  onDelete: "RESTRICT",
+});
+AgentMessage.hasMany(AgentMessageFeedback, {
+  onDelete: "RESTRICT",
+});
+User.hasMany(AgentMessageFeedback, {
+  onDelete: "RESTRICT",
+});
 
 export class Message extends Model<
   InferAttributes<Message>,

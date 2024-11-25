@@ -1,5 +1,3 @@
-import assert from "node:assert";
-
 import type { ModelId } from "@dust-tt/types";
 import type { Client } from "node-zendesk";
 import { createClient } from "node-zendesk";
@@ -196,15 +194,11 @@ export async function fetchZendeskCategoriesInBrand({
   categories: ZendeskFetchedCategory[];
   meta: { has_more: boolean; after_cursor: string };
 }> {
-  assert(
-    pageSize <= 100,
-    `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
-  );
-
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?` +
+      (cursor ? `page[after]=${encodeURIComponent(cursor)}&` : "") +
+      `page[size]=${pageSize}`,
     accessToken,
   });
   return (
@@ -261,15 +255,11 @@ export async function fetchZendeskArticlesInCategory({
   articles: ZendeskFetchedArticle[];
   meta: { has_more: boolean; after_cursor: string };
 }> {
-  assert(
-    pageSize <= 100,
-    `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
-  );
-
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?` +
+      (cursor ? `page[after]=${encodeURIComponent(cursor)}&` : "") +
+      `page[size]=${pageSize}`,
     accessToken,
   });
   return (
@@ -338,18 +328,14 @@ export async function fetchZendeskTicketsInBrand({
   tickets: ZendeskFetchedTicket[];
   meta: { has_more: boolean; after_cursor: string };
 }> {
-  assert(
-    pageSize <= 100,
-    `pageSize must be at most 100 (current value: ${pageSize})`
-  );
-
   const searchQuery = encodeURIComponent(
     `status:solved updated>${retentionPeriodDays}days`
   );
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?query=${searchQuery}&filter[type]=ticket&page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket` +
+      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : "") +
+      `&page[size]=${pageSize}&query=${searchQuery}`,
     accessToken,
   });
 
