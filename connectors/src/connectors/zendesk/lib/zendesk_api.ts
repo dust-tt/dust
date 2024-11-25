@@ -148,6 +148,8 @@ async function fetchFromZendeskWithRetries({
         `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
       );
       return null;
+    } else if (rawResponse.status === 403) {
+      throw new ExternalOAuthTokenError();
     }
     logger.error(
       { rawResponse, status: rawResponse.status, text: rawResponse.text },
