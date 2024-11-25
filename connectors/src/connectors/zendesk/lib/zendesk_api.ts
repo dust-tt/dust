@@ -203,8 +203,9 @@ export async function fetchZendeskCategoriesInBrand({
 
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories?` +
+      (cursor ? `page[after]=${encodeURIComponent(cursor)}&` : "") +
+      `page[size]=${pageSize}`,
     accessToken,
   });
   return (
@@ -268,8 +269,9 @@ export async function fetchZendeskArticlesInCategory({
 
   const response = await fetchFromZendeskWithRetries({
     url:
-      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?page[size]=${pageSize}` +
-      (cursor ? `&page[after]=${encodeURIComponent(cursor)}` : ""),
+      `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?` +
+      (cursor ? `page[after]=${encodeURIComponent(cursor)}&` : "") +
+      `page[size]=${pageSize}`,
     accessToken,
   });
   return (
