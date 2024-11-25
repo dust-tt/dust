@@ -85,23 +85,13 @@ export async function syncTicket({
     !ticketInDb.lastUpsertedTs ||
     ticketInDb.lastUpsertedTs < updatedAtDate;
 
-  // ticket.url is the json api url, we need to convert it to the web url
-  const ticketUrl = ticket.url.replace("/api/v2/", "/").replace(".json", "");
-
-  const commonTicketData = {
-    subject: ticket.subject,
-    url: ticketUrl,
-    assigneeId: ticket.assignee_id,
-    groupId: ticket.group_id,
-    organizationId: ticket.organization_id,
-    lastUpsertedTs: new Date(currentSyncDateMs),
-    ticketUpdatedAt: updatedAtDate,
-  };
-
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
-        ...commonTicketData,
+        subject: ticket.subject,
+        url: ticket.url.replace("/api/v2/", "/").replace(".json", ""), // converting the API URL into the web URL
+        lastUpsertedTs: new Date(currentSyncDateMs),
+        ticketUpdatedAt: updatedAtDate,
         ticketId: ticket.id,
         brandId,
         permission: "read",
@@ -109,7 +99,13 @@ export async function syncTicket({
       },
     });
   } else {
-    await ticketInDb.update({ ...commonTicketData, permission: "read" });
+    await ticketInDb.update({
+      subject: ticket.subject,
+      url: ticket.url.replace("/api/v2/", "/").replace(".json", ""), // converting the API URL into the web URL
+      lastUpsertedTs: new Date(currentSyncDateMs),
+      ticketUpdatedAt: updatedAtDate,
+      permission: "read",
+    });
   }
 
   if (!shouldPerformUpsertion) {

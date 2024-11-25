@@ -176,7 +176,6 @@ export async function renderConversationForModel(
     allowedTokenCount,
     excludeActions,
     excludeImages,
-    excludeContentFragments,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -184,7 +183,6 @@ export async function renderConversationForModel(
     allowedTokenCount: number;
     excludeActions?: boolean;
     excludeImages?: boolean;
-    excludeContentFragments?: boolean;
   }
 ): Promise<
   Result<
@@ -203,7 +201,6 @@ export async function renderConversationForModel(
       allowedTokenCount,
       excludeActions,
       excludeImages,
-      excludeContentFragments,
     });
   } else {
     return renderConversationForModelJIT({
@@ -213,7 +210,6 @@ export async function renderConversationForModel(
       allowedTokenCount,
       excludeActions,
       excludeImages,
-      excludeContentFragments,
     });
   }
 }
@@ -225,7 +221,6 @@ async function renderConversationForModelMultiActions({
   allowedTokenCount,
   excludeActions,
   excludeImages,
-  excludeContentFragments,
 }: {
   conversation: ConversationType;
   model: ModelConfigurationType;
@@ -233,7 +228,6 @@ async function renderConversationForModelMultiActions({
   allowedTokenCount: number;
   excludeActions?: boolean;
   excludeImages?: boolean;
-  excludeContentFragments?: boolean;
 }): Promise<
   Result<
     {
@@ -384,9 +378,7 @@ async function renderConversationForModelMultiActions({
       if (res.isErr()) {
         return new Err(res.error);
       }
-      if (!excludeContentFragments) {
-        messages.push(res.value);
-      }
+      messages.push(res.value);
     } else {
       assertNever(m);
     }

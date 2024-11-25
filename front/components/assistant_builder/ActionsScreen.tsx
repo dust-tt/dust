@@ -859,7 +859,7 @@ function ActionEditor({
   );
 
   return (
-    <>
+    <div className="px-1">
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
           <Page.Header
@@ -965,7 +965,7 @@ function ActionEditor({
           />
         </div>
       )}
-    </>
+    </div>
   );
 }
 

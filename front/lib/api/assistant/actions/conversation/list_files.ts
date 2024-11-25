@@ -9,8 +9,12 @@ import type {
 import { BaseAction } from "@dust-tt/types";
 import _ from "lodash";
 
-import { DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import { isConversationIncludableFileContentType } from "@app/lib/api/assistant/actions/conversation/include_file";
+import {
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/constants";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;
@@ -47,15 +51,13 @@ export class ConversationListFilesAction extends BaseAction {
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content =
-      `List of files attached to the conversation with their content type.\n\n` +
-      `- only the files marked as \`includable\` can be included with ` +
-      `the \`include_conversation_file\` tool.\n` +
-      // TODO(spolu): add mention of viz if enabled and other tools.
+      `List of files attached to the conversation with their content type and status (includable, queryable, searchable).\n\n` +
+      `// includable: can be rerieved with the \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\` action.\n` +
+      `// queryable: can be queried with the \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\` action.\n` +
+      `// searchable: can be searched with the \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\` action.\n` +
       `\n`;
     for (const f of this.files) {
-      content +=
-        `<file id="${f.fileId}" name="${_.escape(f.title)}" type="${f.contentType}" ` +
-        `includable="${isConversationIncludableFileContentType(f.contentType)}" queryable="${!!f.snippet}"`;
+      content += `<file id="${f.fileId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
 
       if (f.snippet) {
         content += ` snippet="${_.escape(f.snippet)}"`;

@@ -4,7 +4,7 @@ import {
   Page,
   PlusIcon,
   Popup,
-  Searchbar,
+  SearchInput,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -216,7 +216,7 @@ export default function WorkspaceAdmin({
           workspaceVerifiedDomain={workspaceVerifiedDomain}
         />
         <div className="flex flex-row gap-2">
-          <Searchbar
+          <SearchInput
             placeholder="Search members (email)"
             value={searchTerm}
             name="search"

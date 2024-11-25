@@ -1,4 +1,4 @@
-import { Chip, DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
+import { Chip, DataTable, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { TemplateTagCodeType, TemplateVisibility } from "@dust-tt/types";
 import { TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
@@ -105,7 +105,7 @@ export function TemplatesDataTable() {
           <Link href="/poke/templates/new">Create template</Link>
         </PokeButton>
       </div>
-      <Searchbar
+      <SearchInput
         name="search"
         placeholder="Search (Name)"
         value={templateSearch}

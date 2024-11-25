@@ -34,7 +34,7 @@ export async function createWorkspaceInternal({
 
   const workspace = await Workspace.create({
     sId: generateRandomModelSId(),
-    name: name,
+    name,
   });
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });

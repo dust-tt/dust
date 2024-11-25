@@ -84,16 +84,13 @@ export async function syncArticle({
     !articleInDb.lastUpsertedTs ||
     articleInDb.lastUpsertedTs < updatedAtDate; // upserting if the article was updated after the last upsert
 
-  const updatableFields = {
-    categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
-    name: article.name,
-    url: article.html_url,
-  };
   // we either create a new article or update the existing one
   if (!articleInDb) {
     articleInDb = await ZendeskArticleResource.makeNew({
       blob: {
-        ...updatableFields,
+        categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
+        name: article.name,
+        url: article.html_url,
         articleId: article.id,
         brandId: category.brandId,
         permission: "read",
@@ -101,7 +98,11 @@ export async function syncArticle({
       },
     });
   } else {
-    await articleInDb.update(updatableFields);
+    await articleInDb.update({
+      categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
+      name: article.name,
+      url: article.html_url,
+    });
   }
 
   logger.info(

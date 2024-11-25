@@ -1,10 +1,9 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionType,
   AgentMessageType,
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
-  ConversationAgentActionConfigurationType,
   ConversationFileType,
   ConversationType,
   FunctionCallType,
@@ -13,6 +12,8 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   Result,
+  RetrievalConfigurationType,
+  SupportedContentFragmentType,
   TablesQueryConfigurationType,
 } from "@dust-tt/types";
 import {
@@ -23,9 +24,9 @@ import {
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isDevelopment,
+  isSupportedImageContentType,
   isSupportedPlainTextContentType,
   isTablesQueryActionType,
-  isTextContent,
   isUserMessageType,
   Ok,
   removeNulls,
@@ -35,8 +36,13 @@ import assert from "assert";
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
-import { makeConversationIncludeFileConfiguration } from "@app/lib/api/assistant/actions/conversation/include_file";
+import {
+  isConversationIncludableFileContentType,
+  makeConversationIncludeFileConfiguration,
+} from "@app/lib/api/assistant/actions/conversation/include_file";
 import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
 import {
   getTextContentFromMessage,
@@ -44,10 +50,10 @@ import {
 } from "@app/lib/api/assistant/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { tokenCountForTexts, tokenSplit } from "@app/lib/tokenization";
+import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
 export async function isJITActionsEnabled(
@@ -65,33 +71,102 @@ export async function isJITActionsEnabled(
   return use;
 }
 
+function isConversationQueryableFileContentType(
+  contentType: SupportedContentFragmentType
+): boolean {
+  if (isSupportedImageContentType(contentType)) {
+    return false;
+  }
+  // For now we only allow including text files.
+  switch (contentType) {
+    case "application/msword":
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/pdf":
+    case "text/markdown":
+    case "text/plain":
+    case "dust-application/slack":
+    case "text/tab-separated-values":
+    case "text/tsv":
+      return false;
+
+    case "text/comma-separated-values":
+    case "text/csv":
+      return true;
+    default:
+      assertNever(contentType);
+  }
+}
+
+function isConversationSearchableFileContentType(
+  contentType: SupportedContentFragmentType
+): boolean {
+  if (isSupportedImageContentType(contentType)) {
+    return false;
+  }
+  // For now we only allow including text files.
+  switch (contentType) {
+    case "application/msword":
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/pdf":
+    case "text/markdown":
+    case "text/plain":
+    case "dust-application/slack":
+    case "text/tab-separated-values":
+    case "text/tsv":
+      return true;
+
+    case "text/comma-separated-values":
+    case "text/csv":
+      return false;
+    default:
+      assertNever(contentType);
+  }
+}
+
 export function listFiles(
   conversation: ConversationType
 ): ConversationFileType[] {
   const files: ConversationFileType[] = [];
-  for (const m of conversation.content.flat(1)) {
+  for (const versions of conversation.content) {
+    const m = versions[versions.length - 1];
+
     if (
       isContentFragmentType(m) &&
       isSupportedPlainTextContentType(m.contentType) &&
       m.contentFragmentVersion === "latest"
     ) {
       if (m.fileId) {
+        const isUsableForJIT = m.snippet !== null;
         files.push({
           fileId: m.fileId,
           title: m.title,
           contentType: m.contentType,
           snippet: m.snippet,
+          isUsableForJIT: isUsableForJIT,
+          isIncludable: isConversationIncludableFileContentType(m.contentType),
+          isQueryable:
+            isUsableForJIT &&
+            isConversationQueryableFileContentType(m.contentType),
+          isSearchable:
+            isUsableForJIT &&
+            isConversationSearchableFileContentType(m.contentType),
         });
       }
     } else if (isAgentMessageType(m)) {
       for (const a of m.actions) {
         if (isTablesQueryActionType(a)) {
           if (a.resultsFileId && a.resultsFileSnippet) {
+            const contentType = "text/csv";
             files.push({
               fileId: a.resultsFileId,
-              contentType: "text/csv",
+              contentType: contentType,
               title: getTablesQueryResultsFileTitle({ output: a.output }),
-              snippet: null, // This means that we can't use it for JIT actions (the resultsFileSnippet is not the same snippet)
+              snippet: null, // the resultsFileSnippet is not the same snippet
+              isUsableForJIT: false,
+              isIncludable:
+                isConversationIncludableFileContentType(contentType),
+              isQueryable: false,
+              isSearchable: false,
             });
           }
         }
@@ -108,17 +183,11 @@ async function getJITActions(
     conversation,
     files,
   }: { conversation: ConversationType; files: ConversationFileType[] }
-): Promise<
-  (AgentActionConfigurationType | ConversationAgentActionConfigurationType)[]
-> {
-  const actions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[] = [];
+): Promise<ActionConfigurationType[]> {
+  const actions: ActionConfigurationType[] = [];
 
   if (files.length > 0) {
-    // quey_conversation_tables
-    const filesUsableForJIT = files.filter((f) => !!f.snippet);
+    const filesUsableForJIT = files.filter((f) => f.isUsableForJIT);
 
     if (filesUsableForJIT.length > 0) {
       // Get the datasource view for the conversation.
@@ -142,15 +211,13 @@ async function getJITActions(
 
       // Check tables for the table query action.
       const filesUsableAsTableQuery = filesUsableForJIT.filter(
-        (f) => f.contentType === "text/csv" // TODO: there should not be a hardcoded value here
+        (f) => f.isQueryable
       );
 
       if (filesUsableAsTableQuery.length > 0) {
-        // TODO(JIT) Shall we look for an existing table query action and update it instead of
-        // creating a new one? This would allow join between the tables.
+        // TODO(JIT) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
         const action: TablesQueryConfigurationType = {
-          // The description here is the description of the data, a meta description of the action
-          // is prepended automatically.
+          // The description here is the description of the data, a meta description of the action is prepended automatically.
           description:
             DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
           type: "tables_query_configuration",
@@ -162,6 +229,32 @@ async function getJITActions(
             dataSourceViewId: dataSourceView.sId,
             tableId: f.fileId,
           })),
+        };
+        actions.push(action);
+      }
+
+      // Check files for the retrieval query action.
+      const filesUsableAsRetrievalQuery = filesUsableForJIT.filter(
+        (f) => f.isSearchable
+      );
+
+      if (filesUsableAsRetrievalQuery.length > 0) {
+        const action: RetrievalConfigurationType = {
+          description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
+          type: "retrieval_configuration",
+          id: -1,
+          name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+          sId: generateRandomModelSId(),
+          topK: "auto",
+          query: "auto",
+          relativeTimeFrame: "auto",
+          dataSources: [
+            {
+              workspaceId: conversation.owner.sId,
+              dataSourceViewId: dataSourceView.sId,
+              filter: { parents: null },
+            },
+          ],
         };
         actions.push(action);
       }
@@ -182,16 +275,10 @@ export async function getEmulatedAndJITActions(
   }: { agentMessage: AgentMessageType; conversation: ConversationType }
 ): Promise<{
   emulatedActions: AgentActionType[];
-  jitActions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[];
+  jitActions: ActionConfigurationType[];
 }> {
   const emulatedActions: AgentActionType[] = [];
-  let jitActions: (
-    | AgentActionConfigurationType
-    | ConversationAgentActionConfigurationType
-  )[] = [];
+  let jitActions: ActionConfigurationType[] = [];
 
   if (await isJITActionsEnabled(auth)) {
     const files = listFiles(conversation);
@@ -226,7 +313,6 @@ export async function renderConversationForModelJIT({
   allowedTokenCount,
   excludeActions,
   excludeImages,
-  excludeContentFragments,
 }: {
   conversation: ConversationType;
   model: ModelConfigurationType;
@@ -234,7 +320,6 @@ export async function renderConversationForModelJIT({
   allowedTokenCount: number;
   excludeActions?: boolean;
   excludeImages?: boolean;
-  excludeContentFragments?: boolean;
 }): Promise<
   Result<
     {
@@ -387,16 +472,11 @@ export async function renderConversationForModelJIT({
         ],
       });
     } else if (isContentFragmentType(m)) {
-      const res = await renderContentFragmentForModel(m, conversation, model, {
-        excludeImages: Boolean(excludeImages),
-      });
-
-      if (res.isErr()) {
-        return new Err(res.error);
-      }
-      if (!excludeContentFragments) {
-        messages.push(res.value);
-      }
+      messages.push(
+        await renderLightContentFragmentForModel(m, conversation, model, {
+          excludeImages: Boolean(excludeImages),
+        })
+      );
     } else {
       assertNever(m);
     }
@@ -407,7 +487,6 @@ export async function renderConversationForModelJIT({
     [prompt, ...getTextRepresentationFromMessages(messages)],
     model
   );
-
   if (res.isErr()) {
     return new Err(res.error);
   }
@@ -415,14 +494,12 @@ export async function renderConversationForModelJIT({
   const [promptCount, ...messagesCount] = res.value;
 
   // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
-  // approximations, 64 tokens seems small enough and ample enough.
+  // approximations.
   const tokensMargin = 1024;
   let tokensUsed = promptCount + tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected: ModelMessageTypeMultiActions[] = [];
-  const truncationMessage = `... (content truncated)`;
-  const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
   // Selection loop.
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -433,57 +510,12 @@ export async function renderConversationForModelJIT({
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
       selected.unshift(currentMessage);
-    } else if (
-      // When a content fragment has more than the remaining number of tokens, we split it.
-      isContentFragmentMessageTypeModel(currentMessage) &&
-      // Allow at least tokensMargin tokens in addition to the truncation message.
-      tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
-    ) {
-      const remainingTokens =
-        allowedTokenCount - tokensUsed - approxTruncMsgTokenCount;
-
-      const updatedContent = [];
-      for (const c of currentMessage.content) {
-        if (!isTextContent(c)) {
-          // If there is not enough room and it's an image, we simply ignore it.
-          continue;
-        }
-
-        // Remove only if it ends with "</attachment>".
-        const textWithoutClosingAttachmentTag = c.text.replace(
-          /<\/attachment>$/,
-          ""
-        );
-
-        const contentRes = await tokenSplit(
-          textWithoutClosingAttachmentTag,
-          model,
-          remainingTokens
-        );
-        if (contentRes.isErr()) {
-          return new Err(contentRes.error);
-        }
-
-        updatedContent.push({
-          ...c,
-          text: `${contentRes.value}${truncationMessage}</attachment>`,
-        });
-      }
-
-      selected.unshift({
-        ...currentMessage,
-        content: updatedContent,
-      });
-
-      tokensUsed += remainingTokens;
-      break;
     } else {
       break;
     }
   }
 
-  // Merging loop.
-  // Merging content fragments into the upcoming user message.
+  // Merging loop: merging content fragments into the upcoming user message.
   // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
   for (let i = selected.length - 1; i >= 0; i--) {
     const cfMessage = selected[i];

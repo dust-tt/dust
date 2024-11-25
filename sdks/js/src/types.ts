@@ -755,6 +755,19 @@ const AgentConfigurationScopeSchema = FlexibleEnumSchema([
   "private",
 ]);
 
+export const AgentConfigurationViewSchema = FlexibleEnumSchema([
+  "all",
+  "list",
+  "workspace",
+  "published",
+  "global",
+  "favorites",
+]);
+
+export type AgentConfigurationViewType = z.infer<
+  typeof AgentConfigurationViewSchema
+>;
+
 const AgentUsageTypeSchema = z.object({
   messageCount: z.number(),
   timePeriodSec: z.number(),

@@ -24,6 +24,7 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
+import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
@@ -265,6 +266,7 @@ const SystemSpaceItem = ({
   space: SpaceType;
   visual: IconType;
 }) => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
 
   const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -292,7 +294,10 @@ const SystemSpaceItem = ({
       isNavigatable
       label={label}
       collapsed={!isExpanded}
-      onItemClick={() => router.push(itemPath)}
+      onItemClick={() => {
+        setNavigationSelection({ lastSpaceId: space.sId });
+        void router.push(itemPath);
+      }}
       isSelected={router.asPath === itemPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={visual}
@@ -342,6 +347,7 @@ const SpaceMenuItem = ({
   isMember: boolean;
 }) => {
   const router = useRouter();
+  const { setNavigationSelection } = usePersistedNavigationSelection();
 
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const isAncestorToCurrentPage =
@@ -366,7 +372,10 @@ const SpaceMenuItem = ({
       isNavigatable
       label={getSpaceName(space)}
       collapsed={!isExpanded}
-      onItemClick={() => router.push(spacePath)}
+      onItemClick={() => {
+        setNavigationSelection({ lastSpaceId: space.sId });
+        void router.push(spacePath);
+      }}
       isSelected={router.asPath === spacePath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={getSpaceIcon(space)}
@@ -444,6 +453,7 @@ const SpaceDataSourceViewItem = ({
   space: SpaceType;
   node?: DataSourceViewContentNode;
 }): ReactElement => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -508,7 +518,10 @@ const SpaceDataSourceViewItem = ({
       type={isEmpty ? "leaf" : "node"}
       isSelected={router.asPath === dataSourceViewPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      onItemClick={() => router.push(dataSourceViewPath)}
+      onItemClick={() => {
+        setNavigationSelection({ lastSpaceId: space.sId });
+        void router.push(dataSourceViewPath);
+      }}
       collapsed={!isExpanded || isEmpty}
       label={node ? node.title : getDataSourceNameFromView(item)}
       visual={LogoComponent}
@@ -532,7 +545,10 @@ const SpaceDataSourceViewItem = ({
                   ? `and ${notExpandableNodes.length} ${notExpandableNodesLabel}`
                   : `${notExpandableNodes.length} ${notExpandableNodesLabel}`
               }
-              onItemClick={() => router.push(dataSourceViewPath)}
+              onItemClick={() => {
+                setNavigationSelection({ lastSpaceId: space.sId });
+                void router.push(dataSourceViewPath);
+              }}
             />
           )}
         </Tree>
@@ -550,6 +566,7 @@ const SpaceDataSourceViewSubMenu = ({
   space: SpaceType;
   category: Exclude<DataSourceViewCategory, "apps">;
 }) => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -583,7 +600,10 @@ const SpaceDataSourceViewSubMenu = ({
       isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
-      onItemClick={() => router.push(spaceCategoryPath)}
+      onItemClick={() => {
+        setNavigationSelection({ lastSpaceId: space.sId });
+        void router.push(spaceCategoryPath);
+      }}
       isSelected={router.asPath === spaceCategoryPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={categoryDetails.icon}
@@ -617,6 +637,7 @@ const SpaceAppItem = ({
   app: AppType;
   owner: LightWorkspaceType;
 }): ReactElement => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
 
   const appPath = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`;
@@ -630,7 +651,10 @@ const SpaceAppItem = ({
         router.asPath.includes(appPath + "/") ||
         router.asPath.includes(appPath + "?")
       }
-      onItemClick={() => router.push(appPath)}
+      onItemClick={() => {
+        setNavigationSelection({ lastSpaceId: app.space.sId });
+        void router.push(appPath);
+      }}
       label={app.name}
       visual={CommandLineIcon}
       areActionsFading={false}
@@ -647,6 +671,7 @@ const SpaceAppSubMenu = ({
   space: SpaceType;
   category: "apps";
 }) => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
@@ -674,7 +699,10 @@ const SpaceAppSubMenu = ({
       isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
-      onItemClick={() => router.push(spaceCategoryPath)}
+      onItemClick={() => {
+        setNavigationSelection({ lastSpaceId: space.sId });
+        void router.push(spaceCategoryPath);
+      }}
       isSelected={router.asPath === spaceCategoryPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={categoryDetails.icon}

@@ -447,18 +447,23 @@ export default function SpaceWebsiteModal({
                     >
                       <RadioGroupChoice
                         value="child"
-                        iconPosition="center"
-                        className="gap-2 text-sm"
-                      >
-                        Only child pages of the provided URL
-                      </RadioGroupChoice>
+                        className="gap-2"
+                        label={
+                          <Label className="text-sm font-light">
+                            Only child pages of the provided URL
+                          </Label>
+                        }
+                      ></RadioGroupChoice>
                       <RadioGroupChoice
                         value="website"
                         iconPosition="center"
                         className="gap-2 text-sm"
-                      >
-                        Follow all the links within the domain
-                      </RadioGroupChoice>
+                        label={
+                          <Label className="text-sm font-light">
+                            Follow all the links within the domain
+                          </Label>
+                        }
+                      ></RadioGroupChoice>
                     </RadioGroup>
                   </Page.Layout>
                   <Page.Layout direction="vertical" sizing="grow">
@@ -649,7 +654,7 @@ const AdvancedSettingsModal = ({
           <div className="flex flex-col gap-4">
             {headers.map((header, index) => (
               <div key={index} className="flex gap-2">
-                <div className="flex grow flex-col gap-1">
+                <div className="flex grow flex-col gap-1 px-1">
                   <Input
                     placeholder="Header Name"
                     value={header.key}

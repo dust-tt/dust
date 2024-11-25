@@ -328,14 +328,17 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     };
   }
 
-  getHelpCenterContentNode(connectorId: number): ContentNode {
+  getHelpCenterContentNode(
+    connectorId: number,
+    { richTitle = false }: { richTitle?: boolean } = {}
+  ): ContentNode {
     const { brandId } = this;
     return {
       provider: "zendesk",
       internalId: getHelpCenterInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
       type: "folder",
-      title: `Help Center`,
+      title: richTitle ? `${this.name} - Help Center` : "Help Center",
       sourceUrl: null,
       expandable: true,
       permission: this.helpCenterPermission,
@@ -346,7 +349,10 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
 
   getTicketsContentNode(
     connectorId: number,
-    { expandable = false }: { expandable?: boolean } = {}
+    {
+      expandable = false,
+      richTitle = false,
+    }: { expandable?: boolean; richTitle?: boolean } = {}
   ): ContentNode {
     const { brandId } = this;
     return {
@@ -354,7 +360,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
       type: "folder",
-      title: `Tickets`,
+      title: richTitle ? `${this.name} - Tickets` : "Tickets",
       sourceUrl: null,
       expandable: expandable,
       permission: this.ticketsPermission,

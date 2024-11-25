@@ -858,7 +858,8 @@ export async function upsertTableFromCsv({
     if (dustRequestResult.status === 413) {
       throw new TablesError(
         "file_too_large",
-        dustRequestResult.data.error.message
+        dustRequestResult.data.error?.message ||
+          "File size exceeds the maximum limit"
       );
     }
     throw new Error(

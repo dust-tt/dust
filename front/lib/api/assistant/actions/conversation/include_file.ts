@@ -1,7 +1,6 @@
 import type {
   AgentActionSpecification,
   ContentFragmentType,
-  ConversationFileType,
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileErrorEvent,
@@ -27,6 +26,8 @@ import {
 import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
@@ -97,6 +98,8 @@ export class ConversationIncludeFileAction extends BaseAction {
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
+    this.tokensCount = blob.tokensCount;
+    this.fileTitle = blob.fileTitle;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
@@ -106,14 +109,18 @@ export class ConversationIncludeFileAction extends BaseAction {
     fileId: string,
     conversation: ConversationType,
     model: ModelConfigurationType
-  ): Promise<Result<{ file: ConversationFileType; content: string }, string>> {
+  ): Promise<
+    Result<{ fileId: string; title: string; content: string }, string>
+  > {
     // Note on `contentFragmentVersion`: two content fragment versions are created with different
     // fileIds. So we accept here rendering content fragments that are superseded. This will mean
     // that past actions on a previous version of a content fragment will correctly render the
     // content as being superseded showing the model that a new version available. The fileId of
     // that new version will be different but the title will likely be the same and the model should
-    // be able to undertstand the state of affair.
-    const m = (conversation.content.flat(1).find((m) => {
+    // be able to undertstand the state of affair. We use content.flat() to consider all versions of
+    // messages here (to support rendering a file that was part of an old version of a previous
+    // message).
+    const m = (conversation.content.flat().find((m) => {
       if (
         isContentFragmentType(m) &&
         isConversationIncludableFileContentType(m.contentType) &&
@@ -125,7 +132,9 @@ export class ConversationIncludeFileAction extends BaseAction {
     }) || null) as ContentFragmentType | null;
 
     if (!m) {
-      return new Err(`File \`${fileId}\` not found in conversation`);
+      return new Err(
+        `File \`${fileId}\` not includable or not found in conversation`
+      );
     }
 
     const rRes = await renderContentFragmentForModel(m, conversation, model, {
@@ -142,12 +151,8 @@ export class ConversationIncludeFileAction extends BaseAction {
     const text = rRes.value.content[0].text;
 
     return new Ok({
-      file: {
-        fileId,
-        title: m.title,
-        contentType: m.contentType,
-        snippet: m.snippet,
-      },
+      fileId,
+      title: m.title,
       content: text,
     });
   }
@@ -206,8 +211,9 @@ export class ConversationIncludeFileAction extends BaseAction {
       model.contextSize / CONTEXT_SIZE_DIVISOR_FOR_INCLUDE
     ) {
       return finalize(
-        // TODO(spolu): refer to the tool exactly
-        `Error: File \`${this.params.fileId}\` has too many tokens to be included, use semantic search on the conversation files instead.`
+        `Error: File \`${this.params.fileId}\` has too many tokens to be included, ` +
+          `use the \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\` or ` +
+          `\`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\` actions instead.`
       );
     }
 
@@ -367,7 +373,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
     // action for the model (token count) and the rendering of the action details (file title).
     await action.update({
       tokensCount: tokensRes.value.tokens.length,
-      fileTitle: fileRes.value.file.title,
+      fileTitle: fileRes.value.title,
     });
 
     yield {
@@ -381,7 +387,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
           fileId,
         },
         tokensCount: tokensRes.value.tokens.length,
-        fileTitle: fileRes.value.file.title,
+        fileTitle: fileRes.value.title,
         functionCallId,
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,

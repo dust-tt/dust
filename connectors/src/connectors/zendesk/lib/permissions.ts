@@ -39,17 +39,18 @@ export async function retrieveAllSelectedNodes(
     .filter(
       (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
     )
-    .map((brand) => ({
-      ...brand.getHelpCenterContentNode(connectorId),
-      title: `${brand.name} - Help Center`, // adding the name of the brand since this will be named "Help Center" otherwise
-    }));
+    .map((brand) =>
+      brand.getHelpCenterContentNode(connectorId, { richTitle: true })
+    );
 
   const ticketNodes: ContentNode[] = brands
     .filter((brand) => brand.ticketsPermission === "read")
-    .map((brand) => ({
-      ...brand.getTicketsContentNode(connectorId, { expandable: true }),
-      title: `${brand.name} - Tickets`, // adding the name of the brand since this will be named "Tickets" otherwise
-    }));
+    .map((brand) =>
+      brand.getTicketsContentNode(connectorId, {
+        expandable: true,
+        richTitle: true,
+      })
+    );
 
   return [...helpCenterNodes, ...ticketNodes];
 }

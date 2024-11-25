@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
-import { Searchbar, SearchbarProps } from "@sparkle/components/Searchbar";
+import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -338,7 +338,7 @@ const DropdownMenuShortcut = ({
 };
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
-interface DropdownMenuSearchbarProps extends SearchbarProps {}
+interface DropdownMenuSearchbarProps extends SearchInputProps {}
 
 const DropdownMenuSearchbar = React.forwardRef<
   HTMLInputElement,
@@ -352,7 +352,6 @@ const DropdownMenuSearchbar = React.forwardRef<
       onKeyDown,
       name,
       className,
-      size = "xs",
       disabled = false,
     },
     ref
@@ -364,14 +363,13 @@ const DropdownMenuSearchbar = React.forwardRef<
 
     return (
       <div className={cn("s-px-1 s-py-1", className)}>
-        <Searchbar
+        <SearchInput
           ref={ref}
           placeholder={placeholder}
           name={name}
           value={value}
           onChange={onChange}
           onKeyDown={handleKeyDown}
-          size={size}
           disabled={disabled}
         />
       </div>

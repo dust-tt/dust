@@ -65,19 +65,25 @@ export function SpaceSelector({
           return (
             <React.Fragment key={space.sId}>
               {index > 0 && <Separator />}
-              <div key={space.sId} className="py-2">
+              <div key={space.sId} className="py-1">
                 <RadioGroupChoice
                   value={space.sId}
                   disabled={isDisabled}
                   iconPosition="start"
+                  className={
+                    // needs to be handled manually because of the separator
+                    classNames(
+                      index === 0 ? "pt-2" : "",
+                      index === sortedSpaces.length - 1 ? "pb-2" : ""
+                    )
+                  }
                   onClick={() => {
                     if (isDisabled) {
                       setAlertIsDialogOpen(true);
                     }
                   }}
-                >
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1 pl-2">
+                  label={
+                    <div className={"flex items-center gap-1 pl-2"}>
                       <Icon
                         visual={getSpaceIcon(space)}
                         size="md"
@@ -96,6 +102,9 @@ export function SpaceSelector({
                         {getSpaceName(space)}
                       </span>
                     </div>
+                  }
+                >
+                  <div className="flex flex-col">
                     {selectedSpace === space.sId && (
                       <div className="ml-4 mt-1">
                         {renderChildren(selectedSpaceObj)}
