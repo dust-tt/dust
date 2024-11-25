@@ -373,7 +373,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
             sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
           },
           order: [["version", "DESC"]],
-          ...(agentsGetView.allVersions ? {} : { limit: 1 }),
+          ...(agentsGetView.allVersions ? {} : { status: "active" }),
         });
       }
       assertNever(agentsGetView);
