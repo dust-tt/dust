@@ -70,7 +70,7 @@ export const useAuthHook = () => {
       [key: string]: chrome.storage.StorageChange;
     }) => {
       if (changes.accessToken && !changes.accessToken.newValue) {
-        console.log("Access token removed from storage.", changes);
+        console.log("Access token removed from storage.");
         setTokens(null);
         setUser(null);
       }
