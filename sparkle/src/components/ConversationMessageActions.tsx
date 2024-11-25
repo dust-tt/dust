@@ -24,21 +24,21 @@ import { cn } from "@sparkle/lib/utils";
 type ConversationMessageActionsProps = {
   buttons?: React.ReactElement<typeof Button>[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
-  messageThumb?: ConversationMessageFeedbackSelectorProps;
+  messageFeedback?: ConversationMessageFeedbackSelectorProps;
 };
 
 export function ConversationMessageActions({
   buttons = [],
   messageEmoji,
-  messageThumb,
+  messageFeedback,
 }: ConversationMessageActionsProps) {
-  if (messageThumb) {
+  if (messageFeedback) {
     buttons.push(
       <ConversationMessageFeedbackSelector
         key="thumbs-selector"
-        feedback={messageThumb.feedback}
-        onSubmitThumb={messageThumb.onSubmitThumb}
-        isSubmittingThumb={messageThumb.isSubmittingThumb}
+        feedback={messageFeedback.feedback}
+        onSubmitThumb={messageFeedback.onSubmitThumb}
+        isSubmittingThumb={messageFeedback.isSubmittingThumb}
       />
     );
   }

@@ -30,7 +30,7 @@ type ConversationMessageProps = {
   children?: React.ReactNode;
   citations?: React.ReactElement[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
-  messageThumb?: ConversationMessageFeedbackSelectorProps;
+  messageFeedback?: ConversationMessageFeedbackSelectorProps;
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
@@ -48,7 +48,7 @@ export function ConversationMessage({
   children,
   citations,
   messageEmoji,
-  messageThumb,
+  messageFeedback,
   name,
   pictureUrl,
   renderName = (name) => (
@@ -80,7 +80,7 @@ export function ConversationMessage({
       <ConversationMessageActions
         buttons={buttons}
         messageEmoji={messageEmoji}
-        messageThumb={messageThumb}
+        messageFeedback={messageFeedback}
       />
     </div>
   );

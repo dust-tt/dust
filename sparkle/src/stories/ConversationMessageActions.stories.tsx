@@ -39,7 +39,7 @@ const meta = {
         type: "object",
       },
     },
-    messageThumb: {
+    messageFeedback: {
       description: "Whether to show the thumbs selector",
       control: {
         type: "object",
@@ -80,7 +80,7 @@ const ExamplePickerComponent = () => {
     []
   );
 
-  const [messageThumb, setMessageThumb] =
+  const [messageFeedback, setMessageThumb] =
     React.useState<ConversationMessageFeedbackSelectorProps>({
       feedback: {
         thumb: "up",
@@ -102,7 +102,7 @@ const ExamplePickerComponent = () => {
     <ConversationMessageActions
       buttons={buttons}
       messageEmoji={messageEmoji}
-      messageThumb={messageThumb}
+      messageFeedback={messageFeedback}
     />
   );
 };
