@@ -189,16 +189,8 @@ export async function fetchZendeskCategoriesInBrand(
     pageSize,
     url,
   }:
-    | {
-        brandSubdomain: string;
-        pageSize: number;
-        url?: never;
-      }
-    | {
-        brandSubdomain?: never;
-        pageSize?: never;
-        url: string | null;
-      }
+    | { brandSubdomain: string; pageSize: number; url?: never }
+    | { brandSubdomain?: never; pageSize?: never; url: string }
 ): Promise<{
   categories: ZendeskFetchedCategory[];
   meta: { has_more: boolean };
