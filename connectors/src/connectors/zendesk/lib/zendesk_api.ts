@@ -5,6 +5,7 @@ import { createClient } from "node-zendesk";
 import type {
   ZendeskFetchedArticle,
   ZendeskFetchedCategory,
+  ZendeskFetchedSection,
   ZendeskFetchedTicket,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
@@ -360,4 +361,32 @@ export async function fetchZendeskCurrentUser({
   );
   const data = await response.json();
   return data.user;
+}
+
+/**
+ * Fetches the Section and the User for an article.
+ */
+export async function fetchArticleMetadata(
+  zendeskApiClient: Client,
+  article: ZendeskFetchedArticle
+): Promise<{ section: ZendeskFetchedSection; user: ZendeskFetchedUser }> {
+  try {
+    const { result: section } = await zendeskApiClient.helpcenter.sections.show(
+      article.section_id
+    );
+    const { result: user } = await zendeskApiClient.users.show(
+      article.author_id
+    );
+    return { section, user };
+  } catch (e: unknown) {
+    logger.error(
+      { article, error: e },
+      "[Zendesk] Error fetching article metadata"
+    );
+    // @ts-expect-error check out https://github.com/blakmatrix/node-zendesk/blob/fa069d927bd418ee2058bb7bb913f9414e395110/src/clients/helpers.js#L262
+    if (e.statusCode === 403) {
+      throw new ExternalOAuthTokenError();
+    }
+    throw e;
+  }
 }

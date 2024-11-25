@@ -9,6 +9,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchArticleMetadata,
   fetchRecentlyUpdatedArticles,
   fetchRecentlyUpdatedTickets,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -112,10 +113,9 @@ export async function syncZendeskArticleUpdateBatchActivity({
   await concurrentExecutor(
     articles,
     async (article) => {
-      const { result: section } =
-        await zendeskApiClient.helpcenter.sections.show(article.section_id);
-      const { result: user } = await zendeskApiClient.users.show(
-        article.author_id
+      const { section, user } = await fetchArticleMetadata(
+        zendeskApiClient,
+        article
       );
 
       if (section.category_id) {
