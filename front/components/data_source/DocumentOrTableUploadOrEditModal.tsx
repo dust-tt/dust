@@ -38,10 +38,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import {
-  useCreateDataSourceDocumentMutation,
-  useUpdateDataSourceDocumentMutation,
-} from "@app/lib/swr/data_source_documents";
-import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
+  useCreateDataSourceViewDocument,
+  useDataSourceViewDocument,
+  useUpdateDataSourceViewDocument,
+} from "@app/lib/swr/data_source_view_documents";
 import { useFileProcessedContent } from "@app/lib/swr/file";
 import { useTable } from "@app/lib/swr/tables";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -132,7 +132,7 @@ const DocumentUploadOrEditModal = ({
   // Get the processed file content from the file API
   // Allows using Tika parser to extract text from files
   const [fileId, setFileId] = useState<string | null>(null);
-  const { isContentLoading } = useFileProcessedContent(owner, fileId ?? "", {
+  const { isContentLoading } = useFileProcessedContent(owner, fileId ?? null, {
     disabled: !fileId,
     onSuccess: async (response) => {
       const content = await response.text();
@@ -187,11 +187,12 @@ const DocumentUploadOrEditModal = ({
   );
 
   const onUpsertSettled = useCallback(() => {
+    setFileId(null);
     fileUploaderService.resetUpload();
   }, [fileUploaderService]);
 
   // Upsert documents to the data source
-  const patchDocumentMutation = useUpdateDataSourceDocumentMutation(
+  const patchDocumentMutation = useUpdateDataSourceViewDocument(
     owner,
     dataSourceView,
     initialId ?? "",
@@ -207,7 +208,7 @@ const DocumentUploadOrEditModal = ({
     }
   );
 
-  const createDocumentMutation = useCreateDataSourceDocumentMutation(
+  const createDocumentMutation = useCreateDataSourceViewDocument(
     owner,
     dataSourceView,
     {

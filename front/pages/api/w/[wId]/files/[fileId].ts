@@ -20,7 +20,6 @@ export const config = {
 };
 
 // Declared here because endpoint-specific.
-//TODO: Create an enum for this class
 const VALID_VIEW_VERSIONS: FileVersion[] = [
   "original",
   "processed",
