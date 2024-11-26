@@ -175,7 +175,16 @@ ${metadata}
 Conversation:
 ${comments
   .map((comment) => {
-    const author = users.find((user) => user.id === comment.author_id);
+    let author;
+    try {
+      author = users.find((user) => user.id === comment.author_id);
+    } catch (e) {
+      logger.warn(
+        { connectorId, e, ...loggerArgs },
+        "[Zendesk] Error finding the author of a comment."
+      );
+      author = null;
+    }
     return `
 [${new Date(Number(comment?.created_at)).toISOString()}] ${
       author ? `${author.name} (${author.email})` : "Unknown User"

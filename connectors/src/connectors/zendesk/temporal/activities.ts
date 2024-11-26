@@ -433,7 +433,7 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
-  const users = await zendeskApiClient.users.list();
+  const users = (await zendeskApiClient.users.list()) || [];
 
   const comments = await concurrentExecutor(
     tickets,
