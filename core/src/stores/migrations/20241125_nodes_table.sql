@@ -27,9 +27,9 @@ CREATE TABLE data_sources_nodes (
     FOREIGN KEY("table")          REFERENCES tables(id),
     FOREIGN KEY(folder)         REFERENCES data_sources_folders(id),
     CONSTRAINT data_sources_nodes_document_id_table_id_folder_id_check CHECK (
-        (document IS NOT NULL AND table IS NULL AND folder IS NULL) OR
-        (document IS NULL AND table IS NOT NULL AND folder IS NULL) OR
-        (document IS NULL AND table IS NULL AND folder IS NOT NULL)
+        (document IS NOT NULL AND "table" IS NULL AND folder IS NULL) OR
+        (document IS NULL AND "table" IS NOT NULL AND folder IS NULL) OR
+        (document IS NULL AND "table" IS NULL AND folder IS NOT NULL)
     )
 );
 
