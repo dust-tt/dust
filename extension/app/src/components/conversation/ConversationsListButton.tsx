@@ -12,7 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useConversations } from "@extension/components/conversation/useConversations";
 import moment from "moment";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 type GroupLabel =
   | "Today"
@@ -24,6 +24,8 @@ type GroupLabel =
 
 const Content = () => {
   const { conversations, isConversationsLoading } = useConversations();
+  const { conversationId } = useParams();
+
   const navigate = useNavigate();
 
   const groupConversationsByDate = (
@@ -89,6 +91,11 @@ const Content = () => {
             <DropdownMenuItem
               key={conversation.sId}
               label={conversation.title || "Untitled Conversation"}
+              className={
+                conversationId === conversation.sId
+                  ? "bg-primary-50"
+                  : undefined
+              }
               onClick={() => {
                 navigate(`/conversations/${conversation.sId}`);
               }}
