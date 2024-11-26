@@ -4,10 +4,12 @@ import { Button } from "@sparkle/components";
 import {
   ConversationMessageActions,
   ConversationMessageEmojiSelectorProps,
-  ConversationMessageFeedbackSelectorProps,
-  FeedbackSelector,
 } from "@sparkle/components/ConversationMessageActions";
 import { ConversationMessageContent } from "@sparkle/components/ConversationMessageContent";
+import {
+  ConversationMessageFeedbackSelectorProps,
+  FeedbackSelector,
+} from "@sparkle/components/ConversationMessageFeedbackSelector";
 import { ConversationMessageHeader } from "@sparkle/components/ConversationMessageHeader";
 import { cn } from "@sparkle/lib/utils";
 
@@ -83,7 +85,6 @@ export function ConversationMessage({
       <ConversationMessageActions
         buttons={buttons}
         messageEmoji={messageEmoji}
-        messageFeedback={messageFeedback}
       />
     </div>
   );
