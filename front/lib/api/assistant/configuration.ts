@@ -366,15 +366,35 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
-        return AgentConfiguration.findAll({
+        const agents = await AgentConfiguration.findAll({
           where: {
             workspaceId: owner.id,
             ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
             sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
-            ...(agentsGetView.allVersions ? {} : { status: "active" }),
           },
           order: [["version", "DESC"]],
         });
+
+        if (agentsGetView.allVersions) {
+          return agents;
+        }
+
+        // Group by sId and keep active version if exists, otherwise latest version
+        return Object.values(
+          agents.reduce(
+            (acc, agent) => {
+              if (
+                !acc[agent.sId] ||
+                (agent.status === "active" &&
+                  acc[agent.sId].status !== "active")
+              ) {
+                acc[agent.sId] = agent;
+              }
+              return acc;
+            },
+            {} as Record<string, AgentConfiguration>
+          )
+        );
       }
       assertNever(agentsGetView);
   }
