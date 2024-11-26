@@ -9,6 +9,7 @@ use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+    data_sources::node::Node,
     databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
@@ -260,6 +261,16 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
+
+    // Data Sources Nodes
+    async fn upsert_data_source_node(&self, data_source_id: &str, node: &Node) -> Result<()>;
+    async fn get_data_source_node(
+        &self,
+        data_source_id: &str,
+        node_id: &str,
+    ) -> Result<Option<Node>>;
+    async fn delete_data_source_node(&self, data_source_id: &str, node_id: &str) -> Result<()>;
+
     // LLM Cache
     async fn llm_cache_get(
         &self,
@@ -344,7 +355,7 @@ impl Clone for Box<dyn Store + Sync + Send> {
     }
 }
 
-pub const POSTGRES_TABLES: [&'static str; 14] = [
+pub const POSTGRES_TABLES: [&'static str; 16] = [
     "-- projects
      CREATE TABLE IF NOT EXISTS projects (
         id BIGSERIAL PRIMARY KEY
@@ -486,9 +497,40 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        remote_database_secret_id    TEXT,
        FOREIGN KEY(data_source)     REFERENCES data_sources(id)
     );",
+    "-- data sources folders
+    CREATE TABLE IF NOT EXISTS data_sources_folders (
+       id                           BIGSERIAL PRIMARY KEY,
+       data_source                  BIGINT NOT NULL,
+       created                      BIGINT NOT NULL,
+       folder_id                    TEXT NOT NULL,
+       FOREIGN KEY(data_source)    REFERENCES data_sources(id)
+    );",
+    "-- data sources nodes
+    CREATE TABLE IF NOT EXISTS data_sources_nodes (
+       id                           BIGSERIAL PRIMARY KEY,
+       created                      BIGINT NOT NULL,
+       data_source                  BIGINT NOT NULL,
+       timestamp                    BIGINT NOT NULL,
+       node_id                      TEXT NOT NULL,
+       title                        TEXT NOT NULL,
+       mime_type                    TEXT NOT NULL,
+       parents                      TEXT[] NOT NULL,
+       document                     BIGINT,
+       table                        BIGINT,
+       folder                       BIGINT,
+       FOREIGN KEY(data_source)    REFERENCES data_sources(id),
+       FOREIGN KEY(document)       REFERENCES data_sources_documents(id),
+       FOREIGN KEY(table)          REFERENCES tables(id),
+       FOREIGN KEY(folder)         REFERENCES data_sources_folders(id),
+       CONSTRAINT data_sources_nodes_document_id_table_id_folder_id_check CHECK (
+           (document IS NOT NULL AND table IS NULL AND folder IS NULL) OR
+           (document IS NULL AND table IS NOT NULL AND folder IS NULL) OR
+           (document IS NULL AND table IS NULL AND folder IS NOT NULL)
+        )
+    );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 27] = [
+pub const SQL_INDEXES: [&'static str; 30] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -549,6 +591,12 @@ pub const SQL_INDEXES: [&'static str; 27] = [
         idx_sqlite_workers_url ON sqlite_workers (url);",
     "CREATE INDEX IF NOT EXISTS
         idx_status_deleted ON data_sources_documents (id) WHERE status = 'deleted';",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_data_sources_folders_data_source_folder_id ON data_sources_folders(data_source, folder_id);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_data_source_node_id ON data_sources_nodes(data_source, node_id);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_parents_array ON data_sources_nodes USING GIN (parents);",
 ];
 
 pub const SQL_FUNCTIONS: [&'static str; 2] = [
