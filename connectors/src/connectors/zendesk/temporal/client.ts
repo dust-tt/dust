@@ -19,7 +19,7 @@ import {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
@@ -111,18 +111,13 @@ export async function launchZendeskSyncWorkflow(
 }
 
 export async function stopZendeskWorkflows(
-  connectorId: ModelId
+  connector: ConnectorResource
 ): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(
-      `[Zendesk] Connector not found. ConnectorId: ${connectorId}`
-    );
-  }
+
   const workflowIds = [
-    getZendeskSyncWorkflowId(connectorId),
-    getZendeskGarbageCollectionWorkflowId(connectorId),
+    getZendeskSyncWorkflowId(connector.id),
+    getZendeskGarbageCollectionWorkflowId(connector.id),
   ];
   for (const workflowId of workflowIds) {
     try {
