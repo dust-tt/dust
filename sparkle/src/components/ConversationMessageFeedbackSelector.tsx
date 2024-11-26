@@ -9,6 +9,7 @@ import {
 } from "@sparkle/components/Popover";
 import { TextArea } from "@sparkle/components/TextArea";
 import { HandThumbDownIcon, HandThumbUpIcon } from "@sparkle/icons/solid";
+import { Tooltip } from "@sparkle/index_with_tw_base";
 
 export type ThumbReaction = "up" | "down";
 export type ConversationMessageFeedbackType = {
@@ -58,21 +59,31 @@ export function FeedbackSelector(
       <PopoverRoot open={isPopoverOpen}>
         <PopoverTrigger asChild>
           <div className="s-flex s-items-center">
-            <Button
-              variant={feedback?.thumb === "up" ? "highlight" : "outline"}
-              size="xs"
-              disabled={isSubmittingThumb}
-              onClick={() => selectThumb("up")}
-              className={"s-rounded-r-none s-border-r-0"}
-              icon={HandThumbUpIcon}
+            <Tooltip
+              label="I love this answer!"
+              trigger={
+                <Button
+                  variant={feedback?.thumb === "up" ? "highlight" : "outline"}
+                  size="xs"
+                  disabled={isSubmittingThumb}
+                  onClick={() => selectThumb("up")}
+                  className={"s-rounded-r-none s-border-r-0"}
+                  icon={HandThumbUpIcon}
+                />
+              }
             />
-            <Button
-              variant={feedback?.thumb === "down" ? "highlight" : "outline"}
-              size="xs"
-              disabled={isSubmittingThumb}
-              onClick={() => selectThumb("down")}
-              className={"s-rounded-l-none s-border-l-0"}
-              icon={HandThumbDownIcon}
+            <Tooltip
+              label="This answer is not good enough."
+              trigger={
+                <Button
+                  variant={feedback?.thumb === "down" ? "highlight" : "outline"}
+                  size="xs"
+                  disabled={isSubmittingThumb}
+                  onClick={() => selectThumb("down")}
+                  className={"s-rounded-l-none s-border-l-0"}
+                  icon={HandThumbDownIcon}
+                />
+              }
             />
           </div>
         </PopoverTrigger>
