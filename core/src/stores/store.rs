@@ -508,12 +508,12 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
     "-- data sources nodes
     CREATE TABLE IF NOT EXISTS data_sources_nodes (
        id                           BIGSERIAL PRIMARY KEY,
-       data_source                  BIGINT NOT NULL,
        created                      BIGINT NOT NULL,
+       data_source                  BIGINT NOT NULL,
        timestamp                    BIGINT NOT NULL,
        node_id                      TEXT NOT NULL,
        title                        TEXT NOT NULL,
-       mimeType                     TEXT NOT NULL,
+       mime_type                    TEXT NOT NULL,
        parents                      TEXT[] NOT NULL,
        document                     BIGINT,
        table                        BIGINT,
