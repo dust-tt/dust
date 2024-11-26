@@ -194,7 +194,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       dataSourceId: dataSourceConfig.dataSourceId,
     };
 
-    const syncResult = await this.sync();
+    const syncResult = await launchZendeskSyncWorkflow(connector);
     if (syncResult.isErr()) {
       logger.error(
         { ...loggerArgs, error: syncResult.error },
@@ -202,6 +202,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       );
       return syncResult;
     }
+
     const gcResult = await launchZendeskGarbageCollectionWorkflow(connector);
     if (gcResult.isErr()) {
       logger.error(
