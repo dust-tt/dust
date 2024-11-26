@@ -1,15 +1,7 @@
 import React from "react";
 
-import { Button, Page } from "@sparkle/components";
-import {
-  ConversationMessageActions,
-  ConversationMessageEmojiSelectorProps,
-} from "@sparkle/components/ConversationMessageActions";
+import { Button } from "@sparkle/components";
 import { ConversationMessageContent } from "@sparkle/components/ConversationMessageContent";
-import {
-  ConversationMessageFeedbackSelectorProps,
-  FeedbackSelector,
-} from "@sparkle/components/ConversationMessageFeedbackSelector";
 import { ConversationMessageHeader } from "@sparkle/components/ConversationMessageHeader";
 import { cn } from "@sparkle/lib/utils";
 
@@ -32,8 +24,6 @@ type ConversationMessageProps = {
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
   citations?: React.ReactElement[];
-  messageEmoji?: ConversationMessageEmojiSelectorProps;
-  messageFeedback?: ConversationMessageFeedbackSelectorProps;
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
@@ -50,8 +40,6 @@ export function ConversationMessage({
   buttons,
   children,
   citations,
-  messageEmoji,
-  messageFeedback,
   name,
   pictureUrl,
   renderName = (name) => (
@@ -80,13 +68,7 @@ export function ConversationMessage({
         {children}
       </ConversationMessageContent>
 
-      <Page.Horizontal align="right" gap="sm">
-        <ConversationMessageActions
-          buttons={buttons}
-          messageEmoji={messageEmoji}
-        />
-        {messageFeedback && <FeedbackSelector {...messageFeedback} />}
-      </Page.Horizontal>
+      <div className="s-flex s-justify-end s-gap-2">{buttons}</div>
     </div>
   );
 }
