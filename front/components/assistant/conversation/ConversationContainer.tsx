@@ -170,7 +170,7 @@ export function ConversationContainer({
     }
   };
 
-  const { submit: handleMessageSubmit } = useSubmitFunction(
+  const { submit: handleConversationCreation } = useSubmitFunction(
     useCallback(
       async (
         input: string,
@@ -186,6 +186,7 @@ export function ConversationContainer({
             contentFragments,
           },
         });
+        throw "[FAKE]failed to create conversation";
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
             setPlanLimitReached(true);
@@ -196,6 +197,7 @@ export function ConversationContainer({
               type: "error",
             });
           }
+          throw conversationRes.error;
         } else {
           // We start the push before creating the message to optimize for instantaneity as well.
           setActiveConversationId(conversationRes.value.sId);
@@ -297,7 +299,9 @@ export function ConversationContainer({
 
       <FixedAssistantInputBar
         owner={owner}
-        onSubmit={activeConversationId ? handleSubmit : handleMessageSubmit}
+        onSubmit={
+          activeConversationId ? handleSubmit : handleConversationCreation
+        }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
       />

@@ -152,7 +152,7 @@ export function AssistantInputBar({
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
-  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = (
+  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
     textAndMentions,
     resetEditorText
@@ -166,18 +166,28 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    onSubmit(
-      text,
-      mentions,
-      fileUploaderService.getFileBlobs().map((cf) => {
-        return {
-          title: cf.filename,
-          fileId: cf.fileId,
-        };
-      })
-    );
-    resetEditorText();
-    fileUploaderService.resetUpload();
+    // When we are creating a new conversation, we will disable the input bar, show a loading spinner and in case of error, re-enable the input bar
+    if (!conversationId) {
+    }
+
+    try {
+      await onSubmit(
+        text,
+        mentions,
+        fileUploaderService.getFileBlobs().map((cf) => {
+          return {
+            title: cf.filename,
+            fileId: cf.fileId,
+          };
+        })
+      );
+      resetEditorText();
+      fileUploaderService.resetUpload();
+    } catch (e) {
+      // Re-enable the input bar & hide loading
+      if (!conversationId) {
+      }
+    }
   };
 
   const [isStopping, setIsStopping] = useState<boolean>(false);
