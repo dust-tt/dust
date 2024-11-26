@@ -1,12 +1,11 @@
 import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
-import type { AgentMention, MentionType } from "@dust-tt/types";
+import type { AgentMention, MentionType, Result } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
-import _ from "lodash";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
@@ -18,6 +17,7 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { DustError } from "@app/lib/error";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
@@ -45,7 +45,7 @@ export function AssistantInputBar({
     input: string,
     mentions: MentionType[],
     contentFragments: UploadedContentFragment[]
-  ) => void;
+  ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
@@ -169,32 +169,31 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    let delayedLoading: number = 0;
     // When we are creating a new conversation, we will disable the input bar, show a loading spinner and in case of error, re-enable the input bar
     if (!conversationId) {
-      delayedLoading = _.delay(() => setLoading(true), 250);
+      setLoading(true);
       setDisableSendButton(true);
     }
 
-    try {
-      await onSubmit(
-        text,
-        mentions,
-        fileUploaderService.getFileBlobs().map((cf) => {
-          return {
-            title: cf.filename,
-            fileId: cf.fileId,
-          };
-        })
-      );
+    const r = await onSubmit(
+      text,
+      mentions,
+      fileUploaderService.getFileBlobs().map((cf) => {
+        return {
+          title: cf.filename,
+          fileId: cf.fileId,
+        };
+      })
+    );
+
+    if (!conversationId) {
+      setLoading(false);
+      setDisableSendButton(false);
+    }
+
+    if (r.isOk()) {
       resetEditorText();
       fileUploaderService.resetUpload();
-    } finally {
-      if (!conversationId) {
-        clearTimeout(delayedLoading);
-        setLoading(false);
-        setDisableSendButton(false);
-      }
     }
   };
 
@@ -315,7 +314,7 @@ export function FixedAssistantInputBar({
     input: string,
     mentions: MentionType[],
     contentFragments: UploadedContentFragment[]
-  ) => void;
+  ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
