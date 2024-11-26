@@ -201,7 +201,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         )}
       >
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
-          <div className="flex w-full flex-col pl-2">
+          <div className="flex w-full flex-col">
             {isMultiSelect ? (
               <div className="flex w-full items-center justify-end py-2 pr-2">
                 <Button
@@ -284,7 +284,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </Label>
             )}
             <Separator />
-            <ScrollArea className="w-full">
+            <ScrollArea className="w-full px-2">
               {conversationsByDate &&
                 Object.keys(conversationsByDate).map((dateLabel) => (
                   <RenderConversations
