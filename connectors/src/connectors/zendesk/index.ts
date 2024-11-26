@@ -34,13 +34,14 @@ import {
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { fetchZendeskCurrentUser } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
+  launchZendeskFullSyncWorkflow,
   launchZendeskGarbageCollectionWorkflow,
   launchZendeskSyncWorkflow,
   stopZendeskWorkflows,
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -158,6 +159,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     return new Ok(connector.id.toString());
   }
 
+  /**
+   * Deletes the connector and all its related resources.
+   */
   async clean(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -176,10 +180,23 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     return result;
   }
 
+  /**
+   * Stops all workflows related to the connector (sync and garbage collection).
+   */
   async stop(): Promise<Result<undefined, Error>> {
-    return stopZendeskWorkflows(this.connectorId);
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      throw new Error(
+        `[Zendesk] Connector not found. ConnectorId: ${connectorId}`
+      );
+    }
+    return stopZendeskWorkflows(connector);
   }
 
+  /**
+   * Launches an incremental workflow (sync workflow without signals) and the garbage collection workflow for the connector.
+   */
   async resume(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -216,10 +233,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
   /**
    * Launches a full re-sync workflow for the connector,
-   * restarting workflows with the signals necessary to resync every resource selected by the user.
-   * It sends signals for all the brands and for all the categories whose Help Center is not selected as a whole.
+   * syncing every resource selected by the user with forceResync = true.
    */
-  async sync(): Promise<Result<string, Error>> {
+  async sync({
+    fromTs,
+  }: {
+    fromTs: number | null;
+  }): Promise<Result<string, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
@@ -227,35 +247,25 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    // syncing all the brands syncs tickets and whole help centers when selected
-    const brandIds = await ZendeskBrandResource.fetchAllBrandIds(connectorId);
-    const noReadHelpCenterBrandIds =
-      await ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds(
-        connectorId
-      );
-    // syncing individual categories syncs for ones where the Help Center is not selected as a whole
-    const categoryIds = (
-      await concurrentExecutor(
-        noReadHelpCenterBrandIds,
-        async (brandId) => {
-          const categoryIds =
-            await ZendeskCategoryResource.fetchReadOnlyCategoryIdsByBrandId({
-              connectorId,
-              brandId,
-            });
-          return categoryIds.map((categoryId) => ({ categoryId, brandId }));
-        },
-        { concurrency: 10 }
-      )
-    ).flat();
+    // launching an incremental workflow taking the diff starting from the given timestamp
+    if (fromTs) {
+      const cursors = await ZendeskTimestampCursor.findOne({
+        where: { connectorId },
+      });
+      if (!cursors) {
+        throw new Error(
+          "[Zendesk] Cannot use fromTs on a connector that has never completed an initial sync."
+        );
+      }
+      await cursors.update({ timestampCursor: new Date(fromTs) });
+      const result = await launchZendeskSyncWorkflow(connector);
+      return result.isErr() ? result : new Ok(connector.id.toString());
+    } else {
+      await ZendeskTimestampCursor.destroy({ where: { connectorId } });
+    }
 
-    const result = await launchZendeskSyncWorkflow(connector, {
-      brandIds,
-      categoryIds,
-      forceResync: true,
-    });
-
-    return result.isErr() ? result : new Ok(connector.id.toString());
+    // launching a full sync workflow otherwise
+    return launchZendeskFullSyncWorkflow(connector, { forceResync: true });
   }
 
   async retrievePermissions({
@@ -285,6 +295,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  /**
+   * Updates the permissions stored in db,
+   * then launches a sync workflow with the signals
+   * corresponding to the resources that were modified to reflect the changes.
+   */
   async setPermissions({
     permissions,
   }: {
@@ -443,6 +458,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  /**
+   * Retrieves a batch of content nodes given their internal IDs.
+   */
   async retrieveBatchContentNodes({
     internalIds,
   }: {
@@ -633,6 +651,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     throw new Error("Method not implemented.");
   }
 
+  /**
+   * Marks the connector as paused in db and stops all workflows.
+   */
   async pause(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -644,6 +665,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     return this.stop();
   }
 
+  /**
+   * Marks the connector as unpaused in db and restarts the workflows.
+   */
   async unpause(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -651,6 +675,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
+    // reset the cursor here to trigger a full resync
     await connector.markAsUnpaused();
     return this.resume();
   }
