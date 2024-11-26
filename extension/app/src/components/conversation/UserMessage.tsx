@@ -110,7 +110,9 @@ export function UserMessage({
           variant="outline"
           size="xs"
           icon={enabled ? HeartIcon : HeartStrokeIcon}
-          label={enabled ? "Remove from context menu" : "Save to context menu"}
+          label={
+            enabled ? "Remove from quick actions" : "Save to quick actions"
+          }
           onClick={async () => {
             if (enabled) {
               const configurations = savedConfigurations.filter(
