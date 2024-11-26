@@ -5,7 +5,6 @@ import type {
 import type {
   ConnectorProvider,
   ConnectorType,
-  ConversationType,
   CoreAPIDataSource,
   CoreAPIDocument,
   CoreAPIError,
@@ -14,6 +13,7 @@ import type {
   DataSourceType,
   DataSourceWithConnectorDetailsType,
   FrontDataSourceDocumentSectionType,
+  ModelId,
   PlanType,
   Result,
   UpsertTableFromCsvRequestType,
@@ -729,14 +729,14 @@ export async function createDataSourceWithoutProvider(
     space,
     name,
     description,
-    conversation,
+    conversationId,
   }: {
     plan: PlanType;
     owner: WorkspaceType;
     space: SpaceResource;
     name: string;
     description: string | null;
-    conversation?: ConversationType;
+    conversationId?: ModelId;
   }
 ): Promise<
   Result<
@@ -829,7 +829,7 @@ export async function createDataSourceWithoutProvider(
         dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
         workspaceId: owner.id,
         assistantDefaultSelected: false,
-        conversationId: conversation?.id,
+        conversationId: conversationId,
       },
       space
     );

@@ -1,8 +1,8 @@
 import type {
-  ConversationType,
   FileUseCase,
   PlainTextContentType,
   Result,
+  SupportedFileContentType,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -18,7 +18,6 @@ import { Writable } from "stream";
 import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
-import { getConversation } from "@app/lib/api/assistant/conversation";
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import config from "@app/lib/api/config";
 import {
@@ -28,6 +27,7 @@ import {
 } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
+import { Conversation } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -68,98 +68,121 @@ const notSupportedError: ProcessingFunction = async ({ file }) => {
 
 async function generateSnippet(
   auth: Authenticator,
-  content: string
+  content: string,
+  contentType: SupportedFileContentType
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
-  if (!model) {
-    return new Err(
-      new Error(`Failed to find a whitelisted model to generate title`)
-    );
-  }
+  if (
+    contentType === "text/csv" ||
+    contentType === "text/comma-separated-values"
+  ) {
+    // Parse only the headers from the CSV file
+    const headers = content.split("\n")[0];
 
-  const appConfig = cloneBaseConfig(
-    DustProdActionRegistry["conversation-file-summarizer"].config
-  );
-  appConfig.MODEL.provider_id = model.providerId;
-  appConfig.MODEL.model_id = model.modelId;
+    let snippet = `CSV file with headers: ${headers}`;
+    if (snippet.length > 256) {
+      snippet = snippet.slice(0, 242) + "... (truncated)";
+    }
 
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const resTokenize = await coreAPI.tokenize({
-    text: content,
-    providerId: model.providerId,
-    modelId: model.modelId,
-  });
-
-  if (resTokenize.isErr()) {
-    return new Err(
-      new Error(
-        `Error tokenizing content: ${resTokenize.error.code} ${resTokenize.error.message}`
-      )
-    );
-  }
-
-  const tokensCount = resTokenize.value.tokens.length;
-  const allowedTokens = model.contextSize * 0.9;
-  if (tokensCount > allowedTokens) {
-    // Truncate the content to the context size * 0.9 using cross product
-    const truncateLength = Math.floor(
-      (allowedTokens * content.length) / tokensCount
-    );
-
-    logger.warn(
-      {
-        tokensCount,
-        contentLength: content.length,
-        contextSize: model.contextSize,
-      },
-      `Truncating content to ${truncateLength} characters`
-    );
-
-    content = content.slice(0, truncateLength);
-  }
-
-  const res = await runAction(auth, "conversation-file-summarizer", appConfig, [
-    {
-      content: content,
-    },
-  ]);
-
-  if (res.isErr()) {
-    return new Err(
-      new Error(
-        `Error generating snippet: ${res.error.type} ${res.error.message}`
-      )
-    );
-  }
-
-  const {
-    status: { run },
-    traces,
-    results,
-  } = res.value;
-
-  switch (run) {
-    case "errored":
-      const error = removeNulls(traces.map((t) => t[1][0][0].error)).join(", ");
-      return new Err(new Error(`Error generating snippet: ${error}`));
-    case "succeeded":
-      if (!results || results.length === 0) {
-        return new Err(
-          new Error(
-            `Error generating snippet: no results returned while run was successful`
-          )
-        );
-      }
-      const snippet = results[0][0].value as string;
-      return new Ok(snippet);
-    case "running":
+    return new Ok(snippet);
+  } else {
+    const model = getSmallWhitelistedModel(owner);
+    if (!model) {
       return new Err(
-        new Error(`Snippet generation is still running, should never happen.`)
+        new Error(`Failed to find a whitelisted model to generate title`)
       );
-    default:
-      assertNever(run);
+    }
+
+    const appConfig = cloneBaseConfig(
+      DustProdActionRegistry["conversation-file-summarizer"].config
+    );
+    appConfig.MODEL.provider_id = model.providerId;
+    appConfig.MODEL.model_id = model.modelId;
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const resTokenize = await coreAPI.tokenize({
+      text: content,
+      providerId: model.providerId,
+      modelId: model.modelId,
+    });
+
+    if (resTokenize.isErr()) {
+      return new Err(
+        new Error(
+          `Error tokenizing content: ${resTokenize.error.code} ${resTokenize.error.message}`
+        )
+      );
+    }
+
+    const tokensCount = resTokenize.value.tokens.length;
+    const allowedTokens = model.contextSize * 0.9;
+    if (tokensCount > allowedTokens) {
+      // Truncate the content to the context size * 0.9 using cross product
+      const truncateLength = Math.floor(
+        (allowedTokens * content.length) / tokensCount
+      );
+
+      logger.warn(
+        {
+          tokensCount,
+          contentLength: content.length,
+          contextSize: model.contextSize,
+        },
+        `Truncating content to ${truncateLength} characters`
+      );
+
+      content = content.slice(0, truncateLength);
+    }
+
+    const res = await runAction(
+      auth,
+      "conversation-file-summarizer",
+      appConfig,
+      [
+        {
+          content: content,
+        },
+      ]
+    );
+
+    if (res.isErr()) {
+      return new Err(
+        new Error(
+          `Error generating snippet: ${res.error.type} ${res.error.message}`
+        )
+      );
+    }
+
+    const {
+      status: { run },
+      traces,
+      results,
+    } = res.value;
+
+    switch (run) {
+      case "errored":
+        const error = removeNulls(traces.map((t) => t[1][0][0].error)).join(
+          ", "
+        );
+        return new Err(new Error(`Error generating snippet: ${error}`));
+      case "succeeded":
+        if (!results || results.length === 0) {
+          return new Err(
+            new Error(
+              `Error generating snippet: no results returned while run was successful`
+            )
+          );
+        }
+        const snippet = results[0][0].value as string;
+        return new Ok(snippet);
+      case "running":
+        return new Err(
+          new Error(`Snippet generation is still running, should never happen.`)
+        );
+      default:
+        assertNever(run);
+    }
   }
 }
 
@@ -271,12 +294,12 @@ const processingPerContentType: ProcessingPerContentType = {
   "text/comma-separated-values": {
     conversation: upsertTableToDatasource,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: upsertTableToDatasource,
   },
   "text/csv": {
     conversation: upsertTableToDatasource,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: upsertTableToDatasource,
   },
   "text/markdown": {
     conversation: upsertDocumentToDatasource,
@@ -350,7 +373,7 @@ async function getFileContent(
 
 export async function processAndUpsertToDataSource(
   auth: Authenticator,
-  { file }: { file: FileResource }
+  { file, optionalContent }: { file: FileResource; optionalContent?: string }
 ): Promise<
   Result<
     FileResource,
@@ -363,11 +386,11 @@ export async function processAndUpsertToDataSource(
     }
   >
 > {
-  // TODO(JIT) the tool output flow do not go through this path.
   const jitEnabled = await isJITActionsEnabled(auth);
-  const isJitCompatibleUseCase = file.useCase === "conversation";
+  const isJitCompatibleUseCase =
+    file.useCase === "conversation" || file.useCase === "tool_output";
   const hasJitRequiredMetadata =
-    file.useCase === "conversation" &&
+    isJitCompatibleUseCase &&
     !!file.useCaseMetadata &&
     !!file.useCaseMetadata.conversationId;
   const isJitSupportedContentType = isSupportedPlainTextContentType(
@@ -394,7 +417,9 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  const content = await getFileContent(auth, file);
+  const content = optionalContent
+    ? optionalContent
+    : await getFileContent(auth, file);
 
   if (!content) {
     return new Err({
@@ -404,17 +429,22 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  const r = await getConversation(auth, file.useCaseMetadata.conversationId);
+  const workspace = auth.getNonNullableWorkspace();
 
-  if (r.isErr()) {
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: file.useCaseMetadata.conversationId,
+      workspaceId: workspace.id,
+    },
+  });
+
+  if (conversation === null) {
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to fetch conversation : ${r.error}`,
+      message: `Failed to fetch conversation.`,
     });
   }
-
-  const conversation: ConversationType = r.value;
 
   // Fetch the datasource linked to the conversation...
   let dataSource = await DataSourceResource.fetchByConversationId(
@@ -435,7 +465,7 @@ export async function processAndUpsertToDataSource(
       space: conversationsSpace,
       name: name,
       description: "Files uploaded to conversation",
-      conversation: conversation,
+      conversationId: conversation.id,
     });
 
     if (r.isErr()) {
@@ -456,7 +486,7 @@ export async function processAndUpsertToDataSource(
       content,
       dataSource,
     }),
-    generateSnippet(auth, content),
+    generateSnippet(auth, content, file.contentType),
   ]);
 
   if (processingRes.isErr()) {
