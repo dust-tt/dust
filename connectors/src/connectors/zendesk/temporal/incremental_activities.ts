@@ -14,7 +14,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -28,7 +28,7 @@ import {
 export async function getZendeskTimestampCursorActivity(
   connectorId: ModelId
 ): Promise<Date> {
-  const cursors = await ZendeskTimestampCursors.findOne({
+  const cursors = await ZendeskTimestampCursor.findOne({
     where: { connectorId },
   });
   if (!cursors) {
@@ -36,9 +36,7 @@ export async function getZendeskTimestampCursorActivity(
   }
   // we get a StartTimeTooRecent error before 1 minute
   const minAgo = Date.now() - 60 * 1000; // 1 minute ago
-  return cursors.timestampCursor
-    ? new Date(Math.min(cursors.timestampCursor.getTime(), minAgo))
-    : new Date(minAgo);
+  return new Date(Math.min(cursors.timestampCursor.getTime(), minAgo));
 }
 
 /**
@@ -51,7 +49,7 @@ export async function setZendeskTimestampCursorActivity({
   connectorId: ModelId;
   currentSyncDateMs: number;
 }) {
-  const cursors = await ZendeskTimestampCursors.findOne({
+  const cursors = await ZendeskTimestampCursor.findOne({
     where: { connectorId },
   });
   if (!cursors) {

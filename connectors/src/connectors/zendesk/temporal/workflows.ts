@@ -71,7 +71,8 @@ export async function zendeskSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  const { isInitialSync } = await zendeskConnectorStartSync(connectorId);
+  const { cursor } = await zendeskConnectorStartSync(connectorId);
+  const isInitialSync = !cursor;
 
   const brandIds = new Set<number>();
   const brandSignals: ZendeskUpdateSignal[] = [];
