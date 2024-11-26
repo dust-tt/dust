@@ -180,7 +180,7 @@ ${comments
       author = users.find((user) => user.id === comment.author_id);
     } catch (e) {
       logger.warn(
-        { connectorId, e, ...loggerArgs },
+        { connectorId, e, usersType: typeof users, ...loggerArgs },
         "[Zendesk] Error finding the author of a comment."
       );
       author = null;
