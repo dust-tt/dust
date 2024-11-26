@@ -18,6 +18,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -199,6 +200,7 @@ export async function syncZendeskCategoryBatchActivity({
       syncCategory({ connectorId, brandId, category, currentSyncDateMs }),
     {
       concurrency: 10,
+      onBatchComplete: heartbeat,
     }
   );
 
@@ -361,7 +363,10 @@ export async function syncZendeskArticleBatchActivity({
         loggerArgs,
         forceResync,
       }),
-    { concurrency: 10 }
+    {
+      concurrency: 10,
+      onBatchComplete: heartbeat,
+    }
   );
   return { hasMore, nextLink };
 }
@@ -446,7 +451,10 @@ export async function syncZendeskTicketBatchActivity({
         users,
       });
     },
-    { concurrency: 10 }
+    {
+      concurrency: 10,
+      onBatchComplete: heartbeat,
+    }
   );
 
   logger.info(
