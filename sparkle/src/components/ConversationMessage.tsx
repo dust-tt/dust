@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Button } from "@sparkle/components";
+import { Button, Page } from "@sparkle/components";
 import {
   ConversationMessageActions,
   ConversationMessageEmojiSelectorProps,
@@ -80,12 +80,13 @@ export function ConversationMessage({
         {children}
       </ConversationMessageContent>
 
-      {messageFeedback && <FeedbackSelector {...messageFeedback} />}
-
-      <ConversationMessageActions
-        buttons={buttons}
-        messageEmoji={messageEmoji}
-      />
+      <Page.Horizontal align="right" gap="sm">
+        <ConversationMessageActions
+          buttons={buttons}
+          messageEmoji={messageEmoji}
+        />
+        {messageFeedback && <FeedbackSelector {...messageFeedback} />}
+      </Page.Horizontal>
     </div>
   );
 }
