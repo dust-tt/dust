@@ -8,6 +8,7 @@ import type {
   ZendeskFetchedTicket,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
+import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
@@ -166,16 +167,11 @@ async function fetchFromZendeskWithRetries({
         return null;
       }
     }
-    logger.error(
-      {
-        rawResponse,
-        response,
-        status: rawResponse.status,
-        endpoint: getEndpointFromUrl(url),
-      },
-      "[Zendesk] Zendesk API error"
+    throw new ZendeskApiError(
+      "Zendesk API error.",
+      rawResponse.status,
+      response
     );
-    throw new Error("Zendesk API error.");
   }
 
   return response;
