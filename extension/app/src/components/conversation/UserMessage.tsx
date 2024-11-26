@@ -134,17 +134,26 @@ export function UserMessage({
                     text: message.content,
                     includeContent: message.contenFragments
                       ? message.contenFragments?.some(
-                          (cf) => cf.contentType === "text/plain"
+                          (cf) =>
+                            cf.title.startsWith("[page-content]") ||
+                            cf.title.startsWith("[selection]")
                         )
                       : false,
                     includeCapture: message.contenFragments
-                      ? message.contenFragments?.some(
-                          (cf) => cf.contentType === "image/jpeg"
+                      ? message.contenFragments?.some((cf) =>
+                          cf.title.startsWith("[capture]")
+                        )
+                      : false,
+                    includeSelectionOnly: message.contenFragments
+                      ? message.contenFragments?.some((cf) =>
+                          cf.title.startsWith("[selection]")
                         )
                       : false,
                     configurationIds,
                   },
                 ];
+
+                console.log("Saving configurations", configurations);
                 void sendMessage({
                   type: "UPDATE_SAVED_CONFIGURATIONS",
                   configurations,

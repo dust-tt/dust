@@ -214,6 +214,7 @@ export type SavedAssistantConfiguration = {
   description: string;
   includeContent: boolean;
   includeCapture: boolean;
+  includeSelectionOnly: boolean;
   text: string;
   configurationIds: string[];
 };

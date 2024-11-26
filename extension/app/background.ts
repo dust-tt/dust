@@ -67,7 +67,7 @@ const createContextMenus = async () => {
     chrome.contextMenus.create({
       id: configuration.id,
       title: configuration.description,
-      contexts: ["all"],
+      contexts: configuration.includeSelectionOnly ? ["selection"] : ["all"],
     });
   }
   chrome.contextMenus.create({
@@ -113,6 +113,7 @@ const getActionHandler = (menuItemId: string | number) => {
         const params = JSON.stringify({
           includeContent: conf.includeContent,
           includeCapture: conf.includeCapture,
+          includeSelectionOnly: conf.includeSelectionOnly,
           text: conf.text,
           configurationIds: conf.configurationIds,
         });
