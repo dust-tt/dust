@@ -45,8 +45,6 @@ export function ConversationContainer({
   user,
 }: ConversationContainerProps) {
   const navigate = useNavigate();
-  const [activeConversationId, setActiveConversationId] =
-    useState(conversationId);
 
   const [includeContent, setIncludeContent] = useState<boolean | undefined>();
 
@@ -55,17 +53,15 @@ export function ConversationContainer({
       return;
     }
     void setConversationsContext({
-      [activeConversationId ?? "new"]: {
+      [conversationId ?? "new"]: {
         includeCurrentPage: includeContent,
       },
     });
-  }, [includeContent]);
+  }, [includeContent, conversationId]);
 
   useEffect(() => {
     const doAsync = async () => {
-      const context = await getConversationContext(
-        activeConversationId ?? "new"
-      );
+      const context = await getConversationContext(conversationId ?? "new");
       setIncludeContent(context.includeCurrentPage);
     };
     void doAsync();
@@ -88,20 +84,12 @@ export function ConversationContainer({
     }
   });
 
-  useEffect(() => {
-    if (activeConversationId) {
-      navigate(`/conversations/${activeConversationId}`, {
-        replace: true,
-      });
-    }
-  }, [activeConversationId, navigate]);
-
   const handlePostMessage = async (
     input: string,
     mentions: AgentMentionType[],
     files: UploadedFileWithKind[]
   ) => {
-    if (!activeConversationId) {
+    if (!conversationId) {
       return null;
     }
     const messageData = { input, mentions };
@@ -115,7 +103,7 @@ export function ConversationContainer({
             // Get the content fragment ID to supersede for a given file.
             // Only for tab contents, we re-use the content fragment ID based on the URL and conversation ID.
             const supersededContentFragmentId: string | undefined =
-              (await getFileContentFragmentId(activeConversationId, file)) ??
+              (await getFileContentFragmentId(conversationId, file)) ??
               undefined;
 
             contentFragmentFiles.push({
@@ -128,7 +116,7 @@ export function ConversationContainer({
 
           const result = await postMessage({
             dustAPI,
-            conversationId: activeConversationId,
+            conversationId,
             messageData,
             files: contentFragmentFiles,
           });
@@ -138,7 +126,7 @@ export function ConversationContainer({
 
             // Save content fragment IDs for tab contents to the local storage.
             await saveFilesContentFragmentIds({
-              conversationId: activeConversationId,
+              conversationId,
               uploadedFiles: files,
               createdContentFragments: contentFragments,
             });
@@ -237,10 +225,13 @@ export function ConversationContainer({
             },
             new: { includeCurrentPage: false },
           });
-          setActiveConversationId(conversationRes.value.sId);
+
+          navigate(`/conversations/${conversationRes.value.sId}`, {
+            replace: true,
+          });
         }
       },
-      [owner, sendNotification, setActiveConversationId, includeContent]
+      [owner, sendNotification, includeContent]
     )
   );
 
@@ -256,13 +247,13 @@ export function ConversationContainer({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
-  if (activeConversationId) {
+  if (conversationId) {
     return (
       <GenerationContextProvider>
         <div className="h-full flex flex-col">
           <div className="flex-1">
             <ConversationViewer
-              conversationId={activeConversationId}
+              conversationId={conversationId}
               owner={owner}
               user={user}
               onStickyMentionsChange={onStickyMentionsChange}
