@@ -85,7 +85,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           : "default";
     return (
       <div className="s-flex s-flex-col s-gap-1">
-        {label && <Label htmlFor={props.name}>{label}</Label>}
+        {label && (
+          <Label htmlFor={props.name} className="s-mb-1">
+            {label}
+          </Label>
+        )}
         <input
           ref={ref}
           className={cn(inputStyleClasses({ state }), className)}
