@@ -1,7 +1,8 @@
 import type { AgentConfigurationType, Result, UserType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { CreationAttributes, Transaction } from "sequelize";
 import type { Attributes, ModelStatic } from "sequelize";
+import type { CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
@@ -79,6 +80,25 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return new AgentMessageFeedbackResource(
       AgentMessageFeedback,
       agentMessageFeedback.get()
+    );
+  }
+
+  static async fetchByUserAndAgentMessages(
+    user: UserType,
+    agentMessages: AgentMessage[]
+  ): Promise<AgentMessageFeedbackResource[]> {
+    const agentMessageFeedback = await AgentMessageFeedback.findAll({
+      where: {
+        userId: user.id,
+        agentMessageId: {
+          [Op.in]: agentMessages.map((m) => m.id),
+        },
+      },
+    });
+
+    return agentMessageFeedback.map(
+      (feedback) =>
+        new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
     );
   }
 

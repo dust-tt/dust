@@ -64,14 +64,12 @@ export async function getConversationFeedbacksForUser(
     },
   });
 
-  const feedbacks = await AgentMessageFeedback.findAll({
-    where: {
-      userId: user.id,
-      agentMessageId: {
-        [Op.in]: agentMessages.map((m) => m.id),
-      },
-    },
-  });
+  const feedbacks =
+    await AgentMessageFeedbackResource.fetchByUserAndAgentMessages(
+      user,
+      agentMessages
+    );
+
   const feedbacksByMessageId = feedbacks.map(
     (feedback) =>
       ({
