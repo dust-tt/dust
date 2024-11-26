@@ -202,86 +202,85 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       >
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
-            <div
-              className="z-50 flex justify-end gap-2 py-2 pr-2"
-              style={{ boxShadow: "0px 0px 12px 12px #F6F8FB" }}
-            >
-              {isMultiSelect ? (
-                <>
-                  <Button
-                    size="xs"
-                    variant={
-                      selectedConversations.length === 0 ? "outline" : "warning"
-                    }
-                    label="Delete"
-                    disabled={selectedConversations.length === 0}
-                    onClick={() => setShowDeleteDialog("selection")}
-                  />
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    icon={XMarkIcon}
-                    onClick={toggleMultiSelect}
-                    className="mr-2"
-                  />
-                </>
-              ) : (
-                <>
-                  <Button
-                    href={`/w/${owner.sId}/assistant/new`}
-                    label="New"
-                    icon={ChatBubbleBottomCenterPlusIcon}
-                    className="shrink"
-                    tooltip="Create a new conversation"
-                    onClick={() => {
-                      setSidebarOpen(false);
-                      const { cId } = router.query;
-                      const isNewConversation =
-                        router.pathname === "/w/[wId]/assistant/[cId]" &&
-                        typeof cId === "string" &&
-                        cId === "new";
+            {isMultiSelect ? (
+              <div
+                className="z-50 flex justify-between gap-2 p-2"
+                style={{ boxShadow: "0px 0px 12px 12px #F6F8FB" }}
+              >
+                <Button
+                  variant={
+                    selectedConversations.length === 0 ? "outline" : "warning"
+                  }
+                  label="Delete"
+                  disabled={selectedConversations.length === 0}
+                  onClick={() => setShowDeleteDialog("selection")}
+                />
+                <Button
+                  variant="ghost"
+                  icon={XMarkIcon}
+                  onClick={toggleMultiSelect}
+                  className="mr-2"
+                />
+              </div>
+            ) : (
+              <div
+                className="z-50 flex justify-end gap-2 py-2 pr-2"
+                style={{ boxShadow: "0px 0px 12px 12px #F6F8FB" }}
+              >
+                <Button
+                  href={`/w/${owner.sId}/assistant/new`}
+                  label="New"
+                  icon={ChatBubbleBottomCenterPlusIcon}
+                  className="shrink"
+                  tooltip="Create a new conversation"
+                  onClick={() => {
+                    setSidebarOpen(false);
+                    const { cId } = router.query;
+                    const isNewConversation =
+                      router.pathname === "/w/[wId]/assistant/[cId]" &&
+                      typeof cId === "string" &&
+                      cId === "new";
 
-                      if (isNewConversation && triggerInputAnimation) {
-                        triggerInputAnimation();
-                      }
-                    }}
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" icon={MoreIcon} variant="outline" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuLabel>Assistants</DropdownMenuLabel>
+                    if (isNewConversation && triggerInputAnimation) {
+                      triggerInputAnimation();
+                    }
+                  }}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" icon={MoreIcon} variant="outline" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>Assistants</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      label="Create new assistant"
+                      href={`/w/${owner.sId}/builder/assistants/create`}
+                      icon={PlusIcon}
+                    />
+                    {isBuilder(owner) && (
                       <DropdownMenuItem
-                        label="Create new assistant"
-                        href={`/w/${owner.sId}/builder/assistants/create`}
-                        icon={PlusIcon}
+                        href={`/w/${owner.sId}/builder/assistants`}
+                        label="Manage assistants"
+                        icon={RobotIcon}
                       />
-                      {isBuilder(owner) && (
-                        <DropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants`}
-                          label="Manage assistants"
-                          icon={RobotIcon}
-                        />
-                      )}
-                      <DropdownMenuLabel>Conversations</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        label="Edit conversations"
-                        onClick={toggleMultiSelect}
-                        icon={ListCheckIcon}
-                        disabled={conversations.length === 0}
-                      />
-                      <DropdownMenuItem
-                        label="Clear conversation history"
-                        onClick={() => setShowDeleteDialog("all")}
-                        icon={TrashIcon}
-                        disabled={conversations.length === 0}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              )}
-            </div>
+                    )}
+                    <DropdownMenuLabel>Conversations</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      label="Edit conversations"
+                      onClick={toggleMultiSelect}
+                      icon={ListCheckIcon}
+                      disabled={conversations.length === 0}
+                    />
+                    <DropdownMenuItem
+                      label="Clear conversation history"
+                      onClick={() => setShowDeleteDialog("all")}
+                      icon={TrashIcon}
+                      disabled={conversations.length === 0}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
             {isConversationsError && (
               <Label className="py-1 text-xs font-medium text-element-800">
                 Error loading conversations
