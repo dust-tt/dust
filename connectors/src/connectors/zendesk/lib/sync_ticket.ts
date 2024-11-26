@@ -186,7 +186,7 @@ ${comments
       author = null;
     }
     return `
-[${new Date(Number(comment?.created_at)).toISOString()}] ${
+[${comment?.created_at}] ${
       author ? `${author.name} (${author.email})` : "Unknown User"
     }:
 ${comment.body}`;
