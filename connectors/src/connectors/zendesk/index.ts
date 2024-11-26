@@ -159,6 +159,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     return new Ok(connector.id.toString());
   }
 
+  /**
+   * Deletes the connector and all its related resources.
+   */
   async clean(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
