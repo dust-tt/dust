@@ -201,3 +201,11 @@ export function compareAgentsForSort(
   // default: sort alphabetically
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
+
+export const hashBase36 = async (str: string) => {
+  const msgBuffer = new TextEncoder().encode(str);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(36))
+    .join("");
+};

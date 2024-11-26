@@ -24,6 +24,7 @@ import type { MessageWithContentFragmentsType } from "@extension/lib/conversatio
 import { sendMessage } from "@extension/lib/messages";
 import type { QuickActionConfiguration } from "@extension/lib/storage";
 import { getSavedConfigurations } from "@extension/lib/storage";
+import { hashBase36 } from "@extension/lib/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -38,14 +39,6 @@ interface UserMessageProps {
   owner: LightWorkspaceType;
   size: ConversationMessageSizeType;
 }
-
-const hashBase64 = async (str: string) => {
-  const msgBuffer = new TextEncoder().encode(str);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(36))
-    .join("");
-};
 
 export function UserMessage({
   citations,
@@ -93,7 +86,7 @@ export function UserMessage({
 
   useEffect(() => {
     const getId = async () => {
-      const hash = await hashBase64(`${configurationIds}-${message.content}`);
+      const hash = await hashBase36(`${configurationIds}-${message.content}`);
       const id = `ask_dust_${hash}`;
       setSavedConfigurationId(id);
     };
