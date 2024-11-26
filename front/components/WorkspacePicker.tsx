@@ -44,8 +44,8 @@ export default function WorkspacePicker({
               return (
                 <DropdownMenuRadioItem
                   key={w.sId}
-                  onClick={() => {
-                    setNavigationSelection({ lastWorkspaceId: w.sId });
+                  onClick={async () => {
+                    await setNavigationSelection({ lastWorkspaceId: w.sId });
                     void onWorkspaceUpdate(w);
                   }}
                   value={w.name}

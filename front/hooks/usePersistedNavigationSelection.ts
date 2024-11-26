@@ -1,5 +1,8 @@
-import { useCallback } from "react";
-import { useCookies } from "react-cookie";
+import { safeParseJSON } from "@dust-tt/types";
+import { useCallback, useMemo } from "react";
+
+import { useUserMetadata } from "@app/lib/swr/user";
+import { setUserMetadataFromClient } from "@app/lib/user";
 
 // client-side counterpart of persisted_navigation_selection.ts
 
@@ -8,43 +11,51 @@ export type NavigationSelectionType = {
   lastSpaceId?: string;
 };
 
-export const NAVIGATION_SELECTION_COOKIE_NAME = "navigationSelection";
+export const NAVIGATION_SELECTION_METADATA_NAME = "navigationSelection";
 
 export const usePersistedNavigationSelection = () => {
-  // We use cookies instead of local storage because we need to access from SSR
-  const [cookies, setCookie] = useCookies([NAVIGATION_SELECTION_COOKIE_NAME]);
+  const { metadata, isMetadataLoading, isMetadataError, mutateMetadata } =
+    useUserMetadata(NAVIGATION_SELECTION_METADATA_NAME);
+
+  const navigationSelection = useMemo(() => {
+    if (metadata) {
+      const r = safeParseJSON(metadata?.value);
+
+      if (r.isOk() && r.value) {
+        const selection: NavigationSelectionType = r.value;
+        return {
+          lastWorkspaceId: selection.lastWorkspaceId,
+          lastSpaceId: selection.lastSpaceId,
+        } as NavigationSelectionType;
+      }
+    }
+
+    return {};
+  }, [metadata]);
 
   const setNavigationSelection = useCallback(
-    (selection: NavigationSelectionType) => {
-      const existingSelection = cookies.navigationSelection;
+    async (selection: NavigationSelectionType) => {
+      const existingSelection = navigationSelection;
 
       const newSelection: NavigationSelectionType = {
         ...existingSelection,
         ...selection,
       };
 
-      setCookie(
-        NAVIGATION_SELECTION_COOKIE_NAME,
-        JSON.stringify(newSelection),
-        {
-          path: "/",
-        }
-      );
+      await setUserMetadataFromClient({
+        key: NAVIGATION_SELECTION_METADATA_NAME,
+        value: JSON.stringify(newSelection),
+      });
+
+      void mutateMetadata();
     },
-    [cookies, setCookie]
+    [mutateMetadata, navigationSelection]
   );
-
-  const getNavigationSelection = useCallback(() => {
-    const selection = cookies.navigationSelection;
-
-    return {
-      lastWorkspaceId: selection.lastWorkspaceId,
-      lastSpaceId: selection.lastSpaceId,
-    } as NavigationSelectionType;
-  }, [cookies]);
 
   return {
     setNavigationSelection,
-    getNavigationSelection,
+    navigationSelection,
+    isLoading: isMetadataLoading,
+    isError: isMetadataError,
   };
 };
