@@ -64,20 +64,21 @@ async function handler(
   }
 
   const messageId = req.query.mId;
-  const bodyValidation = MessageFeedbackRequestBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
-      },
-    });
-  }
 
   switch (req.method) {
     case "POST":
+      const bodyValidation = MessageFeedbackRequestBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
       const created = await createOrUpdateMessageFeedback(auth, {
         messageId,
         conversation,
