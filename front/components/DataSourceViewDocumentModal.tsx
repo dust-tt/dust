@@ -25,7 +25,6 @@ export default function DataSourceViewDocumentModal({
       dataSourceView,
       owner,
     });
-  console.log(isDocumentError);
 
   const { title, text } = useMemo(() => {
     if (!document) {

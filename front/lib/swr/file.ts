@@ -3,6 +3,11 @@ import type { SWRConfiguration } from "swr";
 
 import { useSWRWithDefaults } from "@app/lib/swr/swr";
 
+export const getFileProcessedUrl = (
+  owner: LightWorkspaceType,
+  fileId: string
+) => `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
+
 export function useFileProcessedContent(
   owner: LightWorkspaceType,
   fileId: string | null,
@@ -17,9 +22,7 @@ export function useFileProcessedContent(
     error,
     mutate,
   } = useSWRWithDefaults(
-    isDisabled
-      ? null
-      : `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`,
+    isDisabled ? null : getFileProcessedUrl(owner, fileId),
     // Stream fetcher -> don't try to parse the stream
     // Wait for initial response to trigger swr error handling
     async (...args) => {
