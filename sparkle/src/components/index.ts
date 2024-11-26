@@ -26,6 +26,7 @@ export type { ConversationMessageSizeType } from "./ConversationMessage";
 export { ConversationMessage } from "./ConversationMessage";
 export { ConversationMessageContent } from "./ConversationMessageContent";
 export type { ConversationMessageFeedbackSelectorProps } from "./ConversationMessageFeedbackSelector";
+export { FeedbackSelector } from "./ConversationMessageFeedbackSelector";
 export { ConversationMessageHeader } from "./ConversationMessageHeader";
 export { DataTable } from "./DataTable";
 export { Dialog } from "./Dialog";
