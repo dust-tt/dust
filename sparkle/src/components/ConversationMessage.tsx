@@ -5,6 +5,7 @@ import {
   ConversationMessageActions,
   ConversationMessageEmojiSelectorProps,
   ConversationMessageFeedbackSelectorProps,
+  FeedbackSelector,
 } from "@sparkle/components/ConversationMessageActions";
 import { ConversationMessageContent } from "@sparkle/components/ConversationMessageContent";
 import { ConversationMessageHeader } from "@sparkle/components/ConversationMessageHeader";
@@ -76,6 +77,8 @@ export function ConversationMessage({
       <ConversationMessageContent citations={citations} size={size}>
         {children}
       </ConversationMessageContent>
+
+      {messageFeedback && <FeedbackSelector {...messageFeedback} />}
 
       <ConversationMessageActions
         buttons={buttons}
