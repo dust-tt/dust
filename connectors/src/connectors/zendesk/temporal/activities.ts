@@ -136,12 +136,25 @@ export async function syncZendeskBrandActivity({
 }
 
 /**
- * Retrieves the IDs of every brand stored in db that has read permissions on their Help Center.
+ * Retrieves the IDs of every brand in db that has read permissions on their Help Center or in one of their Categories.
+ * This activity will be used to retrieve the brands that need to be incrementally synced.
+ *
+ * Note: in this approach; if a single category has read permissions and not its Help Center,
+ * diffs for the whole Help Center are fetched since there is no endpoint that returns the diff for the Category.
  */
 export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
+  // fetching the brands that have a Help Center selected as a whole
+  const brandsWithHelpCenter =
+    await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
+  // fetching the brands that have at least one Category selected
+  const brandWithCategories =
+    await ZendeskCategoryResource.fetchBrandIdsOfReadOnlyCategories(
+      connectorId
+    );
+  // removing duplicates
+  return [...new Set([...brandsWithHelpCenter, ...brandWithCategories])];
 }
 
 /**
