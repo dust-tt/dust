@@ -186,7 +186,7 @@ function resolveDates(query: GetWorkspaceUsageRequestType) {
     case "range":
       return {
         startDate: parseDate(query.start),
-        endDate: endOfMonth(parseDate(query.end)),
+        endDate: parseDate(query.end),
       };
     default:
       assertNever(query);
