@@ -24,7 +24,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     let url = `/w/${user.workspaces[0].sId}`;
 
     // Try to go to the last selected workspace.
-    const selection = getPersistedNavigationSelection(context.req.cookies);
+    const selection = await getPersistedNavigationSelection(user);
     if (
       selection.lastWorkspaceId &&
       user.workspaces.find((w) => w.sId === selection.lastWorkspaceId)
