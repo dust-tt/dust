@@ -118,6 +118,7 @@ export const ConversationsListButton = ({
         <Button
           tooltip="View conversations"
           icon={ChatBubbleLeftRightIcon}
+          isSelect
           variant="ghost"
           size={size}
         />
