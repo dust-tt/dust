@@ -14,7 +14,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -27,7 +27,9 @@ import {
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
  */
-export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
+export async function zendeskConnectorStartSync(
+  connectorId: ModelId
+): Promise<{ cursor: Date | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -36,6 +38,11 @@ export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
   if (res.isErr()) {
     throw res.error;
   }
+  const cursor = await ZendeskTimestampCursor.findOne({
+    where: { connectorId },
+  });
+
+  return { cursor: cursor?.timestampCursor ?? null };
 }
 
 /**
@@ -51,11 +58,11 @@ export async function saveZendeskConnectorSuccessSync(
   }
 
   // initializing the timestamp cursor if it does not exist (first sync, not incremental)
-  const cursors = await ZendeskTimestampCursors.findOne({
+  const cursors = await ZendeskTimestampCursor.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    await ZendeskTimestampCursors.create({
+    await ZendeskTimestampCursor.create({
       connectorId,
       timestampCursor: new Date(currentSyncDateMs),
     });
@@ -154,16 +161,16 @@ export async function syncZendeskCategoryBatchActivity({
   connectorId,
   brandId,
   currentSyncDateMs,
-  cursor,
+  url,
 }: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
-  cursor: string | null;
+  url: string | null;
 }): Promise<{
   categoriesToUpdate: number[];
   hasMore: boolean;
-  afterCursor: string | null;
+  nextLink: string | null;
 }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -179,15 +186,10 @@ export async function syncZendeskCategoryBatchActivity({
     connectorId,
   });
 
-  const {
-    categories,
-    meta: { after_cursor, has_more },
-  } = await fetchZendeskCategoriesInBrand({
-    brandSubdomain,
+  const { categories, hasMore, nextLink } = await fetchZendeskCategoriesInBrand(
     accessToken,
-    pageSize: ZENDESK_BATCH_SIZE,
-    cursor,
-  });
+    url ? { url } : { brandSubdomain, pageSize: ZENDESK_BATCH_SIZE }
+  );
 
   await concurrentExecutor(
     categories,
@@ -200,8 +202,8 @@ export async function syncZendeskCategoryBatchActivity({
 
   return {
     categoriesToUpdate: categories.map((category) => category.id),
-    hasMore: has_more,
-    afterCursor: after_cursor,
+    hasMore,
+    nextLink,
   };
 }
 
@@ -277,14 +279,14 @@ export async function syncZendeskArticleBatchActivity({
   categoryId,
   currentSyncDateMs,
   forceResync,
-  cursor,
+  url,
 }: {
   connectorId: ModelId;
   categoryId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-  cursor: string | null;
-}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
+  url: string | null;
+}): Promise<{ hasMore: boolean; nextLink: string | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -315,16 +317,11 @@ export async function syncZendeskArticleBatchActivity({
     connectorId,
   });
 
-  const {
-    articles,
-    meta: { after_cursor, has_more },
-  } = await fetchZendeskArticlesInCategory({
-    brandSubdomain,
+  const { articles, hasMore, nextLink } = await fetchZendeskArticlesInCategory(
+    category,
     accessToken,
-    categoryId: category.categoryId,
-    pageSize: ZENDESK_BATCH_SIZE,
-    cursor,
-  });
+    url ? { url } : { brandSubdomain, pageSize: ZENDESK_BATCH_SIZE }
+  );
 
   logger.info(
     { ...loggerArgs, articlesSynced: articles.length },
@@ -354,7 +351,7 @@ export async function syncZendeskArticleBatchActivity({
       }),
     { concurrency: 10 }
   );
-  return { hasMore: has_more, afterCursor: after_cursor };
+  return { hasMore, nextLink };
 }
 
 /**
@@ -365,14 +362,14 @@ export async function syncZendeskTicketBatchActivity({
   brandId,
   currentSyncDateMs,
   forceResync,
-  cursor,
+  url,
 }: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-  cursor: string | null;
-}): Promise<{ hasMore: boolean; afterCursor: string }> {
+  url: string | null;
+}): Promise<{ hasMore: boolean; nextLink: string | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -399,20 +396,23 @@ export async function syncZendeskTicketBatchActivity({
     brandId,
   });
 
-  const { tickets, meta } = await fetchZendeskTicketsInBrand({
-    brandSubdomain,
+  const { tickets, hasMore, nextLink } = await fetchZendeskTicketsInBrand(
     accessToken,
-    pageSize: ZENDESK_BATCH_SIZE,
-    cursor,
-    retentionPeriodDays: configuration.retentionPeriodDays,
-  });
+    url
+      ? { url }
+      : {
+          brandSubdomain,
+          pageSize: ZENDESK_BATCH_SIZE,
+          retentionPeriodDays: configuration.retentionPeriodDays,
+        }
+  );
 
   if (tickets.length === 0) {
     logger.info(
       { ...loggerArgs, ticketsSynced: 0 },
       `[Zendesk] No tickets to process in batch - stopping.`
     );
-    return { hasMore: false, afterCursor: "" };
+    return { hasMore: false, nextLink: "" };
   }
 
   const users = await zendeskApiClient.users.list();
@@ -442,8 +442,5 @@ export async function syncZendeskTicketBatchActivity({
     `[Zendesk] Processing ${res.length} tickets in batch`
   );
 
-  return {
-    afterCursor: meta.after_cursor,
-    hasMore: meta.has_more,
-  };
+  return { hasMore, nextLink };
 }

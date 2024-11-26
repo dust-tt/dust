@@ -144,9 +144,13 @@ export const fetcher = async (...args: Parameters<typeof fetch>) => {
   return resHandler(res);
 };
 
-export const postFetcher = async ([url, body]: [string, object]) => {
+export const fetcherWithBody = async ([url, body, method]: [
+  string,
+  object,
+  string,
+]) => {
   const res = await fetch(url, {
-    method: "POST",
+    method,
     headers: addCommitHashToHeaders({
       "Content-Type": "application/json",
     }),

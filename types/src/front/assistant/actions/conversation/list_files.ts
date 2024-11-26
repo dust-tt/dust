@@ -7,7 +7,6 @@ export type ConversationFileType = {
   title: string;
   contentType: SupportedContentFragmentType;
   snippet: string | null;
-  isUsableForJIT: boolean;
   isIncludable: boolean;
   isSearchable: boolean;
   isQueryable: boolean;

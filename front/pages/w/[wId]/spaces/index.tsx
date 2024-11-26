@@ -15,7 +15,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
     }
 
     // Try to go to the last selected space.
-    const selection = getPersistedNavigationSelection(context.req.cookies);
+    const selection = await getPersistedNavigationSelection(
+      auth.getNonNullableUser()
+    );
     if (selection.lastSpaceId) {
       const space = await SpaceResource.fetchById(auth, selection.lastSpaceId);
       if (space) {

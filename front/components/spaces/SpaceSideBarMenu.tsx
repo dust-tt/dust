@@ -294,8 +294,8 @@ const SystemSpaceItem = ({
       isNavigatable
       label={label}
       collapsed={!isExpanded}
-      onItemClick={() => {
-        setNavigationSelection({ lastSpaceId: space.sId });
+      onItemClick={async () => {
+        await setNavigationSelection({ lastSpaceId: space.sId });
         void router.push(itemPath);
       }}
       isSelected={router.asPath === itemPath}
@@ -372,8 +372,8 @@ const SpaceMenuItem = ({
       isNavigatable
       label={getSpaceName(space)}
       collapsed={!isExpanded}
-      onItemClick={() => {
-        setNavigationSelection({ lastSpaceId: space.sId });
+      onItemClick={async () => {
+        await setNavigationSelection({ lastSpaceId: space.sId });
         void router.push(spacePath);
       }}
       isSelected={router.asPath === spacePath}
@@ -518,8 +518,8 @@ const SpaceDataSourceViewItem = ({
       type={isEmpty ? "leaf" : "node"}
       isSelected={router.asPath === dataSourceViewPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      onItemClick={() => {
-        setNavigationSelection({ lastSpaceId: space.sId });
+      onItemClick={async () => {
+        await setNavigationSelection({ lastSpaceId: space.sId });
         void router.push(dataSourceViewPath);
       }}
       collapsed={!isExpanded || isEmpty}
@@ -545,8 +545,8 @@ const SpaceDataSourceViewItem = ({
                   ? `and ${notExpandableNodes.length} ${notExpandableNodesLabel}`
                   : `${notExpandableNodes.length} ${notExpandableNodesLabel}`
               }
-              onItemClick={() => {
-                setNavigationSelection({ lastSpaceId: space.sId });
+              onItemClick={async () => {
+                await setNavigationSelection({ lastSpaceId: space.sId });
                 void router.push(dataSourceViewPath);
               }}
             />
@@ -600,8 +600,8 @@ const SpaceDataSourceViewSubMenu = ({
       isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
-      onItemClick={() => {
-        setNavigationSelection({ lastSpaceId: space.sId });
+      onItemClick={async () => {
+        await setNavigationSelection({ lastSpaceId: space.sId });
         void router.push(spaceCategoryPath);
       }}
       isSelected={router.asPath === spaceCategoryPath}
@@ -651,8 +651,8 @@ const SpaceAppItem = ({
         router.asPath.includes(appPath + "/") ||
         router.asPath.includes(appPath + "?")
       }
-      onItemClick={() => {
-        setNavigationSelection({ lastSpaceId: app.space.sId });
+      onItemClick={async () => {
+        await setNavigationSelection({ lastSpaceId: app.space.sId });
         void router.push(appPath);
       }}
       label={app.name}
@@ -699,8 +699,8 @@ const SpaceAppSubMenu = ({
       isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
-      onItemClick={() => {
-        setNavigationSelection({ lastSpaceId: space.sId });
+      onItemClick={async () => {
+        await setNavigationSelection({ lastSpaceId: space.sId });
         void router.push(spaceCategoryPath);
       }}
       isSelected={router.asPath === spaceCategoryPath}

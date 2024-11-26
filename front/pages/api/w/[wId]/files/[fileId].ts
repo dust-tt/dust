@@ -5,9 +5,10 @@ import type {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { processAndUploadToCloudStorage } from "@app/lib/api/files/upload";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -18,8 +19,32 @@ export const config = {
   },
 };
 
-const validActions = ["view", "download"] as const;
-type Action = (typeof validActions)[number];
+// Declared here because endpoint-specific.
+const VALID_VIEW_VERSIONS: FileVersion[] = [
+  "original",
+  "processed",
+  "public",
+  "snippet",
+];
+function isValidViewVersion(
+  // Because coming from the URL, it can be a string or an array of strings.
+  version: string | string[] | undefined
+): version is FileVersion {
+  return (
+    typeof version === "string" &&
+    VALID_VIEW_VERSIONS.includes(version as FileVersion)
+  );
+}
+
+// Declared here because endpoint-specific.
+const VALID_ACTIONS = ["view", "download"] as const;
+type Action = (typeof VALID_ACTIONS)[number];
+function isValidAction(
+  // Because coming from the URL, it can be a string or an array of strings.
+  action: string | string[] | undefined
+): action is Action {
+  return typeof action === "string" && VALID_ACTIONS.includes(action as Action);
+}
 
 async function handler(
   req: NextApiRequest,
@@ -50,15 +75,19 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const action: Action = validActions.includes(req.query.action as Action)
-        ? (req.query.action as Action)
+      const action = isValidAction(req.query.action)
+        ? req.query.action
         : "download";
 
-      // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
+        // Get the version of the file.
+        const version = isValidViewVersion(req.query.version)
+          ? req.query.version
+          : "original";
+
         const readStream = file.getReadStream({
           auth,
-          version: "original",
+          version,
         });
         readStream.on("error", () => {
           return apiError(req, res, {
@@ -98,7 +127,7 @@ async function handler(
     }
 
     case "POST": {
-      const r = await processAndUploadToCloudStorage(auth, { file, req });
+      const r = await processAndStoreFile(auth, { file, req });
 
       if (r.isErr()) {
         return apiError(req, res, {

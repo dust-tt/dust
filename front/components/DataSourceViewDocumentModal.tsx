@@ -2,7 +2,7 @@ import { Label, Modal, Spinner } from "@dust-tt/sparkle";
 import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 
-import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
+import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
 
 interface DataSourceViewDocumentModalProps {
   dataSourceView: DataSourceViewType | null;

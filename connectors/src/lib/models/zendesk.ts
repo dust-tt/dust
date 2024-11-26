@@ -15,20 +15,21 @@ function throwOnUnsafeInteger(value: number | null) {
   }
 }
 
-export class ZendeskTimestampCursors extends Model<
-  InferAttributes<ZendeskTimestampCursors>,
-  InferCreationAttributes<ZendeskTimestampCursors>
+export class ZendeskTimestampCursor extends Model<
+  InferAttributes<ZendeskTimestampCursor>,
+  InferCreationAttributes<ZendeskTimestampCursor>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare timestampCursor: Date | null; // start date of the last successful sync, null if never successfully synced
+  // start date of the last successful sync
+  declare timestampCursor: Date;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
-ZendeskTimestampCursors.init(
+ZendeskTimestampCursor.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -47,8 +48,7 @@ ZendeskTimestampCursors.init(
     },
     timestampCursor: {
       type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null,
+      allowNull: false,
     },
   },
   {
@@ -57,11 +57,11 @@ ZendeskTimestampCursors.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(ZendeskTimestampCursors, {
+ConnectorModel.hasMany(ZendeskTimestampCursor, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-ZendeskTimestampCursors.belongsTo(ConnectorModel);
+ZendeskTimestampCursor.belongsTo(ConnectorModel);
 
 export class ZendeskConfiguration extends Model<
   InferAttributes<ZendeskConfiguration>,

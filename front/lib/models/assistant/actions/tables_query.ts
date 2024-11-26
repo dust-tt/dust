@@ -190,6 +190,8 @@ export class AgentTablesQueryAction extends Model<
 
   declare step: number;
   declare resultsFileId: ForeignKey<FileModel["id"]> | null;
+
+  declare resultsFile: NonAttribute<FileModel>;
 }
 
 AgentTablesQueryAction.init(
@@ -273,6 +275,7 @@ FileModel.hasMany(AgentTablesQueryAction, {
   onDelete: "SET NULL",
 });
 AgentTablesQueryAction.belongsTo(FileModel, {
+  as: "resultsFile",
   foreignKey: { name: "resultsFileId", allowNull: true },
   onDelete: "SET NULL",
 });

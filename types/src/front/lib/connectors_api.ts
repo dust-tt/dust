@@ -390,6 +390,15 @@ export class ConnectorsAPI {
   async getConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+    const parsedId = parseInt(connectorId, 10);
+    if (isNaN(parsedId)) {
+      const err: ConnectorsAPIError = {
+        type: "invalid_request_error",
+        message: "Invalid connector ID",
+      };
+      return new Err(err);
+    }
+
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(connectorId)}`,
       {

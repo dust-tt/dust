@@ -269,6 +269,7 @@ export const batch = async ({
         "confluence",
         "github",
         "snowflake",
+        "zendesk",
       ];
       if (!PROVIDERS_ALLOWING_RESTART.includes(args.provider)) {
         throw new Error(

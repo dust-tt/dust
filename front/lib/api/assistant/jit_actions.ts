@@ -19,19 +19,18 @@ import type {
 import {
   assertNever,
   Err,
-  getTablesQueryResultsFileTitle,
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isDevelopment,
   isSupportedImageContentType,
   isSupportedPlainTextContentType,
-  isTablesQueryActionType,
   isUserMessageType,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
 import assert from "assert";
+import _ from "lodash";
 
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
@@ -71,7 +70,7 @@ export async function isJITActionsEnabled(
   return use;
 }
 
-function isConversationQueryableFileContentType(
+function isQueryableContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
   if (isSupportedImageContentType(contentType)) {
@@ -97,7 +96,7 @@ function isConversationQueryableFileContentType(
   }
 }
 
-function isConversationSearchableFileContentType(
+function isSearchableContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
   if (isSupportedImageContentType(contentType)) {
@@ -136,40 +135,43 @@ export function listFiles(
       m.contentFragmentVersion === "latest"
     ) {
       if (m.fileId) {
-        const isUsableForJIT = m.snippet !== null;
+        const canDoJIT = m.snippet !== null;
+        const isIncludable = isConversationIncludableFileContentType(
+          m.contentType
+        );
+        const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
+        const isSearchable = canDoJIT && isSearchableContentType(m.contentType);
+
         files.push({
           fileId: m.fileId,
           title: m.title,
           contentType: m.contentType,
           snippet: m.snippet,
-          isUsableForJIT: isUsableForJIT,
-          isIncludable: isConversationIncludableFileContentType(m.contentType),
-          isQueryable:
-            isUsableForJIT &&
-            isConversationQueryableFileContentType(m.contentType),
-          isSearchable:
-            isUsableForJIT &&
-            isConversationSearchableFileContentType(m.contentType),
+          isIncludable,
+          isQueryable,
+          isSearchable,
         });
       }
     } else if (isAgentMessageType(m)) {
-      for (const a of m.actions) {
-        if (isTablesQueryActionType(a)) {
-          if (a.resultsFileId && a.resultsFileSnippet) {
-            const contentType = "text/csv";
-            files.push({
-              fileId: a.resultsFileId,
-              contentType: contentType,
-              title: getTablesQueryResultsFileTitle({ output: a.output }),
-              snippet: null, // the resultsFileSnippet is not the same snippet
-              isUsableForJIT: false,
-              isIncludable:
-                isConversationIncludableFileContentType(contentType),
-              isQueryable: false,
-              isSearchable: false,
-            });
-          }
-        }
+      const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
+
+      for (const f of generatedFiles) {
+        const canDoJIT = f.snippet != null;
+        const isIncludable = isConversationIncludableFileContentType(
+          f.contentType
+        );
+        const isQueryable = canDoJIT && isQueryableContentType(f.contentType);
+        const isSearchable = canDoJIT && isSearchableContentType(f.contentType);
+
+        files.push({
+          fileId: f.fileId,
+          contentType: f.contentType,
+          title: f.title,
+          snippet: f.snippet,
+          isIncludable,
+          isQueryable,
+          isSearchable,
+        });
       }
     }
   }
@@ -187,9 +189,16 @@ async function getJITActions(
   const actions: ActionConfigurationType[] = [];
 
   if (files.length > 0) {
-    const filesUsableForJIT = files.filter((f) => f.isUsableForJIT);
+    // Check tables for the table query action.
+    const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
 
-    if (filesUsableForJIT.length > 0) {
+    // Check files for the retrieval query action.
+    const filesUsableAsRetrievalQuery = files.filter((f) => f.isSearchable);
+
+    if (
+      filesUsableAsTableQuery.length > 0 ||
+      filesUsableAsRetrievalQuery.length > 0
+    ) {
       // Get the datasource view for the conversation.
       const dataSourceView = await DataSourceViewResource.fetchByConversation(
         auth,
@@ -200,7 +209,11 @@ async function getJITActions(
         logger.warn(
           {
             conversationId: conversation.sId,
-            fileIds: filesUsableForJIT.map((f) => f.fileId),
+            fileIds: _.uniq(
+              filesUsableAsTableQuery
+                .map((f) => f.fileId)
+                .concat(filesUsableAsRetrievalQuery.map((f) => f.fileId))
+            ),
             workspaceId: conversation.owner.sId,
           },
           "No default datasource view found for conversation when trying to get JIT actions"
@@ -208,11 +221,6 @@ async function getJITActions(
 
         return [];
       }
-
-      // Check tables for the table query action.
-      const filesUsableAsTableQuery = filesUsableForJIT.filter(
-        (f) => f.isQueryable
-      );
 
       if (filesUsableAsTableQuery.length > 0) {
         // TODO(JIT) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
@@ -232,11 +240,6 @@ async function getJITActions(
         };
         actions.push(action);
       }
-
-      // Check files for the retrieval query action.
-      const filesUsableAsRetrievalQuery = filesUsableForJIT.filter(
-        (f) => f.isSearchable
-      );
 
       if (filesUsableAsRetrievalQuery.length > 0) {
         const action: RetrievalConfigurationType = {

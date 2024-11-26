@@ -32,6 +32,7 @@ import {
   forbidSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { fetchZendeskCurrentUser } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
   launchZendeskGarbageCollectionWorkflow,
   launchZendeskSyncWorkflow,
@@ -39,6 +40,7 @@ import {
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -58,7 +60,17 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError>> {
-    const { subdomain } = await getZendeskSubdomainAndAccessToken(connectionId);
+    const { subdomain, accessToken } =
+      await getZendeskSubdomainAndAccessToken(connectionId);
+    const zendeskUser = await fetchZendeskCurrentUser({
+      subdomain,
+      accessToken,
+    });
+    if (!zendeskUser.active || zendeskUser.role !== "admin") {
+      throw new ExternalOAuthTokenError(
+        new Error(`Zendesk user is not an admin: connectionId=${connectionId}`)
+      );
+    }
 
     const connector = await ConnectorResource.makeNew(
       "zendesk",
@@ -182,7 +194,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       dataSourceId: dataSourceConfig.dataSourceId,
     };
 
-    const syncResult = await this.sync();
+    const syncResult = await launchZendeskSyncWorkflow(connector);
     if (syncResult.isErr()) {
       logger.error(
         { ...loggerArgs, error: syncResult.error },
@@ -190,6 +202,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       );
       return syncResult;
     }
+
     const gcResult = await launchZendeskGarbageCollectionWorkflow(connector);
     if (gcResult.isErr()) {
       logger.error(

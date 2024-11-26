@@ -1,3 +1,4 @@
+import { supportedPlainTextExtensions } from "@dust-tt/client";
 import {
   Button,
   DocumentPlusIcon,
@@ -32,10 +33,16 @@ import {
   maxFileSizeToHumanReadable,
   parseAndStringifyCsv,
 } from "@dust-tt/types";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
+import {
+  useCreateDataSourceViewDocument,
+  useDataSourceViewDocument,
+  useUpdateDataSourceViewDocument,
+} from "@app/lib/swr/data_source_view_documents";
+import { useFileProcessedContent } from "@app/lib/swr/file";
 import { useTable } from "@app/lib/swr/tables";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
@@ -80,34 +87,37 @@ export function DocumentOrTableUploadOrEditModal(
 
 interface Document {
   name: string;
-  file: File | null;
   text: string;
   tags: string[];
   sourceUrl: string;
 }
 
 const DocumentUploadOrEditModal = ({
-  initialId,
   dataSourceView,
   isOpen,
   onClose,
   owner,
   plan,
+  initialId,
 }: DocumentOrTableUploadOrEditModalProps) => {
   const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentState, setDocumentState] = useState<Document>({
     name: "",
-    file: null,
     text: "",
     tags: [],
     sourceUrl: "",
   });
+  const fileUploaderService = useFileUploaderService({
+    owner,
+    useCase: "folder",
+  });
+
   const [editionStatus, setEditionStatus] = useState({
     name: false,
     content: false,
   });
-  const [uploading, setUploading] = useState(false);
+
   const [isValidDocument, setIsValidDocument] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
@@ -119,11 +129,183 @@ const DocumentUploadOrEditModal = ({
       disabled: !initialId,
     });
 
+  // Get the processed file content from the file API
+  const [fileId, setFileId] = useState<string | null>(null);
+  const { isContentLoading } = useFileProcessedContent(owner, fileId ?? null, {
+    disabled: !fileId,
+    onSuccess: async (response) => {
+      const content = await response.text();
+      setDocumentState((prev) => ({
+        ...prev,
+        text: content ?? "",
+      }));
+    },
+    onError: (error) => {
+      fileUploaderService.resetUpload();
+      sendNotification({
+        type: "error",
+        title: "Error fetching document content",
+        description: error instanceof Error ? error.message : String(error),
+      });
+    },
+    shouldRetryOnError: false,
+  });
+
+  // Side effects of upserting the data source document
+  const onUpsertSuccess = useCallback(() => {
+    sendNotification({
+      type: "success",
+      title: `Document successfully ${initialId ? "updated" : "added"}`,
+      description: `Document ${documentState.name} was successfully ${
+        initialId ? "updated" : "added"
+      }.`,
+    });
+    onClose(true);
+    setDocumentState({
+      name: "",
+      text: "",
+      tags: [],
+      sourceUrl: "",
+    });
+    setEditionStatus({
+      content: false,
+      name: false,
+    });
+  }, [documentState, initialId, onClose, sendNotification]);
+
+  const onUpsertError = useCallback(
+    (error: unknown) => {
+      sendNotification({
+        type: "error",
+        title: "Error upserting document",
+        description: error instanceof Error ? error.message : String(error),
+      });
+      console.error(error);
+    },
+    [sendNotification]
+  );
+
+  const onUpsertSettled = useCallback(() => {
+    setFileId(null);
+    fileUploaderService.resetUpload();
+  }, [fileUploaderService]);
+
+  // Upsert documents to the data source
+  const patchDocumentMutation = useUpdateDataSourceViewDocument(
+    owner,
+    dataSourceView,
+    initialId ?? "",
+    {
+      onSuccess: () => {
+        onUpsertSuccess();
+        onUpsertSettled();
+      },
+      onError: (err) => {
+        onUpsertError(err);
+        onUpsertSettled();
+      },
+    }
+  );
+
+  const createDocumentMutation = useCreateDataSourceViewDocument(
+    owner,
+    dataSourceView,
+    {
+      onSuccess: () => {
+        onUpsertSuccess();
+        onUpsertSettled();
+      },
+      onError: (err) => {
+        onUpsertError(err);
+        onUpsertSettled();
+      },
+    }
+  );
+
+  const handleDocumentUpload = useCallback(
+    async (document: Document) => {
+      const body = {
+        name: initialId ?? document.name,
+        timestamp: null,
+        parents: null,
+        section: { prefix: null, content: document.text, sections: [] },
+        text: null,
+        source_url: document.sourceUrl || undefined,
+        tags: document.tags.filter(Boolean),
+        light_document_output: true,
+        upsert_context: null,
+        async: false,
+      };
+
+      // These mutations do the fetch and mutate, all at once
+      if (initialId) {
+        await patchDocumentMutation.trigger({ documentBody: body });
+      } else {
+        await createDocumentMutation.trigger({ documentBody: body });
+      }
+    },
+    [createDocumentMutation, patchDocumentMutation, initialId]
+  );
+
+  const handleUpload = useCallback(async () => {
+    try {
+      // Create Data Source Document
+      await handleDocumentUpload(documentState);
+      onClose(true);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [handleDocumentUpload, documentState, onClose]);
+
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Enforce single file upload
+      const files = e.target.files;
+      if (files && files.length > 1) {
+        sendNotification({
+          type: "error",
+          title: "Multiple files",
+          description: "Please upload only one file at a time.",
+        });
+        return;
+      }
+
+      try {
+        // Create a file -> Allows to get processed text content via the file API.
+        const selectedFile = files?.[0];
+        if (!selectedFile) {
+          return;
+        }
+        const fileBlobs = await fileUploaderService.handleFilesUpload([
+          selectedFile,
+        ]);
+        if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
+          fileUploaderService.resetUpload();
+          return new Err(
+            new Error(
+              "Error uploading file. Please try again or contact support."
+            )
+          );
+        }
+
+        // triggers content extraction -> documentState.text update
+        setFileId(fileBlobs[0].fileId);
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Error uploading file",
+          description: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+    [fileUploaderService, sendNotification]
+  );
+
+  // Effect: Set the document state when the document is loaded
   useEffect(() => {
     if (!initialId) {
       setDocumentState({
         name: "",
-        file: null,
         text: "",
         tags: [],
         sourceUrl: "",
@@ -139,124 +321,33 @@ const DocumentUploadOrEditModal = ({
     }
   }, [initialId, document]);
 
+  // Effect: Validate the document state
   useEffect(() => {
     const isNameValid = !!documentState.name;
-    const isContentValid = !!documentState.text || !!documentState.file;
+    const isContentValid = documentState.text.length > 0;
     setIsValidDocument(isNameValid && isContentValid);
   }, [documentState]);
-
-  const handleDocumentUpload = async (document: Document) => {
-    setUploading(true);
-    try {
-      const base = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
-      const endpoint = initialId
-        ? `${base}/${encodeURIComponent(document.name)}`
-        : base;
-      const body = {
-        name: document.name,
-        timestamp: null,
-        parents: null,
-        section: { prefix: null, content: document.text, sections: [] },
-        text: null,
-        source_url: document.sourceUrl || undefined,
-        tags: document.tags.filter(Boolean),
-        light_document_output: true,
-        upsert_context: null,
-        async: false,
-      };
-      const stringifiedBody = JSON.stringify(body);
-
-      const res = await fetch(endpoint, {
-        method: initialId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: stringifiedBody,
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to upsert document");
-      }
-
-      sendNotification({
-        type: "success",
-        title: `Document successfully ${initialId ? "updated" : "added"}`,
-        description: `Document ${document.name} was successfully ${initialId ? "updated" : "added"}.`,
-      });
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Error upserting document",
-        description: `An error occurred: ${error instanceof Error ? error.message : String(error)}.`,
-      });
-    } finally {
-      setUploading(false);
-      setDocumentState({
-        name: "",
-        file: null,
-        text: "",
-        tags: [],
-        sourceUrl: "",
-      });
-      setEditionStatus({
-        content: false,
-        name: false,
-      });
-    }
-  };
-
-  const handleUpload = async () => {
-    try {
-      await handleDocumentUpload(documentState);
-      onClose(true);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) {
-      return;
-    }
-
-    setUploading(true);
-    try {
-      if (selectedFile.size > MAX_FILE_SIZES.plainText) {
-        sendNotification({
-          type: "error",
-          title: "File too large",
-          description: `Please upload a file smaller than ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`,
-        });
-        setUploading(false);
-        return;
-      }
-
-      const res = await handleFileUploadToText(selectedFile);
-      if (res.isErr()) {
-        return new Err(res.error);
-      }
-      setDocumentState((prev) => ({ ...prev, text: res.value.content }));
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Error uploading file",
-        description: error instanceof Error ? error.message : String(error),
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => {
+        fileUploaderService.resetUpload();
         onClose(false);
       }}
-      hasChanged={!isDocumentError && !isDocumentLoading && isValidDocument}
+      hasChanged={
+        !isDocumentError &&
+        !isDocumentLoading &&
+        !isContentLoading &&
+        !fileUploaderService.isProcessingFiles &&
+        isValidDocument
+      }
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} document`}
       onSave={handleUpload}
-      isSaving={uploading}
+      isSaving={
+        patchDocumentMutation.isMutating || createDocumentMutation.isMutating
+      }
     >
       {isDocumentLoading ? (
         <div className="flex justify-center py-4">
@@ -274,8 +365,8 @@ const DocumentUploadOrEditModal = ({
                   placeholder="Document title"
                   name="name"
                   maxLength={MAX_NAME_CHARS}
-                  disabled={!!initialId}
                   value={documentState.name}
+                  disabled={!!initialId}
                   onChange={(e) => {
                     setEditionStatus((prev) => ({ ...prev, name: true }));
                     setDocumentState((prev) => ({
@@ -319,27 +410,29 @@ const DocumentUploadOrEditModal = ({
                       : plan.limits.dataSources.documents.sizeMb
                   } MB of raw text.`}
                   action={{
-                    label: uploading
-                      ? "Uploading..."
-                      : documentState.file
-                        ? documentState.file.name
-                        : initialId
-                          ? "Replace file"
-                          : "Upload file",
+                    label:
+                      fileUploaderService.isProcessingFiles || isContentLoading
+                        ? "Uploading..."
+                        : "Upload file",
                     variant: "primary",
                     icon: DocumentPlusIcon,
                     onClick: () => fileInputRef.current?.click(),
+                    isLoading:
+                      fileUploaderService.isProcessingFiles || isContentLoading,
                   }}
                 />
                 <input
                   type="file"
                   ref={fileInputRef}
                   style={{ display: "none" }}
-                  accept=".txt, .pdf, .md, .csv"
+                  accept={supportedPlainTextExtensions.join(", ")}
                   onChange={handleFileChange}
                 />
                 <TextArea
                   minRows={10}
+                  disabled={
+                    isContentLoading || fileUploaderService.isProcessingFiles
+                  }
                   placeholder="Your document content..."
                   value={documentState.text}
                   onChange={(e) => {
@@ -458,7 +551,7 @@ const TableUploadOrEditModal = ({
     name: false,
     description: false,
   });
-  const [uploading, setUploading] = useState(false);
+  const [isUpserting, setIsUpserting] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
   const [isValidTable, setIsValidTable] = useState(false);
   const [useAppForHeaderDetection, setUseAppForHeaderDetection] =
@@ -495,7 +588,7 @@ const TableUploadOrEditModal = ({
   }, [tableState]);
 
   const handleTableUpload = async (table: Table) => {
-    setUploading(true);
+    setIsUpserting(true);
     try {
       const fileContent = table.file
         ? await handleFileUploadToText(table.file)
@@ -550,7 +643,7 @@ const TableUploadOrEditModal = ({
         description: `An error occurred: ${error instanceof Error ? error.message : String(error)}.`,
       });
     } finally {
-      setUploading(false);
+      setIsUpserting(false);
     }
   };
 
@@ -569,7 +662,7 @@ const TableUploadOrEditModal = ({
       return;
     }
 
-    setUploading(true);
+    setIsUpserting(true);
     try {
       if (selectedFile.size > MAX_FILE_SIZES.plainText) {
         sendNotification({
@@ -577,7 +670,7 @@ const TableUploadOrEditModal = ({
           title: "File too large",
           description: `Please upload a file smaller than ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`,
         });
-        setUploading(false);
+        setIsUpserting(false);
         return;
       }
 
@@ -590,7 +683,7 @@ const TableUploadOrEditModal = ({
         description: error instanceof Error ? error.message : String(error),
       });
     } finally {
-      setUploading(false);
+      setIsUpserting(false);
     }
   };
 
@@ -604,7 +697,7 @@ const TableUploadOrEditModal = ({
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} table`}
       onSave={handleUpload}
-      isSaving={uploading}
+      isSaving={isUpserting}
     >
       {isTableLoading ? (
         <div className="flex justify-center py-4">
@@ -674,7 +767,7 @@ const TableUploadOrEditModal = ({
                   title="CSV File"
                   description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`}
                   action={{
-                    label: uploading
+                    label: isUpserting
                       ? "Uploading..."
                       : tableState.file
                         ? tableState.file.name

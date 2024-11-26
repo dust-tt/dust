@@ -2104,6 +2104,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema([
   "conversation",
   "avatar",
   "tool_output",
+  "folder",
 ]);
 
 export const FileTypeSchema = z.object({
@@ -2169,7 +2170,7 @@ export function isRetrievalActionType(
 export function isWebsearchActionType(
   action: AgentActionPublicType
 ): action is WebsearchActionPublicType {
-  return action.type === "retrieval_action";
+  return action.type === "websearch_action";
 }
 
 export function isTablesQueryActionType(

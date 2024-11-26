@@ -35,6 +35,7 @@ export default function WorkspacePicker({
           <Button
             label={workspace ? workspace.name : "Select workspace"}
             variant="ghost"
+            size="xs"
             isSelect
           />
         </DropdownMenuTrigger>
@@ -44,8 +45,8 @@ export default function WorkspacePicker({
               return (
                 <DropdownMenuRadioItem
                   key={w.sId}
-                  onClick={() => {
-                    setNavigationSelection({ lastWorkspaceId: w.sId });
+                  onClick={async () => {
+                    await setNavigationSelection({ lastWorkspaceId: w.sId });
                     void onWorkspaceUpdate(w);
                   }}
                   value={w.name}

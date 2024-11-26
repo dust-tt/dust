@@ -10,7 +10,7 @@ import type { Fetcher, KeyedMutator } from "swr";
 import {
   appendPaginationParams,
   fetcher,
-  postFetcher,
+  fetcherWithBody,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
@@ -93,7 +93,11 @@ export function usePokeDataSourceViewContentNodes({
           return undefined;
         }
 
-        return postFetcher([url, { internalIds, parentId, viewType }]);
+        return fetcherWithBody([
+          url,
+          { internalIds, parentId, viewType },
+          "POST",
+        ]);
       },
       {
         disabled: disabled || !viewType,
@@ -147,8 +151,10 @@ export function usePokeDataSourceViewContentNodesWithInfiniteScroll({
     viewType,
   };
 
-  const fetcher: Fetcher<PokeGetDataSourceViewContentNodes, [string, object]> =
-    postFetcher;
+  const fetcher: Fetcher<
+    PokeGetDataSourceViewContentNodes,
+    [string, object, string]
+  > = fetcherWithBody;
 
   const { data, error, setSize, size, isValidating } =
     useSWRInfiniteWithDefaults(

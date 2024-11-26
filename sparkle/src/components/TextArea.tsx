@@ -27,9 +27,9 @@ const textAreaVariants = cva(
         both: "s-resize",
       },
       error: {
-        true: "s-ring-warning-200 focus:s-ring-warning-300 dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark",
+        true: "focus:s-ring-warning-200 focus:s-ring-warning-300 dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark",
         false:
-          "s-ring-structure-200 dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark",
+          "focus:s-ring-highlight-200 dark:s-ring-structure-300-dark dark:focus:s-ring-highlight-200-dark",
       },
       disabled: {
         true: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",

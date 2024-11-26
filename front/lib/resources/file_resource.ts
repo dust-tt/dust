@@ -30,7 +30,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 
-type FileVersion = "processed" | "original" | "public" | "snippet";
+export type FileVersion = "processed" | "original" | "public" | "snippet";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}

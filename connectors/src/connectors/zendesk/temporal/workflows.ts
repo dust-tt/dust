@@ -52,7 +52,7 @@ const {
 });
 
 const {
-  saveZendeskConnectorStartSync,
+  zendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
   getZendeskTicketsAllowedBrandIdsActivity,
@@ -71,7 +71,8 @@ export async function zendeskSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  await saveZendeskConnectorStartSync(connectorId);
+  const { cursor } = await zendeskConnectorStartSync(connectorId);
+  const isInitialSync = !cursor;
 
   const brandIds = new Set<number>();
   const brandSignals: ZendeskUpdateSignal[] = [];
@@ -130,8 +131,8 @@ export async function zendeskSyncWorkflow({
 
   const currentSyncDateMs = new Date().getTime();
 
-  // If we got no signal, then we're on the scheduled execution
   if (
+    !isInitialSync &&
     brandIds.size === 0 &&
     brandHelpCenterIds.size === 0 &&
     brandTicketsIds.size === 0 &&
@@ -246,9 +247,7 @@ export async function zendeskIncrementalSyncWorkflow({
     getZendeskHelpCenterReadAllowedBrandIdsActivity(connectorId),
   ]);
 
-  const startTimeMs = cursor
-    ? new Date(cursor).getTime() // recasting the date since error may occur during Temporal's serialization
-    : currentSyncDateMs - 1000 * 60 * 30; // 30 min ago, previous scheduled execution
+  const startTimeMs = new Date(cursor).getTime(); // recasting the date since error may occur during Temporal's serialization
   const startTime = Math.floor(startTimeMs / 1000);
 
   for (const brandId of helpCenterBrandIds) {
@@ -264,13 +263,13 @@ export async function zendeskIncrementalSyncWorkflow({
   }
 
   for (const brandId of ticketBrandIds) {
-    await runZendeskActivityWithPagination((cursor) =>
+    await runZendeskActivityWithPagination((url) =>
       syncZendeskTicketUpdateBatchActivity({
         connectorId,
         startTime,
         brandId,
         currentSyncDateMs,
-        cursor,
+        url,
       })
     );
   }
@@ -398,13 +397,13 @@ export async function zendeskCategorySyncWorkflow({
     brandId,
   });
   if (shouldSyncArticles) {
-    await runZendeskActivityWithPagination((cursor) =>
+    await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
         forceResync,
-        cursor,
+        url,
       })
     );
   }
@@ -515,7 +514,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
 }) {
   const categoryIdsToSync = new Set<number>();
 
-  let cursor: string | null = null; // cursor involved in the pagination of the API
+  let url: string | null = null; // next URL returned by the API
   let hasMore = true;
   while (hasMore) {
     // not using runZendeskActivityWithPagination because we need to add result.categoriesToUpdate to the Set
@@ -523,23 +522,23 @@ async function runZendeskBrandHelpCenterSyncActivities({
       connectorId,
       brandId,
       currentSyncDateMs,
-      cursor,
+      url,
     });
     hasMore = result.hasMore || false;
-    cursor = result.afterCursor;
+    url = result.nextLink;
     result.categoriesToUpdate.forEach((categoryId) =>
       categoryIdsToSync.add(categoryId)
     );
   }
 
   for (const categoryId of categoryIdsToSync) {
-    await runZendeskActivityWithPagination((cursor) =>
+    await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
         forceResync,
-        cursor,
+        url,
       })
     );
   }
@@ -559,13 +558,13 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  await runZendeskActivityWithPagination((cursor) =>
+  await runZendeskActivityWithPagination((url) =>
     syncZendeskTicketBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,
       forceResync,
-      cursor,
+      url,
     })
   );
 }
@@ -576,14 +575,14 @@ async function runZendeskBrandTicketsSyncActivities({
 async function runZendeskActivityWithPagination(
   activity: (
     cursor: string | null
-  ) => Promise<{ hasMore: boolean; afterCursor: string | null }>
+  ) => Promise<{ hasMore: boolean; nextLink: string | null }>
 ): Promise<void> {
-  let cursor: string | null = null; // cursor involved in the pagination of the API
+  let url: string | null = null; // next URL returned by the API
   let hasMore = true;
 
   while (hasMore) {
-    const result = await activity(cursor);
+    const result = await activity(url);
     hasMore = result.hasMore || false;
-    cursor = result.afterCursor;
+    url = result.nextLink;
   }
 }

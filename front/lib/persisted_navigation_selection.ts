@@ -1,24 +1,27 @@
+import type { UserType } from "@dust-tt/types";
 import { safeParseJSON } from "@dust-tt/types";
-import type { NextApiRequestCookies } from "next/dist/server/api-utils";
 
 import type { NavigationSelectionType } from "@app/hooks/usePersistedNavigationSelection";
-import { NAVIGATION_SELECTION_COOKIE_NAME } from "@app/hooks/usePersistedNavigationSelection";
+import { NAVIGATION_SELECTION_METADATA_NAME } from "@app/hooks/usePersistedNavigationSelection";
+import { getUserMetadata } from "@app/lib/api/user";
 
 // Server-side counterpart of usePersistedNavigationSelection
-export const getPersistedNavigationSelection = (
-  cookies: NextApiRequestCookies
-): NavigationSelectionType => {
-  const selectionCookie = cookies[NAVIGATION_SELECTION_COOKIE_NAME];
+export const getPersistedNavigationSelection = async (
+  user: UserType
+): Promise<NavigationSelectionType> => {
+  const metadata = await getUserMetadata(
+    user,
+    NAVIGATION_SELECTION_METADATA_NAME
+  );
 
-  if (!selectionCookie) {
+  if (!metadata) {
     return {};
   }
 
-  const r = safeParseJSON(selectionCookie);
-  if (r.isErr()) {
-    console.error("Failed to parse navigation selection cookie:", r.error);
-    return {};
-  } else {
+  const r = safeParseJSON(metadata.value);
+  if (r.isOk()) {
     return r.value as NavigationSelectionType;
   }
+
+  return {};
 };
