@@ -8,8 +8,8 @@ import {
   PopoverTrigger,
 } from "@sparkle/components/Popover";
 import { TextArea } from "@sparkle/components/TextArea";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { HandThumbDownIcon, HandThumbUpIcon } from "@sparkle/icons/solid";
-import { Tooltip } from "@sparkle/index_with_tw_base";
 
 export type ThumbReaction = "up" | "down";
 export type ConversationMessageFeedbackType = {
