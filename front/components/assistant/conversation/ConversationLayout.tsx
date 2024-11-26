@@ -91,7 +91,7 @@ export default function ConversationLayout({
   ]);
 
   const { conversation, conversationError } = useConversation({
-    conversationId: activeConversationId,
+    conversationId: activeConversationId ?? "",
     workspaceId: owner.sId,
   });
 

@@ -15,7 +15,6 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -342,7 +341,8 @@ export class AgentMessageFeedback extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationId: string;
+  declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<User["id"]>;
 
@@ -370,6 +370,14 @@ AgentMessageFeedback.init(
     workspaceId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    agentConfigurationVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     thumbDirection: {
       type: DataTypes.STRING,
@@ -401,9 +409,6 @@ AgentMessageFeedback.init(
   }
 );
 
-AgentConfiguration.hasMany(AgentMessageFeedback, {
-  onDelete: "RESTRICT",
-});
 AgentMessage.hasMany(AgentMessageFeedback, {
   onDelete: "RESTRICT",
 });

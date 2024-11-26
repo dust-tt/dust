@@ -1,5 +1,4 @@
 import type {
-  ConversationMessageReactions,
   FetchConversationMessagesResponse,
   MessageWithContentFragmentsType,
   UserType,
@@ -8,15 +7,15 @@ import type {
 import React, { useEffect, useRef } from "react";
 
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[];
   isLastMessageGroup: boolean;
   conversationId: string;
-  hideReactions: boolean;
+  feedbacks: AgentMessageFeedbackType[];
   isInModal: boolean;
   owner: WorkspaceType;
-  reactions: ConversationMessageReactions;
   prevFirstMessageId: string | null;
   prevFirstMessageRef: React.RefObject<HTMLDivElement>;
   user: UserType;
@@ -33,10 +32,9 @@ export default function MessageGroup({
   messages,
   isLastMessageGroup,
   conversationId,
-  hideReactions,
+  feedbacks,
   isInModal,
   owner,
-  reactions,
   prevFirstMessageId,
   prevFirstMessageRef,
   user,
@@ -66,11 +64,12 @@ export default function MessageGroup({
         <MessageItem
           key={`message-${message.sId}`}
           conversationId={conversationId}
-          hideReactions={hideReactions}
+          messageFeedback={feedbacks.find(
+            (feedback) => feedback.messageId === message.sId
+          )}
           isInModal={isInModal}
           message={message}
           owner={owner}
-          reactions={reactions}
           ref={
             message.sId === prevFirstMessageId ? prevFirstMessageRef : undefined
           }
