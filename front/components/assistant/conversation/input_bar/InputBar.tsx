@@ -6,6 +6,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
+import _ from "lodash";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
@@ -53,6 +54,7 @@ export function AssistantInputBar({
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
 }) {
+  const [disableSendButton, setDisableSendButton] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
@@ -155,7 +157,8 @@ export function AssistantInputBar({
   const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
     textAndMentions,
-    resetEditorText
+    resetEditorText,
+    setLoading
   ) => {
     if (isEmpty || fileUploaderService.isProcessingFiles) {
       return;
@@ -166,8 +169,11 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
+    let delayedLoading: number = 0;
     // When we are creating a new conversation, we will disable the input bar, show a loading spinner and in case of error, re-enable the input bar
     if (!conversationId) {
+      delayedLoading = _.delay(() => setLoading(true), 250);
+      setDisableSendButton(true);
     }
 
     try {
@@ -183,9 +189,11 @@ export function AssistantInputBar({
       );
       resetEditorText();
       fileUploaderService.resetUpload();
-    } catch (e) {
-      // Re-enable the input bar & hide loading
+    } finally {
       if (!conversationId) {
+        clearTimeout(delayedLoading);
+        setLoading(false);
+        setDisableSendButton(false);
       }
     }
   };
@@ -281,7 +289,9 @@ export function AssistantInputBar({
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 fileUploaderService={fileUploaderService}
-                disableSendButton={fileUploaderService.isProcessingFiles}
+                disableSendButton={
+                  disableSendButton || fileUploaderService.isProcessingFiles
+                }
               />
             </div>
           </div>

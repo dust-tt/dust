@@ -1,5 +1,6 @@
 import { Page } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
   AgentMention,
   LightAgentConfigurationType,
@@ -8,7 +9,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { useRouter } from "next/router";
 import {
@@ -186,7 +186,7 @@ export function ConversationContainer({
             contentFragments,
           },
         });
-        throw "[FAKE]failed to create conversation";
+
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
             setPlanLimitReached(true);

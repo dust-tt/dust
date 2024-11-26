@@ -73,3 +73,31 @@ main {
     transform: translate3d(8px, 3px, 0);
   }
 }
+
+.loading-text {
+  background: linear-gradient(90deg, #999999 0%, #000000 50%, #999999 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation:
+    initialFade 0.3s ease-out forwards,
+    rainbowLoop 3s linear infinite;
+}
+
+@keyframes initialFade {
+  from {
+    color: currentColor;
+  }
+  to {
+    color: transparent;
+  }
+}
+
+@keyframes rainbowLoop {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
