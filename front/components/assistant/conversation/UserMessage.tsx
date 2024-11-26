@@ -1,7 +1,4 @@
-import type {
-  ConversationMessageEmojiSelectorProps,
-  ConversationMessageSizeType,
-} from "@dust-tt/sparkle";
+import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
 import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
@@ -23,7 +20,6 @@ interface UserMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   message: UserMessageType;
-  messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: WorkspaceType;
   size: ConversationMessageSizeType;
 }
@@ -33,7 +29,6 @@ export function UserMessage({
   conversationId,
   isLastMessage,
   message,
-  messageEmoji,
   owner,
   size,
 }: UserMessageProps) {
@@ -54,7 +49,6 @@ export function UserMessage({
     <ConversationMessage
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName}
-      messageEmoji={messageEmoji}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
       citations={citations}

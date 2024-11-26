@@ -1,5 +1,5 @@
 import type {
-  ConversationMessageEmojiSelectorProps,
+  ConversationMessageFeedbackSelectorProps,
   ConversationMessageSizeType,
 } from "@dust-tt/sparkle";
 import {
@@ -13,6 +13,7 @@ import {
   ConversationMessage,
   DocumentDuplicateIcon,
   EyeIcon,
+  FeedbackSelector,
   Markdown,
   Popover,
 } from "@dust-tt/sparkle";
@@ -83,7 +84,7 @@ interface AgentMessageProps {
   isInModal: boolean;
   isLastMessage: boolean;
   message: AgentMessageType;
-  messageEmoji?: ConversationMessageEmojiSelectorProps;
+  messageFeedback: ConversationMessageFeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
   size: ConversationMessageSizeType;
@@ -100,7 +101,7 @@ export function AgentMessage({
   isInModal,
   isLastMessage,
   message,
-  messageEmoji,
+  messageFeedback,
   owner,
   user,
   size,
@@ -368,6 +369,7 @@ export function AgentMessage({
             icon={ArrowPathIcon}
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
+          <FeedbackSelector key="feedback-selector" {...messageFeedback} />,
         ];
 
   // References logic.
@@ -464,7 +466,6 @@ export function AgentMessage({
       name={`@${agentConfiguration.name}`}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      messageEmoji={messageEmoji}
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">
