@@ -22,7 +22,6 @@ import {
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
-  isDevelopment,
   isSupportedImageContentType,
   isSupportedPlainTextContentType,
   isUserMessageType,
@@ -59,14 +58,14 @@ export async function isJITActionsEnabled(
   auth: Authenticator
 ): Promise<boolean> {
   let use = false;
-  if (isDevelopment()) {
-    // For now we limit the feature flag to development only to not introduce an extraneous DB call
-    // on the critical path of conversations.
-    const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-    if (flags.includes("conversations_jit_actions")) {
-      use = true;
-    }
+
+  // For now we limit the feature flag to development and dust workspace only to not introduce an extraneous DB call
+  // on the critical path of conversations.
+  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (flags.includes("conversations_jit_actions")) {
+    use = true;
   }
+
   return use;
 }
 

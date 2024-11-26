@@ -23,6 +23,7 @@ import {
   Ok,
   WHITELISTABLE_FEATURES,
 } from "@dust-tt/types";
+import memoizer from "lru-memoizer";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -1006,15 +1007,21 @@ export async function prodAPICredentialsForOwner(
   };
 }
 
-export const getFeatureFlags = async (
-  workspace: WorkspaceType
-): Promise<WhitelistableFeature[]> => {
-  if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-    return [...WHITELISTABLE_FEATURES];
-  } else {
-    const res = await FeatureFlag.findAll({
-      where: { workspaceId: workspace.id },
-    });
-    return res.map((flag) => flag.name);
-  }
-};
+export const getFeatureFlags = memoizer.sync({
+  load: async (workspace: WorkspaceType): Promise<WhitelistableFeature[]> => {
+    if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
+      return [...WHITELISTABLE_FEATURES];
+    } else {
+      const res = await FeatureFlag.findAll({
+        where: { workspaceId: workspace.id },
+      });
+      return res.map((flag) => flag.name);
+    }
+  },
+
+  hash: function (workspace: WorkspaceType) {
+    return `feature_flags_${workspace.id}`;
+  },
+
+  itemMaxAge: () => 3000,
+});
