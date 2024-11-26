@@ -86,7 +86,9 @@ const Content = () => {
     <ScrollArea className="h-[80vh]">
       {Object.keys(conversationsByDate).map((dateLabel) => (
         <>
-          <DropdownMenuLabel label={dateLabel} />
+          {conversationsByDate[dateLabel as GroupLabel].length > 0 && (
+            <DropdownMenuLabel label={dateLabel} />
+          )}
           {conversationsByDate[dateLabel as GroupLabel].map((conversation) => (
             <DropdownMenuItem
               key={conversation.sId}
