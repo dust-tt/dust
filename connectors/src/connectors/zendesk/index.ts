@@ -253,7 +253,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         where: { connectorId },
       });
       if (!cursors) {
-        throw new Error("[Zendesk] Timestamp cursor not found.");
+        throw new Error(
+          "[Zendesk] Cannot use fromTs on a connector that has never completed an initial sync."
+        );
       }
       await cursors.update({ timestampCursor: new Date(fromTs) });
       const result = await launchZendeskSyncWorkflow(connector, {
