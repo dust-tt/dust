@@ -175,7 +175,12 @@ ${metadata}
 Conversation:
 ${comments
   .map((comment) => {
-    const author = users.find((user) => user.id === comment.author_id);
+    let author;
+    try {
+      author = users.find((user) => user.id === comment.author_id);
+    } catch (e) {
+      author = null;
+    }
     return `
 [${new Date(comment.created_at).toISOString()}] ${
       author ? `${author.name} (${author.email})` : "Unknown User"
