@@ -177,10 +177,16 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     return result;
   }
 
+  /**
+   * Stops all workflows related to the connector (sync and garbage collection).
+   */
   async stop(): Promise<Result<undefined, Error>> {
     return stopZendeskWorkflows(this.connectorId);
   }
 
+  /**
+   * Launches a full re-sync workflow for the connector, launches the garbage collection workflow.
+   */
   async resume(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -257,6 +263,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  /**
+   * Updates the permissions stored in db,
+   * then launches a sync workflow with the signals
+   * corresponding to the resources that were modified to reflect the changes.
+   */
   async setPermissions({
     permissions,
   }: {
@@ -415,6 +426,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  /**
+   * Retrieves a batch of content nodes given their internal IDs.
+   */
   async retrieveBatchContentNodes({
     internalIds,
   }: {
@@ -605,6 +619,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     throw new Error("Method not implemented.");
   }
 
+  /**
+   * Marks the connector as paused in db and stops all workflows.
+   */
   async pause(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -616,6 +633,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     return this.stop();
   }
 
+  /**
+   * Marks the connector as unpaused in db and launches a full resync workflow.
+   */
   async unpause(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
