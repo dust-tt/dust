@@ -195,7 +195,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   /**
-   * Launches a full re-sync workflow for the connector, launches the garbage collection workflow.
+   * Launches an incremental workflow (sync workflow without signals) and the garbage collection workflow for the connector.
    */
   async resume(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
@@ -664,7 +664,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   /**
-   * Marks the connector as unpaused in db and launches a full resync workflow.
+   * Marks the connector as unpaused in db and restarts the workflows.
    */
   async unpause(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
