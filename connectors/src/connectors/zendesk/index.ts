@@ -42,6 +42,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -228,7 +229,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
    * Launches a full re-sync workflow for the connector,
    * syncing every resource selected by the user with forceResync = true.
    */
-  async sync(): Promise<Result<string, Error>> {
+  async sync({
+    fromTs,
+  }: {
+    fromTs: number | null;
+  }): Promise<Result<string, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
@@ -236,6 +241,22 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
+    // launching an incremental workflow taking the diff starting from the given timestamp
+    if (fromTs) {
+      const cursors = await ZendeskTimestampCursors.findOne({
+        where: { connectorId },
+      });
+      if (!cursors) {
+        throw new Error("[Zendesk] Timestamp cursor not found.");
+      }
+      await cursors.update({ timestampCursor: new Date(fromTs) });
+      const result = await launchZendeskSyncWorkflow(connector, {
+        forceResync: true,
+      });
+      return result.isErr() ? result : new Ok(connector.id.toString());
+    }
+
+    // launching a full sync workflow otherwise
     return launchZendeskFullSyncWorkflow(connector, { forceResync: true });
   }
 
