@@ -427,7 +427,7 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
-  const users = await zendeskApiClient.users.list();
+  const users = (await zendeskApiClient.users.list()) || [];
 
   const res = await concurrentExecutor(
     tickets,
