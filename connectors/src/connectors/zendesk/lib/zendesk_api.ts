@@ -9,6 +9,7 @@ import type {
   ZendeskFetchedTicket,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
+import { isNodeZendeskForbiddenError } from "@connectors/connectors/zendesk/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
@@ -380,14 +381,13 @@ export async function fetchArticleMetadata(
       article.author_id
     );
     return { section, user };
-  } catch (e: unknown) {
+  } catch (e) {
     logger.error(
       { articleId: article.id, error: e },
       "[Zendesk] Error fetching article metadata"
     );
-    // @ts-expect-error check out https://github.com/blakmatrix/node-zendesk/blob/fa069d927bd418ee2058bb7bb913f9414e395110/src/clients/helpers.js#L262
-    if (e.statusCode === 403) {
-      throw new ExternalOAuthTokenError();
+    if (isNodeZendeskForbiddenError(e)) {
+      throw new ExternalOAuthTokenError(e);
     }
     throw e;
   }

@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { isNodeZendeskForbiddenError } from "@connectors/connectors/zendesk/lib/errors";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -354,10 +355,9 @@ export async function syncZendeskArticleBatchActivity({
         }),
       { concurrency: 10 }
     );
-  } catch (e: unknown) {
-    // @ts-expect-error check out https://github.com/blakmatrix/node-zendesk/blob/fa069d927bd418ee2058bb7bb913f9414e395110/src/clients/helpers.js#L262
-    if (e.statusCode === 403) {
-      throw new ExternalOAuthTokenError();
+  } catch (e) {
+    if (isNodeZendeskForbiddenError(e)) {
+      throw new ExternalOAuthTokenError(e);
     }
     throw e;
   }
