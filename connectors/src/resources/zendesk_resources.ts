@@ -6,7 +6,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 import {
   getArticleInternalId,
@@ -496,6 +496,16 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       attributes: ["categoryId"],
     });
     return categories.map((category) => category.get().categoryId);
+  }
+
+  static async fetchBrandIdsOfReadOnlyCategories(
+    connectorId: number
+  ): Promise<number[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, permission: "read" },
+      attributes: [[fn("DISTINCT", col("brandId")), "brandId"]],
+    });
+    return categories.map((category) => category.get().brandId);
   }
 
   static async fetchByBrandIdReadOnly({
