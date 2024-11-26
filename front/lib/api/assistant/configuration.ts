@@ -366,35 +366,32 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
-        const agents = await AgentConfiguration.findAll({
-          where: {
-            workspaceId: owner.id,
-            ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
-            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
-          },
-          order: [["version", "DESC"]],
-        });
-
-        if (agentsGetView.allVersions) {
-          return agents;
-        }
-
-        // Group by sId and keep active version if exists, otherwise latest version
-        return Object.values(
-          agents.reduce(
-            (acc, agent) => {
-              if (
-                !acc[agent.sId] ||
-                (agent.status === "active" &&
-                  acc[agent.sId].status !== "active")
-              ) {
-                acc[agent.sId] = agent;
-              }
-              return acc;
+        const result = await frontSequelize.query(
+          `
+            SELECT DISTINCT ON ("sId") *
+            FROM agent_configurations
+            WHERE 
+              "workspaceId" = :workspaceId
+              ${agentPrefix ? "AND name ILIKE :namePrefix" : ""}
+              AND "sId" IN (:agentIds)
+            ORDER BY 
+              "sId",
+              CASE WHEN status = 'active' THEN 1 ELSE 0 END DESC,
+              version DESC
+          `,
+          {
+            replacements: {
+              workspaceId: owner.id,
+              ...(agentPrefix ? { namePrefix: `${agentPrefix}%` } : {}),
+              agentIds: agentsGetView.agentIds.filter(
+                (id) => !isGlobalAgentId(id)
+              ),
             },
-            {} as Record<string, AgentConfiguration>
-          )
+            model: AgentConfiguration,
+            mapToModel: true,
+          }
         );
+        return result;
       }
       assertNever(agentsGetView);
   }
