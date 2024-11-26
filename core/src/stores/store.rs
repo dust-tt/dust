@@ -516,16 +516,16 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        mime_type                    TEXT NOT NULL,
        parents                      TEXT[] NOT NULL,
        document                     BIGINT,
-       table                        BIGINT,
+       \"table\"                      BIGINT,
        folder                       BIGINT,
        FOREIGN KEY(data_source)    REFERENCES data_sources(id),
        FOREIGN KEY(document)       REFERENCES data_sources_documents(id),
-       FOREIGN KEY(table)          REFERENCES tables(id),
+       FOREIGN KEY(\"table\")      REFERENCES tables(id),
        FOREIGN KEY(folder)         REFERENCES data_sources_folders(id),
        CONSTRAINT data_sources_nodes_document_id_table_id_folder_id_check CHECK (
-           (document IS NOT NULL AND table IS NULL AND folder IS NULL) OR
-           (document IS NULL AND table IS NOT NULL AND folder IS NULL) OR
-           (document IS NULL AND table IS NULL AND folder IS NOT NULL)
+           (document IS NOT NULL AND \"table\" IS NULL AND folder IS NULL) OR
+           (document IS NULL AND \"table\" IS NOT NULL AND folder IS NULL) OR
+           (document IS NULL AND \"table\" IS NULL AND folder IS NOT NULL)
         )
     );",
 ];
