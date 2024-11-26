@@ -258,9 +258,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         );
       }
       await cursors.update({ timestampCursor: new Date(fromTs) });
-      const result = await launchZendeskSyncWorkflow(connector, {
-        forceResync: true,
-      });
+      const result = await launchZendeskSyncWorkflow(connector);
       return result.isErr() ? result : new Ok(connector.id.toString());
     } else {
       await ZendeskTimestampCursor.destroy({ where: { connectorId } });
