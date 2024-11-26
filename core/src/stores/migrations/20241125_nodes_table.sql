@@ -1,5 +1,5 @@
 -- folders
-CREATE TABLE IF NOT EXISTS data_sources_folders (
+CREATE TABLE data_sources_folders (
     id                           BIGSERIAL PRIMARY KEY,
     data_source                  BIGINT NOT NULL,
     created                      BIGINT NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS data_sources_folders (
 CREATE UNIQUE INDEX idx_data_sources_folders_data_source_folder_id ON data_sources_folders(data_source, folder_id);
 
 -- data sources nodes
-CREATE TABLE IF NOT EXISTS data_sources_nodes (
+CREATE TABLE data_sources_nodes (
     id                           BIGSERIAL PRIMARY KEY,
     data_source                  BIGINT NOT NULL,
     created                      BIGINT NOT NULL,

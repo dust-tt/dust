@@ -2942,12 +2942,63 @@ impl Store for PostgresStore {
         data_source_id: &str,
         node_id: &str,
     ) -> Result<Option<Node>> {
-        // will be implemented in the future
-        Err(anyhow!(
-            "Get Data Source Node for (ds {}, node {}) not implemented",
-            data_source_id,
-            node_id
-        ))
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 1",
+                &[&data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = c
+            .prepare(
+                "SELECT created, timestamp, title, mime_type, parents, document, table, folder, node_id \
+                 FROM data_sources_nodes \
+                 WHERE data_source = $1 AND node_id = $2 LIMIT 1",
+            )
+            .await?;
+        let row = c.query(&stmt, &[&data_source_row_id, &node_id]).await?;
+
+        match row.len() {
+            0 => Ok(None),
+            1 => {
+                let created: i64 = row[0].get::<_, i64>(0);
+                let timestamp: i64 = row[0].get::<_, i64>(1);
+                let title: String = row[0].get::<_, String>(2);
+                let mime_type: String = row[0].get::<_, String>(3);
+                let parents: Vec<String> = row[0].get::<_, Vec<String>>(4);
+                let node_id: String = row[0].get::<_, String>(5);
+                let node_type: NodeType = match (
+                    row[0].get::<_, Option<i64>>(6),
+                    row[0].get::<_, Option<i64>>(7),
+                    row[0].get::<_, Option<i64>>(8),
+                ) {
+                    (Some(_), None, None) => NodeType::Document,
+                    (None, Some(_), None) => NodeType::Table,
+                    (None, None, Some(_)) => NodeType::Folder,
+                    _ => unreachable!(),
+                };
+
+                Ok(Some(Node {
+                    node_id,
+                    created: created as u64,
+                    timestamp: timestamp as u64,
+                    node_type,
+                    title,
+                    mime_type,
+                    parents,
+                }))
+            }
+            _ => unreachable!(),
+        }
     }
 
     async fn delete_data_source_node(&self, data_source_id: &str, node_id: &str) -> Result<()> {
