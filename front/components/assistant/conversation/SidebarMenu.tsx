@@ -17,7 +17,6 @@ import {
   PlusIcon,
   RobotIcon,
   ScrollArea,
-  Separator,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
