@@ -110,9 +110,7 @@ export function UserMessage({
           variant="outline"
           size="xs"
           icon={enabled ? HeartIcon : HeartStrokeIcon}
-          label={
-            enabled ? "Remove from quick actions" : "Save to quick actions"
-          }
+          label={enabled ? "Remove from Quick Actions" : "Save as Quick Action"}
           onClick={async () => {
             if (enabled) {
               const configurations = savedConfigurations.filter(
