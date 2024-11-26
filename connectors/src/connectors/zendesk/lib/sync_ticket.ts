@@ -185,9 +185,8 @@ ${comments
       );
       author = null;
     }
-    const createdAt = new Date(Number(comment?.created_at));
     return `
-[${isNaN(createdAt.getTime()) ? "Unknown date" : createdAt.toISOString()}] ${
+[${comment?.created_at}] ${
       author ? `${author.name} (${author.email})` : "Unknown User"
     }:
 ${comment.body}`;
