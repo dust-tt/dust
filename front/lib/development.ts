@@ -17,10 +17,6 @@ export function canForceUserRole(owner: LightWorkspaceType) {
   return isDevelopment() || isADustProdWorkspace(owner);
 }
 
-export function canEnableJIT(owner: LightWorkspaceType) {
-  return isDevelopment() || isADustProdWorkspace(owner);
-}
-
 export async function forceUserRole(
   user: UserType,
   owner: LightWorkspaceType,
