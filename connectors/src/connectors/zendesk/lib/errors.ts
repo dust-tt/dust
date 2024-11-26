@@ -7,9 +7,15 @@ interface NodeZendeskError extends Error {
   result: string | null;
 }
 
-interface ZendeskApiError extends Error {
-  status: number;
-  description: string | null;
+export class ZendeskApiError extends Error {
+  readonly status?: number;
+  readonly data?: object;
+
+  constructor(message: string, status: number, data?: object) {
+    super(message);
+    this.status = status;
+    this.data = data;
+  }
 }
 
 export function isNodeZendeskForbiddenError(
@@ -27,13 +33,12 @@ export function isZendeskExpiredCursorError(
   err: unknown
 ): err is ZendeskApiError {
   return (
-    typeof err === "object" &&
-    err !== null &&
-    "status" in err &&
+    err instanceof ZendeskApiError &&
     err.status === 422 &&
-    "description" in err &&
-    typeof err.description === "string" &&
-    err.description.includes("Invalid search: cursor has expired")
+    !!err.data &&
+    "description" in err.data &&
+    typeof err.data.description === "string" &&
+    err.data.description.includes("Invalid search: cursor has expired")
   );
 }
 
