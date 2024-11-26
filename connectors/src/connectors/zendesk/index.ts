@@ -40,9 +40,8 @@ import {
   stopZendeskWorkflows,
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -250,7 +249,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
     // launching an incremental workflow taking the diff starting from the given timestamp
     if (fromTs) {
-      const cursors = await ZendeskTimestampCursors.findOne({
+      const cursors = await ZendeskTimestampCursor.findOne({
         where: { connectorId },
       });
       if (!cursors) {
