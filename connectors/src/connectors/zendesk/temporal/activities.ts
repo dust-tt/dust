@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import _ from "lodash";
 
 import { isNodeZendeskForbiddenError } from "@connectors/connectors/zendesk/lib/errors";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
@@ -434,10 +435,20 @@ export async function syncZendeskTicketBatchActivity({
 
   const users = await zendeskApiClient.users.list();
 
-  const res = await concurrentExecutor(
+  const comments = await concurrentExecutor(
     tickets,
-    async (ticket) => {
-      const comments = await zendeskApiClient.tickets.getComments(ticket.id);
+    async (ticket) => zendeskApiClient.tickets.getComments(ticket.id),
+    { concurrency: 3, onBatchComplete: heartbeat }
+  );
+
+  const res = await concurrentExecutor(
+    _.zip(tickets, comments),
+    async ([ticket, comments]) => {
+      if (!ticket || !comments) {
+        throw new Error(
+          `[Zendesk] Unreachable: Ticket or comments not found, ticket: ${ticket}, comments: ${comments}`
+        );
+      }
 
       return syncTicket({
         connectorId,
