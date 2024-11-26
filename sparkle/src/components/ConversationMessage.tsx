@@ -1,11 +1,6 @@
 import React from "react";
 
 import { Button } from "@sparkle/components";
-import {
-  ConversationMessageActions,
-  ConversationMessageEmojiSelectorProps,
-  ConversationMessageThumbSelectorProps,
-} from "@sparkle/components/ConversationMessageActions";
 import { ConversationMessageContent } from "@sparkle/components/ConversationMessageContent";
 import { ConversationMessageHeader } from "@sparkle/components/ConversationMessageHeader";
 import { cn } from "@sparkle/lib/utils";
@@ -29,8 +24,6 @@ type ConversationMessageProps = {
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
   citations?: React.ReactElement[];
-  messageEmoji?: ConversationMessageEmojiSelectorProps;
-  messageThumb?: ConversationMessageThumbSelectorProps;
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
@@ -47,8 +40,6 @@ export function ConversationMessage({
   buttons,
   children,
   citations,
-  messageEmoji,
-  messageThumb,
   name,
   pictureUrl,
   renderName = (name) => (
@@ -77,11 +68,7 @@ export function ConversationMessage({
         {children}
       </ConversationMessageContent>
 
-      <ConversationMessageActions
-        buttons={buttons}
-        messageEmoji={messageEmoji}
-        messageThumb={messageThumb}
-      />
+      <div className="s-flex s-justify-end s-gap-2">{buttons}</div>
     </div>
   );
 }
