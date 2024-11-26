@@ -14,7 +14,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -27,21 +27,16 @@ import {
  */
 export async function getZendeskTimestampCursorActivity(
   connectorId: ModelId
-): Promise<Date | null> {
-  let cursors = await ZendeskTimestampCursors.findOne({
+): Promise<Date> {
+  const cursors = await ZendeskTimestampCursor.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    cursors = await ZendeskTimestampCursors.create({
-      connectorId,
-      timestampCursor: null, // start date of the last successful sync, null for now since we do not know it will succeed
-    });
+    throw new Error("[Zendesk] Timestamp cursor not found.");
   }
   // we get a StartTimeTooRecent error before 1 minute
   const minAgo = Date.now() - 60 * 1000; // 1 minute ago
-  return cursors.timestampCursor
-    ? new Date(Math.min(cursors.timestampCursor.getTime(), minAgo))
-    : new Date(minAgo);
+  return new Date(Math.min(cursors.timestampCursor.getTime(), minAgo));
 }
 
 /**
@@ -54,7 +49,7 @@ export async function setZendeskTimestampCursorActivity({
   connectorId: ModelId;
   currentSyncDateMs: number;
 }) {
-  const cursors = await ZendeskTimestampCursors.findOne({
+  const cursors = await ZendeskTimestampCursor.findOne({
     where: { connectorId },
   });
   if (!cursors) {

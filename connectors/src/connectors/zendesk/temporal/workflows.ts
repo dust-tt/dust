@@ -52,7 +52,7 @@ const {
 });
 
 const {
-  saveZendeskConnectorStartSync,
+  zendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
   getZendeskHelpCenterReadAllowedBrandIdsActivity,
   getZendeskTicketsAllowedBrandIdsActivity,
@@ -71,7 +71,8 @@ export async function zendeskSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  await saveZendeskConnectorStartSync(connectorId);
+  const { cursor } = await zendeskConnectorStartSync(connectorId);
+  const isInitialSync = !cursor;
 
   const brandIds = new Set<number>();
   const brandSignals: ZendeskUpdateSignal[] = [];
@@ -130,8 +131,8 @@ export async function zendeskSyncWorkflow({
 
   const currentSyncDateMs = new Date().getTime();
 
-  // If we got no signal, then we're on the scheduled execution
   if (
+    !isInitialSync &&
     brandIds.size === 0 &&
     brandHelpCenterIds.size === 0 &&
     brandTicketsIds.size === 0 &&
@@ -246,9 +247,7 @@ export async function zendeskIncrementalSyncWorkflow({
     getZendeskHelpCenterReadAllowedBrandIdsActivity(connectorId),
   ]);
 
-  const startTimeMs = cursor
-    ? new Date(cursor).getTime() // recasting the date since error may occur during Temporal's serialization
-    : currentSyncDateMs - 1000 * 60 * 30; // 30 min ago, previous scheduled execution
+  const startTimeMs = new Date(cursor).getTime(); // recasting the date since error may occur during Temporal's serialization
   const startTime = Math.floor(startTimeMs / 1000);
 
   for (const brandId of helpCenterBrandIds) {

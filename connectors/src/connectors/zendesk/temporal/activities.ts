@@ -14,7 +14,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { ZendeskTimestampCursors } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -27,7 +27,9 @@ import {
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
  */
-export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
+export async function zendeskConnectorStartSync(
+  connectorId: ModelId
+): Promise<{ cursor: Date | null }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -36,6 +38,11 @@ export async function saveZendeskConnectorStartSync(connectorId: ModelId) {
   if (res.isErr()) {
     throw res.error;
   }
+  const cursor = await ZendeskTimestampCursor.findOne({
+    where: { connectorId },
+  });
+
+  return { cursor: cursor?.timestampCursor ?? null };
 }
 
 /**
@@ -51,11 +58,11 @@ export async function saveZendeskConnectorSuccessSync(
   }
 
   // initializing the timestamp cursor if it does not exist (first sync, not incremental)
-  const cursors = await ZendeskTimestampCursors.findOne({
+  const cursors = await ZendeskTimestampCursor.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    await ZendeskTimestampCursors.create({
+    await ZendeskTimestampCursor.create({
       connectorId,
       timestampCursor: new Date(currentSyncDateMs),
     });
