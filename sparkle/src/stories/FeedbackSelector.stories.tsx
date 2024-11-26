@@ -4,22 +4,30 @@ import React from "react";
 import {
   ConversationMessageFeedbackSelectorProps,
   FeedbackSelector,
-} from "@sparkle/components/ConversationMessageActions";
-
-import { ConversationMessageActions } from "../index_with_tw_base";
+} from "@sparkle/components/ConversationMessageFeedbackSelector";
 
 const meta = {
   title: "Primitives/FeedbackSelector",
-  component: ConversationMessageActions,
+  component: FeedbackSelector,
   argTypes: {
-    messageFeedback: {
-      description: "Whether to show the thumbs selector",
+    feedback: {
+      thumb: "up",
+      feedbackContent: null,
+    },
+    onSubmitThumb: {
+      description: "The submit function",
       control: {
         type: "object",
       },
     },
+    isSubmittingThumb: {
+      description: "Whether the thumb is submitting",
+      control: {
+        type: "boolean",
+      },
+    },
   },
-} satisfies Meta<React.ComponentProps<typeof ConversationMessageActions>>;
+} satisfies Meta<React.ComponentProps<typeof FeedbackSelector>>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -48,5 +56,15 @@ const ExampleFeedbackComponent = () => {
 };
 
 export const ExamplePicker: Story = {
+  args: {
+    feedback: {
+      thumb: "up",
+      feedbackContent: null,
+    },
+    onSubmitThumb: async (element) => {
+      console.log(element);
+    },
+    isSubmittingThumb: false,
+  },
   render: () => <ExampleFeedbackComponent />,
 };

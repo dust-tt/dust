@@ -1,10 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import {
-  ConversationMessageEmojiSelectorProps,
-  ConversationMessageFeedbackSelectorProps,
-} from "@sparkle/components/ConversationMessageActions";
+import { ConversationMessageEmojiSelectorProps } from "@sparkle/components/ConversationMessageActions";
 
 import {
   ArrowPathIcon,
@@ -35,12 +32,6 @@ const meta = {
     },
     messageEmoji: {
       description: "The emoji selector to display",
-      control: {
-        type: "object",
-      },
-    },
-    messageFeedback: {
-      description: "Whether to show the thumbs selector",
       control: {
         type: "object",
       },
@@ -80,30 +71,8 @@ const ExamplePickerComponent = () => {
     []
   );
 
-  const [messageFeedback, setMessageFeedback] =
-    React.useState<ConversationMessageFeedbackSelectorProps>({
-      feedback: {
-        thumb: "up",
-        feedbackContent: null,
-      },
-      onSubmitThumb: async (element) => {
-        setMessageFeedback((prev) => ({
-          ...prev,
-          feedback: {
-            thumb: element.thumb,
-            feedbackContent: element.feedbackContent,
-          },
-        }));
-      },
-      isSubmittingThumb: false,
-    });
-
   return (
-    <ConversationMessageActions
-      buttons={buttons}
-      messageEmoji={messageEmoji}
-      messageFeedback={messageFeedback}
-    />
+    <ConversationMessageActions buttons={buttons} messageEmoji={messageEmoji} />
   );
 };
 
