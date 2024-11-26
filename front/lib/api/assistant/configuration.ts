@@ -366,32 +366,38 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
-        const result = await frontSequelize.query(
-          `
-            SELECT DISTINCT ON ("sId") *
-            FROM agent_configurations
-            WHERE 
-              "workspaceId" = :workspaceId
-              ${agentPrefix ? "AND name ILIKE :namePrefix" : ""}
-              AND "sId" IN (:agentIds)
-            ORDER BY 
-              "sId",
-              CASE WHEN status = 'active' THEN 1 ELSE 0 END DESC,
-              version DESC
-          `,
-          {
-            replacements: {
+        if (agentsGetView.allVersions) {
+          return AgentConfiguration.findAll({
+            where: {
               workspaceId: owner.id,
-              ...(agentPrefix ? { namePrefix: `${agentPrefix}%` } : {}),
-              agentIds: agentsGetView.agentIds.filter(
-                (id) => !isGlobalAgentId(id)
-              ),
+              sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
             },
-            model: AgentConfiguration,
-            mapToModel: true,
-          }
-        );
-        return result;
+            order: [["version", "DESC"]],
+          });
+        }
+        const latestVersions = (await AgentConfiguration.findAll({
+          attributes: [
+            "sId",
+            [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
+          ],
+          where: {
+            workspaceId: owner.id,
+            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
+          },
+          group: ["sId"],
+          raw: true,
+        })) as unknown as { sId: string; max_version: number }[];
+
+        return AgentConfiguration.findAll({
+          where: {
+            workspaceId: owner.id,
+            sId: latestVersions.map((v) => v.sId),
+            version: {
+              [Op.in]: latestVersions.map((v) => v.max_version),
+            },
+          },
+          order: [["version", "DESC"]],
+        });
       }
       assertNever(agentsGetView);
   }
