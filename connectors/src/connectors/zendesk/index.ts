@@ -262,6 +262,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         forceResync: true,
       });
       return result.isErr() ? result : new Ok(connector.id.toString());
+    } else {
+      await ZendeskTimestampCursor.destroy({ where: { connectorId } });
     }
 
     // launching a full sync workflow otherwise
