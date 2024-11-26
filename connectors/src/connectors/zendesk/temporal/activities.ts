@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { isNodeZendeskForbiddenError } from "@connectors/connectors/zendesk/lib/errors";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -14,6 +15,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
@@ -328,11 +330,21 @@ export async function syncZendeskArticleBatchActivity({
     `[Zendesk] Processing ${articles.length} articles in batch`
   );
 
-  const sections =
-    await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
-  const { result: users } = await zendeskApiClient.users.showMany(
-    articles.map((article) => article.author_id)
-  );
+  let sections;
+  let users;
+  try {
+    sections =
+      await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
+    const { result: usersResult } = await zendeskApiClient.users.showMany(
+      articles.map((article) => article.author_id)
+    );
+    users = usersResult;
+  } catch (e) {
+    if (isNodeZendeskForbiddenError(e)) {
+      throw new ExternalOAuthTokenError(e);
+    }
+    throw e;
+  }
 
   await concurrentExecutor(
     articles,

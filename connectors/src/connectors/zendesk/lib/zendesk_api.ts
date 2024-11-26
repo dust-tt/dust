@@ -5,9 +5,11 @@ import { createClient } from "node-zendesk";
 import type {
   ZendeskFetchedArticle,
   ZendeskFetchedCategory,
+  ZendeskFetchedSection,
   ZendeskFetchedTicket,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
+import { isNodeZendeskForbiddenError } from "@connectors/connectors/zendesk/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
@@ -147,6 +149,8 @@ async function fetchFromZendeskWithRetries({
         `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
       );
       return null;
+    } else if (rawResponse.status === 403) {
+      throw new ExternalOAuthTokenError();
     }
     logger.error(
       { rawResponse, status: rawResponse.status, text: rawResponse.text },
@@ -360,4 +364,31 @@ export async function fetchZendeskCurrentUser({
   );
   const data = await response.json();
   return data.user;
+}
+
+/**
+ * Fetches the Section and the User for an article.
+ */
+export async function fetchArticleMetadata(
+  zendeskApiClient: Client,
+  article: ZendeskFetchedArticle
+): Promise<{ section: ZendeskFetchedSection; user: ZendeskFetchedUser }> {
+  try {
+    const { result: section } = await zendeskApiClient.helpcenter.sections.show(
+      article.section_id
+    );
+    const { result: user } = await zendeskApiClient.users.show(
+      article.author_id
+    );
+    return { section, user };
+  } catch (e) {
+    logger.error(
+      { articleId: article.id, error: e },
+      "[Zendesk] Error fetching article metadata"
+    );
+    if (isNodeZendeskForbiddenError(e)) {
+      throw new ExternalOAuthTokenError(e);
+    }
+    throw e;
+  }
 }
