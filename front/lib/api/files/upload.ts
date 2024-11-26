@@ -271,56 +271,67 @@ type ProcessingPerContentType = {
 const processingPerContentType: ProcessingPerContentType = {
   "application/msword": {
     conversation: extractTextFromFileAndUpload,
+    folder: extractTextFromFileAndUpload,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    folder: extractTextFromFileAndUpload,
     conversation: extractTextFromFileAndUpload,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "application/pdf": {
+    folder: extractTextFromFileAndUpload,
     conversation: extractTextFromFileAndUpload,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "image/jpeg": {
     conversation: resizeAndUploadToFileStorage,
+    folder: notSupportedError,
     avatar: uploadToPublicBucket,
     tool_output: notSupportedError,
   },
   "image/png": {
     conversation: resizeAndUploadToFileStorage,
+    folder: notSupportedError,
     avatar: uploadToPublicBucket,
     tool_output: notSupportedError,
   },
   "text/comma-separated-values": {
     conversation: storeRawText,
+    folder: storeRawText,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/csv": {
     conversation: extractContentAndSchemaFromCSV,
+    folder: storeRawText,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/markdown": {
     conversation: storeRawText,
+    folder: storeRawText,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/plain": {
     conversation: storeRawText,
+    folder: storeRawText,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/tab-separated-values": {
     conversation: storeRawText,
+    folder: storeRawText,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/tsv": {
     conversation: storeRawText,
+    folder: storeRawText,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
@@ -348,7 +359,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
-export async function processAndUploadToCloudStorage(
+export async function processAndStoreFile(
   auth: Authenticator,
   { file, req }: { file: FileResource; req: IncomingMessage }
 ): Promise<

@@ -39,11 +39,7 @@ export const parseUploadRequest = async (
 
       // Ensure the file is of the correct type.
       filter: function (part) {
-        if (part.mimetype !== file.contentType) {
-          return false;
-        }
-
-        return true;
+        return part.mimetype === file.contentType;
       },
     });
 

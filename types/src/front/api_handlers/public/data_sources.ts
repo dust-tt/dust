@@ -54,6 +54,11 @@ export type PostDataSourceWithNameDocumentRequestBody = t.TypeOf<
   typeof PostDataSourceWithNameDocumentRequestBodySchema
 >;
 
+// Post and Patch require the same request body
+export type PatchDataSourceWithNameDocumentRequestBody = t.TypeOf<
+  typeof PostDataSourceWithNameDocumentRequestBodySchema
+>;
+
 export const PatchDataSourceTableRequestBodySchema = t.type({
   name: t.string,
   description: t.string,

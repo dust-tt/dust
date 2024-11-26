@@ -278,46 +278,55 @@ type ProcessingPerContentType = {
 const processingPerContentType: ProcessingPerContentType = {
   "application/msword": {
     conversation: upsertDocumentToDatasource,
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
     conversation: upsertDocumentToDatasource,
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "application/pdf": {
     conversation: upsertDocumentToDatasource,
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/comma-separated-values": {
     conversation: upsertTableToDatasource,
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: upsertTableToDatasource,
   },
   "text/csv": {
     conversation: upsertTableToDatasource,
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: upsertTableToDatasource,
   },
   "text/markdown": {
     conversation: upsertDocumentToDatasource,
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/plain": {
     conversation: upsertDocumentToDatasource,
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/tab-separated-values": {
     conversation: upsertDocumentToDatasource, // Should it be upsertTableToDatasource?
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
   "text/tsv": {
     conversation: upsertDocumentToDatasource, // Should it be upsertTableToDatasource?
+    folder: notSupportedError,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
