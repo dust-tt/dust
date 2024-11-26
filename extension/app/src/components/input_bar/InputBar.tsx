@@ -4,7 +4,7 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/client";
-import { Button, StopIcon } from "@dust-tt/sparkle";
+import { Button, Page, Spinner, StopIcon } from "@dust-tt/sparkle";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
 import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
@@ -56,7 +56,13 @@ export function AssistantInputBar({
     usePublicAgentConfigurations();
 
   const fileUploaderService = useFileUploaderService(conversation?.sId);
-
+  const {
+    isCapturing,
+    uploadContentTab,
+    handleFilesUpload,
+    getFileBlobs,
+    resetUpload,
+  } = fileUploaderService;
   const port = useContext(PortContext);
   useEffect(() => {
     if (port) {
@@ -65,7 +71,7 @@ export function AssistantInputBar({
         const { type } = message;
         if (type === "EXT_ATTACH_TAB") {
           // Handle message
-          void fileUploaderService.uploadContentTab(message);
+          void uploadContentTab(message);
         }
       };
       port.onMessage.addListener(listener);
@@ -81,7 +87,7 @@ export function AssistantInputBar({
   useEffect(() => {
     if (droppedFiles.length > 0) {
       // Handle the dropped files.
-      void fileUploaderService.handleFilesUpload({
+      void handleFilesUpload({
         files: droppedFiles,
         kind: "attachment",
       });
@@ -89,7 +95,7 @@ export function AssistantInputBar({
       // Clear the dropped files after handling them.
       setDroppedFiles([]);
     }
-  }, [droppedFiles, setDroppedFiles, fileUploaderService]);
+  }, [droppedFiles, setDroppedFiles, handleFilesUpload]);
 
   const agentConfigurations = useMemo(() => {
     if (
@@ -192,7 +198,7 @@ export function AssistantInputBar({
     const mentions: AgentMentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
-    const newFiles = fileUploaderService.getFileBlobs().map((cf) => ({
+    const newFiles = getFileBlobs().map((cf) => ({
       title: cf.filename,
       fileId: cf.fileId,
       url: cf.publicUrl,
@@ -202,7 +208,7 @@ export function AssistantInputBar({
     resetEditorText();
 
     if (isTabIncluded) {
-      const files = await fileUploaderService.uploadContentTab({
+      const files = await uploadContentTab({
         includeContent: true,
         includeCapture: false,
         conversation,
@@ -224,7 +230,7 @@ export function AssistantInputBar({
     }
 
     onSubmit(text, mentions, newFiles);
-    fileUploaderService.resetUpload();
+    resetUpload();
   };
 
   const isGenerating = generationContext.generatingMessages.some(
@@ -233,6 +239,18 @@ export function AssistantInputBar({
 
   return (
     <div className="flex w-full flex-col">
+      {isCapturing && (
+        <div className="fixed absolute inset-0 z-50 overflow-hidden">
+          <div className="fixed flex inset-0 bg-structure-50/80 backdrop-blur-sm transition-opacity" />
+          <div className="fixed top-0 left-0 h-full w-full flex flex-col justify-center items-center gap-4">
+            <span className="z-50">
+              <Page.Header title="Screen capture in progress..." />
+            </span>
+
+            <Spinner size="xl" />
+          </div>
+        </div>
+      )}
       {isGenerating && (
         <div className="flex justify-center px-4 pb-4">
           <Button

@@ -54,6 +54,7 @@ const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 export function useFileUploaderService(conversationId?: string) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const sendNotification = useSendNotification();
   const dustAPI = useDustAPI();
 
@@ -294,11 +295,13 @@ export function useFileUploaderService(conversationId?: string) {
     updateBlobs?: boolean;
     onUpload?: () => void;
   } & GetActiveTabOptions) => {
+    setIsCapturing(includeCapture);
     const tabContentRes = await getIncludeCurrentTab({
       includeContent,
       includeSelectionOnly,
       includeCapture,
     });
+    setIsCapturing(false);
 
     if (tabContentRes && tabContentRes.isErr()) {
       sendNotification({
@@ -423,6 +426,7 @@ export function useFileUploaderService(conversationId?: string) {
     handleFileChange,
     handleFilesUpload,
     isProcessingFiles,
+    isCapturing,
     uploadContentTab,
     removeFile,
     resetUpload,
