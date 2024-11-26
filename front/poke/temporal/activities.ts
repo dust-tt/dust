@@ -150,7 +150,7 @@ export async function scrubSpaceActivity({
     });
   }
 
-  hardDeleteLogger.info({ space: space.sId }, "Deleting space");
+  hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
   await hardDeleteSpace(auth, space);
 }
@@ -561,7 +561,9 @@ export async function deleteSpacesActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeConversationsSpace: true,
+  });
 
   for (const space of spaces) {
     await scrubSpaceActivity({
