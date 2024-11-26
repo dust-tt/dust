@@ -10,6 +10,7 @@ import {
   isZendeskExpiredCursorError,
 } from "@connectors/connectors/zendesk/lib/errors";
 import {
+  DustConnectorWorkflowError,
   ExternalOAuthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
@@ -27,10 +28,9 @@ export class ZendeskCastKnownErrorsInterceptor
       if (isNodeZendeskForbiddenError(err)) {
         throw new ExternalOAuthTokenError(err);
       } else if (isZendeskExpiredCursorError(err)) {
-        throw new ProviderWorkflowError(
-          "zendesk",
+        throw new DustConnectorWorkflowError(
           "Cursor expired",
-          "transient_upstream_activity_error",
+          "unhandled_internal_activity_error",
           err
         );
       } else if (isZendeskEpipeError(err)) {
