@@ -34,6 +34,7 @@ import {
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { fetchZendeskCurrentUser } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
+  launchZendeskFullSyncWorkflow,
   launchZendeskGarbageCollectionWorkflow,
   launchZendeskSyncWorkflow,
   stopZendeskWorkflows,
@@ -216,8 +217,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
   /**
    * Launches a full re-sync workflow for the connector,
-   * restarting workflows with the signals necessary to resync every resource selected by the user.
-   * It sends signals for all the brands and for all the categories whose Help Center is not selected as a whole.
+   * syncing every resource selected by the user with forceResync = true.
    */
   async sync(): Promise<Result<string, Error>> {
     const { connectorId } = this;
@@ -227,35 +227,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    // syncing all the brands syncs tickets and whole help centers when selected
-    const brandIds = await ZendeskBrandResource.fetchAllBrandIds(connectorId);
-    const noReadHelpCenterBrandIds =
-      await ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds(
-        connectorId
-      );
-    // syncing individual categories syncs for ones where the Help Center is not selected as a whole
-    const categoryIds = (
-      await concurrentExecutor(
-        noReadHelpCenterBrandIds,
-        async (brandId) => {
-          const categoryIds =
-            await ZendeskCategoryResource.fetchReadOnlyCategoryIdsByBrandId({
-              connectorId,
-              brandId,
-            });
-          return categoryIds.map((categoryId) => ({ categoryId, brandId }));
-        },
-        { concurrency: 10 }
-      )
-    ).flat();
-
-    const result = await launchZendeskSyncWorkflow(connector, {
-      brandIds,
-      categoryIds,
-      forceResync: true,
-    });
-
-    return result.isErr() ? result : new Ok(connector.id.toString());
+    return launchZendeskFullSyncWorkflow(connector, { forceResync: true });
   }
 
   async retrievePermissions({
@@ -651,6 +623,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
+    // reset the cursor here to trigger a full resync
     await connector.markAsUnpaused();
     return this.resume();
   }

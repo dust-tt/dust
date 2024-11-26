@@ -16,9 +16,14 @@ import {
   zendeskGarbageCollectionWorkflow,
   zendeskSyncWorkflow,
 } from "@connectors/connectors/zendesk/temporal/workflows";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  ZendeskBrandResource,
+  ZendeskCategoryResource,
+} from "@connectors/resources/zendesk_resources";
 
 export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
   return `zendesk-sync-${connectorId}`;
@@ -139,6 +144,46 @@ export async function stopZendeskWorkflows(
     }
   }
   return new Ok(undefined);
+}
+
+/**
+ * Launches a Zendesk workflow that will sync everything that was selected by the user in the UI.
+ *
+ * It recreates the signals necessary to resync every resource selected by the user,
+ * which are all the brands and all the categories whose Help Center is not selected as a whole.
+ */
+export async function launchZendeskFullSyncWorkflow(
+  connector: ConnectorResource,
+  { forceResync = false }: { forceResync?: boolean } = {}
+): Promise<Result<string, Error>> {
+  const brandIds = await ZendeskBrandResource.fetchAllBrandIds(connector.id);
+  const noReadHelpCenterBrandIds =
+    await ZendeskBrandResource.fetchHelpCenterReadForbiddenBrandIds(
+      connector.id
+    );
+  // syncing individual categories syncs for ones where the Help Center is not selected as a whole
+  const categoryIds = (
+    await concurrentExecutor(
+      noReadHelpCenterBrandIds,
+      async (brandId) => {
+        const categoryIds =
+          await ZendeskCategoryResource.fetchReadOnlyCategoryIdsByBrandId({
+            connectorId: connector.id,
+            brandId,
+          });
+        return categoryIds.map((categoryId) => ({ categoryId, brandId }));
+      },
+      { concurrency: 10 }
+    )
+  ).flat();
+
+  const result = await launchZendeskSyncWorkflow(connector, {
+    brandIds,
+    categoryIds,
+    forceResync,
+  });
+
+  return result.isErr() ? result : new Ok(connector.id.toString());
 }
 
 export async function launchZendeskGarbageCollectionWorkflow(
