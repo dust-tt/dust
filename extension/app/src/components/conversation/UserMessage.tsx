@@ -110,7 +110,7 @@ export function UserMessage({
           variant="outline"
           size="xs"
           icon={enabled ? HeartIcon : HeartStrokeIcon}
-          label="Save to context menu"
+          label={enabled ? "Remove from context menu" : "Save to context menu"}
           onClick={async () => {
             if (enabled) {
               const configurations = savedConfigurations.filter(
@@ -123,11 +123,14 @@ export function UserMessage({
               setSavedConfigurations(configurations);
             } else {
               if (savedConfigurationId) {
+                const text = elRef.current?.innerText || "";
+                const description =
+                  text.length > 30 ? text.substring(0, 30) + "..." : text;
                 const configurations = [
                   ...savedConfigurations,
                   {
                     id: savedConfigurationId,
-                    description: `Ask ${elRef.current?.innerText}`,
+                    description: `Ask : ${description}`,
                     text: message.content,
                     includeContent: message.contenFragments
                       ? message.contenFragments?.some(
