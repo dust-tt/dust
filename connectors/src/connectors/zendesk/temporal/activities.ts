@@ -330,37 +330,39 @@ export async function syncZendeskArticleBatchActivity({
     `[Zendesk] Processing ${articles.length} articles in batch`
   );
 
+  let sections;
+  let users;
   try {
-    const sections =
+    sections =
       await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
-    const { result: users } = await zendeskApiClient.users.showMany(
+    const { result: usersResult } = await zendeskApiClient.users.showMany(
       articles.map((article) => article.author_id)
     );
-
-    await concurrentExecutor(
-      articles,
-      (article) =>
-        syncArticle({
-          connectorId,
-          category,
-          article,
-          section:
-            sections.find((section) => section.id === article.section_id) ||
-            null,
-          user: users.find((user) => user.id === article.author_id) || null,
-          dataSourceConfig,
-          currentSyncDateMs,
-          loggerArgs,
-          forceResync,
-        }),
-      { concurrency: 10 }
-    );
+    users = usersResult;
   } catch (e) {
     if (isNodeZendeskForbiddenError(e)) {
       throw new ExternalOAuthTokenError(e);
     }
     throw e;
   }
+
+  await concurrentExecutor(
+    articles,
+    (article) =>
+      syncArticle({
+        connectorId,
+        category,
+        article,
+        section:
+          sections.find((section) => section.id === article.section_id) || null,
+        user: users.find((user) => user.id === article.author_id) || null,
+        dataSourceConfig,
+        currentSyncDateMs,
+        loggerArgs,
+        forceResync,
+      }),
+    { concurrency: 10 }
+  );
   return { hasMore, nextLink };
 }
 
