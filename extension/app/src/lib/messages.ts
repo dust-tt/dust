@@ -1,4 +1,4 @@
-import type { SavedAssistantConfiguration } from "@extension/lib/storage";
+import type { QuickActionConfiguration } from "@extension/lib/storage";
 import { saveTokens } from "@extension/lib/storage";
 
 export type Auth0AuthorizeResponse = {
@@ -40,9 +40,9 @@ export type InputBarStatusMessage = {
   available: boolean;
 };
 
-export type UpdateSavedAssistantConfigurations = {
+export type UpdateQuickActionConfigurations = {
   type: "UPDATE_SAVED_CONFIGURATIONS";
-  configurations: SavedAssistantConfiguration[];
+  configurations: QuickActionConfiguration[];
 };
 
 export type CaptureMesssage = {

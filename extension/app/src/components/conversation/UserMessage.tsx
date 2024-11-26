@@ -22,7 +22,7 @@ import {
 } from "@extension/components/markdown/MentionBlock";
 import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
 import { sendMessage } from "@extension/lib/messages";
-import type { SavedAssistantConfiguration } from "@extension/lib/storage";
+import type { QuickActionConfiguration } from "@extension/lib/storage";
 import { getSavedConfigurations } from "@extension/lib/storage";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
@@ -57,8 +57,8 @@ export function UserMessage({
   owner,
   size,
 }: UserMessageProps) {
-  const [savedConfigurations, setSavedConfigurations] = useState<
-    SavedAssistantConfiguration[]
+  const [quickActionsConfigurations, setQuickActionsConfigurations] = useState<
+    QuickActionConfiguration[]
   >([]);
   const [savedConfigurationId, setSavedConfigurationId] = useState<
     string | undefined
@@ -84,8 +84,8 @@ export function UserMessage({
   useEffect(() => {
     const loadConfigurations = async () => {
       const saved = await getSavedConfigurations();
-      if (saved.length !== savedConfigurations.length) {
-        setSavedConfigurations(saved);
+      if (saved.length !== quickActionsConfigurations.length) {
+        setQuickActionsConfigurations(saved);
       }
     };
     void loadConfigurations();
@@ -100,7 +100,7 @@ export function UserMessage({
     void getId();
   }, []);
 
-  const enabled = !!savedConfigurations.find(
+  const enabled = !!quickActionsConfigurations.find(
     (c) => c.id === savedConfigurationId
   );
 
@@ -113,21 +113,21 @@ export function UserMessage({
           label={enabled ? "Remove from Quick Actions" : "Save as Quick Action"}
           onClick={async () => {
             if (enabled) {
-              const configurations = savedConfigurations.filter(
+              const configurations = quickActionsConfigurations.filter(
                 (c) => c.id !== savedConfigurationId
               );
               void sendMessage({
                 type: "UPDATE_SAVED_CONFIGURATIONS",
                 configurations,
               });
-              setSavedConfigurations(configurations);
+              setQuickActionsConfigurations(configurations);
             } else {
               if (savedConfigurationId) {
                 const text = elRef.current?.innerText || "";
                 const description =
                   text.length > 30 ? text.substring(0, 30) + "..." : text;
                 const configurations = [
-                  ...savedConfigurations,
+                  ...quickActionsConfigurations,
                   {
                     id: savedConfigurationId,
                     description: `Ask : ${description}`,
@@ -158,7 +158,7 @@ export function UserMessage({
                   type: "UPDATE_SAVED_CONFIGURATIONS",
                   configurations,
                 });
-                setSavedConfigurations(configurations);
+                setQuickActionsConfigurations(configurations);
               }
             }
           }}

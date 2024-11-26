@@ -20,7 +20,7 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
-  UpdateSavedAssistantConfigurations,
+  UpdateQuickActionConfigurations,
 } from "./src/lib/messages";
 import { generatePKCE } from "./src/lib/utils";
 
@@ -195,7 +195,7 @@ chrome.runtime.onMessage.addListener(
     message:
       | AuthBackgroundMessage
       | GetActiveTabBackgroundMessage
-      | UpdateSavedAssistantConfigurations
+      | UpdateQuickActionConfigurations
       | CaptureMesssage
       | InputBarStatusMessage,
     sender,

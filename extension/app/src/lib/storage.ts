@@ -209,7 +209,7 @@ export const getFileContentFragmentId = async (
   return result[key] ?? null;
 };
 
-export type SavedAssistantConfiguration = {
+export type QuickActionConfiguration = {
   id: string;
   description: string;
   includeContent: boolean;
@@ -220,15 +220,15 @@ export type SavedAssistantConfiguration = {
 };
 
 export const getSavedConfigurations = async (): Promise<
-  SavedAssistantConfiguration[]
+  QuickActionConfiguration[]
 > => {
   const result = await chrome.storage.local.get(["savedConfigurations"]);
   return result.savedConfigurations ?? [];
 };
 
 export const saveConfigurations = async (
-  configs: SavedAssistantConfiguration[]
-): Promise<SavedAssistantConfiguration[]> => {
+  configs: QuickActionConfiguration[]
+): Promise<QuickActionConfiguration[]> => {
   await chrome.storage.local.set({
     ["savedConfigurations"]: configs,
   });
