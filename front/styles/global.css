@@ -51,6 +51,11 @@ main {
   top: 4px;
 }
 
+.shadow-fade {
+  @apply bg-structure-50;
+  box-shadow: 0 0 12px 12px theme("colors.structure.50.DEFAULT");
+}
+
 @keyframes shake {
   10%,
   90% {
