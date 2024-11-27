@@ -231,7 +231,7 @@ export async function fetchRecentlyUpdatedArticles({
   });
   return {
     articles: response.articles,
-    hasMore: response.next_page !== null || response.articles.length === 0,
+    hasMore: response.next_page !== null && response.articles.length !== 0,
     endTime: response.end_time,
   };
 }
@@ -292,7 +292,10 @@ export async function fetchRecentlyUpdatedTickets(
   });
   return {
     tickets: response.tickets,
-    hasMore: !response.end_of_stream,
+    hasMore:
+      !response.end_of_stream &&
+      response.after_url !== null &&
+      response.tickets.length !== 0,
     nextLink: response.after_url,
   };
 }
