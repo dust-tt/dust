@@ -50,11 +50,12 @@ runs:
             local status_string="$2"
             
             if echo "$status_string" | grep -q ":x:[ ]*${component}[ ]" || echo "$status_string" | grep -q ":x:[ ]*${component}\$" ; then
-                return 1
+                return 0 # Success
             else
-                return 0
+                return 1 # Failure
             fi
         }
+
         if is_blocked "${{ inputs.component }}" "${{ steps.slack_channel_topic.outputs.topic }}"; then
             echo "${{ inputs.component}} is blocked based on channel topic"
             exit 1
