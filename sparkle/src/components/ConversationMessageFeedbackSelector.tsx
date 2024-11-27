@@ -28,7 +28,7 @@ export interface ConversationMessageFeedbackSelectorProps {
     }
   ) => Promise<void>;
   isSubmittingThumb: boolean;
-  getLastAuthor: () => FeedbackAssistantBuilder;
+  getLastAuthor?: () => FeedbackAssistantBuilder;
 }
 
 export function FeedbackSelector(
@@ -47,7 +47,9 @@ export function FeedbackSelector(
   // Reset local feedback content when popup opens
   useEffect(() => {
     if (isPopoverOpen) {
-      setBuilder(messageFeedback.getLastAuthor());
+      if (messageFeedback.getLastAuthor) {
+        setBuilder(messageFeedback.getLastAuthor());
+      }
       setLocalFeedbackContent(feedback?.feedbackContent ?? null);
     }
   }, [isPopoverOpen, feedback?.feedbackContent]);
