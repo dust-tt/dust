@@ -15,6 +15,14 @@
   "action": {
     "default_title": "Open Dust side panel"
   },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl + Right",
+        "mac": "Command + Right"
+      }
+    }
+  },
   "side_panel": {
     "default_path": "main.html"
   },
