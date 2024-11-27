@@ -294,8 +294,8 @@ export async function fetchRecentlyUpdatedTickets(
     tickets: response.tickets,
     hasMore:
       !response.end_of_stream &&
-      response.tickets.length !== 0 &&
-      response.after_url !== null,
+      response.after_url !== null &&
+      response.tickets.length !== 0,
     nextLink: response.after_url,
   };
 }
