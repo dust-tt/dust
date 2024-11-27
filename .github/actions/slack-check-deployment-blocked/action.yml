@@ -23,7 +23,8 @@ runs:
         token: ${{ inputs.slack_token }}
         payload: |
           channel: ${{ inputs.channel }}
-
+        errors: true
+        
     - name: Get channel topic
       if: steps.slack_channel_info.outputs.ok == 'true'
       id: slack_channel_topic
