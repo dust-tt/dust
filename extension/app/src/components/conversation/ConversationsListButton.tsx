@@ -12,6 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useConversations } from "@extension/components/conversation/useConversations";
 import moment from "moment";
+import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 type GroupLabel =
@@ -85,7 +86,7 @@ const Content = () => {
   ) : (
     <ScrollArea className="h-[80vh]">
       {Object.keys(conversationsByDate).map((dateLabel) => (
-        <>
+        <React.Fragment key={dateLabel}>
           {conversationsByDate[dateLabel as GroupLabel].length > 0 && (
             <DropdownMenuLabel label={dateLabel} />
           )}
@@ -103,7 +104,7 @@ const Content = () => {
               }}
             />
           ))}
-        </>
+        </React.Fragment>
       ))}
     </ScrollArea>
   );
@@ -126,7 +127,9 @@ export const ConversationsListButton = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[80vw]">
-        <Content />
+        <div className="py-2">
+          <Content />
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
