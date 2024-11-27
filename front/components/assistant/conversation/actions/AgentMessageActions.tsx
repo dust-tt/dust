@@ -107,7 +107,13 @@ function ActionDetails({
           onClick={hasActions ? onClick : undefined}
         >
           {MemoizedSpinner}
-          {label}
+          {label === "Thinking" ? (
+            <span>{label}</span>
+          ) : (
+            <>
+              Thinking <span className="text-regular">{label}</span>
+            </>
+          )}
         </div>
       </Chip>
     </div>
