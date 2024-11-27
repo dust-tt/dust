@@ -131,7 +131,7 @@ export function AssistantDetailsButtonBar({
         />
 
         <Button
-          icon={agentConfiguration.userFavorite ? StarStrokeIcon : StarIcon}
+          icon={StarIcon}
           size="sm"
           className="hidden group-hover:block"
           variant="outline"
