@@ -20,6 +20,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Slack Check Deployment Blocked
+        uses: ./.github/actions/slack-check-deployment-blocked
+        with:
+          component: "viz"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT

@@ -21,6 +21,13 @@ jobs:
           fetch-depth: 0
           ssh-key: "${{ secrets.PRODBOX_PRIVATE_DEPLOY_KEY }}"
 
+      - name: Slack Check Deployment Blocked
+        uses: ./.github/actions/slack-check-deployment-blocked
+        with:
+          component: "prodbox"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
