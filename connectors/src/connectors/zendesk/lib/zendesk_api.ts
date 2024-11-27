@@ -231,7 +231,7 @@ export async function fetchRecentlyUpdatedArticles({
   });
   return {
     articles: response.articles,
-    hasMore: response.next_page !== null || response.articles.length === 0,
+    hasMore: response.next_page !== null && response.articles.length !== 0,
     endTime: response.end_time,
   };
 }
