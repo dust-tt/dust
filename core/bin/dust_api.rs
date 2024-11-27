@@ -2687,48 +2687,47 @@ async fn folders_upsert(
         .upsert_data_source_folder(&project, &data_source_id, &folder)
         .await
     {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to upsert folder",
+                Some(e),
+            )
+        }
+        Ok(()) => (),
+    }
+
+    let node = Node {
+        node_id: folder.folder_id.clone(),
+        created: folder.created,
+        timestamp: payload.timestamp.unwrap_or(utils::now()),
+        node_type: NodeType::Folder,
+        title: payload.title.clone(),
+        mime_type: "application/vnd.dust.folder".to_string(),
+        parents: payload.parents.clone(),
+    };
+
+    match state
+        .store
+        .upsert_data_source_node(&data_source_id, &node)
+        .await
+    {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
-            "Failed to upsert folder",
+            "Failed to upsert node",
             Some(e),
         ),
-        Ok(()) => {
-            let node = Node {
-                node_id: folder.folder_id.clone(),
-                created: folder.created,
-                timestamp: payload.timestamp.unwrap_or(utils::now()),
-                node_type: NodeType::Folder,
-                title: payload.title.clone(),
-                mime_type: "application/vnd.dust.folder".to_string(),
-                parents: payload.parents.clone(),
-            };
-
-            match state
-                .store
-                .upsert_data_source_node(&data_source_id, &node)
-                .await
-            {
-                Err(e) => {
-                    println!("<<<< {:?}", e);
-                    error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "internal_server_error",
-                        "Failed to upsert node",
-                        Some(e),
-                    )
-                }
-                Ok(_) => (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "folder": folder
-                        })),
-                    }),
-                ),
-            }
-        }
+        Ok(_) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "folder": folder
+                })),
+            }),
+        ),
     }
 }
 
@@ -2766,6 +2765,7 @@ async fn folders_delete(
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+
     match state
         .store
         .load_data_source_folder(&project, &data_source_id, &folder_id)
@@ -2783,27 +2783,45 @@ async fn folders_delete(
             &format!("No folder found for id `{}`", folder_id),
             None,
         ),
-        Ok(Some(_)) => match state
-            .store
-            .delete_data_source_folder(&data_source_id, &folder_id)
-            .await
-        {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to delete folder",
-                Some(e),
-            ),
-            Ok(_) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "success": true,
-                    })),
-                }),
-            ),
-        },
+        Ok(Some(_)) => {
+            match state
+                .store
+                .delete_data_source_node(&data_source_id, &folder_id)
+                .await
+            {
+                Err(e) => {
+                    return error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to delete folder",
+                        Some(e),
+                    )
+                }
+                Ok(_) => (),
+            }
+
+            match state
+                .store
+                .delete_data_source_folder(&data_source_id, &folder_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to delete folder",
+                    Some(e),
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "success": true,
+                        })),
+                    }),
+                ),
+            }
+        }
     }
 }
 

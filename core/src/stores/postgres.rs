@@ -2930,7 +2930,7 @@ impl Store for PostgresStore {
         match row.len() {
             0 => Ok(None),
             1 => {
-                let created: i64 = row[0].get::<_, i64>(2);
+                let created: i64 = row[0].get::<_, i64>(1);
 
                 Ok(Some(Folder {
                     data_source_id,
