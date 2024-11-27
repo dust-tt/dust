@@ -9,7 +9,7 @@ export const FileUploadUrlRequestSchema = t.type({
   useCase: t.union([
     t.literal("conversation"),
     t.literal("avatar"),
-    t.literal("folder"),
+    t.literal("folder_document"),
     t.literal("folder_table"),
   ]),
   useCaseMetadata: t.union([t.undefined, t.type({ conversationId: t.string })]),
@@ -172,7 +172,7 @@ export type FileUseCase =
   | "conversation"
   | "avatar"
   | "tool_output"
-  | "folder"
+  | "folder_document"
   | "folder_table";
 
 export type FileUseCaseMetadata = {
@@ -205,7 +205,7 @@ export function ensureContentTypeForUseCase(
     return isSupportedImageContentType(contentType);
   }
 
-  if (useCase === "folder") {
+  if (useCase === "folder_document") {
     // Only allow users to upload text documents in folders.
     return isSupportedPlainTextContentType(contentType);
   }

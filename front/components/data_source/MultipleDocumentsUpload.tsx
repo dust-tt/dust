@@ -69,7 +69,7 @@ export const MultipleDocumentsUpload = ({
   // Used for creating files, with text extraction post-processing
   const fileUploaderService = useFileUploaderService({
     owner,
-    useCase: "folder",
+    useCase: "folder_document",
   });
 
   // Mutation for creating documents, throw error on partial failure
