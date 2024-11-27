@@ -667,6 +667,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
   /**
    * Marks the connector as unpaused in db and restarts the workflows.
+   * Does not trigger full syncs, only restart the incremental and gc workflows.
    */
   async unpause(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
