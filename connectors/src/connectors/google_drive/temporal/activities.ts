@@ -516,8 +516,6 @@ export async function incrementalSync(
     } else {
       throw e;
     }
-  } finally {
-    await redisCli?.quit();
   }
 }
 
