@@ -10,7 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
-use futures::future::{try_join, try_join_all};
+use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
