@@ -115,11 +115,6 @@ export const MultipleDocumentsUpload = ({
           !!fileBlob.fileId
       );
       if (!fileBlobs || fileBlobs.length === 0) {
-        sendNotification({
-          type: "error",
-          title: "Error uploading files",
-          description: "An error occurred while uploading your files.",
-        });
         setIsBulkFilesUploading(null);
         close(false);
         fileUploaderService.resetUpload();

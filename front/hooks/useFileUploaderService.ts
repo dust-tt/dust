@@ -261,8 +261,8 @@ export function useFileUploaderService({
         erroredBlobs.push(result.error);
         sendNotification({
           type: "error",
-          title: "Failed to upload file.",
-          description: result.error.message,
+          title: `Failed to upload file`,
+          description: `error uploading  ${result.error.file.name} ${result.error.message ? ": " + result.error.message : ""}`,
         });
       } else {
         successfulBlobs.push(result.value);
