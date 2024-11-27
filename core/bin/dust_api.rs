@@ -2283,9 +2283,13 @@ async fn tables_delete(
             &format!("No table found for id `{}`", table_id),
             None,
         ),
-        Ok(Some(table)) => match table
-            .delete(state.store.clone(), state.databases_store.clone())
-            .await
+        Ok(Some(table)) => match try_join(
+            table.delete(state.store.clone(), state.databases_store.clone()),
+            state
+                .store
+                .delete_data_source_node(&data_source_id, &table_id),
+        )
+        .await
         {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
