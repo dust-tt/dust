@@ -138,6 +138,15 @@ const useEditorService = (editor: Editor | null) => {
       clearEditor() {
         return editor?.commands.clearContent();
       },
+
+      setLoading(loading: boolean) {
+        if (loading) {
+          editor?.view.dom.classList.add("loading-text");
+        } else {
+          editor?.view.dom.classList.remove("loading-text");
+        }
+        return editor?.setEditable(!loading);
+      },
     };
   }, [editor]);
 
@@ -150,7 +159,8 @@ export interface CustomEditorProps {
   onEnterKeyDown: (
     isEmpty: boolean,
     textAndMentions: ReturnType<typeof getTextAndMentionsFromNode>,
-    clearEditor: () => void
+    clearEditor: () => void,
+    setLoading: (loading: boolean) => void
   ) => void;
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
@@ -235,10 +245,20 @@ const useCustomEditor = ({
             resetEditorContainerSize();
           };
 
+          const setLoading = (loading: boolean) => {
+            if (loading) {
+              editor?.view.dom.classList.add("loading-text");
+            } else {
+              editor?.view.dom.classList.remove("loading-text");
+            }
+            return editor?.setEditable(!loading);
+          };
+
           onEnterKeyDown(
             editor.isEmpty,
             getTextAndMentionsFromNode(editor.getJSON()),
-            clearEditor
+            clearEditor,
+            setLoading
           );
 
           // Return true to indicate that this key event has been handled.

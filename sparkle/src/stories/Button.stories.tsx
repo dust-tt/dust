@@ -31,6 +31,10 @@ const meta = {
       mapping: ICONS,
       control: { type: "select" },
     },
+    isLoading: {
+      description: "Whether the button should display a loading spinner",
+      control: "boolean",
+    },
     isPulsing: {
       description: "Whether the button should have a pulsing animation",
       control: "boolean",
@@ -54,6 +58,7 @@ export const ExampleButton: Story = {
     variant: "outline",
     label: "Button",
     size: "md",
+    isLoading: false,
     isPulsing: false,
     isSelect: false,
   },

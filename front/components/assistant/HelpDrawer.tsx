@@ -11,18 +11,19 @@ import {
 import type {
   AgentMention,
   MentionType,
+  Result,
   RoleType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import { useSubmitFunction } from "@app/lib/client/utils";
+import type { DustError } from "@app/lib/error";
 
 // describe the type of userContent where the
 
@@ -106,45 +107,68 @@ export function HelpDrawer({
 }) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { submit: handleHelpSubmit } = useSubmitFunction(
-    useCallback(
-      async (input: string, mentions: MentionType[]) => {
-        const inputWithHelp = input.includes("@help")
-          ? input
-          : `@help ${input.trimStart()}`;
-        const mentionsWithHelp = mentions.some(
-          (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
-        )
-          ? mentions
-          : [
-              ...mentions,
-              { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
-            ];
-        const conversationRes = await createConversationWithMessage({
-          owner,
-          user,
-          messageData: {
-            input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
-            mentions: mentionsWithHelp,
-            contentFragments: [],
-          },
+  const handleHelpSubmit = useCallback(
+    async (
+      input: string,
+      mentions: MentionType[]
+    ): Promise<Result<undefined, DustError>> => {
+      if (isSubmitting) {
+        return new Err({
+          code: "internal_error",
+          name: "Already submitting",
+          message: "Please wait for the previous submission to finish",
         });
-        if (conversationRes.isErr()) {
-          sendNotification({
-            title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
-          });
-        } else {
-          // We start the push before creating the message to optimize for instantaneity as well.
-          void router.push(
-            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
-          );
-        }
-      },
-      [owner, user, router, sendNotification]
-    )
+      }
+
+      setIsSubmitting(true);
+
+      const inputWithHelp = input.includes("@help")
+        ? input
+        : `@help ${input.trimStart()}`;
+      const mentionsWithHelp = mentions.some(
+        (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
+      )
+        ? mentions
+        : [
+            ...mentions,
+            { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
+          ];
+      const conversationRes = await createConversationWithMessage({
+        owner,
+        user,
+        messageData: {
+          input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
+          mentions: mentionsWithHelp,
+          contentFragments: [],
+        },
+      });
+
+      setIsSubmitting(false);
+
+      if (conversationRes.isErr()) {
+        sendNotification({
+          title: conversationRes.error.title,
+          description: conversationRes.error.message,
+          type: "error",
+        });
+
+        return new Err({
+          code: "internal_error",
+          name: conversationRes.error.title,
+          message: conversationRes.error.message,
+        });
+      } else {
+        // We start the push before creating the message to optimize for instantaneity as well.
+        void router.push(
+          `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
+        );
+
+        return new Ok(undefined);
+      }
+    },
+    [isSubmitting, owner, user, sendNotification, router]
   );
 
   return (

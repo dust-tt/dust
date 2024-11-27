@@ -176,15 +176,21 @@ const InputBarContainer = ({
         </div>
         <Button
           size="sm"
+          isLoading={disableSendButton}
           icon={ArrowUpIcon}
           variant="highlight"
           disabled={editorService.isEmpty() || disableSendButton}
           onClick={async () => {
             const jsonContent = editorService.getTextAndMentions();
-            onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {
-              editorService.clearEditor();
-              resetEditorContainerSize();
-            });
+            onEnterKeyDown(
+              editorService.isEmpty(),
+              jsonContent,
+              () => {
+                editorService.clearEditor();
+                resetEditorContainerSize();
+              },
+              editorService.setLoading
+            );
           }}
         />
       </div>
