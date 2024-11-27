@@ -28,6 +28,7 @@ module.exports = {
         lg: "0 10px 20px rgba(15, 23, 42, 0.12)",
         xl: "0 20px 25px rgba(15, 23, 42, 0.12)",
         "2xl": "0 25px 50px rgba(15, 23, 42, 0.12)",
+        tale: "0px 0px 12px 12px #F6F8FB",
       },
       zIndex: {
         60: "60",
