@@ -329,8 +329,8 @@ export function useFileUploaderService(conversationId?: string) {
 
       const title = findAvailableTitle(
         includeSelectionOnly
-          ? `${tabContent.title} (selection)`
-          : `${tabContent.title}`,
+          ? `[selection] ${tabContent.title}`
+          : `[text] ${tabContent.title}`,
         "txt",
         existingTitles
       );
@@ -389,7 +389,11 @@ export function useFileUploaderService(conversationId?: string) {
         (blob) =>
           new File(
             [blob],
-            findAvailableTitle(`${tabContent.title}`, "jpg", existingTitles),
+            findAvailableTitle(
+              `[screenshot] ${tabContent.title}`,
+              "jpg",
+              existingTitles
+            ),
             {
               type: blob.type,
             }
