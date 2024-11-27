@@ -11,6 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 
@@ -445,6 +446,32 @@ export async function getAssistantsUsageData(
   return generateCsvFromQueryResult(mentions);
 }
 
+export async function getFeedbacksUsageData(
+  startDate: Date,
+  endDate: Date,
+  workspaceId: string
+): Promise<string> {
+  const workspace = await Workspace.findOne({
+    where: { sId: workspaceId },
+  });
+  if (!workspace) {
+    throw new Error(`Workspace not found for sId: ${workspaceId}`);
+  }
+
+  const feedbacks =
+    await AgentMessageFeedbackResource.listByWorkspaceAndDateRange({
+      workspace: workspace,
+      startDate,
+      endDate,
+    });
+
+  if (!feedbacks.length) {
+    return "No data available for the selected period.";
+  }
+
+  return generateCsvFromQueryResult(feedbacks);
+}
+
 function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
@@ -452,6 +479,7 @@ function generateCsvFromQueryResult(
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
+    | AgentMessageFeedbackResource[]
 ) {
   if (rows.length === 0) {
     return "";

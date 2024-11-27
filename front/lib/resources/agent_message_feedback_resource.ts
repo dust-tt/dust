@@ -8,6 +8,7 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
+import type { Workspace } from "@app/lib/models/workspace";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
@@ -99,6 +100,30 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return agentMessageFeedback.map(
       (feedback) =>
         new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
+    );
+  }
+
+  static listByWorkspaceAndDateRange({
+    workspace,
+    startDate,
+    endDate,
+  }: {
+    workspace: Workspace;
+    startDate: Date;
+    endDate: Date;
+  }): Promise<AgentMessageFeedbackResource[]> {
+    return AgentMessageFeedback.findAll({
+      where: {
+        workspaceId: workspace.id,
+        createdAt: {
+          [Op.between]: [startDate, endDate],
+        },
+      },
+    }).then((feedbacks) =>
+      feedbacks.map(
+        (feedback) =>
+          new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
+      )
     );
   }
 

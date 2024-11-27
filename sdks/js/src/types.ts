@@ -2051,6 +2051,7 @@ const usageTables = [
   "assistant_messages",
   "builders",
   "assistants",
+  "feedbacks",
   "all",
 ] as const;
 

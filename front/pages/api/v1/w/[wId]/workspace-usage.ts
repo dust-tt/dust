@@ -14,6 +14,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
+  getFeedbacksUsageData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
@@ -64,10 +65,11 @@ import { apiError } from "@app/logger/withlogging";
  *           - "assistant_messages": The list of messages sent by users including the mentioned assistants.
  *           - "builders": The list of builders categorized by their activity level.
  *           - "assistants": The list of workspace assistants and their corresponding usage.
+ *           - "feedbacks": The list of feedbacks given by users on the assistant messages.
  *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string
- *           enum: [users, assistant_messages, builders, assistants, all]
+ *           enum: [users, assistant_messages, builders, assistants, feedbacks, all]
  *     responses:
  *       200:
  *         description: The usage data in CSV format or a ZIP of multiple CSVs if table is equal to "all"
@@ -217,6 +219,10 @@ async function fetchUsageData({
       return {
         assistants: await getAssistantsUsageData(start, end, workspaceId),
       };
+    case "feedbacks":
+      return {
+        assistants: await getFeedbacksUsageData(start, end, workspaceId),
+      };
     case "all":
       const [users, assistant_messages, builders, assistants] =
         await Promise.all([
@@ -224,6 +230,7 @@ async function fetchUsageData({
           getMessageUsageData(start, end, workspaceId),
           getBuildersUsageData(start, end, workspaceId),
           getAssistantsUsageData(start, end, workspaceId),
+          getFeedbacksUsageData(start, end, workspaceId),
         ]);
       return { users, assistant_messages, builders, assistants };
     default:
