@@ -367,10 +367,6 @@ AgentMessageFeedback.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    workspaceId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -409,11 +405,15 @@ AgentMessageFeedback.init(
   }
 );
 
+Workspace.hasMany(AgentMessageFeedback, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+  onDelete: "CASCADE",
+});
 AgentMessage.hasMany(AgentMessageFeedback, {
-  onDelete: "RESTRICT",
+  onDelete: "CASCADE",
 });
 User.hasMany(AgentMessageFeedback, {
-  onDelete: "RESTRICT",
+  onDelete: "SET NULL",
 });
 
 export class Message extends Model<
