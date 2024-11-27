@@ -568,37 +568,101 @@ export async function getOctokit(connectionId: string): Promise<Octokit> {
 // Repository processing
 
 const EXTENSION_WHITELIST = [
+  // Programming Languages - General Purpose
   ".js",
   ".ts",
   ".tsx",
   ".jsx",
-  ".rb",
   ".py",
+  ".rb",
   ".rs",
   ".go",
   ".swift",
-  ".css",
-  ".html",
-  ".htm",
-  ".less",
-  ".sass",
-  ".scss",
-  ".php",
   ".java",
-  ".yaml",
-  ".yml",
-  ".md",
   ".c",
   ".h",
   ".cc",
   ".cpp",
   ".hpp",
+  ".php",
+
+  // .NET Ecosystem
+  ".cs",
+  ".csproj", // XML-based
+  ".sln", // Text-based solution file
+  ".cshtml", // Razor template
+  ".razor", // Razor component
+  ".resx", // XML-based resource
+  ".vb", // Visual Basic
+  ".fs", // F#
+  ".fsproj", // XML-based F# project
+  ".props", // MSBuild properties (XML)
+  ".targets", // MSBuild targets (XML)
+  ".nuspec", // NuGet specification (XML)
+
+  // Web Technologies
+  ".html",
+  ".htm",
+  ".css",
+  ".scss",
+  ".sass",
+  ".less",
+  ".svg", // XML-based vector format
+  ".map", // Source maps (JSON)
+
+  // Data & Configuration
+  ".json",
+  ".yaml",
+  ".yml",
+  ".xml",
+  ".csv",
+  ".toml",
+  ".ini",
+  ".env",
+  ".conf",
+  ".config",
+
+  // Build & Dependencies
+  ".gradle",
+  ".lock", // Text-based lock files
+  ".mk", // Makefile
+  ".just", // Justfile
+  ".dockerfile",
+  ".editorconfig",
+
+  // Infrastructure as Code
+  ".tf", // Terraform
+  ".hcl", // HashiCorp Configuration Language
+  ".tfvars", // Terraform variables
+  ".tfstate", // Terraform state (JSON)
+  ".nix", // Nix expressions
+
+  // Documentation
+  ".md", // Markdown
+  ".rst", // ReStructured Text
+  ".adoc", // AsciiDoc
+  ".tex", // LaTeX
+  ".txt",
+
+  // Shell & Scripts
   ".sh",
   ".sql",
-  ".kt",
-  ".kts",
-  ".gradle",
-  ".xml",
+  ".kt", // Kotlin
+  ".kts", // Kotlin script
+
+  // Version Control
+  ".gitignore",
+  ".dockerignore",
+
+  // Testing
+  ".test.cs",
+  ".spec.cs",
+  ".tests.cs",
+
+  // Templates
+  ".liquid",
+  ".mustache",
+  ".handlebars",
 ];
 
 const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
