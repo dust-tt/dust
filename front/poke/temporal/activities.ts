@@ -234,7 +234,7 @@ export async function deleteConversationsActivity({
                   }
 
                   await AgentMessageFeedback.destroy({
-                    where: { agentMessageId: msg.id },
+                    where: { agentMessageId: agentMessage.id },
                     transaction: t,
                   });
 
