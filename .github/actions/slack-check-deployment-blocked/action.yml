@@ -49,11 +49,11 @@ runs:
 
             local status_string="$2"
             
-            if echo "$status_string" | grep -q ":x:[ ]*${component}[ ]" || echo "$status_string" | grep -q ":x:[ ]*${component}|\$" ; then
+            if echo "$status_string" | grep -q ":x:[ ]*${component}[ ]" || echo "$status_string" | grep -q ":x:[ ]*${component}\$" ; then
                 return 1
             else
                 return 0
             fi
         }
-        is_blocked "${{ inputs.component }}" "${{ steps.slack_channel_topic.outputs.topic }}" && echo "${{ inputs.component}} is blocked based on channel topic" && exit 1
+        is_blocked "${{ inputs.component }}" "${{ steps.slack_channel_topic.outputs.topic }}" || echo "${{ inputs.component}} is blocked based on channel topic" && exit 1
     
