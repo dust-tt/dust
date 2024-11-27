@@ -301,7 +301,7 @@ const processingPerContentType: ProcessingPerContentType = {
     tool_output: notSupportedError,
   },
   "text/comma-separated-values": {
-    conversation: storeRawText,
+    conversation: extractContentAndSchemaFromCSV,
     folder: storeRawText,
     avatar: notSupportedError,
     tool_output: notSupportedError,
