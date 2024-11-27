@@ -59,17 +59,23 @@ export type PatchDataSourceWithNameDocumentRequestBody = t.TypeOf<
   typeof PostDataSourceWithNameDocumentRequestBodySchema
 >;
 
-export const PatchDataSourceTableRequestBodySchema = t.type({
-  name: t.string,
-  description: t.string,
-  timestamp: t.union([t.number, t.undefined, t.null]),
-  tags: t.union([t.array(t.string), t.undefined, t.null]),
-  parents: t.union([t.array(t.string), t.undefined, t.null]),
-  truncate: t.boolean,
-  async: t.union([t.boolean, t.undefined]),
-  csv: t.union([t.string, t.undefined]),
-  useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
-});
+export const PatchDataSourceTableRequestBodySchema = t.intersection([
+  t.type({
+    name: t.string,
+    description: t.string,
+    timestamp: t.union([t.number, t.undefined, t.null]),
+    tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parents: t.union([t.array(t.string), t.undefined, t.null]),
+    truncate: t.boolean,
+    async: t.union([t.boolean, t.undefined]),
+    csv: t.union([t.string, t.undefined]),
+    useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
+  }),
+  t.partial({
+    title: t.string,
+    mimeType: t.string,
+  }),
+]);
 
 export const PostDataSourceTableRequestBodySchema = t.intersection([
   PatchDataSourceTableRequestBodySchema,
@@ -97,6 +103,10 @@ export const UpsertTableFromCsvRequestSchema = t.intersection([
       tableId: t.string,
     }),
   ]),
+  t.partial({
+    title: t.string,
+    mimeType: t.string,
+  }),
 ]);
 
 export type UpsertTableFromCsvRequestType = t.TypeOf<
