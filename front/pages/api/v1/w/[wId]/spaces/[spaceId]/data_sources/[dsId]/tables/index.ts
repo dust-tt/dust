@@ -252,19 +252,60 @@ async function handler(
         parents,
         remote_database_table_id: remoteDatabaseTableId,
         remote_database_secret_id: remoteDatabaseSecretId,
-        title,
-        mimeType,
       } = r.data;
 
-      // If the request is not from a system key, we enforce that mimeType is not provided.
-      if (!auth.isSystemKey() && mimeType) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid request body: mimeType must not be provided.",
-          },
-        });
+      let mimeType: string;
+      let title: string;
+      if (auth.isSystemKey()) {
+        // If the request is from a system key, the request must provide both title and mimeType.
+        if (!r.data.mimeType) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid request body: mimeType must be provided.",
+            },
+          });
+        }
+        if (!r.data.title) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid request body: title must be provided.",
+            },
+          });
+        }
+
+        mimeType = r.data.mimeType;
+        title = r.data.title;
+      } else {
+        // If the request is from a regular API key, the request must not provide mimeType.
+        if (r.data.mimeType) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid request body: mimeType must not be provided.",
+            },
+          });
+        }
+        mimeType = "application/vnd.dust.table";
+
+        // If the request is from a regular API key, and the title is provided, we use it.
+        // Otherwise we default to either:
+        // - the title tag if any
+        // - the name of the table
+        if (r.data.title) {
+          title = r.data.title;
+        } else {
+          const titleTag = tags?.find((t) => t.startsWith("title:"));
+          if (titleTag) {
+            title = titleTag.split(":")[1];
+          } else {
+            title = name;
+          }
+        }
       }
 
       const tableId = maybeTableId || generateRandomModelSId();
