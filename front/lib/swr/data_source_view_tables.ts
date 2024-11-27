@@ -18,7 +18,7 @@ import type { PostTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[space
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
 
 // Centralized way to get urls -> reduces key-related inconcistencies
-type CrudUseCases = "CREATE" | "GET" | "UPDATE" | "GET_LIST";
+type CrudUseCases = "CREATE" | "READ" | "UPDATE" | "READ_LIST";
 function getUrlHasValidParameters(
   useCase: CrudUseCases,
   tableId?: string
@@ -50,9 +50,9 @@ const getUrl = ({
       return `${baseDataSourceUrl}/tables`;
     case "UPDATE":
       return `${baseDataSourceUrl}/tables/${encodeURIComponent(tableId)}`;
-    case "GET":
+    case "READ":
       return `${baseDataSourceViewUrl}/tables/${encodeURIComponent(tableId)}`;
-    case "GET_LIST":
+    case "READ_LIST":
       return `${baseDataSourceViewUrl}/tables`;
   }
 };
@@ -73,7 +73,7 @@ export function useDataSourceViewTable({
   const url =
     dataSourceView && tableId
       ? getUrl({
-          useCase: "GET",
+          useCase: "READ",
           owner,
           dataSourceView,
           tableId,
@@ -108,7 +108,7 @@ export function useDataSourceViewTables({
 
   const url = dataSourceView
     ? getUrl({
-        useCase: "GET_LIST",
+        useCase: "READ_LIST",
         owner,
         dataSourceView,
       })

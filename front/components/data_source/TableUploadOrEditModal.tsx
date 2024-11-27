@@ -27,10 +27,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
   useCreateDataSourceViewTable,
+  useDataSourceViewTable,
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
 import { useFileProcessedContent } from "@app/lib/swr/file";
-import { useTable } from "@app/lib/swr/tables";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface Table {
@@ -76,7 +76,7 @@ export const TableUploadOrEditModal = ({
   const [isValidTable, setIsValidTable] = useState(false);
   const [useAppForHeaderDetection, setUseAppForHeaderDetection] =
     useState(false);
-  const { table, isTableError, isTableLoading } = useTable({
+  const { table, isTableError, isTableLoading } = useDataSourceViewTable({
     owner: owner,
     dataSourceView: dataSourceView,
     tableId: initialId ?? null,

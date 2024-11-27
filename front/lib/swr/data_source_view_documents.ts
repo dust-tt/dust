@@ -16,36 +16,37 @@ import type { PostDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[sp
 import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 
 // Centralized way to get urls -> reduces key-related inconcistencies
+type CrudUseCases = "CREATE" | "READ" | "UPDATE";
 function getUrlHasValidParameters(
-  method: "POST" | "GET" | "PATCH",
+  useCase: CrudUseCases,
   documentId?: string
 ): documentId is string {
   // Only require documentId for GET and PATCH methods
-  return method === "POST" || !!documentId;
+  return useCase === "CREATE" || !!documentId;
 }
 const getUrl = ({
-  method,
+  useCase,
   owner,
   dataSourceView,
   documentId,
 }: {
-  method: "POST" | "GET" | "PATCH";
+  useCase: CrudUseCases;
   owner: LightWorkspaceType;
   dataSourceView: DataSourceViewType;
   documentId?: string;
 }) => {
   assert(
-    getUrlHasValidParameters(method, documentId),
+    getUrlHasValidParameters(useCase, documentId),
     "Cannot get or patch a document without a documentId"
   );
 
   const baseUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}`;
-  switch (method) {
-    case "POST":
+  switch (useCase) {
+    case "CREATE":
       return `${baseUrl}/data_sources/${dataSourceView.dataSource.sId}/documents`;
-    case "PATCH":
+    case "UPDATE":
       return `${baseUrl}/data_sources/${dataSourceView.dataSource.sId}/documents/${encodeURIComponent(documentId)}`;
-    case "GET":
+    case "READ":
       return `${baseUrl}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`;
   }
 };
@@ -66,7 +67,7 @@ export function useDataSourceViewDocument({
   const url =
     dataSourceView && documentId
       ? getUrl({
-          method: "GET",
+          useCase: "READ",
           owner,
           dataSourceView,
           documentId,
@@ -121,7 +122,7 @@ export function useUpdateDataSourceViewDocument(
 
   const patchUrl = documentName
     ? getUrl({
-        method: "PATCH",
+        useCase: "UPDATE",
         owner,
         dataSourceView,
         documentId: documentName,
@@ -155,7 +156,7 @@ export function useCreateDataSourceViewDocument(
 
   // Note that this url is not used for fetch -> There is no need to invalidate it on practice.
   const createUrl = getUrl({
-    method: "POST",
+    useCase: "CREATE",
     owner,
     dataSourceView,
   });
