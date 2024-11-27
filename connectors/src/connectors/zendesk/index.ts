@@ -667,6 +667,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
   /**
    * Marks the connector as unpaused in db and restarts the workflows.
+   * Does not trigger full syncs, only restart the incremental and gc workflows.
    */
   async unpause(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
@@ -675,8 +676,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
-    // reset the cursor here to trigger a full resync
     await connector.markAsUnpaused();
+    // launch a gc and an incremental workflow (sync workflow without signals).
     return this.resume();
   }
 
