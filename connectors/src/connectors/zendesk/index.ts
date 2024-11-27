@@ -677,6 +677,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
     await connector.markAsUnpaused();
+    // launch a gc and an incremental workflow (sync workflow without signals).
     return this.resume();
   }
 
