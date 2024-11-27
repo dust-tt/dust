@@ -29,7 +29,7 @@ const sizeVariants: Record<CardButtonSizeType, string> = {
 };
 
 const cardButtonVariants = cva(
-  "s-flex s-text-left s-group s-transition s-duration-200 s-border s-overflow-hidden s-text-foreground s-cursor-pointer hover:s-border-primary-100 hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none",
+  "s-flex s-text-left s-group s-border s-overflow-hidden s-text-foreground",
   {
     variants: {
       variant: variantClasses,
@@ -72,53 +72,63 @@ interface ButtonProps
 
 type CardButtonProps = LinkProps | ButtonProps;
 
-export function CardButton({
-  children,
-  variant,
-  size,
-  className,
-  onClick,
-  onMouseEnter,
-  onMouseLeave,
-  href,
-  target = "_blank",
-  rel = "",
-  replace,
-  shallow,
-  ...props
-}: CardButtonProps) {
-  const { components } = React.useContext(SparkleContext);
-  const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
+export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
+  (
+    {
+      children,
+      variant,
+      size,
+      className,
+      onClick,
+      onMouseEnter,
+      onMouseLeave,
+      href,
+      target = "_blank",
+      rel = "",
+      replace,
+      shallow,
+      ...props
+    },
+    ref
+  ) => {
+    const { components } = React.useContext(SparkleContext);
+    const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
-  const cardButtonClassNames = cn(
-    cardButtonVariants({ variant, size }),
-    className
-  );
+    const cardButtonClassNames = cn(
+      cardButtonVariants({ variant, size }),
+      (onClick || onMouseEnter) &&
+        "s-cursor-pointer hover:s-border-primary-100 hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200",
+      className
+    );
 
-  if (href) {
+    if (href) {
+      return (
+        <Link
+          href={href}
+          className={cardButtonClassNames}
+          replace={replace}
+          shallow={shallow}
+          target={target}
+          rel={rel}
+        >
+          {children}
+        </Link>
+      );
+    }
+
     return (
-      <Link
-        href={href}
+      <div
+        ref={ref}
         className={cardButtonClassNames}
-        replace={replace}
-        shallow={shallow}
-        target={target}
-        rel={rel}
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        {...props}
       >
         {children}
-      </Link>
+      </div>
     );
   }
+);
 
-  return (
-    <div
-      className={cardButtonClassNames}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-}
+CardButton.displayName = "CardButton";
