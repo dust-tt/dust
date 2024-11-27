@@ -607,8 +607,6 @@ const EXTENSION_WHITELIST = [
   ".scss",
   ".sass",
   ".less",
-  ".svg", // XML-based vector format
-  ".map", // Source maps (JSON)
 
   // Data & Configuration
   ".json",
