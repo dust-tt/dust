@@ -43,13 +43,13 @@ const sheetVariants = cva(
   "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500 s-flex s-flex-col s-inset-y-0 s-right-0 s-h-full s-w-full data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right",
   {
     variants: {
-      size: sizeClasses
+      size: sizeClasses,
     },
     defaultVariants: {
-      size: "md"
-    }
+      size: "md",
+    },
   }
-)
+);
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
@@ -73,11 +73,16 @@ const SheetContent = React.forwardRef<
 ));
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
+interface SheetHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  hideButton?: boolean;
+}
+
 const SheetHeader = ({
   className,
   children,
+  hideButton = false,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+}: SheetHeaderProps) => (
   <div
     className={cn(
       "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale",
@@ -86,9 +91,9 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetPrimitive.Close className="s-absolute s-right-3 s-top-4">
-      <Button icon={XMarkIcon} variant="ghost" size="sm" />
-    </SheetPrimitive.Close>
+    <SheetClose className="s-absolute s-right-3 s-top-4">
+      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
+    </SheetClose>
   </div>
 );
 SheetHeader.displayName = "SheetHeader";
@@ -102,17 +107,35 @@ const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => (
 );
 SheetContainer.displayName = "SheetContainer";
 
+interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+  leftButtonProps?: React.ComponentProps<typeof Button>;
+  rightButtonProps?: React.ComponentProps<typeof Button>;
+  sheetCloseClassName?: string;
+}
+
 const SheetFooter = ({
   className,
+  children,
+  leftButtonProps,
+  rightButtonProps,
+  sheetCloseClassName,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+}: SheetFooterProps) => (
   <div
     className={cn(
       "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3",
       className
     )}
     {...props}
-  />
+  >
+    {(leftButtonProps || rightButtonProps) && (
+      <SheetClose className={sheetCloseClassName}>
+        {leftButtonProps && <Button {...leftButtonProps} />}
+        {rightButtonProps && <Button {...rightButtonProps} />}
+      </SheetClose>
+    )}
+    {children}
+  </div>
 );
 SheetFooter.displayName = "SheetFooter";
 

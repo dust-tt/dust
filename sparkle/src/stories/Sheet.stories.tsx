@@ -53,7 +53,7 @@ export function SheetDemo() {
           <Button variant="outline" label="Edit demo" />
         </SheetTrigger>
         <SheetContent>
-          <SheetHeader>
+          <SheetHeader hideButton>
             <SheetTitle>About me</SheetTitle>
           </SheetHeader>
           <SheetContainer>
@@ -62,10 +62,11 @@ export function SheetDemo() {
               <Input label="Lastname" placeholder="Doe" />
             </div>
           </SheetContainer>
-          <SheetFooter>
-            <Button type="submit" label="Cancel" variant="outline" />
-            <Button type="submit" label="Save" variant="highlight" />
-          </SheetFooter>
+          <SheetFooter
+            sheetCloseClassName="s-flex s-gap-2"
+            leftButtonProps={{ label: "Cancel", variant: "warning" }}
+            rightButtonProps={{ label: "Save" }}
+          />
         </SheetContent>
       </Sheet>
     </div>
