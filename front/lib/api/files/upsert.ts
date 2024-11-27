@@ -239,6 +239,8 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     dataSource,
     auth,
     useAppForHeaderDetection: true,
+    title: file.fileName,
+    mimeType: file.contentType,
   });
 
   if (upsertTableRes.isErr()) {
