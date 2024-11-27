@@ -173,7 +173,7 @@ export const sendGetActiveTabMessage = (params: GetActiveTabOptions) => {
 };
 
 export const sendInputBarStatus = (available: boolean) => {
-  return sendMessage<InputBarStatusMessage, void>({
+  void chrome.runtime.sendMessage({
     type: "INPUT_BAR_STATUS",
     available,
   });

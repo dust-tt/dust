@@ -212,12 +212,23 @@ declare global {
         body.style.overflowY = originalBodyOverflowYStyle;
       }
       window.scrollTo(originalX, originalY);
+      // Ensure the callback is called at least once when cleaning up.
+      // If it was called already with results, this will be ignored by promise.
+      callback([]);
     }
     const screenshots: Screenshot[] = [];
 
     (function processArrangements() {
       const next = arrangements.shift();
       if (!next) {
+        if (callback) {
+          callback(
+            screenshots.map((screenshot) =>
+              screenshot.canvas.toDataURL("image/jpeg", 0.8)
+            )
+          );
+        }
+
         cleanUp();
         return;
       }
@@ -289,17 +300,7 @@ declare global {
                   image.height * zoomFactor
                 );
               });
-              // send back log data for debugging (but keep it truthy to
-              // indicate success)
-              if (!arrangements.length) {
-                if (callback) {
-                  callback(
-                    screenshots.map((screenshot) =>
-                      screenshot.canvas.toDataURL("image/jpeg", 0.8)
-                    )
-                  );
-                }
-              }
+
               // Move on to capture next arrangement.
               processArrangements();
             };

@@ -22,15 +22,9 @@ import { generatePKCE } from "./src/lib/utils";
 const log = console.error;
 
 const state: {
-  port: chrome.runtime.Port | undefined;
-  extensionReady: boolean;
-  inputBarReady: boolean;
   refreshingToken: boolean;
   lastHandler: (() => void) | undefined;
 } = {
-  port: undefined,
-  extensionReady: false,
-  inputBarReady: false,
   refreshingToken: false,
   lastHandler: undefined,
 };
@@ -50,6 +44,7 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
  * Listener to open/close the side panel when the user clicks on the extension icon.
  */
 chrome.runtime.onInstalled.addListener(() => {
+  void chrome.storage.local.set({ extensionReady: false });
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.contextMenus.create({
     id: "ask_dust",
@@ -77,14 +72,13 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "sidepanel-connection") {
     console.log("Sidepanel is there");
-    state.port = port;
-    state.extensionReady = true;
-    port.onDisconnect.addListener(() => {
+    void chrome.storage.local.set({ extensionReady: true });
+    port.onDisconnect.addListener(async () => {
       // This fires when sidepanel closes
       console.log("Sidepanel was closed");
-      state.port = undefined;
-      state.extensionReady = false;
-      state.inputBarReady = false;
+      await chrome.storage.local.set({
+        extensionReady: false,
+      });
       state.lastHandler = undefined;
     });
   }
@@ -94,50 +88,42 @@ const getActionHandler = (menuItemId: string | number) => {
   switch (menuItemId) {
     case "ask_dust":
       return () => {
-        if (state.port) {
-          const params = JSON.stringify({
-            includeContent: true,
-            includeCapture: false,
-            text: ":mention[dust]{sId=dust} summarize this page.",
-            configurationId: "dust",
-          });
-          state.port.postMessage({
-            type: "EXT_ROUTE_CHANGE",
-            pathname: "/run",
-            search: `?${params}`,
-          });
-        }
+        const params = JSON.stringify({
+          includeContent: true,
+          includeCapture: false,
+          text: ":mention[dust]{sId=dust} summarize this page.",
+          configurationId: "dust",
+        });
+        void chrome.runtime.sendMessage({
+          type: "EXT_ROUTE_CHANGE",
+          pathname: "/run",
+          search: `?${params}`,
+        });
       };
     case "add_tab_content":
       return () => {
-        if (state.port) {
-          state.port.postMessage({
-            type: "EXT_ATTACH_TAB",
-            includeContent: true,
-            includeCapture: false,
-          });
-        }
+        void chrome.runtime.sendMessage({
+          type: "EXT_ATTACH_TAB",
+          includeContent: true,
+          includeCapture: false,
+        });
       };
     case "add_tab_screenshot":
       return () => {
-        if (state.port) {
-          state.port.postMessage({
-            type: "EXT_ATTACH_TAB",
-            includeContent: false,
-            includeCapture: true,
-          });
-        }
+        void chrome.runtime.sendMessage({
+          type: "EXT_ATTACH_TAB",
+          includeContent: false,
+          includeCapture: true,
+        });
       };
     case "add_selection":
       return () => {
-        if (state.port) {
-          state.port.postMessage({
-            type: "EXT_ATTACH_TAB",
-            includeContent: true,
-            includeCapture: false,
-            includeSelectionOnly: true,
-          });
-        }
+        void chrome.runtime.sendMessage({
+          type: "EXT_ATTACH_TAB",
+          includeContent: true,
+          includeCapture: false,
+          includeSelectionOnly: true,
+        });
       };
   }
 };
@@ -148,15 +134,17 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
     return;
   }
 
-  if (!state.extensionReady && tab) {
-    // Store the handler for later use when the extension is ready.
-    state.lastHandler = handler;
-    void chrome.sidePanel.open({
-      windowId: tab.windowId,
-    });
-  } else {
-    await handler();
-  }
+  chrome.storage.local.get(["extensionReady"], ({ extensionReady }) => {
+    if (!extensionReady && tab) {
+      // Store the handler for later use when the extension is ready.
+      state.lastHandler = handler;
+      void chrome.sidePanel.open({
+        windowId: tab.windowId,
+      });
+    } else {
+      void handler();
+    }
+  });
 });
 
 function capture(sendResponse: (x: CaptureResponse) => void) {
@@ -239,7 +227,7 @@ chrome.runtime.onMessage.addListener(
                     files: ["page.js"],
                   });
                   captures = await new Promise((resolve, reject) => {
-                    if (state?.port && tab?.id) {
+                    if (tab?.id) {
                       const timeout = setTimeout(() => {
                         console.error("Timeout waiting for full page capture");
                         reject(
@@ -255,10 +243,8 @@ chrome.runtime.onMessage.addListener(
                         }
                       );
                     } else {
-                      console.error("No port or tab id");
-                      reject(
-                        new Error("Failed to get content from the current tab.")
-                      );
+                      console.error("No tab id");
+                      reject(new Error("No tab selected."));
                     }
                   });
                 } else {
@@ -323,8 +309,7 @@ chrome.runtime.onMessage.addListener(
 
       case "INPUT_BAR_STATUS":
         // Enable or disable the context menu items based on the input bar status. Actions are only available when the input bar is visible.
-        state.inputBarReady = message.available;
-        if (state.lastHandler && state.inputBarReady) {
+        if (state.lastHandler && message.available) {
           state.lastHandler();
           state.lastHandler = undefined;
         }
