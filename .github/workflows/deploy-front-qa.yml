@@ -42,9 +42,9 @@ jobs:
         run: |
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
-            --image-name=front-qa \ 
-            --dockerfile-path=./front/Dockerfile \ 
-            --working-dir=./ \ 
+            --image-name=front-qa \
+            --dockerfile-path=./front/Dockerfile \
+            --working-dir=./ \
             --dust-client-facing-url=https://front-qa.dust.tt
 
       - name: Generate a token
