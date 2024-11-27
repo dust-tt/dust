@@ -19,6 +19,7 @@ use crate::{
     cached_request::CachedRequest,
     consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX,
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+    data_sources::folder::Folder,
     data_sources::node::Node,
     databases::{
         table::{get_table_unique_id, Table},
@@ -2843,6 +2844,125 @@ impl Store for PostgresStore {
 
         tx.commit().await?;
 
+        Ok(())
+    }
+
+    async fn upsert_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder: &Folder,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = c
+            .prepare(
+                "INSERT INTO data_sources_folders \
+               (id, data_source, created, folder_id) \
+               VALUES (DEFAULT, $1, $2, $3) RETURNING id",
+            )
+            .await?;
+
+        let _ = c
+            .query_one(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &(folder.created as i64),
+                    &folder.folder_id,
+                ],
+            )
+            .await?;
+        Ok(())
+    }
+
+    async fn load_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<Option<Folder>> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let folder_id = folder_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = c
+            .prepare(
+                "SELECT id, created \
+                 FROM data_sources_folders \
+                 WHERE data_source = $1 AND folder_id = $2 LIMIT 1",
+            )
+            .await?;
+        let row = c.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
+
+        match row.len() {
+            0 => Ok(None),
+            1 => {
+                let created: i64 = row[0].get::<_, i64>(1);
+
+                Ok(Some(Folder {
+                    data_source_id,
+                    folder_id,
+                    created: created as u64,
+                }))
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    async fn delete_data_source_folder(&self, data_source_id: &str, folder_id: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 2",
+                &[&data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = c
+            .prepare("DELETE FROM data_sources_folders WHERE data_source = $1 AND folder_id = $2")
+            .await?;
+        let _ = c.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
         Ok(())
     }
 
