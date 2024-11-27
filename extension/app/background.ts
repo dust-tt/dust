@@ -238,21 +238,48 @@ chrome.runtime.onMessage.addListener(
                     target: { tabId: tab.id },
                     files: ["page.js"],
                   });
-                  captures = await new Promise((resolve) => {
+                  captures = await new Promise((resolve, reject) => {
                     if (state?.port && tab?.id) {
+                      const timeout = setTimeout(() => {
+                        console.error("Timeout waiting for full page capture");
+                        reject(
+                          new Error("Timeout waiting for full page screenshot.")
+                        );
+                      }, 10000);
                       chrome.tabs.sendMessage(
                         tab.id,
                         { type: "PAGE_CAPTURE_FULL_PAGE" },
-                        resolve
+                        (res) => {
+                          clearTimeout(timeout);
+                          resolve(res);
+                        }
+                      );
+                    } else {
+                      console.error("No port or tab id");
+                      reject(
+                        new Error("Failed to get content from the current tab.")
                       );
                     }
                   });
                 } else {
                   captures = [
-                    await new Promise<string>((resolve) => {
-                      chrome.tabs.captureVisibleTab(resolve);
+                    await new Promise<string>((resolve, reject) => {
+                      const timeout = setTimeout(() => {
+                        console.error("Timeout waiting for capture");
+                        reject(
+                          new Error("Timeout waiting for page screenshot")
+                        );
+                      }, 2000);
+                      chrome.tabs.captureVisibleTab((res) => {
+                        clearTimeout(timeout);
+                        resolve(res);
+                      });
                     }),
                   ];
+                }
+                if (!captures || captures.length === 0) {
+                  console.error("Empty captures array");
+                  throw new Error("Failed to get a screenshot of the page.");
                 }
               }
               let content: string | undefined;

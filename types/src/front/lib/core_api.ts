@@ -1087,6 +1087,8 @@ export class CoreAPI {
     parents,
     remoteDatabaseTableId,
     remoteDatabaseSecretId,
+    title,
+    mimeType,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -1098,6 +1100,8 @@ export class CoreAPI {
     parents: string[];
     remoteDatabaseTableId?: string | null;
     remoteDatabaseSecretId?: string | null;
+    title?: string;
+    mimeType?: string;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -1117,6 +1121,8 @@ export class CoreAPI {
           parents,
           remote_database_table_id: remoteDatabaseTableId ?? null,
           remote_database_secret_id: remoteDatabaseSecretId ?? null,
+          title,
+          mime_type: mimeType,
         }),
       }
     );

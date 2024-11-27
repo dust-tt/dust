@@ -296,120 +296,131 @@ export function useFileUploaderService(conversationId?: string) {
     onUpload?: () => void;
   } & GetActiveTabOptions) => {
     setIsCapturing(includeCapture);
-    const tabContentRes = await getIncludeCurrentTab({
-      includeContent,
-      includeSelectionOnly,
-      includeCapture,
-    });
-    setIsCapturing(false);
-
-    if (tabContentRes && tabContentRes.isErr()) {
-      sendNotification({
-        title: "Cannot get page content",
-        description: tabContentRes.error.message,
-        type: "error",
+    try {
+      const tabContentRes = await getIncludeCurrentTab({
+        includeContent,
+        includeSelectionOnly,
+        includeCapture,
       });
-      return;
-    }
+      setIsCapturing(false);
 
-    const tabContent =
-      tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
-
-    const existingTitles = fileBlobs.map((f) => f.filename);
-
-    if (includeContent) {
-      if (!tabContent?.content) {
+      if (tabContentRes && tabContentRes.isErr()) {
         sendNotification({
           title: "Cannot get page content",
-          description: "No content found.",
+          description: tabContentRes.error.message,
           type: "error",
         });
         return;
       }
 
-      const title = findAvailableTitle(
-        includeSelectionOnly
-          ? `[selection] ${tabContent.title}`
-          : `[text] ${tabContent.title}`,
-        "txt",
-        existingTitles
-      );
+      const tabContent =
+        tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
 
-      // Check if the content is already uploaded - compare the title and the size of the content.
-      const messages = conversation?.content.map((m) => m[m.length - 1]) || [];
-      const alreadyUploaded = messages.some(
-        (m) =>
-          m.type === "content_fragment" &&
-          m.title === title &&
-          m.textBytes === new Blob([tabContent.content ?? ""]).size
-      );
+      const existingTitles = fileBlobs.map((f) => f.filename);
 
-      if (tabContent && tabContent.content && !alreadyUploaded) {
-        const file = new File([tabContent.content], title, {
-          type: "text/plain",
-        });
+      if (includeContent) {
+        if (!tabContent?.content) {
+          sendNotification({
+            title: "Cannot get page content",
+            description: "No content found.",
+            type: "error",
+          });
+          return;
+        }
+
+        const title = findAvailableTitle(
+          includeSelectionOnly
+            ? `[selection] ${tabContent.title}`
+            : `[text] ${tabContent.title}`,
+          "txt",
+          existingTitles
+        );
+
+        // Check if the content is already uploaded - compare the title and the size of the content.
+        const messages =
+          conversation?.content.map((m) => m[m.length - 1]) || [];
+        const alreadyUploaded = messages.some(
+          (m) =>
+            m.type === "content_fragment" &&
+            m.title === title &&
+            m.textBytes === new Blob([tabContent.content ?? ""]).size
+        );
+
+        if (tabContent && tabContent.content && !alreadyUploaded) {
+          const file = new File([tabContent.content], title, {
+            type: "text/plain",
+          });
+
+          if (onUpload) {
+            onUpload();
+          }
+
+          const fragments = await handleFilesUpload({
+            files: [file],
+            updateBlobs,
+            kind: includeSelectionOnly ? "selection" : "tab_content",
+          });
+          if (fragments) {
+            fragments.forEach((f) => {
+              f.publicUrl = tabContent.url;
+            });
+          }
+
+          return fragments;
+        }
+      }
+
+      if (includeCapture) {
+        if (!tabContent?.captures) {
+          sendNotification({
+            title: "Cannot get page content",
+            description: "No content found.",
+            type: "error",
+          });
+          return;
+        }
+
+        const blobs = await Promise.all(
+          tabContent.captures.map(async (c) => {
+            const response = await fetch(c);
+            return await response.blob();
+          })
+        );
+
+        const files = blobs.map(
+          (blob) =>
+            new File(
+              [blob],
+              findAvailableTitle(
+                `[screenshot] ${tabContent.title}`,
+                "jpg",
+                existingTitles
+              ),
+              {
+                type: blob.type,
+              }
+            )
+        );
 
         if (onUpload) {
           onUpload();
         }
 
-        const fragments = await handleFilesUpload({
-          files: [file],
+        return await handleFilesUpload({
+          files,
           updateBlobs,
-          kind: includeSelectionOnly ? "selection" : "tab_content",
+          // TODO(EXT): supersede the screenshot
+          kind: "attachment",
         });
-        if (fragments) {
-          fragments.forEach((f) => {
-            f.publicUrl = tabContent.url;
-          });
-        }
-
-        return fragments;
       }
-    }
-
-    if (includeCapture) {
-      if (!tabContent?.captures) {
-        sendNotification({
-          title: "Cannot get page content",
-          description: "No content found.",
-          type: "error",
-        });
-        return;
-      }
-
-      const blobs = await Promise.all(
-        tabContent.captures.map(async (c) => {
-          const response = await fetch(c);
-          return await response.blob();
-        })
-      );
-
-      const files = blobs.map(
-        (blob) =>
-          new File(
-            [blob],
-            findAvailableTitle(
-              `[screenshot] ${tabContent.title}`,
-              "jpg",
-              existingTitles
-            ),
-            {
-              type: blob.type,
-            }
-          )
-      );
-
-      if (onUpload) {
-        onUpload();
-      }
-
-      return await handleFilesUpload({
-        files,
-        updateBlobs,
-        // TODO(EXT): supersede the screenshot
-        kind: "attachment",
+    } catch (err) {
+      console.log(err);
+      sendNotification({
+        title: "Cannot get page content",
+        description: "Something wrong happened.",
+        type: "error",
       });
+      setIsCapturing(false);
     }
   };
 

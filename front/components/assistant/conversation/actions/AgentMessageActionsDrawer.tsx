@@ -6,7 +6,7 @@ import { getActionSpecification } from "@app/components/actions/types";
 interface AgentMessageActionsDrawerProps {
   actions: AgentActionType[];
   isOpened: boolean;
-  isStreaming: boolean;
+  isActing: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
 }
@@ -14,7 +14,7 @@ interface AgentMessageActionsDrawerProps {
 export function AgentMessageActionsDrawer({
   actions,
   isOpened,
-  isStreaming,
+  isActing,
   onClose,
   owner,
 }: AgentMessageActionsDrawerProps) {
@@ -71,7 +71,7 @@ export function AgentMessageActionsDrawer({
                 </div>
               );
             })}
-            {isStreaming && (
+            {isActing && (
               <div className="flex justify-center">
                 <Spinner variant="color" />
               </div>
