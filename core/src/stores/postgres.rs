@@ -2875,7 +2875,10 @@ impl Store for PostgresStore {
             .prepare(
                 "INSERT INTO data_sources_folders \
                (id, data_source, created, folder_id) \
-               VALUES (DEFAULT, $1, $2, $3) RETURNING id",
+               VALUES (DEFAULT, $1, $2, $3) \
+               ON CONFLICT (data_source, folder_id) DO UPDATE \
+               SET created = EXCLUDED.created \
+               RETURNING id",
             )
             .await?;
 
@@ -3033,7 +3036,11 @@ impl Store for PostgresStore {
             .prepare(
                 "INSERT INTO data_sources_nodes \
                (id, data_source, created, node_id, timestamp, title, mime_type, parents, document, \"table\", folder) \
-               VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+               VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+               ON CONFLICT (data_source, node_id) DO UPDATE \
+               SET created = EXCLUDED.created, timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
+                   mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, document = EXCLUDED.document, \
+                   \"table\" = EXCLUDED.\"table\", folder = EXCLUDED.folder RETURNING id",
             )
             .await?;
 
