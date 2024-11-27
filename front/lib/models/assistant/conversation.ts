@@ -408,10 +408,10 @@ AgentMessageFeedback.init(
 
 Workspace.hasMany(AgentMessageFeedback, {
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentMessage.hasMany(AgentMessageFeedback, {
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 User.hasMany(AgentMessageFeedback, {
   onDelete: "SET NULL",
