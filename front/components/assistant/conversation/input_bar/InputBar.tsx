@@ -173,25 +173,36 @@ export function AssistantInputBar({
     if (!conversationId) {
       setLoading(true);
       setDisableSendButton(true);
-    }
 
-    const r = await onSubmit(
-      text,
-      mentions,
-      fileUploaderService.getFileBlobs().map((cf) => {
-        return {
-          title: cf.filename,
-          fileId: cf.fileId,
-        };
-      })
-    );
+      const r = await onSubmit(
+        text,
+        mentions,
+        fileUploaderService.getFileBlobs().map((cf) => {
+          return {
+            title: cf.filename,
+            fileId: cf.fileId,
+          };
+        })
+      );
 
-    if (!conversationId) {
       setLoading(false);
       setDisableSendButton(false);
-    }
+      if (r.isOk()) {
+        resetEditorText();
+        fileUploaderService.resetUpload();
+      }
+    } else {
+      void onSubmit(
+        text,
+        mentions,
+        fileUploaderService.getFileBlobs().map((cf) => {
+          return {
+            title: cf.filename,
+            fileId: cf.fileId,
+          };
+        })
+      );
 
-    if (r.isOk()) {
       resetEditorText();
       fileUploaderService.resetUpload();
     }
