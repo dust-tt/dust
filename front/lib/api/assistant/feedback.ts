@@ -11,10 +11,7 @@ import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import {
-  AgentMessage,
-  AgentMessageFeedback,
-} from "@app/lib/models/assistant/conversation";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 
