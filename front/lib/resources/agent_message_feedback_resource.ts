@@ -1,17 +1,15 @@
-import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  Result,
-} from "@dust-tt/types";
+import type { AgentConfigurationType, Result, UserType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { CreationAttributes, Transaction } from "sequelize";
 import type { Attributes, ModelStatic } from "sequelize";
+import type { CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { UserResource } from "@app/lib/resources/user_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -50,7 +48,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }): Promise<AgentMessageFeedbackResource[] | null> {
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: agentConfiguration.sId,
       },
       order: [["id", "DESC"]],
     });
@@ -61,12 +59,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static async fetchByUserAndMessage({
+  static async fetchByUserAndAgentMessage({
     user,
     agentMessage,
   }: {
-    user: UserResource;
-    agentMessage: AgentMessageType;
+    user: UserType;
+    agentMessage: AgentMessage;
   }): Promise<AgentMessageFeedbackResource | null> {
     const agentMessageFeedback = await AgentMessageFeedback.findOne({
       where: {
@@ -85,11 +83,34 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  async updateContent(content: string): Promise<Result<undefined, Error>> {
+  static async fetchByUserAndAgentMessages(
+    user: UserType,
+    agentMessages: AgentMessage[]
+  ): Promise<AgentMessageFeedbackResource[]> {
+    const agentMessageFeedback = await AgentMessageFeedback.findAll({
+      where: {
+        userId: user.id,
+        agentMessageId: {
+          [Op.in]: agentMessages.map((m) => m.id),
+        },
+      },
+    });
+
+    return agentMessageFeedback.map(
+      (feedback) =>
+        new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
+    );
+  }
+
+  async updateContentAndThumbDirection(
+    content: string,
+    thumbDirection: AgentMessageFeedbackDirection
+  ): Promise<Result<undefined, Error>> {
     try {
       await this.model.update(
         {
           content,
+          thumbDirection,
         },
         {
           where: {
