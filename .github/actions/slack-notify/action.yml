@@ -34,10 +34,9 @@ runs:
       id: author
       shell: bash
       run: |
-        # Get last commit author name and email
-        AUTHOR_NAME=$(git log -1 --format='%an')
-        AUTHOR_EMAIL=$(git log -1 --format='%ae')
-
+        AUTHOR_NAME="${{ github.actor }}"
+        AUTHOR_EMAIL="${{ github.actor }}@users.noreply.github.com"
+        
         if ! CANONICAL=$(git check-mailmap "$AUTHOR_NAME <$AUTHOR_EMAIL>" 2>/dev/null); then
           echo "email=$AUTHOR_EMAIL" >> $GITHUB_OUTPUT
           echo "name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
