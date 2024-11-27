@@ -243,9 +243,7 @@ chrome.runtime.onMessage.addListener(
                       const timeout = setTimeout(() => {
                         console.error("Timeout waiting for full page capture");
                         reject(
-                          new Error(
-                            "Timeout waiting for full page screenshot."
-                          )
+                          new Error("Timeout waiting for full page screenshot.")
                         );
                       }, 10000);
                       chrome.tabs.sendMessage(
@@ -269,9 +267,7 @@ chrome.runtime.onMessage.addListener(
                       const timeout = setTimeout(() => {
                         console.error("Timeout waiting for capture");
                         reject(
-                          new Error(
-                            "Timeout waiting for page screenshot"
-                          )
+                          new Error("Timeout waiting for page screenshot")
                         );
                       }, 2000);
                       chrome.tabs.captureVisibleTab((res) => {
@@ -283,9 +279,7 @@ chrome.runtime.onMessage.addListener(
                 }
                 if (!captures || captures.length === 0) {
                   console.error("Empty captures array");
-                  throw new Error(
-                    "Failed to get a screenshot of the page."
-                  );
+                  throw new Error("Failed to get a screenshot of the page.");
                 }
               }
               let content: string | undefined;
