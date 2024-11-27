@@ -434,16 +434,18 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
-  const users = (await zendeskApiClient.users.list()) || [];
-
-  const comments = await concurrentExecutor(
+  const comments2d = await concurrentExecutor(
     tickets,
     async (ticket) => zendeskApiClient.tickets.getComments(ticket.id),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
+  const userIds = _.uniq(
+    _.flatten(comments2d.map((comments) => comments.map((c) => c.author_id)))
+  );
+  const { result: users } = await zendeskApiClient.users.showMany(userIds);
 
   const res = await concurrentExecutor(
-    _.zip(tickets, comments),
+    _.zip(tickets, comments2d),
     async ([ticket, comments]) => {
       if (!ticket || !comments) {
         throw new Error(
