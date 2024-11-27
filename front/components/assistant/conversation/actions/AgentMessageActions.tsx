@@ -12,6 +12,7 @@ import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/AgentMessage";
 import { classNames } from "@app/lib/utils";
+import Me from "@app/pages/api/v1/me";
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
   lastAgentStateClassification: AgentStateClassification;
@@ -84,6 +85,11 @@ function ActionDetails({
   onClick: () => void;
   size: ConversationMessageSizeType;
 }) {
+  const MemoizedSpinner = useMemo(
+    () => <Spinner variant="dark" size="xs" />,
+    []
+  );
+
   if (!label && (!isActionStepDone || !hasActions)) {
     return null;
   }
@@ -98,7 +104,7 @@ function ActionDetails({
           )}
           onClick={hasActions ? onClick : undefined}
         >
-          <Spinner variant="dark" size="xs" />
+          {MemoizedSpinner}
           {label}
         </div>
       </Chip>
