@@ -50,8 +50,10 @@ export const LoginPage = () => {
       <div className="flex h-screen flex-col p-4">
         <div className="flex flex-1 flex-col items-center justify-center gap-8">
           <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
-            <LogoHorizontalColorLogo className="h-12 w-48" />
-            <Page.Header title="Get more done, faster, with the power of your assistants at your fingertips." />
+            <Link to="https://dust.tt" target="_blank">
+              <LogoHorizontalColorLogo className="h-12 w-48" />
+            </Link>
+            <Page.SectionHeader title="Get more done, faster, with the power of your assistants at your fingertips." />
           </div>
           {authError && authError.code === "user_not_found" && (
             <>
@@ -111,7 +113,7 @@ export const LoginPage = () => {
     return (
       <div className="flex h-screen flex-col gap-2 p-4">
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
-          <Page.Header title="Almost there" />
+          <Page.SectionHeader title="Almost there" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
