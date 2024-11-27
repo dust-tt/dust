@@ -187,6 +187,31 @@ export function useProgressiveAgentConfigurations({
   };
 }
 
+export function useAgentConfigurationSIdLookup({
+  workspaceId,
+  agentConfigurationName,
+}: {
+  workspaceId: string;
+  agentConfigurationName: string | null;
+}) {
+  const sIdFetcher: Fetcher<{
+    sId: string;
+  }> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    agentConfigurationName
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/lookup?handle=${agentConfigurationName}`
+      : null,
+    sIdFetcher
+  );
+
+  return {
+    sId: data ? data.sId : null,
+    isLoading: !error && !data,
+    isError: error,
+  };
+}
+
 export function useAgentConfiguration({
   workspaceId,
   agentConfigurationId,
