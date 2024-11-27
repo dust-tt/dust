@@ -244,7 +244,7 @@ chrome.runtime.onMessage.addListener(
                         console.error("Timeout waiting for full page capture");
                         reject(
                           new Error(
-                            "Failed to get content from the current tab."
+                            "Timeout waiting for full page screenshot."
                           )
                         );
                       }, 10000);
