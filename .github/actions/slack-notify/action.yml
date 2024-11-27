@@ -29,27 +29,20 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Get author email
+    - name: Get author info
       if: inputs.step == 'start'
       id: author
       shell: bash
       run: |
-        # Get last commit author name and email
-        AUTHOR_NAME=$(git log -1 --format='%an')
-        AUTHOR_EMAIL=$(git log -1 --format='%ae')
+        AUTHOR_NAME="${{ github.actor }}"
 
-        if ! CANONICAL=$(git check-mailmap "$AUTHOR_NAME <$AUTHOR_EMAIL>" 2>/dev/null); then
-          echo "email=$AUTHOR_EMAIL" >> $GITHUB_OUTPUT
-          echo "name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
-          exit 0
+        if ! EMAIL=$(git check-mailmap "$AUTHOR_NAME" 2>/dev/null); then
+          echo "GitHub handle $AUTHOR_NAME not found in mailmap" >&2
+          exit 1
         fi
 
-        # Extract email and name from canonical form
-        CANONICAL_EMAIL=$(echo "$CANONICAL" | grep -o '<.*>' | tr -d '<>')
-        CANONICAL_NAME=$(echo "$CANONICAL" | sed 's/ <.*>//')
-
-        echo "email=$CANONICAL_EMAIL" >> $GITHUB_OUTPUT
-        echo "name=$CANONICAL_NAME" >> $GITHUB_OUTPUT
+        echo "email=$EMAIL" >> $GITHUB_OUTPUT
+        echo "name=$AUTHOR_NAME" >> $GITHUB_OUTPUT
 
     - name: Lookup by email
       if: inputs.step == 'start'
