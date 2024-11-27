@@ -306,7 +306,7 @@ export function useFileUploaderService(conversationId?: string) {
 
       if (tabContentRes && tabContentRes.isErr()) {
         sendNotification({
-          title: "Cannot get tab content",
+          title: "Cannot get page content",
           description: tabContentRes.error.message,
           type: "error",
         });
@@ -321,7 +321,7 @@ export function useFileUploaderService(conversationId?: string) {
       if (includeContent) {
         if (!tabContent?.content) {
           sendNotification({
-            title: "Cannot get tab content",
+            title: "Cannot get page content",
             description: "No content found.",
             type: "error",
           });
@@ -373,7 +373,7 @@ export function useFileUploaderService(conversationId?: string) {
       if (includeCapture) {
         if (!tabContent?.captures) {
           sendNotification({
-            title: "Cannot get tab content",
+            title: "Cannot get page content",
             description: "No content found.",
             type: "error",
           });
@@ -416,7 +416,7 @@ export function useFileUploaderService(conversationId?: string) {
     } catch (err) {
       console.log(err);
       sendNotification({
-        title: "Cannot get tab content",
+        title: "Cannot get page content",
         description: "Something wrong happened.",
         type: "error",
       });
