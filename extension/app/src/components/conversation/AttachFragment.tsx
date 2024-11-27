@@ -28,7 +28,7 @@ export const AttachFragment = ({
       <div className="block sm:hidden">
         <Button
           icon={DocumentPlusIcon}
-          tooltip="Extract text from page and attach"
+          tooltip="Attach text from page"
           variant="outline"
           size="sm"
           className={attachPageBlinking ? "animate-[bgblink_200ms_3]" : ""}
@@ -43,7 +43,7 @@ export const AttachFragment = ({
       <div className="block sm:hidden">
         <Button
           icon={CameraIcon}
-          tooltip="Take page screenshot and attach"
+          tooltip="Attach page screenshot"
           variant="outline"
           size="sm"
           onClick={() =>
@@ -58,7 +58,7 @@ export const AttachFragment = ({
         <Button
           icon={DocumentPlusIcon}
           label="Add page text"
-          tooltip="Extract text from page and attach"
+          tooltip="Attach text from page"
           variant="outline"
           size="sm"
           className={attachPageBlinking ? "animate-[bgblink_200ms_3]" : ""}
@@ -74,7 +74,7 @@ export const AttachFragment = ({
         <Button
           icon={CameraIcon}
           label="Add page screenshot"
-          tooltip="Take page screenshot and attach"
+          tooltip="Attach page screenshot"
           variant="outline"
           size="sm"
           onClick={() =>
