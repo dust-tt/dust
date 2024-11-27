@@ -629,8 +629,6 @@ const EXTENSION_WHITELIST = [
   // Infrastructure as Code
   ".tf", // Terraform
   ".hcl", // HashiCorp Configuration Language
-  ".tfvars", // Terraform variables
-  ".tfstate", // Terraform state (JSON)
   ".nix", // Nix expressions
 
   // Documentation
