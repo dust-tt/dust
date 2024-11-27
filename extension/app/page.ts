@@ -43,7 +43,12 @@ declare global {
     chrome.runtime.onMessage.addListener(
       (message: CaptureFullPageMessage, sender, callback) => {
         if (message.type === "PAGE_CAPTURE_FULL_PAGE") {
-          getPositions(callback);
+          try {
+            getPositions(callback);
+          } catch (error) {
+            console.log(error);
+            callback([]);
+          }
           return true;
         }
       }
