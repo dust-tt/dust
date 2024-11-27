@@ -25,21 +25,18 @@ runs:
           channel: ${{ inputs.channel }}
         errors: true
 
-
     - name: Get channel topic
       if: steps.slack_channel_info.outputs.ok == 'true'
       id: slack_channel_topic
       shell: bash
       run: |
         RESPONSE='${{ steps.slack_channel_info.outputs.response }}'
-        if ! TOPIC=$(echo "$RESPONSE" | jq -r '.channel.topic.value'); then
+        if ! TOPIC=$(echo "$RESPONSE" | jq -r '.channel.topic.value' | sed 's/cc.*$//'); then
           echo "Failed to extract Slack channel topic" >&2
           exit 0
         fi
-        # Escape the topic string for GitHub Actions output
-        ESCAPED_TOPIC=$(echo "$TOPIC" | sed 's/[<>]/\\&/g')
-
-        echo "topic=$ESCAPED_TOPIC" >> $GITHUB_OUTPUT
+      
+        echo "topic=$TOPIC" >> $GITHUB_OUTPUT
 
     - name: Parse channel topic for blocked deployments
       if: steps.slack_channel_topic.outputs.topic != ''
