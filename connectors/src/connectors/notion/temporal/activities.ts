@@ -1813,7 +1813,7 @@ export async function renderAndUpsertPageFromCache({
               truncate: false,
               parents,
               title: parentDb.title ?? "Untitled Notion Database",
-              mimeType: "notion/database",
+              mimeType: "application/vnd.notion.database",
             }),
           localLogger
         );
