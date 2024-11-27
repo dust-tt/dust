@@ -1202,24 +1202,34 @@ async function _createAgentDataSourcesConfigData(
   return agentDataSourcesConfigRows;
 }
 
-export async function agentNameIsAvailable(
+export async function getAgentSIdFromName(
   auth: Authenticator,
-  nameToCheck: string
-) {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  name: string
+): Promise<string | null> {
+  const owner = auth.getNonNullableWorkspace();
 
   const agent = await AgentConfiguration.findOne({
+    attributes: ["sId"],
     where: {
       workspaceId: owner.id,
-      name: nameToCheck,
+      name,
       status: "active",
     },
   });
 
-  return !agent;
+  if (!agent) {
+    return null;
+  }
+
+  return agent.sId;
+}
+
+export async function agentNameIsAvailable(
+  auth: Authenticator,
+  nameToCheck: string
+) {
+  const sId = await getAgentSIdFromName(auth, nameToCheck);
+  return !sId;
 }
 
 export async function setAgentScope(

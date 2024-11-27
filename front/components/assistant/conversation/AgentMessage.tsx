@@ -90,6 +90,8 @@ interface AgentMessageProps {
   size: ConversationMessageSizeType;
 }
 
+export type AgentStateClassification = "thinking" | "acting" | "done";
+
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when
@@ -137,9 +139,17 @@ export function AgentMessage({
     }
   })();
 
+  const [lastAgentStateClassification, setLastAgentStateClassification] =
+    useState<AgentStateClassification>(shouldStream ? "thinking" : "done");
   const [lastTokenClassification, setLastTokenClassification] = useState<
     null | "tokens" | "chain_of_thought"
   >(null);
+
+  useEffect(() => {
+    if (message.status !== "created") {
+      setLastAgentStateClassification("done");
+    }
+  }, [message.status]);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -188,6 +198,7 @@ export function AgentMessage({
         setStreamedAgentMessage((m) => {
           return { ...updateMessageWithAction(m, event.action) };
         });
+        setLastAgentStateClassification("thinking");
         break;
       case "retrieval_params":
       case "dust_app_run_params":
@@ -202,17 +213,20 @@ export function AgentMessage({
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
+        setLastAgentStateClassification("acting");
         break;
       case "agent_error":
         setStreamedAgentMessage((m) => {
           return { ...m, status: "failed", error: event.error };
         });
+        setLastAgentStateClassification("done");
         break;
 
       case "agent_generation_cancelled":
         setStreamedAgentMessage((m) => {
           return { ...m, status: "cancelled" };
         });
+        setLastAgentStateClassification("done");
         break;
       case "agent_message_success": {
         setStreamedAgentMessage((m) => {
@@ -221,6 +235,7 @@ export function AgentMessage({
             ...event.message,
           };
         });
+        setLastAgentStateClassification("done");
         break;
       }
 
@@ -250,6 +265,7 @@ export function AgentMessage({
           default:
             assertNever(event);
         }
+        setLastAgentStateClassification("thinking");
         break;
       }
 
@@ -529,6 +545,7 @@ export function AgentMessage({
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions
           agentMessage={agentMessage}
+          lastAgentStateClassification={lastAgentStateClassification}
           size={size}
           owner={owner}
         />

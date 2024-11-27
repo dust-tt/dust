@@ -252,7 +252,20 @@ async function handler(
         parents,
         remote_database_table_id: remoteDatabaseTableId,
         remote_database_secret_id: remoteDatabaseSecretId,
+        title,
+        mimeType,
       } = r.data;
+
+      // If the request is not from a system key, we enforce that mimeType is not provided.
+      if (!auth.isSystemKey() && mimeType) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid request body: mimeType must not be provided.",
+          },
+        });
+      }
 
       const tableId = maybeTableId || generateRandomModelSId();
 
@@ -302,6 +315,8 @@ async function handler(
         parents: parents || [],
         remoteDatabaseTableId: remoteDatabaseTableId ?? null,
         remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
+        title,
+        mimeType,
       });
 
       if (upsertRes.isErr()) {

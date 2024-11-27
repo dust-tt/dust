@@ -42,7 +42,7 @@ export function AssistantDetailsButtonBar({
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const router = useRouter();
 
-  const updateUserFavorite = useUpdateUserFavorite({
+  const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -122,18 +122,24 @@ export function AssistantDetailsButtonBar({
     <div className="flex flex-row items-center gap-2 px-1.5">
       <div className="group">
         <Button
-          icon={agentConfiguration.userFavorite ? StarIcon : StarStrokeIcon}
+          icon={
+            agentConfiguration.userFavorite || isUpdatingFavorite
+              ? StarIcon
+              : StarStrokeIcon
+          }
           size="sm"
           className="group-hover:hidden"
           variant="outline"
+          disabled={isUpdatingFavorite}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
 
         <Button
-          icon={agentConfiguration.userFavorite ? StarStrokeIcon : StarIcon}
+          icon={StarIcon}
           size="sm"
           className="hidden group-hover:block"
           variant="outline"
+          disabled={isUpdatingFavorite}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
       </div>

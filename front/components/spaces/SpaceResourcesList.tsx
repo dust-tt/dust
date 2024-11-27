@@ -7,7 +7,6 @@ import {
   DataTable,
   FolderIcon,
   PencilSquareIcon,
-  RobotIcon,
   SearchInput,
   Spinner,
   TrashIcon,
@@ -37,6 +36,7 @@ import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -44,8 +44,10 @@ import type { DataSourceIntegration } from "@app/components/spaces/AddConnection
 import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
+import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import { useDataSources } from "@app/lib/swr/data_sources";
 import {
   useDeleteFolderOrWebsite,
@@ -76,10 +78,12 @@ type RowData = {
 };
 
 const getTableColumns = ({
+  setAssistantName,
   isManaged,
   isWebsite,
   space,
 }: {
+  setAssistantName: (name: string | null) => void;
   isManaged: boolean;
   isWebsite: boolean;
   space: SpaceType;
@@ -135,13 +139,11 @@ const getTableColumns = ({
     cell: (info: CellContext<RowData, DataSourceWithAgentsUsageType>) => (
       <>
         {info.row.original.dataSourceView.usage ? (
-          <DataTable.CellContent
-            icon={RobotIcon}
-            title={`Used by ${info.row.original.dataSourceView.usage.agentNames.join(
-              ", "
-            )}`}
-          >
-            {info.row.original.dataSourceView.usage.count}
+          <DataTable.CellContent>
+            <UsedByButton
+              usage={info.row.original.dataSourceView.usage}
+              onItemClick={setAssistantName}
+            />
           </DataTable.CellContent>
         ) : null}
       </>
@@ -255,6 +257,12 @@ export const SpaceResourcesList = ({
   onSelect,
   integrations,
 }: SpaceResourcesListProps) => {
+  const [assistantName, setAssistantName] = useState<string | null>(null); // To show the assistant details
+  const { sId: assistantSId } = useAgentConfigurationSIdLookup({
+    workspaceId: owner.sId,
+    agentConfigurationName: assistantName,
+  });
+
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
@@ -514,11 +522,17 @@ export const SpaceResourcesList = ({
             )}
           </>
         )}
+        <AssistantDetails
+          owner={owner}
+          assistantId={assistantSId}
+          onClose={() => setAssistantName(null)}
+        />
       </div>
       {rows.length > 0 && (
         <DataTable
           data={rows}
           columns={getTableColumns({
+            setAssistantName,
             isManaged: isManagedCategory,
             isWebsite: isWebsite,
             space,

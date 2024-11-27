@@ -185,11 +185,7 @@ ${comments
       );
       author = null;
     }
-    return `
-[${comment?.created_at}] ${
-      author ? `${author.name} (${author.email})` : "Unknown User"
-    }:
-${comment.body}`;
+    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.body}`;
   })
   .join("\n")}
 `.trim();

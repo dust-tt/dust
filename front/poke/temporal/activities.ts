@@ -34,6 +34,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   Conversation,
   ConversationParticipant,
   Mention,
@@ -231,6 +232,11 @@ export async function deleteConversationsActivity({
                       transaction: t,
                     });
                   }
+
+                  await AgentMessageFeedback.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
 
                   // Delete associated actions.
 

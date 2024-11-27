@@ -48,13 +48,12 @@ export function AssistantDropdownMenu({
   isMoreInfoVisible,
   showAddRemoveToFavorite = false,
 }: AssistantDetailsMenuProps) {
-  const [isUpdatingFavorites, setIsUpdatingFavorite] = useState(false);
   const [showDeletionModal, setShowDeletionModal] = useState(false);
 
   const router = useRouter();
 
   const { user } = useUser();
-  const doFavoriteUpdate = useUpdateUserFavorite({
+  const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -79,9 +78,7 @@ export function AssistantDropdownMenu({
   const allowDeletion = canDelete && (isBuilder(owner) || !isAgentWorkspace);
 
   const updateFavorite = async (favorite: boolean) => {
-    setIsUpdatingFavorite(true);
-    await doFavoriteUpdate(favorite);
-    setIsUpdatingFavorite(false);
+    await updateUserFavorite(favorite);
   };
 
   const dropdownButton = (() => {
@@ -163,7 +160,7 @@ export function AssistantDropdownMenu({
             <DropdownMenuItem
               label={isFavorite ? "Remove from favorites" : "Add to favorites"}
               icon={isFavorite ? StarIcon : StarStrokeIcon}
-              disabled={isUpdatingFavorites}
+              disabled={isUpdatingFavorite}
               onClick={async (e) => {
                 e.stopPropagation();
                 await updateFavorite(!isFavorite);

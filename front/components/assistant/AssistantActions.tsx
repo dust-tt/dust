@@ -21,7 +21,7 @@ export function RemoveAssistantFromFavoritesDialog({
   show: boolean;
   onClose: () => void;
 }) {
-  const doUpdate = useUpdateUserFavorite({
+  const { updateUserFavorite } = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -34,7 +34,7 @@ export function RemoveAssistantFromFavoritesDialog({
       validateLabel="Remove"
       validateVariant="warning"
       onValidate={async () => {
-        void doUpdate(false);
+        void updateUserFavorite(false);
         onClose();
       }}
     >

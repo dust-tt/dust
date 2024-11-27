@@ -1812,6 +1812,8 @@ export async function renderAndUpsertPageFromCache({
               // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
               truncate: false,
               parents,
+              title: parentDb.title ?? "Untitled Notion Database",
+              mimeType: "application/vnd.notion.database",
             }),
           localLogger
         );
@@ -2522,6 +2524,8 @@ export async function upsertDatabaseStructuredDataFromCache({
         // We overwrite the whole table since we just fetched all child pages.
         truncate: true,
         parents,
+        title: dbModel.title ?? "Untitled Notion Database",
+        mimeType: "notion/database",
       }),
     localLogger
   );

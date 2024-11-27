@@ -38,14 +38,12 @@ export function getZendeskGarbageCollectionWorkflowId(
 export async function launchZendeskSyncWorkflow(
   connector: ConnectorResource,
   {
-    startFromTs = null,
     brandIds = [],
     ticketsBrandIds = [],
     helpCenterBrandIds = [],
     categoryIds = [],
     forceResync = false,
   }: {
-    startFromTs?: number | null;
     brandIds?: number[];
     ticketsBrandIds?: number[];
     helpCenterBrandIds?: number[];
@@ -53,10 +51,6 @@ export async function launchZendeskSyncWorkflow(
     forceResync?: boolean;
   } = {}
 ): Promise<Result<undefined, Error>> {
-  if (startFromTs) {
-    throw new Error("[Zendesk] startFromTs not implemented yet.");
-  }
-
   const client = await getTemporalClient();
 
   const signals: (ZendeskUpdateSignal | ZendeskCategoryUpdateSignal)[] = [

@@ -416,6 +416,8 @@ export async function upsertTable({
   dataSource,
   auth,
   useAppForHeaderDetection,
+  title,
+  mimeType,
 }: {
   tableId?: string | null;
   name: string;
@@ -429,6 +431,8 @@ export async function upsertTable({
   dataSource: DataSourceResource;
   auth: Authenticator;
   useAppForHeaderDetection?: boolean;
+  title?: string;
+  mimeType?: string;
 }) {
   const nonNullTableId = tableId ?? generateRandomModelSId();
   const tableParents: string[] = parents ?? [];
@@ -476,6 +480,8 @@ export async function upsertTable({
         truncate,
         useAppForHeaderDetection: useApp,
         detectedHeaders,
+        title,
+        mimeType,
       },
     });
     if (enqueueRes.isErr()) {
@@ -497,6 +503,8 @@ export async function upsertTable({
     csv: csv ?? null,
     truncate,
     useAppForHeaderDetection: useApp,
+    title,
+    mimeType,
   });
 
   return tableRes;
@@ -644,6 +652,8 @@ export async function handleDataSourceTableCSVUpsert({
         truncate,
         useAppForHeaderDetection,
         detectedHeaders,
+        title: params.title,
+        mimeType: params.mimeType,
       },
     });
     if (enqueueRes.isErr()) {
@@ -673,6 +683,8 @@ export async function handleDataSourceTableCSVUpsert({
     csv: csv ?? null,
     truncate,
     useAppForHeaderDetection,
+    title: params.title,
+    mimeType: params.mimeType,
   });
 
   if (tableRes.isErr()) {
