@@ -163,6 +163,8 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
             `${table.databaseName}.${table.schemaName}`,
             table.databaseName,
           ],
+          title: table.name,
+          mimeType: "application/vnd.snowflake.table",
         });
         await table.update({
           lastUpsertedAt: new Date(),
