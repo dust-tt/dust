@@ -50,6 +50,10 @@ const ExampleFeedbackComponent = () => {
         }));
       },
       isSubmittingThumb: false,
+      getLastAuthor: () => ({
+        name: "John Doe",
+        pictureUrl: "https://www.w3schools.com/howto/img_avatar.png",
+      }),
     });
 
   return <FeedbackSelector {...messageFeedback} />;

@@ -8,8 +8,13 @@ import {
   PopoverTrigger,
 } from "@sparkle/components/Popover";
 import { TextArea } from "@sparkle/components/TextArea";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { HandThumbDownIcon, HandThumbUpIcon } from "@sparkle/icons/solid";
 
+export type FeedbackAssistantBuilder = {
+  name: string;
+  pictureUrl: string;
+};
 export type ThumbReaction = "up" | "down";
 export type ConversationMessageFeedbackType = {
   thumb: ThumbReaction;
@@ -23,6 +28,7 @@ export interface ConversationMessageFeedbackSelectorProps {
     }
   ) => Promise<void>;
   isSubmittingThumb: boolean;
+  getLastAuthor: () => FeedbackAssistantBuilder;
 }
 
 export function FeedbackSelector(
@@ -34,10 +40,14 @@ export function FeedbackSelector(
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
     string | null
   >(null);
+  const [builder, setBuilder] = React.useState<FeedbackAssistantBuilder | null>(
+    null
+  );
 
   // Reset local feedback content when popup opens
   useEffect(() => {
     if (isPopoverOpen) {
+      setBuilder(messageFeedback.getLastAuthor());
       setLocalFeedbackContent(feedback?.feedbackContent ?? null);
     }
   }, [isPopoverOpen, feedback?.feedbackContent]);
@@ -58,21 +68,31 @@ export function FeedbackSelector(
       <PopoverRoot open={isPopoverOpen}>
         <PopoverTrigger asChild>
           <div className="s-flex s-items-center">
-            <Button
-              variant={feedback?.thumb === "up" ? "highlight" : "outline"}
-              size="xs"
-              disabled={isSubmittingThumb}
-              onClick={() => selectThumb("up")}
-              className={"s-rounded-r-none s-border-r-0"}
-              icon={HandThumbUpIcon}
+            <Tooltip
+              label="I found this helpful"
+              trigger={
+                <Button
+                  variant={feedback?.thumb === "up" ? "highlight" : "outline"}
+                  size="xs"
+                  disabled={isSubmittingThumb}
+                  onClick={() => selectThumb("up")}
+                  className={"s-rounded-r-none s-border-r-0"}
+                  icon={HandThumbUpIcon}
+                />
+              }
             />
-            <Button
-              variant={feedback?.thumb === "down" ? "highlight" : "outline"}
-              size="xs"
-              disabled={isSubmittingThumb}
-              onClick={() => selectThumb("down")}
-              className={"s-rounded-l-none s-border-l-0"}
-              icon={HandThumbDownIcon}
+            <Tooltip
+              label="Report an issue with this answer"
+              trigger={
+                <Button
+                  variant={feedback?.thumb === "down" ? "highlight" : "outline"}
+                  size="xs"
+                  disabled={isSubmittingThumb}
+                  onClick={() => selectThumb("down")}
+                  className={"s-rounded-l-none s-border-l-0"}
+                  icon={HandThumbDownIcon}
+                />
+              }
             />
           </div>
         </PopoverTrigger>
@@ -83,6 +103,20 @@ export function FeedbackSelector(
                 ? "🎉 Glad you liked it! Tell us more?"
                 : "🫠 Help make the answers better!"}
             </Page.H>
+            {builder && (
+              <div className="s-mt-4 s-flex s-items-center s-gap-2">
+                <img
+                  src={builder.pictureUrl}
+                  alt={builder.name}
+                  className="s-h-8 s-w-8 s-rounded-full"
+                />
+                <Page.P variant="secondary">
+                  Your feedback will be sent to:
+                  <br />
+                  {builder.name}
+                </Page.P>
+              </div>
+            )}
             <TextArea
               placeholder={
                 feedback?.thumb === "up"
