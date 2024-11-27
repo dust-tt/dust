@@ -1,4 +1,5 @@
 export { AnimatedText } from "./AnimatedText";
+export { AspectRatio } from "./AspectRatio";
 export { AssistantPreview } from "./AssistantPreview";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
@@ -17,6 +18,7 @@ export {
 } from "./Checkbox";
 export { Chip } from "./Chip";
 export * from "./Citation";
+export * from "./CitationNew";
 export { default as CollapseButton } from "./CollapseButton";
 export { Collapsible } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
@@ -117,4 +119,5 @@ export {
   TooltipTrigger,
 } from "./Tooltip";
 export { Tree } from "./Tree";
+export { TypingAnimation } from "./TypingAnimation";
 export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";
