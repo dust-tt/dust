@@ -10,7 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
-use futures::future::try_join_all;
+use futures::future::{try_join, try_join_all};
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
@@ -35,6 +35,7 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
+        node::{Node, NodeType},
         qdrant::QdrantClients,
     },
     databases::{
@@ -2044,8 +2045,14 @@ struct DatabasesTablesUpsertPayload {
     timestamp: Option<u64>,
     tags: Vec<String>,
     parents: Vec<String>,
+
+    // Remote DB specifics
     remote_database_table_id: Option<String>,
     remote_database_secret_id: Option<String>,
+
+    // Node meta:
+    title: Option<String>,
+    mime_type: Option<String>,
 }
 
 async fn tables_upsert(
@@ -2055,9 +2062,22 @@ async fn tables_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    match state
-        .store
-        .upsert_table(
+    // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
+    let maybe_ds_node = match (payload.title, payload.mime_type) {
+        (Some(title), Some(mime_type)) => Some(Node {
+            node_id: payload.table_id.clone(),
+            created: utils::now(),
+            timestamp: payload.timestamp.unwrap_or(utils::now()),
+            node_type: NodeType::Table,
+            title,
+            mime_type,
+            parents: payload.parents.clone(),
+        }),
+        _ => None,
+    };
+
+    match try_join(
+        state.store.upsert_table(
             &project,
             &data_source_id,
             &payload.table_id,
@@ -2071,23 +2091,27 @@ async fn tables_upsert(
             &payload.parents,
             payload.remote_database_table_id,
             payload.remote_database_secret_id,
-        )
-        .await
+        ),
+        // Only upsert the node if the title and mime_type are present.
+        match &maybe_ds_node {
+            Some(n) => state.store.upsert_data_source_node(&data_source_id, n),
+            None => Box::pin(futures::future::ok(())),
+        },
+    )
+    .await
     {
+        Ok((table, _)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({ "table": table })),
+            }),
+        ),
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
             "Failed to upsert table",
             Some(e),
-        ),
-        Ok(table) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "table": table
-                })),
-            }),
         ),
     }
 }
@@ -2259,9 +2283,13 @@ async fn tables_delete(
             &format!("No table found for id `{}`", table_id),
             None,
         ),
-        Ok(Some(table)) => match table
-            .delete(state.store.clone(), state.databases_store.clone())
-            .await
+        Ok(Some(table)) => match try_join(
+            table.delete(state.store.clone(), state.databases_store.clone()),
+            state
+                .store
+                .delete_data_source_node(&data_source_id, &table_id),
+        )
+        .await
         {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
