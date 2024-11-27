@@ -22,7 +22,6 @@ jobs:
       - name: Slack Check Deployment Blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:
-          step: "start"
           component: "front"
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
