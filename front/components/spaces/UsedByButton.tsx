@@ -16,19 +16,28 @@ export const UsedByButton = ({
   usage: DataSourceWithAgentsUsageType;
   onItemClick: (assistantSid: string) => void;
 }) => {
-  return (
+  return usage.count === 0 ? (
+    <Button
+      icon={RobotIcon}
+      variant="ghost"
+      isSelect={false}
+      size="sm"
+      label={`${usage.count}`}
+      disabled
+    />
+  ) : (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           icon={RobotIcon}
           variant="ghost"
-          isSelect
+          isSelect={true}
           size="sm"
           label={`${usage.count}`}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-w-[300px]">
-        <ScrollArea className="border-1 max-h-[300px]">
+        <ScrollArea className="border-1 h-[130px]">
           {usage.agentNames.map((name) => (
             <DropdownMenuItem
               key={`assistant-picker-${name}`}
