@@ -55,6 +55,10 @@ runs:
                 return 0
             fi
         }
-        is_blocked "${{ inputs.component }}" "${{ steps.slack_channel_topic.outputs.topic }}" || echo "${{ inputs.component}} is blocked based on channel topic" && exit 1
-        exit 0
-    
+        if is_blocked "${{ inputs.component }}" "${{ steps.slack_channel_topic.outputs.topic }}"; then
+            echo "${{ inputs.component}} is blocked based on channel topic"
+            exit 1
+        else
+            echo "${{ inputs.component}} is not blocked based on channel topic"
+            exit 0
+        fi
