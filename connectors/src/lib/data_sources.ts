@@ -566,6 +566,8 @@ export async function upsertTableFromConnectors({
   remoteDatabaseSecretId,
   loggerArgs,
   parents,
+  title,
+  mimeType,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -575,6 +577,8 @@ export async function upsertTableFromConnectors({
   remoteDatabaseSecretId: string | null;
   loggerArgs?: Record<string, string | number>;
   parents: string[];
+  title: string;
+  mimeType: string;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -601,6 +605,8 @@ export async function upsertTableFromConnectors({
     table_id: tableId,
     remote_database_table_id: remoteDatabaseTableId,
     remote_database_secret_id: remoteDatabaseSecretId,
+    title,
+    mimeType,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
