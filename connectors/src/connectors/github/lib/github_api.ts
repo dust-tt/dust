@@ -612,8 +612,6 @@ const EXTENSION_WHITELIST = [
   ".json",
   ".yaml",
   ".yml",
-  ".xml",
-  ".csv",
   ".toml",
   ".ini",
   ".env",
