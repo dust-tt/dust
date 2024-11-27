@@ -190,6 +190,7 @@ const extractContentAndSchemaFromCSV: ProcessingFunction = async (
         columns: true,
         skip_empty_lines: true,
         trim: true,
+        relax_column_count: true,
       }),
       new CSVColumnAnalyzerTransform(),
       file.getWriteStream({
