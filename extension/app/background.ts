@@ -284,7 +284,7 @@ chrome.runtime.onMessage.addListener(
                 if (!captures || captures.length === 0) {
                   console.error("Empty captures array");
                   throw new Error(
-                    "Failed to get content from the current tab."
+                    "Failed to get a screenshot of the page."
                   );
                 }
               }
