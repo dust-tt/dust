@@ -292,7 +292,7 @@ export async function fetchRecentlyUpdatedTickets(
   });
   return {
     tickets: response.tickets,
-    hasMore: !response.end_of_stream,
+    hasMore: !response.end_of_stream && response.tickets.lenght !== 0,
     nextLink: response.after_url,
   };
 }
