@@ -675,7 +675,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
-    // reset the cursor here to trigger a full resync
     await connector.markAsUnpaused();
     return this.resume();
   }
