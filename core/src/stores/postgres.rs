@@ -2912,7 +2912,7 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "INSERT INTO data_sources_nodes \
-               (id, data_source, created, node_id, timestamp, title, mime_type, parents, document, table, folder) \
+               (id, data_source, created, node_id, timestamp, title, mime_type, parents, document, \"table\", folder) \
                VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
             )
             .await?;
@@ -2960,7 +2960,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, timestamp, title, mime_type, parents, document, table, folder, node_id \
+                "SELECT created, timestamp, title, mime_type, parents, document, \"table\", folder, node_id \
                  FROM data_sources_nodes \
                  WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
