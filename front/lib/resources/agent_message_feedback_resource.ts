@@ -11,6 +11,7 @@ import { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
 import type { Workspace } from "@app/lib/models/workspace";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -125,6 +126,11 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
       )
     );
+  }
+
+  async fetchUser(): Promise<UserResource | null> {
+    const users = await UserResource.fetchByModelIds([this.userId]);
+    return users[0] ?? null;
   }
 
   async updateContentAndThumbDirection(
