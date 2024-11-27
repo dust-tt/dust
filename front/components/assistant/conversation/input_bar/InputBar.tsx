@@ -1,5 +1,5 @@
 import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
-import type { AgentMention, MentionType } from "@dust-tt/types";
+import type { AgentMention, MentionType, Result } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
   LightAgentConfigurationType,
@@ -17,6 +17,7 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { DustError } from "@app/lib/error";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
@@ -44,7 +45,7 @@ export function AssistantInputBar({
     input: string,
     mentions: MentionType[],
     contentFragments: UploadedContentFragment[]
-  ) => void;
+  ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
@@ -53,6 +54,7 @@ export function AssistantInputBar({
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
 }) {
+  const [disableSendButton, setDisableSendButton] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
@@ -152,10 +154,11 @@ export function AssistantInputBar({
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
-  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = (
+  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
     textAndMentions,
-    resetEditorText
+    resetEditorText,
+    setLoading
   ) => {
     if (isEmpty || fileUploaderService.isProcessingFiles) {
       return;
@@ -166,7 +169,13 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    onSubmit(
+    // When we are creating a new conversation, we will disable the input bar, show a loading spinner and in case of error, re-enable the input bar
+    if (!conversationId) {
+      setLoading(true);
+      setDisableSendButton(true);
+    }
+
+    const r = await onSubmit(
       text,
       mentions,
       fileUploaderService.getFileBlobs().map((cf) => {
@@ -176,8 +185,16 @@ export function AssistantInputBar({
         };
       })
     );
-    resetEditorText();
-    fileUploaderService.resetUpload();
+
+    if (!conversationId) {
+      setLoading(false);
+      setDisableSendButton(false);
+    }
+
+    if (r.isOk()) {
+      resetEditorText();
+      fileUploaderService.resetUpload();
+    }
   };
 
   const [isStopping, setIsStopping] = useState<boolean>(false);
@@ -271,7 +288,9 @@ export function AssistantInputBar({
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 fileUploaderService={fileUploaderService}
-                disableSendButton={fileUploaderService.isProcessingFiles}
+                disableSendButton={
+                  disableSendButton || fileUploaderService.isProcessingFiles
+                }
               />
             </div>
           </div>
@@ -295,7 +314,7 @@ export function FixedAssistantInputBar({
     input: string,
     mentions: MentionType[],
     contentFragments: UploadedContentFragment[]
-  ) => void;
+  ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;

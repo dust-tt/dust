@@ -1,6 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
+import _ from "lodash";
 
-import { isNodeZendeskForbiddenError } from "@connectors/connectors/zendesk/lib/errors";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -15,9 +15,9 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -136,12 +136,25 @@ export async function syncZendeskBrandActivity({
 }
 
 /**
- * Retrieves the IDs of every brand stored in db that has read permissions on their Help Center.
+ * Retrieves the IDs of every brand in db that has read permissions on their Help Center or in one of their Categories.
+ * This activity will be used to retrieve the brands that need to be incrementally synced.
+ *
+ * Note: in this approach; if a single category has read permissions and not its Help Center,
+ * diffs for the whole Help Center are fetched since there is no endpoint that returns the diff for the Category.
  */
 export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   connectorId: ModelId
 ): Promise<number[]> {
-  return ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
+  // fetching the brands that have a Help Center selected as a whole
+  const brandsWithHelpCenter =
+    await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
+  // fetching the brands that have at least one Category selected
+  const brandWithCategories =
+    await ZendeskCategoryResource.fetchBrandIdsOfReadOnlyCategories(
+      connectorId
+    );
+  // removing duplicates
+  return [...new Set([...brandsWithHelpCenter, ...brandWithCategories])];
 }
 
 /**
@@ -199,6 +212,7 @@ export async function syncZendeskCategoryBatchActivity({
       syncCategory({ connectorId, brandId, category, currentSyncDateMs }),
     {
       concurrency: 10,
+      onBatchComplete: heartbeat,
     }
   );
 
@@ -330,21 +344,11 @@ export async function syncZendeskArticleBatchActivity({
     `[Zendesk] Processing ${articles.length} articles in batch`
   );
 
-  let sections;
-  let users;
-  try {
-    sections =
-      await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
-    const { result: usersResult } = await zendeskApiClient.users.showMany(
-      articles.map((article) => article.author_id)
-    );
-    users = usersResult;
-  } catch (e) {
-    if (isNodeZendeskForbiddenError(e)) {
-      throw new ExternalOAuthTokenError(e);
-    }
-    throw e;
-  }
+  const sections =
+    await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
+  const { result: users } = await zendeskApiClient.users.showMany(
+    articles.map((article) => article.author_id)
+  );
 
   await concurrentExecutor(
     articles,
@@ -361,7 +365,10 @@ export async function syncZendeskArticleBatchActivity({
         loggerArgs,
         forceResync,
       }),
-    { concurrency: 10 }
+    {
+      concurrency: 10,
+      onBatchComplete: heartbeat,
+    }
   );
   return { hasMore, nextLink };
 }
@@ -427,12 +434,24 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
-  const users = await zendeskApiClient.users.list();
+  const comments2d = await concurrentExecutor(
+    tickets,
+    async (ticket) => zendeskApiClient.tickets.getComments(ticket.id),
+    { concurrency: 3, onBatchComplete: heartbeat }
+  );
+  const userIds = _.uniq(
+    _.flatten(comments2d.map((comments) => comments.map((c) => c.author_id)))
+  );
+  const { result: users } = await zendeskApiClient.users.showMany(userIds);
 
   const res = await concurrentExecutor(
-    tickets,
-    async (ticket) => {
-      const comments = await zendeskApiClient.tickets.getComments(ticket.id);
+    _.zip(tickets, comments2d),
+    async ([ticket, comments]) => {
+      if (!ticket || !comments) {
+        throw new Error(
+          `[Zendesk] Unreachable: Ticket or comments not found, ticket: ${ticket}, comments: ${comments}`
+        );
+      }
 
       return syncTicket({
         connectorId,
@@ -446,7 +465,10 @@ export async function syncZendeskTicketBatchActivity({
         users,
       });
     },
-    { concurrency: 10 }
+    {
+      concurrency: 10,
+      onBatchComplete: heartbeat,
+    }
   );
 
   logger.info(

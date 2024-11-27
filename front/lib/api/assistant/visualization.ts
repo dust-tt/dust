@@ -116,7 +116,7 @@ Guidelines using the :::visualization tag:
  - Files from the conversation ${jitActionsEnabled ? "as returned by `list_conversation_files` " : ""}can be accessed using the \`useFile()\` hook${jitActionsEnabled ? " (all files can be accessed by the hook irrespective of their status)" : ""}.
  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
  - Always use \`papaparse\` to parse CSV files.
- - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
+ - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function. Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
 - Available third-party libraries:
   - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
   - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.

@@ -6,7 +6,7 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
@@ -184,6 +184,31 @@ export function useProgressiveAgentConfigurations({
     isLoading,
     mutate,
     mutateRegardlessOfQueryParams,
+  };
+}
+
+export function useAgentConfigurationSIdLookup({
+  workspaceId,
+  agentConfigurationName,
+}: {
+  workspaceId: string;
+  agentConfigurationName: string | null;
+}) {
+  const sIdFetcher: Fetcher<{
+    sId: string;
+  }> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    agentConfigurationName
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/lookup?handle=${agentConfigurationName}`
+      : null,
+    sIdFetcher
+  );
+
+  return {
+    sId: data ? data.sId : null,
+    isLoading: !error && !data,
+    isError: error,
   };
 }
 
@@ -426,8 +451,11 @@ export function useUpdateUserFavorite({
       disabled: true,
     });
 
+  const [isUpdatingFavorite, setIsUpdatingFavorite] = useState(false);
+
   const doUpdate = useCallback(
     async (userFavorite: boolean) => {
+      setIsUpdatingFavorite(true);
       try {
         const body: PostAgentUserFavoriteRequestBody = {
           agentId: agentConfigurationId,
@@ -471,6 +499,8 @@ export function useUpdateUserFavorite({
           type: "error",
         });
         return false;
+      } finally {
+        setIsUpdatingFavorite(false);
       }
     },
     [
@@ -481,5 +511,5 @@ export function useUpdateUserFavorite({
       sendNotification,
     ]
   );
-  return doUpdate;
+  return { updateUserFavorite: doUpdate, isUpdatingFavorite };
 }

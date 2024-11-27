@@ -268,8 +268,8 @@ export function AssistantInputBar({
         <div className="flex w-full flex-1 flex-col items-end self-stretch">
           <div
             className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4",
-              "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch p-3",
+              "border-struture-200 border-t bg-white/90 backdrop-blur",
               "transition-all",
               "rounded-2xl border-b border-l border-r border-element-500 focus-within:border-action-300 focus-within:shadow-md focus-within:ring-1",
               isAnimating ? "duration-600 animate-shake" : "duration-300"

@@ -10,7 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
-use futures::future::try_join_all;
+use futures::future::{try_join, try_join_all};
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
@@ -35,6 +35,8 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
+        folder::Folder,
+        node::{Node, NodeType},
         qdrant::QdrantClients,
     },
     databases::{
@@ -2044,8 +2046,14 @@ struct DatabasesTablesUpsertPayload {
     timestamp: Option<u64>,
     tags: Vec<String>,
     parents: Vec<String>,
+
+    // Remote DB specifics
     remote_database_table_id: Option<String>,
     remote_database_secret_id: Option<String>,
+
+    // Node meta:
+    title: Option<String>,
+    mime_type: Option<String>,
 }
 
 async fn tables_upsert(
@@ -2055,7 +2063,21 @@ async fn tables_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    match state
+    // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
+    let maybe_ds_node = match (payload.title, payload.mime_type) {
+        (Some(title), Some(mime_type)) => Some(Node {
+            node_id: payload.table_id.clone(),
+            created: utils::now(),
+            timestamp: payload.timestamp.unwrap_or(utils::now()),
+            node_type: NodeType::Table,
+            title,
+            mime_type,
+            parents: payload.parents.clone(),
+        }),
+        _ => None,
+    };
+
+    let table = match state
         .store
         .upsert_table(
             &project,
@@ -2074,22 +2096,40 @@ async fn tables_upsert(
         )
         .await
     {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to upsert table",
-            Some(e),
-        ),
-        Ok(table) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "table": table
-                })),
-            }),
-        ),
+        Ok(table) => table,
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to upsert table",
+                Some(e),
+            )
+        }
+    };
+
+    // Upsert the data source node if title and mime_type are present
+    if let Some(n) = &maybe_ds_node {
+        if let Err(e) = state
+            .store
+            .upsert_data_source_node(&data_source_id, n)
+            .await
+        {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to upsert data source node",
+                Some(e),
+            );
+        }
     }
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({ "table": table })),
+        }),
+    )
 }
 
 /// Retrieve table from a data source.
@@ -2259,26 +2299,43 @@ async fn tables_delete(
             &format!("No table found for id `{}`", table_id),
             None,
         ),
-        Ok(Some(table)) => match table
-            .delete(state.store.clone(), state.databases_store.clone())
-            .await
-        {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to delete table",
-                Some(e),
-            ),
-            Ok(_) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "success": true,
-                    })),
-                }),
-            ),
-        },
+        Ok(Some(table)) => {
+            // We delete the data source node first, then the table.
+            match state
+                .store
+                .delete_data_source_node(&data_source_id, &table_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to delete data source node",
+                    Some(e),
+                ),
+                Ok(_) => {
+                    match table
+                        .delete(state.store.clone(), state.databases_store.clone())
+                        .await
+                    {
+                        Err(e) => error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to delete table",
+                            Some(e),
+                        ),
+                        Ok(_) => (
+                            StatusCode::OK,
+                            Json(APIResponse {
+                                error: None,
+                                response: Some(json!({
+                                    "success": true,
+                                })),
+                            }),
+                        ),
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -2656,6 +2713,170 @@ async fn tables_rows_list(
                 },
             },
         },
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct FoldersUpsertPayload {
+    folder_id: String,
+    timestamp: Option<u64>,
+    parents: Vec<String>,
+    title: String,
+}
+
+async fn folders_upsert(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<FoldersUpsertPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    let folder = Folder {
+        data_source_id: data_source_id.to_string(),
+        folder_id: payload.folder_id.clone(),
+        created: utils::now(),
+    };
+
+    match state
+        .store
+        .upsert_data_source_folder(&project, &data_source_id, &folder)
+        .await
+    {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to upsert folder",
+                Some(e),
+            )
+        }
+        Ok(()) => (),
+    }
+
+    let node = Node {
+        node_id: folder.folder_id.clone(),
+        created: folder.created,
+        timestamp: payload.timestamp.unwrap_or(utils::now()),
+        node_type: NodeType::Folder,
+        title: payload.title.clone(),
+        mime_type: "application/vnd.dust.folder".to_string(),
+        parents: payload.parents.clone(),
+    };
+
+    match state
+        .store
+        .upsert_data_source_node(&data_source_id, &node)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert node",
+            Some(e),
+        ),
+        Ok(_) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "folder": folder
+                })),
+            }),
+        ),
+    }
+}
+
+async fn folders_retrieve(
+    Path((project_id, data_source_id, folder_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source_folder(&project, &data_source_id, &folder_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load folder",
+            Some(e),
+        ),
+        Ok(folder) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "folder": folder
+                })),
+            }),
+        ),
+    }
+}
+
+async fn folders_delete(
+    Path((project_id, data_source_id, folder_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source_folder(&project, &data_source_id, &folder_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load folder",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "folder_not_found",
+            &format!("No folder found for id `{}`", folder_id),
+            None,
+        ),
+        Ok(Some(_)) => {
+            match state
+                .store
+                .delete_data_source_node(&data_source_id, &folder_id)
+                .await
+            {
+                Err(e) => {
+                    return error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to delete folder",
+                        Some(e),
+                    )
+                }
+                Ok(_) => (),
+            }
+
+            match state
+                .store
+                .delete_data_source_folder(&data_source_id, &folder_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to delete folder",
+                    Some(e),
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "success": true,
+                        })),
+                    }),
+                ),
+            }
+        }
     }
 }
 
@@ -3107,6 +3328,20 @@ fn main() {
             post(databases_query_run),
         )
         .route("/sqlite_workers", delete(sqlite_workers_delete))
+        // Folders
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/folders",
+            post(folders_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",
+            get(folders_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",
+            delete(folders_delete),
+        )
+
         // Misc
         .route("/tokenize", post(tokenize))
         .route("/tokenize/batch", post(tokenize_batch))

@@ -77,14 +77,14 @@ function ActionDetails({
 
   return label ? (
     <div key={label} className="animate-fadeIn duration-1000 fade-out">
-      <Chip size="sm" color="slate">
+      <Chip size="sm" color="slate" isBusy>
         <div
           className={classNames(
             "flex flex-row items-center gap-x-2",
             hasActions ? "cursor-pointer" : ""
           )}
         >
-          <Spinner variant="purple900" size="xs" />
+          <Spinner variant="dark" size="xs" />
           {label}
         </div>
       </Chip>

@@ -34,6 +34,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   Conversation,
   ConversationParticipant,
   Mention,
@@ -150,7 +151,7 @@ export async function scrubSpaceActivity({
     });
   }
 
-  hardDeleteLogger.info({ space: space.sId }, "Deleting space");
+  hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
   await hardDeleteSpace(auth, space);
 }
@@ -231,6 +232,11 @@ export async function deleteConversationsActivity({
                       transaction: t,
                     });
                   }
+
+                  await AgentMessageFeedback.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
 
                   // Delete associated actions.
 
@@ -561,7 +567,9 @@ export async function deleteSpacesActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeConversationsSpace: true,
+  });
 
   for (const space of spaces) {
     await scrubSpaceActivity({

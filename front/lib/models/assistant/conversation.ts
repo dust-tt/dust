@@ -15,7 +15,6 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -342,7 +341,8 @@ export class AgentMessageFeedback extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationId: string;
+  declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<User["id"]>;
 
@@ -367,9 +367,13 @@ AgentMessageFeedback.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    workspaceId: {
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    agentConfigurationVersion: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     thumbDirection: {
       type: DataTypes.STRING,
@@ -396,19 +400,21 @@ AgentMessageFeedback.init(
       {
         fields: ["agentConfigurationId", "agentMessageId", "userId"],
         unique: true,
+        name: "agent_message_feedbacks_agent_configuration_id_agent_message_id",
       },
     ],
   }
 );
 
-AgentConfiguration.hasMany(AgentMessageFeedback, {
+Workspace.hasMany(AgentMessageFeedback, {
+  foreignKey: { name: "workspaceId", allowNull: false },
   onDelete: "RESTRICT",
 });
 AgentMessage.hasMany(AgentMessageFeedback, {
   onDelete: "RESTRICT",
 });
 User.hasMany(AgentMessageFeedback, {
-  onDelete: "RESTRICT",
+  onDelete: "SET NULL",
 });
 
 export class Message extends Model<

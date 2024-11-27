@@ -32,6 +32,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "description": "The view to use when retrieving agents:\n- all: Retrieves all non-private agents (default if not authenticated)\n- list: Retrieves all active agents accessible to the user (default if authenticated)\n- workspace: Retrieves all agents with workspace scope\n- published: Retrieves all agents with published scope\n- global: Retrieves all global agents\n- favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)\n",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "list",
+                "workspace",
+                "published",
+                "global",
+                "favorites"
+              ]
+            }
           }
         ],
         "security": [
@@ -3329,7 +3346,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned assistants.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace assistants and their corresponding usage.\n- \"all\": A concatenation of all the above tables.\n",
+            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned assistants.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace assistants and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the assistant messages.\n- \"all\": A concatenation of all the above tables.\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -3337,6 +3354,7 @@
                 "assistant_messages",
                 "builders",
                 "assistants",
+                "feedbacks",
                 "all"
               ]
             }

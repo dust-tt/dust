@@ -11,6 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 
@@ -69,6 +70,16 @@ interface AgentUsageQueryResult {
   messages: number;
   distinctUsersReached: number;
   lastConfiguration: Date;
+}
+
+interface FeedbackQueryResult {
+  created_at: Date;
+  userName: string;
+  userEmail: string;
+  agentConfigurationId: string;
+  agentConfigurationVersion: number;
+  thumb: "up" | "down";
+  content: string | null;
 }
 
 export async function unsafeGetUsageData(
@@ -445,6 +456,47 @@ export async function getAssistantsUsageData(
   return generateCsvFromQueryResult(mentions);
 }
 
+export async function getFeedbacksUsageData(
+  startDate: Date,
+  endDate: Date,
+  workspaceId: string
+): Promise<string> {
+  const workspace = await Workspace.findOne({
+    where: { sId: workspaceId },
+  });
+  if (!workspace) {
+    throw new Error(`Workspace not found for sId: ${workspaceId}`);
+  }
+
+  const feedbacks =
+    await AgentMessageFeedbackResource.listByWorkspaceAndDateRange({
+      workspace: workspace,
+      startDate,
+      endDate,
+    });
+
+  if (!feedbacks.length) {
+    return "No data available for the selected period.";
+  }
+
+  const feedbackResults: FeedbackQueryResult[] = await Promise.all(
+    feedbacks.map(async (feedback) => {
+      const user = await feedback.fetchUser();
+      return {
+        created_at: feedback.createdAt,
+        userName: user?.fullName() || "",
+        userEmail: user?.email || "",
+        agentConfigurationId: feedback.agentConfigurationId,
+        agentConfigurationVersion: feedback.agentConfigurationVersion,
+        thumb: feedback.thumbDirection,
+        content: feedback.content,
+      };
+    })
+  );
+
+  return generateCsvFromQueryResult(feedbackResults);
+}
+
 function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
@@ -452,6 +504,7 @@ function generateCsvFromQueryResult(
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
+    | FeedbackQueryResult[]
 ) {
   if (rows.length === 0) {
     return "";

@@ -11,6 +11,7 @@ import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearc
 import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   ConversationParticipant,
   Mention,
   Message,
@@ -153,6 +154,9 @@ export async function destroyConversation(
 
     await UserMessage.destroy({
       where: { id: userMessageIds },
+    });
+    await AgentMessageFeedback.destroy({
+      where: { agentMessageId: agentMessageIds },
     });
     await AgentMessage.destroy({
       where: { id: agentMessageIds },

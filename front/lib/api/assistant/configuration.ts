@@ -366,12 +366,35 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
+        if (agentsGetView.allVersions) {
+          return AgentConfiguration.findAll({
+            where: {
+              workspaceId: owner.id,
+              sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
+            },
+            order: [["version", "DESC"]],
+          });
+        }
+        const latestVersions = (await AgentConfiguration.findAll({
+          attributes: [
+            "sId",
+            [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
+          ],
+          where: {
+            workspaceId: owner.id,
+            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
+          },
+          group: ["sId"],
+          raw: true,
+        })) as unknown as { sId: string; max_version: number }[];
+
         return AgentConfiguration.findAll({
           where: {
             workspaceId: owner.id,
-            ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
-            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
-            ...(agentsGetView.allVersions ? {} : { status: "active" }),
+            sId: latestVersions.map((v) => v.sId),
+            version: {
+              [Op.in]: latestVersions.map((v) => v.max_version),
+            },
           },
           order: [["version", "DESC"]],
         });
@@ -1179,24 +1202,34 @@ async function _createAgentDataSourcesConfigData(
   return agentDataSourcesConfigRows;
 }
 
-export async function agentNameIsAvailable(
+export async function getAgentSIdFromName(
   auth: Authenticator,
-  nameToCheck: string
-) {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  name: string
+): Promise<string | null> {
+  const owner = auth.getNonNullableWorkspace();
 
   const agent = await AgentConfiguration.findOne({
+    attributes: ["sId"],
     where: {
       workspaceId: owner.id,
-      name: nameToCheck,
+      name,
       status: "active",
     },
   });
 
-  return !agent;
+  if (!agent) {
+    return null;
+  }
+
+  return agent.sId;
+}
+
+export async function agentNameIsAvailable(
+  auth: Authenticator,
+  nameToCheck: string
+) {
+  const sId = await getAgentSIdFromName(auth, nameToCheck);
+  return !sId;
 }
 
 export async function setAgentScope(

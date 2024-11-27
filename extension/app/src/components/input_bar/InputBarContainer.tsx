@@ -5,6 +5,7 @@ import type {
 } from "@dust-tt/client";
 import { SplitButton } from "@dust-tt/sparkle";
 import { AssistantPicker } from "@extension/components/assistants/AssistantPicker";
+import { AttachFile } from "@extension/components/conversation/AttachFile";
 import { AttachFragment } from "@extension/components/conversation/AttachFragment";
 import type { CustomEditorProps } from "@extension/components/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@extension/components/input_bar/editor/useCustomEditor";
@@ -67,8 +68,8 @@ export const InputBarContainer = ({
   );
 
   const contentEditableClasses = classNames(
-    "inline-block w-full",
-    "border-0 pr-1 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 py-3.5",
+    "inline-block w-full pt-2",
+    "border-0 pr-1 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal"
   );
 
@@ -84,29 +85,26 @@ export const InputBarContainer = ({
     onClick,
   };
   const SendWithContentAction = {
-    label: "Send with tab content",
+    label: "Add page text + Send",
     onClick,
   };
 
   return (
-    <div
-      id="InputBarContainer"
-      className="relative flex flex-1 flex-col sm:flex-row"
-    >
-      <EditorContent
-        editor={editor}
-        className={classNames(
-          contentEditableClasses,
-          "scrollbar-hide",
-          "overflow-y-auto",
-          "min-h-32",
-          "max-h-96"
-        )}
-      />
-
-      <div className="flex  flex-wrap flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
-        <div className="flex py-2 space-x-1">
-          <AttachFragment
+    <div id="InputBarContainer" className="relative flex flex-col w-full">
+      <div className="flex space-x-2">
+        <EditorContent
+          editor={editor}
+          className={classNames(
+            contentEditableClasses,
+            "scrollbar-hide",
+            "overflow-y-auto",
+            "min-h-32",
+            "max-h-96",
+            "flex-1"
+          )}
+        />
+        <div className="flex items-start">
+          <AttachFile
             fileUploaderService={fileUploaderService}
             editorService={editorService}
           />
@@ -119,6 +117,10 @@ export const InputBarContainer = ({
             assistants={allAssistants}
           />
         </div>
+      </div>
+
+      <div className="flex items-center justify-end space-x-2 mt-2">
+        <AttachFragment fileUploaderService={fileUploaderService} />
         <SplitButton
           size="sm"
           actions={[SendAction, SendWithContentAction]}

@@ -190,6 +190,7 @@ const extractContentAndSchemaFromCSV: ProcessingFunction = async (
         columns: true,
         skip_empty_lines: true,
         trim: true,
+        relax_column_count: true,
       }),
       new CSVColumnAnalyzerTransform(),
       file.getWriteStream({
@@ -305,7 +306,7 @@ const processingPerContentType: ProcessingPerContentType = {
     tool_output: notSupportedError,
   },
   "text/comma-separated-values": {
-    conversation: storeRawText,
+    conversation: extractContentAndSchemaFromCSV,
     folder_document: storeRawText,
     folder_table: extractContentAndSchemaFromCSV,
     avatar: notSupportedError,

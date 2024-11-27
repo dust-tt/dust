@@ -175,12 +175,17 @@ ${metadata}
 Conversation:
 ${comments
   .map((comment) => {
-    const author = users.find((user) => user.id === comment.author_id);
-    return `
-[${new Date(comment.created_at).toISOString()}] ${
-      author ? `${author.name} (${author.email})` : "Unknown User"
-    }:
-${comment.body}`;
+    let author;
+    try {
+      author = users.find((user) => user.id === comment.author_id);
+    } catch (e) {
+      logger.warn(
+        { connectorId, e, usersType: typeof users, ...loggerArgs },
+        "[Zendesk] Error finding the author of a comment."
+      );
+      author = null;
+    }
+    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.body}`;
   })
   .join("\n")}
 `.trim();

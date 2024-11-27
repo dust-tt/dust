@@ -6,29 +6,20 @@ import {
 } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
+import { ConversationsListButton } from "@extension/components/conversation/ConversationsListButton";
 import { FileDropProvider } from "@extension/components/conversation/FileUploaderContext";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { InputBarProvider } from "@extension/components/input_bar/InputBarContext";
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 export const ConversationPage = ({
   workspace,
   user,
 }: ProtectedRouteChildrenProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { conversationId } = useParams();
 
-  const [origin, setOrigin] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (location.state?.origin) {
-      setOrigin(location.state.origin);
-    }
-  }, [location.state?.origin]);
-
-  const { conversation } = usePublicConversation({
+  const { conversation, isConversationLoading } = usePublicConversation({
     conversationId: conversationId ?? null,
   });
 
@@ -37,27 +28,29 @@ export const ConversationPage = ({
     return;
   }
 
+  const title = isConversationLoading
+    ? "..."
+    : conversation?.title || "Conversation";
+
   return (
     <FileDropProvider>
       <BarHeader
-        title={conversation?.title || "Conversation"}
-        tooltip={conversation?.title || "Conversation"}
+        title={title}
+        tooltip={title}
         leftActions={
           <Button
             icon={ChevronLeftIcon}
             variant="ghost"
             onClick={() => {
-              if (origin === "conversations") {
-                navigate("/conversations");
-              } else {
-                navigate("/");
-              }
+              navigate("/");
             }}
             size="md"
           />
         }
         rightActions={
           <div className="flex flex-row items-right">
+            <ConversationsListButton size="md" />
+
             <Button
               icon={ExternalLinkIcon}
               variant="ghost"

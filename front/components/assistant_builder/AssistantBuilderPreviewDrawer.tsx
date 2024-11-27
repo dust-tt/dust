@@ -152,7 +152,6 @@ export default function AssistantBuilderRightPanel({
                         conversationId={conversation.sId}
                         onStickyMentionsChange={setStickyMentions}
                         isInModal
-                        hideReactions
                         isFading={isFading}
                         key={conversation.sId}
                       />

@@ -17,7 +17,6 @@ import {
   PlusIcon,
   RobotIcon,
   ScrollArea,
-  Separator,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -201,29 +200,26 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         )}
       >
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
-          <div className="flex w-full flex-col pl-2">
+          <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="flex w-full items-center justify-end py-2 pr-2">
+              <div className="z-50 flex justify-between gap-2 p-2 shadow-tale">
                 <Button
-                  size="xs"
-                  variant="outline"
+                  variant={
+                    selectedConversations.length === 0 ? "outline" : "warning"
+                  }
+                  label="Delete"
+                  disabled={selectedConversations.length === 0}
+                  onClick={() => setShowDeleteDialog("selection")}
+                />
+                <Button
+                  variant="ghost"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
                   className="mr-2"
                 />
-                <Button
-                  icon={TrashIcon}
-                  size="xs"
-                  variant={
-                    selectedConversations.length === 0 ? "outline" : "warning"
-                  }
-                  tooltip="Delete conversations"
-                  disabled={selectedConversations.length === 0}
-                  onClick={() => setShowDeleteDialog("selection")}
-                />
               </div>
             ) : (
-              <div className={classNames("flex justify-end gap-2 py-2 pr-2")}>
+              <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
                 <Button
                   href={`/w/${owner.sId}/assistant/new`}
                   label="New"
@@ -283,8 +279,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            <Separator />
-            <ScrollArea className="w-full">
+            <ScrollArea className="w-full px-2">
               {conversationsByDate &&
                 Object.keys(conversationsByDate).map((dateLabel) => (
                   <RenderConversations

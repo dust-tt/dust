@@ -28,9 +28,9 @@ import {
 } from "@app/lib/client/conversation/event_handlers";
 import {
   useConversation,
+  useConversationFeedbacks,
   useConversationMessages,
   useConversationParticipants,
-  useConversationReactions,
   useConversations,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
@@ -39,7 +39,6 @@ const DEFAULT_PAGE_LIMIT = 50;
 
 interface ConversationViewerProps {
   conversationId: string;
-  hideReactions?: boolean;
   isFading?: boolean;
   isInModal?: boolean;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
@@ -62,7 +61,6 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     onStickyMentionsChange,
     isInModal = false,
-    hideReactions = false,
     isFading = false,
   },
   ref
@@ -93,11 +91,6 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
-  });
-
-  const { reactions } = useConversationReactions({
-    workspaceId: owner.sId,
-    conversationId,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({
@@ -191,6 +184,11 @@ const ConversationViewer = React.forwardRef<
   }, [agentMentions, onStickyMentionsChange]);
 
   const { ref: viewRef, inView: isTopOfListVisible } = useInView();
+
+  const { feedbacks } = useConversationFeedbacks({
+    conversationId: conversationId ?? "",
+    workspaceId: owner.sId,
+  });
 
   // On page load or when new data is loaded, check if the top of the list
   // is visible and there is more data to load. If so, set the current
@@ -346,10 +344,9 @@ const ConversationViewer = React.forwardRef<
               messages={typedGroup}
               isLastMessageGroup={isLastGroup}
               conversationId={conversationId}
-              hideReactions={hideReactions}
+              feedbacks={feedbacks}
               isInModal={isInModal}
               owner={owner}
-              reactions={reactions}
               prevFirstMessageId={prevFirstMessageId}
               prevFirstMessageRef={prevFirstMessageRef}
               user={user}

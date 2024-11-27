@@ -83,6 +83,8 @@ async function upsertGdriveTable(
     truncate: true,
     parents: [tableId, ...parents],
     useAppForHeaderDetection: true,
+    title: `${spreadsheet.title} - ${title}`,
+    mimeType: "application/vnd.google-apps.spreadsheet",
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
