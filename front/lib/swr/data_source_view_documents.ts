@@ -9,7 +9,8 @@ import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { fetcher, fetcherWithBody, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { decorateWithInvalidation, mutationFn } from "@app/lib/swr/utils";
 import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/documents/[documentId]";
 import type { PostDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents";
 import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
@@ -88,37 +89,6 @@ export function useDataSourceViewDocument({
   };
 }
 
-async function sendPatchRequest(
-  url: string,
-  {
-    arg,
-  }: {
-    arg: {
-      documentBody: PatchDataSourceWithNameDocumentRequestBody;
-    };
-  }
-) {
-  const res = await fetcherWithBody([url, arg.documentBody, "PATCH"]);
-  return res;
-}
-
-function decorateWithInvalidation<T>(
-  options: SWRMutationConfiguration<T, Error, string> | undefined,
-  invalidateCacheEntries: () => Promise<void>
-): SWRMutationConfiguration<T, Error, string> {
-  return options
-    ? {
-        ...options,
-        onSuccess: async (data, key, config) => {
-          await options.onSuccess?.(data, key, config);
-          await invalidateCacheEntries();
-        },
-      }
-    : {
-        onSuccess: invalidateCacheEntries,
-      };
-}
-
 export function useUpdateDataSourceViewDocument(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
@@ -157,21 +127,9 @@ export function useUpdateDataSourceViewDocument(
         documentId: documentName,
       })
     : null;
+  const sendPatchRequest =
+    mutationFn<PatchDataSourceWithNameDocumentRequestBody>("PATCH");
   return useSWRMutation(patchUrl, sendPatchRequest, decoratedOptions);
-}
-
-async function sendPostRequest(
-  url: string,
-  {
-    arg,
-  }: {
-    arg: {
-      documentBody: PostDataSourceWithNameDocumentRequestBody;
-    };
-  }
-) {
-  const res = await fetcherWithBody([url, arg.documentBody, "POST"]);
-  return res;
 }
 
 export function useCreateDataSourceViewDocument(
@@ -201,5 +159,7 @@ export function useCreateDataSourceViewDocument(
     owner,
     dataSourceView,
   });
+  const sendPostRequest =
+    mutationFn<PostDataSourceWithNameDocumentRequestBody>("POST");
   return useSWRMutation(createUrl, sendPostRequest, decoratedOptions);
 }

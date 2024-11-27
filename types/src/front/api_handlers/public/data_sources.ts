@@ -71,6 +71,15 @@ export const PatchDataSourceTableRequestBodySchema = t.type({
   useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
 });
 
+export type PatchDataSourceTableRequestBody = t.TypeOf<
+  typeof PatchDataSourceTableRequestBodySchema
+>;
+
+// Post and Patch require the same request body
+export type PostDataSourceTableRequestBody = t.TypeOf<
+  typeof PatchDataSourceTableRequestBodySchema
+>;
+
 export const PostDataSourceTableRequestBodySchema = t.intersection([
   PatchDataSourceTableRequestBodySchema,
   t.type({

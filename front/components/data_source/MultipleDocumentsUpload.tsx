@@ -158,19 +158,16 @@ export const MultipleDocumentsUpload = ({
           upsert_context: null,
           async: false,
         };
-        await createDocumentMutation.trigger(
-          { documentBody: documentRequestBody },
-          {
-            onError: (error: Error) => {
-              sendNotification({
-                type: "error",
-                title: `Error uploading document ${blob.filename}`,
-                description: error.message,
-              });
-              console.error(error);
-            },
-          }
-        );
+        await createDocumentMutation.trigger(documentRequestBody, {
+          onError: (error: Error) => {
+            sendNotification({
+              type: "error",
+              title: `Error uploading document ${blob.filename}`,
+              description: error.message,
+            });
+            console.error(error);
+          },
+        });
       }
 
       sendNotification({

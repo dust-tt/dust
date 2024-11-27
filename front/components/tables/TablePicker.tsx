@@ -14,7 +14,7 @@ import type {
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
-import { useDataSourceViewTables } from "@app/lib/swr/data_source_views";
+import { useDataSourceViewTables } from "@app/lib/swr/data_source_view_tables";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
@@ -38,7 +38,6 @@ export default function TablePicker({
   space,
   onTableUpdate,
 }: TablePickerProps) {
-  void owner;
   void dataSource;
 
   const { spaceDataSourceViews } = useSpaceDataSourceViews({
@@ -56,7 +55,7 @@ export default function TablePicker({
   );
 
   const { tables } = useDataSourceViewTables({
-    workspaceId: dataSource.workspace_id,
+    owner,
     dataSourceView: selectedDataSourceView ?? null,
   });
 

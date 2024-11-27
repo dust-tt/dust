@@ -10,6 +10,7 @@ export const FileUploadUrlRequestSchema = t.type({
     t.literal("conversation"),
     t.literal("avatar"),
     t.literal("folder"),
+    t.literal("folder_table"),
   ]),
   useCaseMetadata: t.union([t.undefined, t.type({ conversationId: t.string })]),
 });
@@ -65,6 +66,13 @@ export function ensureFileSize(
 
 // NOTE: if we add more content types, we need to update the public api package.
 
+const supportedTabular = {
+  "text/comma-separated-values": [".csv"],
+  "text/csv": [".csv"],
+  "text/tab-separated-values": [".tsv"],
+  "text/tsv": [".tsv"],
+} as const;
+
 // Supported content types for plain text.
 const supportedPlainText = {
   "application/msword": [".doc", ".docx"],
@@ -73,12 +81,11 @@ const supportedPlainText = {
     ".docx",
   ],
   "application/pdf": [".pdf"],
-  "text/comma-separated-values": [".csv"],
-  "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
   "text/plain": [".txt"],
-  "text/tab-separated-values": [".tsv"],
-  "text/tsv": [".tsv"],
+
+  // We support all tabular content types as plain text.
+  ...supportedTabular,
 } as const;
 
 // Supported content types for images.
@@ -91,6 +98,10 @@ const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
 export const supportedPlainTextExtensions = uniq(
   Object.values(supportedPlainText).flat()
+);
+
+export const supportedTableExtensions = uniq(
+  Object.values(supportedTabular).flat()
 );
 
 export const supportedImageExtensions = uniq(
@@ -108,6 +119,9 @@ export const supportedPlainTextContentTypes = Object.keys(
 export const supportedImageContentTypes = Object.keys(
   supportedImage
 ) as (keyof typeof supportedImage)[];
+export const supportedTableContentTypes = Object.keys(
+  supportedTabular
+) as (keyof typeof supportedTabular)[];
 
 export const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
@@ -117,6 +131,7 @@ export const supportedUploadableContentType = [
 // Infer types from the arrays.
 export type PlainTextContentType = keyof typeof supportedPlainText;
 export type ImageContentType = keyof typeof supportedImage;
+export type TabularContentType = keyof typeof supportedTabular;
 
 // Union type for all supported content types.
 export type SupportedFileContentType = PlainTextContentType | ImageContentType;
@@ -143,11 +158,22 @@ export function isSupportedImageContentType(
   return supportedImageContentTypes.includes(contentType as ImageContentType);
 }
 
+export function isSupportedTabularContentType(
+  contentType: string
+): contentType is TabularContentType {
+  return supportedTableContentTypes.includes(contentType as TabularContentType);
+}
+
 // Types.
 
 export type FileStatus = "created" | "failed" | "ready";
 
-export type FileUseCase = "conversation" | "avatar" | "tool_output" | "folder";
+export type FileUseCase =
+  | "conversation"
+  | "avatar"
+  | "tool_output"
+  | "folder"
+  | "folder_table";
 
 export type FileUseCaseMetadata = {
   conversationId: string;
@@ -182,6 +208,10 @@ export function ensureContentTypeForUseCase(
   if (useCase === "folder") {
     // Only allow users to upload text documents in folders.
     return isSupportedPlainTextContentType(contentType);
+  }
+
+  if (useCase === "folder_table") {
+    return isSupportedTabularContentType(contentType);
   }
 
   return false;
