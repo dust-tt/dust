@@ -239,6 +239,35 @@ export const getStripeSubscription = async (
   }
 };
 
+const DAY_IN_SECONDS = 24 * 60 * 60;
+
+export const extendStripeSubscriptionTrial = async (
+  stripeSubscriptionId: string,
+  { days }: { days: number }
+): Promise<Result<{ trialEnd: number | null }, Error>> => {
+  const stripe = getStripeClient();
+  const subscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!subscription) {
+    return new Err(new Error("The subscription does not exist."));
+  }
+
+  if (!subscription.trial_end) {
+    return new Err(new Error("The subscription is not in trial."));
+  }
+
+  const newTrialEnd = Math.floor(Date.now() / 1000) + days * DAY_IN_SECONDS;
+
+  const updatedSubscription = await stripe.subscriptions.update(
+    stripeSubscriptionId,
+    {
+      trial_end: newTrialEnd,
+      proration_behavior: "none",
+    }
+  );
+
+  return new Ok({ trialEnd: updatedSubscription.trial_end });
+};
+
 /**
  * Calls the Stripe API to update the quantity of a subscription. Used for
  * subscription items with prices of type "licensed" (that is, per seat).
