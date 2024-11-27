@@ -36,8 +36,8 @@ runs:
       run: |
         AUTHOR_NAME="${{ github.actor }}"
 
-        if ! EMAIL=$(grep "^$RAW_AUTHOR: " .authors | cut -d' ' -f2); then
-          echo "GitHub handle $RAW_AUTHOR not found in authors file" >&2
+        if ! EMAIL=$(grep "^$AUTHOR_NAME: " .authors | cut -d' ' -f2); then
+          echo "GitHub handle $AUTHOR_NAME not found in authors file" >&2
           exit 1
         fi
         echo "email=$EMAIL" >> $GITHUB_OUTPUT
