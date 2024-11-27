@@ -80,6 +80,7 @@ export const TableUploadOrEditModal = ({
     owner: owner,
     dataSourceView: dataSourceView,
     tableId: initialId ?? null,
+    disabled: !initialId,
   });
 
   // Get the processed file content from the file API
