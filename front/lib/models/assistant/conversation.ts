@@ -400,6 +400,7 @@ AgentMessageFeedback.init(
       {
         fields: ["agentConfigurationId", "agentMessageId", "userId"],
         unique: true,
+        name: "agent_message_feedbacks_agent_configuration_id_agent_message_id",
       },
     ],
   }
