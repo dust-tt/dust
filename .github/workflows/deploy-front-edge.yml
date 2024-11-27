@@ -19,13 +19,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Slack Check Deployment Blocked
-        uses: ./.github/actions/slack-check-deployment-blocked
-        with:
-          component: "front-edge"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -37,6 +30,14 @@ jobs:
           step: "start"
           component: "front-edge"
           image_tag: ${{ steps.short_sha.outputs.short_sha }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Slack Check Deployment Blocked
+        id: check_deployment_blocked
+        uses: ./.github/actions/slack-check-deployment-blocked
+        with:
+          component: "front-edge"
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
@@ -83,6 +84,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           step: "failure"
+          blocked: ${{ steps.check_deployment_blocked.outputs.blocked }}
           component: "front-edge"
           image_tag: ${{ steps.short_sha.outputs.short_sha }}
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
