@@ -2076,8 +2076,9 @@ async fn tables_upsert(
         _ => None,
     };
 
-    match try_join(
-        state.store.upsert_table(
+    let table = match state
+        .store
+        .upsert_table(
             &project,
             &data_source_id,
             &payload.table_id,
@@ -2091,29 +2092,43 @@ async fn tables_upsert(
             &payload.parents,
             payload.remote_database_table_id,
             payload.remote_database_secret_id,
-        ),
-        // Only upsert the node if the title and mime_type are present.
-        match &maybe_ds_node {
-            Some(n) => state.store.upsert_data_source_node(&data_source_id, n),
-            None => Box::pin(futures::future::ok(())),
-        },
-    )
-    .await
+        )
+        .await
     {
-        Ok((table, _)) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({ "table": table })),
-            }),
-        ),
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to upsert table",
-            Some(e),
-        ),
+        Ok(table) => table,
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to upsert table",
+                Some(e),
+            )
+        }
+    };
+
+    // Upsert the data source node if title and mime_type are present
+    if let Some(n) = &maybe_ds_node {
+        if let Err(e) = state
+            .store
+            .upsert_data_source_node(&data_source_id, n)
+            .await
+        {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to upsert data source node",
+                Some(e),
+            );
+        }
     }
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({ "table": table })),
+        }),
+    )
 }
 
 /// Retrieve table from a data source.
