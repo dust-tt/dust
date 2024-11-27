@@ -12,7 +12,7 @@ import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
 import type { AgentStateClassification } from "@app/components/assistant/conversation/AgentMessage";
 import { classNames } from "@app/lib/utils";
-import Me from "@app/pages/api/v1/me";
+
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
   lastAgentStateClassification: AgentStateClassification;
@@ -85,6 +85,8 @@ function ActionDetails({
   onClick: () => void;
   size: ConversationMessageSizeType;
 }) {
+  // We memoize the spinner as otherwise its state gets resetted on each token emission (despite
+  // memoization of label in the parent component).
   const MemoizedSpinner = useMemo(
     () => <Spinner variant="dark" size="xs" />,
     []
