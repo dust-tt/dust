@@ -9,6 +9,7 @@ use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+    data_sources::folder::Folder,
     data_sources::node::Node,
     databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
@@ -261,7 +262,20 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
-
+    // Folders
+    async fn upsert_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder: &Folder,
+    ) -> Result<()>;
+    async fn load_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<Option<Folder>>;
+    async fn delete_data_source_folder(&self, data_source_id: &str, folder_id: &str) -> Result<()>;
     // Data Sources Nodes
     async fn upsert_data_source_node(&self, data_source_id: &str, node: &Node) -> Result<()>;
     async fn get_data_source_node(

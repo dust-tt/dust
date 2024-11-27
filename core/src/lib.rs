@@ -14,6 +14,7 @@ pub mod dataset;
 pub mod data_sources {
     pub mod data_source;
     pub mod file_storage_document;
+    pub mod folder;
     pub mod node;
     pub mod qdrant;
     pub mod splitter;
