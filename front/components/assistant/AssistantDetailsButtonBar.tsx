@@ -42,7 +42,7 @@ export function AssistantDetailsButtonBar({
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const router = useRouter();
 
-  const updateUserFavorite = useUpdateUserFavorite({
+  const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -126,6 +126,7 @@ export function AssistantDetailsButtonBar({
           size="sm"
           className="group-hover:hidden"
           variant="outline"
+          disabled={isUpdatingFavorite}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
 
@@ -134,6 +135,7 @@ export function AssistantDetailsButtonBar({
           size="sm"
           className="hidden group-hover:block"
           variant="outline"
+          disabled={isUpdatingFavorite}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
       </div>
