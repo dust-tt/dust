@@ -39,9 +39,9 @@ export function AssistantFavorites() {
   return (
     <div className="h-full w-full pt-2 pb-12">
       <Page.SectionHeader title="Favorites" />
-      <div className="relative grid w-full grid-cols-1 sm:grid-cols-2 gap-2">
-        {hasFavorites ? (
-          agentConfigurations.map(
+      {hasFavorites ? (
+        <div className="relative grid w-full grid-cols-1 sm:grid-cols-2 gap-2">
+          {agentConfigurations.map(
             ({ sId, name, pictureUrl, lastAuthors, description }) => (
               <AssistantPreview
                 key={sId}
@@ -54,20 +54,20 @@ export function AssistantFavorites() {
                 hasAction={false}
               />
             )
-          )
-        ) : (
-          <div className="flex flex-col items-center pt-20 gap-4">
-            <p className="text-slate-400">
-              Your favorite assistants will appear here
-            </p>
-            <Button
-              label="Add favorites on Dust"
-              href={`${process.env.DUST_DOMAIN}`}
-              target="_blank"
-            />
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center pt-20 gap-4">
+          <p className="text-slate-400">
+            Your favorite assistants will appear here
+          </p>
+          <Button
+            label="Add favorites on Dust"
+            href={`${process.env.DUST_DOMAIN}`}
+            target="_blank"
+          />
+        </div>
+      )}
     </div>
   );
 }

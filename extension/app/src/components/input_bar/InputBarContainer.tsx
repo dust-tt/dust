@@ -119,7 +119,7 @@ export const InputBarContainer = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-end space-x-1 mt-2">
+      <div className="flex items-center justify-end space-x-2 mt-2">
         <AttachFragment fileUploaderService={fileUploaderService} />
         <SplitButton
           size="sm"
