@@ -270,7 +270,7 @@ chrome.runtime.onMessage.addListener(
                         console.error("Timeout waiting for capture");
                         reject(
                           new Error(
-                            "Failed to get content from the current tab."
+                            "Timeout waiting for page screenshot"
                           )
                         );
                       }, 2000);
