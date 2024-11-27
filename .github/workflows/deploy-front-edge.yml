@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Slack Check Deployment Blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:
@@ -23,9 +26,6 @@ jobs:
           component: "front"
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-
-      - name: Checkout code
-        uses: actions/checkout@v3
 
       - name: Get short sha
         id: short_sha
