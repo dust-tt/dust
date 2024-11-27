@@ -56,8 +56,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
 
     return agentMessageFeedback.map(
-      (feedback) =>
-        new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
+      (feedback) => new this(this.model, feedback.get())
     );
   }
 
@@ -99,8 +98,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
 
     return agentMessageFeedback.map(
-      (feedback) =>
-        new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
+      (feedback) => new this(this.model, feedback.get())
     );
   }
 
@@ -121,10 +119,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       },
     }).then((feedbacks) =>
-      feedbacks.map(
-        (feedback) =>
-          new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
-      )
+      feedbacks.map((feedback) => new this(this.model, feedback.get()))
     );
 
     return feedbacks;
