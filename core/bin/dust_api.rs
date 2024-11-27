@@ -2299,30 +2299,43 @@ async fn tables_delete(
             &format!("No table found for id `{}`", table_id),
             None,
         ),
-        Ok(Some(table)) => match try_join(
-            table.delete(state.store.clone(), state.databases_store.clone()),
-            state
+        Ok(Some(table)) => {
+            // We delete the data source node first, then the table.
+            match state
                 .store
-                .delete_data_source_node(&data_source_id, &table_id),
-        )
-        .await
-        {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to delete table",
-                Some(e),
-            ),
-            Ok(_) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "success": true,
-                    })),
-                }),
-            ),
-        },
+                .delete_data_source_node(&data_source_id, &table_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to delete data source node",
+                    Some(e),
+                ),
+                Ok(_) => {
+                    match table
+                        .delete(state.store.clone(), state.databases_store.clone())
+                        .await
+                    {
+                        Err(e) => error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to delete table",
+                            Some(e),
+                        ),
+                        Ok(_) => (
+                            StatusCode::OK,
+                            Json(APIResponse {
+                                error: None,
+                                response: Some(json!({
+                                    "success": true,
+                                })),
+                            }),
+                        ),
+                    }
+                }
+            }
+        }
     }
 }
 
