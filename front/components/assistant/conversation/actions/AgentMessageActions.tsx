@@ -99,7 +99,7 @@ function ActionDetails({
           onClick={hasActions ? onClick : undefined}
         >
           <Spinner variant="dark" size="xs" />
-          <div>{label}</div>
+          {label}
         </div>
       </Chip>
     </div>
