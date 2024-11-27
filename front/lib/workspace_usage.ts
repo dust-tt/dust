@@ -78,7 +78,7 @@ interface FeedbackQueryResult {
   userEmail: string;
   agentConfigurationId: string;
   agentConfigurationVersion: number;
-  thumb: string;
+  thumb: "up" | "down";
   content: string | null;
 }
 
