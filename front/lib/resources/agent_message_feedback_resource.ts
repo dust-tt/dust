@@ -104,7 +104,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static listByWorkspaceAndDateRange({
+  static async listByWorkspaceAndDateRange({
     workspace,
     startDate,
     endDate,
@@ -113,7 +113,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     startDate: Date;
     endDate: Date;
   }): Promise<AgentMessageFeedbackResource[]> {
-    return AgentMessageFeedback.findAll({
+    const feedbacks = await AgentMessageFeedback.findAll({
       where: {
         workspaceId: workspace.id,
         createdAt: {
@@ -126,6 +126,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           new AgentMessageFeedbackResource(AgentMessageFeedback, feedback.get())
       )
     );
+
+    return feedbacks;
   }
 
   async fetchUser(): Promise<UserResource | null> {

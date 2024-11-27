@@ -221,10 +221,10 @@ async function fetchUsageData({
       };
     case "feedbacks":
       return {
-        assistants: await getFeedbacksUsageData(start, end, workspaceId),
+        feedbacks: await getFeedbacksUsageData(start, end, workspaceId),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants] =
+      const [users, assistant_messages, builders, assistants, feedbacks] =
         await Promise.all([
           getUserUsageData(start, end, workspaceId),
           getMessageUsageData(start, end, workspaceId),
@@ -232,7 +232,7 @@ async function fetchUsageData({
           getAssistantsUsageData(start, end, workspaceId),
           getFeedbacksUsageData(start, end, workspaceId),
         ]);
-      return { users, assistant_messages, builders, assistants };
+      return { users, assistant_messages, builders, assistants, feedbacks };
     default:
       return {};
   }
