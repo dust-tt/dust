@@ -10,7 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
-use futures::future::{try_join, try_join_all};
+use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
@@ -3148,8 +3148,6 @@ fn main() {
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
-        //.thread_name("dust-api-server")
-        //.thread_stack_size(32 * 1024 * 1024)
         .enable_all()
         .build()
         .unwrap();

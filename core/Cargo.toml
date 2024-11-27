@@ -6,8 +6,12 @@ edition = "2021"
 # SERVICES
 
 [[bin]]
+name = "core-api"
+path = "bin/core_api.rs"
+
+[[bin]]
 name = "dust-api"
-path = "bin/dust_api.rs"
+path = "bin/core_api.rs"
 
 [[bin]]
 name = "oauth"
