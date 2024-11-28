@@ -2,6 +2,15 @@ name: Deploy Viz
 
 on:
   workflow_dispatch:
+    inputs:
+      check_deployment_blocked:
+        description: "Check #deployment locks or force deploy"
+        required: true
+        default: "check"
+        type: choice
+        options:
+          - "check"
+          - "force (dangerous)"
 
 concurrency:
   group: deploy_viz
@@ -35,6 +44,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
+        if: ${{ github.event.inputs.check_deployment_blocked != 'force (dangerous)' }}
         id: check_deployment_blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:
