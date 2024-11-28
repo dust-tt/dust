@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       bypass_check_deployment_blocked:
-        description: "Bypass check deployment blocked from Slack channel topic"
+        description: "Bypass deployment block check"
         required: true
         default: false
         type: boolean
@@ -24,6 +24,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Log inputs
+        run: |
+          echo "Bypass deployment block check: ${{ github.event.inputs.bypass_check_deployment_blocked }}"
+          echo "Inputs: ${{ github.event.inputs }}"
 
       - name: Get short sha
         id: short_sha
