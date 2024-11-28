@@ -31,17 +31,20 @@ export function CoEditionContainer({
             const { agentConfigurationId, code, complete } = content;
 
             nodes.push(
-              <VisualizationActionIframe
-                owner={owner}
-                visualization={{
-                  code,
-                  complete,
-                  identifier,
-                }}
-                key={identifier}
-                conversationId={conversationId}
-                agentConfigurationId={agentConfigurationId}
-              />
+              <>
+                <h1>ID: {identifier}</h1>
+                <VisualizationActionIframe
+                  owner={owner}
+                  visualization={{
+                    code,
+                    complete,
+                    identifier,
+                  }}
+                  key={identifier}
+                  conversationId={conversationId}
+                  agentConfigurationId={agentConfigurationId}
+                />
+              </>
             );
             break;
 

@@ -3,6 +3,7 @@ import type { LightWorkspaceType } from "@dust-tt/types";
 import { useContext, useMemo } from "react";
 import { visit } from "unist-util-visit";
 
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { CoEditionContextType } from "@app/components/assistant/conversation/co-edition/CoEditionContext";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co-edition/CoEditionContext";
 
@@ -106,65 +107,8 @@ export function getVisualizationPlugin(
   conversationId: string,
   messageId: string
 ) {
-  const makeCustomRenderer = (actions: CoEditionContextType["actions"]) => {
-    return {
-      visualization: (code: string, complete: boolean, lineStart: number) => {
-        const identifier = `viz-${messageId}-${lineStart}`;
-
-        return (
-          <Button
-            onClick={() => {
-              actions.show();
-              actions.addVisualization(identifier, {
-                agentConfigurationId,
-                code,
-                complete,
-              });
-            }}
-            icon={EyeIcon}
-          />
-        );
-      },
-    };
-  };
-
-  const VisualizationPlugin = ({ position }: { position: PositionType }) => {
-    const { actions } = useCoEditionContext();
-
-    const customRenderer = makeCustomRenderer(actions);
-
-    return (
-      <>
-        <VisualizationBlock
-          position={position}
-          customRenderer={customRenderer}
-        />
-      </>
-    );
-  };
-
-  return VisualizationPlugin;
-}
-
-export function getInteractiveDocumentPlugin(
-  owner: LightWorkspaceType,
-  agentConfigurationId: string,
-  conversationId: string,
-  messageId: string
-) {
   const customRenderer = {
-    doc: (
-      code: string,
-      complete: boolean,
-      lineStart: number,
-      id: string,
-      type: string
-    ) => {
-      void id;
-      void type;
-
-      console.log(code, complete, lineStart, id, type);
-
+    visualization: (code: string, complete: boolean, lineStart: number) => {
       return (
         <VisualizationActionIframe
           owner={owner}
@@ -181,6 +125,42 @@ export function getInteractiveDocumentPlugin(
     },
   };
 
+  const VisualizationPlugin = ({ position }: { position: PositionType }) => {
+    return (
+      <VisualizationBlock position={position} customRenderer={customRenderer} />
+    );
+  };
+
+  return VisualizationPlugin;
+}
+
+export function getInteractiveDocumentPlugin(agentConfigurationId: string) {
+  const makeCustomRenderer = (actions: CoEditionContextType["actions"]) => {
+    return {
+      doc: (
+        code: string,
+        complete: boolean,
+        lineStart: number,
+        id: string,
+        type: string
+      ) => {
+        return (
+          <Button
+            onClick={() => {
+              actions.show();
+              actions.addVisualization(id, {
+                agentConfigurationId,
+                code,
+                complete,
+              });
+            }}
+            icon={EyeIcon}
+          />
+        );
+      },
+    };
+  };
+
   const InteractiveDocumentPlugin = ({
     position,
     documentId,
@@ -190,6 +170,10 @@ export function getInteractiveDocumentPlugin(
     documentId: string;
     type: string;
   }) => {
+    const { actions } = useCoEditionContext();
+
+    const customRenderer = makeCustomRenderer(actions);
+
     return (
       <InteractiveDocumentBlock
         position={position}

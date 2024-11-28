@@ -458,12 +458,7 @@ export function AgentMessage({
         conversationId,
         message.sId
       ),
-      doc: getInteractiveDocumentPlugin(
-        owner,
-        agentConfiguration.sId,
-        conversationId,
-        message.sId
-      ),
+      doc: getInteractiveDocumentPlugin(agentConfiguration.sId, message.sId),
       sup: CiteBlock,
       mention: MentionBlock,
     }),
