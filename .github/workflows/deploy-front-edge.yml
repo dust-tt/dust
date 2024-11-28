@@ -2,6 +2,12 @@ name: Deploy Front Edge
 
 on:
   workflow_dispatch:
+    inputs:
+      bypass_check_deployment_blocked:
+        description: "Bypass check deployment blocked from Slack channel topic"
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: deploy_front_edge
@@ -34,6 +40,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
+        if: ${{ !github.event.inputs.bypass_check_deployment_blocked }}
         id: check_deployment_blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:
