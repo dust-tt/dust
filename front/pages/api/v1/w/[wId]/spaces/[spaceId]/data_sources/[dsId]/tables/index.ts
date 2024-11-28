@@ -53,7 +53,7 @@ import { apiError } from "@app/logger/withlogging";
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Datasource'
+ *                 $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
  *   post:
@@ -226,6 +226,8 @@ async function handler(
             timestamp: table.timestamp,
             tags: table.tags,
             parents: table.parents,
+            mime_type: table.mime_type,
+            title: table.title,
           };
         }),
       });
@@ -353,7 +355,8 @@ async function handler(
         description,
         timestamp: timestamp ?? null,
         tags: tags || [],
-        parents: parents || [],
+        // Table is a parent of itself by default.
+        parents: parents || [tableId],
         remoteDatabaseTableId: remoteDatabaseTableId ?? null,
         remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
         title,
@@ -394,6 +397,8 @@ async function handler(
           timestamp: table.timestamp,
           tags: table.tags,
           parents: table.parents,
+          mime_type: table.mime_type,
+          title: table.title,
         },
       });
 

@@ -314,6 +314,8 @@ const CoreAPITablePublicSchema = z.object({
   timestamp: z.number(),
   tags: z.array(z.string()),
   parents: z.array(z.string()),
+  mime_type: z.string(),
+  title: z.string(),
 });
 
 export type CoreAPITablePublic = z.infer<typeof CoreAPITablePublicSchema>;

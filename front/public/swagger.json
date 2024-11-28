@@ -2571,7 +2571,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Datasource"
+                  "$ref": "#/components/schemas/Table"
                 }
               }
             }
@@ -3065,7 +3065,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Datasource"
+                    "$ref": "#/components/schemas/Table"
                   }
                 }
               }
@@ -3954,6 +3954,87 @@
             "type": "boolean",
             "description": "Whether this datasource is selected by default for assistants",
             "example": true
+          }
+        }
+      },
+      "Table": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the table",
+            "example": "roi.csv"
+          },
+          "table_id": {
+            "type": "string",
+            "description": "Unique identifier for the table",
+            "example": "1234f4567c"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the table",
+            "example": "roi data for Q1"
+          },
+          "schema": {
+            "type": "array",
+            "description": "Array of column definitions",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name of the column",
+                  "example": "roi"
+                },
+                "value_type": {
+                  "type": "string",
+                  "description": "Data type of the column",
+                  "enum": [
+                    "text",
+                    "int",
+                    "float",
+                    "bool",
+                    "date"
+                  ],
+                  "example": "int"
+                },
+                "possible_values": {
+                  "type": "array",
+                  "description": "Array of possible values for the column (null if unrestricted)",
+                  "items": {
+                    "type": "string"
+                  },
+                  "nullable": true,
+                  "example": [
+                    "1",
+                    "2",
+                    "3"
+                  ]
+                }
+              }
+            }
+          },
+          "timestamp": {
+            "type": "number",
+            "description": "Unix timestamp of table creation/modification",
+            "example": 1732810375150
+          },
+          "tags": {
+            "type": "array",
+            "description": "Array of tags associated with the table",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parents": {
+            "type": "array",
+            "description": "Array of parent table IDs",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "1234f4567c"
+            ]
           }
         }
       },
