@@ -132,7 +132,7 @@ const SheetFooter = ({
       (leftButtonProps.disabled ? (
         <Button {...leftButtonProps} />
       ) : (
-        <SheetClose className={sheetCloseClassName}>
+        <SheetClose className={sheetCloseClassName} asChild>
           <Button {...leftButtonProps} />
         </SheetClose>
       ))}
@@ -140,7 +140,7 @@ const SheetFooter = ({
       (rightButtonProps.disabled ? (
         <Button {...rightButtonProps} />
       ) : (
-        <SheetClose className={sheetCloseClassName}>
+        <SheetClose className={sheetCloseClassName} asChild>
           <Button {...rightButtonProps} />
         </SheetClose>
       ))}
