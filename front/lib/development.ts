@@ -6,7 +6,7 @@ import {
   PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
 
-function isADustProdWorkspace(owner: LightWorkspaceType) {
+export function isADustProdWorkspace(owner: LightWorkspaceType) {
   return (
     owner.sId === PRODUCTION_DUST_WORKSPACE_ID ||
     owner.sId === PRODUCTION_DUST_APPS_WORKSPACE_ID

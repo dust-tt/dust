@@ -21,6 +21,7 @@ import React, { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
+import { isADustProdWorkspace } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
 
 export function ConversationTitle({
@@ -193,7 +194,7 @@ export function ConversationTitle({
                 />
               )}
             </div>
-            {isDevelopment() && (
+            {(isDevelopment() || isADustProdWorkspace(owner)) && (
               <div className="hidden lg:flex">
                 <Button
                   size="sm"

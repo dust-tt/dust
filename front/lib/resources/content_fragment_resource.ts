@@ -582,7 +582,7 @@ export async function renderContentFragmentForModel(
         contentType,
         excludeImages,
         fileId,
-        forceFullCSVInclude: message.snippet != null, // JIT
+        forceFullCSVInclude: message.snippet != null, // If there is a snippet, it means that JIT was used, therefor if we are rendering the content fragment: we want to include the full content.
         model,
         title,
         textBytes,
