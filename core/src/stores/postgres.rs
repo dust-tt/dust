@@ -13,7 +13,7 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::node::NodeType;
+use crate::data_sources::node::{NodeType, SimpleNode};
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
@@ -2893,7 +2893,7 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        Ok(Folder { node })
+        Ok(Folder::from_node(&node))
     }
 
     async fn load_data_source_folder(
@@ -2925,7 +2925,7 @@ impl Store for PostgresStore {
 
                 match row.len() {
                     0 => Ok(None),
-                    1 => Ok(Some(Folder { node })),
+                    1 => Ok(Some(Folder::from_node(&node))),
                     _ => unreachable!(),
                 }
             }
@@ -2971,7 +2971,7 @@ impl Store for PostgresStore {
         title: &str,
         mime_type: &str,
         parents: &Vec<String>,
-    ) -> Result<Node> {
+    ) -> Result<SimpleNode> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
 
@@ -3026,15 +3026,17 @@ impl Store for PostgresStore {
                 ],
             )
             .await?;
-        Ok(Node {
-            node_id: node_id.to_string(),
+        Ok(SimpleNode::new(
+            project,
+            &data_source_id,
+            node_id,
+            node_type,
             created,
             timestamp,
-            node_type,
-            title: title.to_string(),
-            mime_type: mime_type.to_string(),
-            parents: parents.clone(),
-        })
+            title,
+            mime_type,
+            parents.clone(),
+        ))
     }
 
     async fn get_data_source_node(
@@ -3042,7 +3044,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         node_id: &str,
-    ) -> Result<Option<(Node, i64)>> {
+    ) -> Result<Option<(SimpleNode, i64)>> {
         let project_id = project.project_id();
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -3092,15 +3094,17 @@ impl Store for PostgresStore {
                     _ => unreachable!(),
                 };
                 Ok(Some((
-                    Node {
-                        node_id,
-                        created: created as u64,
-                        timestamp: timestamp as u64,
+                    SimpleNode::new(
+                        project,
+                        &data_source_id,
+                        &node_id,
                         node_type,
-                        title,
-                        mime_type,
-                        parents,
-                    },
+                        created as u64,
+                        timestamp as u64,
+                        &title,
+                        &mime_type,
+                        parents.clone(),
+                    ),
                     row_id,
                 )))
             }

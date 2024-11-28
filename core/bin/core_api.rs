@@ -2062,20 +2062,6 @@ async fn tables_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-    let maybe_ds_node = match (payload.title, payload.mime_type) {
-        (Some(title), Some(mime_type)) => Some(Node {
-            node_id: payload.table_id.clone(),
-            created: utils::now(),
-            timestamp: payload.timestamp.unwrap_or(utils::now()),
-            node_type: NodeType::Table,
-            title,
-            mime_type,
-            parents: payload.parents.clone(),
-        }),
-        _ => None,
-    };
-
     let table = match state
         .store
         .upsert_table(
@@ -2106,21 +2092,22 @@ async fn tables_upsert(
         }
     };
 
+    // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
     // Upsert the data source node if title and mime_type are present
-    if let Some(n) = &maybe_ds_node {
+    if let (Some(title), Some(mime_type)) = (payload.title, payload.mime_type) {
         if let Err(e) = state
             .store
             .upsert_data_source_node(
                 &project,
                 &data_source_id,
-                &n.node_id,
+                &payload.table_id,
                 0, // TODO(KW_SEARCH_INFRA): fix this.
-                n.node_type.clone(),
-                n.created,
-                n.timestamp,
-                &n.title,
-                &n.mime_type,
-                &n.parents,
+                NodeType::Table,
+                utils::now(),
+                payload.timestamp.unwrap_or(utils::now()),
+                &title,
+                &mime_type,
+                &payload.parents,
             )
             .await
         {
@@ -2843,7 +2830,7 @@ async fn folders_update(
                 &project,
                 &data_source_id,
                 &folder_id,
-                node.created,
+                node.created(),
                 payload.timestamp.unwrap_or(utils::now()),
                 &payload.title,
                 "application/vnd.dust.folder",

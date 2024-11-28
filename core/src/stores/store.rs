@@ -11,7 +11,7 @@ use crate::{
     data_sources::{
         data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
         folder::Folder,
-        node::{Node, NodeType},
+        node::{NodeType, SimpleNode},
     },
     databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
@@ -301,13 +301,13 @@ pub trait Store {
         title: &str,
         mime_type: &str,
         parents: &Vec<String>,
-    ) -> Result<Node>;
+    ) -> Result<SimpleNode>;
     async fn get_data_source_node(
         &self,
         project: &Project,
         data_source_id: &str,
         node_id: &str,
-    ) -> Result<Option<(Node, i64)>>;
+    ) -> Result<Option<(SimpleNode, i64)>>;
     async fn delete_data_source_node(
         &self,
         project: &Project,
