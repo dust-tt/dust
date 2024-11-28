@@ -2,6 +2,15 @@ name: Deploy Oauth
 
 on:
   workflow_dispatch:
+    inputs:
+      check_deployment_blocked:
+        description: "Check if deployment should be blocked"
+        required: true
+        default: "check"
+        type: choice
+        options:
+          - "check"
+          - "ignore"
 
 concurrency:
   group: deploy_oauth
@@ -35,6 +44,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
+        if: ${{ github.event.inputs.check_deployment_blocked != 'ignore' }}
         id: check_deployment_blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:
