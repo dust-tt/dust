@@ -23,7 +23,6 @@ import {
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isSupportedImageContentType,
-  isSupportedPlainTextContentType,
   isUserMessageType,
   Ok,
   removeNulls,
