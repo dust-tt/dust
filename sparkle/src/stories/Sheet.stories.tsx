@@ -65,7 +65,7 @@ export function SheetDemo() {
           <SheetFooter
             sheetCloseClassName="s-flex s-gap-2"
             leftButtonProps={{ label: "Cancel", variant: "warning" }}
-            rightButtonProps={{ label: "Save" }}
+            rightButtonProps={{ label: "Save", disabled: true }}
           />
         </SheetContent>
       </Sheet>
