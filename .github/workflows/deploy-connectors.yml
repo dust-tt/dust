@@ -34,6 +34,14 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
+      - name: Slack Check Deployment Blocked
+        id: check_deployment_blocked
+        uses: ./.github/actions/slack-check-deployment-blocked
+        with:
+          component: "connectors"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
@@ -84,6 +92,7 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           step: "failure"
+          blocked: ${{ steps.check_deployment_blocked.outputs.blocked }}
           component: "connectors"
           image_tag: ${{ steps.short_sha.outputs.short_sha }}
           channel: ${{ secrets.SLACK_CHANNEL_ID }}

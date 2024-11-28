@@ -20,6 +20,9 @@ inputs:
   slack_token:
     description: 'Slack bot token'
     required: true
+  blocked:
+    description: 'Is deployment blocked?'
+    required: false
 
 outputs:
   thread_ts:
@@ -91,4 +94,5 @@ runs:
           thread_ts: "${{ inputs.thread_ts }}"
           text: |
             ❌ Build pipeline failed
+            ${{ inputs.blocked == 'true' && format('Is blocked by channel topic: {0}', inputs.blocked) }}
             • Check logs: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View details>

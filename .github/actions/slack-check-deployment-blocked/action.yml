@@ -11,6 +11,10 @@ inputs:
   slack_token:
     description: 'Slack bot token'
     required: true
+outputs:
+  blocked:
+    description: "Is deployment blocked?"
+    value: ${{ steps.parse_channel_topic.outputs.blocked }}
 
 runs:
   using: "composite"
@@ -23,7 +27,6 @@ runs:
         token: ${{ inputs.slack_token }}
         payload: |
           channel: ${{ inputs.channel }}
-        errors: true
 
     - name: Get channel topic
       if: steps.slack_channel_info.outputs.ok == 'true'
@@ -58,8 +61,10 @@ runs:
 
         if is_blocked "${{ inputs.component }}" "${{ steps.slack_channel_topic.outputs.topic }}"; then
             echo "${{ inputs.component}} is blocked based on channel topic"
+            echo "blocked=true" >> $GITHUB_OUTPUT
             exit 1
         else
             echo "${{ inputs.component}} is not blocked based on channel topic"
+            echo "blocked=false" >> $GITHUB_OUTPUT
             exit 0
         fi
