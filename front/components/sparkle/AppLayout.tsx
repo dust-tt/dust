@@ -11,6 +11,7 @@ import { Navigation } from "@app/components/navigation/Navigation";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { classNames } from "@app/lib/utils";
+import { Button } from "@dust-tt/sparkle";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
@@ -49,26 +50,7 @@ export default function AppLayout({
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
   const [loaded, setLoaded] = useState(false);
-  const [showQuickGuide, setShowQuickGuide] = useState(false);
-
-  useEffect(() => {
-    setShowQuickGuide(router.query.quickGuide === "true");
-  }, [router.query]);
-
-  const handleCloseQuickGuide = () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { quickGuide: _, ...restQuery } = router.query;
-    void router.push(
-      {
-        pathname: router.pathname,
-        query: restQuery,
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
 
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
@@ -176,7 +158,7 @@ export default function AppLayout({
           </main>
         </div>
       </div>
-      <QuickStartGuide show={showQuickGuide} onClose={handleCloseQuickGuide} />
+      <QuickStartGuide />
       <>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
