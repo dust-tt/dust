@@ -142,7 +142,7 @@ export const MultipleDocumentsUpload = ({
         const body = {
           name: blob.filename,
           timestamp: null,
-          parents: null,
+          parents: [blob.filename],
           section: {
             prefix: null,
             content: content,

@@ -136,7 +136,7 @@ export const DocumentUploadOrEditModal = ({
       const body = {
         name: initialId ?? document.name,
         timestamp: null,
-        parents: null,
+        parents: [initialId ?? document.name],
         section: { prefix: null, content: document.text, sections: [] },
         text: null,
         source_url: document.sourceUrl || undefined,
