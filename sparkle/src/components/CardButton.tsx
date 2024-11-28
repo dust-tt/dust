@@ -17,7 +17,7 @@ export const CARD_BUTTON_VARIANTS = [
 export type CardButtonVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
 
 const variantClasses: Record<CardButtonVariantType, string> = {
-  primary: "s-bg-structure-50 s-border-border-dark/0",
+  primary: "s-bg-primary-50 s-border-border-dark/0",
   secondary: "s-bg-background s-border-border-dark",
   tertiary: "s-bg-background s-border-border-dark/0",
 };

@@ -14,7 +14,6 @@ import { cn } from "@sparkle/lib/utils";
 interface CitationNewProps extends Omit<ButtonProps, "variant" | "size"> {
   children: React.ReactNode;
   href?: string;
-  isBlinking?: boolean;
   isLoading?: boolean;
   tooltip?: string;
   target?: string;
@@ -30,7 +29,6 @@ const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
       children,
       variant = "primary",
       href,
-      isBlinking = false,
       isLoading,
       onClick,
       className,
@@ -61,9 +59,6 @@ const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
         onClick={onClick}
         className={cn(
           "s-group s-relative s-flex s-aspect-[2/1] s-min-w-[168px] s-flex-none s-flex-col s-justify-end",
-          {
-            "s-animate-[bgblink_600ms_3]": isBlinking,
-          },
           className
         )}
         {...linkProps}
