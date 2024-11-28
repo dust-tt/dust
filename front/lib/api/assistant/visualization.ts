@@ -86,7 +86,9 @@ export async function getVisualizationPrompt({
 export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
-Guidelines using the :::visualization tag:
+Guidelines using the :::visualization directive:
+- A short ID for the visualization must always be provided to the directive. For example: :::visualization{viz-id="my-visualization-id"}.
+- You may update an existing visualization by providing the same ID.
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
 - Supported React features:

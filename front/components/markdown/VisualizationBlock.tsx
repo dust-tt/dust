@@ -13,16 +13,19 @@ export type CustomRenderers = {
   visualization: (
     code: string,
     complete: boolean,
-    lineStart: number
+    lineStart: number,
+    vizId: string
   ) => React.JSX.Element;
 };
 
 type VisualizationBlockProps = {
   position: PositionType;
+  vizId: string;
   customRenderer?: CustomRenderers;
 };
 export function VisualizationBlock({
   position,
+  vizId,
   customRenderer,
 }: VisualizationBlockProps) {
   const { content } = useContext(MarkdownContentContext);
@@ -47,7 +50,7 @@ export function VisualizationBlock({
     code = code.replace(VISUALIZATION_MAGIC_LINE, "");
     complete = true;
   }
-  return visualizationRenderer(code, complete, position.start.line);
+  return visualizationRenderer(code, complete, position.start.line, vizId);
 }
 
 export function getVisualizationPlugin(
@@ -57,7 +60,13 @@ export function getVisualizationPlugin(
   messageId: string
 ) {
   const customRenderer = {
-    visualization: (code: string, complete: boolean, lineStart: number) => {
+    visualization: (
+      code: string,
+      complete: boolean,
+      lineStart: number,
+      vizId: string
+    ) => {
+      void vizId;
       return (
         <VisualizationActionIframe
           owner={owner}
@@ -74,9 +83,19 @@ export function getVisualizationPlugin(
     },
   };
 
-  const VisualizationPlugin = ({ position }: { position: PositionType }) => {
+  const VisualizationPlugin = ({
+    position,
+    vizId,
+  }: {
+    position: PositionType;
+    vizId: string;
+  }) => {
     return (
-      <VisualizationBlock position={position} customRenderer={customRenderer} />
+      <VisualizationBlock
+        position={position}
+        vizId={vizId}
+        customRenderer={customRenderer}
+      />
     );
   };
 
@@ -91,6 +110,7 @@ export function visualizationDirective() {
         data.hName = "visualization";
         data.hProperties = {
           position: node.position,
+          vizId: node.attributes["viz-id"],
         };
       }
     });
