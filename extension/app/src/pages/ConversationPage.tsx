@@ -9,6 +9,7 @@ import { ConversationContainer } from "@extension/components/conversation/Conver
 import { ConversationsListButton } from "@extension/components/conversation/ConversationsListButton";
 import { FileDropProvider } from "@extension/components/conversation/FileUploaderContext";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
+import { DropzoneContainer } from "@extension/components/DropzoneContainer";
 import { InputBarProvider } from "@extension/components/input_bar/InputBarContext";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -34,43 +35,48 @@ export const ConversationPage = ({
 
   return (
     <FileDropProvider>
-      <BarHeader
-        title={title}
-        tooltip={title}
-        leftActions={
-          <Button
-            icon={ChevronLeftIcon}
-            variant="ghost"
-            onClick={() => {
-              navigate("/");
-            }}
-            size="md"
-          />
-        }
-        rightActions={
-          <div className="flex flex-row items-right">
-            <ConversationsListButton size="md" />
-
+      <DropzoneContainer
+        description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+        title="Attach files to the conversation"
+      >
+        <BarHeader
+          title={title}
+          tooltip={title}
+          leftActions={
             <Button
-              icon={ExternalLinkIcon}
+              icon={ChevronLeftIcon}
               variant="ghost"
-              href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}/assistant/${conversationId}`}
-              target="_blank"
+              onClick={() => {
+                navigate("/");
+              }}
               size="md"
-              tooltip="Open in Dust"
             />
-          </div>
-        }
-      />
-      <div className="h-full w-full pt-4 mt-12">
-        <InputBarProvider>
-          <ConversationContainer
-            owner={workspace}
-            conversationId={conversationId}
-            user={user}
-          />
-        </InputBarProvider>
-      </div>
+          }
+          rightActions={
+            <div className="flex flex-row items-right">
+              <ConversationsListButton size="md" />
+
+              <Button
+                icon={ExternalLinkIcon}
+                variant="ghost"
+                href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}/assistant/${conversationId}`}
+                target="_blank"
+                size="md"
+                tooltip="Open in Dust"
+              />
+            </div>
+          }
+        />
+        <div className="h-full w-full pt-4 mt-12">
+          <InputBarProvider>
+            <ConversationContainer
+              owner={workspace}
+              conversationId={conversationId}
+              user={user}
+            />
+          </InputBarProvider>
+        </div>
+      </DropzoneContainer>
     </FileDropProvider>
   );
 };
