@@ -250,9 +250,7 @@ export default function WorkspaceAdmin({
                 )}
               </div>
               <div>
-                <ProviderManagementModal
-                  owner={owner}
-                />
+                <ProviderManagementModal owner={owner} />
               </div>
             </div>
           </Page.Vertical>
