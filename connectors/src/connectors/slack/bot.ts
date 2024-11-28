@@ -339,21 +339,8 @@ async function answerMessage(
     userType: slackUserInfo.is_bot ? "bot" : "user",
   });
 
-  const buildContentFragmentRes = await makeContentFragment(
-    slackClient,
-    slackChannel,
-    slackThreadTs || slackMessageTs,
-    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
-    connector
-  );
-
   if (!DUST_FRONT_API) {
     throw new Error("DUST_FRONT_API environment variable is not defined");
-  }
-
-  if (slackUserInfo.is_bot) {
-    const botName = slackUserInfo.real_name;
-    requestedGroups = await slackConfig.getBotGroupIds(botName);
   }
 
   const userEmailHeader =
@@ -375,6 +362,20 @@ async function answerMessage(
       urlOverride: DUST_FRONT_API,
     }
   );
+
+  const buildContentFragmentRes = await makeContentFragment(
+    slackClient,
+    dustAPI,
+    slackChannel,
+    slackThreadTs || slackMessageTs,
+    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
+    connector
+  );
+
+  if (slackUserInfo.is_bot) {
+    const botName = slackUserInfo.real_name;
+    requestedGroups = await slackConfig.getBotGroupIds(botName);
+  }
 
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
   if (agentConfigurationsRes.isErr()) {
@@ -690,6 +691,7 @@ export async function getBotEnabled(
 
 async function makeContentFragment(
   slackClient: WebClient,
+  dustAPI: DustAPI,
   channelId: string,
   threadTs: string,
   startingAtTs: string | null,
@@ -770,11 +772,29 @@ async function makeContentFragment(
   // Prepend $url to the content to make it available to the model.
   const section = `$url: ${url}\n${sectionFullText(content)}`;
 
+  const contentType = "dust-application/slack";
+  const fileName = `thread-${channel.channel.name}.txt`;
+
+  const fileRes = await dustAPI.uploadFile({
+    contentType,
+    fileName,
+    fileSize: section.length,
+    useCase: "conversation",
+    fileObject: new File(
+      [new Blob([section], { type: contentType })],
+      fileName,
+      { type: contentType }
+    ),
+  });
+
+  if (fileRes.isErr()) {
+    return new Err(new Error(fileRes.error.message));
+  }
+
   return new Ok({
     title: `Thread content from #${channel.channel.name}`,
-    content: section,
     url: url,
-    contentType: "dust-application/slack",
+    fileId: fileRes.value.id,
     context: null,
   });
 }
