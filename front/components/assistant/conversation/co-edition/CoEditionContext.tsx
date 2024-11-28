@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from "react";
 
 interface BaseCodeEditionContent {
-  version: string;
+  version: number;
 }
 
 export type CoEditionVisualizationContent = BaseCodeEditionContent & {
@@ -51,7 +51,7 @@ export interface CoEditionContextType {
         agentConfigurationId: string;
         code: string;
         complete: boolean;
-        version: string;
+        version: number;
       }
     ) => void;
     clear: () => void;
@@ -81,22 +81,13 @@ export function CoEditionProvider({ children }: { children: React.ReactNode }) {
         agentConfigurationId: string;
         code: string;
         complete: boolean;
-        version: string;
+        version: number;
       }
     ) => {
-      console.log(">>> updating state with visualization", identifier);
       setState((prevState) => {
         const existingContent = prevState.content[identifier];
         if (existingContent) {
-          // Same version, no need to update
-          if (existingContent.version === version) {
-            return prevState;
-          }
-
-          // Otherwise keep the latest version.
-          const sortedVersions = [existingContent.version, version].sort();
-          // If the new version is NOT the latest, ignore.
-          if (sortedVersions[1] !== version) {
+          if (existingContent.version >= version) {
             return prevState;
           }
         }

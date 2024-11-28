@@ -1,12 +1,9 @@
 import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import type {
-  CoEditionState,
-  CoEditionVisualizationContent,
-} from "@app/components/assistant/conversation/co-edition/CoEditionContext";
+import type { CoEditionVisualizationContent } from "@app/components/assistant/conversation/co-edition/CoEditionContext";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co-edition/CoEditionContext";
 
 interface CoEditionContainerProps {
@@ -26,6 +23,7 @@ export function CoEditionContainer({
       return (
         <div key={`${identifier}-${content.version}`} className="p-4">
           <h1>ID: {identifier}</h1>
+          <h1>Version: {content.version}</h1>
           <VisualizationActionIframe
             owner={owner}
             visualization={{
