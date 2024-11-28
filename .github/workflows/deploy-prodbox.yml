@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       check_deployment_blocked:
-        description: "Check if deployment should be blocked"
+        description: "Check #deployment locks or force deploy"
         required: true
         default: "check"
         type: choice
         options:
           - "check"
-          - "ignore"
+          - "force (dangerous)"
 
 concurrency:
   group: deploy_prodbox
@@ -45,7 +45,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
-        if: ${{ github.event.inputs.check_deployment_blocked != 'ignore' }}
+        if: ${{ github.event.inputs.check_deployment_blocked != 'force (dangerous)' }}
         id: check_deployment_blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:
