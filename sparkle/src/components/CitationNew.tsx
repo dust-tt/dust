@@ -1,6 +1,12 @@
 import React, { ReactNode } from "react";
 
-import { Button, ButtonProps, CardButton, Tooltip } from "@sparkle/components/";
+import {
+  Button,
+  ButtonProps,
+  CardButton,
+  Spinner,
+  Tooltip,
+} from "@sparkle/components/";
 import { CardButtonVariantType } from "@sparkle/components/CardButton";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
@@ -64,6 +70,7 @@ const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
         {...props}
       >
         {children}
+        {isLoading && <CitationNewLoading />}
       </CardButton>
     );
 
@@ -178,7 +185,27 @@ const CitationNewIcons = React.forwardRef<
 });
 CitationNewIcons.displayName = "CitationNewIcons";
 
-// Title component
+CitationNewImage.displayName = "CitationNewImage";
+
+const CitationNewLoading = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-primary-100/80",
+        className
+      )}
+      {...props}
+    >
+      <Spinner variant="dark" size="md" />
+    </div>
+  );
+});
+CitationNewLoading.displayName = "CitationNewLoading";
+
 interface CitationNewTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }

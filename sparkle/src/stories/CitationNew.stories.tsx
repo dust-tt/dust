@@ -28,7 +28,7 @@ export default meta;
 export const CitationsExample = () => (
   <div className="s-flex s-flex-col s-gap-8">
     Example of attachement
-    <div className="s-flex s-gap-8">
+    <div className="s-flex s-gap-2">
       <CitationNew
         onClick={() => alert("Card clicked")}
         className="s-w-48"
@@ -69,6 +69,13 @@ export const CitationsExample = () => (
         isBlinking={true}
       >
         <CitationNewImage imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" />
+        <CitationNewIcons>
+          <Icon visual={ImageIcon} size="sm" />
+        </CitationNewIcons>
+        <CitationNewTitle>screenshot.png</CitationNewTitle>
+      </CitationNew>
+
+      <CitationNew className="s-w-48" isBlinking={true} isLoading={true}>
         <CitationNewIcons>
           <Icon visual={ImageIcon} size="sm" />
         </CitationNewIcons>
