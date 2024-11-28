@@ -347,6 +347,12 @@ const processingPerContentType: ProcessingPerContentType = {
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
+  "dust-application/slack": {
+    conversation: storeRawText,
+    folder: storeRawText,
+    avatar: notSupportedError,
+    tool_output: notSupportedError,
+  },
 };
 
 const maybeApplyProcessing: ProcessingFunction = async (
