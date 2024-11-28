@@ -28,6 +28,7 @@ export interface InputBarContainerProps {
   isTabIncluded: boolean;
   setIncludeTab: (includeTab: boolean) => void;
   fileUploaderService: FileUploaderService;
+  isSubmitting: boolean;
 }
 
 export const InputBarContainer = ({

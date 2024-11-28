@@ -34,6 +34,7 @@ interface SplitButtonActionProps {
   tooltip?: string;
   disabled?: boolean;
   onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  isLoading?: boolean;
 }
 
 export interface SplitButtonProps
@@ -113,6 +114,7 @@ export const SplitButton = React.forwardRef<
               icon={ChevronDownIcon}
               disabled={disabled}
               className={cn("s-rounded-l-none s-border-l-0", className)}
+              isLoading={actionToUse.isLoading}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
