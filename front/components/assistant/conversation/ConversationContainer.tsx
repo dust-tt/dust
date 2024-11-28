@@ -1,4 +1,4 @@
-import { Page } from "@dust-tt/sparkle";
+import { Page, ScrollArea } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -287,84 +287,87 @@ export function ConversationContainer({
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
       title="Attach files to the conversation"
     >
-      <Transition
-        show={!!activeConversationId}
-        as={Fragment}
-        enter="transition-all duration-300 ease-out"
-        enterFrom="flex-none w-full h-0"
-        enterTo="flex flex-1 w-full"
-        leave="transition-all duration-0 ease-out"
-        leaveFrom="flex flex-1 w-full"
-        leaveTo="flex-none w-full h-0"
-      >
-        {activeConversationId ? (
-          <ConversationViewer
-            owner={owner}
-            user={user}
-            conversationId={activeConversationId}
-            // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
-            onStickyMentionsChange={onStickyMentionsChange}
-          />
-        ) : (
-          <div></div>
-        )}
-      </Transition>
-
-      <Transition
-        as={Fragment}
-        show={!activeConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0 min-h-[20vh]"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0 min-h-[20vh]"
-      >
-        <div
-          id="assistant-input-header"
-          className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 px-4 py-2"
+      {/* //FIXME: Scroll area breaks the width */}
+      <ScrollArea className="h-screen">
+        <Transition
+          show={!!activeConversationId}
+          as={Fragment}
+          enter="transition-all duration-300 ease-out"
+          enterFrom="flex-none w-full h-0"
+          enterTo="flex flex-1 w-full"
+          leave="transition-all duration-0 ease-out"
+          leaveFrom="flex flex-1 w-full"
+          leaveTo="flex-none w-full h-0"
         >
-          <Page.Header title={greeting} />
-          <Page.SectionHeader title="Start a conversation" />
-        </div>
-      </Transition>
+          {activeConversationId ? (
+            <ConversationViewer
+              owner={owner}
+              user={user}
+              conversationId={activeConversationId}
+              // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
+              onStickyMentionsChange={onStickyMentionsChange}
+            />
+          ) : (
+            <div></div>
+          )}
+        </Transition>
 
-      <FixedAssistantInputBar
-        owner={owner}
-        onSubmit={
-          activeConversationId ? handleSubmit : handleConversationCreation
-        }
-        stickyMentions={stickyMentions}
-        conversationId={activeConversationId}
-      />
+        <Transition
+          as={Fragment}
+          show={!activeConversationId}
+          enter="transition-opacity duration-100 ease-out"
+          enterFrom="opacity-0 min-h-[20vh]"
+          enterTo="opacity-100"
+          leave="transition-opacity duration-100 ease-out"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0 min-h-[20vh]"
+        >
+          <div
+            id="assistant-input-header"
+            className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 px-4 py-2"
+          >
+            <Page.Header title={greeting} />
+            <Page.SectionHeader title="Start a conversation" />
+          </div>
+        </Transition>
 
-      <Transition
-        show={!activeConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-        className={"flex w-full justify-center"}
-      >
-        <AssistantBrowserContainer
-          onAgentConfigurationClick={setInputbarMention}
-          setAssistantToMention={(assistant) => {
-            assistantToMention.current = assistant;
-          }}
+        <FixedAssistantInputBar
           owner={owner}
-          isBuilder={isBuilder}
+          onSubmit={
+            activeConversationId ? handleSubmit : handleConversationCreation
+          }
+          stickyMentions={stickyMentions}
+          conversationId={activeConversationId}
         />
-      </Transition>
 
-      <ReachedLimitPopup
-        isOpened={planLimitReached}
-        onClose={() => setPlanLimitReached(false)}
-        subscription={subscription}
-        owner={owner}
-        code="message_limit"
-      />
+        <Transition
+          show={!activeConversationId}
+          enter="transition-opacity duration-100 ease-out"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="transition-opacity duration-100 ease-out"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+          className={"flex w-full justify-center"}
+        >
+          <AssistantBrowserContainer
+            onAgentConfigurationClick={setInputbarMention}
+            setAssistantToMention={(assistant) => {
+              assistantToMention.current = assistant;
+            }}
+            owner={owner}
+            isBuilder={isBuilder}
+          />
+        </Transition>
+
+        <ReachedLimitPopup
+          isOpened={planLimitReached}
+          onClose={() => setPlanLimitReached(false)}
+          subscription={subscription}
+          owner={owner}
+          code="message_limit"
+        />
+      </ScrollArea>
     </DropzoneContainer>
   );
 }

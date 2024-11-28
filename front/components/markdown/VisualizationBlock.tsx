@@ -1,9 +1,10 @@
-import { MarkdownContentContext } from "@dust-tt/sparkle";
+import { Button, EyeIcon, MarkdownContentContext } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useContext, useMemo } from "react";
 import { visit } from "unist-util-visit";
 
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import type { CoEditionContextType } from "@app/components/assistant/conversation/co-edition/CoEditionContext";
+import { useCoEditionContext } from "@app/components/assistant/conversation/co-edition/CoEditionContext";
 
 const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
@@ -56,27 +57,40 @@ export function getVisualizationPlugin(
   conversationId: string,
   messageId: string
 ) {
-  const customRenderer = {
-    visualization: (code: string, complete: boolean, lineStart: number) => {
-      return (
-        <VisualizationActionIframe
-          owner={owner}
-          visualization={{
-            code,
-            complete,
-            identifier: `viz-${messageId}-${lineStart}`,
-          }}
-          key={`viz-${messageId}-${lineStart}`}
-          conversationId={conversationId}
-          agentConfigurationId={agentConfigurationId}
-        />
-      );
-    },
+  const makeCustomRenderer = (actions: CoEditionContextType["actions"]) => {
+    return {
+      visualization: (code: string, complete: boolean, lineStart: number) => {
+        const identifier = `viz-${messageId}-${lineStart}`;
+
+        return (
+          <Button
+            onClick={() => {
+              actions.show();
+              actions.addVisualization(identifier, {
+                agentConfigurationId,
+                code,
+                complete,
+              });
+            }}
+            icon={EyeIcon}
+          />
+        );
+      },
+    };
   };
 
   const VisualizationPlugin = ({ position }: { position: PositionType }) => {
+    const { actions } = useCoEditionContext();
+
+    const customRenderer = makeCustomRenderer(actions);
+
     return (
-      <VisualizationBlock position={position} customRenderer={customRenderer} />
+      <>
+        <VisualizationBlock
+          position={position}
+          customRenderer={customRenderer}
+        />
+      </>
     );
   };
 

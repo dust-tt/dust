@@ -258,9 +258,9 @@ export function VisualizationActionIframe({
   const canRetry = useContext(MarkdownContentContext)?.isLastMessage ?? false;
 
   return (
-    <div className="relative flex flex-col">
+    <div className="relative flex h-full w-full items-center">
       {showSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
+        <div className="absolute inset-x-0 flex justify-center">
           <Spinner size="xl" />
         </div>
       )}
@@ -295,7 +295,7 @@ export function VisualizationActionIframe({
                     height: `${contentHeight}px`,
                     minHeight: "96",
                   }}
-                  className={classNames("max-h-[600px] w-full")}
+                  className={classNames("h-screen w-full")}
                 >
                   <iframe
                     ref={vizIframeRef}

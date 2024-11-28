@@ -1,9 +1,23 @@
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { CoEditionContainer } from "@app/components/assistant/conversation/co-edition/CoEditionContainer";
+import {
+  CoEditionProvider,
+  useCoEditionContext,
+} from "@app/components/assistant/conversation/co-edition/CoEditionContext";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@app/components/assistant/conversation/co-edition/Resizable";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
@@ -132,21 +146,64 @@ export default function ConversationLayout({
           {conversationError ? (
             <ConversationErrorDisplay error={conversationError} />
           ) : (
-            <>
+            <div className="h-full w-full">
               <AssistantDetails
                 owner={owner}
                 assistantId={detailViewContent || null}
                 onClose={handleCloseModal}
               />
-              <FileDropProvider>
-                <GenerationContextProvider>
+
+              <CoEditionProvider>
+                <ConversationInnerLayout
+                  conversationId={conversationId}
+                  owner={owner}
+                >
                   {children}
-                </GenerationContextProvider>
-              </FileDropProvider>
-            </>
+                </ConversationInnerLayout>
+              </CoEditionProvider>
+            </div>
           )}
         </AppLayout>
       </InputBarProvider>
     </RootLayout>
+  );
+}
+
+interface ConversationInnerLayoutProps {
+  children: React.ReactNode;
+  conversationId: string | null;
+  owner: LightWorkspaceType;
+}
+
+function ConversationInnerLayout({
+  children,
+  conversationId,
+  owner,
+}: ConversationInnerLayoutProps) {
+  const { state } = useCoEditionContext();
+
+  return (
+    <ResizablePanelGroup
+      direction="horizontal"
+      className="w-full rounded-lg border"
+    >
+      <FileDropProvider>
+        <GenerationContextProvider>
+          <ResizablePanel
+            minSize={20}
+            defaultSize={50}
+            className="overflow-y-visible border-none"
+          >
+            {children}
+          </ResizablePanel>
+        </GenerationContextProvider>
+      </FileDropProvider>
+      <ResizableHandle />
+      {conversationId && state.isVisible && (
+        <ResizablePanel minSize={20} defaultSize={50}>
+          <CoEditionContainer owner={owner} conversationId={conversationId} />
+        </ResizablePanel>
+      )}
+    </ResizablePanelGroup>
   );
 }
