@@ -7,6 +7,16 @@ export type { ButtonProps } from "./Button";
 export type { MetaButtonProps } from "./Button";
 export { Button } from "./Button";
 export { MetaButton } from "./Button";
+export type {
+  CardContentProps,
+  CardFooterProps,
+  CardHeaderProps,
+  CardProps,
+  CardSizeType,
+  CardSubtitleProps,
+  CardTitleProps,
+} from './Card';
+export { Card, ComposableCard } from './Card';
 export { CardButton } from "./CardButton";
 export type { CheckboxProps } from "./Checkbox";
 export {
@@ -66,7 +76,6 @@ export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export * from "./markdown";
-export * from './MetricCard';
 export { Modal } from "./Modal";
 export {
   NavigationList,
