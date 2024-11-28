@@ -24,10 +24,8 @@ import React, {
 } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
-import type { DocumentUploadOrEditModalProps } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
-import type { TableUploadOrEditModalProps } from "@app/components/data_source/TableUploadOrEditModal";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { AddToSpaceDialog } from "@app/components/spaces/AddToSpaceDialog";
@@ -126,8 +124,7 @@ export const ContentActions = React.forwardRef<
 
     // This is a union of the props for the two modals
     // Makes sense because both expect the same schema
-    const modalProps: TableUploadOrEditModalProps &
-      DocumentUploadOrEditModalProps = {
+    const modalProps = {
       contentNode,
       dataSourceView,
       isOpen: isUploadOrEditAction(currentAction.action),
