@@ -19,6 +19,8 @@ import { apiError } from "@app/logger/withlogging";
  * @swagger
  * /api/v1/w/{wId}/files:
  *   post:
+ *     tags:
+ *       - Datasources
  *     summary: Create a file upload URL
  *     parameters:
  *       - name: wId

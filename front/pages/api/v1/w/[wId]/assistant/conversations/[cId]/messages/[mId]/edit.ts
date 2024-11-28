@@ -15,6 +15,8 @@ import { apiError } from "@app/logger/withlogging";
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit:
  *   post:
+ *     tags:
+ *       - Conversations
  *     summary: Edit an existing message in a conversation
  *     parameters:
  *       - name: wId
