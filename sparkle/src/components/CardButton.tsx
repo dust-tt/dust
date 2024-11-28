@@ -8,9 +8,13 @@ import {
 } from "@sparkle/context";
 import { cn } from "@sparkle/lib/utils";
 
-const CARD_BUTTON_VARIANTS = ["primary", "secondary", "tertiary"] as const;
+export const CARD_BUTTON_VARIANTS = [
+  "primary",
+  "secondary",
+  "tertiary",
+] as const;
 
-type CardButtonVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
+export type CardButtonVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
 
 const variantClasses: Record<CardButtonVariantType, string> = {
   primary: "s-bg-structure-50 s-border-border-dark/0",
