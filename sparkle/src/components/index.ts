@@ -94,6 +94,8 @@ export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { SplitButton } from "./SplitButton";
+export { Table } from "./StickyDataTable";
+export { StickyDataTable } from "./StickyDataTable";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { TextArea } from "./TextArea";
 export {

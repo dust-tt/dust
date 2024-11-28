@@ -94,6 +94,7 @@
   },
   "homepage": "https://github.com/dust/dust-tt#readme",
   "dependencies": {
+    "@dust-tt/sparkle": "^0.2.318-rc-1",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.19",
@@ -113,6 +114,7 @@
     "emoji-mart": "^5.5.2",
     "lottie-react": "^2.4.0",
     "lottie-web": "^5.12.2",
+    "lucide-react": "^0.460.0",
     "mermaid": "^10.9.3",
     "react-confetti": "^6.1.0",
     "react-dropdown-menu": "^0.0.2",
