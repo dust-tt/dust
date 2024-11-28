@@ -2851,48 +2851,49 @@ impl Store for PostgresStore {
         &self,
         project: &Project,
         data_source_id: &str,
-        folder: &Folder,
-    ) -> Result<()> {
-        let project_id = project.project_id();
+        folder_id: &str,
+        created: u64,
+        timestamp: u64,
+        title: &str,
+        mime_type: &str,
+        parents: &Vec<String>,
+    ) -> Result<Folder> {
         let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        let stmt = c
-            .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-            )
-            .await?;
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
+        let row_id: i64 = match &self
+            .get_data_source_node(&project, &data_source_id, &folder_id)
+            .await?
+        {
+            None => {
+                // Create new folder
+                let stmt = c
+                    .prepare("INSERT INTO data_sources_folders (id) VALUES (DEFAULT) RETURNING id")
+                    .await?;
+
+                c.query_one(&stmt, &[]).await?.get(0)
+            }
+            Some((_, row_id)) => *row_id,
         };
 
-        let stmt = c
-            .prepare(
-                "INSERT INTO data_sources_folders \
-               (id, data_source, created, folder_id) \
-               VALUES (DEFAULT, $1, $2, $3) \
-               ON CONFLICT (data_source, folder_id) DO UPDATE \
-               SET created = EXCLUDED.created \
-               RETURNING id",
+        let node = self
+            .upsert_data_source_node(
+                &project,
+                &data_source_id,
+                &folder_id,
+                row_id,
+                NodeType::Folder,
+                created,
+                timestamp,
+                title,
+                mime_type,
+                parents,
             )
             .await?;
 
-        let _ = c
-            .query_one(
-                &stmt,
-                &[
-                    &data_source_row_id,
-                    &(folder.created as i64),
-                    &folder.folder_id,
-                ],
-            )
-            .await?;
-        Ok(())
+        Ok(Folder { node })
     }
 
     async fn load_data_source_folder(
@@ -2901,9 +2902,78 @@ impl Store for PostgresStore {
         data_source_id: &str,
         folder_id: &str,
     ) -> Result<Option<Folder>> {
-        let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let folder_id = folder_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        match self
+            .get_data_source_node(&project, &data_source_id, &folder_id)
+            .await?
+        {
+            None => Ok(None),
+            Some((node, row_id)) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT id \
+                     FROM data_sources_folders \
+                     WHERE id = $1 LIMIT 1",
+                    )
+                    .await?;
+                let row = c.query(&stmt, &[&row_id]).await?;
+
+                match row.len() {
+                    0 => Ok(None),
+                    1 => Ok(Some(Folder { node })),
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+
+    async fn delete_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<()> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        match self
+            .get_data_source_node(&project, &data_source_id, &folder_id)
+            .await?
+        {
+            None => (),
+            Some((_, row_id)) => {
+                self.delete_data_source_node(&project, &data_source_id, &folder_id)
+                    .await?;
+                let stmt = c
+                    .prepare("DELETE FROM data_sources_folders WHERE id = $1")
+                    .await?;
+                let _ = c.query(&stmt, &[&row_id]).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn upsert_data_source_node(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        node_id: &str,
+        row_id: i64,
+        node_type: NodeType,
+        created: u64,
+        timestamp: u64,
+        title: &str,
+        mime_type: &str,
+        parents: &Vec<String>,
+    ) -> Result<Node> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -2921,115 +2991,10 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let stmt = c
-            .prepare(
-                "SELECT id, created \
-                 FROM data_sources_folders \
-                 WHERE data_source = $1 AND folder_id = $2 LIMIT 1",
-            )
-            .await?;
-        let row = c.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
-
-        match row.len() {
-            0 => Ok(None),
-            1 => {
-                let created: i64 = row[0].get::<_, i64>(1);
-
-                Ok(Some(Folder {
-                    data_source_id,
-                    folder_id,
-                    created: created as u64,
-                }))
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    async fn delete_data_source_folder(&self, data_source_id: &str, folder_id: &str) -> Result<()> {
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 2",
-                &[&data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let stmt = c
-            .prepare("DELETE FROM data_sources_folders WHERE data_source = $1 AND folder_id = $2")
-            .await?;
-        let _ = c.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
-        Ok(())
-    }
-
-    async fn upsert_data_source_node(&self, data_source_id: &str, node: &Node) -> Result<()> {
-        let data_source_id = data_source_id.to_string();
-
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 1",
-                &[&data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let (document_row_id, table_row_id, folder_row_id) = match node.node_type {
-            NodeType::Document => {
-                let r = c.query(
-                    "SELECT id FROM data_sources_documents WHERE data_source = $1 AND document_id = $2 LIMIT 1",
-                    &[&data_source_row_id, &node.node_id],
-                ).await?;
-
-                let document_row_id: i64 = match r.len() {
-                    0 => Err(anyhow!("Unknown Document: {}", node.node_id))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                };
-                (Some(document_row_id), None, None)
-            }
-            NodeType::Table => {
-                let r = c
-                    .query(
-                        "SELECT id FROM tables WHERE data_source = $1 AND table_id = $2 LIMIT 1",
-                        &[&data_source_row_id, &node.node_id],
-                    )
-                    .await?;
-
-                let table_row_id: i64 = match r.len() {
-                    0 => Err(anyhow!("Unknown Table: {}", node.node_id))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                };
-                (None, Some(table_row_id), None)
-            }
-            NodeType::Folder => {
-                let r = c.query(
-                    "SELECT id FROM data_sources_folders WHERE data_source = $1 AND folder_id = $2 LIMIT 1",
-                    &[&data_source_row_id, &node.node_id],
-                ).await?;
-
-                let folder_row_id: i64 = match r.len() {
-                    0 => Err(anyhow!("Unknown Folder: {}", node.node_id))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                };
-                (None, None, Some(folder_row_id))
-            }
+        let (document_row_id, table_row_id, folder_row_id) = match node_type {
+            NodeType::Document => (Some(row_id), None, None),
+            NodeType::Table => (None, Some(row_id), None),
+            NodeType::Folder => (None, None, Some(row_id)),
         };
 
         let stmt = c
@@ -3049,35 +3014,47 @@ impl Store for PostgresStore {
                 &stmt,
                 &[
                     &data_source_row_id,
-                    &(node.created as i64),
-                    &node.node_id,
-                    &(node.timestamp as i64),
-                    &node.title,
-                    &node.mime_type,
-                    &node.parents,
+                    &(created as i64),
+                    &node_id,
+                    &(timestamp as i64),
+                    &title,
+                    &mime_type,
+                    &parents,
                     &document_row_id,
                     &table_row_id,
                     &folder_row_id,
                 ],
             )
             .await?;
-        Ok(())
+        Ok(Node {
+            node_id: node_id.to_string(),
+            created,
+            timestamp,
+            node_type,
+            title: title.to_string(),
+            mime_type: mime_type.to_string(),
+            parents: parents.clone(),
+        })
     }
 
     async fn get_data_source_node(
         &self,
+        project: &Project,
         data_source_id: &str,
         node_id: &str,
-    ) -> Result<Option<Node>> {
+    ) -> Result<Option<(Node, i64)>> {
+        let project_id = project.project_id();
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 1",
-                &[&data_source_id],
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
             )
             .await?;
+
+        println!("r: {:?}", r);
 
         let data_source_row_id: i64 = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
@@ -3087,12 +3064,14 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, timestamp, title, mime_type, parents, document, \"table\", folder, node_id \
+                "SELECT created, timestamp, title, mime_type, parents, node_id, document, \"table\", folder \
                  FROM data_sources_nodes \
                  WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
             .await?;
         let row = c.query(&stmt, &[&data_source_row_id, &node_id]).await?;
+
+        println!("row: {:?}", row);
 
         match row.len() {
             0 => Ok(None),
@@ -3103,39 +3082,46 @@ impl Store for PostgresStore {
                 let mime_type: String = row[0].get::<_, String>(3);
                 let parents: Vec<String> = row[0].get::<_, Vec<String>>(4);
                 let node_id: String = row[0].get::<_, String>(5);
-                let node_type: NodeType = match (
-                    row[0].get::<_, Option<i64>>(6),
-                    row[0].get::<_, Option<i64>>(7),
-                    row[0].get::<_, Option<i64>>(8),
-                ) {
-                    (Some(_), None, None) => NodeType::Document,
-                    (None, Some(_), None) => NodeType::Table,
-                    (None, None, Some(_)) => NodeType::Folder,
+                let document_row_id = row[0].get::<_, Option<i64>>(6);
+                let table_row_id = row[0].get::<_, Option<i64>>(7);
+                let folder_row_id = row[0].get::<_, Option<i64>>(8);
+                let (node_type, row_id) = match (document_row_id, table_row_id, folder_row_id) {
+                    (Some(id), None, None) => (NodeType::Document, id),
+                    (None, Some(id), None) => (NodeType::Table, id),
+                    (None, None, Some(id)) => (NodeType::Folder, id),
                     _ => unreachable!(),
                 };
-
-                Ok(Some(Node {
-                    node_id,
-                    created: created as u64,
-                    timestamp: timestamp as u64,
-                    node_type,
-                    title,
-                    mime_type,
-                    parents,
-                }))
+                Ok(Some((
+                    Node {
+                        node_id,
+                        created: created as u64,
+                        timestamp: timestamp as u64,
+                        node_type,
+                        title,
+                        mime_type,
+                        parents,
+                    },
+                    row_id,
+                )))
             }
             _ => unreachable!(),
         }
     }
 
-    async fn delete_data_source_node(&self, data_source_id: &str, node_id: &str) -> Result<()> {
+    async fn delete_data_source_node(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        node_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 2",
-                &[&data_source_id],
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
             )
             .await?;
 

@@ -8,9 +8,11 @@ use tokio_postgres::NoTls;
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
-    data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
-    data_sources::folder::Folder,
-    data_sources::node::Node,
+    data_sources::{
+        data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+        folder::Folder,
+        node::{Node, NodeType},
+    },
     databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
@@ -267,23 +269,52 @@ pub trait Store {
         &self,
         project: &Project,
         data_source_id: &str,
-        folder: &Folder,
-    ) -> Result<()>;
+        folder_id: &str,
+        created: u64,
+        timestamp: u64,
+        title: &str,
+        mime_type: &str,
+        parents: &Vec<String>,
+    ) -> Result<Folder>;
     async fn load_data_source_folder(
         &self,
         project: &Project,
         data_source_id: &str,
         folder_id: &str,
     ) -> Result<Option<Folder>>;
-    async fn delete_data_source_folder(&self, data_source_id: &str, folder_id: &str) -> Result<()>;
-    // Data Sources Nodes
-    async fn upsert_data_source_node(&self, data_source_id: &str, node: &Node) -> Result<()>;
-    async fn get_data_source_node(
+    async fn delete_data_source_folder(
         &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<()>;
+    // Data Sources Nodes
+    async fn upsert_data_source_node(
+        &self,
+        project: &Project,
         data_source_id: &str,
         node_id: &str,
-    ) -> Result<Option<Node>>;
-    async fn delete_data_source_node(&self, data_source_id: &str, node_id: &str) -> Result<()>;
+        row_id: i64,
+        node_type: NodeType,
+        created: u64,
+        timestamp: u64,
+        title: &str,
+        mime_type: &str,
+        parents: &Vec<String>,
+    ) -> Result<Node>;
+    async fn get_data_source_node(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        node_id: &str,
+    ) -> Result<Option<(Node, i64)>>;
+    async fn delete_data_source_node(
+        &self,
+        project: &Project,
+
+        data_source_id: &str,
+        node_id: &str,
+    ) -> Result<()>;
 
     // LLM Cache
     async fn llm_cache_get(
