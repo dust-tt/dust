@@ -605,19 +605,23 @@ impl DataSource {
         }
 
         if parents.is_empty() {
-            warn!(
+            let msg = "Upserting a document without any parent";
+            error!(
                 document_id = document_id,
                 timestamp = ?timestamp,
                 parents = ?parents,
-                "Upserting a document without any parent"
+                msg
             );
+            return Err(anyhow!(msg));
         } else if parents[0] != document_id {
-            warn!(
+            let msg = "Upserting a document that is not self-referenced as its parent";
+            error!(
                 document_id = document_id,
                 timestamp = ?timestamp,
                 parents = ?parents,
-                "Upserting a document that is not self-referenced as its parent"
+                msg
             );
+            return Err(anyhow!(msg));
         }
 
         let store = store.clone();
