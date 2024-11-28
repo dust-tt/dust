@@ -25,27 +25,19 @@ const turndownService = new TurndownService();
  */
 export async function deleteArticle(
   connectorId: ModelId,
-  article: ZendeskFetchedArticle,
+  articleId: number,
   dataSourceConfig: DataSourceConfig,
   loggerArgs: Record<string, string | number | null>
 ): Promise<void> {
   logger.info(
-    {
-      ...loggerArgs,
-      connectorId,
-      articleId: article.id,
-      name: article.name,
-    },
+    { ...loggerArgs, connectorId, articleId },
     "[Zendesk] Deleting article."
   );
   await deleteFromDataSource(
     dataSourceConfig,
-    getArticleInternalId({ connectorId, articleId: article.id })
+    getArticleInternalId({ connectorId, articleId })
   );
-  await ZendeskArticleResource.deleteByArticleId({
-    connectorId,
-    articleId: article.id,
-  });
+  await ZendeskArticleResource.deleteByArticleId({ connectorId, articleId });
 }
 
 /**
