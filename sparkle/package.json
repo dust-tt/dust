@@ -94,6 +94,7 @@
   },
   "homepage": "https://github.com/dust/dust-tt#readme",
   "dependencies": {
+    "@dust-tt/sparkle": "^0.2.326-rc-3",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.19",

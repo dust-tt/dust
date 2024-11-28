@@ -66,7 +66,7 @@ export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export * from "./markdown";
-export { MetricCard } from './MetricCard';
+export * from './MetricCard';
 export { Modal } from "./Modal";
 export {
   NavigationList,
