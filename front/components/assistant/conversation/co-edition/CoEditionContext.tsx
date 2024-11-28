@@ -39,10 +39,12 @@ export interface CoEditionContextType {
         agentConfigurationId,
         code,
         complete,
+        version,
       }: {
         agentConfigurationId: string;
         code: string;
         complete: boolean;
+        version: string;
       }
     ) => void;
     clear: () => void;

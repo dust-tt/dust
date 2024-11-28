@@ -30,6 +30,7 @@ import type {
   RetrievalActionType,
   UserType,
   WebsearchActionType,
+  WithRank,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -85,7 +86,7 @@ interface AgentMessageProps {
   conversationId: string;
   isInModal: boolean;
   isLastMessage: boolean;
-  message: AgentMessageType;
+  message: WithRank<AgentMessageType>;
   messageFeedback: ConversationMessageFeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
@@ -458,7 +459,10 @@ export function AgentMessage({
         conversationId,
         message.sId
       ),
-      doc: getInteractiveDocumentPlugin(agentConfiguration.sId, message.sId),
+      doc: getInteractiveDocumentPlugin(
+        agentConfiguration.sId,
+        `${message.rank}.${message.version}`
+      ),
       sup: CiteBlock,
       mention: MentionBlock,
     }),

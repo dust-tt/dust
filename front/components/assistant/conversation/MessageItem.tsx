@@ -7,6 +7,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   MessageWithContentFragmentsType,
   UserType,
+  WithRank,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isSupportedImageContentType } from "@dust-tt/types";
@@ -23,7 +24,7 @@ interface MessageItemProps {
   messageFeedback: AgentMessageFeedbackType | undefined;
   isInModal: boolean;
   isLastMessage: boolean;
-  message: MessageWithContentFragmentsType;
+  message: WithRank<MessageWithContentFragmentsType>;
   owner: WorkspaceType;
   user: UserType;
 }

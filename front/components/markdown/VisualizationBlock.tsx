@@ -134,7 +134,10 @@ export function getVisualizationPlugin(
   return VisualizationPlugin;
 }
 
-export function getInteractiveDocumentPlugin(agentConfigurationId: string) {
+export function getInteractiveDocumentPlugin(
+  agentConfigurationId: string,
+  version: string
+) {
   const makeCustomRenderer = (actions: CoEditionContextType["actions"]) => {
     return {
       doc: (
@@ -152,6 +155,7 @@ export function getInteractiveDocumentPlugin(agentConfigurationId: string) {
                 agentConfigurationId,
                 code,
                 complete,
+                version,
               });
             }}
             icon={EyeIcon}
