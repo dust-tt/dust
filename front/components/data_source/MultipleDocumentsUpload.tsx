@@ -73,10 +73,7 @@ export const MultipleDocumentsUpload = ({
   });
 
   // Mutation for creating documents, throw error on partial failure
-  const createDocumentMutation = useCreateDataSourceViewDocument(
-    owner,
-    dataSourceView
-  );
+  const doCreate = useCreateDataSourceViewDocument(owner, dataSourceView);
 
   const [isBulkFilesUploading, setIsBulkFilesUploading] = useState<null | {
     total: number;
@@ -142,7 +139,7 @@ export const MultipleDocumentsUpload = ({
         }
 
         // Create the document
-        const documentRequestBody = {
+        const body = {
           name: blob.filename,
           timestamp: null,
           parents: null,
@@ -158,23 +155,8 @@ export const MultipleDocumentsUpload = ({
           upsert_context: null,
           async: false,
         };
-        await createDocumentMutation.trigger(documentRequestBody, {
-          onError: (error: Error) => {
-            sendNotification({
-              type: "error",
-              title: `Error uploading document ${blob.filename}`,
-              description: error.message,
-            });
-            console.error(error);
-          },
-        });
+        await doCreate(body);
       }
-
-      sendNotification({
-        type: "success",
-        title: "Files uploaded",
-        description: "Done uploading your files.",
-      });
 
       // Reset the upload state
       setIsBulkFilesUploading(null);
@@ -182,7 +164,7 @@ export const MultipleDocumentsUpload = ({
       close(true);
     },
     [
-      createDocumentMutation,
+      doCreate,
       fileUploaderService,
       getFileProcessedContent,
       close,

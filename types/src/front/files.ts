@@ -65,7 +65,6 @@ export function ensureFileSize(
 }
 
 // NOTE: if we add more content types, we need to update the public api package.
-
 const supportedTabular = {
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
@@ -75,6 +74,9 @@ const supportedTabular = {
 
 // Supported content types for plain text.
 const supportedPlainText = {
+  // We support all tabular content types as plain text.
+  ...supportedTabular,
+
   "application/msword": [".doc", ".docx"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
     ".doc",
@@ -83,9 +85,6 @@ const supportedPlainText = {
   "application/pdf": [".pdf"],
   "text/markdown": [".md", ".markdown"],
   "text/plain": [".txt"],
-
-  // We support all tabular content types as plain text.
-  ...supportedTabular,
 } as const;
 
 // Supported content types for images.

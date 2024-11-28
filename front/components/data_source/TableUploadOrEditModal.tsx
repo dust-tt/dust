@@ -111,16 +111,12 @@ export const TableUploadOrEditModal = ({
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   // Mutations for upserting the table
-  const patchTableMutation = useUpdateDataSourceViewTable(
+  const doUpdate = useUpdateDataSourceViewTable(
     owner,
     dataSourceView,
     initialId ?? ""
   );
-
-  const createDocumentMutation = useCreateDataSourceViewTable(
-    owner,
-    dataSourceView
-  );
+  const doCreate = useCreateDataSourceViewTable(owner, dataSourceView);
 
   const handleTableUpload = useCallback(
     async (table: Table) => {
@@ -149,16 +145,15 @@ export const TableUploadOrEditModal = ({
           async: false,
           useAppForHeaderDetection,
         };
+        let upsertRes = null;
+        if (initialId) {
+          upsertRes = await doUpdate(body);
+        } else {
+          upsertRes = await doCreate(body);
+        }
 
-        // Side effects of upserting the data source document
-        const onUpsertSuccess = () => {
-          sendNotification({
-            type: "success",
-            title: `Table successfully ${initialId ? "updated" : "added"}`,
-            description: `Table ${table.name} was successfully ${
-              initialId ? "updated" : "added"
-            }.`,
-          });
+        // Upsert successful, close and reset the modal
+        if (upsertRes) {
           onClose(true);
           setTableState({
             name: "",
@@ -170,35 +165,11 @@ export const TableUploadOrEditModal = ({
             description: false,
             name: false,
           });
-        };
-        const onUpsertError = (error: unknown) => {
-          sendNotification({
-            type: "error",
-            title: "Error upserting table",
-            description: error instanceof Error ? error.message : String(error),
-          });
-          console.error(error);
-        };
-        const onUpsertSettled = () => {
-          setFileId(null);
-          fileUploaderService.resetUpload();
-        };
-        const upsertHooks = {
-          onSuccess: () => {
-            onUpsertSuccess();
-            onUpsertSettled();
-          },
-          onError: (err: Error) => {
-            onUpsertError(err);
-            onUpsertSettled();
-          },
-        };
-
-        if (initialId) {
-          await patchTableMutation.trigger(body, { ...upsertHooks });
-        } else {
-          await createDocumentMutation.trigger(body, { ...upsertHooks });
         }
+
+        // No matter the result, reset the file uploader
+        setFileId(null);
+        fileUploaderService.resetUpload();
       } catch (error) {
         console.error(error);
       } finally {
@@ -209,8 +180,8 @@ export const TableUploadOrEditModal = ({
       initialId,
       onClose,
       sendNotification,
-      createDocumentMutation,
-      patchTableMutation,
+      doCreate,
+      doUpdate,
       fileUploaderService,
       useAppForHeaderDetection,
     ]

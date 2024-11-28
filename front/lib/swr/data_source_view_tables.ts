@@ -1,61 +1,22 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import type {
   PatchDataSourceTableRequestBody,
   PostDataSourceTableRequestBody,
 } from "@dust-tt/types";
-import assert from "assert";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
-import type { SWRMutationConfiguration } from "swr/mutation";
-import useSWRMutation from "swr/mutation";
 
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import { decorateWithInvalidation, mutationFn } from "@app/lib/swr/utils";
+import {
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
 import type { PostTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
-
-// Centralized way to get urls -> reduces key-related inconcistencies
-type CrudUseCases = "CREATE" | "READ" | "UPDATE" | "READ_LIST";
-function getUrlHasValidParameters(
-  useCase: CrudUseCases,
-  tableId?: string
-): tableId is string {
-  // Only require tableId for GET and PATCH methods
-  return useCase === "CREATE" || !!tableId;
-}
-const getUrl = ({
-  useCase,
-  owner,
-  dataSourceView,
-  tableId,
-}: {
-  useCase: CrudUseCases;
-  owner: LightWorkspaceType;
-  dataSourceView: DataSourceViewType;
-  tableId?: string;
-}) => {
-  assert(
-    getUrlHasValidParameters(useCase, tableId),
-    "Cannot get or update a table without a tableId"
-  );
-
-  const baseUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}`;
-  const baseDataSourceUrl = `${baseUrl}/data_sources/${dataSourceView.dataSource.sId}`;
-  const baseDataSourceViewUrl = `${baseUrl}/data_source_views/${dataSourceView.sId}`;
-  switch (useCase) {
-    case "CREATE":
-      return `${baseDataSourceUrl}/tables`;
-    case "UPDATE":
-      return `${baseDataSourceUrl}/tables/${encodeURIComponent(tableId)}`;
-    case "READ":
-      return `${baseDataSourceViewUrl}/tables/${encodeURIComponent(tableId)}`;
-    case "READ_LIST":
-      return `${baseDataSourceViewUrl}/tables`;
-  }
-};
 
 export function useDataSourceViewTable({
   dataSourceView,
@@ -72,12 +33,7 @@ export function useDataSourceViewTable({
     fetcher;
   const url =
     dataSourceView && tableId
-      ? getUrl({
-          useCase: "READ",
-          owner,
-          dataSourceView,
-          tableId,
-        })
+      ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables/${encodeURIComponent(tableId)}`
       : null;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -107,11 +63,7 @@ export function useDataSourceViewTables({
   const disabled = !dataSourceView;
 
   const url = dataSourceView
-    ? getUrl({
-        useCase: "READ_LIST",
-        owner,
-        dataSourceView,
-      })
+    ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables`
     : null;
   const { data, error, mutate } = useSWRWithDefaults(
     disabled ? null : url,
@@ -128,72 +80,102 @@ export function useDataSourceViewTables({
 export function useUpdateDataSourceViewTable(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
-  tableName: string,
-  options?: SWRMutationConfiguration<PatchTableResponseBody, Error, string>
+  tableId: string
 ) {
-  // Used only for cache invalidation
-  const { mutate: mutateContentNodes } = useDataSourceViewContentNodes({
-    owner,
-    dataSourceView,
-    disabled: true,
-  });
+  const { mutateRegardlessOfQueryParams: mutateContentNodes } =
+    useDataSourceViewContentNodes({
+      owner,
+      dataSourceView,
+      disabled: true, // Needed just to mutate
+    });
 
-  // Used only for cache invalidation
   const { mutateTable } = useDataSourceViewTable({
     owner,
     dataSourceView,
-    tableId: tableName,
-    disabled: true,
+    tableId,
+    disabled: true, // Needed just to mutate
   });
 
-  // Decorate options's onSuccess with cache invalidation
-  const invalidateCacheEntries = async () => {
-    await Promise.all([mutateContentNodes, mutateTable]);
-  };
-  const decoratedOptions = decorateWithInvalidation(
-    options,
-    invalidateCacheEntries
-  );
+  const sendNotification = useSendNotification();
 
-  const patchUrl = tableName
-    ? getUrl({
-        useCase: "UPDATE",
-        owner,
-        dataSourceView,
-        tableId: tableName,
-      })
-    : null;
-  const sendPatchRequest = mutationFn<PatchDataSourceTableRequestBody>("PATCH");
-  return useSWRMutation(patchUrl, sendPatchRequest, decoratedOptions);
+  const doUpdate = async (body: PatchDataSourceTableRequestBody) => {
+    const tableUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables/${encodeURIComponent(tableId)}`;
+    const res = await fetch(tableUrl, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error creating table",
+        description: `Error: ${errorData.message}`,
+      });
+      console.error("Error updating table", errorData);
+      return null;
+    } else {
+      void mutateContentNodes();
+      void mutateTable();
+
+      sendNotification({
+        type: "success",
+        title: "Table updated",
+        description: "Table has been updated",
+      });
+
+      const response: PatchTableResponseBody = await res.json();
+      return response.table;
+    }
+  };
+
+  return doUpdate;
 }
 
 export function useCreateDataSourceViewTable(
   owner: LightWorkspaceType,
-  dataSourceView: DataSourceViewType,
-  options?: SWRMutationConfiguration<PostTableResponseBody, Error, string>
+  dataSourceView: DataSourceViewType
 ) {
-  // Used only for cache invalidation
-  const { mutate: mutateContentNodes } = useDataSourceViewContentNodes({
-    owner,
-    dataSourceView,
-    disabled: true,
-  });
+  const { mutateRegardlessOfQueryParams: mutateContentNodes } =
+    useDataSourceViewContentNodes({
+      owner,
+      dataSourceView,
+      disabled: true, // Needed just to mutate
+    });
+  const sendNotification = useSendNotification();
 
-  // Decorate options's onSuccess with cache invalidation
-  const invalidateCacheEntries = async () => {
-    await mutateContentNodes();
+  const doCreate = async (body: PostDataSourceTableRequestBody) => {
+    const tableUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
+    const res = await fetch(tableUrl, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error creating table",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    } else {
+      void mutateContentNodes();
+
+      sendNotification({
+        type: "success",
+        title: "Table created",
+        description: "Table has been created",
+      });
+
+      const response: PostTableResponseBody = await res.json();
+      return response.table;
+    }
   };
-  const decoratedOptions = decorateWithInvalidation(
-    options,
-    invalidateCacheEntries
-  );
 
-  // Note that this url is not used for fetch -> There is no need to invalidate it on practice.
-  const createUrl = getUrl({
-    useCase: "CREATE",
-    owner,
-    dataSourceView,
-  });
-  const sendPostRequest = mutationFn<PostDataSourceTableRequestBody>("POST");
-  return useSWRMutation(createUrl, sendPostRequest, decoratedOptions);
+  return doCreate;
 }

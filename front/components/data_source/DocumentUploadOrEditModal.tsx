@@ -121,72 +121,18 @@ export const DocumentUploadOrEditModal = ({
     },
     shouldRetryOnError: false,
   });
+  const [isUpsertingDocument, setIsUpsertingDocument] = useState(false);
 
-  // Side effects of upserting the data source document
-  const onUpsertSuccess = useCallback(() => {
-    sendNotification({
-      type: "success",
-      title: `Document successfully ${initialId ? "updated" : "added"}`,
-      description: `Document ${documentState.name} was successfully ${
-        initialId ? "updated" : "added"
-      }.`,
-    });
-    onClose(true);
-    setDocumentState({
-      name: "",
-      text: "",
-      tags: [],
-      sourceUrl: "",
-    });
-    setEditionStatus({
-      content: false,
-      name: false,
-    });
-  }, [documentState, initialId, onClose, sendNotification]);
-
-  const onUpsertError = useCallback(
-    (error: unknown) => {
-      sendNotification({
-        type: "error",
-        title: "Error upserting document",
-        description: error instanceof Error ? error.message : String(error),
-      });
-      console.error(error);
-    },
-    [sendNotification]
-  );
-
-  const onUpsertSettled = useCallback(() => {
-    setFileId(null);
-    fileUploaderService.resetUpload();
-  }, [fileUploaderService]);
-
-  // Upsert documents to the data source
-  const upsertHooks = {
-    onSuccess: () => {
-      onUpsertSuccess();
-      onUpsertSettled();
-    },
-    onError: (err: unknown) => {
-      onUpsertError(err);
-      onUpsertSettled();
-    },
-  };
-  const patchDocumentMutation = useUpdateDataSourceViewDocument(
+  const doUpdate = useUpdateDataSourceViewDocument(
     owner,
     dataSourceView,
-    initialId ?? "",
-    { ...upsertHooks }
+    initialId ?? ""
   );
-
-  const createDocumentMutation = useCreateDataSourceViewDocument(
-    owner,
-    dataSourceView,
-    { ...upsertHooks }
-  );
+  const doCreate = useCreateDataSourceViewDocument(owner, dataSourceView);
 
   const handleDocumentUpload = useCallback(
     async (document: Document) => {
+      setIsUpsertingDocument(true);
       const body = {
         name: initialId ?? document.name,
         timestamp: null,
@@ -201,13 +147,35 @@ export const DocumentUploadOrEditModal = ({
       };
 
       // These mutations do the fetch and mutate, all at once
+      let upsertRes = null;
       if (initialId) {
-        await patchDocumentMutation.trigger(body);
+        upsertRes = await doUpdate(body);
       } else {
-        await createDocumentMutation.trigger(body);
+        upsertRes = await doCreate(body);
       }
+
+      // Upsert successful, close and reset the modal
+      if (upsertRes) {
+        onClose(true);
+        setDocumentState({
+          name: "",
+          text: "",
+          tags: [],
+          sourceUrl: "",
+        });
+        setEditionStatus({
+          content: false,
+          name: false,
+        });
+      }
+
+      // No matter the result, reset the file uploader
+      setFileId(null);
+      fileUploaderService.resetUpload();
+      setIsUpsertingDocument(false);
     },
-    [createDocumentMutation, patchDocumentMutation, initialId]
+
+    [doUpdate, doCreate, initialId, fileUploaderService, onClose]
   );
 
   const handleUpload = useCallback(async () => {
@@ -308,9 +276,7 @@ export const DocumentUploadOrEditModal = ({
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} document`}
       onSave={handleUpload}
-      isSaving={
-        patchDocumentMutation.isMutating || createDocumentMutation.isMutating
-      }
+      isSaving={isUpsertingDocument}
     >
       {isDocumentLoading ? (
         <div className="flex justify-center py-4">
