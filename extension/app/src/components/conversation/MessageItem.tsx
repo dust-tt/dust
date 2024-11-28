@@ -32,8 +32,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    const messageEmoji = undefined;
-
     switch (type) {
       case "user_message":
         const citations = message.contenFragments
@@ -81,7 +79,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               conversationId={conversationId}
               isLastMessage={isLastMessage}
               message={message}
-              messageEmoji={messageEmoji}
               owner={owner}
               size="compact"
             />

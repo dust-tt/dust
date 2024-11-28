@@ -42,6 +42,7 @@ export const InputBarContainer = ({
   isTabIncluded,
   setIncludeTab,
   fileUploaderService,
+  isSubmitting,
 }: InputBarContainerProps) => {
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
 
@@ -76,18 +77,27 @@ export const InputBarContainer = ({
 
   const onClick = async () => {
     const jsonContent = editorService.getTextAndMentions();
-    onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {
-      editorService.clearEditor();
-    });
+    onEnterKeyDown(
+      editorService.isEmpty(),
+      jsonContent,
+      () => {
+        editorService.clearEditor();
+      },
+      (loading) => {
+        editorService.setLoading(loading);
+      }
+    );
   };
 
   const SendAction = {
     label: "Send",
     onClick,
+    isLoading: isSubmitting,
   };
   const SendWithContentAction = {
     label: "Add page text + Send",
     onClick,
+    isLoading: isSubmitting,
   };
 
   return (
@@ -108,6 +118,7 @@ export const InputBarContainer = ({
           <AttachFile
             fileUploaderService={fileUploaderService}
             editorService={editorService}
+            isLoading={isSubmitting}
           />
           <AssistantPicker
             owner={owner}
@@ -116,12 +127,16 @@ export const InputBarContainer = ({
               editorService.insertMention({ id: c.sId, label: c.name });
             }}
             assistants={allAssistants}
+            isLoading={isSubmitting}
           />
         </div>
       </div>
 
       <div className="flex items-center justify-end space-x-2 mt-2">
-        <AttachFragment fileUploaderService={fileUploaderService} />
+        <AttachFragment
+          fileUploaderService={fileUploaderService}
+          isLoading={isSubmitting}
+        />
         <SplitButton
           size="sm"
           actions={[SendAction, SendWithContentAction]}
@@ -130,7 +145,7 @@ export const InputBarContainer = ({
           onActionChange={(action) => {
             setIncludeTab(action === SendWithContentAction);
           }}
-          disabled={editorService.isEmpty()}
+          disabled={isSubmitting || editorService.isEmpty()}
         />
       </div>
     </div>

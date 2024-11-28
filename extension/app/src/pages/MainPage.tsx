@@ -62,13 +62,13 @@ export const MainPage = ({
         }
         rightActions={
           <div className="flex flex-row items-right">
-            <ConversationsListButton size="md" />
+            <ConversationsListButton size="sm" />
 
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <div className="px-2">
+                <div>
                   <Avatar
-                    size="md"
+                    size="sm"
                     visual={
                       user.image
                         ? user.image
