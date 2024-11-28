@@ -193,7 +193,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize access to Zendesk for indexing tickets from your support center and articles from your help center.",
     limitations:
       "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
-    guideLink: "https://docs.dust.tt/docs/zendesk",
+    guideLink: "https://docs.dust.tt/docs/zendesk-connection",
     logoComponent: ZendeskLogo,
     isNested: true,
     isSearchEnabled: false,
