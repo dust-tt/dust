@@ -10,10 +10,6 @@ name = "core-api"
 path = "bin/core_api.rs"
 
 [[bin]]
-name = "dust-api"
-path = "bin/core_api.rs"
-
-[[bin]]
 name = "oauth"
 path = "bin/oauth.rs"
 
