@@ -7,6 +7,7 @@ export type { ButtonProps } from "./Button";
 export type { MetaButtonProps } from "./Button";
 export { Button } from "./Button";
 export { MetaButton } from "./Button";
+export { Card, ComposableCard } from "./Card";
 export { CardButton } from "./CardButton";
 export type { CheckboxProps } from "./Checkbox";
 export {
