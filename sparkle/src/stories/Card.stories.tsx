@@ -99,23 +99,12 @@ export const Composable: Story = {
         </div>
       </ComposableCard.Content>
       <ComposableCard.Footer>
-        <div className="s-flex -s-space-x-2">
-          <Avatar
-            size="sm"
-            name="John Doe"
-            visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-          />
-          <Avatar
-            size="sm"
-            name="Jane Smith"
-            visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-          />
-          <Avatar
-            size="sm"
-            name="Bob Johnson"
-            visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
-          />
-        </div>
+      <Avatar.Stack size="sm" nbMoreItems={8}>
+        <Avatar name="Rafael Doe" visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg" />
+        <Avatar size="sm" name="Mason Johnson" />
+        <Avatar size="sm" name="Omar Doe" visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg" />
+        <Avatar size="sm" name="Eleanor Wright" />
+      </Avatar.Stack>
       </ComposableCard.Footer>
     </ComposableCard.Root>
   ),
