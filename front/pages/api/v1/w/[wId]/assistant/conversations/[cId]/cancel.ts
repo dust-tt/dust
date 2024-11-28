@@ -14,6 +14,8 @@ import { apiError } from "@app/logger/withlogging";
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/cancel:
  *   post:
+ *     tags:
+ *       - Conversations
  *     summary: Cancel message generation in a conversation
  *     parameters:
  *       - name: wId

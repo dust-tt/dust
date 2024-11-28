@@ -304,6 +304,9 @@
     },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/cancel": {
       "post": {
+        "tags": [
+          "Conversations"
+        ],
         "summary": "Cancel message generation in a conversation",
         "parameters": [
           {
@@ -560,6 +563,9 @@
     },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit": {
       "post": {
+        "tags": [
+          "Conversations"
+        ],
         "summary": "Edit an existing message in a conversation",
         "parameters": [
           {
@@ -912,6 +918,9 @@
     },
     "/api/v1/w/{wId}/files": {
       "post": {
+        "tags": [
+          "Datasources"
+        ],
         "summary": "Create a file upload URL",
         "parameters": [
           {
@@ -3519,6 +3528,14 @@
       },
       "Context": {
         "type": "object",
+        "required": [
+          "username",
+          "timezone",
+          "fullName",
+          "email",
+          "profilePictureUrl",
+          "origin"
+        ],
         "properties": {
           "username": {
             "type": "string",

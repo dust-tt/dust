@@ -93,6 +93,13 @@
  *           example: "openai"
  *     Context:
  *       type: object
+ *       required:
+ *         - username
+ *         - timezone
+ *         - fullName
+ *         - email
+ *         - profilePictureUrl
+ *         - origin
  *       properties:
  *         username:
  *           type: string
