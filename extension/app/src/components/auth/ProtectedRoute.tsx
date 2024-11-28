@@ -6,12 +6,11 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useAuth } from "@extension/components/auth/AuthProvider";
-import { PortContext } from "@extension/components/PortContext";
 import type { RouteChangeMesssage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
 import { getPendingUpdate } from "@extension/lib/storage";
 import type { ReactNode } from "react";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 type ProtectedRouteProps = {
@@ -37,22 +36,19 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const navigate = useNavigate();
   const [isLatestVersion, setIsLatestVersion] = useState(true);
 
-  const port = useContext(PortContext);
   useEffect(() => {
-    if (port) {
-      const listener = (message: RouteChangeMesssage) => {
-        const { type } = message;
-        if (type === "EXT_ROUTE_CHANGE") {
-          navigate({ pathname: message.pathname, search: message.search });
-          return false;
-        }
-      };
-      port.onMessage.addListener(listener);
-      return () => {
-        port.onMessage.removeListener(listener);
-      };
-    }
-  }, [port, navigate]);
+    const listener = (message: RouteChangeMesssage) => {
+      const { type } = message;
+      if (type === "EXT_ROUTE_CHANGE") {
+        navigate({ pathname: message.pathname, search: message.search });
+        return false;
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => {
+      chrome.runtime.onMessage.removeListener(listener);
+    };
+  }, [navigate]);
 
   useEffect(() => {
     if (!isAuthenticated || !isUserSetup || !user || !workspace) {
