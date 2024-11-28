@@ -23,7 +23,6 @@ import {
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isSupportedImageContentType,
-  isSupportedPlainTextContentType,
   isUserMessageType,
   Ok,
   removeNulls,
@@ -121,6 +120,16 @@ function isSearchableContentType(
   }
 }
 
+function isListableContentType(
+  contentType: SupportedContentFragmentType
+): boolean {
+  // We allow listing all content-types that are not images. Note that
+  // `isSupportedPlainTextContentType` is not enough because it is limited to uploadable (as in from
+  // the conversation) content types which does not cover all non image content types that we
+  // support in the API such as `dust-application/slack`.
+  return !isSupportedImageContentType(contentType);
+}
+
 export function listFiles(
   conversation: ConversationType
 ): ConversationFileType[] {
@@ -130,7 +139,7 @@ export function listFiles(
 
     if (
       isContentFragmentType(m) &&
-      isSupportedPlainTextContentType(m.contentType) &&
+      isListableContentType(m.contentType) &&
       m.contentFragmentVersion === "latest"
     ) {
       if (m.fileId) {
