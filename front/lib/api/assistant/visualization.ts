@@ -8,8 +8,8 @@ import {
 } from "@dust-tt/types";
 import _ from "lodash";
 
-import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 
 export async function getVisualizationPrompt({
@@ -19,10 +19,20 @@ export async function getVisualizationPrompt({
   auth: Authenticator;
   conversation: ConversationType;
 }) {
+  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const jitActionsEnabled = flags.includes("conversations_jit_actions");
+  const coEditionEnabled = flags.includes("co_edition");
+
+  let prompt =
+    visualizationSystemPrompt({
+      jitActionsEnabled,
+      coEditionEnabled,
+    }).trim() + "\n\n";
+
   // If `jit_conversations_actions` is enabled we rely on the `conversations_list_files` emulated
-  // actions to make the list of files available to the agent.
-  if (await isJITActionsEnabled(auth)) {
-    return visualizationSystemPrompt(true);
+  // actions to make the list of files available to the agent. So we can skip the rest of this function.
+  if (jitActionsEnabled) {
+    return prompt;
   }
 
   const contentFragmentMessages: Array<ContentFragmentType> = [];
@@ -40,8 +50,6 @@ export async function getVisualizationPrompt({
     ),
     "sId"
   );
-
-  let prompt = visualizationSystemPrompt(false).trim() + "\n\n";
 
   const fileAttachments: string[] = [];
   for (const versions of conversation.content) {
@@ -71,22 +79,52 @@ export async function getVisualizationPrompt({
     }
   }
 
+  const directive = coEditionEnabled
+    ? `:::doc directive (with type="react")`
+    : `:::visualization directive`;
+
   if (fileAttachments.length > 0) {
-    prompt +=
-      "Files accessible to the :::visualization directive environment:\n";
+    prompt += `Files accessible to the ${directive} environment:\n`;
     prompt += fileAttachments.join("\n");
   } else {
-    prompt +=
-      "No files are currently accessible to the :::visualization directive environment in this conversation.";
+    prompt += `No files are currently accessible to the ${directive} environment in this conversation.`;
   }
 
   return prompt;
 }
 
-export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
-It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
+export const visualizationSystemPrompt = ({
+  jitActionsEnabled,
+  coEditionEnabled,
+}: {
+  jitActionsEnabled: boolean;
+  coEditionEnabled: boolean;
+}) => {
+  const directiveTag = coEditionEnabled ? "doc" : "visualization";
+  const visualizationOpeningTag = (vizId: string) =>
+    coEditionEnabled
+      ? `:::doc{doc-id="${vizId}" type="react"}`
+      : ":::visualization";
 
-Guidelines using the :::visualization tag:
+  let prompt = "";
+  if (coEditionEnabled) {
+    prompt +=
+      `It is possible to generate documents in the conversation using the :::doc directive. ` +
+      `Documents can either be:\n` +
+      `- Visualizations (using React components executed in a react-runner environment) that will be rendered in the user's browser (type="react")\n` +
+      `- Markdown documents that will be rendered in the user's browser using a markdown renderer (type="markdown")\n` +
+      'Documents must always have a an id and a type. The only valid document types are "react" and "markdown". For example: :::doc{doc-id="my-viz-id" type="react"}.\n' +
+      "In order to update an existing document, you must use the same id.\n" +
+      "When iterating on a document or visualization, it is preferable to use the same id.\n" +
+      `Guidelines for visualizations (type="react"):`;
+  } else {
+    prompt +=
+      `It is possible to generate visualizations for the user (using React components executed in a react-runner environment) ` +
+      `that will be rendered in the user's browser by using the :::visualization container block markdown directive.` +
+      `Guidelines using the :::visualization directive:`;
+  }
+
+  return `${prompt}
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
 - Supported React features:
@@ -161,9 +199,9 @@ import { triggerUserFileDownload } from "@dust/react-hooks";
 
 General example of a visualization component:
 
-In response of a user asking a plot of sine and cosine functions the following :::visualization directive can be inlined anywhere in the assistant response:
+In response of a user asking a plot of sine and cosine functions the following :::${directiveTag} directive can be inlined anywhere in the assistant response:
 
-:::visualization
+${visualizationOpeningTag("cosine-sine-chart")}
 import React from "react";
 import {
   LineChart,
@@ -240,3 +278,4 @@ const SineCosineChart = () => {
 export default SineCosineChart;
 :::
 `;
+};

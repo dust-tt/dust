@@ -67,8 +67,10 @@ import {
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import {
+  getInteractiveDocumentPlugin,
   getVisualizationPlugin,
-  sanitizeVisualizationContent,
+  interactiveDocumentDirective,
+  sanitizeContent,
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -456,6 +458,12 @@ export function AgentMessage({
         conversationId,
         message.sId
       ),
+      doc: getInteractiveDocumentPlugin(
+        owner,
+        agentConfiguration.sId,
+        conversationId,
+        message.sId
+      ),
       sup: CiteBlock,
       mention: MentionBlock,
     }),
@@ -463,7 +471,12 @@ export function AgentMessage({
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [mentionDirective, getCiteDirective(), visualizationDirective],
+    () => [
+      mentionDirective,
+      getCiteDirective(),
+      visualizationDirective,
+      interactiveDocumentDirective,
+    ],
     []
   );
 
@@ -582,7 +595,7 @@ export function AgentMessage({
                 }}
               >
                 <Markdown
-                  content={sanitizeVisualizationContent(agentMessage.content)}
+                  content={sanitizeContent(agentMessage.content)}
                   isStreaming={
                     streaming && lastTokenClassification === "tokens"
                   }
