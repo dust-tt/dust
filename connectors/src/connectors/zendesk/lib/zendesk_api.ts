@@ -178,6 +178,25 @@ async function fetchFromZendeskWithRetries({
 }
 
 /**
+ * Fetches a single article from the Zendesk API.
+ */
+export async function fetchZendeskArticle({
+  brandSubdomain,
+  accessToken,
+  articleId,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+  articleId: number;
+}): Promise<ZendeskFetchedArticle | null> {
+  const response = await fetchFromZendeskWithRetries({
+    url: `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`,
+    accessToken,
+  });
+  return response.article ?? null;
+}
+
+/**
  * Fetches a batch of categories from the Zendesk API.
  */
 export async function fetchZendeskCategoriesInBrand(

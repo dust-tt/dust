@@ -11,6 +11,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchZendeskArticle,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -150,10 +151,11 @@ export async function removeMissingArticleBatchActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connector.connectionId)
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
   );
-  await changeZendeskClientSubdomain(zendeskApiClient, {
+  const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
     connectorId,
     brandId,
   });
@@ -162,10 +164,18 @@ export async function removeMissingArticleBatchActivity({
   await concurrentExecutor(
     articleIds,
     async (articleId) => {
-      const article =
-        await zendeskApiClient.helpcenter.articles.show(articleId);
+      const article = await fetchZendeskArticle({
+        brandSubdomain,
+        articleId,
+        accessToken,
+      });
       if (!article) {
-        await deleteArticle(connectorId, article, dataSourceConfig, loggerArgs);
+        await deleteArticle(
+          connectorId,
+          articleId,
+          dataSourceConfig,
+          loggerArgs
+        );
       }
     },
     { concurrency: 10 }
