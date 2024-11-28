@@ -221,6 +221,14 @@ export const DocumentUploadOrEditModal = ({
 
         // triggers content extraction -> documentState.text update
         setFileId(fileBlobs[0].fileId);
+        setDocumentState((prev) => ({
+          ...prev,
+          name: prev.name.length > 0 ? prev.name : selectedFile.name,
+          sourceUrl:
+            prev.sourceUrl.length > 0
+              ? prev.sourceUrl
+              : fileBlobs[0].publicUrl ?? "",
+        }));
       } catch (error) {
         sendNotification({
           type: "error",
@@ -229,7 +237,7 @@ export const DocumentUploadOrEditModal = ({
         });
       }
     },
-    [fileUploaderService, sendNotification]
+    [fileUploaderService, sendNotification, setDocumentState]
   );
 
   // Effect: Set the document state when the document is loaded

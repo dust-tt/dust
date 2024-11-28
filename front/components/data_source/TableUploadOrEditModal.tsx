@@ -228,7 +228,12 @@ export const TableUploadOrEditModal = ({
 
       // triggers content extraction -> tableState.content update
       setFileId(fileBlobs[0].fileId);
-      setTableState((prev) => ({ ...prev, file: selectedFile }));
+      setTableState((prev) => ({
+        ...prev,
+        file: selectedFile,
+        name:
+          prev.name.length > 0 ? prev.name : stripTableName(selectedFile.name),
+      }));
       setIsBigFile(selectedFile.size > BIG_FILE_SIZE);
     } catch (error) {
       sendNotification({
@@ -403,3 +408,11 @@ export const TableUploadOrEditModal = ({
     </Modal>
   );
 };
+
+function stripTableName(name: string) {
+  return name
+    .replace(/\.(csv|tsv)$/, "")
+    .replace(/[^a-z0-9]/gi, "_")
+    .toLowerCase()
+    .slice(0, 32);
+}
