@@ -327,7 +327,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               }),
               documentUrl: request.url,
               timestampMs: new Date().getTime(),
-              tags: [`title:${pageTitle}`],
+              tags: [`title:${stripNullBytes(pageTitle)}`],
               parents: getParentsForPage(request.url, false),
               upsertContext: {
                 sync_type: "batch",
