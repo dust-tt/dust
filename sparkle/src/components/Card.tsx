@@ -15,15 +15,14 @@ const cardVariants = cva(
         xs: "s-w-[180px]",
         sm: "s-w-[240px]",
         md: "s-w-[300px]",
-        lg: "s-w-[360px]"
-      }
+        lg: "s-w-[360px]",
+      },
     },
     defaultVariants: {
-      size: "sm"
-    }
+      size: "sm",
+    },
   }
 );
-
 
 interface CardRootProps extends VariantProps<typeof cardVariants> {
   children: React.ReactNode;
@@ -42,18 +41,18 @@ const Header = ({ className, children }: CardHeaderProps) => (
   <div className={cn("s-space-y-0.5", className)}>{children}</div>
 );
 
-
 interface CardTitleProps {
   children: React.ReactNode;
   className?: string;
 }
 
 const Title = ({ className, children }: CardTitleProps) => (
-  <div className={cn("s-text-sm s-font-semibold s-text-element-800", className)}>
+  <div
+    className={cn("s-text-sm s-font-semibold s-text-element-800", className)}
+  >
     {children}
   </div>
 );
-
 
 interface CardSubtitleProps {
   children: React.ReactNode;
@@ -61,9 +60,10 @@ interface CardSubtitleProps {
 }
 
 const Subtitle = ({ className, children }: CardSubtitleProps) => (
-  <div className={cn("s-text-sm s-text-element-700", className)}>{children}</div>
+  <div className={cn("s-text-sm s-text-element-700", className)}>
+    {children}
+  </div>
 );
-
 
 interface CardContentProps {
   children?: React.ReactNode;
@@ -71,7 +71,11 @@ interface CardContentProps {
   isLoading?: boolean;
 }
 
-const Content = ({ className, children, isLoading = false }: CardContentProps) => {
+const Content = ({
+  className,
+  children,
+  isLoading = false,
+}: CardContentProps) => {
   if (isLoading) {
     return (
       <div className="s-flex s-items-center s-justify-start">
@@ -79,9 +83,10 @@ const Content = ({ className, children, isLoading = false }: CardContentProps) =
       </div>
     );
   }
-  return <div className={cn("s-flex s-flex-col s-gap-3", className)}>{children}</div>;
+  return (
+    <div className={cn("s-flex s-flex-col s-gap-3", className)}>{children}</div>
+  );
 };
-
 
 interface CardFooterProps {
   children: React.ReactNode;
@@ -89,9 +94,10 @@ interface CardFooterProps {
 }
 
 const Footer = ({ className, children }: CardFooterProps) => (
-  <div className={cn("s-flex s-items-center s-gap-2", className)}>{children}</div>
+  <div className={cn("s-flex s-items-center s-gap-2", className)}>
+    {children}
+  </div>
 );
-
 
 interface CardProps {
   title: string;
@@ -124,7 +130,6 @@ export const Card = ({
   );
 };
 
-
 export const ComposableCard = {
   Root,
   Header,
@@ -132,15 +137,4 @@ export const ComposableCard = {
   Subtitle,
   Content,
   Footer,
-};
-
-
-export type {
-  CardContentProps,
-  CardFooterProps,
-  CardHeaderProps,
-  CardProps,
-  CardRootProps,
-  CardSubtitleProps,
-  CardTitleProps,
 };
