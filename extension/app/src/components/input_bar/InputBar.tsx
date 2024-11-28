@@ -188,7 +188,8 @@ export function AssistantInputBar({
   const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
     textAndMentions,
-    resetEditorText
+    resetEditorText,
+    setLoading
   ) => {
     if (isEmpty) {
       return;
@@ -204,7 +205,7 @@ export function AssistantInputBar({
       kind: cf.kind,
     }));
 
-    resetEditorText();
+    setLoading(true);
 
     if (isTabIncluded) {
       const files = await uploadContentTab({
@@ -228,7 +229,9 @@ export function AssistantInputBar({
       }
     }
 
-    onSubmit(text, mentions, newFiles);
+    await onSubmit(text, mentions, newFiles);
+    setLoading(false);
+    resetEditorText();
     resetUpload();
   };
 
@@ -238,15 +241,13 @@ export function AssistantInputBar({
 
   return (
     <div className="flex w-full flex-col">
-      {(isCapturing || isSubmitting) && (
+      {isCapturing && (
         <div className="fixed absolute inset-0 z-50 overflow-hidden">
           <div className="fixed flex inset-0 bg-structure-50/80 backdrop-blur-sm transition-opacity" />
           <div className="fixed top-0 left-0 h-full w-full flex flex-col justify-center items-center gap-4">
-            {isCapturing && (
-              <span className="z-50">
-                <Page.Header title="Screen capture in progress..." />
-              </span>
-            )}
+            <span className="z-50">
+              <Page.Header title="Screen capture in progress..." />
+            </span>
             <Spinner size="xl" />
           </div>
         </div>
@@ -276,7 +277,10 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
-              <InputBarCitations fileUploaderService={fileUploaderService} />
+              <InputBarCitations
+                fileUploaderService={fileUploaderService}
+                disabled={isSubmitting ?? false}
+              />
 
               <InputBarContainer
                 disableAutoFocus={disableAutoFocus}
@@ -289,6 +293,7 @@ export function AssistantInputBar({
                 isTabIncluded={isTabIncluded}
                 setIncludeTab={setIncludeTab}
                 fileUploaderService={fileUploaderService}
+                isSubmitting={isSubmitting ?? false}
               />
             </div>
           </div>

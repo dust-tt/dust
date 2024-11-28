@@ -22,10 +22,7 @@ import {
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/client";
-import type {
-  ConversationMessageEmojiSelectorProps,
-  ConversationMessageSizeType,
-} from "@dust-tt/sparkle";
+import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -109,7 +106,6 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   message: AgentMessagePublicType;
-  messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: LightWorkspaceType;
   size: ConversationMessageSizeType;
 }
@@ -124,7 +120,6 @@ export function AgentMessage({
   conversationId,
   isLastMessage,
   message,
-  messageEmoji,
   owner,
   size,
 }: AgentMessageProps) {
@@ -500,7 +495,6 @@ export function AgentMessage({
       name={`@${agentConfiguration.name}`}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      messageEmoji={messageEmoji}
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">

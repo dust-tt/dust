@@ -49,19 +49,19 @@ export const ConversationPage = ({
               onClick={() => {
                 navigate("/");
               }}
-              size="md"
+              size="sm"
             />
           }
           rightActions={
             <div className="flex flex-row items-right">
-              <ConversationsListButton size="md" />
+              <ConversationsListButton size="sm" />
 
               <Button
                 icon={ExternalLinkIcon}
                 variant="ghost"
                 href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}/assistant/${conversationId}`}
                 target="_blank"
-                size="md"
+                size="sm"
                 tooltip="Open in Dust"
               />
             </div>

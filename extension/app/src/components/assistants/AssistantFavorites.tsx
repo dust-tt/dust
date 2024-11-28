@@ -40,7 +40,7 @@ export function AssistantFavorites() {
     <div className="h-full w-full pt-2 pb-12">
       <Page.SectionHeader title="Favorites" />
       {hasFavorites ? (
-        <div className="relative grid w-full grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="relative grid w-full grid-cols-2 gap-2">
           {agentConfigurations.map(
             ({ sId, name, pictureUrl, lastAuthors, description }) => (
               <AssistantPreview

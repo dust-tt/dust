@@ -1,14 +1,16 @@
-import { Button, CameraIcon, DocumentPlusIcon } from "@dust-tt/sparkle";
+import { Button, DocumentPlusIcon, ImageIcon } from "@dust-tt/sparkle";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useContext, useEffect } from "react";
 
 type AttachFragmentProps = {
   fileUploaderService: FileUploaderService;
+  isLoading: boolean;
 };
 
 export const AttachFragment = ({
   fileUploaderService,
+  isLoading,
 }: AttachFragmentProps) => {
   const { attachPageBlinking, setAttachPageBlinking } =
     useContext(InputBarContext);
@@ -38,11 +40,12 @@ export const AttachFragment = ({
               includeCapture: false,
             })
           }
+          disabled={isLoading}
         />
       </div>
       <div className="block sm:hidden">
         <Button
-          icon={CameraIcon}
+          icon={ImageIcon}
           tooltip="Attach page screenshot"
           variant="outline"
           size="sm"
@@ -52,6 +55,7 @@ export const AttachFragment = ({
               includeCapture: true,
             })
           }
+          disabled={isLoading}
         />
       </div>
       <div className="hidden sm:block">
@@ -68,11 +72,12 @@ export const AttachFragment = ({
               includeCapture: false,
             })
           }
+          disabled={isLoading}
         />
       </div>
       <div className="hidden sm:block">
         <Button
-          icon={CameraIcon}
+          icon={ImageIcon}
           label="Add page screenshot"
           tooltip="Attach page screenshot"
           variant="outline"
@@ -83,6 +88,7 @@ export const AttachFragment = ({
               includeCapture: true,
             })
           }
+          disabled={isLoading}
         />
       </div>
     </>

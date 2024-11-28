@@ -3,10 +3,12 @@ import type { FileUploaderService } from "@extension/hooks/useFileUploaderServic
 
 interface InputBarCitationsProps {
   fileUploaderService: FileUploaderService;
+  disabled: boolean;
 }
 
 export function InputBarCitations({
   fileUploaderService,
+  disabled,
 }: InputBarCitationsProps) {
   const processContentFragments = () => {
     const nodes: React.ReactNode[] = [];
@@ -21,9 +23,13 @@ export function InputBarCitations({
           size="xs"
           type={isImage ? "image" : "document"}
           imgSrc={blob.preview}
-          onClose={() => {
-            fileUploaderService.removeFile(blob.id);
-          }}
+          onClose={
+            disabled
+              ? undefined
+              : () => {
+                  fileUploaderService.removeFile(blob.id);
+                }
+          }
           isLoading={blob.isUploading}
         />
       );
@@ -37,7 +43,7 @@ export function InputBarCitations({
   }
 
   return (
-    <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3">
+    <div className="flex gap-2 overflow-auto border-b border-structure-300/50 pb-3">
       {processContentFragments()}
     </div>
   );
