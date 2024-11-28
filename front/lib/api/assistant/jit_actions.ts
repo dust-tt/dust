@@ -140,7 +140,7 @@ export function listFiles(
 
     if (
       isContentFragmentType(m) &&
-      !isListableContentType(m.contentType) &&
+      isListableContentType(m.contentType) &&
       m.contentFragmentVersion === "latest"
     ) {
       if (m.fileId) {
