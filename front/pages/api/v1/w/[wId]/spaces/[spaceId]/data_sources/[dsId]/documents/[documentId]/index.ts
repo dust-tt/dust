@@ -25,7 +25,7 @@ import {
 } from "@app/lib/upsert_queue";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { apiError, statsDClient } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
 
 export const config = {
@@ -475,16 +475,23 @@ async function handler(
         });
       }
 
-      const statsDTags = [
-        `data_source_id:${dataSource.id}`,
-        `workspace_id:${owner.sId}`,
-        `data_source_name:${dataSource.name}`,
-        `document_id:${req.query.documentId}`,
-      ];
       if (!r.data.parents || r.data.parents.length === 0) {
-        statsDClient.increment("document_empty_parents.count", 1, statsDTags);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid request body: empty parents array.",
+          },
+        });
       } else if (r.data.parents[0] != req.query.documentId) {
-        statsDClient.increment("document_no_self_ref.count", 1, statsDTags);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Invalid request body: document not self-referenced in its parents.",
+          },
+        });
       }
 
       if (r.data.async === true) {
