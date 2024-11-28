@@ -479,19 +479,12 @@ async function handler(
         `data_source_id:${dataSource.id}`,
         `workspace_id:${owner.sId}`,
         `data_source_name:${dataSource.name}`,
+        `document_id:${req.query.documentId}`,
       ];
       if (!r.data.parents || r.data.parents.length === 0) {
-        statsDClient.increment(
-          "document_without_a_parent.count",
-          1,
-          statsDTags
-        );
+        statsDClient.increment("document_empty_parents.count", 1, statsDTags);
       } else if (r.data.parents[0] != req.query.documentId) {
-        statsDClient.increment(
-          "document_without_a_parent.count",
-          1,
-          statsDTags
-        );
+        statsDClient.increment("document_no_self_ref.count", 1, statsDTags);
       }
 
       if (r.data.async === true) {
