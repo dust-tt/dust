@@ -114,7 +114,7 @@ export const InputBarContainer = ({
             "flex-1"
           )}
         />
-        <div className="flex items-start">
+        <div className="flex items-start pt-1">
           <AttachFile
             fileUploaderService={fileUploaderService}
             editorService={editorService}

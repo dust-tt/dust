@@ -59,7 +59,7 @@ export const MainPage = ({
           </div>
         }
         rightActions={
-          <div className="flex flex-row items-right">
+          <div className="flex flex-row items-right space-x-1">
             <ConversationsListButton size="sm" />
 
             <DropdownMenu>
