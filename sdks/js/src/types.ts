@@ -2092,8 +2092,10 @@ export type GetWorkspaceUsageRequestType = z.infer<
 >;
 
 export const FileUploadUrlRequestSchema = z.object({
-  contentType: z.string(),
-  fileName: z.string(),
+  contentType: z
+    .string()
+    .max(256, "Content type must be less than 256 characters"),
+  fileName: z.string().max(256, "File name must be less than 256 characters"),
   fileSize: z.number(),
   useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
   useCaseMetadata: z
