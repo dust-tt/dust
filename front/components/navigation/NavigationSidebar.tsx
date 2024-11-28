@@ -16,7 +16,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
-import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -39,7 +38,6 @@ export const NavigationSidebar = React.forwardRef<
 ) {
   const router = useRouter();
   const { user } = useUser();
-  const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [activePath, setActivePath] = useState("");
 
   useEffect(() => {
@@ -155,10 +153,6 @@ export const NavigationSidebar = React.forwardRef<
           <UserMenu user={user} owner={owner} />
           <div className="flex-grow" />
           <HelpDropdown owner={owner} user={user} />
-          <QuickStartGuide
-            show={showQuickGuide}
-            onClose={() => setShowQuickGuide(false)}
-          />
         </div>
       )}
     </div>

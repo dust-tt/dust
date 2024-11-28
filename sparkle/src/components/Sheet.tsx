@@ -91,7 +91,7 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetClose className="s-absolute s-right-3 s-top-4">
+    <SheetClose asChild className="s-absolute s-right-3 s-top-4">
       {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
     </SheetClose>
   </div>

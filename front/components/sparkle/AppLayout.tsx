@@ -1,7 +1,6 @@
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
@@ -49,26 +48,7 @@ export default function AppLayout({
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
   const [loaded, setLoaded] = useState(false);
-  const [showQuickGuide, setShowQuickGuide] = useState(false);
-
-  useEffect(() => {
-    setShowQuickGuide(router.query.quickGuide === "true");
-  }, [router.query]);
-
-  const handleCloseQuickGuide = () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { quickGuide: _, ...restQuery } = router.query;
-    void router.push(
-      {
-        pathname: router.pathname,
-        query: restQuery,
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
 
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
@@ -176,7 +156,7 @@ export default function AppLayout({
           </main>
         </div>
       </div>
-      <QuickStartGuide show={showQuickGuide} onClose={handleCloseQuickGuide} />
+      <QuickStartGuide />
       <>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
