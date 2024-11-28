@@ -6,10 +6,16 @@ import {
   CitationNewClose,
   CitationNewDescription,
   CitationNewIcons,
+  CitationNewImage,
   CitationNewIndex,
   CitationNewTitle,
+  DocumentIcon,
+  GlobeAltIcon,
   Icon,
+  ImageIcon,
+  NotionLogo,
   SlackLogo,
+  TableIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -21,117 +27,144 @@ export default meta;
 
 export const CitationsExample = () => (
   <div className="s-flex s-flex-col s-gap-8">
-    <CitationNew
-      onClose={() => alert("Close action clicked")}
-      className="s-w-48"
-      isBlinking={true}
-    >
-      <CitationNewIcons>
-        <CitationNewIndex>1</CitationNewIndex>
-        <Icon visual={SlackLogo} size="sm" />
-      </CitationNewIcons>
-      <CitationNewTitle>Hello</CitationNewTitle>
-      <CitationNewDescription>This is a citation</CitationNewDescription>
-      <CitationNewClose />
-    </CitationNew>
-    <div className="s-grid s-grid-cols-4 s-gap-2">
+    Example of attachement
+    <div className="s-flex s-gap-8">
       <CitationNew
-        onClose={() => alert("Close action clicked")}
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
         isBlinking={true}
       >
         <CitationNewIcons>
-          <CitationNewIndex>1</CitationNewIndex>
           <Icon visual={SlackLogo} size="sm" />
         </CitationNewIcons>
-        <CitationNewTitle>Hello</CitationNewTitle>
-        <CitationNewDescription>This is a citation</CitationNewDescription>
-        <CitationNewClose />
+        <CitationNewTitle>Slack thread</CitationNewTitle>
+        <CitationNewDescription>
+          @ed at 16:32 This is the latest ve
+        </CitationNewDescription>
       </CitationNew>
       <CitationNew
-        onClose={() => alert("Close action clicked")}
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
         isBlinking={true}
       >
         <CitationNewIcons>
-          <CitationNewIndex>1</CitationNewIndex>
-          <Icon visual={SlackLogo} size="sm" />
+          <Icon visual={TableIcon} size="sm" />
         </CitationNewIcons>
-        <CitationNewTitle>Hello</CitationNewTitle>
-        <CitationNewDescription>This is a citation</CitationNewDescription>
-        <CitationNewClose />
+        <CitationNewTitle>extract_financa.csv</CitationNewTitle>
       </CitationNew>
       <CitationNew
-        onClose={() => alert("Close action clicked")}
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
         isBlinking={true}
       >
         <CitationNewIcons>
-          <CitationNewIndex>1</CitationNewIndex>
-          <Icon visual={SlackLogo} size="sm" />
+          <Icon visual={GlobeAltIcon} size="sm" />
         </CitationNewIcons>
-        <CitationNewTitle>Hello</CitationNewTitle>
-        <CitationNewDescription>This is a citation</CitationNewDescription>
-        <CitationNewClose />
+        <CitationNewTitle>Linkedin, Edouard Wautier</CitationNewTitle>
       </CitationNew>
+
       <CitationNew
-        onClose={() => alert("Close action clicked")}
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
         isBlinking={true}
       >
+        <CitationNewImage imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" />
         <CitationNewIcons>
-          <CitationNewIndex>1</CitationNewIndex>
-          <Icon visual={SlackLogo} size="sm" />
+          <Icon visual={ImageIcon} size="sm" />
         </CitationNewIcons>
-        <CitationNewTitle>Hello</CitationNewTitle>
-        <CitationNewDescription>This is a citation</CitationNewDescription>
-        <CitationNewClose />
+        <CitationNewTitle>screenshot.png</CitationNewTitle>
       </CitationNew>
     </div>
-    <div className="s-grid s-grid-cols-6 s-gap-2">
+    Example of dissmissable attachements
+    <div className="s-flex s-gap-8">
       <CitationNew
-        onClose={() => alert("Close action clicked")}
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
         isBlinking={true}
       >
         <CitationNewIcons>
-          <CitationNewIndex>1</CitationNewIndex>
           <Icon visual={SlackLogo} size="sm" />
         </CitationNewIcons>
-        <CitationNewTitle>Hello</CitationNewTitle>
-        <CitationNewDescription>This is a citation</CitationNewDescription>
-        <CitationNewClose />
+        <CitationNewTitle>Slack thread</CitationNewTitle>
+        <CitationNewClose onClick={() => alert("Close clicked")} />
+        <CitationNewDescription>
+          @ed at 16:32 This is the latest ve
+        </CitationNewDescription>
       </CitationNew>
       <CitationNew
-        onClose={() => alert("Close action clicked")}
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
         isBlinking={true}
       >
         <CitationNewIcons>
-          <CitationNewIndex>1</CitationNewIndex>
-          <Icon visual={SlackLogo} size="sm" />
+          <Icon visual={TableIcon} size="sm" />
         </CitationNewIcons>
-        <CitationNewTitle>Hello</CitationNewTitle>
-        <CitationNewDescription>This is a citation</CitationNewDescription>
-        <CitationNewClose />
+        <CitationNewClose onClick={() => alert("Close clicked")} />
+        <CitationNewTitle>extract_financa.csv</CitationNewTitle>
       </CitationNew>
       <CitationNew
-        onClose={() => alert("Close action clicked")}
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
         isBlinking={true}
       >
+        <CitationNewIcons>
+          <Icon visual={GlobeAltIcon} size="sm" />
+        </CitationNewIcons>
+        <CitationNewClose onClick={() => alert("Close clicked")} />
+        <CitationNewTitle>Linkedin, Edouard Wautier</CitationNewTitle>
+      </CitationNew>
+
+      <CitationNew
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
+        isBlinking={true}
+      >
+        <CitationNewImage imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" />
+        <CitationNewIcons>
+          <Icon visual={ImageIcon} size="sm" />
+        </CitationNewIcons>
+        <CitationNewClose onClick={() => alert("Close clicked")} />
+        <CitationNewTitle>screenshot.png</CitationNewTitle>
+      </CitationNew>
+    </div>
+    Example of citations in a grid
+    <div className="s-grid s-grid-cols-5 s-gap-2">
+      <CitationNew onClick={() => alert("Card clicked")} isBlinking={true}>
         <CitationNewIcons>
           <CitationNewIndex>1</CitationNewIndex>
           <Icon visual={SlackLogo} size="sm" />
         </CitationNewIcons>
         <CitationNewTitle>Hello</CitationNewTitle>
-        <CitationNewDescription>This is a citation</CitationNewDescription>
-        <CitationNewClose />
       </CitationNew>
       <CitationNew
-        onClose={() => alert("Close action clicked")}
+        onClick={() => alert("Close action clicked")}
         isBlinking={true}
       >
         <CitationNewIcons>
-          <CitationNewIndex>1</CitationNewIndex>
-          <Icon visual={SlackLogo} size="sm" />
+          <CitationNewIndex>2</CitationNewIndex>
+          <Icon visual={NotionLogo} size="sm" />
         </CitationNewIcons>
         <CitationNewTitle>Hello</CitationNewTitle>
-        <CitationNewDescription>This is a citation</CitationNewDescription>
-        <CitationNewClose />
+      </CitationNew>
+      <CitationNew
+        onClick={() => alert("Close action clicked")}
+        isBlinking={true}
+      >
+        <CitationNewIcons>
+          <CitationNewIndex>3</CitationNewIndex>
+          <Icon visual={DocumentIcon} size="sm" />
+        </CitationNewIcons>
+        <CitationNewTitle>Hello</CitationNewTitle>
+      </CitationNew>
+      <CitationNew
+        onClick={() => alert("Close action clicked")}
+        isBlinking={true}
+      >
+        <CitationNewIcons>
+          <CitationNewIndex>4</CitationNewIndex>
+          <Icon visual={GlobeAltIcon} size="sm" />
+        </CitationNewIcons>
+        <CitationNewTitle>Hello</CitationNewTitle>
       </CitationNew>
     </div>
   </div>
