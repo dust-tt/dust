@@ -140,7 +140,7 @@ export const TableUploadOrEditModal = ({
           tableId: initialId,
           timestamp: null,
           tags: [],
-          parents: [],
+          parents: [table.name],
           truncate: true,
           async: false,
           useAppForHeaderDetection,
