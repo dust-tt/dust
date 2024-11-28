@@ -13,10 +13,12 @@ import {
   createZendeskClient,
   fetchZendeskArticle,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { getZendeskGarbageCollectionWorkflowId } from "@connectors/connectors/zendesk/temporal/client";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
@@ -80,18 +82,6 @@ export async function removeOutdatedTicketBatchActivity(
       `[Zendesk] Configuration not found, connectorId: ${connectorId}`
     );
   }
-  const ticketIds = await ZendeskTicketResource.fetchOutdatedTicketIds({
-    connectorId,
-    expirationDate: new Date(
-      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
-    ),
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
-
-  if (ticketIds.length === 0) {
-    return { hasMore: false };
-  }
-
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -101,8 +91,25 @@ export async function removeOutdatedTicketBatchActivity(
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
     dataSourceId: dataSourceConfig.dataSourceId,
   };
+
+  const ticketIds = await ZendeskTicketResource.fetchOutdatedTicketIds({
+    connectorId,
+    expirationDate: new Date(
+      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
+    ),
+    batchSize: ZENDESK_BATCH_SIZE,
+  });
+  logger.info(
+    { ...loggerArgs, ticketCount: ticketIds.length },
+    "[Zendesk] Removing outdated tickets."
+  );
+
+  if (ticketIds.length === 0) {
+    return { hasMore: false };
+  }
 
   await concurrentExecutor(
     ticketIds,
@@ -148,6 +155,7 @@ export async function removeMissingArticleBatchActivity({
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
@@ -194,6 +202,13 @@ export async function removeForbiddenCategoriesActivity(
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
 
   const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
   const categoryIds =
@@ -201,6 +216,11 @@ export async function removeForbiddenCategoriesActivity(
       connectorId,
       batchSize,
     });
+  logger.info(
+    { ...loggerArgs, categoryCount: categoryIds.length },
+    "[Zendesk] Removing categories with no permission."
+  );
+
   for (const categoryId of categoryIds) {
     await deleteCategory({ connectorId, categoryId, dataSourceConfig });
   }
@@ -216,6 +236,13 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
 
   const categoryIds = (
     await ZendeskCategoryResource.fetchIdsForConnector(connectorId)
@@ -235,6 +262,11 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
     },
     { concurrency: 10 }
   );
+  logger.info(
+    { ...loggerArgs, categoryCount: categoriesToDelete.size },
+    "[Zendesk] Removing empty categories."
+  );
+
   for (const categoryId of categoriesToDelete) {
     await deleteCategory({ connectorId, categoryId, dataSourceConfig });
   }
@@ -246,7 +278,26 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
 export async function deleteBrandsWithNoPermissionActivity(
   connectorId: ModelId
 ): Promise<void> {
-  await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const deletedCount =
+    await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
+
+  logger.info(
+    { ...loggerArgs, deletedCount },
+    "[Zendesk] Deleting brands with no permission."
+  );
 }
 
 /**
@@ -264,12 +315,24 @@ export async function deleteTicketBatchActivity({
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
 
   const ticketIds = await ZendeskTicketResource.fetchTicketIdsByBrandId({
     connectorId,
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
+  logger.info(
+    { ...loggerArgs, brandId, ticketCount: ticketIds.length },
+    "[Zendesk] Deleting a batch of tickets."
+  );
+
   /// deleting the tickets in the data source
   await concurrentExecutor(
     ticketIds,
@@ -302,6 +365,13 @@ export async function deleteArticleBatchActivity({
     throw new Error("[Zendesk] Connector not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
 
   /// deleting the articles in the data source
   const articleIds = await ZendeskArticleResource.fetchArticleIdsByBrandId({
@@ -309,6 +379,11 @@ export async function deleteArticleBatchActivity({
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
+  logger.info(
+    { ...loggerArgs, brandId, articleCount: articleIds.length },
+    "[Zendesk] Deleting a batch of articles."
+  );
+
   await concurrentExecutor(
     articleIds,
     (articleId) =>
@@ -335,11 +410,28 @@ export async function deleteCategoryBatchActivity({
   connectorId: number;
   brandId: number;
 }): Promise<{ hasMore: boolean }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
   const deletedCount = await ZendeskCategoryResource.deleteByBrandId({
     connectorId,
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
+  logger.info(
+    { ...loggerArgs, brandId, deletedCount },
+    "[Zendesk] Deleting a batch of categories."
+  );
 
   return { hasMore: deletedCount === ZENDESK_BATCH_SIZE };
 }
