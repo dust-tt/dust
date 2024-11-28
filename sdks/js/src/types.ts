@@ -651,6 +651,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema([
   "zendesk_connector_feature",
   "index_private_slack_channel",
   "conversations_jit_actions",
+  "co_edition",
 ]);
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
