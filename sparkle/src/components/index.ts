@@ -90,6 +90,19 @@ export { RainbowEffect } from "./RainbowEffect";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchInput } from "./SearchInput";
 export { Separator } from "./Separator";
+export {
+  Sheet,
+  SheetClose,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetOverlay,
+  SheetPortal,
+  SheetTitle,
+  SheetTrigger,
+} from "./Sheet";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { SplitButton } from "./SplitButton";
