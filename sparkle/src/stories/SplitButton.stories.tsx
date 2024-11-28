@@ -43,13 +43,17 @@ export const ExampleButton: Story = {
       {
         label: "Second",
         icon: RobotIcon,
-        tooltip: "Second tooltip",
+        tooltip: "Disabled tooltip",
         disabled: true,
       },
       {
         label: "Third",
-        icon: PlusIcon,
         tooltip: "Third tooltip",
+      },
+      {
+        label: "Fourth",
+        tooltip: "Loading tooltip",
+        isLoading: true,
       },
     ],
   },
