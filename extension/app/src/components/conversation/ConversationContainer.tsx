@@ -174,7 +174,7 @@ export function ConversationContainer({
     }
   };
 
-  const { submit: handlePostConversation } = useSubmitFunction(
+  const { submit: handlePostConversation, isSubmitting } = useSubmitFunction(
     useCallback(
       async (
         input: string,
@@ -300,6 +300,7 @@ export function ConversationContainer({
           setIncludeTab={(includeTab) => {
             setIncludeContent(includeTab);
           }}
+          isSubmitting={isSubmitting}
           conversation={conversation ?? undefined}
         />
       </div>
