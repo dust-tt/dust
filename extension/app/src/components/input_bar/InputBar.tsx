@@ -35,6 +35,7 @@ export function AssistantInputBar({
   conversation,
   isTabIncluded,
   setIncludeTab,
+  isSubmitting,
 }: {
   owner: LightWorkspaceType;
   onSubmit: (
@@ -48,6 +49,7 @@ export function AssistantInputBar({
   conversation?: ConversationPublicType;
   isTabIncluded: boolean;
   setIncludeTab: (includeTab: boolean) => void;
+  isSubmitting?: boolean;
 }) {
   const dustAPI = useDustAPI();
 
@@ -236,14 +238,15 @@ export function AssistantInputBar({
 
   return (
     <div className="flex w-full flex-col">
-      {isCapturing && (
+      {(isCapturing || isSubmitting) && (
         <div className="fixed absolute inset-0 z-50 overflow-hidden">
           <div className="fixed flex inset-0 bg-structure-50/80 backdrop-blur-sm transition-opacity" />
           <div className="fixed top-0 left-0 h-full w-full flex flex-col justify-center items-center gap-4">
-            <span className="z-50">
-              <Page.Header title="Screen capture in progress..." />
-            </span>
-
+            {isCapturing && (
+              <span className="z-50">
+                <Page.Header title="Screen capture in progress..." />
+              </span>
+            )}
             <Spinner size="xl" />
           </div>
         </div>
