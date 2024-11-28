@@ -1,4 +1,4 @@
-import { Button, DocumentPlusIcon, ImageIcon } from "@dust-tt/sparkle";
+import { Button, CameraIcon, DocumentPlusIcon } from "@dust-tt/sparkle";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { useContext, useEffect } from "react";
@@ -45,7 +45,7 @@ export const AttachFragment = ({
       </div>
       <div className="block sm:hidden">
         <Button
-          icon={ImageIcon}
+          icon={CameraIcon}
           tooltip="Attach page screenshot"
           variant="outline"
           size="sm"
@@ -77,7 +77,7 @@ export const AttachFragment = ({
       </div>
       <div className="hidden sm:block">
         <Button
-          icon={ImageIcon}
+          icon={CameraIcon}
           label="Add page screenshot"
           tooltip="Attach page screenshot"
           variant="outline"
