@@ -772,8 +772,8 @@ async function makeContentFragment(
   // Prepend $url to the content to make it available to the model.
   const section = `$url: ${url}\n${sectionFullText(content)}`;
 
-  const contentType = "dust-application/slack";
-  const fileName = `thread-${channel.channel.name}.txt`;
+  const contentType = "text/plain";
+  const fileName = `slack_thread-${channel.channel.name}.txt`;
 
   const fileRes = await dustAPI.uploadFile({
     contentType,
