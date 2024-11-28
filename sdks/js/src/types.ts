@@ -2113,7 +2113,8 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema([
   "conversation",
   "avatar",
   "tool_output",
-  "folder",
+  "folder_document",
+  "folder_table",
 ]);
 
 export const FileTypeSchema = z.object({

@@ -24,8 +24,9 @@ import React, {
 } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
-import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
+import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
+import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { AddToSpaceDialog } from "@app/components/spaces/AddToSpaceDialog";
 import {
@@ -34,7 +35,6 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
-
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
   | "TableUploadOrEdit";
@@ -118,26 +118,30 @@ export const ContentActions = React.forwardRef<
       [currentAction, onSave]
     );
 
+    const contentNode = isUploadOrEditAction(currentAction.action)
+      ? currentAction.contentNode
+      : undefined;
+
+    // This is a union of the props for the two modals
+    // Makes sense because both expect the same schema
+    const modalProps = {
+      contentNode,
+      dataSourceView,
+      isOpen: isUploadOrEditAction(currentAction.action),
+      onClose,
+      owner,
+      plan,
+      totalNodesCount,
+      initialId: contentNode?.internalId,
+    };
+
     return (
       <>
-        <DocumentOrTableUploadOrEditModal
-          contentNode={
-            isUploadOrEditAction(currentAction.action)
-              ? currentAction.contentNode
-              : undefined
-          }
-          dataSourceView={dataSourceView}
-          isOpen={isUploadOrEditAction(currentAction.action)}
-          onClose={onClose}
-          owner={owner}
-          plan={plan}
-          totalNodesCount={totalNodesCount}
-          viewType={
-            currentAction.action === "TableUploadOrEdit"
-              ? "tables"
-              : "documents"
-          }
-        />
+        {currentAction.action === "TableUploadOrEdit" ? (
+          <TableUploadOrEditModal {...modalProps} />
+        ) : (
+          <DocumentUploadOrEditModal {...modalProps} />
+        )}
         <MultipleDocumentsUpload
           dataSourceView={dataSourceView}
           isOpen={currentAction.action === "MultipleDocumentsUpload"}

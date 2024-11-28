@@ -16,7 +16,6 @@ import {
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
 import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
-import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
 
 type DataSourceViewsAndInternalIds = {
@@ -196,30 +195,5 @@ export function useDataSourceViewConnectorConfiguration({
     mutateConfiguration: mutate,
     isConfigurationLoading: !disabled && !error && !data,
     isConfigurationError: error,
-  };
-}
-
-export function useDataSourceViewTables({
-  dataSourceView,
-  workspaceId,
-}: {
-  dataSourceView: DataSourceViewType | null;
-  workspaceId: string;
-}) {
-  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
-  const disabled = !dataSourceView;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${workspaceId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables`,
-    tablesFetcher
-  );
-
-  return {
-    tables: useMemo(() => (data ? data.tables : []), [data]),
-    isTablesLoading: !disabled && !error && !data,
-    isTablesError: error,
-    mutateTables: mutate,
   };
 }

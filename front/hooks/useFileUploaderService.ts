@@ -20,7 +20,7 @@ import { useState } from "react";
 
 import { getMimeTypeFromFile } from "@app/lib/file";
 
-interface FileBlob {
+export interface FileBlob {
   contentType: SupportedFileContentType;
   file: File;
   filename: string;
@@ -31,7 +31,7 @@ interface FileBlob {
   size: number;
   publicUrl?: string;
 }
-
+export type FileBlobWithFileId = FileBlob & { fileId: string };
 type FileBlobUploadErrorCode =
   | "failed_to_upload_file"
   | "file_type_not_supported";
@@ -126,7 +126,7 @@ export function useFileUploaderService({
         if (fileBlobs.some((f) => f.id === file.name)) {
           sendNotification({
             type: "error",
-            title: "File already exists.",
+            title: `Failed to upload file ${file.name}`,
             description: `File "${file.name}" is already uploaded.`,
           });
 
@@ -261,8 +261,8 @@ export function useFileUploaderService({
         erroredBlobs.push(result.error);
         sendNotification({
           type: "error",
-          title: "Failed to upload file.",
-          description: result.error.message,
+          title: `Failed to upload file`,
+          description: `error uploading  ${result.error.file.name} ${result.error.message ? ": " + result.error.message : ""}`,
         });
       } else {
         successfulBlobs.push(result.value);
@@ -315,7 +315,6 @@ export function useFileUploaderService({
     setFileBlobs([]);
   };
 
-  type FileBlobWithFileId = FileBlob & { fileId: string };
   function fileBlobHasFileId(
     fileBlob: FileBlob
   ): fileBlob is FileBlobWithFileId {
