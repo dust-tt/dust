@@ -5,9 +5,12 @@ import type {
 } from "@dust-tt/client";
 import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { rateLimiter, sectionFullText } from "@dust-tt/types";
-import { dustManagedCredentials } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import {
+  CoreAPI,
+  dustManagedCredentials,
+  rateLimiter,
+  sectionFullText,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -22,7 +25,7 @@ import {
 } from "@app/lib/upsert_queue";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, statsDClient } from "@app/logger/withlogging";
 import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
 
 export const config = {
@@ -470,6 +473,25 @@ async function handler(
               `Contact support@dust.tt if you want to increase it.`,
           },
         });
+      }
+
+      const statsDTags = [
+        `data_source_id:${dataSource.id}`,
+        `workspace_id:${owner.sId}`,
+        `data_source_name:${dataSource.name}`,
+      ];
+      if (!r.data.parents || r.data.parents.length === 0) {
+        statsDClient.increment(
+          "document_without_a_parent.count",
+          1,
+          statsDTags
+        );
+      } else if (r.data.parents[0] != req.query.documentId) {
+        statsDClient.increment(
+          "document_without_a_parent.count",
+          1,
+          statsDTags
+        );
       }
 
       if (r.data.async === true) {
