@@ -45,8 +45,7 @@
     "@storybook/testing-library": "^0.2.2",
     "@svgr/cli": "^8.0.1",
     "@tailwindcss/forms": "^0.5.3",
-    "@types/node": "^22.10.1",
-    "@types/react": "^18.3.12",
+    "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^9.0.6",
@@ -72,7 +71,7 @@
     "rollup-plugin-postcss": "^4.0.2",
     "sass-loader": "^13.3.2",
     "storybook": "^7.6.20",
-    "tailwindcss": "^3.4.15",
+    "tailwindcss": "^3.2.4",
     "tailwindcss-animate": "^1.0.7",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",
@@ -110,7 +109,7 @@
     "@radix-ui/react-tabs": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.3",
     "@tanstack/react-table": "^8.13.0",
-    "class-variance-authority": "^0.7.1",
+    "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "emoji-mart": "^5.5.2",
     "lottie-react": "^2.4.0",
@@ -129,6 +128,5 @@
     "tailwind-scrollbar-hide": "^1.1.7",
     "unist-util-visit": "^5.0.0"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
-  "keywords": []
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
