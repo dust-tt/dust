@@ -3,7 +3,10 @@ import type { LightWorkspaceType } from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import type { CoEditionState } from "@app/components/assistant/conversation/co-edition/CoEditionContext";
+import type {
+  CoEditionState,
+  CoEditionVisualizationContent,
+} from "@app/components/assistant/conversation/co-edition/CoEditionContext";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co-edition/CoEditionContext";
 
 interface CoEditionContainerProps {
@@ -17,51 +20,74 @@ export function CoEditionContainer({
 }: CoEditionContainerProps) {
   const { state, actions } = useCoEditionContext();
 
-  const renderContent = useCallback(
-    (coEditionContent: CoEditionState["content"]) => {
-      if (!coEditionContent) {
-        return null;
-      }
-
-      const nodes = [];
-
-      for (const [identifier, content] of coEditionContent) {
-        switch (content.type) {
-          case "visualization":
-            const { agentConfigurationId, code, complete } = content;
-
-            nodes.push(
-              <>
-                <h1>ID: {identifier}</h1>
-                <VisualizationActionIframe
-                  owner={owner}
-                  visualization={{
-                    code,
-                    complete,
-                    identifier,
-                  }}
-                  key={identifier}
-                  conversationId={conversationId}
-                  agentConfigurationId={agentConfigurationId}
-                />
-              </>
-            );
-            break;
-
-          default:
-            return null;
-        }
-      }
-
-      return nodes;
+  // Only render one visualization at a time
+  const renderVisualization = useCallback(
+    (identifier: string, content: CoEditionVisualizationContent) => {
+      return (
+        <div key={`${identifier}-${content.version}`} className="p-4">
+          <h1>ID: {identifier}</h1>
+          <VisualizationActionIframe
+            owner={owner}
+            visualization={{
+              code: content.code,
+              complete: content.complete,
+              identifier,
+            }}
+            conversationId={conversationId}
+            agentConfigurationId={content.agentConfigurationId}
+          />
+        </div>
+      );
     },
     [conversationId, owner]
   );
 
-  const nodes = useMemo(
-    () => renderContent(state.content),
-    [state.content, renderContent]
-  );
+  // const renderContent = useCallback(
+  //   (coEditionContent: CoEditionState["content"]) => {
+  //     console.log("> state content has changed", coEditionContent);
+  //     if (!coEditionContent) {
+  //       return null;
+  //     }
+
+  //     const nodes = [];
+
+  //     for (const [identifier, content] of Object.entries(coEditionContent)) {
+  //       switch (content.type) {
+  //         case "visualization":
+  //           const { agentConfigurationId, code, complete } = content;
+
+  //           nodes.push(
+  //             <>
+  //               <h1>ID: {identifier}</h1>
+  //               <VisualizationActionIframe
+  //                 owner={owner}
+  //                 visualization={{
+  //                   code,
+  //                   complete,
+  //                   identifier,
+  //                 }}
+  //                 key={identifier}
+  //                 conversationId={conversationId}
+  //                 agentConfigurationId={agentConfigurationId}
+  //               />
+  //             </>
+  //           );
+  //           break;
+
+  //         default:
+  //           return null;
+  //       }
+  //     }
+
+  //     return nodes;
+  //   },
+  //   [conversationId, owner]
+  // );
+
+  // const nodes = useMemo(
+  //   () => renderContent(state.content),
+  //   [state.content, renderContent]
+  // );
 
   return (
     <>
@@ -75,7 +101,14 @@ export function CoEditionContainer({
               onClick={actions.hide}
             />
           </div>
-          {nodes}
+          {Array.from(Object.entries(state.content)).map(
+            ([identifier, content]) => {
+              if (content.type === "visualization") {
+                return renderVisualization(identifier, content);
+              }
+              return null;
+            }
+          )}
         </div>
       )}
     </>

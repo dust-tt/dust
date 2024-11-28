@@ -1,30 +1,37 @@
 import { createContext, useContext, useState } from "react";
 
-type VisualizationContent = {
+interface BaseCodeEditionContent {
+  version: string;
+}
+
+export type CoEditionVisualizationContent = BaseCodeEditionContent & {
   type: "visualization";
   agentConfigurationId: string;
   code: string;
   complete: boolean;
 };
 
-type TextContent = {
+type TextContent = BaseCodeEditionContent & {
   type: "text";
   content: string;
   title?: string;
 };
 
-type CodeContent = {
+type CodeContent = BaseCodeEditionContent & {
   type: "code";
   content: string;
   language: string;
   title?: string;
 };
 
-type CoEditionContent = VisualizationContent | TextContent | CodeContent;
+type CoEditionContent =
+  | CoEditionVisualizationContent
+  | TextContent
+  | CodeContent;
 
 export interface CoEditionState {
   isVisible: boolean;
-  content: Map<string, CoEditionContent>;
+  content: Record<string, CoEditionContent>;
 }
 
 export interface CoEditionContextType {
@@ -56,7 +63,7 @@ const CoEditionContext = createContext<CoEditionContextType | null>(null);
 export function CoEditionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<CoEditionState>({
     isVisible: false,
-    content: new Map(),
+    content: {},
   });
 
   const actions = {
@@ -69,32 +76,48 @@ export function CoEditionProvider({ children }: { children: React.ReactNode }) {
         agentConfigurationId,
         code,
         complete,
+        version,
       }: {
         agentConfigurationId: string;
         code: string;
         complete: boolean;
-        identifier: string;
+        version: string;
       }
     ) => {
+      console.log(">>> updating state with visualization", identifier);
       setState((prevState) => {
-        if (!prevState.content) {
-          prevState.content = new Map();
+        const existingContent = prevState.content[identifier];
+        if (existingContent) {
+          // Same version, no need to update
+          if (existingContent.version === version) {
+            return prevState;
+          }
+
+          // Otherwise keep the latest version.
+          const sortedVersions = [existingContent.version, version].sort();
+          // If the new version is NOT the latest, ignore.
+          if (sortedVersions[1] !== version) {
+            return prevState;
+          }
         }
 
-        prevState.content.set(identifier, {
+        prevState.content[identifier] = {
           type: "visualization",
           agentConfigurationId,
           code,
           complete,
-        });
+          version,
+        };
 
-        return prevState;
+        return {
+          ...prevState,
+        };
       });
     },
     clear: () => {
       setState({
         isVisible: false,
-        content: new Map(),
+        content: {},
       });
     },
   };

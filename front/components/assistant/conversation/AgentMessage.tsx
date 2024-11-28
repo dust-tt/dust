@@ -451,6 +451,8 @@ export function AgentMessage({
   ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
+  const messageVersion = message.rank * 1000 + message.version;
+
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       visualization: getVisualizationPlugin(
@@ -461,12 +463,12 @@ export function AgentMessage({
       ),
       doc: getInteractiveDocumentPlugin(
         agentConfiguration.sId,
-        `${message.rank}.${message.version}`
+        messageVersion.toString()
       ),
       sup: CiteBlock,
       mention: MentionBlock,
     }),
-    [owner, conversationId, message.sId, agentConfiguration.sId]
+    [owner, conversationId, message.sId, agentConfiguration.sId, messageVersion]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
