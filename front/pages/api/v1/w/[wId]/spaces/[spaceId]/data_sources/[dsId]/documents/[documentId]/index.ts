@@ -479,6 +479,7 @@ async function handler(
         `data_source_id:${dataSource.id}`,
         `workspace_id:${owner.sId}`,
         `data_source_name:${dataSource.name}`,
+        `document_id:${req.query.documentId}`,
       ];
       if (!r.data.parents || r.data.parents.length === 0) {
         statsDClient.increment("document_empty_parents.count", 1, statsDTags);
