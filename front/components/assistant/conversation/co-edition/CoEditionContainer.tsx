@@ -1,4 +1,4 @@
-import { Button, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, ScrollArea, XMarkIcon } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
 
@@ -93,22 +93,24 @@ export function CoEditionContainer({
     <>
       {state.isVisible && (
         <div className="relative flex h-full w-full flex-col border-l border-structure-200">
-          <div className="absolute right-2 top-2 z-10">
-            <Button
-              variant="primary"
-              size="sm"
-              icon={XMarkIcon}
-              onClick={actions.hide}
-            />
-          </div>
-          {Array.from(Object.entries(state.content)).map(
-            ([identifier, content]) => {
-              if (content.type === "visualization") {
-                return renderVisualization(identifier, content);
+          <ScrollArea>
+            <div className="absolute right-2 top-2 z-10">
+              <Button
+                variant="primary"
+                size="sm"
+                icon={XMarkIcon}
+                onClick={actions.hide}
+              />
+            </div>
+            {Array.from(Object.entries(state.content)).map(
+              ([identifier, content]) => {
+                if (content.type === "visualization") {
+                  return renderVisualization(identifier, content);
+                }
+                return null;
               }
-              return null;
-            }
-          )}
+            )}
+          </ScrollArea>
         </div>
       )}
     </>
