@@ -17,19 +17,19 @@ export type FeedbackAssistantBuilder = {
   pictureUrl: string;
 };
 export type ThumbReaction = "up" | "down";
-export type ConversationMessageFeedbackType = {
+export type FeedbackType = {
   thumb: ThumbReaction;
   feedbackContent: string | null;
 };
-export interface ConversationMessageFeedbackSelectorProps {
-  feedback: ConversationMessageFeedbackType | null;
+export interface FeedbackSelectorProps {
+  feedback: FeedbackType | null;
   onSubmitThumb: (
-    p: ConversationMessageFeedbackType & {
+    p: FeedbackType & {
       isToRemove: boolean;
     }
   ) => Promise<void>;
   isSubmittingThumb: boolean;
-  getPopoverInfo?: () => JSX.Element;
+  getPopoverInfo?: () => JSX.Element | null;
 }
 
 export function FeedbackSelector({
@@ -37,7 +37,7 @@ export function FeedbackSelector({
   onSubmitThumb,
   isSubmittingThumb,
   getPopoverInfo,
-}: ConversationMessageFeedbackSelectorProps) {
+}: FeedbackSelectorProps) {
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
