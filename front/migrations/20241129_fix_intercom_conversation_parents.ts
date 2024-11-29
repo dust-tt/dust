@@ -18,6 +18,7 @@ async function main() {
       WHERE data_sources.id = data_sources_documents.data_source 
       AND data_sources."connectorProvider" = 'intercom'
     );`;
+    console.log(`Running the following query on core: ${query}`);
 
     await core_sequelize.query(query);
   } else {
@@ -30,6 +31,7 @@ async function main() {
       WHERE data_sources.id = data_sources_documents.data_source 
       AND data_sources."connectorProvider" = 'intercom'
     );`;
+    console.log(`Running the following query on core: ${query}`);
 
     const [results] = await core_sequelize.query(query);
     console.log(`Would update ${results.length} documents`);
