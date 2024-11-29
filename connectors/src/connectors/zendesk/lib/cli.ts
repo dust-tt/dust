@@ -6,10 +6,9 @@ import type {
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
   fetchZendeskCurrentUser,
   fetchZendeskTicketCount,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -59,22 +58,24 @@ export const zendesk = async ({
       if (!configuration) {
         throw new Error(`No configuration found for connector ${connector.id}`);
       }
+      const { retentionPeriodDays } = configuration;
 
       const { accessToken, subdomain } =
         await getZendeskSubdomainAndAccessToken(connector.connectionId);
-      const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
-      const brandSubdomain = await changeZendeskClientSubdomain(
-        zendeskApiClient,
-        { connectorId: connector.id, brandId }
-      );
+      const brandSubdomain = await getZendeskBrandSubdomain({
+        connectorId: connector.id,
+        brandId,
+        subdomain,
+        accessToken,
+      });
 
       const ticketCount = await fetchZendeskTicketCount({
         brandSubdomain,
         accessToken,
-        retentionPeriodDays: configuration.retentionPeriodDays,
+        retentionPeriodDays,
       });
       logger.info(
-        { connectorId, brandId, ticketCount },
+        { connectorId, brandId, ticketCount, retentionPeriodDays },
         "Number of valid tickets found for the brand."
       );
       return { ticketCount };
