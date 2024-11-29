@@ -341,7 +341,7 @@ export async function getBuildersUsageData(
       [
         Sequelize.fn(
           "COUNT",
-          Sequelize.literal('DISTINCT "agentpost_configuration"."sId"')
+          Sequelize.literal('DISTINCT "agent_configuration"."sId"')
         ),
         "distinctAgentsEditionsCount",
       ],
