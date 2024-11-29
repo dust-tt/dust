@@ -151,7 +151,7 @@ export async function sendProactiveTrialCancelledEmail(
       <p>You've not used core features of the product (adding data sources, creating custom assistants) and you haven't used assistant conversations in the past 7 days.
       As a result, to avoid keeping your payment method on file while you may not intend to convert to our paid plan, we've cancelled your trial ahead of time and won't be charging you.</p>
 
-      <p>If you did intend to continue on Dust, you can subscribe again. If you'd like to extend further, feel free to just email me.</p>
+      <p>If you did intend to continue on Dust, please subscribe again and email us. We will extend your trial further.</p>
 
       <p>Thanks again for trying Dust out. If you have a second, please let me know if you have any thoughts about what we could do to improve Dust for your needs!</p>`,
   });
