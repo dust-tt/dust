@@ -5,9 +5,7 @@ export const DEFAULT_PROCESS_ACTION_NAME =
 
 export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
 
-// The name below is used by the assistant builder when the user selects "Include data".
-export const DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME =
-  "most_recent_in_data_sources";
+export const DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME = "include_data_sources";
 
 export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search";
 export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION = "Perform a web search";
