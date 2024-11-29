@@ -780,11 +780,7 @@ async function makeContentFragment(
     fileName,
     fileSize: section.length,
     useCase: "conversation",
-    fileObject: new File(
-      [new Blob([section], { type: contentType })],
-      fileName,
-      { type: contentType }
-    ),
+    fileObject: new File([section], fileName, { type: contentType }),
   });
 
   if (fileRes.isErr()) {
