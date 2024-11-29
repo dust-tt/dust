@@ -420,7 +420,12 @@
  *         name:
  *           type: string
  *           description: Name of the table
- *           example: "roi.csv"
+ *           example: "Roi data"
+ *           deprecated: true
+ *         title:
+ *           type: string
+ *           description: Title of the table
+ *           example: "ROI Data"
  *         table_id:
  *           type: string
  *           description: Unique identifier for the table
@@ -429,6 +434,10 @@
  *           type: string
  *           description: Description of the table
  *           example: "roi data for Q1"
+ *         mime_type:
+ *           type: string
+ *           description: MIME type of the table
+ *           example: "text/csv"
  *         schema:
  *           type: array
  *           description: Array of column definitions

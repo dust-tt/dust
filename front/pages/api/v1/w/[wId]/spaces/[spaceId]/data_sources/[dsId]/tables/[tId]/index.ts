@@ -198,7 +198,7 @@ async function handler(
 
       return res.status(200).json({
         table: {
-          name: table.name,
+          name: table.title ?? table.name,
           table_id: table.table_id,
           description: table.description,
           schema: table.schema,
@@ -206,7 +206,7 @@ async function handler(
           tags: table.tags,
           parents: table.parents,
           mime_type: table.mime_type,
-          title: table.title,
+          title: table.title ?? table.name,
         },
       });
 
