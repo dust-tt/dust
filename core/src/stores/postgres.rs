@@ -13,6 +13,7 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
+use crate::data_sources::folder::FOLDER_MIMETYPE;
 use crate::data_sources::node::{Node, NodeType, SimpleNode};
 use crate::{
     blocks::block::BlockType,
@@ -3048,7 +3049,6 @@ impl Store for PostgresStore {
         created: u64,
         timestamp: u64,
         title: &str,
-        mime_type: &str,
         parents: &Vec<String>,
     ) -> Result<Folder> {
         let data_source_id = data_source_id.to_string();
@@ -3082,7 +3082,7 @@ impl Store for PostgresStore {
                 created,
                 timestamp,
                 title,
-                mime_type,
+                FOLDER_MIMETYPE,
                 parents,
                 &tx,
             )

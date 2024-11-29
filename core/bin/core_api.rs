@@ -2693,7 +2693,6 @@ async fn folders_upsert(
             utils::now(),
             payload.timestamp.unwrap_or(utils::now()),
             &payload.title,
-            "application/vnd.dust.folder",
             &payload.parents,
         )
         .await

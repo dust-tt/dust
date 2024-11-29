@@ -275,7 +275,6 @@ pub trait Store {
         created: u64,
         timestamp: u64,
         title: &str,
-        mime_type: &str,
         parents: &Vec<String>,
     ) -> Result<Folder>;
     async fn load_data_source_folder(
