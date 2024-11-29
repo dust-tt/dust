@@ -219,13 +219,14 @@ export type IntercomForceResyncArticlesResponseType = t.TypeOf<
  */
 export const ZendeskCommandSchema = t.type({
   majorCommand: t.literal("zendesk"),
-  command: t.literal("check-is-admin"),
+  command: t.union([t.literal("check-is-admin"), t.literal("count-tickets")]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
+    brandId: t.union([t.number, t.undefined]),
   }),
 });
-
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
+
 export const ZendeskCheckIsAdminResponseSchema = t.type({
   userRole: t.string,
   userActive: t.boolean,
@@ -233,6 +234,13 @@ export const ZendeskCheckIsAdminResponseSchema = t.type({
 });
 export type ZendeskCheckIsAdminResponseType = t.TypeOf<
   typeof ZendeskCheckIsAdminResponseSchema
+>;
+
+export const ZendeskCountTicketsResponseSchema = t.type({
+  ticketCount: t.number,
+});
+export type ZendeskCountTicketsResponseType = t.TypeOf<
+  typeof ZendeskCountTicketsResponseSchema
 >;
 /**
  * </Zendesk>
@@ -390,6 +398,7 @@ export const AdminResponseSchema = t.union([
   TemporalUnprocessedWorkflowsResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
   ZendeskCheckIsAdminResponseSchema,
+  ZendeskCountTicketsResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;

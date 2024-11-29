@@ -365,6 +365,28 @@ export async function fetchZendeskTicketsInBrand(
 }
 
 /**
+ * Fetches the number of tickets in a Brand from the Zendesk API.
+ * Only counts tickets that have been solved, and that were updated within the retention period.
+ */
+export async function fetchZendeskTicketCount({
+  accessToken,
+  brandSubdomain,
+  retentionPeriodDays,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+  retentionPeriodDays: number;
+}): Promise<number> {
+  const query = `type:ticket status:solved updated>${retentionPeriodDays}days`;
+  const response = await fetchFromZendeskWithRetries({
+    url: `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(query)}`,
+    accessToken,
+  });
+
+  return Number(response.count);
+}
+
+/**
  * Fetches the current user through a call to `/users/me`.
  */
 export async function fetchZendeskCurrentUser({
