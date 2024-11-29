@@ -6,6 +6,7 @@ import {
   CitationNew,
   CitationNewClose,
   CitationNewDescription,
+  CitationNewGrid,
   CitationNewIcons,
   CitationNewImage,
   CitationNewIndex,
@@ -129,8 +130,8 @@ export const CitationsExample = () => (
         }
       />
     </div>
-    Example of citations in a grid
-    <div className="s-grid s-grid-cols-5 s-gap-2">
+    Example of dynamic grid
+    <CitationNewGrid>
       <CitationNew onClick={() => alert("Card clicked")}>
         <CitationNewIcons>
           <CitationNewIndex>1</CitationNewIndex>
@@ -159,6 +160,6 @@ export const CitationsExample = () => (
         </CitationNewIcons>
         <CitationNewTitle>Hello</CitationNewTitle>
       </CitationNew>
-    </div>
+    </CitationNewGrid>
   </div>
 );
