@@ -7,6 +7,7 @@ import { DataSourceViewSelector } from "@app/components/data_source_view/DataSou
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import PokeLayout from "@app/pages/poke/PokeLayout";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
@@ -36,7 +37,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSourceView: await dataSourceView.toPokeJSON(),
+      dataSourceView: await dataSourceViewToPokeJSON(dataSourceView),
     },
   };
 });

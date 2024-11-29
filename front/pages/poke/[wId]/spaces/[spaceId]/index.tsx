@@ -10,6 +10,7 @@ import { MembersDataTable } from "@app/components/poke/members/table";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { spaceToPokeJSON } from "@app/lib/poke/utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import PokeLayout from "@app/pages/poke/PokeLayout";
@@ -61,7 +62,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     props: {
       members: userWithWorkspaces,
       owner,
-      space: space.toPokeJSON(),
+      space: spaceToPokeJSON(space),
     },
   };
 });

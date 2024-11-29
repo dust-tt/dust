@@ -281,9 +281,7 @@ export function fileAttachmentLocation({
   const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
   return {
     filePath,
-    internalUrl: `https://storage.googleapis.com/${
-      getPrivateUploadBucket().name
-    }/${filePath}`,
+    internalUrl: `https://storage.googleapis.com/${getPrivateUploadBucket().name}/${filePath}`,
     downloadUrl: `${appConfig.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
   };
 }
@@ -582,7 +580,8 @@ export async function renderContentFragmentForModel(
         contentType,
         excludeImages,
         fileId,
-        forceFullCSVInclude: message.snippet != null, // JIT
+        // If there is a snippet, it means that JIT was used, therefor if we are rendering the content fragment: we want to include the full content.
+        forceFullCSVInclude: message.snippet != null,
         model,
         title,
         textBytes,
