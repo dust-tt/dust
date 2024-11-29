@@ -343,7 +343,8 @@ const processingPerContentType: ProcessingPerContentType = {
   },
   "dust-application/slack": {
     conversation: upsertDocumentToDatasource,
-    folder: notSupportedError,
+    folder_document: notSupportedError,
+    folder_table: notSupportedError,
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
