@@ -4,6 +4,7 @@ import { createClient } from "node-zendesk";
 
 import type {
   ZendeskFetchedArticle,
+  ZendeskFetchedBrand,
   ZendeskFetchedCategory,
   ZendeskFetchedTicket,
   ZendeskFetchedUser,
@@ -175,6 +176,23 @@ async function fetchFromZendeskWithRetries({
   }
 
   return response;
+}
+
+/**
+ * Fetches a single brand from the Zendesk API.
+ */
+export async function fetchZendeskBrand({
+  subdomain,
+  accessToken,
+  brandId,
+}: {
+  subdomain: string;
+  accessToken: string;
+  brandId: number;
+}): Promise<ZendeskFetchedBrand | null> {
+  const url = `https://${subdomain}.zendesk.com/api/v2/brands/${brandId}`;
+  const response = await fetchFromZendeskWithRetries({ url, accessToken });
+  return response.brand ?? null;
 }
 
 /**
