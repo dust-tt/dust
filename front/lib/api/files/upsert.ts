@@ -1,9 +1,4 @@
-import type {
-  FileUseCase,
-  PlainTextContentType,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
+import type { FileUseCase, PlainTextContentType, Result } from "@dust-tt/types";
 import {
   assertNever,
   CoreAPI,
@@ -68,14 +63,15 @@ const notSupportedError: ProcessingFunction = async ({ file }) => {
 
 async function generateSnippet(
   auth: Authenticator,
-  content: string,
-  contentType: SupportedFileContentType
+  file: FileResource,
+  content: string
 ): Promise<Result<string, Error>> {
+  const startTime = Date.now();
   const owner = auth.getNonNullableWorkspace();
 
   if (
-    contentType === "text/csv" ||
-    contentType === "text/comma-separated-values"
+    file.contentType === "text/csv" ||
+    file.contentType === "text/comma-separated-values"
   ) {
     // Parse only the headers from the CSV file
     const headers = content.split("\n")[0];
@@ -175,6 +171,15 @@ async function generateSnippet(
           );
         }
         const snippet = results[0][0].value as string;
+        const endTime = Date.now();
+        logger.info(
+          {
+            workspaceId: owner.sId,
+            fileId: file.sId,
+          },
+          `Snippet generation took ${endTime - startTime}ms`
+        );
+
         return new Ok(snippet);
       case "running":
         return new Err(
@@ -358,10 +363,19 @@ const maybeApplyProcessing: ProcessingFunction = async ({
 
   const processing = contentTypeProcessing[file.useCase];
   if (processing) {
+    const startTime = Date.now();
     const res = await processing({ auth, file, content, dataSource });
     if (res.isErr()) {
       return res;
     } else {
+      const endTime = Date.now();
+      logger.info(
+        {
+          workspaceId: auth.workspace()?.sId,
+          fileId: file.sId,
+        },
+        `Processing took ${endTime - startTime}ms`
+      );
       return new Ok(undefined);
     }
   }
@@ -506,7 +520,7 @@ export async function processAndUpsertToDataSource(
       content,
       dataSource,
     }),
-    generateSnippet(auth, content, file.contentType),
+    generateSnippet(auth, file, content),
   ]);
 
   if (processingRes.isErr()) {
