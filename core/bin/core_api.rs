@@ -2684,8 +2684,6 @@ async fn folders_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    // TODO: create, not upsert - Should not exist
-
     match state
         .store
         .upsert_data_source_folder(
