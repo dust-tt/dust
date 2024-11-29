@@ -189,10 +189,8 @@ export async function fetchZendeskArticle({
   accessToken: string;
   articleId: number;
 }): Promise<ZendeskFetchedArticle | null> {
-  const response = await fetchFromZendeskWithRetries({
-    url: `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`,
-    accessToken,
-  });
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`;
+  const response = await fetchFromZendeskWithRetries({ url, accessToken });
   return response.article ?? null;
 }
 
@@ -244,10 +242,8 @@ export async function fetchRecentlyUpdatedArticles({
   endTime: number;
 }> {
   // this endpoint retrieves changes in content, not only in metadata despite what is mentioned in the documentation.
-  const response = await fetchFromZendeskWithRetries({
-    url: `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`,
-    accessToken,
-  });
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`;
+  const response = await fetchFromZendeskWithRetries({ url, accessToken });
   return {
     articles: response.articles,
     hasMore: response.next_page !== null && response.articles.length !== 0,
@@ -348,15 +344,13 @@ export async function fetchZendeskTicketsInBrand(
   hasMore: boolean;
   nextLink: string | null;
 }> {
+  const query = `status:solved updated>${retentionPeriodDays}days`;
   const response = await fetchFromZendeskWithRetries({
     url:
       url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket&page[size]=${pageSize}&query=${encodeURIComponent(
-        `status:solved updated>${retentionPeriodDays}days`
-      )}`,
+      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket&page[size]=${pageSize}&query=${encodeURIComponent(query)}`,
     accessToken,
   });
-
   return {
     tickets: response.results,
     hasMore: response.meta.has_more,
@@ -378,11 +372,8 @@ export async function fetchZendeskTicketCount({
   retentionPeriodDays: number;
 }): Promise<number> {
   const query = `type:ticket status:solved updated>${retentionPeriodDays}days`;
-  const response = await fetchFromZendeskWithRetries({
-    url: `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(query)}`,
-    accessToken,
-  });
-
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(query)}`;
+  const response = await fetchFromZendeskWithRetries({ url, accessToken });
   return Number(response.count);
 }
 
@@ -396,10 +387,7 @@ export async function fetchZendeskCurrentUser({
   subdomain: string;
   accessToken: string;
 }): Promise<ZendeskFetchedUser> {
-  const response = await fetch(
-    `https://${subdomain}.zendesk.com/api/v2/users/me`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  const data = await response.json();
-  return data.user;
+  const url = `https://${subdomain}.zendesk.com/api/v2/users/me`;
+  const response = await fetchFromZendeskWithRetries({ url, accessToken });
+  return response.user;
 }
