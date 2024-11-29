@@ -463,7 +463,7 @@ export function AgentMessage({
       ),
       doc: getInteractiveDocumentPlugin(
         agentConfiguration.sId,
-        messageVersion.toString()
+        messageVersion
       ),
       sup: CiteBlock,
       mention: MentionBlock,

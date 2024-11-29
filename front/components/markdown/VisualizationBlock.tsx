@@ -136,7 +136,7 @@ export function getVisualizationPlugin(
 
 export function getInteractiveDocumentPlugin(
   agentConfigurationId: string,
-  version: string
+  version: number
 ) {
   const makeCustomRenderer = (actions: CoEditionContextType["actions"]) => {
     return {
