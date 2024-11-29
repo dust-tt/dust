@@ -44,21 +44,31 @@ export async function changeZendeskClientSubdomain(
   client: Client,
   { connectorId, brandId }: { connectorId: ModelId; brandId: number }
 ): Promise<string> {
-  const brandSubdomain = await getZendeskBrandSubdomain(client, {
+  const brandInDbSubdomain = await getZendeskBrandInDbSubdomain({
     connectorId,
     brandId,
   });
-  client.config.subdomain = brandSubdomain;
-  return brandSubdomain;
+  if (brandInDbSubdomain) {
+    client.config.subdomain = brandInDbSubdomain;
+    return brandInDbSubdomain;
+  }
+  const {
+    result: { brand },
+  } = await client.brand.show(brandId);
+  client.config.subdomain = brand.subdomain;
+  return brand.subdomain;
 }
 
 /**
  * Retrieves a brand's subdomain from the database if it exists, fetches it from the Zendesk API otherwise.
  */
-async function getZendeskBrandSubdomain(
-  client: Client,
-  { connectorId, brandId }: { connectorId: ModelId; brandId: number }
-): Promise<string> {
+async function getZendeskBrandInDbSubdomain({
+  connectorId,
+  brandId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+}): Promise<string | null> {
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -66,10 +76,35 @@ async function getZendeskBrandSubdomain(
   if (brandInDb) {
     return brandInDb.subdomain;
   }
+  return null;
+}
 
-  const {
-    result: { brand },
-  } = await client.brand.show(brandId);
+/**
+ * Retrieves a brand's subdomain from the database if it exists, fetches it from the Zendesk API otherwise.
+ */
+export async function getZendeskBrandSubdomain({
+  connectorId,
+  brandId,
+  subdomain,
+  accessToken,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  subdomain: string;
+  accessToken: string;
+}): Promise<string> {
+  const brandInDbSubdomain = await getZendeskBrandInDbSubdomain({
+    connectorId,
+    brandId,
+  });
+  if (brandInDbSubdomain) {
+    return brandInDbSubdomain;
+  }
+
+  const brand = await fetchZendeskBrand({ subdomain, accessToken, brandId });
+  if (!brand) {
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+  }
   return brand.subdomain;
 }
 
