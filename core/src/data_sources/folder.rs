@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::project::Project;
 
-use super::node::{Node, NodeType, SimpleNode};
+use super::node::{Node, NodeType, ToNode};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
@@ -39,7 +39,7 @@ impl Folder {
         }
     }
 
-    pub fn from_node(node: &SimpleNode) -> Self {
+    pub fn from_node(node: &Node) -> Self {
         Folder::new(
             node.project(),
             node.data_source_id(),
@@ -50,34 +50,42 @@ impl Folder {
             node.parents().clone(),
         )
     }
-}
 
-impl Node for Folder {
-    fn project(&self) -> &Project {
+    pub fn project(&self) -> &Project {
         &self.project
     }
-    fn data_source_id(&self) -> &str {
+    pub fn data_source_id(&self) -> &str {
         &self.data_source_id
     }
-    fn created(&self) -> u64 {
+    pub fn created(&self) -> u64 {
         self.created
     }
-    fn timestamp(&self) -> u64 {
+    pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
-    fn node_id(&self) -> &str {
+    pub fn folder_id(&self) -> &str {
         &self.folder_id
     }
-    fn node_type(&self) -> NodeType {
-        NodeType::Folder
-    }
-    fn title(&self) -> &str {
+    pub fn title(&self) -> &str {
         &self.title
     }
-    fn mime_type(&self) -> &str {
-        FOLDER_MIMETYPE
-    }
-    fn parents(&self) -> &Vec<String> {
+    pub fn parents(&self) -> &Vec<String> {
         &self.parents
+    }
+}
+
+impl ToNode for Folder {
+    fn node(&self) -> Node {
+        Node::new(
+            &self.project,
+            &self.data_source_id,
+            &self.folder_id,
+            NodeType::Folder,
+            self.created,
+            self.timestamp,
+            &self.title,
+            FOLDER_MIMETYPE,
+            self.parents.clone(),
+        )
     }
 }

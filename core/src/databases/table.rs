@@ -7,7 +7,7 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::{
-    data_sources::node::{Node, NodeType},
+    data_sources::node::{Node, NodeType, ToNode},
     databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -106,8 +106,29 @@ impl Table {
         }
     }
 
+    pub fn project(&self) -> &Project {
+        &self.project
+    }
+    pub fn data_source_id(&self) -> &str {
+        &self.data_source_id
+    }
     pub fn table_id(&self) -> &str {
         &self.table_id
+    }
+    pub fn created(&self) -> u64 {
+        self.created
+    }
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    pub fn parents(&self) -> &Vec<String> {
+        &self.parents
     }
     pub fn name(&self) -> &str {
         &self.name
@@ -199,33 +220,19 @@ impl Table {
     }
 }
 
-impl Node for Table {
-    fn project(&self) -> &Project {
-        &self.project
-    }
-    fn data_source_id(&self) -> &str {
-        &self.data_source_id
-    }
-    fn node_id(&self) -> &str {
-        &self.table_id
-    }
-    fn created(&self) -> u64 {
-        self.created
-    }
-    fn timestamp(&self) -> u64 {
-        self.timestamp
-    }
-    fn node_type(&self) -> NodeType {
-        NodeType::Table
-    }
-    fn title(&self) -> &str {
-        &self.title
-    }
-    fn mime_type(&self) -> &str {
-        &self.mime_type
-    }
-    fn parents(&self) -> &Vec<String> {
-        &self.parents
+impl ToNode for Table {
+    fn node(&self) -> Node {
+        Node::new(
+            &self.project,
+            &self.data_source_id,
+            &self.table_id,
+            NodeType::Table,
+            self.created,
+            self.timestamp,
+            &self.title,
+            &self.mime_type,
+            self.parents.clone(),
+        )
     }
 }
 

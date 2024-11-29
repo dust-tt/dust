@@ -11,7 +11,7 @@ use crate::{
     data_sources::{
         data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
         folder::Folder,
-        node::SimpleNode,
+        node::Node,
     },
     databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
@@ -267,16 +267,7 @@ pub trait Store {
         table_id: &str,
     ) -> Result<()>;
     // Folders
-    async fn upsert_data_source_folder(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        folder_id: &str,
-        created: u64,
-        timestamp: u64,
-        title: &str,
-        parents: &Vec<String>,
-    ) -> Result<Folder>;
+    async fn upsert_data_source_folder(&self, folder: &Folder) -> Result<()>;
     async fn load_data_source_folder(
         &self,
         project: &Project,
@@ -295,7 +286,7 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         node_id: &str,
-    ) -> Result<Option<(SimpleNode, i64)>>;
+    ) -> Result<Option<(Node, i64)>>;
     // LLM Cache
     async fn llm_cache_get(
         &self,

@@ -13,8 +13,7 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::folder::FOLDER_MIMETYPE;
-use crate::data_sources::node::{Node, NodeType, SimpleNode};
+use crate::data_sources::node::{Node, NodeType, ToNode};
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
@@ -134,20 +133,12 @@ impl PostgresStore {
 
     async fn upsert_data_source_node(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        node_id: &str,
+        node: &Node,
         row_id: i64,
-        node_type: NodeType,
-        created: u64,
-        timestamp: u64,
-        title: &str,
-        mime_type: &str,
-        parents: &Vec<String>,
         tx: &Transaction<'_>,
-    ) -> Result<SimpleNode> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
+    ) -> Result<()> {
+        let project_id = node.project().project_id();
+        let data_source_id = node.data_source_id();
 
         let r = tx
             .query(
@@ -162,7 +153,7 @@ impl PostgresStore {
             _ => unreachable!(),
         };
 
-        let (document_row_id, table_row_id, folder_row_id) = match node_type {
+        let (document_row_id, table_row_id, folder_row_id) = match node.node_type() {
             NodeType::Document => (Some(row_id), None, None),
             NodeType::Table => (None, Some(row_id), None),
             NodeType::Folder => (None, None, Some(row_id)),
@@ -185,29 +176,19 @@ impl PostgresStore {
                 &stmt,
                 &[
                     &data_source_row_id,
-                    &(created as i64),
-                    &node_id,
-                    &(timestamp as i64),
-                    &title,
-                    &mime_type,
-                    &parents,
+                    &(node.created() as i64),
+                    &node.node_id(),
+                    &(node.timestamp() as i64),
+                    &node.title(),
+                    &node.mime_type(),
+                    &node.parents(),
                     &document_row_id,
                     &table_row_id,
                     &folder_row_id,
                 ],
             )
             .await?;
-        Ok(SimpleNode::new(
-            project,
-            &data_source_id,
-            node_id,
-            node_type,
-            created,
-            timestamp,
-            title,
-            mime_type,
-            parents.clone(),
-        ))
+        Ok(())
     }
     async fn delete_data_source_node(
         &self,
@@ -2562,27 +2543,7 @@ impl Store for PostgresStore {
             }
         };
 
-        // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
-        if let (Some(title), Some(mime_type)) = (title, mime_type) {
-            self.upsert_data_source_node(
-                &project,
-                &data_source_id,
-                &table_id,
-                row_id,
-                NodeType::Table,
-                table_created,
-                table_timestamp,
-                &title,
-                &mime_type,
-                parents,
-                &tx,
-            )
-            .await?;
-        }
-        tx.commit().await?;
-
-        Ok(Table::new(
+        let table = Table::new(
             project,
             &data_source_id,
             table_created,
@@ -2598,7 +2559,17 @@ impl Store for PostgresStore {
             None,
             table_remote_database_table_id,
             table_remote_database_secret_id,
-        ))
+        );
+
+        // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
+        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
+        if let (Some(_), Some(_)) = (title, mime_type) {
+            self.upsert_data_source_node(&table.node(), row_id, &tx)
+                .await?;
+        }
+        tx.commit().await?;
+
+        Ok(table)
     }
 
     async fn update_table_schema(
@@ -3041,24 +3012,15 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn upsert_data_source_folder(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        folder_id: &str,
-        created: u64,
-        timestamp: u64,
-        title: &str,
-        parents: &Vec<String>,
-    ) -> Result<Folder> {
-        let data_source_id = data_source_id.to_string();
+    async fn upsert_data_source_folder(&self, folder: &Folder) -> Result<()> {
+        let data_source_id = folder.data_source_id();
 
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
         let tx = c.transaction().await?;
         let row_id: i64 = match &self
-            .get_data_source_node(&project, &data_source_id, &folder_id)
+            .get_data_source_node(&folder.project(), data_source_id, &folder.folder_id())
             .await?
         {
             None => {
@@ -3072,24 +3034,11 @@ impl Store for PostgresStore {
             Some((_, row_id)) => *row_id,
         };
 
-        let node = self
-            .upsert_data_source_node(
-                &project,
-                &data_source_id,
-                &folder_id,
-                row_id,
-                NodeType::Folder,
-                created,
-                timestamp,
-                title,
-                FOLDER_MIMETYPE,
-                parents,
-                &tx,
-            )
+        self.upsert_data_source_node(&folder.node(), row_id, &tx)
             .await?;
         tx.commit().await?;
 
-        Ok(Folder::from_node(&node))
+        Ok(())
     }
 
     async fn load_data_source_folder(
@@ -3166,7 +3115,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         node_id: &str,
-    ) -> Result<Option<(SimpleNode, i64)>> {
+    ) -> Result<Option<(Node, i64)>> {
         let project_id = project.project_id();
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -3212,7 +3161,7 @@ impl Store for PostgresStore {
                     _ => unreachable!(),
                 };
                 Ok(Some((
-                    SimpleNode::new(
+                    Node::new(
                         project,
                         &data_source_id,
                         &node_id,

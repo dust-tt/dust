@@ -9,20 +9,12 @@ pub enum NodeType {
     Folder,
 }
 
-pub trait Node {
-    fn project(&self) -> &Project;
-    fn data_source_id(&self) -> &str;
-    fn node_id(&self) -> &str;
-    fn created(&self) -> u64;
-    fn timestamp(&self) -> u64;
-    fn node_type(&self) -> NodeType;
-    fn title(&self) -> &str;
-    fn mime_type(&self) -> &str;
-    fn parents(&self) -> &Vec<String>;
+pub trait ToNode {
+    fn node(&self) -> Node;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SimpleNode {
+pub struct Node {
     project: Project,
     data_source_id: String,
     node_id: String,
@@ -34,7 +26,7 @@ pub struct SimpleNode {
     parents: Vec<String>,
 }
 
-impl SimpleNode {
+impl Node {
     pub fn new(
         project: &Project,
         data_source_id: &str,
@@ -46,7 +38,7 @@ impl SimpleNode {
         mime_type: &str,
         parents: Vec<String>,
     ) -> Self {
-        SimpleNode {
+        Node {
             project: project.clone(),
             data_source_id: data_source_id.to_string(),
             node_id: node_id.to_string(),
@@ -58,34 +50,32 @@ impl SimpleNode {
             parents,
         }
     }
-}
 
-impl Node for SimpleNode {
-    fn project(&self) -> &Project {
+    pub fn project(&self) -> &Project {
         &self.project
     }
-    fn data_source_id(&self) -> &str {
+    pub fn data_source_id(&self) -> &str {
         &self.data_source_id
     }
-    fn created(&self) -> u64 {
+    pub fn created(&self) -> u64 {
         self.created
     }
-    fn timestamp(&self) -> u64 {
+    pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
-    fn node_id(&self) -> &str {
+    pub fn node_id(&self) -> &str {
         &self.node_id
     }
-    fn node_type(&self) -> NodeType {
+    pub fn node_type(&self) -> NodeType {
         self.node_type
     }
-    fn title(&self) -> &str {
+    pub fn title(&self) -> &str {
         &self.title
     }
-    fn mime_type(&self) -> &str {
+    pub fn mime_type(&self) -> &str {
         &self.mime_type
     }
-    fn parents(&self) -> &Vec<String> {
+    pub fn parents(&self) -> &Vec<String> {
         &self.parents
     }
 }

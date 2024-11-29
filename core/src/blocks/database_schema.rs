@@ -11,7 +11,6 @@ use crate::{
         block::{Block, BlockResult, BlockType, Env},
         helpers::get_data_source_project_and_view_filter,
     },
-    data_sources::node::Node,
     databases::{database::get_tables_schema, table::Table},
     Rule,
 };

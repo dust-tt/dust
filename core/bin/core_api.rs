@@ -35,6 +35,7 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
+        folder::Folder,
         qdrant::QdrantClients,
     },
     databases::{
@@ -2684,19 +2685,17 @@ async fn folders_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    match state
-        .store
-        .upsert_data_source_folder(
-            &project,
-            &data_source_id,
-            &payload.folder_id.clone(),
-            utils::now(),
-            payload.timestamp.unwrap_or(utils::now()),
-            &payload.title,
-            &payload.parents,
-        )
-        .await
-    {
+    let folder = Folder::new(
+        &project,
+        &data_source_id,
+        &payload.folder_id.clone(),
+        utils::now(),
+        payload.timestamp.unwrap_or(utils::now()),
+        &payload.title,
+        payload.parents,
+    );
+
+    match state.store.upsert_data_source_folder(&folder).await {
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -2705,7 +2704,7 @@ async fn folders_upsert(
                 Some(e),
             )
         }
-        Ok(folder) => (
+        Ok(()) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
