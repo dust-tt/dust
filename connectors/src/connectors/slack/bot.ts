@@ -369,7 +369,8 @@ async function answerMessage(
     slackChannel,
     slackThreadTs || slackMessageTs,
     lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
-    connector
+    connector,
+    lastSlackChatBotMessage?.conversationId || null
   );
 
   if (slackUserInfo.is_bot) {
@@ -695,7 +696,8 @@ async function makeContentFragment(
   channelId: string,
   threadTs: string,
   startingAtTs: string | null,
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  conversationId: string | null
 ): Promise<Result<PublicPostContentFragmentRequestBody | null, Error>> {
   let allMessages: MessageElement[] = [];
 
@@ -780,6 +782,11 @@ async function makeContentFragment(
     fileName,
     fileSize: section.length,
     useCase: "conversation",
+    useCaseMetadata: conversationId
+      ? {
+          conversationId,
+        }
+      : undefined,
     fileObject: new File([section], fileName, { type: contentType }),
   });
 
