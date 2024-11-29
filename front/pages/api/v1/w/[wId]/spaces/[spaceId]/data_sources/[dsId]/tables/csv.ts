@@ -116,7 +116,7 @@ async function handler(
         auth,
         params: {
           ...r.data,
-          mimeType: r.data.mimeType ?? "text/csv",
+          mimeType: r.data.mimeType,
           title: r.data.title ?? r.data.name,
         },
         dataSource,
