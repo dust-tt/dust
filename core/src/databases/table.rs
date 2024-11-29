@@ -112,14 +112,11 @@ impl Table {
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
     }
-    pub fn table_id(&self) -> &str {
-        &self.table_id
-    }
     pub fn created(&self) -> u64 {
         self.created
     }
-    pub fn timestamp(&self) -> u64 {
-        self.timestamp
+    pub fn table_id(&self) -> &str {
+        &self.table_id
     }
     pub fn title(&self) -> &str {
         &self.title
@@ -136,7 +133,9 @@ impl Table {
     pub fn description(&self) -> &str {
         &self.description
     }
-
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
     pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
     }
