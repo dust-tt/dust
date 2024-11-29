@@ -2479,10 +2479,11 @@ impl Store for PostgresStore {
             .await?
         {
             None => {
-                // Create new table - still doing upsert here during migration,
+                // TODO(KW_SEARCH_INFRA)
+                // Create new table - still doing upsert here during migration, as we can have table which do not have a node yet
                 // Must be replaced by a simple insert once all tables have a corresponding node
 
-                // Fetching data source row id will be removed once not needed anymore in "tables"
+                // Fetching data source row id (will be removed once not needed anymore in "tables")
                 let r = tx
                 .query(
                     "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -2561,7 +2562,7 @@ impl Store for PostgresStore {
         };
 
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-        // Upsert the data source node if title and mime_type are present
+        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
         if let (Some(title), Some(mime_type)) = (title, mime_type) {
             self.upsert_data_source_node(
                 &project,
