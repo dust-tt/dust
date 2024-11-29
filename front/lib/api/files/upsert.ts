@@ -30,6 +30,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
+const ENABLE_LLM_SNIPPETS = false;
+
 class MemoryWritable extends Writable {
   private chunks: string[];
 
@@ -83,6 +85,15 @@ async function generateSnippet(
 
     return new Ok(snippet);
   } else {
+    if (!ENABLE_LLM_SNIPPETS) {
+      // Take the first 256 characters
+      if (content.length > 256) {
+        return new Ok(content.slice(0, 242) + "... (truncated)");
+      } else {
+        return new Ok(content);
+      }
+    }
+
     const model = getSmallWhitelistedModel(owner);
     if (!model) {
       return new Err(
