@@ -1,6 +1,5 @@
 import type {
   ModelId,
-  PokeSpaceType,
   ResourcePermission,
   Result,
   SpaceType,
@@ -645,13 +644,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       name: this.name,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
-    };
-  }
-
-  toPokeJSON(): PokeSpaceType {
-    return {
-      ...this.toJSON(),
-      groups: this.groups.map((group) => group.toJSON()),
     };
   }
 }

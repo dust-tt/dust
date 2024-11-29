@@ -6,14 +6,14 @@ import {
   PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
 
-export function isADustProdWorkspace(owner: LightWorkspaceType) {
+function isADustProdWorkspace(owner: LightWorkspaceType) {
   return (
     owner.sId === PRODUCTION_DUST_WORKSPACE_ID ||
     owner.sId === PRODUCTION_DUST_APPS_WORKSPACE_ID
   );
 }
 
-export function canForceUserRole(owner: LightWorkspaceType) {
+export function showDebugTools(owner: LightWorkspaceType) {
   return isDevelopment() || isADustProdWorkspace(owner);
 }
 
@@ -23,7 +23,7 @@ export async function forceUserRole(
   role: "user" | "builder" | "admin"
 ) {
   // Ideally we should check if the user is dust super user but we don't have this information in the front-end
-  if (!canForceUserRole(owner)) {
+  if (!showDebugTools(owner)) {
     return new Err("Not allowed");
   }
 
