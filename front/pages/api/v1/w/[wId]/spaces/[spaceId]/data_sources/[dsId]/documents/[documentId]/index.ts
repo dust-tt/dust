@@ -545,8 +545,8 @@ async function handler(
           section,
           credentials,
           lightDocumentOutput: r.data.light_document_output === true,
-          title: r.data.title || null,
-          mimeType: r.data.mime_type || null,
+          title: r.data.title,
+          mimeType: r.data.mime_type,
         });
 
         if (upsertRes.isErr()) {
