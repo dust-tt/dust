@@ -13,14 +13,13 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::node::{NodeType, SimpleNode};
+use crate::data_sources::node::{Node, NodeType, SimpleNode};
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
     consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX,
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
     data_sources::folder::Folder,
-    data_sources::node::Node,
     databases::{
         table::{get_table_unique_id, Table},
         table_schema::TableSchema,
@@ -130,6 +129,112 @@ impl PostgresStore {
         }
 
         (where_clauses, params, p_idx)
+    }
+
+    async fn upsert_data_source_node(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        node_id: &str,
+        row_id: i64,
+        node_type: NodeType,
+        created: u64,
+        timestamp: u64,
+        title: &str,
+        mime_type: &str,
+        parents: &Vec<String>,
+        tx: &Transaction<'_>,
+    ) -> Result<SimpleNode> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let r = tx
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let (document_row_id, table_row_id, folder_row_id) = match node_type {
+            NodeType::Document => (Some(row_id), None, None),
+            NodeType::Table => (None, Some(row_id), None),
+            NodeType::Folder => (None, None, Some(row_id)),
+        };
+
+        let stmt = tx
+            .prepare(
+                "INSERT INTO data_sources_nodes \
+               (id, data_source, created, node_id, timestamp, title, mime_type, parents, document, \"table\", folder) \
+               VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+               ON CONFLICT (data_source, node_id) DO UPDATE \
+               SET created = EXCLUDED.created, timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
+                   mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, document = EXCLUDED.document, \
+                   \"table\" = EXCLUDED.\"table\", folder = EXCLUDED.folder RETURNING id",
+            )
+            .await?;
+
+        let _ = tx
+            .query_one(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &(created as i64),
+                    &node_id,
+                    &(timestamp as i64),
+                    &title,
+                    &mime_type,
+                    &parents,
+                    &document_row_id,
+                    &table_row_id,
+                    &folder_row_id,
+                ],
+            )
+            .await?;
+        Ok(SimpleNode::new(
+            project,
+            &data_source_id,
+            node_id,
+            node_type,
+            created,
+            timestamp,
+            title,
+            mime_type,
+            parents.clone(),
+        ))
+    }
+    async fn delete_data_source_node(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        node_id: &str,
+        tx: &Transaction<'_>,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+
+        let r = tx
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = tx
+            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2")
+            .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &node_id]).await?;
+        Ok(())
     }
 }
 
@@ -2347,6 +2452,8 @@ impl Store for PostgresStore {
         parents: &Vec<String>,
         remote_database_table_id: Option<String>,
         remote_database_secret_id: Option<String>,
+        title: Option<String>,
+        mime_type: Option<String>,
     ) -> Result<Table> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2360,54 +2467,118 @@ impl Store for PostgresStore {
         let table_parents = parents.clone();
         let table_remote_database_table_id = remote_database_table_id.clone();
         let table_remote_database_secret_id = remote_database_secret_id.clone();
+        let table_title = title.clone();
+        let table_mime_type = mime_type.clone();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
-        // Get the data source row id.
-        let stmt = c
-            .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-            )
-            .await?;
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
+        let tx = c.transaction().await?;
+        let row_id: i64 = match &self
+            .get_data_source_node(&project, &data_source_id, &table_id)
+            .await?
+        {
+            None => {
+                // Create new table - still doing upsert here during migration,
+                // Must be replaced by a simple insert once all tables have a corresponding node
+
+                // Fetching data source row id will be removed once not needed anymore in "tables"
+                let r = tx
+                .query(
+                    "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                    &[&project_id, &data_source_id],
+                )
+                .await?;
+                let data_source_row_id: i64 = match r.len() {
+                    0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+                    1 => r[0].get(0),
+                    _ => unreachable!(),
+                };
+
+                let stmt = tx
+                .prepare(
+                    "INSERT INTO tables \
+                       (id, data_source, created, table_id, name, description,
+                        timestamp, tags_array, parents, remote_database_table_id, remote_database_secret_id) \
+                       VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+                       ON CONFLICT (table_id, data_source) DO UPDATE \
+                       SET name = EXCLUDED.name, description = EXCLUDED.description, \
+                       timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents, \
+                         remote_database_table_id = EXCLUDED.remote_database_table_id, remote_database_secret_id = EXCLUDED.remote_database_secret_id \
+                       RETURNING id",
+                )
+                .await?;
+
+                tx.query_one(
+                    &stmt,
+                    &[
+                        &data_source_row_id,
+                        &(table_created as i64),
+                        &table_id,
+                        &table_name,
+                        &table_description,
+                        &(table_timestamp as i64),
+                        &table_tags,
+                        &table_parents,
+                        &table_remote_database_table_id,
+                        &table_remote_database_secret_id,
+                    ],
+                )
+                .await?
+                .get(0)
+            }
+            Some((node, row_id)) => {
+                match node.node_type() {
+                    NodeType::Table => (), // Continue execution
+                    other => return Err(anyhow!("Expected Table node, got {:?}", other)),
+                }
+                // We have a node, so we can update the table based on the row id
+                let stmt = tx
+                    .prepare(
+                        "UPDATE tables
+                       SET name = $1, description = $1, \
+                       timestamp = $3, tags_array = $4, parents = $5, \
+                         remote_database_table_id = $6, remote_database_secret_id = $7 \
+                       WHERE id = $8",
+                    )
+                    .await?;
+                tx.query(
+                    &stmt,
+                    &[
+                        &table_name,
+                        &table_description,
+                        &(table_timestamp as i64),
+                        &table_tags,
+                        &table_parents,
+                        &table_remote_database_table_id,
+                        &table_remote_database_secret_id,
+                        row_id,
+                    ],
+                )
+                .await?;
+                *row_id
+            }
         };
 
-        // Upsert Table.
-        let stmt = c
-            .prepare(
-                "INSERT INTO tables \
-                   (id, data_source, created, table_id, name, description,
-                    timestamp, tags_array, parents, remote_database_table_id, remote_database_secret_id) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
-                   ON CONFLICT (table_id, data_source) DO UPDATE \
-                   SET name = EXCLUDED.name, description = EXCLUDED.description, \
-                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents, \
-                     remote_database_table_id = EXCLUDED.remote_database_table_id, remote_database_secret_id = EXCLUDED.remote_database_secret_id \
-                   RETURNING id",
+        // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
+        // Upsert the data source node if title and mime_type are present
+        if let (Some(title), Some(mime_type)) = (title, mime_type) {
+            self.upsert_data_source_node(
+                &project,
+                &data_source_id,
+                &table_id,
+                row_id,
+                NodeType::Table,
+                table_created,
+                table_timestamp,
+                &title,
+                &mime_type,
+                parents,
+                &tx,
             )
             .await?;
-
-        c.query_one(
-            &stmt,
-            &[
-                &data_source_row_id,
-                &(table_created as i64),
-                &table_id,
-                &table_name,
-                &table_description,
-                &(table_timestamp as i64),
-                &table_tags,
-                &table_parents,
-                &table_remote_database_table_id,
-                &table_remote_database_secret_id,
-            ],
-        )
-        .await?;
+        }
+        tx.commit().await?;
 
         Ok(Table::new(
             project,
@@ -2416,7 +2587,9 @@ impl Store for PostgresStore {
             &table_id,
             &table_name,
             &table_description,
-            timestamp,
+            table_timestamp,
+            &table_title.unwrap_or(table_name.clone()),
+            &table_mime_type.unwrap_or("text/csv".to_string()),
             table_tags,
             table_parents,
             &None,
@@ -2650,6 +2823,8 @@ impl Store for PostgresStore {
                     &name,
                     &description,
                     timestamp as u64,
+                    &name,      // TODO(KW_SEARCH_INFRA) use title
+                    "text/csv", // TODO(KW_SEARCH_INFRA) use mimetype
                     tags,
                     parents,
                     &parsed_schema,
@@ -2779,6 +2954,8 @@ impl Store for PostgresStore {
                     &name,
                     &description,
                     timestamp as u64,
+                    &name,      // TODO(KW_SEARCH_INFRA) use title
+                    "text/csv", // TODO(KW_SEARCH_INFRA)use mimetype
                     tags,
                     parents,
                     &parsed_schema,
@@ -2816,32 +2993,47 @@ impl Store for PostgresStore {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let table_id = table_id.to_string();
-
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
         let tx = c.transaction().await?;
+        match self
+            .get_data_source_node(&project, &data_source_id, &table_id)
+            .await?
+        {
+            None => {
+                // TODO(KW_SEARCH_INFRA) Legacy table, to remove once backfilled
+                let project_id = project.project_id();
+                let data_source_id = data_source_id.to_string();
+                let table_id = table_id.to_string();
 
-        let stmt = tx
-            .prepare("DELETE FROM tables WHERE data_source = $1 AND table_id = $2")
-            .await?;
-        let _ = tx.query(&stmt, &[&data_source_row_id, &table_id]).await?;
-
+                let r = tx
+                .query(
+                    "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                    &[&project_id, &data_source_id],
+                )
+                .await?;
+                let data_source_row_id: i64 = match r.len() {
+                    0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+                    1 => r[0].get(0),
+                    _ => unreachable!(),
+                };
+                let stmt = tx
+                    .prepare("DELETE FROM tables WHERE data_source = $1 AND table_id = $2")
+                    .await?;
+                let _ = tx.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+            }
+            Some((node, row_id)) => {
+                match node.node_type() {
+                    NodeType::Table => (), // Continue execution
+                    other => return Err(anyhow!("Expected Table node, got {:?}", other)),
+                }
+                self.delete_data_source_node(&project, &data_source_id, &table_id, &tx)
+                    .await?;
+                let stmt = tx.prepare("DELETE FROM tables WHERE id = $1").await?;
+                let _ = tx.query(&stmt, &[&row_id]).await?;
+            }
+        }
         tx.commit().await?;
 
         Ok(())
@@ -2861,19 +3053,20 @@ impl Store for PostgresStore {
         let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
+        let tx = c.transaction().await?;
         let row_id: i64 = match &self
             .get_data_source_node(&project, &data_source_id, &folder_id)
             .await?
         {
             None => {
                 // Create new folder
-                let stmt = c
+                let stmt = tx
                     .prepare("INSERT INTO data_sources_folders (id) VALUES (DEFAULT) RETURNING id")
                     .await?;
 
-                c.query_one(&stmt, &[]).await?.get(0)
+                tx.query_one(&stmt, &[]).await?.get(0)
             }
             Some((_, row_id)) => *row_id,
         };
@@ -2890,8 +3083,10 @@ impl Store for PostgresStore {
                 title,
                 mime_type,
                 parents,
+                &tx,
             )
             .await?;
+        tx.commit().await?;
 
         Ok(Folder::from_node(&node))
     }
@@ -2939,104 +3134,30 @@ impl Store for PostgresStore {
         folder_id: &str,
     ) -> Result<()> {
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
+        let tx = c.transaction().await?;
         match self
             .get_data_source_node(&project, &data_source_id, &folder_id)
             .await?
         {
             None => (),
-            Some((_, row_id)) => {
-                self.delete_data_source_node(&project, &data_source_id, &folder_id)
+            Some((node, row_id)) => {
+                match node.node_type() {
+                    NodeType::Folder => (), // Continue execution
+                    other => return Err(anyhow!("Expected Folder node, got {:?}", other)),
+                }
+                self.delete_data_source_node(&project, &data_source_id, &folder_id, &tx)
                     .await?;
-                let stmt = c
+                let stmt = tx
                     .prepare("DELETE FROM data_sources_folders WHERE id = $1")
                     .await?;
-                let _ = c.query(&stmt, &[&row_id]).await?;
+                let _ = tx.query(&stmt, &[&row_id]).await?;
             }
         }
+        tx.commit().await?;
 
         Ok(())
-    }
-
-    async fn upsert_data_source_node(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        node_id: &str,
-        row_id: i64,
-        node_type: NodeType,
-        created: u64,
-        timestamp: u64,
-        title: &str,
-        mime_type: &str,
-        parents: &Vec<String>,
-    ) -> Result<SimpleNode> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let (document_row_id, table_row_id, folder_row_id) = match node_type {
-            NodeType::Document => (Some(row_id), None, None),
-            NodeType::Table => (None, Some(row_id), None),
-            NodeType::Folder => (None, None, Some(row_id)),
-        };
-
-        let stmt = c
-            .prepare(
-                "INSERT INTO data_sources_nodes \
-               (id, data_source, created, node_id, timestamp, title, mime_type, parents, document, \"table\", folder) \
-               VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
-               ON CONFLICT (data_source, node_id) DO UPDATE \
-               SET created = EXCLUDED.created, timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
-                   mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, document = EXCLUDED.document, \
-                   \"table\" = EXCLUDED.\"table\", folder = EXCLUDED.folder RETURNING id",
-            )
-            .await?;
-
-        let _ = c
-            .query_one(
-                &stmt,
-                &[
-                    &data_source_row_id,
-                    &(created as i64),
-                    &node_id,
-                    &(timestamp as i64),
-                    &title,
-                    &mime_type,
-                    &parents,
-                    &document_row_id,
-                    &table_row_id,
-                    &folder_row_id,
-                ],
-            )
-            .await?;
-        Ok(SimpleNode::new(
-            project,
-            &data_source_id,
-            node_id,
-            node_type,
-            created,
-            timestamp,
-            title,
-            mime_type,
-            parents.clone(),
-        ))
     }
 
     async fn get_data_source_node(
@@ -3056,8 +3177,6 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        println!("r: {:?}", r);
-
         let data_source_row_id: i64 = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
             1 => r[0].get(0),
@@ -3072,8 +3191,6 @@ impl Store for PostgresStore {
             )
             .await?;
         let row = c.query(&stmt, &[&data_source_row_id, &node_id]).await?;
-
-        println!("row: {:?}", row);
 
         match row.len() {
             0 => Ok(None),
@@ -3103,43 +3220,13 @@ impl Store for PostgresStore {
                         timestamp as u64,
                         &title,
                         &mime_type,
-                        parents.clone(),
+                        parents,
                     ),
                     row_id,
                 )))
             }
             _ => unreachable!(),
         }
-    }
-
-    async fn delete_data_source_node(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        node_id: &str,
-    ) -> Result<()> {
-        let project_id = project.project_id();
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let stmt = c
-            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2")
-            .await?;
-        let _ = c.query(&stmt, &[&data_source_row_id, &node_id]).await?;
-        Ok(())
     }
 
     async fn llm_cache_get(

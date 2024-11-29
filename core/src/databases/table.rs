@@ -7,6 +7,7 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::{
+    data_sources::node::{Node, NodeType},
     databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -57,6 +58,8 @@ pub struct Table {
     description: String,
     timestamp: u64,
     tags: Vec<String>,
+    title: String,
+    mime_type: String,
     parents: Vec<String>,
 
     schema: Option<TableSchema>,
@@ -75,6 +78,8 @@ impl Table {
         name: &str,
         description: &str,
         timestamp: u64,
+        title: &str,
+        mime_type: &str,
         tags: Vec<String>,
         parents: Vec<String>,
         schema: &Option<TableSchema>,
@@ -91,6 +96,8 @@ impl Table {
             description: description.to_string(),
             timestamp,
             tags,
+            title: title.to_string(),
+            mime_type: mime_type.to_string(),
             parents,
             schema: schema.clone(),
             schema_stale_at,
@@ -99,15 +106,6 @@ impl Table {
         }
     }
 
-    pub fn project(&self) -> &Project {
-        &self.project
-    }
-    pub fn data_source_id(&self) -> &str {
-        &self.data_source_id
-    }
-    pub fn created(&self) -> u64 {
-        self.created
-    }
     pub fn table_id(&self) -> &str {
         &self.table_id
     }
@@ -117,9 +115,7 @@ impl Table {
     pub fn description(&self) -> &str {
         &self.description
     }
-    pub fn timestamp(&self) -> u64 {
-        self.timestamp
-    }
+
     pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
     }
@@ -200,6 +196,36 @@ impl Table {
             )
             .await?;
         Ok(())
+    }
+}
+
+impl Node for Table {
+    fn project(&self) -> &Project {
+        &self.project
+    }
+    fn data_source_id(&self) -> &str {
+        &self.data_source_id
+    }
+    fn node_id(&self) -> &str {
+        &self.table_id
+    }
+    fn created(&self) -> u64 {
+        self.created
+    }
+    fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+    fn node_type(&self) -> NodeType {
+        NodeType::Table
+    }
+    fn title(&self) -> &str {
+        &self.title
+    }
+    fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    fn parents(&self) -> &Vec<String> {
+        &self.parents
     }
 }
 
@@ -541,6 +567,8 @@ mod tests {
             "test_dbml",
             "Test records for DBML rendering",
             utils::now(),
+            "test_dbml",
+            "text/plain",
             vec![],
             vec![],
             &Some(schema),
