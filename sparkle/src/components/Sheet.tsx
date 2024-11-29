@@ -66,27 +66,27 @@ const sheetVariants = cva(
 );
 
 interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
-  size?: SheetSizeType;
-  trapFocusScope?: boolean;
-  side?: SheetSideType;
-}
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ className, children, size, side, trapFocusScope, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
-    <FocusScope trapped={trapFocusScope} asChild>
-      <SheetPrimitive.Content
-        ref={ref}
-        className={cn(sheetVariants({ size, side }), className)}
-        {...props}
-      >
-        {children}
-      </SheetPrimitive.Content>
-    </FocusScope>
+    <SheetPrimitive.Content
+      ref={ref}
+      className={cn(
+        "s-fixed s-z-50 s-overflow-hidden s-bg-background s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500",
+        "s-flex s-flex-col",
+        "s-inset-y-0 s-right-0 s-h-full s-w-full data-[state=closed]:s-slide-out-to-right data-[state=open]:s-slide-in-from-right",
+        sizeClasses[size],
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </SheetPrimitive.Content>
   </SheetPortal>
 ));
 SheetContent.displayName = SheetPrimitive.Content.displayName;
@@ -102,7 +102,6 @@ const SheetHeader = ({
   ...props
 }: SheetHeaderProps) => (
   <div
-    style={{ boxShadow: "0px 0px 12px 12px #FFF" }}
     className={cn(
       "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale",
       className
@@ -110,9 +109,9 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetPrimitive.Close className="s-absolute s-right-2 s-top-4">
-      <Button icon={XMarkIcon} variant="ghost" size="sm" />
-    </SheetPrimitive.Close>
+    <SheetClose asChild className="s-absolute s-right-3 s-top-4">
+      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
+    </SheetClose>
   </div>
 );
 SheetHeader.displayName = "SheetHeader";
@@ -132,22 +131,7 @@ interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   sheetCloseClassName?: string;
 }
 
-const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => (
-  <ScrollArea className="s-w-full s-flex-grow">
-    <div className="s-relative s-flex s-flex-col s-gap-2 s-p-5 s-text-left s-text-sm s-text-foreground">
-      {children}
-    </div>
-  </ScrollArea>
-);
-SheetContainer.displayName = "SheetContainer";
-
-interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
-  leftButtonProps?: React.ComponentProps<typeof Button>;
-  rightButtonProps?: React.ComponentProps<typeof Button>;
-  sheetCloseClassName?: string;
-}
-
-const SheetContainer = ({
+const SheetFooter = ({
   className,
   children,
   leftButtonProps,
@@ -180,20 +164,6 @@ const SheetContainer = ({
       ))}
     {children}
   </div>
-);
-SheetContainer.displayName = "SheetContainer";
-
-const SheetFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3",
-      className
-    )}
-    {...props}
-  />
 );
 SheetFooter.displayName = "SheetFooter";
 
