@@ -2579,7 +2579,7 @@ impl Store for PostgresStore {
 
         // Update parents on nodes table.
         let stmt = tx
-            .prepare("UPDATE data_sources_nodes SET parents = $1 WHERE data_source = $2 AND table_id = $3")
+            .prepare("UPDATE data_sources_nodes SET parents = $1 WHERE data_source = $2 AND node_id = $3")
             .await?;
         tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
             .await?;
