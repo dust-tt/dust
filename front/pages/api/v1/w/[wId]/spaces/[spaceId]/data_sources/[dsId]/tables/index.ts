@@ -92,6 +92,13 @@ import { apiError } from "@app/logger/withlogging";
  *               name:
  *                 type: string
  *                 description: Name of the table
+ *                 deprecated: true  # Add this line to mark as deprecated
+ *               title:
+ *                 type: string
+ *                 description: Title of the table
+ *               mime_type:
+ *                 type: string
+ *                 description: Mime type of the table
  *               table_id:
  *                 type: string
  *                 description: Unique identifier for the table
