@@ -7,6 +7,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@sparkle/components/Popover";
+import Spinner from "@sparkle/components/Spinner";
 import { TextArea } from "@sparkle/components/TextArea";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { HandThumbDownIcon, HandThumbUpIcon } from "@sparkle/icons/solid";
@@ -28,27 +29,29 @@ export interface ConversationMessageFeedbackSelectorProps {
     }
   ) => Promise<void>;
   isSubmittingThumb: boolean;
-  getLastAuthor?: () => FeedbackAssistantBuilder;
+  getPopoverInfo?: () => JSX.Element;
 }
 
-export function FeedbackSelector(
-  messageFeedback: ConversationMessageFeedbackSelectorProps
-) {
-  const { feedback, onSubmitThumb, isSubmittingThumb } = messageFeedback;
+export function FeedbackSelector({
+  feedback,
+  onSubmitThumb,
+  isSubmittingThumb,
+  getPopoverInfo,
+}: ConversationMessageFeedbackSelectorProps) {
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
     string | null
   >(null);
-  const [builder, setBuilder] = React.useState<FeedbackAssistantBuilder | null>(
+  const [popOverInfo, setPopoverInfo] = React.useState<JSX.Element | null>(
     null
   );
 
   // Reset local feedback content when popup opens
   useEffect(() => {
     if (isPopoverOpen) {
-      if (messageFeedback.getLastAuthor) {
-        setBuilder(messageFeedback.getLastAuthor());
+      if (getPopoverInfo) {
+        setPopoverInfo(getPopoverInfo());
       }
       setLocalFeedbackContent(feedback?.feedbackContent ?? null);
     }
@@ -99,57 +102,48 @@ export function FeedbackSelector(
           </div>
         </PopoverTrigger>
         <PopoverContent fullWidth={true}>
-          <div className="s-w-80 s-p-4">
-            <Page.H variant="h6">
-              {feedback?.thumb === "up"
-                ? "🎉 Glad you liked it! Tell us more?"
-                : "🫠 Help make the answers better!"}
-            </Page.H>
-            {builder && (
-              <div className="s-mt-4 s-flex s-items-center s-gap-2">
-                <img
-                  src={builder.pictureUrl}
-                  alt={builder.name}
-                  className="s-h-8 s-w-8 s-rounded-full"
+          {isSubmittingThumb ? (
+            <Spinner size="sm" />
+          ) : (
+            <div className="s-w-80 s-p-4">
+              <Page.H variant="h6">
+                {feedback?.thumb === "up"
+                  ? "🎉 Glad you liked it! Tell us more?"
+                  : "🫠 Help make the answers better!"}
+              </Page.H>
+              {popOverInfo}
+              <TextArea
+                placeholder={
+                  feedback?.thumb === "up"
+                    ? "What did you like?"
+                    : "Tell us what went wrong so we can make this assistant better."
+                }
+                className="s-mt-4"
+                rows={3}
+                value={localFeedbackContent ?? ""}
+                onChange={(e) => setLocalFeedbackContent(e.target.value)}
+              />
+              <div className="s-mt-4 s-flex s-justify-between s-gap-2">
+                <Button
+                  variant="primary"
+                  label="Submit feedback"
+                  onClick={async () => {
+                    await onSubmitThumb({
+                      thumb: feedback?.thumb ?? "up",
+                      isToRemove: false,
+                      feedbackContent: localFeedbackContent,
+                    });
+                    setIsPopoverOpen(false);
+                  }}
                 />
-                <Page.P variant="secondary">
-                  Your feedback will be sent to:
-                  <br />
-                  {builder.name}
-                </Page.P>
+                <Button
+                  variant="ghost"
+                  label="Cancel"
+                  onClick={() => setIsPopoverOpen(false)}
+                />
               </div>
-            )}
-            <TextArea
-              placeholder={
-                feedback?.thumb === "up"
-                  ? "What did you like?"
-                  : "Tell us what went wrong so we can make this assistant better."
-              }
-              className="s-mt-4"
-              rows={3}
-              value={localFeedbackContent ?? ""}
-              onChange={(e) => setLocalFeedbackContent(e.target.value)}
-            />
-            <div className="s-mt-4 s-flex s-justify-between s-gap-2">
-              <Button
-                variant="primary"
-                label="Submit feedback"
-                onClick={async () => {
-                  await onSubmitThumb({
-                    thumb: feedback?.thumb ?? "up",
-                    isToRemove: false,
-                    feedbackContent: localFeedbackContent,
-                  });
-                  setIsPopoverOpen(false);
-                }}
-              />
-              <Button
-                variant="ghost"
-                label="Cancel"
-                onClick={() => setIsPopoverOpen(false)}
-              />
             </div>
-          </div>
+          )}
         </PopoverContent>
       </PopoverRoot>
     </div>

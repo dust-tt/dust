@@ -50,10 +50,7 @@ const ExampleFeedbackComponent = () => {
         }));
       },
       isSubmittingThumb: false,
-      getLastAuthor: () => ({
-        name: "John Doe",
-        pictureUrl: "https://www.w3schools.com/howto/img_avatar.png",
-      }),
+      getPopoverInfo: () => <div>Nice info my brudah</div>,
     });
 
   return <FeedbackSelector {...messageFeedback} />;
