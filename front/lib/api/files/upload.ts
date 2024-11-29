@@ -81,10 +81,17 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
     version: "original",
   });
 
-  // Resize the image, preserving the aspect ratio. Longest side is max 768px.
-  const resizedImageStream = sharp().resize(768, 768, {
-    fit: sharp.fit.inside, // Ensure longest side is 768px.
-    withoutEnlargement: true, // Avoid upscaling if image is smaller than 768px.
+  // Anthropic https://docs.anthropic.com/en/docs/build-with-claude/vision#evaluate-image-size
+  // OpenAI https://platform.openai.com/docs/guides/vision#calculating-costs
+
+  // Anthropic recommends <= 1568px on any side.
+  // OpenAI recommends <= 2048px on the longuest side, 768px on the shortest side.
+
+  // Resize the image, preserving the aspect ratio based on the longest side compatible with both models.
+  // In case of GPT, it might incure a resize on their side as well but doing the math here would mean downloading the file first instead of streaming it.
+  const resizedImageStream = sharp().resize(1568, 1568, {
+    fit: sharp.fit.inside, // Ensure longest side is 1568px.
+    withoutEnlargement: true, // Avoid upscaling if image is smaller than 1568px.
   });
 
   const writeStream = file.getWriteStream({
