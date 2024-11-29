@@ -134,24 +134,11 @@ impl PostgresStore {
     async fn upsert_data_source_node(
         &self,
         node: &Node,
+        data_source_row_id: i64,
         row_id: i64,
         tx: &Transaction<'_>,
     ) -> Result<()> {
-        let project_id = node.project().project_id();
-        let data_source_id = node.data_source_id();
         let created = utils::now();
-        let r = tx
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
 
         let (document_row_id, table_row_id, folder_row_id) = match node.node_type() {
             NodeType::Document => (Some(row_id), None, None),
@@ -188,34 +175,6 @@ impl PostgresStore {
                 ],
             )
             .await?;
-        Ok(())
-    }
-    async fn delete_data_source_node(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        node_id: &str,
-        tx: &Transaction<'_>,
-    ) -> Result<()> {
-        let project_id = project.project_id();
-
-        let r = tx
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let stmt = tx
-            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2")
-            .await?;
-        let _ = tx.query(&stmt, &[&data_source_row_id, &node_id]).await?;
         Ok(())
     }
 }
@@ -2522,8 +2481,13 @@ impl Store for PostgresStore {
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
         // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
         if let (Some(_), Some(_)) = (title, mime_type) {
-            self.upsert_data_source_node(&table.clone().into(), table_row_id, &tx)
-                .await?;
+            self.upsert_data_source_node(
+                &table.clone().into(),
+                data_source_row_id,
+                table_row_id,
+                &tx,
+            )
+            .await?;
         }
         tx.commit().await?;
 
@@ -2924,47 +2888,36 @@ impl Store for PostgresStore {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let table_id = table_id.to_string();
+
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
         let tx = c.transaction().await?;
-        match self
-            .get_data_source_node(&project, &data_source_id, &table_id)
-            .await?
-        {
-            None => {
-                // TODO(KW_SEARCH_INFRA) Legacy table, to remove once backfilled
-                let project_id = project.project_id();
-                let data_source_id = data_source_id.to_string();
-                let table_id = table_id.to_string();
 
-                let r = tx
-                .query(
-                    "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                    &[&project_id, &data_source_id],
-                )
-                .await?;
-                let data_source_row_id: i64 = match r.len() {
-                    0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                };
-                let stmt = tx
-                    .prepare("DELETE FROM tables WHERE data_source = $1 AND table_id = $2")
-                    .await?;
-                let _ = tx.query(&stmt, &[&data_source_row_id, &table_id]).await?;
-            }
-            Some((node, row_id)) => {
-                match node.node_type() {
-                    NodeType::Table => (), // Continue execution
-                    other => return Err(anyhow!("Expected Table node, got {:?}", other)),
-                }
-                self.delete_data_source_node(&project, &data_source_id, &table_id, &tx)
-                    .await?;
-                let stmt = tx.prepare("DELETE FROM tables WHERE id = $1").await?;
-                let _ = tx.query(&stmt, &[&row_id]).await?;
-            }
-        }
+        let r = tx
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = tx
+            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND \"table\" IS NOT NULL")
+            .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+        let stmt = tx
+            .prepare("DELETE FROM tables WHERE data_source = $1 AND table_id = $2")
+            .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+
         tx.commit().await?;
 
         Ok(())
@@ -3011,8 +2964,13 @@ impl Store for PostgresStore {
             .await?
             .get(0);
 
-        self.upsert_data_source_node(&folder.clone().into(), folder_row_id, &tx)
-            .await?;
+        self.upsert_data_source_node(
+            &folder.clone().into(),
+            data_source_row_id,
+            folder_row_id,
+            &tx,
+        )
+        .await?;
         tx.commit().await?;
 
         Ok(())
@@ -3060,28 +3018,33 @@ impl Store for PostgresStore {
         data_source_id: &str,
         folder_id: &str,
     ) -> Result<()> {
+        let project_id = project.project_id();
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
         let tx = c.transaction().await?;
-        match self
-            .get_data_source_node(&project, &data_source_id, &folder_id)
-            .await?
-        {
-            None => (),
-            Some((node, row_id)) => {
-                match node.node_type() {
-                    NodeType::Folder => (), // Continue execution
-                    other => return Err(anyhow!("Expected Folder node, got {:?}", other)),
-                }
-                self.delete_data_source_node(&project, &data_source_id, &folder_id, &tx)
-                    .await?;
-                let stmt = tx
-                    .prepare("DELETE FROM data_sources_folders WHERE id = $1")
-                    .await?;
-                let _ = tx.query(&stmt, &[&row_id]).await?;
-            }
-        }
+
+        let r = tx
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = tx
+            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND folder IS NOT NULL")
+            .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
+        let stmt = tx
+            .prepare("DELETE FROM data_sources_folders WHERE data_source = $1 AND folder_id = $2")
+            .await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
+
         tx.commit().await?;
 
         Ok(())
