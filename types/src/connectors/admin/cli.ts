@@ -236,7 +236,9 @@ export type ZendeskCheckIsAdminResponseType = t.TypeOf<
   typeof ZendeskCheckIsAdminResponseSchema
 >;
 
-export const ZendeskCountTicketsResponseSchema = t.number;
+export const ZendeskCountTicketsResponseSchema = t.type({
+  ticketCount: t.number,
+});
 export type ZendeskCountTicketsResponseType = t.TypeOf<
   typeof ZendeskCountTicketsResponseSchema
 >;

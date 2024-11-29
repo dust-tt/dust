@@ -77,7 +77,7 @@ export const zendesk = async ({
         { connectorId, brandId, ticketCount },
         "Number of valid tickets found for the brand."
       );
-      return ticketCount;
+      return { ticketCount };
     }
   }
 };
