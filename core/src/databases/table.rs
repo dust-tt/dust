@@ -7,6 +7,7 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::{
+    data_sources::node::{Node, NodeType},
     databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -57,6 +58,8 @@ pub struct Table {
     description: String,
     timestamp: u64,
     tags: Vec<String>,
+    title: String,
+    mime_type: String,
     parents: Vec<String>,
 
     schema: Option<TableSchema>,
@@ -75,6 +78,8 @@ impl Table {
         name: &str,
         description: &str,
         timestamp: u64,
+        title: &str,
+        mime_type: &str,
         tags: Vec<String>,
         parents: Vec<String>,
         schema: &Option<TableSchema>,
@@ -91,6 +96,8 @@ impl Table {
             description: description.to_string(),
             timestamp,
             tags,
+            title: title.to_string(),
+            mime_type: mime_type.to_string(),
             parents,
             schema: schema.clone(),
             schema_stale_at,
@@ -110,6 +117,15 @@ impl Table {
     }
     pub fn table_id(&self) -> &str {
         &self.table_id
+    }
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    pub fn parents(&self) -> &Vec<String> {
+        &self.parents
     }
     pub fn name(&self) -> &str {
         &self.name
@@ -200,6 +216,21 @@ impl Table {
             )
             .await?;
         Ok(())
+    }
+}
+
+impl From<Table> for Node {
+    fn from(table: Table) -> Node {
+        Node::new(
+            &table.project,
+            &table.data_source_id,
+            &table.table_id,
+            NodeType::Table,
+            table.timestamp,
+            &table.title,
+            &table.mime_type,
+            table.parents.clone(),
+        )
     }
 }
 
@@ -541,6 +572,8 @@ mod tests {
             "test_dbml",
             "Test records for DBML rendering",
             utils::now(),
+            "test_dbml",
+            "text/plain",
             vec![],
             vec![],
             &Some(schema),

@@ -36,7 +36,6 @@ use dust::{
     data_sources::{
         data_source::{self, Section},
         folder::Folder,
-        node::{Node, NodeType},
         qdrant::QdrantClients,
     },
     databases::{
@@ -2063,21 +2062,7 @@ async fn tables_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-    let maybe_ds_node = match (payload.title, payload.mime_type) {
-        (Some(title), Some(mime_type)) => Some(Node {
-            node_id: payload.table_id.clone(),
-            created: utils::now(),
-            timestamp: payload.timestamp.unwrap_or(utils::now()),
-            node_type: NodeType::Table,
-            title,
-            mime_type,
-            parents: payload.parents.clone(),
-        }),
-        _ => None,
-    };
-
-    let table = match state
+    match state
         .store
         .upsert_table(
             &project,
@@ -2093,10 +2078,18 @@ async fn tables_upsert(
             &payload.parents,
             payload.remote_database_table_id,
             payload.remote_database_secret_id,
+            payload.title,
+            payload.mime_type,
         )
         .await
     {
-        Ok(table) => table,
+        Ok(table) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({ "table": table })),
+            }),
+        ),
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -2105,31 +2098,7 @@ async fn tables_upsert(
                 Some(e),
             )
         }
-    };
-
-    // Upsert the data source node if title and mime_type are present
-    if let Some(n) = &maybe_ds_node {
-        if let Err(e) = state
-            .store
-            .upsert_data_source_node(&data_source_id, n)
-            .await
-        {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to upsert data source node",
-                Some(e),
-            );
-        }
     }
-
-    (
-        StatusCode::OK,
-        Json(APIResponse {
-            error: None,
-            response: Some(json!({ "table": table })),
-        }),
-    )
 }
 
 /// Retrieve table from a data source.
@@ -2300,40 +2269,25 @@ async fn tables_delete(
             None,
         ),
         Ok(Some(table)) => {
-            // We delete the data source node first, then the table.
-            match state
-                .store
-                .delete_data_source_node(&data_source_id, &table_id)
+            match table
+                .delete(state.store.clone(), state.databases_store.clone())
                 .await
             {
                 Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal_server_error",
-                    "Failed to delete data source node",
+                    "Failed to delete table",
                     Some(e),
                 ),
-                Ok(_) => {
-                    match table
-                        .delete(state.store.clone(), state.databases_store.clone())
-                        .await
-                    {
-                        Err(e) => error_response(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "internal_server_error",
-                            "Failed to delete table",
-                            Some(e),
-                        ),
-                        Ok(_) => (
-                            StatusCode::OK,
-                            Json(APIResponse {
-                                error: None,
-                                response: Some(json!({
-                                    "success": true,
-                                })),
-                            }),
-                        ),
-                    }
-                }
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "success": true,
+                        })),
+                    }),
+                ),
             }
         }
     }
@@ -2731,17 +2685,16 @@ async fn folders_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    let folder = Folder {
-        data_source_id: data_source_id.to_string(),
-        folder_id: payload.folder_id.clone(),
-        created: utils::now(),
-    };
+    let folder = Folder::new(
+        &project,
+        &data_source_id,
+        &payload.folder_id.clone(),
+        payload.timestamp.unwrap_or(utils::now()),
+        &payload.title,
+        payload.parents,
+    );
 
-    match state
-        .store
-        .upsert_data_source_folder(&project, &data_source_id, &folder)
-        .await
-    {
+    match state.store.upsert_data_source_folder(&folder).await {
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -2750,31 +2703,7 @@ async fn folders_upsert(
                 Some(e),
             )
         }
-        Ok(()) => (),
-    }
-
-    let node = Node {
-        node_id: folder.folder_id.clone(),
-        created: folder.created,
-        timestamp: payload.timestamp.unwrap_or(utils::now()),
-        node_type: NodeType::Folder,
-        title: payload.title.clone(),
-        mime_type: "application/vnd.dust.folder".to_string(),
-        parents: payload.parents.clone(),
-    };
-
-    match state
-        .store
-        .upsert_data_source_node(&data_source_id, &node)
-        .await
-    {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to upsert node",
-            Some(e),
-        ),
-        Ok(_) => (
+        Ok(()) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
@@ -2841,7 +2770,7 @@ async fn folders_delete(
         Ok(Some(_)) => {
             match state
                 .store
-                .delete_data_source_node(&data_source_id, &folder_id)
+                .delete_data_source_folder(&project, &data_source_id, &folder_id)
                 .await
             {
                 Err(e) => {
@@ -2852,20 +2781,6 @@ async fn folders_delete(
                         Some(e),
                     )
                 }
-                Ok(_) => (),
-            }
-
-            match state
-                .store
-                .delete_data_source_folder(&data_source_id, &folder_id)
-                .await
-            {
-                Err(e) => error_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal_server_error",
-                    "Failed to delete folder",
-                    Some(e),
-                ),
                 Ok(_) => (
                     StatusCode::OK,
                     Json(APIResponse {
