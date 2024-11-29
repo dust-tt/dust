@@ -506,7 +506,7 @@ async function handler(
             section,
             upsertContext: r.data.upsert_context || null,
             title: r.data.title ?? undefined,
-            mime_type: r.data.mime_type ?? undefined,
+            mimeType: r.data.mime_type ?? undefined,
           },
         });
         if (enqueueRes.isErr()) {
