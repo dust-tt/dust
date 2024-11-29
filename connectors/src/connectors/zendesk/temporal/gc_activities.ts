@@ -9,9 +9,8 @@ import { deleteCategory } from "@connectors/connectors/zendesk/lib/sync_category
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
   fetchZendeskArticle,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { getZendeskGarbageCollectionWorkflowId } from "@connectors/connectors/zendesk/temporal/client";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
@@ -162,10 +161,11 @@ export async function removeMissingArticleBatchActivity({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    accessToken,
+    subdomain,
   });
 
   // not deleting in batch for now, assuming we won't have that many articles to delete at once

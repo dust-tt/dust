@@ -11,6 +11,7 @@ import {
   fetchZendeskArticlesInCategory,
   fetchZendeskCategoriesInBrand,
   fetchZendeskTicketsInBrand,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -195,10 +196,11 @@ export async function syncZendeskCategoryBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     brandId,
     connectorId,
+    accessToken,
+    subdomain,
   });
 
   const { categories, hasMore, nextLink } = await fetchZendeskCategoriesInBrand(
