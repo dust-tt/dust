@@ -58,7 +58,7 @@ const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
         size="md"
         onClick={onClick}
         className={cn(
-          "s-group s-relative s-flex s-aspect-[2/1] s-min-w-[168px] s-flex-none s-flex-col s-justify-end",
+          "s-group s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end",
           className
         )}
         {...linkProps}
@@ -98,6 +98,20 @@ const CitationNewIndex = React.forwardRef<
   );
 });
 CitationNewIndex.displayName = "CitationNewIndex";
+
+const CitationNewGrid = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ children, className, ...props }, ref) => {
+  return (
+    <div ref={ref} className={cn("s-@container", className)} {...props}>
+      <div className="@sm:s-grid-cols-2 @xl:s-grid-cols-3 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5 s-grid s-grid-cols-1 s-gap-2">
+        {children}
+      </div>
+    </div>
+  );
+});
+CitationNewGrid.displayName = "CitationNewGrid";
 
 interface CitationNewCloseProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -257,6 +271,7 @@ export {
   CitationNew,
   CitationNewClose,
   CitationNewDescription,
+  CitationNewGrid,
   CitationNewIcons,
   CitationNewImage,
   CitationNewIndex,
