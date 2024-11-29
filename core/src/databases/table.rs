@@ -7,7 +7,7 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::{
-    data_sources::node::{Node, NodeType, ToNode},
+    data_sources::node::{Node, NodeType},
     databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -220,18 +220,18 @@ impl Table {
     }
 }
 
-impl ToNode for Table {
-    fn node(&self) -> Node {
+impl From<Table> for Node {
+    fn from(table: Table) -> Node {
         Node::new(
-            &self.project,
-            &self.data_source_id,
-            &self.table_id,
+            &table.project,
+            &table.data_source_id,
+            &table.table_id,
             NodeType::Table,
-            self.created,
-            self.timestamp,
-            &self.title,
-            &self.mime_type,
-            self.parents.clone(),
+            table.created,
+            table.timestamp,
+            &table.title,
+            &table.mime_type,
+            table.parents.clone(),
         )
     }
 }

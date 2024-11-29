@@ -13,7 +13,7 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::node::{Node, NodeType, ToNode};
+use crate::data_sources::node::{Node, NodeType};
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
@@ -2564,7 +2564,7 @@ impl Store for PostgresStore {
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
         // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
         if let (Some(_), Some(_)) = (title, mime_type) {
-            self.upsert_data_source_node(&table.node(), row_id, &tx)
+            self.upsert_data_source_node(&table.clone().into(), row_id, &tx)
                 .await?;
         }
         tx.commit().await?;
@@ -3034,7 +3034,7 @@ impl Store for PostgresStore {
             Some((_, row_id)) => *row_id,
         };
 
-        self.upsert_data_source_node(&folder.node(), row_id, &tx)
+        self.upsert_data_source_node(&folder.clone().into(), row_id, &tx)
             .await?;
         tx.commit().await?;
 
@@ -3070,7 +3070,7 @@ impl Store for PostgresStore {
 
                 match row.len() {
                     0 => Ok(None),
-                    1 => Ok(Some(Folder::from_node(&node))),
+                    1 => Ok(Some(node.into())),
                     _ => unreachable!(),
                 }
             }

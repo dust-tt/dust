@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::project::Project;
 
-use super::node::{Node, NodeType, ToNode};
+use super::node::{Node, NodeType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
@@ -74,18 +74,32 @@ impl Folder {
     }
 }
 
-impl ToNode for Folder {
-    fn node(&self) -> Node {
+impl From<Node> for Folder {
+    fn from(node: Node) -> Self {
+        Folder::new(
+            node.project(),
+            node.data_source_id(),
+            node.node_id(),
+            node.created(),
+            node.timestamp(),
+            node.title(),
+            node.parents().clone(),
+        )
+    }
+}
+
+impl From<Folder> for Node {
+    fn from(folder: Folder) -> Self {
         Node::new(
-            &self.project,
-            &self.data_source_id,
-            &self.folder_id,
+            &folder.project,
+            &folder.data_source_id,
+            &folder.folder_id,
             NodeType::Folder,
-            self.created,
-            self.timestamp,
-            &self.title,
+            folder.created,
+            folder.timestamp,
+            &folder.title,
             FOLDER_MIMETYPE,
-            self.parents.clone(),
+            folder.parents.clone(),
         )
     }
 }
