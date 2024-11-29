@@ -186,6 +186,7 @@ export const TableUploadOrEditModal = ({
       doUpdate,
       fileUploaderService,
       useAppForHeaderDetection,
+      tableState.file?.type,
     ]
   );
 
