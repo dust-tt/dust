@@ -103,7 +103,9 @@ export function FeedbackSelector({
         </PopoverTrigger>
         <PopoverContent fullWidth={true}>
           {isSubmittingThumb ? (
-            <Spinner size="sm" />
+            <div className="m-3 s-flex s-items-center s-justify-center">
+              <Spinner size="sm" />
+            </div>
           ) : (
             <div className="s-w-80 s-p-4">
               <Page.H variant="h6">
@@ -138,7 +140,7 @@ export function FeedbackSelector({
                 />
                 <Button
                   variant="ghost"
-                  label="Cancel"
+                  label="Skip"
                   onClick={() => setIsPopoverOpen(false)}
                 />
               </div>
