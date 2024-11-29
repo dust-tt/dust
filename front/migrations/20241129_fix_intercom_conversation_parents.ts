@@ -1,50 +1,48 @@
 import { Sequelize } from "sequelize";
 
-// To be run from connectors with `CORE_DATABASE_URI`
-const { CORE_DATABASE_URI, LIVE = false } = process.env;
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { makeScript } from "@app/scripts/helpers";
 
-async function main() {
-  const core_sequelize = new Sequelize(CORE_DATABASE_URI as string, {
+const { CORE_DATABASE_URI } = process.env;
+
+makeScript({}, async ({ execute }, logger) => {
+  const coreSequelize = new Sequelize(CORE_DATABASE_URI as string, {
     logging: false,
   });
 
-  if (LIVE) {
-    const query = `
+  const frontIntercomDataSources = await DataSourceModel.findAll({
+    where: { connectorProvider: "intercom" },
+  });
+
+  for (const ds of frontIntercomDataSources) {
+    logger.info(`Processing data source ${ds.id}`);
+
+    const queryWhere = `WHERE document_id <> ALL(parents)
+    AND EXISTS (
+      SELECT 1 FROM data_sources
+      WHERE data_sources.id = data_sources_documents.data_source
+      AND data_sources.data_source_id = ${ds.dustAPIDataSourceId}
+      AND data_sources.project = ${ds.dustAPIProjectId}
+    )`;
+
+    if (execute) {
+      const query = `
     UPDATE data_sources_documents 
     SET parents = array_prepend(document_id, parents) 
-    WHERE document_id <> ALL(parents)
-    AND EXISTS (
-      SELECT 1 FROM data_sources 
-      WHERE data_sources.id = data_sources_documents.data_source 
-      AND data_sources."connectorProvider" = 'intercom'
-    );`;
-    console.log(`Running the following query on core: ${query}`);
+    ${queryWhere};`;
+      console.log(`Running the following query on core: ${query}`);
 
-    await core_sequelize.query(query);
-  } else {
-    const query = `
+      await coreSequelize.query(query);
+    } else {
+      const query = `
     SELECT document_id, parents
     FROM data_sources_documents 
-    WHERE document_id <> ALL(parents)
-    AND EXISTS (
-      SELECT 1 FROM data_sources 
-      WHERE data_sources.id = data_sources_documents.data_source 
-      AND data_sources."connectorProvider" = 'intercom'
-    );`;
-    console.log(`Running the following query on core: ${query}`);
+    ${queryWhere};`;
+      console.log(`Running the following query on core: ${query}`);
 
-    const [results] = await core_sequelize.query(query);
-    console.log(`Would update ${results.length} documents`);
-    console.log("Sample of affected rows:", results.slice(0, 5));
+      const [results] = await coreSequelize.query(query);
+      console.log(`Would update ${results.length} documents`);
+      console.log("Sample of affected rows:", results.slice(0, 5));
+    }
   }
-}
-
-main()
-  .then(() => {
-    console.log("Done");
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+});
