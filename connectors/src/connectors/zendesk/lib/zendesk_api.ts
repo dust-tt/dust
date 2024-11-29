@@ -44,39 +44,19 @@ export async function changeZendeskClientSubdomain(
   client: Client,
   { connectorId, brandId }: { connectorId: ModelId; brandId: number }
 ): Promise<string> {
-  const brandInDbSubdomain = await getZendeskBrandInDbSubdomain({
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
-  if (brandInDbSubdomain) {
-    client.config.subdomain = brandInDbSubdomain;
-    return brandInDbSubdomain;
+  if (brandInDb) {
+    client.config.subdomain = brandInDb.subdomain;
+    return brandInDb.subdomain;
   }
   const {
     result: { brand },
   } = await client.brand.show(brandId);
   client.config.subdomain = brand.subdomain;
   return brand.subdomain;
-}
-
-/**
- * Retrieves a brand's subdomain from the database if it exists, fetches it from the Zendesk API otherwise.
- */
-async function getZendeskBrandInDbSubdomain({
-  connectorId,
-  brandId,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-}): Promise<string | null> {
-  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
-    connectorId,
-    brandId,
-  });
-  if (brandInDb) {
-    return brandInDb.subdomain;
-  }
-  return null;
 }
 
 /**
@@ -93,14 +73,13 @@ export async function getZendeskBrandSubdomain({
   subdomain: string;
   accessToken: string;
 }): Promise<string> {
-  const brandInDbSubdomain = await getZendeskBrandInDbSubdomain({
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
-  if (brandInDbSubdomain) {
-    return brandInDbSubdomain;
+  if (brandInDb) {
+    return brandInDb.subdomain;
   }
-
   const brand = await fetchZendeskBrand({ subdomain, accessToken, brandId });
   if (!brand) {
     throw new Error(`Brand ${brandId} not found in Zendesk.`);
