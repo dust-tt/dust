@@ -515,6 +515,14 @@
  *         document_id:
  *           type: string
  *           example: "2c4a6e8d0f"
+ *         title:
+ *           type: string
+ *           description: Title of the document
+ *           example: "Customer Support FAQ"
+ *         mime_type:
+ *           type: string
+ *           description: MIME type of the table
+ *           example: "text/md"
  *         timestamp:
  *           type: number
  *           example: 1625097600

@@ -51,6 +51,7 @@ interface Document {
   text: string;
   tags: string[];
   sourceUrl: string;
+  mimeType: string | null;
 }
 export interface DocumentUploadOrEditModalProps {
   contentNode?: LightContentNode;
@@ -78,6 +79,7 @@ export const DocumentUploadOrEditModal = ({
     text: "",
     tags: [],
     sourceUrl: "",
+    mimeType: null,
   });
   const fileUploaderService = useFileUploaderService({
     owner,
@@ -135,6 +137,8 @@ export const DocumentUploadOrEditModal = ({
       setIsUpsertingDocument(true);
       const body = {
         name: initialId ?? document.name,
+        title: initialId ?? document.name,
+        mime_type: document.mimeType ?? "text/plain",
         timestamp: null,
         parents: [initialId ?? document.name],
         section: { prefix: null, content: document.text, sections: [] },
@@ -162,6 +166,7 @@ export const DocumentUploadOrEditModal = ({
           text: "",
           tags: [],
           sourceUrl: "",
+          mimeType: null,
         });
         setEditionStatus({
           content: false,
@@ -224,6 +229,7 @@ export const DocumentUploadOrEditModal = ({
         setDocumentState((prev) => ({
           ...prev,
           name: prev.name.length > 0 ? prev.name : selectedFile.name,
+          mimeType: selectedFile.type,
           sourceUrl:
             prev.sourceUrl.length > 0
               ? prev.sourceUrl
@@ -248,6 +254,7 @@ export const DocumentUploadOrEditModal = ({
         text: "",
         tags: [],
         sourceUrl: "",
+        mimeType: null,
       });
     } else if (document && isCoreAPIDocumentType(document)) {
       setDocumentState((prev) => ({
@@ -256,6 +263,7 @@ export const DocumentUploadOrEditModal = ({
         text: document.text ?? "",
         tags: document.tags,
         sourceUrl: document.source_url ?? "",
+        mimeType: document.mime_type,
       }));
     }
   }, [initialId, document]);

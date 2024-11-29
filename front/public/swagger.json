@@ -1960,6 +1960,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "The title of the document to upsert."
+                  },
+                  "mime_type": {
+                    "type": "string",
+                    "description": "The MIME type of the document to upsert."
+                  },
                   "text": {
                     "type": "string",
                     "description": "The text content of the document to upsert."
@@ -4100,6 +4108,16 @@
           "document_id": {
             "type": "string",
             "example": "2c4a6e8d0f"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the document",
+            "example": "Customer Support FAQ"
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type of the table",
+            "example": "text/md"
           },
           "timestamp": {
             "type": "number",

@@ -130,6 +130,12 @@ export const config = {
  *           schema:
  *             type: object
  *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The title of the document to upsert.
+ *               mime_type:
+ *                 type: string
+ *                 description: The MIME type of the document to upsert.
  *               text:
  *                 type: string
  *                 description: The text content of the document to upsert.
@@ -499,6 +505,8 @@ async function handler(
             sourceUrl,
             section,
             upsertContext: r.data.upsert_context || null,
+            title: r.data.title || null,
+            mime_type: r.data.mime_type || null,
           },
         });
         if (enqueueRes.isErr()) {
@@ -537,6 +545,8 @@ async function handler(
           section,
           credentials,
           lightDocumentOutput: r.data.light_document_output === true,
+          title: r.data.title || null,
+          mimeType: r.data.mime_type || null,
         });
 
         if (upsertRes.isErr()) {

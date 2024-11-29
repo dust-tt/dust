@@ -1855,6 +1855,8 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   section: FrontDataSourceDocumentSectionSchema.nullable().optional(),
   light_document_output: z.boolean().optional(),
   async: z.boolean().nullable().optional(),
+  mime_type: z.string().nullable().optional(),
+  title: z.string().nullable().optional(),
 });
 
 const GetDocumentResponseSchema = z.object({
