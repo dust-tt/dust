@@ -9,7 +9,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::stores::store::Store;
+use crate::stores::store::{Store, UpsertDocument};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -725,20 +725,42 @@ impl DataSource {
             .await?;
         }
 
+        // Store upsert does not save the text and token count.
+        // These fields don't actually exist in the SQL table.
+        // Because of this, we have to manually construct the UpsertDocument, and save
+        // owned values for text and token count so we can return them.
+        // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
+        let doc_text = main_collection_document.text;
+        let doc_token_count = main_collection_document.token_count;
+        let sql_upsert_params = UpsertDocument {
+            document_id: main_collection_document.document_id,
+            timestamp: main_collection_document.timestamp,
+            tags: main_collection_document.tags,
+            parents: main_collection_document.parents,
+            source_url: main_collection_document.source_url,
+            hash: main_collection_document.hash,
+            text_size: main_collection_document.text_size,
+            chunk_count: main_collection_document.chunk_count,
+            chunks: main_collection_document.chunks,
+        };
+
         // Upsert document (SQL).
-        store
+        let mut doc = store
             .upsert_data_source_document(
                 &self.project,
-                &self.data_source_id,
-                &main_collection_document,
+                self.data_source_id.clone(),
+                sql_upsert_params,
             )
             .await?;
+
+        doc.text = doc_text;
+        doc.token_count = doc_token_count;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
             .await?;
 
-        Ok(main_collection_document)
+        Ok(doc)
     }
 
     async fn upsert_for_embedder(
@@ -1954,7 +1976,7 @@ impl DataSource {
 
         // Delete tables (concurrently).
         let (tables, total) = store
-            .list_tables(&self.project, &self.data_source_id, &None, &None, None)
+            .list_data_source_tables(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
         try_join_all(
             tables
