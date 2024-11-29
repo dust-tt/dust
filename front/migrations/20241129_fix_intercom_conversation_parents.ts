@@ -32,7 +32,7 @@ makeScript({}, async ({ execute }, logger) => {
           SET parents = array_prepend(document_id, parents)
               ${queryWhere};`;
 
-      console.log(`Running the following query on core: ${query}`);
+      logger.info(`Running the following query on core: ${query}`);
       await coreSequelize.query(query, {
         replacements: {
           dataSourceId: ds.dustAPIDataSourceId,
@@ -45,7 +45,7 @@ makeScript({}, async ({ execute }, logger) => {
           FROM data_sources_documents
                    ${queryWhere};`;
 
-      console.log(`Running the following query on core: ${query}`);
+      logger.info(`Running the following query on core: ${query}`);
       const results = await coreSequelize.query(query, {
         replacements: {
           dataSourceId: ds.dustAPIDataSourceId,
@@ -54,8 +54,8 @@ makeScript({}, async ({ execute }, logger) => {
         type: QueryTypes.SELECT,
       });
 
-      console.log(`Would update ${results.length} documents`);
-      console.log("Sample of affected rows:", results.slice(0, 5));
+      logger.info(`Would update ${results.length} documents`);
+      logger.info("Sample of affected rows:", results.slice(0, 5));
     }
   }
 });
