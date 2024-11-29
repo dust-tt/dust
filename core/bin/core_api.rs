@@ -2689,7 +2689,6 @@ async fn folders_upsert(
         &project,
         &data_source_id,
         &payload.folder_id.clone(),
-        utils::now(),
         payload.timestamp.unwrap_or(utils::now()),
         &payload.title,
         payload.parents,

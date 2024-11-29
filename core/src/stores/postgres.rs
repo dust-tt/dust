@@ -139,7 +139,7 @@ impl PostgresStore {
     ) -> Result<()> {
         let project_id = node.project().project_id();
         let data_source_id = node.data_source_id();
-
+        let created = utils::now();
         let r = tx
             .query(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
@@ -176,7 +176,7 @@ impl PostgresStore {
                 &stmt,
                 &[
                     &data_source_row_id,
-                    &(node.created() as i64),
+                    &(created as i64),
                     &node.node_id(),
                     &(node.timestamp() as i64),
                     &node.title(),
@@ -2456,29 +2456,19 @@ impl Store for PostgresStore {
         let mut c = pool.get().await?;
 
         let tx = c.transaction().await?;
-        let row_id: i64 = match &self
-            .get_data_source_node(&project, &data_source_id, &table_id)
-            .await?
-        {
-            None => {
-                // TODO(KW_SEARCH_INFRA)
-                // Create new table - still doing upsert here during migration, as we can have table which do not have a node yet
-                // Must be replaced by a simple insert once all tables have a corresponding node
+        let r = tx
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
 
-                // Fetching data source row id (will be removed once not needed anymore in "tables")
-                let r = tx
-                .query(
-                    "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                    &[&project_id, &data_source_id],
-                )
-                .await?;
-                let data_source_row_id: i64 = match r.len() {
-                    0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-                    1 => r[0].get(0),
-                    _ => unreachable!(),
-                };
-
-                let stmt = tx
+        let stmt = tx
                 .prepare(
                     "INSERT INTO tables \
                        (id, data_source, created, table_id, name, description,
@@ -2492,56 +2482,24 @@ impl Store for PostgresStore {
                 )
                 .await?;
 
-                tx.query_one(
-                    &stmt,
-                    &[
-                        &data_source_row_id,
-                        &(table_created as i64),
-                        &table_id,
-                        &table_name,
-                        &table_description,
-                        &(table_timestamp as i64),
-                        &table_tags,
-                        &table_parents,
-                        &table_remote_database_table_id,
-                        &table_remote_database_secret_id,
-                    ],
-                )
-                .await?
-                .get(0)
-            }
-            Some((node, row_id)) => {
-                match node.node_type() {
-                    NodeType::Table => (), // Continue execution
-                    other => return Err(anyhow!("Expected Table node, got {:?}", other)),
-                }
-                // We have a node, so we can update the table based on the row id
-                let stmt = tx
-                    .prepare(
-                        "UPDATE tables
-                       SET name = $1, description = $1, \
-                       timestamp = $3, tags_array = $4, parents = $5, \
-                         remote_database_table_id = $6, remote_database_secret_id = $7 \
-                       WHERE id = $8",
-                    )
-                    .await?;
-                tx.query(
-                    &stmt,
-                    &[
-                        &table_name,
-                        &table_description,
-                        &(table_timestamp as i64),
-                        &table_tags,
-                        &table_parents,
-                        &table_remote_database_table_id,
-                        &table_remote_database_secret_id,
-                        row_id,
-                    ],
-                )
-                .await?;
-                *row_id
-            }
-        };
+        let table_row_id = tx
+            .query_one(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &(table_created as i64),
+                    &table_id,
+                    &table_name,
+                    &table_description,
+                    &(table_timestamp as i64),
+                    &table_tags,
+                    &table_parents,
+                    &table_remote_database_table_id,
+                    &table_remote_database_secret_id,
+                ],
+            )
+            .await?
+            .get(0);
 
         let table = Table::new(
             project,
@@ -2564,7 +2522,7 @@ impl Store for PostgresStore {
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
         // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
         if let (Some(_), Some(_)) = (title, mime_type) {
-            self.upsert_data_source_node(&table.clone().into(), row_id, &tx)
+            self.upsert_data_source_node(&table.clone().into(), table_row_id, &tx)
                 .await?;
         }
         tx.commit().await?;
@@ -3018,23 +2976,42 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
 
-        let tx = c.transaction().await?;
-        let row_id: i64 = match &self
-            .get_data_source_node(&folder.project(), data_source_id, &folder.folder_id())
-            .await?
-        {
-            None => {
-                // Create new folder
-                let stmt = tx
-                    .prepare("INSERT INTO data_sources_folders (id) VALUES (DEFAULT) RETURNING id")
-                    .await?;
+        let created = utils::now();
 
-                tx.query_one(&stmt, &[]).await?.get(0)
-            }
-            Some((_, row_id)) => *row_id,
+        // get the data source row id
+        let tx = c.transaction().await?;
+        let r = tx
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&folder.project().project_id(), &data_source_id],
+            )
+            .await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
         };
 
-        self.upsert_data_source_node(&folder.clone().into(), row_id, &tx)
+        let stmt = tx
+            .prepare(
+                "INSERT INTO data_sources_folders \
+                       (id, data_source, created, folder_id) \
+                       VALUES (DEFAULT, $1, $2, $3) \
+                       ON CONFLICT (folder_id, data_source)  DO UPDATE \
+                       SET folder_id = data_sources_folders.folder_id \
+                       RETURNING id",
+            )
+            .await?;
+
+        let folder_row_id = tx
+            .query_one(
+                &stmt,
+                &[&data_source_row_id, &(created as i64), &folder.folder_id()],
+            )
+            .await?
+            .get(0);
+
+        self.upsert_data_source_node(&folder.clone().into(), folder_row_id, &tx)
             .await?;
         tx.commit().await?;
 
@@ -3135,7 +3112,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, timestamp, title, mime_type, parents, node_id, document, \"table\", folder \
+                "SELECT timestamp, title, mime_type, parents, node_id, document, \"table\", folder \
                  FROM data_sources_nodes \
                  WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
@@ -3145,15 +3122,14 @@ impl Store for PostgresStore {
         match row.len() {
             0 => Ok(None),
             1 => {
-                let created: i64 = row[0].get::<_, i64>(0);
-                let timestamp: i64 = row[0].get::<_, i64>(1);
-                let title: String = row[0].get::<_, String>(2);
-                let mime_type: String = row[0].get::<_, String>(3);
-                let parents: Vec<String> = row[0].get::<_, Vec<String>>(4);
-                let node_id: String = row[0].get::<_, String>(5);
-                let document_row_id = row[0].get::<_, Option<i64>>(6);
-                let table_row_id = row[0].get::<_, Option<i64>>(7);
-                let folder_row_id = row[0].get::<_, Option<i64>>(8);
+                let timestamp: i64 = row[0].get::<_, i64>(0);
+                let title: String = row[0].get::<_, String>(1);
+                let mime_type: String = row[0].get::<_, String>(2);
+                let parents: Vec<String> = row[0].get::<_, Vec<String>>(3);
+                let node_id: String = row[0].get::<_, String>(4);
+                let document_row_id = row[0].get::<_, Option<i64>>(5);
+                let table_row_id = row[0].get::<_, Option<i64>>(6);
+                let folder_row_id = row[0].get::<_, Option<i64>>(7);
                 let (node_type, row_id) = match (document_row_id, table_row_id, folder_row_id) {
                     (Some(id), None, None) => (NodeType::Document, id),
                     (None, Some(id), None) => (NodeType::Table, id),
@@ -3166,7 +3142,6 @@ impl Store for PostgresStore {
                         &data_source_id,
                         &node_id,
                         node_type,
-                        created as u64,
                         timestamp as u64,
                         &title,
                         &mime_type,

@@ -227,7 +227,6 @@ impl From<Table> for Node {
             &table.data_source_id,
             &table.table_id,
             NodeType::Table,
-            table.created,
             table.timestamp,
             &table.title,
             &table.mime_type,

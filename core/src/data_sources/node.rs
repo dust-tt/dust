@@ -19,7 +19,6 @@ pub struct Node {
     data_source_id: String,
     node_id: String,
     node_type: NodeType,
-    created: u64,
     timestamp: u64,
     title: String,
     mime_type: String,
@@ -32,7 +31,6 @@ impl Node {
         data_source_id: &str,
         node_id: &str,
         node_type: NodeType,
-        created: u64,
         timestamp: u64,
         title: &str,
         mime_type: &str,
@@ -43,7 +41,6 @@ impl Node {
             data_source_id: data_source_id.to_string(),
             node_id: node_id.to_string(),
             node_type,
-            created,
             timestamp,
             title: title.to_string(),
             mime_type: mime_type.to_string(),
@@ -56,9 +53,6 @@ impl Node {
     }
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
-    }
-    pub fn created(&self) -> u64 {
-        self.created
     }
     pub fn timestamp(&self) -> u64 {
         self.timestamp

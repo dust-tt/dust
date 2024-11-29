@@ -9,7 +9,6 @@ pub struct Folder {
     project: Project,
     data_source_id: String,
     folder_id: String,
-    created: u64,
     timestamp: u64,
     title: String,
     parents: Vec<String>,
@@ -23,7 +22,6 @@ impl Folder {
         project: &Project,
         data_source_id: &str,
         folder_id: &str,
-        created: u64,
         timestamp: u64,
         title: &str,
         parents: Vec<String>,
@@ -32,7 +30,6 @@ impl Folder {
             project: project.clone(),
             data_source_id: data_source_id.to_string(),
             folder_id: folder_id.to_string(),
-            created,
             timestamp,
             title: title.to_string(),
             parents,
@@ -44,7 +41,6 @@ impl Folder {
             node.project(),
             node.data_source_id(),
             node.node_id(),
-            node.created(),
             node.timestamp(),
             node.title(),
             node.parents().clone(),
@@ -56,9 +52,6 @@ impl Folder {
     }
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
-    }
-    pub fn created(&self) -> u64 {
-        self.created
     }
     pub fn timestamp(&self) -> u64 {
         self.timestamp
@@ -80,7 +73,6 @@ impl From<Node> for Folder {
             node.project(),
             node.data_source_id(),
             node.node_id(),
-            node.created(),
             node.timestamp(),
             node.title(),
             node.parents().clone(),
@@ -95,7 +87,6 @@ impl From<Folder> for Node {
             &folder.data_source_id,
             &folder.folder_id,
             NodeType::Folder,
-            folder.created,
             folder.timestamp,
             &folder.title,
             FOLDER_MIMETYPE,
