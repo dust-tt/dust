@@ -2553,7 +2553,7 @@ impl Store for PostgresStore {
         let table_id = table_id.to_string();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
         // Get the data source row id.
         let stmt = c
@@ -2568,12 +2568,23 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        let tx = c.transaction().await?;
+
         // Update parents.
-        let stmt = c
+        let stmt = tx
             .prepare("UPDATE tables SET parents = $1 WHERE data_source = $2 AND table_id = $3")
             .await?;
-        c.query(&stmt, &[&parents, &data_source_row_id, &table_id])
+        tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
             .await?;
+
+        // Update parents.
+        let stmt = tx
+            .prepare("UPDATE data_sources_nodes SET parents = $1 WHERE data_source = $2 AND table_id = $3")
+            .await?;
+        tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
+            .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
