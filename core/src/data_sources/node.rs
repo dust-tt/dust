@@ -9,10 +9,6 @@ pub enum NodeType {
     Folder,
 }
 
-pub trait ToNode {
-    fn node(&self) -> Node;
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
     project: Project,
