@@ -354,6 +354,12 @@ async function handler(
         });
       }
 
+      // Enforce that the table is a parent of itself by default.
+      const parentsWithTableId =
+        parents?.includes(tableId) && parents[0] === tableId
+          ? parents
+          : [tableId, ...(parents || []).filter((p) => p !== tableId)];
+
       const upsertRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
@@ -363,7 +369,7 @@ async function handler(
         timestamp: timestamp ?? null,
         tags: tags || [],
         // Table is a parent of itself by default.
-        parents: parents || [tableId],
+        parents: parentsWithTableId,
         remoteDatabaseTableId: remoteDatabaseTableId ?? null,
         remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
         title,
