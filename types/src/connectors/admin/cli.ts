@@ -396,6 +396,7 @@ export const AdminResponseSchema = t.union([
   TemporalUnprocessedWorkflowsResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
   ZendeskCheckIsAdminResponseSchema,
+  ZendeskCountTicketsResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
