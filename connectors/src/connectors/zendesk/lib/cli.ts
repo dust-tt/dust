@@ -58,6 +58,7 @@ export const zendesk = async ({
       if (!configuration) {
         throw new Error(`No configuration found for connector ${connector.id}`);
       }
+      const { retentionPeriodDays } = configuration;
 
       const { accessToken, subdomain } =
         await getZendeskSubdomainAndAccessToken(connector.connectionId);
@@ -71,10 +72,10 @@ export const zendesk = async ({
       const ticketCount = await fetchZendeskTicketCount({
         brandSubdomain,
         accessToken,
-        retentionPeriodDays: configuration.retentionPeriodDays,
+        retentionPeriodDays,
       });
       logger.info(
-        { connectorId, brandId, ticketCount },
+        { connectorId, brandId, ticketCount, retentionPeriodDays },
         "Number of valid tickets found for the brand."
       );
       return { ticketCount };
