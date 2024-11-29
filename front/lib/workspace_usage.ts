@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
@@ -73,6 +74,7 @@ interface AgentUsageQueryResult {
 }
 
 interface FeedbackQueryResult {
+  id: ModelId;
   created_at: Date;
   userName: string;
   userEmail: string;
@@ -484,13 +486,14 @@ export async function getFeedbacksUsageData(
     feedbacks.map(async (feedback) => {
       const user = await feedback.fetchUser();
       return {
+        id: feedback.id,
         created_at: feedback.createdAt,
         userName: user?.fullName() || "",
         userEmail: user?.email || "",
         agentConfigurationId: feedback.agentConfigurationId,
         agentConfigurationVersion: feedback.agentConfigurationVersion,
         thumb: feedback.thumbDirection,
-        content: feedback.content,
+        content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
       };
     })
   );
