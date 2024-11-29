@@ -165,7 +165,7 @@ impl PostgresStore {
                (id, data_source, created, node_id, timestamp, title, mime_type, parents, document, \"table\", folder) \
                VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
                ON CONFLICT (data_source, node_id) DO UPDATE \
-               SET created = EXCLUDED.created, timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
+               SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
                    mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, document = EXCLUDED.document, \
                    \"table\" = EXCLUDED.\"table\", folder = EXCLUDED.folder RETURNING id",
             )
