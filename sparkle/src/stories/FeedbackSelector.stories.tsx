@@ -50,7 +50,7 @@ const ExampleFeedbackComponent = () => {
         }));
       },
       isSubmittingThumb: false,
-      getPopoverInfo: () => <div>Nice info my brudah</div>,
+      getPopoverInfo: () => <div>Some info here, like the last author</div>,
     });
 
   return <FeedbackSelector {...messageFeedback} />;
