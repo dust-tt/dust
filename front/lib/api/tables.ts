@@ -27,6 +27,7 @@ import logger from "@app/logger/logger";
 import type { DataSourceResource } from "../resources/data_source_resource";
 
 const MAX_TABLE_COLUMNS = 512;
+const MAX_COLUMN_NAME_LENGTH = 512;
 
 type CsvParsingError = {
   type:
@@ -505,6 +506,14 @@ async function staticHeaderDetection(
   const firstRecordCells = firstRow.map(
     (h, i) => h.trim().toLocaleLowerCase() || `col_${i}`
   );
+
+  if (firstRecordCells.some((h) => h.length > MAX_COLUMN_NAME_LENGTH)) {
+    return new Err({
+      type: "invalid_header",
+      message: `Column name is too long (over ${MAX_COLUMN_NAME_LENGTH} characters).`,
+    });
+  }
+
   const header = getSanitizedHeaders(firstRecordCells);
 
   if (header.isErr()) {
