@@ -296,10 +296,10 @@ function MembersTable({
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 4,
   });
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "email", desc: false },
+    { id: "email", desc: true },
   ]);
 
   const getTableColumns = useCallback(() => {
@@ -317,6 +317,7 @@ function MembersTable({
     return [
       {
         id: "name",
+        accessorKey: "name",
         cell: (info: Info) => (
           <>
             <DataTable.CellContent
@@ -334,10 +335,11 @@ function MembersTable({
             </DataTable.CellContent>
           </>
         ),
-        enableSorting: false,
+        enableSorting: true,
       },
       {
         id: "email",
+        accessorKey: "email",
         cell: (info: Info) => (
           <DataTable.CellContent>
             <span className="text-element-700">{info.row.original.email}</span>
