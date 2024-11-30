@@ -2152,9 +2152,26 @@ export async function updateConversationRequestedGroupIds(
     ...requirementsToAdd.map((req) => sortBy(req.map(getModelId))),
   ];
 
+  // Hotfix: Postgres requires all subarrays to be of the same length
+  //
+  // since a requirement (subarray) is a set of groups that are linked with OR
+  // logic we can just repeat the last element of each requirement until all
+  // requirements have the maximal length.
+  const longestRequirement = allRequirements.reduce(
+    (max, req) => Math.max(max, req.length),
+    0
+  );
+  // for each requirement, repeatedly add the last id until array is of longest requirement length
+  const updatedRequirements = allRequirements.map((req) => {
+    while (req.length < longestRequirement) {
+      req.push(req[req.length - 1]);
+    }
+    return req;
+  });
+
   await Conversation.update(
     {
-      requestedGroupIds: allRequirements,
+      requestedGroupIds: updatedRequirements,
     },
     {
       where: {
