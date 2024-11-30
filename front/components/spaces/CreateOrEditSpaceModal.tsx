@@ -296,7 +296,7 @@ function MembersTable({
   const sendNotifications = useSendNotification();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 4,
+    pageSize: 10,
   });
   const [sorting, setSorting] = useState<SortingState>([
     { id: "email", desc: true },
