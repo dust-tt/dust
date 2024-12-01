@@ -299,7 +299,7 @@ function MembersTable({
     pageSize: 10,
   });
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "email", desc: true },
+    { id: "email", desc: false },
   ]);
 
   const getTableColumns = useCallback(() => {
