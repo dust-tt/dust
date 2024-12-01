@@ -27,7 +27,7 @@ import logger from "@app/logger/logger";
 import type { DataSourceResource } from "../resources/data_source_resource";
 
 const MAX_TABLE_COLUMNS = 512;
-const MAX_COLUMN_NAME_LENGTH = 512;
+const MAX_COLUMN_NAME_LENGTH = 1024;
 
 type CsvParsingError = {
   type:
