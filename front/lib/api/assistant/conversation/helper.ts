@@ -24,11 +24,16 @@ export function apiErrorForConversation(
     });
   }
 
-  return apiError(req, res, {
-    status_code: 500,
-    api_error: {
-      type: "internal_server_error",
-      message: "An internal server error occurred.",
+  return apiError(
+    req,
+    res,
+    {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "An internal server error occurred.",
+      },
     },
-  });
+    error
+  );
 }
