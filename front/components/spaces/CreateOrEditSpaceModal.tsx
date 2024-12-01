@@ -317,6 +317,7 @@ function MembersTable({
     return [
       {
         id: "name",
+        accessorKey: "name",
         cell: (info: Info) => (
           <>
             <DataTable.CellContent
@@ -334,10 +335,11 @@ function MembersTable({
             </DataTable.CellContent>
           </>
         ),
-        enableSorting: false,
+        enableSorting: true,
       },
       {
         id: "email",
+        accessorKey: "email",
         cell: (info: Info) => (
           <DataTable.CellContent>
             <span className="text-element-700">{info.row.original.email}</span>
