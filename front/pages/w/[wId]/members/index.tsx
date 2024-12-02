@@ -33,7 +33,7 @@ import config from "@app/lib/api/config";
 import {
   makeAudienceUri,
   makeEnterpriseConnectionInitiateLoginUrl,
-  makeSamlSignInUrl,
+  makeSamlAcsUrl,
 } from "@app/lib/api/enterprise_connection";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
@@ -74,7 +74,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
       // SAML specific.
       audienceUri: makeAudienceUri(owner),
-      samlSignInUrl: makeSamlSignInUrl(owner),
+      samlAcsUrl: makeSamlAcsUrl(owner),
     };
 
   const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);

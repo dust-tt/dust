@@ -45,11 +45,11 @@ interface EnterpriseConnectionDetailsProps {
 }
 
 export interface EnterpriseConnectionStrategyDetails {
-  audienceUri: string;
   callbackUrl: string;
-  // SAML Specific.
   initiateLoginUrl: string;
-  samlSignInUrl: string;
+  // SAML Specific.
+  audienceUri: string;
+  samlAcsUrl: string;
 }
 
 export function EnterpriseConnectionDetails({
@@ -521,7 +521,7 @@ function CreateSAMLEnterpriseConnectionModal({
       strategy: "samlp",
     });
 
-  const { audienceUri, callbackUrl, samlSignInUrl } = strategyDetails;
+  const { audienceUri, callbackUrl, samlAcsUrl } = strategyDetails;
 
   const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -557,7 +557,7 @@ function CreateSAMLEnterpriseConnectionModal({
           <Input
             name="Assertion Consumer Service URL"
             placeholder="Assertion Consumer Service URL"
-            value={samlSignInUrl}
+            value={samlAcsUrl}
             disabled
             className="max-w-sm"
           />

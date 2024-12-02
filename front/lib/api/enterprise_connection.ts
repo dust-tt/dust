@@ -27,7 +27,7 @@ export function makeAudienceUri(owner: LightWorkspaceType) {
   return `${config.getAuth0AudienceUri()}:${makeEnterpriseConnectionName(owner.sId)}`;
 }
 
-export function makeSamlSignInUrl(owner: LightWorkspaceType) {
+export function makeSamlAcsUrl(owner: LightWorkspaceType) {
   return `https://${config.getAuth0TenantUrl()}/login/callback?connection=${makeEnterpriseConnectionName(owner.sId)}`;
 }
 
