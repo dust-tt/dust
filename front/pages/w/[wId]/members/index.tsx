@@ -30,7 +30,11 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import config from "@app/lib/api/config";
-import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
+import {
+  makeAudienceUri,
+  makeEnterpriseConnectionInitiateLoginUrl,
+  makeSamlAcsUrl,
+} from "@app/lib/api/enterprise_connection";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
@@ -68,6 +72,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     {
       callbackUrl: config.getAuth0TenantUrl(),
       initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
+      // SAML specific.
+      audienceUri: makeAudienceUri(owner),
+      samlAcsUrl: makeSamlAcsUrl(owner),
     };
 
   const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
