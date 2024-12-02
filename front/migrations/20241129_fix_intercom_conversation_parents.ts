@@ -1,12 +1,19 @@
+import { CoreAPI } from "@dust-tt/types";
+import assert from "assert";
+import _ from "lodash";
 import { QueryTypes, Sequelize } from "sequelize";
 
+import config from "@app/lib/api/config";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 
 const { CORE_DATABASE_URI } = process.env;
-const CHUNK_SIZE = 1000;
+const SELECT_CHUNK_SIZE = 1000;
+const UPDATE_CHUNK_SIZE = 10;
 
 makeScript({}, async ({ execute }, logger) => {
+  assert(CORE_DATABASE_URI, "CORE_DATABASE_URI is required");
+
   const coreSequelize = new Sequelize(CORE_DATABASE_URI as string, {
     logging: false,
   });
@@ -14,69 +21,92 @@ makeScript({}, async ({ execute }, logger) => {
   const frontIntercomDataSources = await DataSourceModel.findAll({
     where: { connectorProvider: "intercom" },
   });
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   for (const ds of frontIntercomDataSources) {
     logger.info(`Processing data source ${ds.id}`);
 
-    let processedCount = 0;
-    let affectedRowCount = 0;
-    do {
-      const whereCondition = `
-        document_id <> ALL(parents)
-        AND EXISTS (
-          SELECT 1 FROM data_sources
-          WHERE data_sources.id = data_sources_documents.data_source
-          AND data_sources.data_source_id = :dataSourceId
-          AND data_sources.project = :projectId
-        )`;
-
-      if (execute) {
-        const query = `
-          UPDATE data_sources_documents
-          SET parents = array_prepend(document_id, parents)
-          WHERE ${whereCondition}
-          LIMIT :chunkSize;`;
-
-        logger.info(`Running update query for chunk: ${query}`);
-        const result = await coreSequelize.query(query, {
-          replacements: {
-            dataSourceId: ds.dustAPIDataSourceId,
-            projectId: ds.dustAPIProjectId,
-            chunkSize: CHUNK_SIZE,
-          },
-          type: QueryTypes.UPDATE,
-        });
-
-        affectedRowCount = result[1];
-        logger.info(`Updated ${processedCount} documents so far`);
-      } else {
-        const query = `
-          SELECT document_id, parents
+    let nextId = 0;
+    for (;;) {
+      const query = `
+          SELECT id, document_id, parents
           FROM data_sources_documents
-          WHERE ${whereCondition}
+          WHERE id > :nextId
+            AND EXISTS (SELECT 1
+                        FROM data_sources
+                        WHERE data_sources.id = data_sources_documents.data_source
+                          AND data_sources.data_source_id = :dataSourceId
+                          AND data_sources.project = :projectId)
+          ORDER BY id
           LIMIT :chunkSize;`;
 
-        logger.info(`Running select query for chunk: ${query}`);
-        const results = await coreSequelize.query(query, {
-          replacements: {
-            dataSourceId: ds.dustAPIDataSourceId,
-            projectId: ds.dustAPIProjectId,
-            chunkSize: CHUNK_SIZE,
-          },
-          type: QueryTypes.SELECT,
-        });
+      logger.info(`Running SELECT query for chunk: ${query}`);
+      const result: any[] = await coreSequelize.query(query, {
+        replacements: {
+          dataSourceId: ds.dustAPIDataSourceId,
+          projectId: ds.dustAPIProjectId,
+          chunkSize: SELECT_CHUNK_SIZE,
+          nextId,
+        },
+        type: QueryTypes.SELECT,
+      });
 
-        affectedRowCount = results.length;
-        logger.info(`Would update ${processedCount} documents so far`);
-        if (affectedRowCount >= 1) {
-          logger.info("Sample of affected row:", results[0]);
-        }
+      const rowsToUpdate = result.filter(
+        (row) =>
+          !row.parents ||
+          row.parents.length === 0 ||
+          row.parents[0] !== row.document_id
+      );
+
+      // doing smaller chunks to avoid long transactions
+      const chunks = _.chunk(rowsToUpdate, UPDATE_CHUNK_SIZE);
+
+      for (let i = 0; i < chunks.length; i++) {
+        console.log(`Processing chunk ${i}/${chunks.length}...`);
+        await Promise.all(
+          chunks[i].map(async (row) => {
+            const newParents = row.parents
+              ? [row.document_id, ...row.parents]
+              : [row.document_id];
+
+            if (execute) {
+              await coreAPI.updateDataSourceDocumentParents({
+                projectId: ds.dustAPIProjectId,
+                dataSourceId: ds.dustAPIDataSourceId,
+                documentId: row.document_id,
+                parents: newParents,
+              });
+              await coreSequelize.query(
+                `UPDATE data_sources_documents
+                 SET parents = :parents
+                 WHERE id = :id;`,
+                {
+                  replacements: {
+                    id: row.id,
+                    documentId: row.document_id,
+                    parents: newParents,
+                  },
+                }
+              );
+            } else {
+              console.log(`Would update document ${row.document_id}`);
+            }
+          })
+        );
       }
-      processedCount += affectedRowCount;
-    } while (affectedRowCount > 0);
 
-    logger.info(
-      `Finished processing data source ${ds.id} - ${processedCount} documents total`
-    );
+      if (result.length == 0) {
+        logger.info(
+          { dataSource: ds.id, nextId },
+          `Finished processing data source.`
+        );
+        break;
+      }
+      nextId = result[result.length - 1].id;
+      logger.info(
+        { dataSource: ds.id, nextId },
+        `Updated a chunk of ${result.length} documents.`
+      );
+    }
   }
 });
