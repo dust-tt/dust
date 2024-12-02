@@ -35,7 +35,6 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
-        folder::Folder,
         qdrant::QdrantClients,
     },
     databases::{
@@ -50,7 +49,10 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
-    stores::{postgres, store},
+    stores::{
+        postgres,
+        store::{self, UpsertFolder, UpsertTable},
+    },
     utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
 };
 
@@ -2064,22 +2066,21 @@ async fn tables_upsert(
 
     match state
         .store
-        .upsert_table(
-            &project,
-            &data_source_id,
-            &payload.table_id,
-            &payload.name,
-            &payload.description,
-            match payload.timestamp {
-                Some(timestamp) => timestamp,
-                None => utils::now(),
+        .upsert_data_source_table(
+            project,
+            data_source_id,
+            UpsertTable {
+                table_id: payload.table_id,
+                name: payload.name,
+                description: payload.description,
+                timestamp: payload.timestamp.unwrap_or(utils::now()),
+                tags: payload.tags,
+                parents: payload.parents,
+                remote_database_table_id: payload.remote_database_table_id,
+                remote_database_secret_id: payload.remote_database_secret_id,
+                title: payload.title,
+                mime_type: payload.mime_type,
             },
-            &payload.tags,
-            &payload.parents,
-            payload.remote_database_table_id,
-            payload.remote_database_secret_id,
-            payload.title,
-            payload.mime_type,
         )
         .await
     {
@@ -2133,7 +2134,7 @@ async fn tables_retrieve(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2215,7 +2216,7 @@ async fn tables_list(
 
     match state
         .store
-        .list_tables(
+        .list_data_source_tables(
             &project,
             &data_source_id,
             &view_filter,
@@ -2253,7 +2254,7 @@ async fn tables_delete(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2302,7 +2303,7 @@ async fn tables_update_parents(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2355,7 +2356,7 @@ async fn tables_rows_upsert(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2444,7 +2445,7 @@ async fn tables_rows_retrieve(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2520,7 +2521,7 @@ async fn tables_rows_delete(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2612,7 +2613,7 @@ async fn tables_rows_list(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2685,16 +2686,20 @@ async fn folders_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    let folder = Folder::new(
-        &project,
-        &data_source_id,
-        &payload.folder_id.clone(),
-        payload.timestamp.unwrap_or(utils::now()),
-        &payload.title,
-        payload.parents,
-    );
-
-    match state.store.upsert_data_source_folder(&folder).await {
+    match state
+        .store
+        .upsert_data_source_folder(
+            project,
+            data_source_id,
+            UpsertFolder {
+                folder_id: payload.folder_id,
+                timestamp: payload.timestamp.unwrap_or(utils::now()),
+                parents: payload.parents,
+                title: payload.title,
+            },
+        )
+        .await
+    {
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -2703,7 +2708,7 @@ async fn folders_upsert(
                 Some(e),
             )
         }
-        Ok(()) => (
+        Ok(folder) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
@@ -2898,7 +2903,11 @@ async fn databases_query_run(
             .map(|(project_id, data_source_id, table_id)| {
                 let project = project::Project::new_from_id(project_id);
                 let store = state.store.clone();
-                async move { store.load_table(&project, &data_source_id, &table_id).await }
+                async move {
+                    store
+                        .load_data_source_table(&project, &data_source_id, &table_id)
+                        .await
+                }
             }),
     )
     .await
