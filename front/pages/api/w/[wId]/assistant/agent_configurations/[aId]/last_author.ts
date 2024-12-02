@@ -33,12 +33,8 @@ async function handler(
       }
 
       if (!agentConfiguration.versionAuthorId) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "agent_last_author_not_found",
-            message: "The last author of this assistant was not found.",
-          },
+        return res.status(200).json({
+          user: null,
         });
       }
 
