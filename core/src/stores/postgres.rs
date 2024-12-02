@@ -3196,11 +3196,11 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(3);
 
                 Ok(Folder::new(
-                    project,
-                    &data_source_id,
-                    &node_id,
+                    project.clone(),
+                    data_source_id.clone(),
+                    node_id,
                     timestamp as u64,
-                    &title,
+                    title,
                     parents,
                 ))
             })
