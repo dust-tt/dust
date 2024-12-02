@@ -1,5 +1,4 @@
 import { CoreAPI } from "@dust-tt/types/src";
-import assert from "assert";
 import _ from "lodash";
 import { QueryTypes } from "sequelize";
 
@@ -8,13 +7,10 @@ import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 
-const { CORE_DATABASE_URI } = process.env;
 const SELECT_CHUNK_SIZE = 1000;
 const UPDATE_CHUNK_SIZE = 10;
 
 makeScript({}, async ({ execute }, logger) => {
-  assert(CORE_DATABASE_URI, "CORE_DATABASE_URI is required");
-
   const coreSequelize = getCorePrimaryDbConnection();
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
