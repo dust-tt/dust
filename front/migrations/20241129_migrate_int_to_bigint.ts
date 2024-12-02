@@ -70,11 +70,9 @@ export const SYNC_DIRECTION = {
   TO_LEGACY: "to_legacy",
 } as const;
 
-// Make these type-safe using TypeScript literal types
 type ColumnType = (typeof COLUMN_TYPE)[keyof typeof COLUMN_TYPE];
 type SyncDirection = (typeof SYNC_DIRECTION)[keyof typeof SYNC_DIRECTION];
 
-// naming.ts
 export const createColumnName = {
   new: (baseColumn: string) => `${baseColumn}_new` as const,
   legacy: (baseColumn: string) => `${baseColumn}_legacy` as const,
@@ -470,7 +468,7 @@ class IntToBigIntMigration {
 
     rows.forEach((row) =>
       console.log(
-        chalk.dim(`• ${row.schema}.${row.tableName} (${row.foreignKeyColumn})`)
+        chalk.dim(`- ${row.schema}.${row.tableName} (${row.foreignKeyColumn})`)
       )
     );
 
@@ -649,7 +647,7 @@ class IntToBigIntMigration {
         EXECUTE FUNCTION ${functionName}()
     `
     );
-    console.log(chalk.dim(`• Created trigger`));
+    console.log(chalk.dim(`- Created trigger`));
 
     console.log(
       chalk.green(
@@ -744,7 +742,7 @@ class IntToBigIntMigration {
     rows.forEach((r) =>
       console.log(
         chalk.magenta(
-          `  • ${chalk.bold(r.index_name)} (${r.column_names})${r.is_unique ? " UNIQUE" : ""}`
+          `  - ${chalk.bold(r.index_name)} (${r.column_names})${r.is_unique ? " UNIQUE" : ""}`
         )
       )
     );
