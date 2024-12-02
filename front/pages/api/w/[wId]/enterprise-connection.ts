@@ -23,17 +23,36 @@ export type GetEnterpriseConnectionResponseBody = {
   connection: WorkspaceEnterpriseConnection;
 };
 
-const PostCreateEnterpriseConnectionRequestBodySchema = t.type({
+const PostCreateEnterpriseIdpSpecificConnectionRequestBodySchema = t.type({
   clientId: t.string,
   clientSecret: t.string,
   domain: t.string,
-  // SAML creation is not supported yet.
   strategy: t.union([t.literal("okta"), t.literal("waad")]),
 });
 
-export type PostCreateEnterpriseConnectionRequestBodySchemaType = t.TypeOf<
-  typeof PostCreateEnterpriseConnectionRequestBodySchema
+export type IdpSpecificConnectionTypeDetails = t.TypeOf<
+  typeof PostCreateEnterpriseIdpSpecificConnectionRequestBodySchema
 >;
+
+const PostCreateSAMLEnterpriseConnectionRequestBodySchema = t.type({
+  // Base-64 encoded certificate.
+  x509SignInCertificate: t.string,
+  signInUrl: t.string,
+  strategy: t.literal("samlp"),
+});
+
+const PostCreateEnterpriseConnectionRequestBodySchema = t.union([
+  PostCreateEnterpriseIdpSpecificConnectionRequestBodySchema,
+  PostCreateSAMLEnterpriseConnectionRequestBodySchema,
+]);
+
+export type SAMLConnectionTypeDetails = t.TypeOf<
+  typeof PostCreateSAMLEnterpriseConnectionRequestBodySchema
+>;
+
+export type PostCreateEnterpriseConnectionRequestBodySchemaType =
+  | IdpSpecificConnectionTypeDetails
+  | SAMLConnectionTypeDetails;
 
 async function handler(
   req: NextApiRequest,
