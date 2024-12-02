@@ -37,7 +37,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
 const modelProviders: Record<ModelProviderIdType, string[]> =
   USED_MODEL_CONFIGS.reduce(
     (acc, model) => {
-      if (model && !model.isLegacy) {
+      if (!model.isLegacy) {
         acc[model.providerId] = acc[model.providerId] || [];
         acc[model.providerId].push(model.displayName);
       }
