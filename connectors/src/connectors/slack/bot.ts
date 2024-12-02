@@ -385,7 +385,7 @@ async function answerMessage(
     (ac) => ac.status === "active"
   );
 
-  // Slack sends the message with user ids when someone is mentionned (bot or user).
+  // Slack sends the message with user ids when someone is mentioned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
   // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
   // <@U91J1JEQZ1A>) ?

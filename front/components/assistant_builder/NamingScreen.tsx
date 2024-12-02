@@ -390,9 +390,10 @@ export default function NamingScreen({
                     handle: e.target.value.trim(),
                   }));
                 }}
-                isError={!!assistantHandleError}
                 name="assistantName"
                 className="text-sm"
+                message={assistantHandleError}
+                messageStatus="error"
               />
             </div>
           </div>
@@ -437,7 +438,8 @@ export default function NamingScreen({
                   }));
                 }}
                 name="assistantDescription"
-                isError={!!descriptionError}
+                message={descriptionError}
+                messageStatus="error"
                 disabled={isDescriptionInputDisabled}
               />
             </div>
