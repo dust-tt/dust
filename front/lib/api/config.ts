@@ -26,6 +26,9 @@ const config = {
   getAuth0WebApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_WEB_APP_CLIENT_ID");
   },
+  getAuth0ExtensionApplicationId: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
+  },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
