@@ -25,6 +25,7 @@ export type TypedIncludeable<M> = {
   [K in NonAttributeKeys<M>]: {
     model: ModelStatic<InferIncludeType<M>[K]>;
     as: K;
+    required?: boolean;
   };
 }[NonAttributeKeys<M>];
 

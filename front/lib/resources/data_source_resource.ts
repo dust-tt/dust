@@ -110,6 +110,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         {
           model: User,
           as: "editedByUser",
+          required: false,
         },
       ];
     }

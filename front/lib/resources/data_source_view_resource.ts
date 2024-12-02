@@ -187,6 +187,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         {
           model: User,
           as: "editedByUser",
+          required: false,
         },
       ];
     }
