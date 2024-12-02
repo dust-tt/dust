@@ -349,6 +349,7 @@ export async function rowsFromCsv({
     CsvParsingError
   >
 > {
+  const now = performance.now();
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
     return new Err({
@@ -496,6 +497,16 @@ export async function rowsFromCsv({
 
     rows.push({ row_id: rowId, value: record });
   }
+
+  logger.info(
+    {
+      durationMs: performance.now() - now,
+      nbRows,
+      nbCols: header.length,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    "Parsing CSV"
+  );
 
   return new Ok({ detectedHeaders: { header, rowIndex }, rows });
 }

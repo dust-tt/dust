@@ -2,7 +2,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use futures::SinkExt;
 use serde_json::Value;
+use std::io::Cursor;
 use tokio_postgres::{types::ToSql, NoTls};
 use tracing::info;
 
@@ -182,33 +184,87 @@ impl DatabasesStore for PostgresDatabasesStore {
             }
         }
 
-        let stmt = c
-            .prepare(
-                "INSERT INTO tables_rows
-                   (table_id, row_id, created, content)
-                   SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
-                   ON CONFLICT (table_id, row_id) DO UPDATE
-                   SET content = EXCLUDED.content",
-            )
+        let use_copy = true;
+
+        if truncate && use_copy {
+            // Start COPY operation directly into the target table
+            let mut sink = c
+            .copy_in("COPY tables_rows (table_id, row_id, created, content) FROM STDIN WITH (FORMAT text)")
             .await?;
 
-        for chunk in rows.chunks(1024) {
             let now = utils::now() as i64;
 
-            let table_ids: Vec<&str> = vec![table_id; chunk.len()];
-            let row_ids: Vec<&str> = chunk.iter().map(|r| r.row_id()).collect();
-            let createds: Vec<i64> = vec![now; chunk.len()];
-            let contents: Vec<String> = chunk.iter().map(|r| r.content().to_string()).collect();
+            // Create a single buffer for all the data
+            let mut buffer = Vec::new();
 
-            c.execute(&stmt, &[&table_ids, &row_ids, &createds, &contents])
-                .await?;
+            for row in rows {
+                // Escape special characters in content
+                let escaped_content = row
+                    .content()
+                    .to_string()
+                    // Postgresql [doc](https://www.postgresql.org/docs/current/sql-copy.html)
+                    // Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as row or column delimiters.
+                    // In particular, the following characters must be preceded by a backslash if they appear as part of a column value:
+                    // the backslash itself, newline, carriage return, and the current delimiter character.
+                    .replace('\\', "\\\\")
+                    .replace('\n', "\\n")
+                    .replace('\r', "\\r")
+                    .replace('\t', "\\t");
+
+                // Format: table_id, row_id, created, content
+                let line = format!(
+                    "{}\t{}\t{}\t{}\n",
+                    table_id,
+                    row.row_id(),
+                    now,
+                    &escaped_content
+                );
+
+                buffer.extend_from_slice(line.as_bytes());
+            }
+
+            // Send all data at once
+            let mut pinned_sink = std::pin::pin!(sink);
+            pinned_sink.send(Cursor::new(buffer)).await?;
+
+            // Close the sink
+            let nb_rows = pinned_sink.finish().await?;
 
             info!(
                 duration = utils::now() - now as u64,
                 table_id,
-                inserted_rows = chunk.len(),
-                "DSSTRUCTSTAT [upsert_rows] insertion batch"
+                inserted_rows = nb_rows,
+                "DSSTRUCTSTAT [upsert_rows] insertion batch (COPY)"
             );
+        } else {
+            let stmt = c
+                .prepare(
+                    "INSERT INTO tables_rows
+                    (table_id, row_id, created, content)
+                    SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
+                    ON CONFLICT (table_id, row_id) DO UPDATE
+                    SET content = EXCLUDED.content",
+                )
+                .await?;
+
+            for chunk in rows.chunks(1024) {
+                let now = utils::now() as i64;
+
+                let table_ids: Vec<&str> = vec![table_id; chunk.len()];
+                let row_ids: Vec<&str> = chunk.iter().map(|r| r.row_id()).collect();
+                let createds: Vec<i64> = vec![now; chunk.len()];
+                let contents: Vec<String> = chunk.iter().map(|r| r.content().to_string()).collect();
+
+                c.execute(&stmt, &[&table_ids, &row_ids, &createds, &contents])
+                    .await?;
+
+                info!(
+                    duration = utils::now() - now as u64,
+                    table_id,
+                    inserted_rows = chunk.len(),
+                    "DSSTRUCTSTAT [upsert_rows] insertion batch (INSERT...ON CONFLICT)"
+                );
+            }
         }
 
         Ok(())
