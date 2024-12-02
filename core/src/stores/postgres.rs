@@ -3023,6 +3023,134 @@ impl Store for PostgresStore {
         }
     }
 
+    async fn list_data_source_folders(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        view_filter: &Option<SearchFilter>,
+        folder_ids: &Option<Vec<String>>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Folder>, usize)> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // get the data source row id
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let mut where_clauses: Vec<String> = vec![];
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+
+        where_clauses.push("data_source = $1".to_string());
+        params.push(&data_source_row_id);
+
+        // Don't support tags for folders yet.
+        let view_filter = match view_filter {
+            None => None,
+            Some(filter) => Some(SearchFilter {
+                tags: None,
+                parents: filter.parents.clone(),
+                timestamp: filter.timestamp.clone(),
+            }),
+        };
+
+        let (filter_clauses, filter_params, mut p_idx) =
+            Self::where_clauses_and_params_for_filter(&view_filter, params.len() + 1);
+
+        where_clauses.extend(filter_clauses);
+        params.extend(filter_params);
+
+        // Add folder_ids filter if provided.
+        if let Some(ref ids) = folder_ids {
+            // Create a dynamic list of placeholders for the folder IDs.
+            let id_placeholders: Vec<String> = (0..ids.len())
+                .map(|_| {
+                    let placeholder = format!("${}", p_idx);
+                    p_idx += 1; // Increment p_idx after each table.
+                    placeholder
+                })
+                .collect();
+
+            where_clauses.push(format!("node_id IN ({})", id_placeholders.join(", ")));
+            params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
+        }
+
+        let sql = format!(
+            "SELECT node_id, title, timestamp, parents \
+               FROM data_sources_nodes \
+               WHERE folder IS NOT NULL AND {} ORDER BY timestamp DESC",
+            where_clauses.join(" AND "),
+        );
+
+        let (rows, total) = match limit_offset {
+            None => {
+                let stmt = c.prepare(&sql).await?;
+                let rows = c.query(&stmt, &params).await?;
+                let total = rows.len();
+                (rows, total)
+            }
+            Some((limit, offset)) => {
+                let limit = limit as i64;
+                let offset = offset as i64;
+
+                let mut params_with_limits = params.clone();
+                params_with_limits.push(&limit);
+                params_with_limits.push(&offset);
+
+                let stmt = c
+                    .prepare(&(sql + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1)))
+                    .await?;
+                let rows = c.query(&stmt, &params_with_limits).await?;
+
+                let stmt = c
+                    .prepare(
+                        format!(
+                            "SELECT COUNT(*) FROM data_sources_nodes \
+                                WHERE folder IS NOT NULL AND {}",
+                            where_clauses.join(" AND ")
+                        )
+                        .as_str(),
+                    )
+                    .await?;
+                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
+                (rows, t as usize)
+            }
+        };
+
+        let folders: Vec<Folder> = rows
+            .into_iter()
+            .map(|r| {
+                let node_id: String = r.get(0);
+                let title: String = r.get(1);
+                let timestamp: i64 = r.get(2);
+                let parents: Vec<String> = r.get(3);
+
+                Ok(Folder::new(
+                    project,
+                    &data_source_id,
+                    &node_id,
+                    timestamp as u64,
+                    &title,
+                    parents,
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok((folders, total))
+    }
+
     async fn delete_data_source_folder(
         &self,
         project: &Project,

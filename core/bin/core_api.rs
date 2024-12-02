@@ -2744,6 +2744,89 @@ async fn folders_retrieve(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct FoldersListQuery {
+    limit: Option<usize>,
+    offset: Option<usize>,
+    folder_ids: Option<String>,  // Parsed as JSON.
+    view_filter: Option<String>, // Parsed as JSON.
+}
+
+async fn folders_list(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<FoldersListQuery>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    let view_filter: Option<SearchFilter> = match query
+        .view_filter
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
+
+    let limit_offset: Option<(usize, usize)> = match (query.limit, query.offset) {
+        (Some(limit), Some(offset)) => Some((limit, offset)),
+        _ => None,
+    };
+
+    let folder_ids: Option<Vec<String>> = match query.folder_ids {
+        Some(ref ids) => match serde_json::from_str(ids) {
+            Ok(parsed_ids) => Some(parsed_ids),
+            Err(e) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_folder_ids",
+                    "Failed to parse folder_ids query parameter",
+                    Some(e.into()),
+                )
+            }
+        },
+        None => None,
+    };
+
+    match state
+        .store
+        .list_data_source_folders(
+            &project,
+            &data_source_id,
+            &view_filter,
+            &folder_ids,
+            limit_offset,
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list folders",
+            Some(e),
+        ),
+        Ok((folders, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "limit": query.limit,
+                    "offset": query.offset,
+                    "folders": folders,
+                    "total": total,
+                })),
+            }),
+        ),
+    }
+}
+
 async fn folders_delete(
     Path((project_id, data_source_id, folder_id)): Path<(i64, String, String)>,
     State(state): State<Arc<APIState>>,
@@ -3249,6 +3332,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",
             get(folders_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/folders",
+            get(folders_list),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",

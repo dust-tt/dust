@@ -11,6 +11,9 @@ const config = {
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },
+  getAuth0AudienceUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_AUDIENCE_URI");
+  },
   getDustApiAudience: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_API_AUDIENCE");
   },
@@ -22,6 +25,9 @@ const config = {
   },
   getAuth0WebApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_WEB_APP_CLIENT_ID");
+  },
+  getAuth0ExtensionApplicationId: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
   },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
