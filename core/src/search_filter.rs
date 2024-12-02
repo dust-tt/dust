@@ -71,7 +71,7 @@ where
 pub struct SearchFilter {
     pub tags: Option<TagsFilter>,
     pub parents: Option<ParentsFilter>,
-    #[serde(deserialize_with = "deserialize_timestamp_filter")]
+    #[serde(default, deserialize_with = "deserialize_timestamp_filter")]
     pub timestamp: Option<TimestampFilter>,
 }
 

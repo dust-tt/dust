@@ -274,6 +274,14 @@ pub trait Store {
         data_source_id: &str,
         folder_id: &str,
     ) -> Result<Option<Folder>>;
+    async fn list_data_source_folders(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        view_filter: &Option<SearchFilter>,
+        folder_ids: &Option<Vec<String>>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Folder>, usize)>;
     async fn delete_data_source_folder(
         &self,
         project: &Project,
