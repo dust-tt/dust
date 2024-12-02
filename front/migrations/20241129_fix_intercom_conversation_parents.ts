@@ -28,15 +28,13 @@ makeScript({}, async ({ execute }, logger) => {
     let nextId = 0;
     for (;;) {
       const query = `
-          SELECT id, document_id, parents
-          FROM data_sources_documents
-          WHERE id > :nextId
-            AND EXISTS (SELECT 1
-                        FROM data_sources
-                        WHERE data_sources.id = data_sources_documents.data_source
-                          AND data_sources.data_source_id = :dataSourceId
-                          AND data_sources.project = :projectId)
-          ORDER BY id
+          SELECT doc.id, doc.document_id, doc.parents
+          FROM data_sources_documents doc
+                   JOIN data_sources ds ON ds.id = doc.data_source
+          WHERE doc.id > :nextId
+            AND ds.data_source_id = :dataSourceId
+            AND ds.project = :projectId
+          ORDER BY doc.id
           LIMIT :chunkSize;`;
 
       logger.info(`Running SELECT query for chunk: ${query}`);
