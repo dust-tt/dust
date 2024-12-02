@@ -732,7 +732,7 @@ impl DataSource {
         // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
         let doc_text = main_collection_document.text;
         let doc_token_count = main_collection_document.token_count;
-        let sql_upsert_params = UpsertDocument {
+        let params = UpsertDocument {
             document_id: main_collection_document.document_id,
             timestamp: main_collection_document.timestamp,
             tags: main_collection_document.tags,
@@ -746,11 +746,7 @@ impl DataSource {
 
         // Upsert document (SQL).
         let mut doc = store
-            .upsert_data_source_document(
-                &self.project,
-                self.data_source_id.clone(),
-                sql_upsert_params,
-            )
+            .upsert_data_source_document(&self.project, self.data_source_id.clone(), params)
             .await?;
 
         doc.text = doc_text;
