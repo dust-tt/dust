@@ -15,7 +15,7 @@ export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare updatedAt: CreationOptional<Date>;
 
   // Corresponds to the ID of the last user to configure the connection.
-  declare editedByUserId: ForeignKey<User["id"]>;
+  declare editedByUserId: ForeignKey<User["id"]> | null;
   declare editedAt: Date;
 
   declare name: string;
@@ -115,7 +115,7 @@ DataSourceModel.belongsTo(Workspace, {
 
 DataSourceModel.belongsTo(User, {
   as: "editedByUser",
-  foreignKey: { name: "editedByUserId", allowNull: false },
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });
 
 DataSourceModel.belongsTo(SpaceModel, {
