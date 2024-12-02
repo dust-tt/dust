@@ -1,7 +1,4 @@
-import type {
-  CitationType,
-  ConversationMessageFeedbackSelectorProps,
-} from "@dust-tt/sparkle";
+import type { CitationType, FeedbackSelectorProps } from "@dust-tt/sparkle";
 import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -89,17 +86,16 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    const messageFeedbackWithSubmit: ConversationMessageFeedbackSelectorProps =
-      {
-        feedback: messageFeedback
-          ? {
-              thumb: messageFeedback.thumbDirection,
-              feedbackContent: messageFeedback.content,
-            }
-          : null,
-        onSubmitThumb,
-        isSubmittingThumb,
-      };
+    const messageFeedbackWithSubmit: FeedbackSelectorProps = {
+      feedback: messageFeedback
+        ? {
+            thumb: messageFeedback.thumbDirection,
+            feedbackContent: messageFeedback.content,
+          }
+        : null,
+      onSubmitThumb,
+      isSubmittingThumb,
+    };
 
     switch (type) {
       case "user_message":
