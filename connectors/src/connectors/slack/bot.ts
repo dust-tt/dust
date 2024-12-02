@@ -339,8 +339,21 @@ async function answerMessage(
     userType: slackUserInfo.is_bot ? "bot" : "user",
   });
 
+  const buildContentFragmentRes = await makeContentFragment(
+    slackClient,
+    slackChannel,
+    slackThreadTs || slackMessageTs,
+    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
+    connector
+  );
+
   if (!DUST_FRONT_API) {
     throw new Error("DUST_FRONT_API environment variable is not defined");
+  }
+
+  if (slackUserInfo.is_bot) {
+    const botName = slackUserInfo.real_name;
+    requestedGroups = await slackConfig.getBotGroupIds(botName);
   }
 
   const userEmailHeader =
@@ -362,21 +375,6 @@ async function answerMessage(
       urlOverride: DUST_FRONT_API,
     }
   );
-
-  const buildContentFragmentRes = await makeContentFragment(
-    slackClient,
-    dustAPI,
-    slackChannel,
-    slackThreadTs || slackMessageTs,
-    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
-    connector,
-    lastSlackChatBotMessage?.conversationId || null
-  );
-
-  if (slackUserInfo.is_bot) {
-    const botName = slackUserInfo.real_name;
-    requestedGroups = await slackConfig.getBotGroupIds(botName);
-  }
 
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
   if (agentConfigurationsRes.isErr()) {
@@ -692,12 +690,10 @@ export async function getBotEnabled(
 
 async function makeContentFragment(
   slackClient: WebClient,
-  dustAPI: DustAPI,
   channelId: string,
   threadTs: string,
   startingAtTs: string | null,
-  connector: ConnectorResource,
-  conversationId: string | null
+  connector: ConnectorResource
 ): Promise<Result<PublicPostContentFragmentRequestBody | null, Error>> {
   let allMessages: MessageElement[] = [];
 
@@ -774,30 +770,11 @@ async function makeContentFragment(
   // Prepend $url to the content to make it available to the model.
   const section = `$url: ${url}\n${sectionFullText(content)}`;
 
-  const contentType = "dust-application/slack";
-  const fileName = `slack_thread-${channel.channel.name}.txt`;
-
-  const fileRes = await dustAPI.uploadFile({
-    contentType,
-    fileName,
-    fileSize: section.length,
-    useCase: "conversation",
-    useCaseMetadata: conversationId
-      ? {
-          conversationId,
-        }
-      : undefined,
-    fileObject: new File([section], fileName, { type: contentType }),
-  });
-
-  if (fileRes.isErr()) {
-    return new Err(new Error(fileRes.error.message));
-  }
-
   return new Ok({
     title: `Thread content from #${channel.channel.name}`,
+    content: section,
     url: url,
-    fileId: fileRes.value.id,
+    contentType: "dust-application/slack",
     context: null,
   });
 }
