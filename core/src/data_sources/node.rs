@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::project::Project;
 
-use super::folder::Folder;
-
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Copy)]
 pub enum NodeType {
     Document,
@@ -69,17 +67,5 @@ impl Node {
     }
     pub fn parents(&self) -> &Vec<String> {
         &self.parents
-    }
-
-    // Consumes self into a Folder.
-    pub fn into_folder(self) -> Folder {
-        Folder::new(
-            self.project,
-            self.data_source_id,
-            self.node_id,
-            self.timestamp,
-            self.title,
-            self.parents,
-        )
     }
 }
