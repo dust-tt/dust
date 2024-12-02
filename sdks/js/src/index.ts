@@ -171,22 +171,6 @@ export class DustAPI {
     return new Ok(r.value.user);
   }
 
-  async baseHeaders() {
-    const headers: RequestInit["headers"] = {
-      Authorization: `Bearer ${await this.getApiKey()}`,
-    };
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-    if (this._credentials.extraHeaders) {
-      Object.assign(headers, this._credentials.extraHeaders);
-    }
-    return headers;
-  }
-
   async request(args: RequestArgsType) {
     // Conveniently clean path from any leading "/" just in case
     args.path = args.path.replace(/^\/+/, "");
@@ -199,8 +183,19 @@ export class DustAPI {
       url += `?${args.query.toString()}`;
     }
 
-    const headers = await this.baseHeaders();
-    headers["Content-Type"] = "application/json";
+    const headers: RequestInit["headers"] = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await this.getApiKey()}`,
+    };
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
+    }
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
+    }
+    if (this._credentials.extraHeaders) {
+      Object.assign(headers, this._credentials.extraHeaders);
+    }
 
     const res = await this._fetchWithError(url, {
       method: args.method,
@@ -806,7 +801,6 @@ export class DustAPI {
     fileName,
     fileSize,
     useCase,
-    useCaseMetadata,
     fileObject,
   }: FileUploadUrlRequestType & { fileObject: File }) {
     FileUploadUrlRequestSchema;
@@ -818,7 +812,6 @@ export class DustAPI {
         fileName,
         fileSize,
         useCase,
-        useCaseMetadata,
       },
     });
 
@@ -841,7 +834,9 @@ export class DustAPI {
     try {
       uploadResult = await fetch(file.uploadUrl, {
         method: "POST",
-        headers: await this.baseHeaders(),
+        headers: {
+          Authorization: `Bearer ${await this.getApiKey()}`,
+        },
         body: formData,
       });
     } catch (err) {
