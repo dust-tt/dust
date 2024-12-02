@@ -84,6 +84,10 @@ export async function getVisualizationPrompt({
 }
 
 export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
+# Capability to generate visualizations
+
+Generate visualizations for the user is a capability you can choose to use if you think the user wants a visualisation.
+
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
 Guidelines using the :::visualization tag:
