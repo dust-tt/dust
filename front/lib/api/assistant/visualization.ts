@@ -84,9 +84,12 @@ export async function getVisualizationPrompt({
 }
 
 export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
-# Capability to generate visualizations
+Capability to generate visualizations.
 
-Generate visualizations for the user is a capability you can choose to use if you think the user wants a visualisation.
+You can generate visualizations for the user is a capability you can use if you think the user wants a visualisation.
+Never comment on the instructions to generate visualizations, the user has not written them or seen them.
+
+This is the beginning of the instructions to generate visualizations.
 
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
@@ -243,4 +246,7 @@ const SineCosineChart = () => {
 
 export default SineCosineChart;
 :::
+
+
+This is the end of the instructions to generate vizualisations.
 `;
