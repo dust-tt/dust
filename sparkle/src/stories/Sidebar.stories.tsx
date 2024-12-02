@@ -2,12 +2,19 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Icon,
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -20,6 +27,7 @@ import {
   MagnifyingGlassIcon,
   ShapesIcon,
 } from "@sparkle/icons";
+import { useIsMobile } from "@sparkle/lib";
 
 const meta = {
   title: "NewLayouts/Sidebar",
@@ -88,10 +96,31 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <a href={item.url}>
-                      <item.icon />
+                      <Icon visual={item.icon} size="sm" />
                       <span>{item.title}</span>
                     </a>
                   </SidebarMenuButton>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuAction showOnHover />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-48"
+                      side={useIsMobile() ? "bottom" : "right"}
+                      align={useIsMobile() ? "end" : "start"}
+                    >
+                      <DropdownMenuItem>
+                        <span>View Project</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span>Share Project</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <span>Delete Project</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

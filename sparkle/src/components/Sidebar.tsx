@@ -3,8 +3,9 @@ import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import {
+  Button,
+  Icon,
   Input,
-  NewButton,
   Separator,
   Sheet,
   SheetContent,
@@ -14,7 +15,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@sparkle/components";
-import { ChevronDoubleLeftIcon } from "@sparkle/icons";
+import { ChevronDoubleLeftIcon, MoreIcon } from "@sparkle/icons";
 import { cn, useIsMobile } from "@sparkle/lib/utils";
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
@@ -252,13 +253,13 @@ const Sidebar = React.forwardRef<
 Sidebar.displayName = "Sidebar";
 
 const SidebarTrigger = React.forwardRef<
-  React.ElementRef<typeof NewButton>,
-  React.ComponentProps<typeof NewButton>
+  React.ElementRef<typeof Button>,
+  React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
   return (
-    <NewButton
+    <Button
       ref={ref}
       data-sidebar="trigger"
       variant="ghost"
@@ -499,34 +500,16 @@ const SidebarMenuItem = React.forwardRef<
   <li
     ref={ref}
     data-sidebar="menu-item"
-    className={cn("s-group/menu-item s-relative", className)}
+    className={cn(
+      "s-group/menu-item s-relative",
+      // "s-flex s-cursor-pointer s-select-none s-items-center s-gap-2 s-rounded-md s-px-2 s-py-2 s-text-sm s-font-medium s-outline-none s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-primary-400",
+      // "hover:s-bg-background hover:s-text-foreground",
+      className
+    )}
     {...props}
   />
 ));
 SidebarMenuItem.displayName = "SidebarMenuItem";
-
-const sidebarMenuButtonVariants = cva(
-  "s-peer/menu-button s-flex s-w-full s-items-center s-gap-2 s-overflow-hidden s-rounded-md s-p-2 s-text-left s-text-sm s-outline-none s-ring-sidebar-ring s-transition-[width,height,padding] hover:s-bg-structure-50-accent hover:s-text-sidebar-accent-foreground focus-visible:s-ring-2 s-active:bg-sidebar-accent s-active:text-sidebar-accent-foreground s-disabled:pointer-events-none s-disabled:opacity-50 s-group-has-[[data-sidebar=menu-action]]/menu-item:s-pr-8 s-aria-disabled:pointer-events-none s-aria-disabled:opacity-50 s-data-[active=true]:bg-sidebar-accent s-data-[active=true]:font-medium s-data-[active=true]:text-sidebar-accent-foreground s-data-[state=open]:hover:bg-sidebar-accent s-data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!s-size-8 group-data-[collapsible=icon]:!s-p-2 [&>span:last-child]:s-truncate [&>svg]:s-size-4 [&>svg]:s-shrink-0",
-  {
-    variants: {
-      variant: {
-        default:
-          "hover:s-bg-structure-50-accent hover:s-text-sidebar-accent-foreground",
-        outline:
-          "s-bg-background s-shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:s-bg-structure-50-accent hover:s-text-sidebar-accent-foreground hover:s-shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
-      },
-      size: {
-        default: "s-h-8 s-text-sm",
-        sm: "s-h-7 s-text-xs",
-        lg: "s-h-12 s-text-sm group-data-[collapsible=icon]:!s-p-0",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-);
 
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
@@ -534,18 +517,10 @@ const SidebarMenuButton = React.forwardRef<
     asChild?: boolean;
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-  } & VariantProps<typeof sidebarMenuButtonVariants>
+  }
 >(
   (
-    {
-      asChild = false,
-      isActive = false,
-      variant = "default",
-      size = "default",
-      tooltip,
-      className,
-      ...props
-    },
+    { asChild = false, isActive = false, tooltip, className, ...props },
     ref
   ) => {
     const Comp = asChild ? Slot : "button";
@@ -555,9 +530,20 @@ const SidebarMenuButton = React.forwardRef<
       <Comp
         ref={ref}
         data-sidebar="menu-button"
-        data-size={size}
         data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        className={cn(
+          "s-peer/menu-button",
+          "s-flex s-w-full s-items-center s-gap-3",
+          "s-rounded-lg s-p-2 s-text-left s-text-sm s-font-medium s-text-foreground",
+          "hover:s-text-sidebar-accent-foreground hover:s-bg-primary-100",
+          "focus-visible:s-ring-2",
+          "active:bg-sidebar-accent active:text-sidebar-accent-foreground",
+          "disabled:pointer-events-none disabled:opacity-50",
+          "s-transition s-duration-300",
+          "s-ring-sidebar-ring s-group-has-[[data-sidebar=menu-action]]/menu-item:s-pr-8 s-aria-disabled:pointer-events-none s-aria-disabled:opacity-50 s-overflow-hidden s-outline-none",
+          "s-data-[active=true]:bg-sidebar-accent s-data-[active=true]:font-medium s-data-[active=true]:text-sidebar-accent-foreground s-data-[state=open]:hover:bg-sidebar-accent s-data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!s-size-8 [&>svg]:s-size-4 group-data-[collapsible=icon]:!s-p-2 [&>span:last-child]:s-truncate [&>svg]:s-shrink-0",
+          className
+        )}
         {...props}
       />
     );
@@ -601,18 +587,20 @@ const SidebarMenuAction = React.forwardRef<
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-text-sidebar-foreground s-ring-sidebar-ring hover:s-bg-structure-50-accent hover:s-text-sidebar-accent-foreground s-peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:s-size-4 s-absolute s-right-1 s-top-1.5 s-flex s-aspect-square s-w-5 s-items-center s-justify-center s-rounded-md s-p-0 s-outline-none s-transition-transform focus-visible:s-ring-2 [&>svg]:s-shrink-0",
+        "s-text-sidebar-foreground s-ring-sidebar-ring",
+        "s-absolute s-right-1.5 s-top-1.5 s-flex s-aspect-square s-w-6 s-items-center s-justify-center s-rounded-md s-p-0 s-outline-none s-transition-transform focus-visible:s-ring-2 [&>svg]:s-shrink-0",
+        "hover:s-bg-primary-200 hover:s-text-muted-foreground",
         "after:s-absolute after:s-inset-2 after:md:s-hidden",
-        "peer-data-[size=sm]/menu-button:s-top-1",
-        "peer-data-[size=default]/menu-button:s-top-1.5",
-        "peer-data-[size=lg]/menu-button:s-top-2.5",
-        "group-data-[collapsible=icon]:s-hidden",
+        "s-peer-hover/menu-button:text-sidebar-accent-foreground",
+        "s-group-data-[collapsible=icon]:s-hidden",
         showOnHover &&
-          "s-group-focus-within/menu-item:s-opacity-100 s-group-hover/menu-item:s-opacity-100 s-data-[state=open]:s-opacity-100 peer-data-[active=true]/menu-button:s-text-sidebar-accent-foreground md:s-s-opacity-0",
+          "peer-data-[active=true]/menu-button:s-text-sidebar-accent-foreground group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100 data-[state=open]:s-opacity-100 md:s-opacity-0",
         className
       )}
       {...props}
-    />
+    >
+      <Icon visual={MoreIcon} />
+    </Comp>
   );
 });
 SidebarMenuAction.displayName = "SidebarMenuAction";
