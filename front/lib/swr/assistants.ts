@@ -241,6 +241,40 @@ export function useAgentConfiguration({
   };
 }
 
+export function useAgentConfigurationHistory({
+  workspaceId,
+  agentConfigurationId,
+  limit,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const agentConfigurationHistoryFetcher: Fetcher<{
+    history: AgentConfigurationType[];
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    agentConfigurationId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/history`
+      : null,
+    agentConfigurationHistoryFetcher,
+    { disabled }
+  );
+
+  // Slice the data if limit is provided
+  const sliceEnd = limit ? limit : data ? data.history.length : 0;
+
+  return {
+    agentConfigurationHistory: data ? data.history.slice(0, sliceEnd) : [],
+    isAgentConfigurationHistoryLoading: !error && !data,
+    isAgentConfigurationHistoryError: error,
+    mutateAgentConfigurationHistory: mutate,
+  };
+}
+
 export function useAgentUsage({
   workspaceId,
   agentConfigurationId,

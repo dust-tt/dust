@@ -15,6 +15,7 @@ import type {
   APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
+  LightAgentConfigurationType,
   ModelConfigurationType,
   ModelIdType,
   PlanType,
@@ -42,7 +43,13 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
@@ -56,6 +63,7 @@ import {
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -111,6 +119,7 @@ export function InstructionScreen({
   instructionsError,
   doTypewriterEffect,
   setDoTypewriterEffect,
+  agentConfigurationId,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
@@ -124,6 +133,7 @@ export function InstructionScreen({
   instructionsError: string | null;
   doTypewriterEffect: boolean;
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
+  agentConfigurationId: string | null;
 }) {
   const editor = useEditor({
     extensions: [
@@ -152,6 +162,25 @@ export function InstructionScreen({
     },
   });
   const editorService = useInstructionEditorService(editor);
+
+  const { agentConfigurationHistory } = useAgentConfigurationHistory({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+    disabled: !agentConfigurationId,
+    limit: 20,
+  });
+
+  // Deduplicate configs based on instructions
+  const uniqueInstructions = new Set<string>();
+  const configsWithUniqueInstructions: LightAgentConfigurationType[] = [];
+  agentConfigurationHistory?.forEach((config) => {
+    if (!config.instructions || uniqueInstructions.has(config.instructions)) {
+      return;
+    } else {
+      uniqueInstructions.add(config.instructions);
+      configsWithUniqueInstructions.push(config);
+    }
+  });
 
   const [letterIndex, setLetterIndex] = useState(0);
 
@@ -234,6 +263,19 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
+        <div className="mr-2 mt-2 self-end">
+          {agentConfigurationHistory &&
+            agentConfigurationHistory.length > 1 && (
+              <PromptHistory
+                history={configsWithUniqueInstructions}
+                onVersionPick={(config) => {
+                  editorService.resetContent(
+                    tipTapContentFromPlainText(config.instructions || "")
+                  );
+                }}
+              />
+            )}
+        </div>
         <div className="mt-2 self-end">
           <AdvancedSettings
             owner={owner}
@@ -458,6 +500,56 @@ function AdvancedSettings({
         </div>
       }
     />
+  );
+}
+
+function PromptHistory({
+  history,
+  onVersionPick,
+}: {
+  history: LightAgentConfigurationType[];
+  onVersionPick: (config: LightAgentConfigurationType) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const latestConfig = history[0];
+  const [currentConfig, setCurrentConfig] =
+    useState<LightAgentConfigurationType>(latestConfig);
+
+  const getStringRepresentation = useCallback(
+    (config: LightAgentConfigurationType) => {
+      return config.version === latestConfig?.version
+        ? "Latest Version"
+        : `v${config.version}`;
+    },
+    [latestConfig]
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          label={getStringRepresentation(currentConfig)}
+          variant="outline"
+          size="sm"
+          isSelect
+          onClick={() => setIsOpen(!isOpen)}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <ScrollArea>
+          {history.map((config) => (
+            <DropdownMenuItem
+              key={config.id}
+              label={getStringRepresentation(config)}
+              onClick={() => {
+                setCurrentConfig(config);
+                onVersionPick(config);
+              }}
+            />
+          ))}
+        </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
