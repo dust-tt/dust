@@ -92,7 +92,6 @@ import { apiError } from "@app/logger/withlogging";
  *               name:
  *                 type: string
  *                 description: Name of the table
- *                 deprecated: true  # Add this line to mark as deprecated
  *               title:
  *                 type: string
  *                 description: Title of the table
@@ -226,7 +225,7 @@ async function handler(
       return res.status(200).json({
         tables: tables.map((table) => {
           return {
-            name: table.title ?? table.name,
+            name: table.name,
             table_id: table.table_id,
             description: table.description,
             schema: table.schema,
@@ -234,7 +233,7 @@ async function handler(
             tags: table.tags,
             parents: table.parents,
             mime_type: table.mime_type,
-            title: table.title ?? table.name,
+            title: table.title,
           };
         }),
       });
@@ -403,7 +402,7 @@ async function handler(
 
       return res.status(200).json({
         table: {
-          name: table.title ?? table.name,
+          name: table.name,
           table_id: table.table_id,
           description: table.description,
           schema: table.schema,
@@ -411,7 +410,7 @@ async function handler(
           tags: table.tags,
           parents: table.parents,
           mime_type: table.mime_type,
-          title: table.title ?? table.name,
+          title: table.title,
         },
       });
 
