@@ -84,7 +84,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<FileUploadRequestResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.getNonNullableUser();
+  const user = auth.user();
   const owner = auth.getNonNullableWorkspace();
 
   switch (req.method) {
@@ -154,7 +154,7 @@ async function handler(
         contentType,
         fileName,
         fileSize,
-        userId: user.id,
+        userId: user?.id ?? null,
         workspaceId: owner.id,
         useCase,
         useCaseMetadata: useCaseMetadata,

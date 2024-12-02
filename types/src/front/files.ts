@@ -85,6 +85,8 @@ const supportedPlainText = {
   "application/pdf": [".pdf"],
   "text/markdown": [".md", ".markdown"],
   "text/plain": [".txt"],
+
+  "text/vnd.dust.attachment.slack.thread": [".txt"],
 } as const;
 
 // Supported content types for images.

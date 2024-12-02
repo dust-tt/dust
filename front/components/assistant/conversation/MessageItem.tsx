@@ -106,6 +106,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               );
               const citationType: CitationType = [
                 "dust-application/slack",
+                "text/vnd.dust.attachment.slack.thread",
               ].includes(contentFragment.contentType)
                 ? "slack"
                 : "document";

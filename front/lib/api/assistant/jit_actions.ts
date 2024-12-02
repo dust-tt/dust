@@ -82,6 +82,7 @@ function isQueryableContentType(
     case "text/markdown":
     case "text/plain":
     case "dust-application/slack":
+    case "text/vnd.dust.attachment.slack.thread":
     case "text/tab-separated-values":
     case "text/tsv":
       return false;
@@ -108,6 +109,7 @@ function isSearchableContentType(
     case "text/markdown":
     case "text/plain":
     case "dust-application/slack":
+    case "text/vnd.dust.attachment.slack.thread":
     case "text/tab-separated-values":
     case "text/tsv":
       return true;
