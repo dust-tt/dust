@@ -74,10 +74,7 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import {
-  useAgentConfiguration,
-  useAgentConfigurationLastAuthor,
-} from "@app/lib/swr/assistants";
+import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
