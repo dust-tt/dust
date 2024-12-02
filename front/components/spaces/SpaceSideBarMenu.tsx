@@ -195,14 +195,14 @@ const getSpaceSectionDetails = (
   switch (kind) {
     case "shared":
       return {
-        label: "Open",
+        label: "Open Spaces",
         displayCreateSpaceButton: true,
         defaultRestricted: false,
       };
 
     case "restricted":
       return {
-        label: "Restricted",
+        label: "Restricted Spaces",
         displayCreateSpaceButton: true,
         defaultRestricted: true,
       };

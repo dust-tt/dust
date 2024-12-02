@@ -26,6 +26,7 @@ import {
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import Link from "next/link";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutProps & {
@@ -147,11 +148,28 @@ export default function Space({
   return (
     <Page.Vertical gap="xl" align="stretch">
       {space.kind === "system" && (
-        <Page.Header
-          title="Connection Admin"
-          description="Manage the applications and data Dust has access to."
-          icon={CloudArrowLeftRightIcon}
-        />
+        <>
+          <Page.Header
+            title="Connection Admin"
+            description={
+              <>
+                Here you can authorize Connections and control what data Dust
+                can access. <br />
+                Once connected, data can be distributed to Open Spaces
+                (accessible to all workspace members) or Restricted Spaces
+                (limited access). <br />
+                Need help? Check out our{" "}
+                <Link
+                  href="https://docs.dust.tt/docs/data"
+                  className="text-highlight-800"
+                >
+                  guide
+                </Link>
+              </>
+            }
+            icon={CloudArrowLeftRightIcon}
+          />
+        </>
       )}
       {category === "apps" ? (
         <SpaceAppsList
