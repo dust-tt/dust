@@ -41,7 +41,9 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
                 <div className="text-lg font-semibold text-element-900">
                   {analytics.averageWeeklyDailyActiveUsers.count}
                 </div>
-                <div className="text-sm text-element-700">Average on 7 days</div>
+                <div className="text-sm text-element-700">
+                  Average on 7 days
+                </div>
               </div>
             }
             size="sm"
