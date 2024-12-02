@@ -161,6 +161,7 @@ export default function Space({
                 <Link
                   href="https://docs.dust.tt/docs/data"
                   className="text-highlight"
+                  target="_blank"
                 >
                   guide
                 </Link>
