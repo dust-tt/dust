@@ -1,14 +1,11 @@
-import type {
-  LightWorkspaceType,
-  SupportedEnterpriseConnectionStrategies,
-} from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { Connection } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import {
+import type {
   IdpSpecificConnectionTypeDetails,
   SAMLConnectionTypeDetails,
 } from "@app/pages/api/w/[wId]/enterprise-connection";

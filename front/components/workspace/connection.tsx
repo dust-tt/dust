@@ -127,8 +127,8 @@ export function EnterpriseConnectionDetails({
         owner={owner}
       />
       <Page.P variant="secondary">
-        Easily integrate Okta or Microsoft Entra ID to enable Single Sign-On
-        (SSO) for your team.
+        Easily integrate SAML, Okta or Microsoft Entra ID to enable Single
+        Sign-On (SSO) for your team.
       </Page.P>
       <div className="flex w-full flex-col items-start gap-3">
         {enterpriseConnection ? (
@@ -521,11 +521,13 @@ function CreateSAMLEnterpriseConnectionModal({
       strategy: "samlp",
     });
 
-  const { audienceUri, callbackUrl, samlAcsUrl } = strategyDetails;
+  const { audienceUri, samlAcsUrl } = strategyDetails;
 
   const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -544,7 +546,7 @@ function CreateSAMLEnterpriseConnectionModal({
         Discover how to set up SAML SSO – Read Our{" "}
         <a
           className="font-bold underline decoration-2"
-          href="https://docs.dust.tt/docs/microsoft-entra-sso"
+          href="https://docs.dust.tt/docs/saml-sso"
           target="_blank"
         >
           Documentation
