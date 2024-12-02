@@ -1781,7 +1781,7 @@ impl Store for PostgresStore {
                 "INSERT INTO data_sources_documents \
                    (id, data_source, created, document_id, timestamp, tags_array, parents, \
                     source_url, hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, created, token_count",
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, created",
             )
             .await?;
 
@@ -1806,7 +1806,6 @@ impl Store for PostgresStore {
 
         let _id: i64 = r.get(0);
         let created: i64 = r.get(1);
-        let token_count: Option<i64> = r.get(2);
 
         tx.commit().await?;
 
@@ -1820,10 +1819,10 @@ impl Store for PostgresStore {
             source_url: params.source_url,
             hash: params.hash,
             text_size: params.text_size,
-            chunk_count: params.chunk_count as usize,
+            chunk_count: params.chunk_count,
             chunks: vec![],
             text: None,
-            token_count: token_count.map(|t| t as usize),
+            token_count: None,
         })
     }
 
