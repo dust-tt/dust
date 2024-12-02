@@ -145,7 +145,11 @@ export const InputBarContainer = ({
           onActionChange={(action) => {
             setIncludeTab(action === SendWithContentAction);
           }}
-          disabled={isSubmitting || editorService.isEmpty()}
+          disabled={
+            isSubmitting ||
+            editorService.isEmpty() ||
+            fileUploaderService.isProcessingFiles
+          }
         />
       </div>
     </div>
