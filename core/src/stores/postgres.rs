@@ -3073,9 +3073,9 @@ impl Store for PostgresStore {
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
 
-        // Add table_ids filter if provided.
+        // Add folder_ids filter if provided.
         if let Some(ref ids) = folder_ids {
-            // Create a dynamic list of placeholders for the table IDs.
+            // Create a dynamic list of placeholders for the folder IDs.
             let id_placeholders: Vec<String> = (0..ids.len())
                 .map(|_| {
                     let placeholder = format!("${}", p_idx);
@@ -3095,23 +3095,38 @@ impl Store for PostgresStore {
             where_clauses.join(" AND "),
         );
 
-        let rows = match limit_offset {
+        let (rows, total) = match limit_offset {
             None => {
                 let stmt = c.prepare(&sql).await?;
-                c.query(&stmt, &params).await?
+                let rows = c.query(&stmt, &params).await?;
+                let total = rows.len();
+                (rows, total)
             }
             Some((limit, offset)) => {
                 let limit = limit as i64;
                 let offset = offset as i64;
 
-                let mut params = params.clone();
-                params.push(&limit);
-                params.push(&offset);
+                let mut params_with_limits = params.clone();
+                params_with_limits.push(&limit);
+                params_with_limits.push(&offset);
 
                 let stmt = c
                     .prepare(&(sql + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1)))
                     .await?;
-                c.query(&stmt, &params).await?
+                let rows = c.query(&stmt, &params_with_limits).await?;
+
+                let stmt = c
+                .prepare(
+                    format!(
+                        "SELECT COUNT(*) FROM data_sources_nodes \
+                            WHERE folder IS NOT NULL AND {}",
+                        where_clauses.join(" AND ")
+                    )
+                    .as_str(),
+                )
+                .await?;
+                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
+                (rows, t as usize)
             }
         };
 
@@ -3133,25 +3148,6 @@ impl Store for PostgresStore {
                 ))
             })
             .collect::<Result<Vec<_>>>()?;
-
-        let total = match limit_offset {
-            None => folders.len(),
-            Some(_) => {
-                let stmt = c
-                    .prepare(
-                        format!(
-                            "SELECT COUNT(*) FROM data_sources_nodes \
-                                   WHERE folder IS NOT NULL AND {}",
-                            where_clauses.join(" AND ")
-                        )
-                        .as_str(),
-                    )
-                    .await?;
-                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
-                t as usize
-            }
-        };
-
         Ok((folders, total))
     }
 
