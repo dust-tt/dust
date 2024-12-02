@@ -81,6 +81,38 @@ function cleanUpCitations(message: string): string {
   return message.replace(regex, "");
 }
 
+export const FeedbackSelectorPopoverContent = ({
+  owner,
+  agentMessageToRender,
+}: {
+  owner: WorkspaceType;
+  agentMessageToRender: AgentMessageType;
+}) => {
+  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentMessageToRender.configuration.sId,
+  });
+
+  return (
+    agentLastAuthor && (
+      <div className="itemcenter mt-4 flex gap-2">
+        {agentLastAuthor?.image && (
+          <img
+            src={agentLastAuthor?.image}
+            alt={agentLastAuthor?.firstName}
+            className="h-8 w-8 rounded-full"
+          />
+        )}
+        <Page.P variant="secondary">
+          Your feedback will be sent to:
+          <br />
+          {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
+        </Page.P>
+      </div>
+    )
+  );
+};
+
 interface AgentMessageProps {
   conversationId: string;
   isInModal: boolean;
@@ -360,30 +392,14 @@ export function AgentMessage({
     conversationId,
   ]);
 
-  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentMessageToRender.configuration.sId,
-  });
-
   const PopoverContent = useCallback(
-    () =>
-      agentLastAuthor && (
-        <div className="itemcenter mt-4 flex gap-2">
-          {agentLastAuthor?.image && (
-            <img
-              src={agentLastAuthor?.image}
-              alt={agentLastAuthor?.firstName}
-              className="h-8 w-8 rounded-full"
-            />
-          )}
-          <Page.P variant="secondary">
-            Your feedback will be sent to:
-            <br />
-            {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
-          </Page.P>
-        </div>
-      ),
-    [agentLastAuthor]
+    () => (
+      <FeedbackSelectorPopoverContent
+        owner={owner}
+        agentMessageToRender={agentMessageToRender}
+      />
+    ),
+    [owner, agentMessageToRender]
   );
 
   const buttons =
