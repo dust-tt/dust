@@ -184,9 +184,8 @@ impl DatabasesStore for PostgresDatabasesStore {
             }
         }
 
-        let use_copy = true;
-
-        if truncate && use_copy {
+        // For now, only do it if we are inserting more than 1024 rows
+        if truncate && rows.len() > 1024 {
             // Start COPY operation directly into the target table
             let mut sink = c
             .copy_in("COPY tables_rows (table_id, row_id, created, content) FROM STDIN WITH (FORMAT text)")
@@ -228,12 +227,16 @@ impl DatabasesStore for PostgresDatabasesStore {
             pinned_sink.send(Cursor::new(buffer)).await?;
 
             // Close the sink
-            let nb_rows = pinned_sink.finish().await?;
+            let rows_count = pinned_sink.finish().await?;
+
+            if rows_count != rows.len() as u64 {
+                return Err(anyhow::anyhow!("Failed to insert all rows"));
+            }
 
             info!(
                 duration = utils::now() - now as u64,
                 table_id,
-                inserted_rows = nb_rows,
+                inserted_rows = rows_count,
                 "DSSTRUCTSTAT [upsert_rows] insertion batch (COPY)"
             );
         } else {
