@@ -4,12 +4,13 @@ import { useSWRWithDefaults } from "@extension/lib/swr";
 import { useMemo } from "react";
 
 export function usePublicAgentConfigurations(
-  view?: AgentConfigurationViewType
+  view?: AgentConfigurationViewType,
+  includes: "authors"[] = []
 ) {
   const dustAPI = useDustAPI();
 
   const agentConfigurationsFetcher = async () => {
-    const res = await dustAPI.getAgentConfigurations(view);
+    const res = await dustAPI.getAgentConfigurations(view, includes);
     if (res.isOk()) {
       return res.value;
     }

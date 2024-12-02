@@ -1,16 +1,20 @@
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  LightAgentConfigurationType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
-const GetAgentConfigurationsViewSchema = t.partial({
+export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
     t.literal("all"),
     t.literal("list"),
@@ -18,7 +22,9 @@ const GetAgentConfigurationsViewSchema = t.partial({
     t.literal("published"),
     t.literal("global"),
     t.literal("favorites"),
+    t.undefined,
   ]),
+  withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
 });
 
 const viewRequiresUser = (view?: string): boolean =>
@@ -53,6 +59,15 @@ const viewRequiresUser = (view?: string): boolean =>
  *         schema:
  *           type: string
  *           enum: [all, list, workspace, published, global, favorites]
+ *       - in: query
+ *         name: includes
+ *         required: false
+ *         description: Array of additional data to include in the response
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [authors]
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -85,7 +100,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
-      const queryValidation = GetAgentConfigurationsViewSchema.decode(
+      const queryValidation = GetAgentConfigurationsQuerySchema.decode(
         req.query
       );
 
@@ -112,12 +127,33 @@ async function handler(
 
       const defaultAgentGetView = auth.user() ? "list" : "all";
       const agentsGetView = queryValidation.right.view ?? defaultAgentGetView;
+      const withAuthors = queryValidation.right.withAuthors === "true";
 
-      const agentConfigurations = await getAgentConfigurations({
+      let agentConfigurations = await getAgentConfigurations({
         auth,
         agentsGetView,
         variant: "light",
       });
+
+      if (withAuthors) {
+        const recentAuthors = await getAgentsRecentAuthors({
+          auth,
+          agents: agentConfigurations,
+        });
+        agentConfigurations = await Promise.all(
+          agentConfigurations.map(
+            async (
+              agentConfiguration,
+              index
+            ): Promise<LightAgentConfigurationType> => {
+              return {
+                ...agentConfiguration,
+                lastAuthors: recentAuthors[index],
+              };
+            }
+          )
+        );
+      }
 
       return res.status(200).json({
         agentConfigurations,
