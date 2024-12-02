@@ -3116,15 +3116,15 @@ impl Store for PostgresStore {
                 let rows = c.query(&stmt, &params_with_limits).await?;
 
                 let stmt = c
-                .prepare(
-                    format!(
-                        "SELECT COUNT(*) FROM data_sources_nodes \
-                            WHERE folder IS NOT NULL AND {}",
-                        where_clauses.join(" AND ")
+                    .prepare(
+                        format!(
+                            "SELECT COUNT(*) FROM data_sources_nodes \
+                                WHERE folder IS NOT NULL AND {}",
+                            where_clauses.join(" AND ")
+                        )
+                        .as_str(),
                     )
-                    .as_str(),
-                )
-                .await?;
+                    .await?;
                 let t: i64 = c.query_one(&stmt, &params).await?.get(0);
                 (rows, t as usize)
             }
