@@ -52,6 +52,7 @@ makeScript({}, async ({ execute }, logger) => {
       });
 
       const rowsToUpdate = result.filter(
+        // same condition as what was logged
         (row) =>
           !row.parents ||
           row.parents.length === 0 ||
@@ -65,31 +66,17 @@ makeScript({}, async ({ execute }, logger) => {
         console.log(`Processing chunk ${i}/${chunks.length}...`);
         await Promise.all(
           chunks[i].map(async (row) => {
-            const newParents = row.parents
-              ? [row.document_id, ...row.parents]
-              : [row.document_id];
-
             if (execute) {
               await coreAPI.updateDataSourceDocumentParents({
                 projectId: ds.dustAPIProjectId,
                 dataSourceId: ds.dustAPIDataSourceId,
                 documentId: row.document_id,
-                parents: newParents,
+                parents: row.parents
+                  ? [row.document_id, ...row.parents]
+                  : [row.document_id],
               });
-              await coreSequelize.query(
-                `UPDATE data_sources_documents
-                 SET parents = :parents
-                 WHERE id = :id;`,
-                {
-                  replacements: {
-                    id: row.id,
-                    documentId: row.document_id,
-                    parents: newParents,
-                  },
-                }
-              );
             } else {
-              console.log(`Would update document ${row.document_id}`);
+              logger.info(`Would update document ${row.document_id}`);
             }
           })
         );
