@@ -1,10 +1,10 @@
 import { isDevelopment } from "@dust-tt/types";
+import assert from "assert";
 import types, { builtins } from "pg-types";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@app/lib/resources/storage/config";
 import logger from "@app/logger/logger";
-import assert from "assert";
 
 const acquireAttempts = new WeakMap();
 
