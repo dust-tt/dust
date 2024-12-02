@@ -177,7 +177,7 @@ const CookieBanner = ({
   return (
     <Transition
       show={show}
-      enter="transition-opacity s-duration-300"
+      enter="transition-opacity duration-300"
       appear={true}
       enterFrom="opacity-0"
       enterTo="opacity-100"

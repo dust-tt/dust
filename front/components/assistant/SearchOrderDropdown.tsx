@@ -1,4 +1,10 @@
-import { Button, DropdownMenu } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 
 export const SearchOrder = ["name", "usage", "edited_at"] as const;
 export type SearchOrderType = (typeof SearchOrder)[number];
@@ -9,21 +15,20 @@ const prettyfiedSearchOrder: { [key in SearchOrderType]: string } = {
   edited_at: "Last edited at",
 };
 
-// Headless UI does not inherently handle Portal-based rendering,
-// leading to dropdown menus being hidden by parent divs with overflow settings.
-// Adapts layout for smaller screens.
+interface SearchOrderDropdownProps {
+  orderBy: SearchOrderType;
+  setOrderBy: (orderBy: SearchOrderType) => void;
+  disabled?: boolean;
+}
+
 export function SearchOrderDropdown({
   orderBy,
   setOrderBy,
   disabled,
-}: {
-  orderBy: SearchOrderType;
-  setOrderBy: (orderBy: SearchOrderType) => void;
-  disabled?: boolean;
-}) {
+}: SearchOrderDropdownProps) {
   return (
     <DropdownMenu>
-      <DropdownMenu.Button>
+      <DropdownMenuTrigger asChild>
         <Button
           isSelect
           label={`Order by: ${prettyfiedSearchOrder[orderBy]}`}
@@ -31,16 +36,16 @@ export function SearchOrderDropdown({
           size="sm"
           disabled={disabled}
         />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topLeft">
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
         {SearchOrder.map((order) => (
-          <DropdownMenu.Item
+          <DropdownMenuItem
             key={order}
             label={prettyfiedSearchOrder[order]}
             onClick={() => setOrderBy(order)}
           />
         ))}
-      </DropdownMenu.Items>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }

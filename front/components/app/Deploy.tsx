@@ -1,13 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import {
-  Button,
-  ClipboardIcon,
-  CubeIcon,
-  Modal,
-  Page,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Button, ClipboardIcon, CubeIcon, Modal, Page } from "@dust-tt/sparkle";
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { RunConfig, RunType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -57,7 +50,7 @@ export function ViewAppAPIModal({
   const cURLRequest = (type: "run") => {
     switch (type) {
       case "run":
-        return `curl ${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs \\
+        return `curl ${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs \\
     -H "Authorization: Bearer YOUR_API_KEY" \\
     -H "Content-Type: application/json" \\
     -d '{
@@ -103,7 +96,7 @@ export function ViewAppAPIModal({
             <Page.P>
               <ul className="text-gray-500">
                 <li>
-                  vaultId: <span className="font-bold">{app.vault.sId}</span>{" "}
+                  spaceId: <span className="font-bold">{app.space.sId}</span>{" "}
                 </li>
                 <li>
                   appId: <span className="font-bold">{app.sId}</span>
@@ -214,23 +207,19 @@ export default function Deploy({
         isOpen={showViewAppAPIModal}
         onClose={() => setShowViewAppAPIModal(false)}
       />
-      <Tooltip
-        label={
+      <Button
+        tooltip={
           disabled
             ? "You need to run this app at least once successfully to view the endpoint"
             : "View how to run this app programmatically"
         }
-        trigger={
-          <Button
-            label="API"
-            variant="primary"
-            onClick={() => {
-              setShowViewAppAPIModal(true);
-            }}
-            disabled={disabled}
-            icon={CubeIcon}
-          />
-        }
+        label="API"
+        variant="primary"
+        onClick={() => {
+          setShowViewAppAPIModal(true);
+        }}
+        disabled={disabled}
+        icon={CubeIcon}
       />
     </div>
   );

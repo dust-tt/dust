@@ -16,8 +16,9 @@ interface SetContentHeightParams {
   height: number;
 }
 
-interface SendScreenshotBlobParams {
+interface DownloadFileRequestParams {
   blob: Blob;
+  filename?: string;
 }
 
 interface setErrorMessageParams {
@@ -30,7 +31,8 @@ export type VisualizationRPCRequestMap = {
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: setErrorMessageParams;
-  sendScreenshotBlob: SendScreenshotBlobParams;
+  downloadFileRequest: DownloadFileRequestParams;
+  displayCode: null;
 };
 
 // Derive the command type from the keys of the request map
@@ -56,9 +58,10 @@ export const validCommands: VisualizationRPCCommand[] = [
 export interface CommandResultMap {
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
-  sendScreenshotBlob: { blob: Blob };
+  downloadFileRequest: { blob: Blob; filename?: string };
   setContentHeight: void;
   setErrorMessage: void;
+  displayCode: void;
 }
 
 // TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
@@ -147,11 +150,11 @@ export function isSetErrorMessageRequest(
   );
 }
 
-export function isSendScreenshotBlobRequest(
+export function isDownloadFileRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
-  command: "sendScreenshotBlob";
-  params: SendScreenshotBlobParams;
+  command: "downloadFileRequest";
+  params: DownloadFileRequestParams;
 } {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -160,12 +163,32 @@ export function isSendScreenshotBlobRequest(
   const v = value as Partial<VisualizationRPCRequest>;
 
   return (
-    v.command === "sendScreenshotBlob" &&
+    v.command === "downloadFileRequest" &&
     typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
-    (v.params as SendScreenshotBlobParams).blob instanceof Blob
+    (v.params as DownloadFileRequestParams).blob instanceof Blob
+  );
+}
+
+// Type guard for getCodeToExecute.
+export function isDisplayCodeRequest(
+  value: unknown
+): value is VisualizationRPCRequest & {
+  command: "displayCode";
+  params: null;
+} {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const v = value as Partial<VisualizationRPCRequest>;
+
+  return (
+    v.command === "displayCode" &&
+    typeof v.identifier === "string" &&
+    typeof v.messageUniqueId === "string"
   );
 }
 
@@ -179,8 +202,9 @@ export function isVisualizationRPCRequest(
   return (
     isGetCodeToExecuteRequest(value) ||
     isGetFileRequest(value) ||
-    isSendScreenshotBlobRequest(value) ||
+    isDownloadFileRequest(value) ||
     isSetContentHeightRequest(value) ||
-    isSetErrorMessageRequest(value)
+    isSetErrorMessageRequest(value) ||
+    isDisplayCodeRequest(value)
   );
 }

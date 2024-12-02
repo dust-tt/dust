@@ -21,7 +21,10 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -171,6 +174,11 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     await c.update(updateParams);
 
+    // If connector was previously paused, unpause it.
+    if (c.isPaused()) {
+      await this.unpause();
+    }
+
     return new Ok(c.id.toString());
   }
 
@@ -312,6 +320,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       slackChannelId: string;
       slackChannelName: string;
       permission: ConnectorPermission;
+      private: boolean;
     }[] = [];
 
     try {
@@ -327,6 +336,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             slackChannelId: channel.slackChannelId,
             slackChannelName: channel.slackChannelName,
             permission: channel.permission,
+            private: channel.private,
           }))
         );
       } else {
@@ -364,6 +374,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
               slackChannelId: remoteChannel.id,
               slackChannelName: remoteChannel.name,
               permission: permissions,
+              private: !!remoteChannel.is_private,
             });
           }
         }
@@ -381,6 +392,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         dustDocumentId: null,
         lastUpdatedAt: null,
         dustTableId: null,
+        providerVisibility: ch.private ? "private" : "public",
       }));
 
       resources.sort((a, b) => {
@@ -394,6 +406,13 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return new Err(
           new Error("Slack token invalid. Please re-authorize Slack.")
         );
+      }
+      if (e instanceof ProviderWorkflowError && e.type === "rate_limit_error") {
+        logger.error(
+          { connectorId: this.connectorId, error: e },
+          "Slack rate limit when retrieving permissions."
+        );
+        return new Err(e);
       }
       throw e;
     }
@@ -440,94 +459,95 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     const promises: Promise<void>[] = [];
 
     const slackChannelsToSync: string[] = [];
-    for (const [id, permission] of Object.entries(permissions)) {
-      let channel = channels[id];
-      const slackClient = await getSlackClient(connector.id);
-      if (!channel) {
-        const remoteChannel = await slackClient.conversations.info({
-          channel: id,
-        });
-        if (!remoteChannel.ok || !remoteChannel.channel?.name) {
-          logger.error(
-            {
-              connectorId: this.connectorId,
-              channelId: id,
-              error: remoteChannel.error,
-            },
-            "Could not get the Slack channel information"
-          );
-          return new Err(
-            new Error("Could not get the Slack channel information.")
-          );
+    try {
+      for (const [id, permission] of Object.entries(permissions)) {
+        let channel = channels[id];
+        const slackClient = await getSlackClient(connector.id);
+        if (!channel) {
+          const remoteChannel = await slackClient.conversations.info({
+            channel: id,
+          });
+          if (!remoteChannel.ok || !remoteChannel.channel?.name) {
+            logger.error(
+              {
+                connectorId: this.connectorId,
+                channelId: id,
+                error: remoteChannel.error,
+              },
+              "Could not get the Slack channel information"
+            );
+            return new Err(
+              new Error("Could not get the Slack channel information.")
+            );
+          }
+          const joinRes = await joinChannel(this.connectorId, id);
+          if (joinRes.isErr()) {
+            logger.error(
+              {
+                connectorId: this.connectorId,
+                channelId: id,
+                error: joinRes.error,
+              },
+              "Could not join the Slack channel"
+            );
+            return new Err(
+              new Error(
+                `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannel.channel.name}. Please re-authorize Slack or invite @Dust from #${remoteChannel.channel.name} on Slack.`
+              )
+            );
+          }
+          const slackChannel = await SlackChannel.create({
+            connectorId: this.connectorId,
+            slackChannelId: id,
+            slackChannelName: remoteChannel.channel.name,
+            permission: "none",
+            private: !!remoteChannel.channel.is_private,
+          });
+          channels[id] = slackChannel;
+          channel = slackChannel;
         }
-        const joinRes = await joinChannel(this.connectorId, id);
-        if (joinRes.isErr()) {
-          logger.error(
-            {
-              connectorId: this.connectorId,
-              channelId: id,
-              error: joinRes.error,
-            },
-            "Could not join the Slack channel"
-          );
-          return new Err(
-            new Error(
-              `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannel.channel.name}. Please re-authorize Slack or invite @Dust from #${remoteChannel.channel.name} on Slack.`
-            )
-          );
-        }
-        const slackChannel = await SlackChannel.create({
-          connectorId: this.connectorId,
-          slackChannelId: id,
-          slackChannelName: remoteChannel.channel.name,
-          permission: "none",
-        });
-        channels[id] = slackChannel;
-        channel = slackChannel;
+
+        promises.push(
+          q.add(async () => {
+            if (!channel) {
+              return;
+            }
+            const oldPermission = channel.permission;
+            if (oldPermission === permission) {
+              return;
+            }
+            await channel.update({
+              permission: permission,
+            });
+
+            if (
+              !["read", "read_write"].includes(oldPermission) &&
+              ["read", "read_write"].includes(permission)
+            ) {
+              // handle read permission enabled
+              slackChannelsToSync.push(channel.slackChannelId);
+              const joinChannelRes = await joinChannel(
+                this.connectorId,
+                channel.slackChannelId
+              );
+              if (joinChannelRes.isErr()) {
+                logger.error(
+                  {
+                    connectorId: this.connectorId,
+                    channelId: channel.slackChannelId,
+                    error: joinChannelRes.error,
+                  },
+                  "Could not join the Slack channel"
+                );
+                throw new Error(
+                  `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
+                );
+              }
+            }
+          })
+        );
       }
 
-      promises.push(
-        q.add(async () => {
-          if (!channel) {
-            return;
-          }
-          const oldPermission = channel.permission;
-          if (oldPermission === permission) {
-            return;
-          }
-          await channel.update({
-            permission: permission,
-          });
-
-          if (
-            !["read", "read_write"].includes(oldPermission) &&
-            ["read", "read_write"].includes(permission)
-          ) {
-            // handle read permission enabled
-            slackChannelsToSync.push(channel.slackChannelId);
-            const joinChannelRes = await joinChannel(
-              this.connectorId,
-              channel.slackChannelId
-            );
-            if (joinChannelRes.isErr()) {
-              logger.error(
-                {
-                  connectorId: this.connectorId,
-                  channelId: channel.slackChannelId,
-                  error: joinChannelRes.error,
-                },
-                "Could not join the Slack channel"
-              );
-              throw new Error(
-                `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
-              );
-            }
-          }
-        })
-      );
-    }
-
-    try {
       await Promise.all(promises);
       const workflowRes = await launchSlackSyncWorkflow(
         this.connectorId,
@@ -581,6 +601,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       dustDocumentId: null,
       lastUpdatedAt: null,
       dustTableId: null,
+      providerVisibility: ch.private ? "private" : "public",
     }));
 
     return new Ok(contentNodes);

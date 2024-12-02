@@ -1,35 +1,29 @@
 import type {
+  GetConversationsResponseType,
+  PostConversationsResponseType,
+} from "@dust-tt/client";
+import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
+import type {
   ContentFragmentType,
-  ConversationType,
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  ConversationError,
-  isEmptyString,
-  PublicPostConversationsRequestBodySchema,
-} from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import { ConversationError, isEmptyString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   createConversation,
   getConversation,
+  getUserConversations,
   normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-
-export type PostConversationsResponseBody = {
-  conversation: ConversationType;
-  message?: UserMessageType;
-  contentFragment?: ContentFragmentType;
-};
 
 /**
  * @swagger
@@ -57,9 +51,11 @@ export type PostConversationsResponseBody = {
  *             properties:
  *               message:
  *                 $ref: '#/components/schemas/Message'
- *               contentFragment:
- *                 $ref: '#/components/schemas/ContentFragment'
- *                 description: The text content of an attached file (optional)
+ *               contentFragments:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/ContentFragment'
+ *                 description: The list of content fragments to attach to this conversation (optional)
  *               blocking:
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message (if blocking = false, you will need to use streaming events to get the messages)
@@ -93,29 +89,35 @@ export type PostConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostConversationsResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PostConversationsResponseType | GetConversationsResponseType
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
     case "POST":
-      const bodyValidation = PublicPostConversationsRequestBodySchema.decode(
-        req.body
-      );
+      const r = PublicPostConversationsRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${r.error.message}`,
           },
         });
       }
 
-      const { title, visibility, message, contentFragment, blocking } =
-        bodyValidation.right;
+      const {
+        title,
+        visibility,
+        message,
+        contentFragment,
+        contentFragments,
+        blocking,
+      } = r.data;
 
       if (message) {
         if (isEmptyString(message.context.username)) {
@@ -130,19 +132,26 @@ async function handler(
         }
       }
 
+      const resolvedFragments = contentFragments ?? [];
       if (contentFragment) {
-        if (
-          contentFragment.content.length === 0 ||
-          contentFragment.content.length > 128 * 1024
-        ) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The content must be a non-empty string of less than 128kb.",
-            },
-          });
+        resolvedFragments.push(contentFragment);
+      }
+
+      for (const fragment of resolvedFragments) {
+        if (fragment.content) {
+          if (
+            fragment.content.length === 0 ||
+            fragment.content.length > 128 * 1024
+          ) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "The content must be a non-empty string of less than 128kb.",
+              },
+            });
+          }
         }
       }
 
@@ -154,27 +163,26 @@ async function handler(
       let newContentFragment: ContentFragmentType | null = null;
       let newMessage: UserMessageType | null = null;
 
-      if (contentFragment) {
-        const contentType = normalizeContentFragmentType({
-          contentType: contentFragment.contentType,
-          url: req.url,
+      for (const resolvedFragment of resolvedFragments) {
+        if (resolvedFragment.content) {
+          resolvedFragment.contentType = normalizeContentFragmentType({
+            contentType: resolvedFragment.contentType,
+            url: req.url,
+          });
+        }
+
+        await maybeUpsertFileAttachment(auth, {
+          contentFragments: [resolvedFragment],
+          conversation,
         });
 
-        const cfRes = await postNewContentFragment(
-          auth,
-          conversation,
-          {
-            ...contentFragment,
-            contentType,
-          },
-          {
-            username: contentFragment.context?.username || null,
-            fullName: contentFragment.context?.fullName || null,
-            email: contentFragment.context?.email || null,
-            profilePictureUrl:
-              contentFragment.context?.profilePictureUrl || null,
-          }
-        );
+        const { context, ...cf } = resolvedFragment;
+        const cfRes = await postNewContentFragment(auth, conversation, cf, {
+          username: context?.username || null,
+          fullName: context?.fullName || null,
+          email: context?.email || null,
+          profilePictureUrl: context?.profilePictureUrl || null,
+        });
         if (cfRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,
@@ -260,16 +268,23 @@ async function handler(
         contentFragment: newContentFragment ?? undefined,
       });
       return;
+    case "GET":
+      const conversations = await getUserConversations(auth);
+      res.status(200).json({ conversations });
+      return;
 
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, POST or GET is expected.",
         },
       });
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: { GET: "read:conversation", POST: "create:conversation" },
+});

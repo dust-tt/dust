@@ -12,7 +12,7 @@ import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export class LabsTranscriptsConfigurationModel extends Model<
   InferAttributes<LabsTranscriptsConfigurationModel>,
@@ -26,10 +26,11 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
+  declare isDefaultFullStorage: boolean;
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -66,6 +67,11 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    isDefaultFullStorage: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     modelName: "labs_transcripts_configuration",
@@ -92,12 +98,12 @@ LabsTranscriptsConfigurationModel.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
 });
 
-DataSourceModel.hasMany(LabsTranscriptsConfigurationModel, {
-  foreignKey: { name: "dataSourceId", allowNull: true },
+DataSourceViewModel.hasMany(LabsTranscriptsConfigurationModel, {
+  foreignKey: { name: "dataSourceViewId", allowNull: true },
 });
-LabsTranscriptsConfigurationModel.belongsTo(DataSourceModel, {
-  as: "dataSource",
-  foreignKey: { name: "dataSourceId", allowNull: true },
+LabsTranscriptsConfigurationModel.belongsTo(DataSourceViewModel, {
+  as: "dataSourceView",
+  foreignKey: { name: "dataSourceViewId", allowNull: true },
 });
 
 export class LabsTranscriptsHistoryModel extends Model<

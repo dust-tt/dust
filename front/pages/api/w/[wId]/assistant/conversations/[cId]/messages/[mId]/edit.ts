@@ -8,11 +8,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
-export const PostEditRequestBodySchema = t.type({
+const PostEditRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(t.type({ configurationId: t.string })),
 });

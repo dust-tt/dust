@@ -37,20 +37,20 @@ import assert from "assert";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
+} from "@app/lib/api/assistant/actions/constants";
+import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentUserRelation,
-  GlobalAgentSettings,
-} from "@app/lib/models/assistant/agent";
+import { getFeatureFlags } from "@app/lib/auth";
+import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import {
   PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
   PRODUCTION_DUST_APPS_WORKSPACE_ID,
 } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 // Used when returning an agent with status 'disabled_by_admin'
@@ -61,7 +61,7 @@ const dummyModelConfiguration = {
 };
 
 type PrefetchedDataSourcesType = {
-  dataSourceViews: (DataSourceViewType & { isInGlobalVault: boolean })[];
+  dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
   workspaceId: string;
 };
 
@@ -103,13 +103,13 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
   assert(globalGroup.isOk(), "Failed to fetch global group");
 
-  const defaultVaults = await VaultResource.listForGroups(auth, [
+  const defaultSpaces = await SpaceResource.listForGroups(auth, [
     globalGroup.value,
   ]);
 
-  const dataSourceViews = await DataSourceViewResource.listByVaults(
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
     auth,
-    defaultVaults
+    defaultSpaces
   );
 
   return {
@@ -117,10 +117,24 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
       return {
         ...dsv.toJSON(),
         assistantDefaultSelected: dsv.dataSource.assistantDefaultSelected,
-        isInGlobalVault: dsv.vault.isGlobal(),
+        isInGlobalSpace: dsv.space.isGlobal(),
       };
     }),
     workspaceId: owner.sId,
+  };
+}
+
+function _getDefaultSearchActionForGlobalAgent({
+  agentSid,
+}: {
+  agentSid: GLOBAL_AGENTS_SID;
+}): AgentActionConfigurationType {
+  return {
+    id: -1,
+    sId: agentSid + "-search-action",
+    type: "websearch_configuration",
+    name: DEFAULT_WEBSEARCH_ACTION_NAME,
+    description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   };
 }
 
@@ -197,11 +211,16 @@ function _getHelperGlobalAgent({
         name: "search_dust_docs",
         description: `The documentation of the Dust platform.`,
       },
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.HELPER,
+      }),
     ],
     maxStepsPerRun: 3,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -229,11 +248,17 @@ function _getGPT35TurboGlobalAgent({
       modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GPT35_TURBO,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 function _getGPT4GlobalAgent({
@@ -270,11 +295,17 @@ function _getGPT4GlobalAgent({
       modelId: GPT_4O_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GPT4,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 function _getO1PreviewGlobalAgent({
@@ -308,10 +339,12 @@ function _getO1PreviewGlobalAgent({
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
-    maxStepsPerRun: 0,
+    maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 function _getO1MiniGlobalAgent({
@@ -345,10 +378,12 @@ function _getO1MiniGlobalAgent({
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
-    maxStepsPerRun: 0,
+    maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -377,10 +412,12 @@ function _getClaudeInstantGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -416,10 +453,12 @@ function _getClaude2GlobalAgent({
     },
 
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -449,10 +488,12 @@ function _getClaude3HaikuGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -487,10 +528,12 @@ function _getClaude3OpusGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -526,10 +569,12 @@ function _getClaude3GlobalAgent({
     },
 
     actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -563,11 +608,17 @@ function _getMistralLargeGlobalAgent({
       modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -601,11 +652,17 @@ function _getMistralMediumGlobalAgent({
       modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -633,11 +690,17 @@ function _getMistralSmallGlobalAgent({
       modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -670,11 +733,17 @@ function _getGeminiProGlobalAgent({
       modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
+    actions: [
+      _getDefaultSearchActionForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.GEMINI_PRO,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -741,7 +810,9 @@ function _getManagedDataSourceAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -768,7 +839,9 @@ function _getManagedDataSourceAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -807,7 +880,9 @@ function _getManagedDataSourceAgent(
     maxStepsPerRun: 1,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -978,11 +1053,17 @@ function _getDustGlobalAgent(
       scope: "global",
       userFavorite: false,
       model,
-      actions: [],
+      actions: [
+        _getDefaultSearchActionForGlobalAgent({
+          agentSid: GLOBAL_AGENTS_SID.DUST,
+        }),
+      ],
       maxStepsPerRun: 0,
-      visualizationEnabled: false,
+      visualizationEnabled: true,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -1007,9 +1088,11 @@ function _getDustGlobalAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
-      visualizationEnabled: false,
+      visualizationEnabled: true,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -1043,7 +1126,7 @@ function _getDustGlobalAgent(
 
   // Add one action per managed data source to improve search results for queries like
   // "search in <data_source>".
-  // Only include data sources from the global vault to limit actions for the same
+  // Only include data sources from the global space to limit actions for the same
   // data source.
   // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
   // avoiding duplicate display of data sources.
@@ -1051,7 +1134,7 @@ function _getDustGlobalAgent(
     if (
       dsView.dataSource.connectorProvider &&
       dsView.dataSource.connectorProvider !== "webcrawler" &&
-      dsView.isInGlobalVault
+      dsView.isInGlobalSpace
     ) {
       actions.push({
         id: -1,
@@ -1112,9 +1195,11 @@ function _getDustGlobalAgent(
     model,
     actions,
     maxStepsPerRun: 3,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -1291,12 +1376,14 @@ export async function getGlobalAgents(
       (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
     );
 
-  if (!owner.flags.includes("openai_o1_feature")) {
+  const flags = await getFeatureFlags(owner);
+
+  if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1
     );
   }
-  if (!owner.flags.includes("openai_o1_mini_feature")) {
+  if (!flags.includes("openai_o1_mini_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_MINI
     );
@@ -1329,18 +1416,12 @@ export async function getGlobalAgents(
   // add user's favorite status to the agents if needed
   const user = auth.user();
   if (user) {
-    const relations = await AgentUserRelation.findAll({
-      where: {
-        userId: user.id,
-        agentConfiguration: globalAgents.map((agent) => agent.sId),
-      },
+    const favoriteStates = await getFavoriteStates(auth, {
+      configurationIds: globalAgents.map((agent) => agent.sId),
     });
 
     for (const agent of globalAgents) {
-      const relation = relations.find(
-        (r) => r.agentConfiguration === agent.sId
-      );
-      agent.userFavorite = relation ? relation.favorite : false;
+      agent.userFavorite = !!favoriteStates.get(agent.sId);
     }
   }
 

@@ -8,7 +8,7 @@ import _ from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentTablesQueryConfiguration,

@@ -7,6 +7,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
 import type * as t from "io-ts";
 import React from "react";
@@ -21,7 +22,6 @@ import {
   useEditingPlan,
 } from "@app/components/poke/plans/form";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
@@ -37,7 +37,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
 const PlansPage = () => {
   const { mutate } = useSWRConfig();
 
-  const sendNotification = React.useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { plans, isPlansLoading } = usePokePlans();
 

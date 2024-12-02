@@ -1,15 +1,16 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentsGetViewType,
   LightAgentConfigurationType,
   LightWorkspaceType,
+  UserType,
 } from "@dust-tt/types";
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   fetcher,
   getErrorFromResponse,
@@ -187,6 +188,31 @@ export function useProgressiveAgentConfigurations({
   };
 }
 
+export function useAgentConfigurationSIdLookup({
+  workspaceId,
+  agentConfigurationName,
+}: {
+  workspaceId: string;
+  agentConfigurationName: string | null;
+}) {
+  const sIdFetcher: Fetcher<{
+    sId: string;
+  }> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    agentConfigurationName
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/lookup?handle=${agentConfigurationName}`
+      : null,
+    sIdFetcher
+  );
+
+  return {
+    sId: data ? data.sId : null,
+    isLoading: !error && !data,
+    isError: error,
+  };
+}
+
 export function useAgentConfiguration({
   workspaceId,
   agentConfigurationId,
@@ -213,6 +239,29 @@ export function useAgentConfiguration({
     isAgentConfigurationLoading: !error && !data,
     isAgentConfigurationError: error,
     mutateAgentConfiguration: mutate,
+  };
+}
+
+export function useAgentConfigurationLastAuthor({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+}) {
+  const userFetcher: Fetcher<{
+    user: UserType;
+  }> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/last_author`,
+    userFetcher
+  );
+
+  return {
+    agentLastAuthor: data ? data.user : null,
+    isLoading: !error && !data,
+    isError: error,
   };
 }
 
@@ -279,7 +328,7 @@ export function useDeleteAgentConfiguration({
   owner: LightWorkspaceType;
   agentConfiguration: LightAgentConfigurationType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -332,7 +381,7 @@ export function useUpdateAgentScope({
   owner: LightWorkspaceType;
   agentConfigurationId: string | null;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -413,7 +462,7 @@ export function useUpdateUserFavorite({
   owner: LightWorkspaceType;
   agentConfigurationId: string;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -426,8 +475,11 @@ export function useUpdateUserFavorite({
       disabled: true,
     });
 
+  const [isUpdatingFavorite, setIsUpdatingFavorite] = useState(false);
+
   const doUpdate = useCallback(
     async (userFavorite: boolean) => {
+      setIsUpdatingFavorite(true);
       try {
         const body: PostAgentUserFavoriteRequestBody = {
           agentId: agentConfigurationId,
@@ -471,6 +523,8 @@ export function useUpdateUserFavorite({
           type: "error",
         });
         return false;
+      } finally {
+        setIsUpdatingFavorite(false);
       }
     },
     [
@@ -481,5 +535,5 @@ export function useUpdateUserFavorite({
       sendNotification,
     ]
   );
-  return doUpdate;
+  return { updateUserFavorite: doUpdate, isUpdatingFavorite };
 }

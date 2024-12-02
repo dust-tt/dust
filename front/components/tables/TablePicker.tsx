@@ -1,53 +1,61 @@
-import { DropdownMenu, Input } from "@dust-tt/sparkle";
+import {
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  ScrollArea,
+  SearchInput,
+  Separator,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewContentNode,
-  VaultType,
-  WorkspaceType,
+  LightWorkspaceType,
+  SpaceType,
 } from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
-import { useDataSourceViewTables } from "@app/lib/swr/data_source_views";
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import { useDataSourceViewTables } from "@app/lib/swr/data_source_view_tables";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
-export default function TablePicker({
-  owner,
-  dataSource,
-  currentTableId,
-  readOnly,
-  vault,
-  onTableUpdate,
-}: {
-  owner: WorkspaceType;
+interface TablePickerProps {
+  owner: LightWorkspaceType;
   dataSource: {
     workspace_id: string;
     data_source_id: string;
   };
   currentTableId?: string;
   readOnly: boolean;
-  vault: VaultType;
+  space: SpaceType;
   onTableUpdate: (table: DataSourceViewContentNode) => void;
-}) {
-  void owner;
+}
+
+export default function TablePicker({
+  owner,
+  dataSource,
+  currentTableId,
+  readOnly,
+  space,
+  onTableUpdate,
+}: TablePickerProps) {
   void dataSource;
 
-  const { vaultDataSourceViews } = useVaultDataSourceViews({
-    vaultId: vault.sId,
+  const { spaceDataSourceViews } = useSpaceDataSourceViews({
+    spaceId: space.sId,
     workspaceId: owner.sId,
   });
 
   // Look for the selected data source view in the list - data_source_id can contain either dsv sId
   // or dataSource name, try to find a match
-  const selectedDataSourceView = vaultDataSourceViews.find(
+  const selectedDataSourceView = spaceDataSourceViews.find(
     (dsv) =>
       dsv.sId === dataSource.data_source_id ||
-      // Legacy behavior
+      // Legacy behavior.
       dsv.dataSource.name === dataSource.data_source_id
   );
 
   const { tables } = useDataSourceViewTables({
-    workspaceId: dataSource.workspace_id,
+    owner,
     dataSourceView: selectedDataSourceView ?? null,
   });
 
@@ -79,15 +87,13 @@ export default function TablePicker({
             "No Table"
           )
         ) : (
-          <DropdownMenu>
-            <div>
-              <DropdownMenu.Button
+          <PopoverRoot>
+            <PopoverTrigger asChild>
+              <div
                 className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
+                  "inline-flex items-center rounded-md py-1 text-sm font-normal",
                   currentTable ? "px-0" : "border px-3",
-                  readOnly
-                    ? "border-white text-gray-300"
-                    : "border-orange-400 text-gray-700",
+                  readOnly ? "text-gray-300" : "text-gray-700",
                   "focus:outline-none focus:ring-0"
                 )}
               >
@@ -99,42 +105,46 @@ export default function TablePicker({
                     <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                   </>
                 ) : tables && tables.length > 0 ? (
-                  "Select Table"
+                  <span>Select Table</span>
                 ) : (
-                  "No Tables"
+                  <span>No Tables</span>
                 )}
-              </DropdownMenu.Button>
-            </div>
+              </div>
+            </PopoverTrigger>
 
-            {(tables || []).length > 0 ? (
-              <DropdownMenu.Items width={300}>
-                <Input
+            {(tables || []).length > 0 && (
+              <PopoverContent className="mr-2 p-4">
+                <SearchInput
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  className="mt-4 w-full"
+                  onChange={(e) => setSearchFilter(e)}
                 />
-                {(filteredTables || []).map((t) => {
-                  return (
-                    <DropdownMenu.Item
+                <ScrollArea className="mt-2 h-[300px]">
+                  {(filteredTables || []).map((t) => (
+                    <div
                       key={t.dustDocumentId}
-                      label={t.title}
+                      className="flex cursor-pointer flex-col items-start hover:opacity-80"
                       onClick={() => {
                         onTableUpdate(t);
                         setSearchFilter("");
                       }}
-                    />
-                  );
-                })}
-                {filteredTables.length === 0 && (
-                  <span className="block px-4 py-2 text-sm text-gray-700">
-                    No tables found
-                  </span>
-                )}
-              </DropdownMenu.Items>
-            ) : null}
-          </DropdownMenu>
+                    >
+                      <div className="my-1">
+                        <div className="text-sm">{t.title}</div>
+                      </div>
+                      <Separator />
+                    </div>
+                  ))}
+                  {filteredTables.length === 0 && (
+                    <span className="block px-4 py-2 text-sm text-gray-700">
+                      No tables found
+                    </span>
+                  )}
+                </ScrollArea>
+              </PopoverContent>
+            )}
+          </PopoverRoot>
         )}
       </div>
     </div>

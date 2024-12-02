@@ -381,6 +381,14 @@ export const TreeExample = () => {
                       <Tree.Empty label="No documents" />
                     </Tree>
                   </Tree.Item>
+                  <Tree.Item label="Item 2" collapsed={false}>
+                    <Tree>
+                      <Tree.Empty
+                        label="Empty tree can be clickable"
+                        onItemClick={() => alert("Soupinou")}
+                      />
+                    </Tree>
+                  </Tree.Item>
                 </Tree>
               </Tree.Item>
               <Tree.Item

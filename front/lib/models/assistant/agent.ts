@@ -55,6 +55,7 @@ export class AgentConfiguration extends Model<
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
   declare groupIds: number[];
+  declare requestedGroupIds: number[][];
 
   declare author: NonAttribute<User>;
 }
@@ -133,8 +134,14 @@ AgentConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    // TODO(2024-11-04 flav) `groupIds` clean up.
     groupIds: {
       type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: false,
+      defaultValue: [],
+    },
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
       allowNull: false,
       defaultValue: [],
     },

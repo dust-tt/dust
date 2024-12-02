@@ -31,7 +31,7 @@ const doOperation = (op: OperationType, connectorId: string) => {
   }
 };
 
-export const connectorOperations = createPlugin(
+export const connectorOperationsPlugin = createPlugin(
   {
     id: "maintenance-operation",
     name: "Maintenance operation",
@@ -70,6 +70,10 @@ export const connectorOperations = createPlugin(
     if (res.isErr()) {
       return new Err(new Error(res.error.message));
     }
-    return new Ok("Operation successful.");
+
+    return new Ok({
+      display: "text",
+      value: `Operation ${op} executed successfully on connector ${connectorId}.`,
+    });
   }
 );

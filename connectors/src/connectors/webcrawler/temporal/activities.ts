@@ -1,6 +1,7 @@
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import type { ModelId } from "@dust-tt/types";
 import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
+import { stripNullBytes } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
@@ -40,6 +41,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
@@ -159,7 +161,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           await Context.current().sleep(1);
         } catch (e) {
           if (isCancellation(e)) {
-            childLogger.error("The activity was canceled. Aborting crawl.");
+            childLogger.error(
+              { error: e },
+              "The activity was canceled. Aborting crawl."
+            );
 
             // raise a panic flag if the activity is aborted because it exceeded the maximum time to crawl
             const isTooLongToCrawl =
@@ -172,10 +177,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                   url,
                   configId: webCrawlerConfig.id,
                   panic: true,
+                  crawls_per_minute: Math.round(
+                    pageCount.valid / MAX_TIME_TO_CRAWL_MINUTES
+                  ),
                 },
-                `Website takes too long to crawl (crawls ${Math.round(
-                  pageCount.valid / MAX_TIME_TO_CRAWL_MINUTES
-                )} pages per minute)`
+                `Website takes too long to crawl`
               );
             }
 
@@ -283,6 +289,22 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           lastSeenAt: new Date(),
         });
 
+        childLogger.info(
+          {
+            documentId,
+            configId: webCrawlerConfig.id,
+            documentLen: extracted.length,
+            url,
+          },
+          "Successfully crawled page"
+        );
+
+        statsDClient.increment("connectors_webcrawler_crawls.count", 1);
+        statsDClient.increment(
+          "connectors_webcrawler_crawls_bytes.count",
+          extracted.length
+        );
+
         Context.current().heartbeat({
           type: "upserting",
         });
@@ -305,7 +327,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               }),
               documentUrl: request.url,
               timestampMs: new Date().getTime(),
-              tags: [`title:${pageTitle}`],
+              tags: [`title:${stripNullBytes(pageTitle)}`],
               parents: getParentsForPage(request.url, false),
               upsertContext: {
                 sync_type: "batch",
@@ -448,11 +470,14 @@ function formatDocumentContent({
   const parsedUrl = new URL(url);
   const urlWithoutQuery = `${parsedUrl.origin}/${parsedUrl.pathname}`;
 
+  const sanitizedContent = stripNullBytes(content);
+  const sanitizedTitle = stripNullBytes(title);
+
   return {
     prefix: `URL: ${urlWithoutQuery.slice(0, URL_MAX_LENGTH)}${
       urlWithoutQuery.length > URL_MAX_LENGTH ? "..." : ""
     }\n`,
-    content: `TITLE: ${title.substring(0, TITLE_MAX_LENGTH)}\n${content}`,
+    content: `TITLE: ${sanitizedTitle.substring(0, TITLE_MAX_LENGTH)}\n${sanitizedContent}`,
     sections: [],
   };
 }

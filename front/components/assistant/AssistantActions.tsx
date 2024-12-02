@@ -1,12 +1,10 @@
-import { Dialog } from "@dust-tt/sparkle";
+import { Dialog, useSendNotification } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import { useContext } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   useAgentConfiguration,
   useUpdateUserFavorite,
@@ -23,7 +21,7 @@ export function RemoveAssistantFromFavoritesDialog({
   show: boolean;
   onClose: () => void;
 }) {
-  const doUpdate = useUpdateUserFavorite({
+  const { updateUserFavorite } = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -36,7 +34,7 @@ export function RemoveAssistantFromFavoritesDialog({
       validateLabel="Remove"
       validateVariant="warning"
       onValidate={async () => {
-        void doUpdate(false);
+        void updateUserFavorite(false);
         onClose();
       }}
     >
@@ -61,7 +59,7 @@ export function RemoveAssistantFromWorkspaceDialog({
   onClose: () => void;
   onRemove: () => void;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { agentConfiguration: detailedConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,

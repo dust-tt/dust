@@ -3,14 +3,14 @@ import type { LightWorkspaceType } from "@dust-tt/types";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 
 async function backfillDefaultViewForDataSource(
   workspace: LightWorkspaceType,
-  vault: VaultResource,
+  vault: SpaceResource,
   dataSource: DataSourceResource,
   logger: Logger,
   execute: boolean
@@ -38,7 +38,7 @@ async function backfillDefaultViewForDataSource(
   }
 
   // Create a default view for this data source in the vault.
-  await DataSourceViewResource.createViewInVaultFromDataSource(
+  await DataSourceViewResource.createViewInSpaceFromDataSource(
     auth,
     vault,
     dataSource,
@@ -62,13 +62,13 @@ async function backfillDataSourceViewsForWorkspace(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
   );
 
-  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   let updated = 0;
   for (const dataSource of dataSources) {
     let created: boolean;
-    // If data source's vault is system, create a default view in the global vault for it.
-    if (dataSource.vault.isSystem()) {
+    // If data source's space is system, create a default view in the global vault for it.
+    if (dataSource.space.isSystem()) {
       created = await backfillDefaultViewForDataSource(
         workspace,
         globalVault,
@@ -80,7 +80,7 @@ async function backfillDataSourceViewsForWorkspace(
       // Otherwise, create a default view in the data source's vault.
       created = await backfillDefaultViewForDataSource(
         workspace,
-        dataSource.vault,
+        dataSource.space,
         dataSource,
         logger,
         execute

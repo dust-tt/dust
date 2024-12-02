@@ -11,14 +11,12 @@ import {
   appendPaginationParams,
   fetcher,
   fetcherMultiple,
-  postFetcher,
+  fetcherWithBody,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
-import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
-import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
-import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/tables";
-import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/[dsId]/configuration";
+import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
@@ -65,7 +63,7 @@ export function useMultipleDataSourceViewsContentNodes({
 } {
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
-      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
+      const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
       const body = JSON.stringify({
         internalIds,
         viewType,
@@ -132,7 +130,7 @@ export function useDataSourceViewContentNodes({
   appendPaginationParams(params, pagination);
 
   const url = dataSourceView
-    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+    ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
     : null;
 
   const body = {
@@ -151,7 +149,11 @@ export function useDataSourceViewContentNodes({
           return undefined;
         }
 
-        return postFetcher([url, { internalIds, parentId, viewType }]);
+        return fetcherWithBody([
+          url,
+          { internalIds, parentId, viewType },
+          "POST",
+        ]);
       },
       {
         ...swrOptions,
@@ -170,40 +172,6 @@ export function useDataSourceViewContentNodes({
   };
 }
 
-export function useDataSourceViewDocument({
-  dataSourceView,
-  documentId,
-  owner,
-  disabled,
-}: {
-  dataSourceView: DataSourceViewType | null;
-  documentId: string | null;
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceViewDocumentResponseBody> =
-    fetcher;
-  const url =
-    dataSourceView && documentId
-      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
-      : null;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    url,
-    dataSourceViewDocumentFetcher,
-    {
-      disabled,
-    }
-  );
-
-  return {
-    document: data?.document,
-    isDocumentLoading: !disabled && !error && !data,
-    isDocumentError: error,
-    mutateDocument: mutate,
-  };
-}
-
 export function useDataSourceViewConnectorConfiguration({
   dataSourceView,
   owner,
@@ -218,7 +186,7 @@ export function useDataSourceViewConnectorConfiguration({
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+      : `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
     dataSourceViewDocumentFetcher
   );
 
@@ -227,30 +195,5 @@ export function useDataSourceViewConnectorConfiguration({
     mutateConfiguration: mutate,
     isConfigurationLoading: !disabled && !error && !data,
     isConfigurationError: error,
-  };
-}
-
-export function useDataSourceViewTables({
-  dataSourceView,
-  workspaceId,
-}: {
-  dataSourceView: DataSourceViewType | null;
-  workspaceId: string;
-}) {
-  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
-  const disabled = !dataSourceView;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/tables`,
-    tablesFetcher
-  );
-
-  return {
-    tables: useMemo(() => (data ? data.tables : []), [data]),
-    isTablesLoading: !disabled && !error && !data,
-    isTablesError: error,
-    mutateTables: mutate,
   };
 }

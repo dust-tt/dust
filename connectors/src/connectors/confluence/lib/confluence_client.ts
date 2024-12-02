@@ -141,6 +141,15 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+// Space types that we support indexing in Dust.
+export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
+  "global",
+  "collaboration",
+  "knowledge_base",
+];
+type ConfluenceSupportedSpaceType =
+  (typeof CONFLUENCE_SUPPORTED_SPACE_TYPES)[number];
+
 function extractCursorFromLinks(links: { next?: string }): string | null {
   if (!links.next) {
     return null;
@@ -361,10 +370,13 @@ export class ConfluenceClient {
     }
   }
 
-  async getGlobalSpaces(pageCursor: string | null) {
+  async getSpaces(
+    spaceType: ConfluenceSupportedSpaceType,
+    { pageCursor }: { pageCursor: string | null }
+  ) {
     const params = new URLSearchParams({
       limit: "250",
-      type: "global",
+      type: spaceType,
       sort: "name",
       status: "current",
     });

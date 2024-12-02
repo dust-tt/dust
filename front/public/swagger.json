@@ -20,7 +20,9 @@
       "get": {
         "summary": "List assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": ["Assistants"],
+        "tags": [
+          "Assistants"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -29,6 +31,23 @@
             "description": "ID of the workspace",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "description": "The view to use when retrieving agents:\n- all: Retrieves all non-private agents (default if not authenticated)\n- list: Retrieves all active agents accessible to the user (default if authenticated)\n- workspace: Retrieves all agents with workspace scope\n- published: Retrieves all agents with published scope\n- global: Retrieves all global agents\n- favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)\n",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "list",
+                "workspace",
+                "published",
+                "global",
+                "favorites"
+              ]
             }
           }
         ],
@@ -69,11 +88,158 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/agent_configurations/{sId}": {
+      "get": {
+        "summary": "Get agent configuration",
+        "description": "Retrieve the agent configuration identified by {sId} in the workspace identified by {wId}.",
+        "tags": [
+          "Assistants"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sId",
+            "required": true,
+            "description": "ID of the agent configuration",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved agent configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agentConfiguration": {
+                      "$ref": "#/components/schemas/AgentConfiguration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Invalid or missing parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Agent configuration not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET or PATCH is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update agent configuration",
+        "description": "Update the agent configuration identified by {sId} in the workspace identified by {wId}.",
+        "tags": [
+          "Assistants"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sId",
+            "required": true,
+            "description": "ID of the agent configuration",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userFavorite": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully updated agent configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agentConfiguration": {
+                      "$ref": "#/components/schemas/AgentConfiguration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Invalid or missing parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Agent configuration not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET or PATCH is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/agent_configurations/search": {
       "get": {
         "summary": "Search assistants by name",
         "description": "Search for agent configurations by name in the workspace identified by {wId}.",
-        "tags": ["Assistants"],
+        "tags": [
+          "Assistants"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -136,11 +302,92 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/cancel": {
+      "post": {
+        "tags": [
+          "Conversations"
+        ],
+        "summary": "Cancel message generation in a conversation",
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Workspace ID"
+          },
+          {
+            "name": "cId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Conversation ID"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "messageIds"
+                ],
+                "properties": {
+                  "messageIds": {
+                    "type": "array",
+                    "description": "List of message IDs to cancel generation for",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message generation successfully canceled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates if the cancellation was successful"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (invalid query parameters or request body)"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/content_fragments": {
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -203,7 +450,9 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -255,7 +504,9 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -310,11 +561,119 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit": {
+      "post": {
+        "tags": [
+          "Conversations"
+        ],
+        "summary": "Edit an existing message in a conversation",
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Workspace ID"
+          },
+          {
+            "name": "cId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Conversation ID"
+          },
+          {
+            "name": "mId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message ID to edit"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content",
+                  "mentions"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "New content for the message"
+                  },
+                  "mentions": {
+                    "type": "array",
+                    "description": "List of agent mentions in the message",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "configurationId"
+                      ],
+                      "properties": {
+                        "configurationId": {
+                          "type": "string",
+                          "description": "ID of the mentioned agent configuration"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message successfully edited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "object",
+                      "description": "The edited user message"
+                    },
+                    "agentMessages": {
+                      "type": "array",
+                      "description": "Optional array of agent messages generated in response"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (message not found or not a user message)"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events": {
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -408,7 +767,9 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId} in the conversation identified by {cId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -471,7 +832,9 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -498,9 +861,12 @@
                   "message": {
                     "$ref": "#/components/schemas/Message"
                   },
-                  "contentFragment": {
-                    "$ref": "#/components/schemas/ContentFragment",
-                    "description": "The text content of an attached file (optional)"
+                  "contentFragments": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ContentFragment"
+                    },
+                    "description": "The list of content fragments to attach to this conversation (optional)"
                   },
                   "blocking": {
                     "type": "boolean",
@@ -516,7 +882,10 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation (The API only accepts `unlisted`)",
-                    "enum": ["workspace", "unlisted"],
+                    "enum": [
+                      "workspace",
+                      "unlisted"
+                    ],
                     "example": "unlisted"
                   }
                 }
@@ -547,11 +916,107 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/apps/{aId}/runs/{runId}": {
+    "/api/v1/w/{wId}/files": {
+      "post": {
+        "tags": [
+          "Datasources"
+        ],
+        "summary": "Create a file upload URL",
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "contentType",
+                  "fileName",
+                  "fileSize",
+                  "useCase",
+                  "useCaseMetadata"
+                ],
+                "properties": {
+                  "contentType": {
+                    "type": "string",
+                    "description": "MIME type of the file"
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "description": "Name of the file"
+                  },
+                  "fileSize": {
+                    "type": "integer",
+                    "description": "Size of the file in bytes"
+                  },
+                  "useCase": {
+                    "type": "string",
+                    "description": "Intended use case for the file, use \"conversation\""
+                  },
+                  "useCaseMetadata": {
+                    "type": "string",
+                    "description": "(optional) Metadata for the use case, for conversation useCase should be dictionary with conversationId stringified"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File upload URL created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "type": "object",
+                      "properties": {
+                        "uploadUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or unsupported file type"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/spaces/{spaceId}/apps/{aId}/runs/{runId}": {
       "get": {
         "summary": "Get an app run",
-        "description": "Retrieve a run for an app in the vault identified by {vId}.",
-        "tags": ["Apps"],
+        "description": "Retrieve a run for an app in the space identified by {spaceId}.",
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -569,9 +1034,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -620,11 +1085,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/apps/{aId}/runs": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/apps/{aId}/runs": {
       "post": {
         "summary": "Create an app run",
-        "description": "Create and execute a run for an app in the vault specified by {vId}.",
-        "tags": ["Apps"],
+        "description": "Create and execute a run for an app in the space specified by {spaceId}.",
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -642,9 +1109,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -665,7 +1132,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["specification_hash", "config", "inputs"],
+                "required": [
+                  "specification_hash",
+                  "config",
+                  "inputs"
+                ],
                 "properties": {
                   "specification_hash": {
                     "type": "string",
@@ -761,11 +1232,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/apps": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/apps": {
       "get": {
         "summary": "List apps",
-        "description": "Get all apps in the vault identified by {vId}.",
-        "tags": ["Apps"],
+        "description": "Get all apps in the space identified by {spaceId}.",
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -783,9 +1256,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -862,9 +1335,11 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}": {
       "get": {
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -881,7 +1356,7 @@
             }
           },
           {
-            "name": "vId",
+            "name": "spaceId",
             "in": "path",
             "required": true,
             "schema": {
@@ -917,7 +1392,9 @@
         }
       },
       "patch": {
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -934,7 +1411,7 @@
             }
           },
           {
-            "name": "vId",
+            "name": "spaceId",
             "in": "path",
             "required": true,
             "schema": {
@@ -967,7 +1444,9 @@
                         }
                       }
                     },
-                    "required": ["parentsIn"]
+                    "required": [
+                      "parentsIn"
+                    ]
                   },
                   {
                     "type": "object",
@@ -1006,7 +1485,7 @@
             "description": "Invalid request body"
           },
           "403": {
-            "description": "Unauthorized - Only admins or builders can administrate vaults"
+            "description": "Unauthorized - Only admins or builders can administrate spaces"
           },
           "404": {
             "description": "Data source view not found"
@@ -1020,7 +1499,9 @@
         }
       },
       "delete": {
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1037,7 +1518,7 @@
             }
           },
           {
-            "name": "vId",
+            "name": "spaceId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1072,11 +1553,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}/search": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}/search": {
       "get": {
         "summary": "Search the data source view",
         "description": "Search the data source view identified by {dsvId} in the workspace identified by {wId}.",
-        "tags": ["DatasourceViews"],
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1094,9 +1577,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1269,11 +1752,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_source_views": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_source_views": {
       "get": {
         "summary": "List Data Source Views",
-        "description": "Retrieves a list of data source views for the specified vault",
-        "tags": ["DatasourceViews"],
+        "description": "Retrieves a list of data source views for the specified space",
+        "tags": [
+          "DatasourceViews"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1291,9 +1776,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1301,7 +1786,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of data source views in the vault",
+            "description": "List of data source views in the space",
             "content": {
               "application/json": {
                 "schema": {
@@ -1336,11 +1821,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/documents/{documentId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/documents/{documentId}": {
       "get": {
         "summary": "Retrieve a document from a data source",
         "description": "Retrieve a document from a data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1353,9 +1840,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1420,7 +1907,9 @@
       "post": {
         "summary": "Upsert a document in a data source",
         "description": "Upsert a document in a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1433,9 +1922,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1563,7 +2052,9 @@
       "delete": {
         "summary": "Delete a document from a data source",
         "description": "Delete a document from a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1576,9 +2067,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1646,11 +2137,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/documents/{documentId}/parents": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/documents/{documentId}/parents": {
       "post": {
         "summary": "Update the parents of a document",
         "description": "Update the parents of a document in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1663,9 +2156,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1735,11 +2228,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/documents": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/documents": {
       "get": {
         "summary": "Get documents",
         "description": "Get documents in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1757,9 +2252,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1821,11 +2316,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/search": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/search": {
       "get": {
         "summary": "Search the data source",
         "description": "Search the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1843,9 +2340,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2018,11 +2515,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/tables/{tId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables/{tId}": {
       "get": {
         "summary": "Get a table",
         "description": "Get a table in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2040,9 +2539,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2088,7 +2587,9 @@
       "delete": {
         "summary": "Delete a table",
         "description": "Delete a table in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2106,9 +2607,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2145,11 +2646,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/tables/{tId}/rows/{rId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables/{tId}/rows/{rId}": {
       "get": {
         "summary": "Get a row",
         "description": "Get a row in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2167,9 +2670,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2224,7 +2727,9 @@
       "delete": {
         "summary": "Delete a row",
         "description": "Delete a row in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2242,9 +2747,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2290,11 +2795,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/tables/{tId}/rows": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables/{tId}/rows": {
       "get": {
         "summary": "List rows",
         "description": "List rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2312,9 +2819,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2376,7 +2883,9 @@
       "post": {
         "summary": "Upsert rows",
         "description": "Upsert rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2394,9 +2903,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2454,7 +2963,9 @@
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": ["datetime"]
+                                    "enum": [
+                                      "datetime"
+                                    ]
                                   },
                                   "epoch": {
                                     "type": "number"
@@ -2505,11 +3016,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/tables": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables": {
       "get": {
         "summary": "Get tables",
         "description": "Get tables in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2527,9 +3040,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2566,7 +3079,9 @@
       "post": {
         "summary": "Upsert a table",
         "description": "Upsert a table in the data source identified by {dsId} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2584,9 +3099,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2663,11 +3178,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources": {
       "get": {
         "summary": "Get data sources",
         "description": "Get data sources in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2680,9 +3197,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2721,11 +3238,13 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults": {
+    "/api/v1/w/{wId}/spaces": {
       "get": {
-        "summary": "List Workspace Vaults",
-        "description": "Retrieves a list of vaults for the authenticated workspace.",
-        "tags": ["Vaults"],
+        "summary": "List Workspace Spaces",
+        "description": "Retrieves a list of spaces for the authenticated workspace.",
+        "tags": [
+          "Spaces"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2744,16 +3263,16 @@
         ],
         "responses": {
           "200": {
-            "description": "Vaults of the workspace",
+            "description": "Spaces of the workspace",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "vaults": {
+                    "spaces": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Vault"
+                        "$ref": "#/components/schemas/Space"
                       }
                     }
                   }
@@ -2783,7 +3302,9 @@
       "get": {
         "summary": "Get workspace usage data",
         "description": "Get usage data for the workspace identified by {wId} in CSV format.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -2824,14 +3345,17 @@
             "description": "The mode of date range selection ('month' or 'range')",
             "schema": {
               "type": "string",
-              "enum": ["month", "range"]
+              "enum": [
+                "month",
+                "range"
+              ]
             }
           },
           {
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned assistants.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace assistants and their corresponding usage.\n- \"all\": A concatenation of all the above tables.\n",
+            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned assistants.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace assistants and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the assistant messages.\n- \"all\": A concatenation of all the above tables.\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -2839,6 +3363,7 @@
                 "assistant_messages",
                 "builders",
                 "assistants",
+                "feedbacks",
                 "all"
               ]
             }
@@ -2973,7 +3498,10 @@
               "type": "string",
               "description": "Feature flags enabled for the workspace"
             },
-            "example": ["advanced_analytics", "beta_features"]
+            "example": [
+              "advanced_analytics",
+              "beta_features"
+            ]
           },
           "ssoEnforced": {
             "type": "boolean",
@@ -2985,7 +3513,10 @@
               "type": "string",
               "description": "List of allowed authentication providers"
             },
-            "example": ["google", "github"]
+            "example": [
+              "google",
+              "github"
+            ]
           },
           "defaultEmbeddingProvider": {
             "type": "string",
@@ -2997,6 +3528,14 @@
       },
       "Context": {
         "type": "object",
+        "required": [
+          "username",
+          "timezone",
+          "fullName",
+          "email",
+          "profilePictureUrl",
+          "origin"
+        ],
         "properties": {
           "username": {
             "type": "string",
@@ -3033,7 +3572,10 @@
               "zapier",
               "make",
               "zendesk",
-              "raycast"
+              "raycast",
+              "github-copilot-chat",
+              "extension",
+              "email"
             ]
           }
         }
@@ -3097,10 +3639,10 @@
             "description": "Scope of the agent configuration",
             "example": "workspace"
           },
-          "userListStatus": {
-            "type": "string",
-            "description": "Status of the user list for this configuration",
-            "example": "all_users"
+          "userFavorite": {
+            "type": "boolean",
+            "description": "Status of the user favorite for this configuration",
+            "example": true
           },
           "model": {
             "type": "object",
@@ -3330,33 +3872,43 @@
             "description": "The content type of the content fragment",
             "example": "text/plain"
           },
+          "fileId": {
+            "type": "string",
+            "description": "The id of the previously uploaded file",
+            "example": "fil_123456"
+          },
           "context": {
             "$ref": "#/components/schemas/Context"
           }
         }
       },
-      "Vault": {
+      "Space": {
         "type": "object",
         "properties": {
           "sId": {
             "type": "string",
-            "description": "Unique string identifier for the vault"
+            "description": "Unique string identifier for the space"
           },
           "name": {
             "type": "string",
-            "description": "Name of the vault"
+            "description": "Name of the space"
           },
           "kind": {
             "type": "string",
-            "enum": ["regular", "global", "system", "public"],
-            "description": "The kind of the vault"
+            "enum": [
+              "regular",
+              "global",
+              "system",
+              "public"
+            ],
+            "description": "The kind of the space"
           },
           "groupIds": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "List of group IDs that have access to the vault"
+            "description": "List of group IDs that have access to the space"
           }
         }
       },
@@ -3410,7 +3962,12 @@
         "properties": {
           "category": {
             "type": "string",
-            "enum": ["managed", "folder", "website", "apps"],
+            "enum": [
+              "managed",
+              "folder",
+              "website",
+              "apps"
+            ],
             "description": "The category of the data source view"
           },
           "createdAt": {
@@ -3440,7 +3997,10 @@
           },
           "kind": {
             "type": "string",
-            "enum": ["default", "custom"],
+            "enum": [
+              "default",
+              "custom"
+            ],
             "description": "The kind of the data source view"
           },
           "parentsIn": {
@@ -3459,9 +4019,9 @@
             "type": "number",
             "description": "Timestamp of when the data source view was last updated"
           },
-          "vaultId": {
+          "spaceId": {
             "type": "string",
-            "description": "ID of the vault containing the data source view"
+            "description": "ID of the space containing the data source view"
           }
         }
       },
@@ -3550,14 +4110,20 @@
             "items": {
               "type": "string"
             },
-            "example": ["customer_support", "faq"]
+            "example": [
+              "customer_support",
+              "faq"
+            ]
           },
           "parents": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "example": ["7b9d1f3e5a", "2c4a6e8d0f"]
+            "example": [
+              "7b9d1f3e5a",
+              "2c4a6e8d0f"
+            ]
           },
           "source_url": {
             "type": "string",
@@ -3585,12 +4151,22 @@
               {
                 "chunk_id": "9f1d3b5a7c",
                 "text": "This is the first chunk of the document.",
-                "embedding": [0.1, 0.2, 0.3, 0.4]
+                "embedding": [
+                  0.1,
+                  0.2,
+                  0.3,
+                  0.4
+                ]
               },
               {
                 "chunk_id": "4a2c6e8b0d",
                 "text": "This is the second chunk of the document.",
-                "embedding": [0.5, 0.6, 0.7, 0.8]
+                "embedding": [
+                  0.5,
+                  0.6,
+                  0.7,
+                  0.8
+                ]
               }
             ]
           },

@@ -1,14 +1,15 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ConversationError,
   ConversationMessageReactions,
   ConversationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
@@ -21,9 +22,11 @@ import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wI
 export function useConversation({
   conversationId,
   workspaceId,
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
+  options?: { disabled: boolean };
 }): {
   conversation: ConversationType | null;
   isConversationLoading: boolean;
@@ -37,7 +40,8 @@ export function useConversation({
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}`
       : null,
-    conversationFetcher
+    conversationFetcher,
+    options
   );
 
   return {
@@ -85,6 +89,30 @@ export function useConversationReactions({
     reactions: useMemo(() => (data ? data.reactions : []), [data]),
     isReactionsLoading: !error && !data,
     isReactionsError: error,
+    mutateReactions: mutate,
+  };
+}
+
+export function useConversationFeedbacks({
+  conversationId,
+  workspaceId,
+}: {
+  conversationId: string;
+  workspaceId: string;
+}) {
+  const conversationFeedbacksFetcher: Fetcher<{
+    feedbacks: AgentMessageFeedbackType[];
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/feedbacks`,
+    conversationFeedbacksFetcher
+  );
+
+  return {
+    feedbacks: useMemo(() => (data ? data.feedbacks : []), [data]),
+    isFeedbacksLoading: !error && !data,
+    isFeedbacksError: error,
     mutateReactions: mutate,
   };
 }
@@ -170,7 +198,7 @@ export function useConversationParticipants({
 }
 
 export const useDeleteConversation = (owner: LightWorkspaceType) => {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
   });

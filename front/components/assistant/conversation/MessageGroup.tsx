@@ -1,22 +1,21 @@
 import type {
-  ConversationMessageReactions,
+  FetchConversationMessagesResponse,
+  MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import React, { useEffect, useRef } from "react";
 
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 
 interface MessageGroupProps {
-  messages: MessageWithContentFragmentsType[][];
+  messages: MessageWithContentFragmentsType[];
   isLastMessageGroup: boolean;
   conversationId: string;
-  hideReactions: boolean;
+  feedbacks: AgentMessageFeedbackType[];
   isInModal: boolean;
   owner: WorkspaceType;
-  reactions: ConversationMessageReactions;
   prevFirstMessageId: string | null;
   prevFirstMessageRef: React.RefObject<HTMLDivElement>;
   user: UserType;
@@ -33,10 +32,9 @@ export default function MessageGroup({
   messages,
   isLastMessageGroup,
   conversationId,
-  hideReactions,
+  feedbacks,
   isInModal,
   owner,
-  reactions,
   prevFirstMessageId,
   prevFirstMessageRef,
   user,
@@ -62,28 +60,23 @@ export default function MessageGroup({
       ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
     >
-      {messages.map((group) => {
-        return group.map((message) => {
-          return (
-            <MessageItem
-              key={`message-${message.sId}`}
-              conversationId={conversationId}
-              hideReactions={hideReactions}
-              isInModal={isInModal}
-              message={message}
-              owner={owner}
-              reactions={reactions}
-              ref={
-                message.sId === prevFirstMessageId
-                  ? prevFirstMessageRef
-                  : undefined
-              }
-              user={user}
-              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-            />
-          );
-        });
-      })}
+      {messages.map((message) => (
+        <MessageItem
+          key={`message-${message.sId}`}
+          conversationId={conversationId}
+          messageFeedback={feedbacks.find(
+            (feedback) => feedback.messageId === message.sId
+          )}
+          isInModal={isInModal}
+          message={message}
+          owner={owner}
+          ref={
+            message.sId === prevFirstMessageId ? prevFirstMessageRef : undefined
+          }
+          user={user}
+          isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+        />
+      ))}
     </div>
   );
 }

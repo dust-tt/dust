@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
@@ -11,6 +12,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 
@@ -69,6 +71,17 @@ interface AgentUsageQueryResult {
   messages: number;
   distinctUsersReached: number;
   lastConfiguration: Date;
+}
+
+interface FeedbackQueryResult {
+  id: ModelId;
+  created_at: Date;
+  userName: string;
+  userEmail: string;
+  agentConfigurationId: string;
+  agentConfigurationVersion: number;
+  thumb: "up" | "down";
+  content: string | null;
 }
 
 export async function unsafeGetUsageData(
@@ -166,6 +179,11 @@ export async function getMessageUsageData(
         TO_CHAR(am."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistant_id",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistant_name",
+        CASE
+          WHEN ac."scope" = 'published' THEN 'shared'
+          WHEN ac."scope" = 'private' THEN 'private'
+          ELSE 'company'
+        END AS "assistant_settings",
         w."id" AS "workspace_id",
         w."name" AS "workspace_name",
         c."id" AS "conversation_id",
@@ -405,6 +423,7 @@ export async function getAssistantsUsageData(
       ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
       COUNT(a."id") AS "messages",
       COUNT(DISTINCT u."id") AS "distinctUsersReached",
+      COUNT(DISTINCT m."conversationId") AS "distinctConversations",
       MAX(CAST(ac."createdAt" AS DATE)) AS "lastEdit"
     FROM
       "agent_messages" a
@@ -440,6 +459,48 @@ export async function getAssistantsUsageData(
   return generateCsvFromQueryResult(mentions);
 }
 
+export async function getFeedbacksUsageData(
+  startDate: Date,
+  endDate: Date,
+  workspaceId: string
+): Promise<string> {
+  const workspace = await Workspace.findOne({
+    where: { sId: workspaceId },
+  });
+  if (!workspace) {
+    throw new Error(`Workspace not found for sId: ${workspaceId}`);
+  }
+
+  const feedbacks =
+    await AgentMessageFeedbackResource.listByWorkspaceAndDateRange({
+      workspace: workspace,
+      startDate,
+      endDate,
+    });
+
+  if (!feedbacks.length) {
+    return "No data available for the selected period.";
+  }
+
+  const feedbackResults: FeedbackQueryResult[] = await Promise.all(
+    feedbacks.map(async (feedback) => {
+      const user = await feedback.fetchUser();
+      return {
+        id: feedback.id,
+        created_at: feedback.createdAt,
+        userName: user?.fullName() || "",
+        userEmail: user?.email || "",
+        agentConfigurationId: feedback.agentConfigurationId,
+        agentConfigurationVersion: feedback.agentConfigurationVersion,
+        thumb: feedback.thumbDirection,
+        content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
+      };
+    })
+  );
+
+  return generateCsvFromQueryResult(feedbackResults);
+}
+
 function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
@@ -447,6 +508,7 @@ function generateCsvFromQueryResult(
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
+    | FeedbackQueryResult[]
 ) {
   if (rows.length === 0) {
     return "";

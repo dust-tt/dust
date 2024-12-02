@@ -27,6 +27,7 @@ import logger from "@app/logger/logger";
 import type { DataSourceResource } from "../resources/data_source_resource";
 
 const MAX_TABLE_COLUMNS = 512;
+const MAX_COLUMN_NAME_LENGTH = 1024;
 
 type CsvParsingError = {
   type:
@@ -49,6 +50,8 @@ type NotFoundError = {
   type: "table_not_found";
   message: string;
 };
+
+type DetectedHeadersType = { header: string[]; rowIndex: number };
 
 export type TableOperationError =
   | {
@@ -130,6 +133,9 @@ export async function upsertTableFromCsv({
   csv,
   truncate,
   useAppForHeaderDetection,
+  detectedHeaders,
+  title,
+  mimeType,
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
@@ -142,9 +148,17 @@ export async function upsertTableFromCsv({
   csv: string | null;
   truncate: boolean;
   useAppForHeaderDetection: boolean;
+  detectedHeaders?: DetectedHeadersType;
+  title?: string;
+  mimeType?: string;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const csvRowsRes = csv
-    ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
+    ? await rowsFromCsv({
+        auth,
+        csv,
+        useAppForHeaderDetection,
+        detectedHeaders,
+      })
     : null;
 
   const owner = auth.workspace();
@@ -188,7 +202,7 @@ export async function upsertTableFromCsv({
       return new Err(errorDetails);
     }
 
-    csvRows = csvRowsRes.value;
+    csvRows = csvRowsRes.value.rows;
   }
 
   if ((csvRows?.length ?? 0) > 500_000) {
@@ -223,6 +237,8 @@ export async function upsertTableFromCsv({
     timestamp: tableTimestamp,
     tags: tableTags,
     parents: tableParents,
+    title,
+    mimeType,
   });
 
   if (tableRes.isErr()) {
@@ -321,11 +337,18 @@ export async function rowsFromCsv({
   auth,
   csv,
   useAppForHeaderDetection,
+  detectedHeaders,
 }: {
   auth: Authenticator;
   csv: string;
   useAppForHeaderDetection: boolean;
-}): Promise<Result<CoreAPIRow[], CsvParsingError>> {
+  detectedHeaders?: DetectedHeadersType;
+}): Promise<
+  Result<
+    { detectedHeaders: DetectedHeadersType; rows: CoreAPIRow[] },
+    CsvParsingError
+  >
+> {
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
     return new Err({
@@ -334,22 +357,9 @@ export async function rowsFromCsv({
     });
   }
 
-  const headerRes = await detectHeaders(
-    auth,
-    csv,
-    delimiter,
-    useAppForHeaderDetection
-  );
-
-  if (useAppForHeaderDetection) {
-    // TODO Remove this logs before rolling out to customers has it exposes sensitive data !
-    // Enable static header detection for debugging
-    const headerResStatic = await detectHeaders(auth, csv, delimiter, false);
-    logger.info(
-      { headerRes, headerResStatic, useAppForHeaderDetection },
-      "Header detection result"
-    );
-  }
+  const headerRes = detectedHeaders
+    ? new Ok(detectedHeaders)
+    : await detectHeaders(auth, csv, delimiter, useAppForHeaderDetection);
 
   if (headerRes.isErr()) {
     return headerRes;
@@ -487,15 +497,23 @@ export async function rowsFromCsv({
     rows.push({ row_id: rowId, value: record });
   }
 
-  return new Ok(rows);
+  return new Ok({ detectedHeaders: { header, rowIndex }, rows });
 }
 
 async function staticHeaderDetection(
   firstRow: string[]
-): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
+): Promise<Result<DetectedHeadersType, CsvParsingError>> {
   const firstRecordCells = firstRow.map(
     (h, i) => h.trim().toLocaleLowerCase() || `col_${i}`
   );
+
+  if (firstRecordCells.some((h) => h.length > MAX_COLUMN_NAME_LENGTH)) {
+    return new Err({
+      type: "invalid_header",
+      message: `Column name is too long (over ${MAX_COLUMN_NAME_LENGTH} characters).`,
+    });
+  }
+
   const header = getSanitizedHeaders(firstRecordCells);
 
   if (header.isErr()) {
@@ -510,7 +528,7 @@ async function detectHeaders(
   csv: string,
   delimiter: string,
   useAppForHeaderDetection: boolean
-): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
+): Promise<Result<DetectedHeadersType, CsvParsingError>> {
   const headParser = parse(csv, { delimiter });
   const records = [];
   for await (const anyRecord of headParser) {

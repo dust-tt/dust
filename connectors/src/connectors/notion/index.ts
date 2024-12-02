@@ -168,6 +168,11 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
       await c.update({ connectionId });
 
+      // If connector was previously paused, unpause it.
+      if (c.isPaused()) {
+        await this.unpause();
+      }
+
       const dataSourceConfig = dataSourceConfigFromConnector(c);
       try {
         await launchNotionSyncWorkflow(c.id);
@@ -592,7 +597,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const memo = memoizationKey || uuidv4();
 
     try {
-      const parents = await getParents(this.connectorId, internalId, [], memo);
+      const parents = await getParents(
+        this.connectorId,
+        internalId,
+        [],
+        memo,
+        undefined
+      );
 
       return new Ok(parents);
     } catch (e) {

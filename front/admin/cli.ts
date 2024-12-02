@@ -4,16 +4,17 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
   getTextContentFromMessage,
-  renderConversationForModelMultiActions,
-} from "@app/lib/api/assistant/generation";
+  getTextRepresentationFromMessages,
+} from "@app/lib/api/assistant/utils";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -26,9 +27,9 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -47,7 +48,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const w = await Workspace.create({
-        sId: generateLegacyModelSId(),
+        sId: generateRandomModelSId(),
         name: args.name,
       });
 
@@ -59,7 +60,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const auth = await Authenticator.internalAdminForWorkspace(
         lightWorkspace.sId
       );
-      await VaultResource.makeDefaultsForWorkspace(auth, {
+      await SpaceResource.makeDefaultsForWorkspace(auth, {
         systemGroup,
         globalGroup,
       });
@@ -285,25 +286,13 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const getRes = await coreAPI.getDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
+      const gcRes = await garbageCollectGoogleDriveDocument(dataSource, {
         documentId: args.documentId,
       });
-      if (getRes.isErr()) {
-        throw new Error(
-          `Error while getting the document: ` + getRes.error.message
-        );
+      if (gcRes.isErr()) {
+        throw new Error(`Error deleting document: ${gcRes.error.message}`);
       }
-      const delRes = await coreAPI.deleteDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        documentId: args.documentId,
-      });
-      if (delRes.isErr()) {
-        throw new Error(`Error deleting document: ${delRes.error.message}`);
-      }
+
       console.log(`Data Source document deleted: ${args.documentId}`);
 
       return;
@@ -347,7 +336,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
       const prompt = "";
 
-      const convoRes = await renderConversationForModelMultiActions({
+      const convoRes = await renderConversationForModel(auth, {
         conversation,
         model,
         prompt,
@@ -361,17 +350,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const messages = renderedConvo.modelConversation.messages;
 
       const tokenCountRes = await tokenCountForTexts(
-        [
-          ...messages.map((m) => {
-            let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
-            if ("function_calls" in m) {
-              text += m.function_calls
-                .map((f) => `${f.name} ${f.arguments}`)
-                .join(" ");
-            }
-            return text;
-          }),
-        ],
+        getTextRepresentationFromMessages(messages),
         model
       );
       if (tokenCountRes.isErr()) {

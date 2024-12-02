@@ -1,18 +1,20 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorPermission,
   ContentNodesViewType,
   DataSourceType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
@@ -20,7 +22,8 @@ import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId
 interface UseConnectorPermissionsReturn<IncludeParents extends boolean> {
   resources: GetDataSourcePermissionsResponseBody<IncludeParents>["resources"];
   isResourcesLoading: boolean;
-  isResourcesError: any;
+  isResourcesError: boolean;
+  resourcesError: APIError | null;
 }
 
 export function useConnectorPermissions<IncludeParents extends boolean>({
@@ -40,6 +43,9 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   includeParents?: IncludeParents;
   viewType?: ContentNodesViewType;
 }): UseConnectorPermissionsReturn<IncludeParents> {
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const permissionsFetcher: Fetcher<
     GetDataSourcePermissionsResponseBody<IncludeParents>
   > = fetcher;
@@ -60,9 +66,20 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   });
 
   return {
-    resources: useMemo(() => (data ? data.resources : []), [data]),
+    resources: useMemo(
+      () =>
+        data
+          ? data.resources.filter(
+              (resource) =>
+                resource.providerVisibility !== "private" ||
+                featureFlags.includes("index_private_slack_channel")
+            )
+          : [],
+      [data, featureFlags]
+    ),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+    resourcesError: error ? (error.error as APIError) : null,
   };
 }
 
@@ -146,7 +163,7 @@ export function useToggleSlackChatBot({
   dataSource: DataSourceType;
   owner: LightWorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { mutateConfig } = useConnectorConfig({
     owner,

@@ -1,6 +1,14 @@
-import { Button, Hoverable, PriceTable, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Hoverable,
+  PriceTable,
+  RocketIcon,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type { BillingPeriod, PlanType } from "@dust-tt/types";
-import { Tab } from "@headlessui/react";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
 
@@ -12,18 +20,6 @@ import {
 } from "@app/lib/client/subscription";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
-
-interface PricePlanProps {
-  size: "sm" | "xs";
-  className?: string;
-  isTabs?: boolean;
-  plan?: PlanType;
-  onClickProPlan?: () => void;
-  onClickEnterprisePlan?: () => void;
-  isProcessing?: boolean;
-  flexCSS?: string;
-  display: PriceTableDisplay;
-}
 
 export type PriceTableDisplay = "landing" | "subscribe";
 
@@ -302,10 +298,16 @@ function EnterprisePriceTable({
   );
 }
 
+interface PricePlanProps {
+  plan?: PlanType;
+  onClickProPlan?: () => void;
+  onClickEnterprisePlan?: () => void;
+  isProcessing?: boolean;
+  flexCSS?: string;
+  display: PriceTableDisplay;
+}
+
 export function PricePlans({
-  size = "sm",
-  isTabs = false,
-  className = "",
   flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
@@ -313,89 +315,60 @@ export function PricePlans({
   isProcessing,
   display,
 }: PricePlanProps) {
-  if (isTabs) {
-    return (
+  return (
+    <>
+      {/* Tabs view for smaller screens (hidden on lg and above) */}
       <div
         className={classNames(
-          "mx-0 sm:mx-24",
-          "w-full max-w-md px-2 py-16 sm:px-0",
-          className
+          "mx-0 sm:mx-24 lg:hidden",
+          "w-full max-w-md px-2 sm:px-0"
         )}
       >
-        <Tab.Group>
-          <Tab.List
-            className={classNames(
-              "flex space-x-1 rounded-full border p-1 backdrop-blur",
-              "border-structure-300/30 bg-white/80",
-              "dark:border-structure-300-dark/30 dark:bg-structure-50-dark/80"
-            )}
-          >
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-3 text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
-                    ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
-                )
-              }
-            >
-              Pro
-            </Tab>
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-3 text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
-                    ? "bg-pink-400 text-white shadow dark:bg-pink-500"
-                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
-                )
-              }
-            >
-              Enterprise
-            </Tab>
-          </Tab.List>
-          <Tab.Panels className="mt-8">
-            <Tab.Panel>
+        <Tabs defaultValue="pro">
+          <TabsList>
+            <TabsTrigger value="pro" label="Pro" buttonVariant="outline" />
+            <TabsTrigger
+              value="enterprise"
+              label="Enterprise"
+              buttonVariant="outline"
+            />
+          </TabsList>
+          <div className="mt-8">
+            <TabsContent value="pro">
               <ProPriceTable
                 display={display}
-                size={size}
+                size="xs"
                 plan={plan}
                 isProcessing={isProcessing}
                 onClick={onClickProPlan}
               />
-            </Tab.Panel>
-            <Tab.Panel>
+            </TabsContent>
+            <TabsContent value="enterprise">
               <EnterprisePriceTable
-                size={size}
+                size="xs"
                 isProcessing={isProcessing}
                 onClick={onClickEnterprisePlan}
               />
-            </Tab.Panel>
-          </Tab.Panels>
-        </Tab.Group>
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
-    );
-  } else {
-    return (
-      <div className={classNames(flexCSS, className)}>
+
+      {/* Cards view for larger screens (hidden below lg) */}
+      <div className={classNames(flexCSS, "hidden lg:flex")}>
         <ProPriceTable
-          size={size}
+          size="sm"
           plan={plan}
           isProcessing={isProcessing}
           onClick={onClickProPlan}
           display={display}
         />
         <EnterprisePriceTable
-          size={size}
+          size="sm"
           isProcessing={isProcessing}
           onClick={onClickEnterprisePlan}
         />
       </div>
-    );
-  }
+    </>
+  );
 }

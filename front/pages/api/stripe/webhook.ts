@@ -24,7 +24,7 @@ import {
 import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -223,7 +223,7 @@ async function handler(
 
               await Subscription.create(
                 {
-                  sId: generateLegacyModelSId(),
+                  sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
                   planId: plan.id,
                   status: "active",

@@ -9,7 +9,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::stores::store::Store;
+use crate::stores::store::{Store, UpsertDocument};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -23,8 +23,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 use tokio_stream::{self as stream};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 /// Section is used to represent the structure of document to be taken into account during chunking.
@@ -206,10 +207,41 @@ pub fn make_document_id_hash(document_id: &str) -> String {
     format!("{}", hasher.finalize().to_hex())
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DocumentStatus {
+    Latest,
+    Superseded,
+    Deleted,
+}
+
+impl FromStr for DocumentStatus {
+    type Err = utils::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "latest" => Ok(DocumentStatus::Latest),
+            "superseded" => Ok(DocumentStatus::Superseded),
+            "deleted" => Ok(DocumentStatus::Deleted),
+            _ => Err(utils::ParseError::with_message("Unknown DocumentStatus"))?,
+        }
+    }
+}
+
+impl ToString for DocumentStatus {
+    fn to_string(&self) -> String {
+        match self {
+            DocumentStatus::Latest => "latest".to_string(),
+            DocumentStatus::Superseded => "superseded".to_string(),
+            DocumentStatus::Deleted => "deleted".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct DocumentVersion {
     pub created: u64,
     pub hash: String,
+    pub status: DocumentStatus,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -572,6 +604,22 @@ impl DataSource {
             ))?;
         }
 
+        if parents.is_empty() {
+            warn!(
+                document_id = document_id,
+                timestamp = ?timestamp,
+                parents = ?parents,
+                "Upserting a document without any parent"
+            );
+        } else if parents[0] != document_id {
+            warn!(
+                document_id = document_id,
+                timestamp = ?timestamp,
+                parents = ?parents,
+                "Upserting a document that is not self-referenced as its parent"
+            );
+        }
+
         let store = store.clone();
 
         let current_system_tags = if preserve_system_tags {
@@ -677,16 +725,38 @@ impl DataSource {
             .await?;
         }
 
-        // Upsert document (SQL)
-        store
-            .upsert_data_source_document(
-                &self.project,
-                &self.data_source_id,
-                &main_collection_document,
-            )
+        // Store upsert does not save the text and token count.
+        // These fields don't actually exist in the SQL table.
+        // Because of this, we have to manually construct the UpsertDocument, and save
+        // owned values for text and token count so we can return them.
+        // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
+        let doc_text = main_collection_document.text;
+        let doc_token_count = main_collection_document.token_count;
+        let params = UpsertDocument {
+            document_id: main_collection_document.document_id,
+            timestamp: main_collection_document.timestamp,
+            tags: main_collection_document.tags,
+            parents: main_collection_document.parents,
+            source_url: main_collection_document.source_url,
+            hash: main_collection_document.hash,
+            text_size: main_collection_document.text_size,
+            chunk_count: main_collection_document.chunk_count,
+            chunks: main_collection_document.chunks,
+        };
+
+        // Upsert document (SQL).
+        let mut doc = store
+            .upsert_data_source_document(&self.project, self.data_source_id.clone(), params)
             .await?;
 
-        Ok(main_collection_document)
+        doc.text = doc_text;
+        doc.token_count = doc_token_count;
+
+        // Clean-up old superseded versions.
+        self.scrub_document_superseded_versions(store, &document_id)
+            .await?;
+
+        Ok(doc)
     }
 
     async fn upsert_for_embedder(
@@ -816,9 +886,9 @@ impl DataSource {
             .filter(|ci| !embeddings.contains_key(&ci.hash))
             .collect::<Vec<_>>();
 
-        // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
+        // Chunk splits into a vectors of 128 chunks (Vec<Vec<String>>)
         let chunked_splits = splits_to_embbed
-            .chunks(8)
+            .chunks(128)
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<_>>();
 
@@ -1651,10 +1721,17 @@ impl DataSource {
             None => Ok(()),
         }?;
 
-        // Delete document (SQL)
+        // Delete document (SQL). This one marks the document as deleted.
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
-            .await
+            .await?;
+
+        // We also scrub it directly. We used to scrub async but now that we store a GCS version
+        // for each data_source_documents entry we can scrub directly at the time of delete.
+        self.scrub_document_deleted_versions(store, document_id)
+            .await?;
+
+        Ok(())
     }
 
     async fn delete_document_for_embedder(
@@ -1692,6 +1769,7 @@ impl DataSource {
                 Ok(_) => {
                     info!(
                         data_source_internal_id = self.internal_id(),
+                        document_id = document_id,
                         cluster = ?self.shadow_write_qdrant_cluster(),
                         collection = qdrant_client.collection_name(embedder_config),
                         "[SHADOW_WRITE_SUCCESS] Delete points"
@@ -1705,16 +1783,161 @@ impl DataSource {
                         error = %e,
                         "[SHADOW_WRITE_FAIL] Delete points"
                     );
+                    return Err(e);
                 }
             },
             None => (),
         }
 
-        qdrant_client
+        match qdrant_client
             .delete_points(embedder_config, &self.internal_id, filter)
+            .await
+        {
+            Ok(_) => {
+                info!(
+                    data_source_internal_id = self.internal_id(),
+                    document_id = document_id,
+                    collection = qdrant_client.collection_name(embedder_config),
+                    "[SUCCESS] Delete points"
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    data_source_internal_id = self.internal_id(),
+                    document_id = document_id,
+                    collection = qdrant_client.collection_name(embedder_config),
+                    error = %e,
+                    "[FAIL] Delete points"
+                );
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn scrub_document_deleted_versions(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<Vec<DocumentVersion>> {
+        let store = store.clone();
+
+        let (versions, _) = store
+            .list_data_source_document_versions(
+                &self.project,
+                &self.data_source_id,
+                document_id,
+                None,
+                &None,
+                &None,
+            )
             .await?;
 
-        Ok(())
+        let versions = versions
+            .into_iter()
+            .filter(|v| v.status == DocumentStatus::Deleted)
+            .collect::<Vec<_>>();
+
+        let mut scrubbed_versions: Vec<DocumentVersion> = vec![];
+        for v in versions {
+            let document_id_hash = make_document_id_hash(document_id);
+
+            FileStorageDocument::scrub_document_version_from_file_storage(
+                &self,
+                document_id,
+                &document_id_hash,
+                &v,
+            )
+            .await?;
+
+            store
+                .delete_data_source_document_version(
+                    &self.project,
+                    &self.data_source_id,
+                    document_id,
+                    &v,
+                )
+                .await?;
+
+            info!(
+                data_source_internal_id = self.internal_id,
+                document_id = document_id,
+                version_created = v.created,
+                version_hash = v.hash,
+                "Scrubbed deleted document version"
+            );
+
+            scrubbed_versions.push(v);
+        }
+
+        Ok(scrubbed_versions)
+    }
+
+    pub async fn scrub_document_superseded_versions(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<Vec<DocumentVersion>> {
+        let (versions, _) = store
+            .list_data_source_document_versions(
+                &self.project,
+                &self.data_source_id,
+                document_id,
+                None,
+                &None,
+                &None,
+            )
+            .await?;
+
+        // We scrub only superseded version keeping always the last one as well as the ones that
+        // have been created within the past 24h. Document versions are ordered by creation date
+        // (descending) but we resort here just to be safe in case the API of the store changes.
+        let now = utils::now();
+        let scrubbed_versions = versions
+            .into_iter()
+            .sorted_by(|a, b| Ord::cmp(&b.created, &a.created))
+            .filter(|v| v.status == DocumentStatus::Superseded)
+            .skip(1)
+            .filter(|v| now - v.created > 24 * 60 * 60 * 1000)
+            .collect::<Vec<_>>();
+
+        for v in scrubbed_versions.iter() {
+            let document_id_hash = make_document_id_hash(document_id);
+
+            FileStorageDocument::scrub_document_version_from_file_storage(
+                &self,
+                document_id,
+                &document_id_hash,
+                v,
+            )
+            .await?;
+
+            store
+                .delete_data_source_document_version(
+                    &self.project,
+                    &self.data_source_id,
+                    document_id,
+                    v,
+                )
+                .await?;
+
+            info!(
+                data_source_internal_id = self.internal_id,
+                document_id = document_id,
+                version_created = v.created,
+                version_hash = v.hash,
+                "Scrubbed superseded document version"
+            );
+        }
+
+        info!(
+            data_source_internal_id = self.internal_id,
+            document_id = document_id,
+            scrubbed_version_count = scrubbed_versions.len(),
+            "Scrubbed superseded document versions"
+        );
+
+        Ok(scrubbed_versions)
     }
 
     pub async fn delete(
@@ -1749,7 +1972,7 @@ impl DataSource {
 
         // Delete tables (concurrently).
         let (tables, total) = store
-            .list_tables(&self.project, &self.data_source_id, &None, &None, None)
+            .list_data_source_tables(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
         try_join_all(
             tables

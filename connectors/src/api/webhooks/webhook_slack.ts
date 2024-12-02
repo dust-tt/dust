@@ -7,6 +7,7 @@ import {
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackSyncOneMessageWorkflow,
@@ -420,7 +421,53 @@ const _webhookSlackAPIHandler = async (
             status_code: 400,
           });
         }
-        break;
+      }
+      // message on private channels to draw attention on data sensitivity
+      case "member_joined_channel": {
+        if (!event.channel) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Missing channel in request body for channel_joined event",
+            },
+            status_code: 400,
+          });
+        }
+
+        const slackConfig =
+          await SlackConfigurationResource.fetchByActiveBot(teamId);
+
+        if (!slackConfig) {
+          return apiError(req, res, {
+            api_error: {
+              type: "connector_configuration_not_found",
+              message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
+            },
+            status_code: 404,
+          });
+        }
+        const myUserId = await getBotUserIdMemoized(slackConfig.connectorId);
+
+        // if the bot is not the one joining the channel, ignore
+        if (event.user !== myUserId) {
+          return res.status(200).send();
+        }
+
+        const slackClient = await getSlackClient(slackConfig.connectorId);
+
+        const channelInfo = await slackClient.conversations.info({
+          channel: event.channel,
+        });
+
+        if (channelInfo?.channel?.is_private) {
+          await slackClient.chat.postMessage({
+            channel: event.channel,
+            text: "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
+          });
+        }
+
+        return res.status(200).send();
       }
       /**
        * `channel_left`, `channel_deleted` handler.

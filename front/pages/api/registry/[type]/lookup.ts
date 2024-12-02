@@ -11,7 +11,7 @@ import { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -79,6 +79,15 @@ async function handler(
 
   const dustGroupIds = rawDustGroupIds.split(",");
 
+  // by default, data sources from the "conversations" space are not allowed
+  // except for our packaged dust-apps called internally, see
+  // https://github.com/dust-tt/tasks/issues/1658 in particular
+  // "assistant-retrieval-v2" that needs access to the conversation space we
+  // determine that we are on packaged apps by checking whether this is a system
+  // run
+
+  const allowConversationsDataSources = req.query.is_system_run === "true";
+
   switch (req.method) {
     case "GET":
       switch (req.query.type) {
@@ -111,7 +120,8 @@ async function handler(
           ) {
             const dataSourceViewRes = await handleDataSourceView(
               auth,
-              dataSourceOrDataSourceViewId
+              dataSourceOrDataSourceViewId,
+              allowConversationsDataSources
             );
             if (dataSourceViewRes.isErr()) {
               logger.info(
@@ -131,7 +141,8 @@ async function handler(
           } else {
             const dataSourceRes = await handleDataSource(
               auth,
-              dataSourceOrDataSourceViewId
+              dataSourceOrDataSourceViewId,
+              allowConversationsDataSources
             );
             if (dataSourceRes.isErr()) {
               logger.info(
@@ -174,39 +185,46 @@ export default withLogging(handler);
 
 async function handleDataSourceView(
   auth: Authenticator,
-  dataSourceViewId: string
+  dataSourceViewId: string,
+  allowConversationsDataSources: boolean
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
     dataSourceViewId
   );
-  if (!dataSourceView) {
+
+  if (
+    !dataSourceView ||
+    (!allowConversationsDataSources &&
+      dataSourceView.space?.kind === "conversations")
+  ) {
     return new Err(new Error("Data source view not found."));
   }
 
-  if (dataSourceView.canRead(auth)) {
-    const { dataSource } = dataSourceView;
-
-    return new Ok({
-      project_id: parseInt(dataSource.dustAPIProjectId),
-      data_source_id: dataSource.dustAPIDataSourceId,
-      view_filter: {
-        tags: null,
-        parents: {
-          in: dataSourceView.parentsIn,
-          not: null,
-        },
-        timestamp: null,
-      },
-    });
+  if (!dataSourceView.canRead(auth)) {
+    return new Err(new Error("No access to data source view."));
   }
 
-  return new Err(new Error("No access to data source view."));
+  const { dataSource } = dataSourceView;
+
+  return new Ok({
+    project_id: parseInt(dataSource.dustAPIProjectId),
+    data_source_id: dataSource.dustAPIDataSourceId,
+    view_filter: {
+      tags: null,
+      parents: {
+        in: dataSourceView.parentsIn,
+        not: null,
+      },
+      timestamp: null,
+    },
+  });
 }
 
 async function handleDataSource(
   auth: Authenticator,
-  dataSourceId: string
+  dataSourceId: string,
+  allowConversationsDataSources: boolean
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   logger.info(
     {
@@ -227,22 +245,31 @@ async function handleDataSource(
     // TODO(DATASOURCE_SID): Clean-up
     { origin: "registry_lookup" }
   );
-  if (!dataSource) {
+
+  if (
+    !dataSource ||
+    (!allowConversationsDataSources &&
+      dataSource.space?.kind === "conversations")
+  ) {
     return new Err(new Error("Data source not found."));
   }
 
   // Until we pass the data source view id for managed data sources, we need to fetch it here.
   // TODO(DATASOURCE_SID) Clean-up Remove once dust apps rely on the data source view id for managed data sources.
   if (isManaged(dataSource)) {
-    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const dataSourceView =
-      await DataSourceViewResource.listForDataSourcesInVault(
+      await DataSourceViewResource.listForDataSourcesInSpace(
         auth,
         [dataSource],
-        globalVault
+        globalSpace
       );
 
-    return handleDataSourceView(auth, dataSourceView[0].sId);
+    return handleDataSourceView(
+      auth,
+      dataSourceView[0].sId,
+      allowConversationsDataSources
+    );
   }
 
   if (dataSource.canRead(auth)) {

@@ -44,14 +44,27 @@ module.exports = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value:
-              "frame-ancestors 'self' https://*.salesforce.com https://*.force.com;",
+            value: "frame-ancestors 'self'",
           },
           {
             key: "Strict-Transport-Security",
             value: "max-age=86400", // 1 day in seconds
           },
         ],
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      // Legacy endpoint rewrite to maintain compatibility for users still hitting `/vaults/`
+      // endpoints on the public API.
+      {
+        source: "/api/v1/w/:wId/vaults/:vId/:path*",
+        destination: "/api/v1/w/:wId/spaces/:vId/:path*",
+      },
+      {
+        source: "/api/v1/w/:wId/vaults",
+        destination: "/api/v1/w/:wId/spaces",
       },
     ];
   },

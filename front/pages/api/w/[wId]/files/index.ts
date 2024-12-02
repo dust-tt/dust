@@ -13,7 +13,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -58,7 +58,8 @@ async function handler(
         });
       }
 
-      const { contentType, fileName, fileSize, useCase } = bodyValidation.right;
+      const { contentType, fileName, fileSize, useCase, useCaseMetadata } =
+        bodyValidation.right;
 
       if (!isSupportedFileContentType(contentType)) {
         return apiError(req, res, {
@@ -97,6 +98,7 @@ async function handler(
         userId: user.id,
         workspaceId: owner.id,
         useCase,
+        useCaseMetadata: useCaseMetadata,
       });
 
       res.status(200).json({ file: file.toJSONWithUploadUrl(auth) });

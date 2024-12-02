@@ -1,8 +1,9 @@
-import type { DustAPI } from "@dust-tt/client";
 import type {
-  AgentActionType,
-  AgentMessageType,
-  ConversationType,
+  AgentActionPublicType,
+  ConversationPublicType,
+  DustAPI,
+} from "@dust-tt/client";
+import type {
   LightAgentConfigurationType,
   Result,
   UserMessageType,
@@ -27,7 +28,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 interface StreamConversationToSlackParams {
   assistantName: string;
   connector: ConnectorResource;
-  conversation: ConversationType;
+  conversation: ConversationPublicType;
   mainMessage: ChatPostMessageResponse;
   slack: {
     slackChannelId: string;
@@ -122,26 +123,9 @@ export async function streamConversationToSlack(
     { adhereToRateLimit: false }
   );
 
-  const agentMessages = conversation.content
-    .map((versions) => {
-      const m = versions[versions.length - 1];
-      return m;
-    })
-    .filter((m) => {
-      return (
-        m &&
-        m.type === "agent_message" &&
-        m.parentMessageId === userMessage?.sId
-      );
-    });
-  if (agentMessages.length === 0) {
-    return new Err(new Error("Failed to retrieve agent message"));
-  }
-  const agentMessage = agentMessages[0] as AgentMessageType;
-
-  const streamRes = await dustAPI.streamAgentMessageEvents({
+  const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
-    message: agentMessage,
+    userMessageId: userMessage.sId,
   });
 
   if (streamRes.isErr()) {
@@ -149,7 +133,7 @@ export async function streamConversationToSlack(
   }
 
   let answer = "";
-  const actions: AgentActionType[] = [];
+  const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "retrieval_params":
@@ -161,6 +145,7 @@ export async function streamConversationToSlack(
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "conversation_include_file_params":
         await postSlackMessageUpdate(
           {
             isComplete: false,

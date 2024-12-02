@@ -32,6 +32,7 @@ import {
   GoogleDriveFolders,
   GoogleDriveSyncToken,
 } from "@connectors/lib/models/google_drive";
+import { redisClient } from "@connectors/lib/redis";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -332,6 +333,10 @@ export async function incrementalSync(
     activity: "incrementalSync",
     runInstance: uuid4(),
   });
+  const redisCli = await redisClient({
+    origin: "google_drive_incremental_sync",
+  });
+
   try {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
@@ -408,6 +413,18 @@ export async function incrementalSync(
       if (!change.file.id) {
         continue;
       }
+
+      if (
+        await alreadySeenAndIgnored({
+          fileId: change.file.id,
+          connectorId,
+          startSyncTs,
+          redisCli,
+        })
+      ) {
+        continue;
+      }
+
       const file = await driveObjectToDustType(change.file, authCredentials);
       if (
         !(await objectIsInFolderSelection(
@@ -430,6 +447,12 @@ export async function incrementalSync(
         if (localFile) {
           await deleteOneFile(connectorId, file);
         }
+        await markAsSeenAndIgnored({
+          fileId: change.file.id,
+          connectorId,
+          startSyncTs,
+          redisCli,
+        });
         continue;
       }
 
@@ -795,4 +818,38 @@ export async function folderHasChildren(
   }
 
   return res.data.files?.length > 0;
+}
+
+async function alreadySeenAndIgnored({
+  fileId,
+  connectorId,
+  startSyncTs,
+  redisCli,
+}: {
+  fileId: string;
+  connectorId: ModelId;
+  startSyncTs: number;
+  redisCli: Awaited<ReturnType<typeof redisClient>>;
+}) {
+  const key = `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
+  const val = await redisCli.get(key);
+  return val !== null;
+}
+
+async function markAsSeenAndIgnored({
+  fileId,
+  connectorId,
+  startSyncTs,
+  redisCli,
+}: {
+  fileId: string;
+  connectorId: ModelId;
+  startSyncTs: number;
+  redisCli: Awaited<ReturnType<typeof redisClient>>;
+}) {
+  const key = `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
+  await redisCli.set(key, "1", {
+    PX: 1000 * 60 * 60 * 24, // 1 day
+  });
+  return;
 }

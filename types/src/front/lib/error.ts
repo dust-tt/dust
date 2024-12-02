@@ -10,11 +10,15 @@ export type APIErrorType =
   | "not_authenticated"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
+  | "invalid_basic_authorization_error"
+  | "invalid_oauth_token_error"
+  | "expired_oauth_token_error"
   | "invalid_api_key_error"
   | "internal_server_error"
   | "invalid_request_error"
   | "invalid_rows_request_error"
   | "user_not_found"
+  | "content_too_large"
   | "data_source_error"
   | "data_source_not_found"
   | "data_source_view_not_found"
@@ -89,9 +93,9 @@ export type APIErrorType =
   | "file_type_not_supported"
   // Runs:
   | "run_not_found"
-  // Vaults:
-  | "vault_already_exists"
-  | "vault_not_found"
+  // Spaces:
+  | "space_already_exists"
+  | "space_not_found"
   // Groups:
   | "group_not_found"
   // Conversations:
@@ -109,7 +113,7 @@ export type APIError = {
   connectors_error?: ConnectorsAPIError;
 };
 
-export function isAPIError(obj: unknown): obj is APIError {
+function isAPIError(obj: unknown): obj is APIError {
   return (
     typeof obj === "object" &&
     obj !== null &&

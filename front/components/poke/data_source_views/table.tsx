@@ -19,7 +19,7 @@ function prepareDataSourceViewsForDisplay(
       ...dsv,
       dataSourceLink: `/poke/${owner.sId}/data_sources/${dsv.dataSource.sId}`,
       dataSourceName: getDisplayNameForDataSource(dsv.dataSource),
-      dataSourceViewLink: `/poke/${owner.sId}/vaults/${dsv.vaultId}/data_source_views/${dsv.sId}`,
+      dataSourceViewLink: `/poke/${owner.sId}/spaces/${dsv.spaceId}/data_source_views/${dsv.sId}`,
       editedAt: dsv.editedByUser?.editedAt ?? undefined,
       editedBy: dsv.editedByUser?.fullName ?? undefined,
       name: dsv.sId,

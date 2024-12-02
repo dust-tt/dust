@@ -1,9 +1,9 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PluginListItem } from "@app/lib/api/poke/types";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
@@ -43,9 +43,7 @@ async function handler(
         });
       }
 
-      const plugins = pluginManager.getPluginsForResourceType(
-        resourceType as string
-      );
+      const plugins = pluginManager.getPluginsForResourceType(resourceType);
 
       const pluginList = plugins.map((p) => ({
         id: p.manifest.id,

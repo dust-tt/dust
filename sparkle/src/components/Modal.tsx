@@ -178,8 +178,10 @@ export function Modal({
                 }
               />
               <div
+                tabIndex={1}
+                autoFocus
                 className={classNames(
-                  "s-pb-6 s-pt-16",
+                  "s-pb-6 s-pt-16 focus-visible:s-outline-none",
                   innerContainerClasses,
                   className ?? ""
                 )}

@@ -47,7 +47,7 @@ const breakpoints = {
 const getWindowWidth = () => (isBrowser ? window.innerWidth : 0);
 
 const titleClassNames = {
-  base: "s-truncate s-font-medium s-text-element-900 s-w-full",
+  base: "s-truncate s-font-medium s-text-foreground s-w-full",
   list: "s-text-base",
   minimal: `s-overflow-hidden s-whitespace-nowrap ${
     getWindowWidth() <= breakpoints.sm
@@ -59,7 +59,7 @@ const titleClassNames = {
 };
 
 const subtitleClassNames = {
-  base: "s-font-normal s-text-element-700 s-truncate s-w-full",
+  base: "s-font-normal s-text-muted-foreground s-truncate s-w-full",
   list: "s-text-sm",
   minimal: `s-overflow-hidden s-whitespace-nowrap ${
     getWindowWidth() <= breakpoints.sm
@@ -71,8 +71,8 @@ const subtitleClassNames = {
 };
 
 const descriptionClassNames = {
-  base: "s-font-normal s-mb-1",
-  list: "s-text-base s-text-element-800 s-line-clamp-3",
+  base: "s-font-normal s-text-muted-foreground s-mb-1",
+  list: "s-text-base s-text-muted-foreground s-line-clamp-3",
 };
 
 function renderVariantContent(
@@ -160,7 +160,7 @@ const MinimalVariantContent = ({
     <>
       <div
         id="assistant-container"
-        className="s-flex s-grow s-flex-col s-justify-start s-gap-2 s-overflow-hidden s-py-1"
+        className="s-flex s-grow s-flex-col s-justify-start s-gap-2 s-overflow-hidden"
         onClick={(e) => {
           e.stopPropagation();
           onClick?.();

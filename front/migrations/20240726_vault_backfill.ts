@@ -5,7 +5,7 @@
 // import { Workspace } from "@app/lib/models/workspace";
 // import { GroupResource } from "@app/lib/resources/group_resource";
 // import { DataSource } from "@app/lib/resources/storage/models/data_source";
-// import { VaultResource } from "@app/lib/resources/vault_resource";
+// import { SpaceResource } from "@app/lib/resources/vault_resource";
 // import { renderLightWorkspaceType } from "@app/lib/workspace";
 // import { makeScript } from "@app/scripts/helpers";
 //
@@ -33,7 +33,7 @@
 //                 throw new Error("System or global group not found.");
 //               }
 //               const { systemVault, globalVault } =
-//                 await VaultResource.makeDefaultsForWorkspace(
+//                 await SpaceResource.makeDefaultsForWorkspace(
 //                   renderLightWorkspaceType({ workspace: w }),
 //                   {
 //                     systemGroup: systemGroup.value,

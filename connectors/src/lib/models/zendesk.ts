@@ -9,6 +9,60 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
+function throwOnUnsafeInteger(value: number | null) {
+  if (value !== null && !Number.isSafeInteger(value)) {
+    throw new Error(`Value must be a safe integer: ${value}`);
+  }
+}
+
+export class ZendeskTimestampCursor extends Model<
+  InferAttributes<ZendeskTimestampCursor>,
+  InferCreationAttributes<ZendeskTimestampCursor>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  // start date of the last successful sync
+  declare timestampCursor: Date;
+
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
+}
+
+ZendeskTimestampCursor.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    timestampCursor: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "zendesk_timestamp_cursors",
+    indexes: [{ fields: ["connectorId"], unique: true }],
+  }
+);
+ConnectorModel.hasMany(ZendeskTimestampCursor, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+ZendeskTimestampCursor.belongsTo(ConnectorModel);
+
 export class ZendeskConfiguration extends Model<
   InferAttributes<ZendeskConfiguration>,
   InferCreationAttributes<ZendeskConfiguration>
@@ -18,7 +72,7 @@ export class ZendeskConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare subdomain: string;
-  declare conversationsSlidingWindow: number;
+  declare retentionPeriodDays: number;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -44,10 +98,10 @@ ZendeskConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    conversationsSlidingWindow: {
+    retentionPeriodDays: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 90,
+      defaultValue: 180, // approximately 6 months
     },
   },
   {
@@ -102,15 +156,16 @@ ZendeskBrand.init(
       defaultValue: DataTypes.NOW,
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     subdomain: {
@@ -166,6 +221,7 @@ export class ZendeskCategory extends Model<
   declare permission: "read" | "none";
 
   declare name: string;
+  declare description: string | null;
   declare url: string;
 
   declare lastUpsertedTs?: Date;
@@ -191,19 +247,25 @@ ZendeskCategory.init(
       defaultValue: DataTypes.NOW,
     },
     categoryId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     permission: {
@@ -250,7 +312,7 @@ export class ZendeskArticle extends Model<
   declare name: string;
   declare url: string;
 
-  declare lastUpsertedTs: Date;
+  declare lastUpsertedTs: Date | null;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -273,23 +335,26 @@ ZendeskArticle.init(
       defaultValue: DataTypes.NOW,
     },
     articleId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     categoryId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     permission: {
@@ -332,24 +397,10 @@ export class ZendeskTicket extends Model<
   declare brandId: number;
   declare permission: "read" | "none";
 
-  declare assigneeId: number;
-  declare groupId: number;
-  declare organizationId: number;
-
-  declare name: string;
-  declare description: string;
   declare subject: string;
-  declare requesterMail: string;
   declare url: string;
 
-  declare satisfactionScore: string;
-  declare satisfactionComment: string;
-
-  declare status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
-  declare tags: string[];
-  declare type: "problem" | "incident" | "question" | "task";
-  declare customFields: string[];
-
+  declare ticketUpdatedAt: Date;
   declare lastUpsertedTs: Date;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -372,73 +423,30 @@ ZendeskTicket.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    ticketId: {
-      type: DataTypes.INTEGER,
+    url: {
+      type: DataTypes.TEXT,
       allowNull: false,
-    },
-    brandId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    groupId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    assigneeId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    organizationId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    satisfactionScore: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    satisfactionComment: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     subject: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
-    description: {
-      type: DataTypes.STRING,
+    ticketId: {
+      type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { throwOnUnsafeInteger },
     },
-    requesterMail: {
-      type: DataTypes.STRING,
+    brandId: {
+      type: DataTypes.BIGINT,
       allowNull: false,
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    tags: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-    },
-    url: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    type: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    customFields: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
+      validate: { throwOnUnsafeInteger },
     },
     permission: {
       type: DataTypes.STRING,
+      allowNull: false,
+    },
+    ticketUpdatedAt: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
     lastUpsertedTs: {
@@ -460,6 +468,7 @@ ZendeskTicket.init(
     ],
   }
 );
+
 ConnectorModel.hasMany(ZendeskTicket, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",

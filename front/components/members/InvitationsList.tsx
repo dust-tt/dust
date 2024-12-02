@@ -3,7 +3,6 @@ import {
   ChevronRightIcon,
   Chip,
   DataTable,
-  Icon,
   Page,
 } from "@dust-tt/sparkle";
 import type { MembershipInvitationType, WorkspaceType } from "@dust-tt/types";
@@ -54,6 +53,7 @@ export function InvitationsList({
   const columns = [
     {
       id: "inviteEmail",
+      header: "Invitation Email",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <span>{info.row.original.inviteEmail}</span>
@@ -65,6 +65,7 @@ export function InvitationsList({
     },
     {
       id: "initialRole",
+      header: "Role",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <Chip
@@ -80,14 +81,6 @@ export function InvitationsList({
         width: "6rem",
       },
     },
-    {
-      id: "action",
-      cell: () => (
-        <DataTable.CellContent>
-          <Icon visual={ChevronRightIcon} className="text-element-600" />
-        </DataTable.CellContent>
-      ),
-    },
   ];
 
   return (
@@ -99,35 +92,37 @@ export function InvitationsList({
           onClose={() => setSelectedInvite(null)}
         />
       )}
-      {filteredInvitations.length > 0 && (
-        <Page.H variant="h5">Invitations</Page.H>
-      )}
+      <div className="flex flex-col gap-2">
+        {filteredInvitations.length > 0 && (
+          <Page.H variant="h5">Invitations</Page.H>
+        )}
 
-      {isInvitationsLoading ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
-            <div className="hidden sm:block">
-              <Avatar size="xs" />
-            </div>
-            <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-              <div className="font-medium text-element-900">Loading...</div>
-              <div className="grow font-normal text-element-700"></div>
-            </div>
-            <div>
-              <Chip size="xs" color="slate">
-                Loading...
-              </Chip>
-            </div>
-            <div className="hidden sm:block">
-              <ChevronRightIcon />
+        {isInvitationsLoading ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+              <div className="hidden sm:block">
+                <Avatar size="xs" />
+              </div>
+              <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                <div className="font-medium text-element-900">Loading...</div>
+                <div className="grow font-normal text-element-700"></div>
+              </div>
+              <div>
+                <Chip size="xs" color="slate">
+                  Loading...
+                </Chip>
+              </div>
+              <div className="hidden sm:block">
+                <ChevronRightIcon />
+              </div>
             </div>
           </div>
-        </div>
-      ) : (
-        filteredInvitations.length > 0 && (
-          <DataTable data={rows} columns={columns} />
-        )
-      )}
+        ) : (
+          filteredInvitations.length > 0 && (
+            <DataTable data={rows} columns={columns} />
+          )
+        )}
+      </div>
     </>
   );
 }

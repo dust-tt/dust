@@ -1,38 +1,63 @@
-import { DropdownMenu } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+  Label,
+} from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 
+import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+
+interface WorkspacePickerProps {
+  onWorkspaceUpdate: (w: LightWorkspaceType) => void;
+  user: UserTypeWithWorkspaces;
+  workspace: LightWorkspaceType;
+}
+
 export default function WorkspacePicker({
+  onWorkspaceUpdate,
   user,
   workspace,
-  onWorkspaceUpdate,
-  displayDropDownOrigin,
-}: {
-  user: UserTypeWithWorkspaces;
-  workspace: LightWorkspaceType | null;
-  readOnly: boolean;
-  displayDropDownOrigin: "topRight" | "topLeft";
-  onWorkspaceUpdate: (w: LightWorkspaceType) => void;
-}) {
-  return (
-    <DropdownMenu className="flex">
-      <DropdownMenu.Button
-        label={workspace ? workspace.name : "Select workspace"}
-      />
+}: WorkspacePickerProps) {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
 
-      <DropdownMenu.Items origin={displayDropDownOrigin}>
-        {user.workspaces.map((w) => {
-          return (
-            <DropdownMenu.Item
-              key={w.sId}
-              onClick={() => void onWorkspaceUpdate(w)}
-              label={w.name}
-            />
-          );
-        })}
-      </DropdownMenu.Items>
-    </DropdownMenu>
+  return (
+    <div className="flex flex-row items-center gap-1 px-3 py-2">
+      <Label className="text-xs text-muted-foreground">Workspace:</Label>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={workspace ? workspace.name : "Select workspace"}
+            variant="ghost"
+            size="xs"
+            isSelect
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuRadioGroup value={workspace.name}>
+            {user.workspaces.map((w) => {
+              return (
+                <DropdownMenuRadioItem
+                  key={w.sId}
+                  onClick={async () => {
+                    await setNavigationSelection({ lastWorkspaceId: w.sId });
+                    void onWorkspaceUpdate(w);
+                  }}
+                  value={w.name}
+                >
+                  {w.name}
+                </DropdownMenuRadioItem>
+              );
+            })}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }

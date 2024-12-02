@@ -47,13 +47,14 @@ export function ViewDataSourceViewTable({
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Space</PokeTableHead>
-                <PokeTableCell>
-                  {dataSourceView.vault.name} ({dataSourceView.vault.sId})
-                </PokeTableCell>
+                <PokeTableCellWithLink
+                  href={`/poke/${owner.sId}/spaces/${dataSourceView.space.sId}`}
+                  content={`${dataSourceView.space.name} (${dataSourceView.space.sId})`}
+                />
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Space Type</PokeTableHead>
-                <PokeTableCell>{dataSourceView.vault.kind}</PokeTableCell>
+                <PokeTableCell>{dataSourceView.space.kind}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Data source</PokeTableHead>

@@ -2,11 +2,13 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
+  Input,
   Modal,
   Page,
 } from "@dust-tt/sparkle";
+import { isValidZendeskSubdomain } from "@dust-tt/types";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
@@ -14,7 +16,7 @@ type CreateConnectionConfirmationModalProps = {
   connectorProviderConfiguration: ConnectorProviderConfiguration;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (extraConfig: Record<string, string>) => void;
 };
 
 export function CreateConnectionConfirmationModal({
@@ -24,10 +26,24 @@ export function CreateConnectionConfirmationModal({
   onConfirm,
 }: CreateConnectionConfirmationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
+
+  const isExtraConfigValid = useCallback(
+    (extraConfig: Record<string, string>) => {
+      if (connectorProviderConfiguration.connectorProvider === "zendesk") {
+        return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+      } else {
+        return true;
+      }
+    },
+    [connectorProviderConfiguration.connectorProvider]
+  );
 
   useEffect(() => {
     if (isOpen) {
       setIsLoading(false);
+      // Clean-up extraConfig at mount since the component is reused across providers.
+      setExtraConfig({});
     }
   }, [isOpen, setIsLoading]);
 
@@ -56,17 +72,6 @@ export function CreateConnectionConfirmationModal({
               icon={BookOpenIcon}
             />
           </a>
-          {connectorProviderConfiguration.limitations && (
-            <div className="flex flex-col gap-y-2">
-              <div className="grow text-sm font-medium text-element-800">
-                Limitations
-              </div>
-              <div className="text-sm font-normal text-element-700">
-                {connectorProviderConfiguration.limitations}
-              </div>
-            </div>
-          )}
-
           {connectorProviderConfiguration.connectorProvider ===
             "google_drive" && (
             <>
@@ -78,7 +83,7 @@ export function CreateConnectionConfirmationModal({
                   Dust's use of information received from the Google APIs will
                   adhere to{" "}
                   <Link
-                    className="s-text-action-500"
+                    className="text-action-500"
                     href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
                   >
                     Google API Services User Data Policy
@@ -106,17 +111,42 @@ export function CreateConnectionConfirmationModal({
             </>
           )}
 
+          {connectorProviderConfiguration.limitations && (
+            <div className="flex flex-col gap-y-2">
+              <div className="grow text-sm font-medium text-element-800">
+                Limitations
+              </div>
+              <div className="text-sm font-normal text-element-700">
+                {connectorProviderConfiguration.limitations}
+              </div>
+            </div>
+          )}
+
+          {connectorProviderConfiguration.connectorProvider === "zendesk" && (
+            <Input
+              label="Zendesk account subdomain"
+              message="The first part of your Zendesk account URL."
+              messageStatus="info"
+              name="subdomain"
+              value={extraConfig.zendesk_subdomain ?? ""}
+              placeholder="my-subdomain"
+              onChange={(e) => {
+                setExtraConfig({ zendesk_subdomain: e.target.value });
+              }}
+            />
+          )}
+
           <div className="flex justify-center pt-2">
             <div className="flex gap-2">
               <Button
-                variant="primary"
+                variant="highlight"
                 size="md"
                 icon={CloudArrowLeftRightIcon}
                 onClick={() => {
                   setIsLoading(true);
-                  onConfirm();
+                  onConfirm(extraConfig);
                 }}
-                disabled={isLoading}
+                disabled={!isExtraConfigValid(extraConfig) || isLoading}
                 label={
                   isLoading
                     ? "Connecting..."

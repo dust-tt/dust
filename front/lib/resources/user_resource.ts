@@ -39,7 +39,8 @@ export class UserResource extends BaseResource<User> {
     > &
       Partial<Pick<Attributes<User>, "providerId" | "imageUrl">>
   ): Promise<UserResource> {
-    const user = await User.create(blob);
+    const lowerCaseEmail = blob.email?.toLowerCase();
+    const user = await User.create({ ...blob, email: lowerCaseEmail });
     return new this(User, user.get());
   }
 
@@ -104,7 +105,7 @@ export class UserResource extends BaseResource<User> {
   static async fetchByEmail(email: string): Promise<UserResource | null> {
     const user = await User.findOne({
       where: {
-        email,
+        email: email.toLowerCase(),
       },
     });
 
@@ -227,8 +228,9 @@ export class UserResource extends BaseResource<User> {
     lastName: string | null,
     email: string
   ): Promise<void> {
+    const lowerCaseEmail = email.toLowerCase();
     const [, affectedRows] = await this.model.update(
-      { username, firstName, lastName, email },
+      { username, firstName, lastName, email: lowerCaseEmail },
       {
         where: {
           id: this.id,

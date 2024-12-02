@@ -1,8 +1,8 @@
+import { LightAgentConfigurationType } from "../../front/assistant/agent";
+import { GenerationTokensEvent } from "../../front/assistant/generation";
 import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
-import { LightAgentConfigurationType } from "../assistant/agent";
-import { GenerationTokensEvent } from "./api/assistant/generation";
 
 /**
  * PROVIDER IDS
@@ -50,7 +50,7 @@ export function getSmallWhitelistedModel(
     return GPT_4O_MINI_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_FLASH_DEFAULT_MODEL_CONFIG;
@@ -97,6 +97,8 @@ export const CLAUDE_3_5_SONNET_20241022_MODEL_ID =
   "claude-3-5-sonnet-20241022" as const;
 export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
   "claude-3-haiku-20240307" as const;
+export const CLAUDE_3_5_HAIKU_20241022_MODEL_ID =
+  "claude-3-5-haiku-20241022" as const;
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
@@ -119,6 +121,7 @@ export const MODEL_IDS = [
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
+  CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_2_1_MODEL_ID,
   CLAUDE_INSTANT_1_2_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
@@ -378,6 +381,20 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
+export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
+  displayName: "Claude 3.5 Haiku",
+  contextSize: 180_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: false,
+  description:
+    "Anthropic's Claude 3.5 Haiku model, cost effective and high throughput (200k context).",
+  shortDescription: "Anthropic's cost-effective model.",
+  isLegacy: false,
+  supportsVision: false,
+};
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_HAIKU_20240307_MODEL_ID,
@@ -385,7 +402,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   contextSize: 180_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
-  largeModel: true,
+  largeModel: false,
   description:
     "Anthropic's Claude 3 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
@@ -517,6 +534,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,

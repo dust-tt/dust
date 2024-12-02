@@ -8,6 +8,7 @@ import { runPostUpsertHooksWorker } from "@app/temporal/documents_post_process_h
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsWorker } from "@app/temporal/labs/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
+import { runPermissionsWorker } from "@app/temporal/permissions_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
@@ -20,6 +21,7 @@ type WorkerName =
   | "hard_delete"
   | "labs"
   | "mentions_count"
+  | "permissions_queue"
   | "poke"
   | "post_upsert_hooks"
   | "production_checks"
@@ -32,6 +34,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   hard_delete: runHardDeleteWorker,
   labs: runLabsWorker,
   mentions_count: runMentionsCountWorker,
+  permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
   post_upsert_hooks: runPostUpsertHooksWorker,
   production_checks: runProductionChecksWorker,

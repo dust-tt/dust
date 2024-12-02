@@ -7,7 +7,7 @@ import { Op } from "sequelize";
 import { hardDeleteApp } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
-import { hardDeleteVault } from "@app/lib/api/vaults";
+import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
@@ -26,7 +26,6 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
@@ -35,6 +34,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   Conversation,
   ConversationParticipant,
   Mention,
@@ -53,10 +53,10 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
@@ -122,28 +122,26 @@ export async function scrubDataSourceActivity({
   await hardDeleteDataSource(auth, dataSource);
 }
 
-export async function scrubVaultActivity({
-  vaultId,
+export async function scrubSpaceActivity({
+  spaceId,
   workspaceId,
 }: {
-  vaultId: string;
+  spaceId: string;
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const vault = await VaultResource.fetchById(auth, vaultId, {
+  const space = await SpaceResource.fetchById(auth, spaceId, {
     includeDeleted: true,
   });
 
-  if (!vault) {
-    throw new Error("Vault not found.");
+  if (!space) {
+    throw new Error("Space not found.");
   }
 
-  const isDeletableVault =
-    vault.isDeleted() || vault.isGlobal() || vault.isSystem();
-  assert(isDeletableVault, "Vault is not soft deleted.");
+  assert(space.isDeletable(), "Space cannot be deleted.");
 
-  // Delete all the data sources of the vaults.
-  const dataSources = await DataSourceResource.listByVault(auth, vault, {
+  // Delete all the data sources of the spaces.
+  const dataSources = await DataSourceResource.listBySpace(auth, space, {
     includeDeleted: true,
   });
   for (const ds of dataSources) {
@@ -153,9 +151,9 @@ export async function scrubVaultActivity({
     });
   }
 
-  hardDeleteLogger.info({ vault: vault.sId }, "Deleting vault");
+  hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
-  await hardDeleteVault(auth, vault);
+  await hardDeleteSpace(auth, space);
 }
 
 export async function isWorkflowDeletableActivity({
@@ -235,6 +233,11 @@ export async function deleteConversationsActivity({
                     });
                   }
 
+                  await AgentMessageFeedback.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
+
                   // Delete associated actions.
 
                   await AgentBrowseAction.destroy({
@@ -248,11 +251,6 @@ export async function deleteConversationsActivity({
                   });
 
                   await AgentTablesQueryAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentVisualizationAction.destroy({
                     where: { agentMessageId: agentMessage.id },
                     transaction: t,
                   });
@@ -563,17 +561,19 @@ export async function deleteMembersActivity({
   });
 }
 
-export async function deleteVaultsActivity({
+export async function deleteSpacesActivity({
   workspaceId,
 }: {
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const vaults = await VaultResource.listWorkspaceVaults(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeConversationsSpace: true,
+  });
 
-  for (const vault of vaults) {
-    await scrubVaultActivity({
-      vaultId: vault.sId,
+  for (const space of spaces) {
+    await scrubSpaceActivity({
+      spaceId: space.sId,
       workspaceId,
     });
   }

@@ -1,7 +1,16 @@
 import {
+  BrowseActionType,
+  BrowseConfigurationType,
+} from "../../../front/assistant/actions/browse";
+import {
+  ConversationIncludeFileActionType,
+  ConversationIncludeFileConfigurationType,
+} from "../../../front/assistant/actions/conversation/include_file";
+import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
+import { BaseAction } from "../../../front/assistant/actions/index";
 import {
   ProcessActionType,
   ProcessConfigurationType,
@@ -14,14 +23,15 @@ import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
-import { AgentActionType } from "../../../front/assistant/conversation";
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
+import {
+  WebsearchActionType,
+  WebsearchConfigurationType,
+} from "../../../front/assistant/actions/websearch";
 import {
   AgentConfigurationType,
   TemplateAgentConfigurationType,
-} from "../agent";
-import { BrowseActionType, BrowseConfigurationType } from "./browse";
-import { WebsearchActionType, WebsearchConfigurationType } from "./websearch";
+} from "../../../front/assistant/agent";
+import { AgentActionType } from "../../../front/assistant/conversation";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -131,24 +141,27 @@ export function isBrowseActionType(
   return arg.type === "browse_action";
 }
 
+export function isConversationIncludeFileConfiguration(
+  arg: unknown
+): arg is ConversationIncludeFileConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "conversation_include_file_configuration"
+  );
+}
+
+export function isConversationIncludeFileConfigurationActionType(
+  arg: AgentActionType
+): arg is ConversationIncludeFileActionType {
+  return arg.type === "conversation_include_file_action";
+}
+
 export function throwIfInvalidAgentConfiguration(
   configation: AgentConfigurationType | TemplateAgentConfigurationType
 ) {
   configation.actions.forEach((action) => {
-    if (isRetrievalConfiguration(action)) {
-      if (action.query === "none") {
-        if (
-          action.relativeTimeFrame === "auto" ||
-          action.relativeTimeFrame === "none"
-        ) {
-          /** Should never happen. Throw loudly if it does */
-          throw new Error(
-            "Invalid configuration: exhaustive retrieval must have a definite time frame"
-          );
-        }
-      }
-    }
-
     if (isProcessConfiguration(action)) {
       if (
         action.relativeTimeFrame === "auto" ||

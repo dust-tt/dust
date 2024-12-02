@@ -1,11 +1,14 @@
 import { UserProvider } from "@auth0/nextjs-auth0/client";
 import { SparkleContext } from "@dust-tt/sparkle";
+import { Notification } from "@dust-tt/sparkle";
+import { isAPIErrorResponse } from "@dust-tt/types";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
+import { SWRConfig } from "swr";
 import type { UrlObject } from "url";
 
 import { ConfirmPopupArea } from "@app/components/Confirm";
-import { NotificationArea } from "@app/components/sparkle/Notification";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 
 function NextLinkWrapper({
@@ -61,15 +64,31 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+
   return (
     <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>
-      <UserProvider>
-        <SidebarProvider>
-          <ConfirmPopupArea>
-            <NotificationArea>{children}</NotificationArea>
-          </ConfirmPopupArea>
-        </SidebarProvider>
-      </UserProvider>
+      <SWRConfig
+        value={{
+          onError: async (error) => {
+            if (
+              isAPIErrorResponse(error) &&
+              error.error.type === "not_authenticated"
+            ) {
+              // Redirect to login page.
+              await router.push("/api/auth/login");
+            }
+          },
+        }}
+      >
+        <UserProvider>
+          <SidebarProvider>
+            <ConfirmPopupArea>
+              <Notification.Area>{children}</Notification.Area>
+            </ConfirmPopupArea>
+          </SidebarProvider>
+        </UserProvider>
+      </SWRConfig>
     </SparkleContext.Provider>
   );
 }

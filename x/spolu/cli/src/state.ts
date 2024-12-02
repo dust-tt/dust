@@ -1,15 +1,14 @@
+import type { DustAPICredentials } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
 import type {
   ConversationWithoutContentType,
-  DustAPICredentials,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
 import fs from "fs/promises";
 import path from "path";
 
 export class State {
   agents: LightAgentConfigurationType[] = [];
-  private conversations: ConversationWithoutContentType[] = [];
 
   private credentials: DustAPICredentials | null = null;
   private url: string = "https://dust.tt";

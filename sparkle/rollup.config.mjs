@@ -27,6 +27,7 @@ const config = {
       format: "cjs",
       sourcemap: true,
       name: "react-lib",
+      inlineDynamicImports: true,
     },
   ],
   onwarn(warning, warn) {

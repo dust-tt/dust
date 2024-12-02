@@ -1,14 +1,15 @@
-import { Button, DropdownMenu } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
-import type { TimeframeUnit } from "@dust-tt/types";
+import { Checkbox } from "@dust-tt/sparkle";
+import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
+import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderRetrievalConfiguration,
+  AssistantBuilderRetrievalExhaustiveConfiguration,
+  AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
@@ -26,7 +27,7 @@ export function hasErrorActionRetrievalSearch(
 type ActionRetrievalSearchProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration
@@ -38,7 +39,7 @@ type ActionRetrievalSearchProps = {
 export function ActionRetrievalSearch({
   owner,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
 }: ActionRetrievalSearchProps) {
@@ -66,7 +67,7 @@ export function ActionRetrievalSearch({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 
@@ -87,18 +88,19 @@ export function hasErrorActionRetrievalExhaustive(
 ): string | null {
   return action.type === "RETRIEVAL_EXHAUSTIVE" &&
     Object.keys(action.configuration.dataSourceConfigurations).length > 0 &&
-    !!action.configuration.timeFrame.value
+    // The time frame is optional for exhaustive retrieval, but if it is set, it must be valid.
+    (!action.configuration.timeFrame || !!action.configuration.timeFrame.value)
     ? null
-    : "Please select at least one data source and set a timeframe";
+    : "Please select at least one data source and set a valid timeframe";
 }
 
 type ActionRetrievalExhaustiveProps = {
   owner: WorkspaceType;
-  actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  allowedVaults: VaultType[];
+  actionConfiguration: AssistantBuilderRetrievalExhaustiveConfiguration | null;
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
-      previousAction: AssistantBuilderRetrievalConfiguration
+      previousAction: AssistantBuilderRetrievalExhaustiveConfiguration
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
@@ -107,18 +109,32 @@ type ActionRetrievalExhaustiveProps = {
 export function ActionRetrievalExhaustive({
   owner,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
 }: ActionRetrievalExhaustiveProps) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
+  const [defaultTimeFrame, setDefaultTimeFrame] =
+    useState<AssistantBuilderTimeFrame>({
+      value: 1,
+      unit: "month",
+    });
+
   useEffect(() => {
     if (actionConfiguration) {
-      if (!actionConfiguration.timeFrame.value) {
+      if (
+        actionConfiguration.timeFrame &&
+        !actionConfiguration.timeFrame.value
+      ) {
         setTimeFrameError("Timeframe must be a number");
       } else {
+        // Set the default time frame to the current time frame if it exists,
+        // so if the user unchecks the checkbox, it won't reset to initial value
+        if (actionConfiguration.timeFrame) {
+          setDefaultTimeFrame(actionConfiguration.timeFrame);
+        }
         setTimeFrameError(null);
       }
     }
@@ -127,6 +143,8 @@ export function ActionRetrievalExhaustive({
   if (!actionConfiguration) {
     return null;
   }
+  const timeFrame = actionConfiguration.timeFrame || defaultTimeFrame;
+  const timeFrameDisabled = !actionConfiguration.timeFrame;
 
   return (
     <>
@@ -146,7 +164,7 @@ export function ActionRetrievalExhaustive({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 
@@ -159,8 +177,23 @@ export function ActionRetrievalExhaustive({
         viewType={"documents"}
       />
       <div className={"flex flex-row items-center gap-4 pb-4"}>
-        <div className="text-sm font-semibold text-element-900">
-          Collect data from the last
+        <Checkbox
+          checked={!!actionConfiguration.timeFrame}
+          onCheckedChange={(checked) => {
+            setEdited(true);
+            updateAction((previousAction) => ({
+              ...previousAction,
+              timeFrame: checked ? defaultTimeFrame : undefined,
+            }));
+          }}
+        />
+        <div
+          className={classNames(
+            "text-sm font-semibold",
+            timeFrameDisabled ? "text-slate-400" : "text-element-900"
+          )}
+        >
+          Only include data from the last
         </div>
         <input
           type="text"
@@ -169,9 +202,10 @@ export function ActionRetrievalExhaustive({
             !timeFrameError
               ? "focus:border-action-500 focus:ring-action-500"
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "bg-structure-50 stroke-structure-50"
+            "bg-structure-50 stroke-structure-50",
+            timeFrameDisabled ? "text-slate-400" : ""
           )}
-          value={actionConfiguration.timeFrame.value || ""}
+          value={timeFrame.value || ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
@@ -180,42 +214,19 @@ export function ActionRetrievalExhaustive({
                 ...previousAction,
                 timeFrame: {
                   value,
-                  unit: previousAction.timeFrame.unit,
+                  unit: timeFrame.unit,
                 },
               }));
             }
           }}
+          disabled={timeFrameDisabled}
         />
-        <DropdownMenu>
-          <DropdownMenu.Button tooltipPosition="top">
-            <Button
-              isSelect
-              label={
-                TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
-              }
-              variant="outline"
-              size="sm"
-            />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items origin="bottomLeft">
-            {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(([key, value]) => (
-              <DropdownMenu.Item
-                key={key}
-                label={value}
-                onClick={() => {
-                  setEdited(true);
-                  updateAction((previousAction) => ({
-                    ...previousAction,
-                    timeFrame: {
-                      value: previousAction.timeFrame.value,
-                      unit: key as TimeframeUnit,
-                    },
-                  }));
-                }}
-              />
-            ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+        <TimeUnitDropdown
+          timeFrame={timeFrame}
+          updateAction={updateAction}
+          onEdit={() => setEdited(true)}
+          disabled={timeFrameDisabled}
+        />
       </div>
     </>
   );

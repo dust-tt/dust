@@ -18,13 +18,13 @@ export default meta;
 export const BreadcrumbsExample = () => {
   const items1 = [
     { label: "Home", href: "#", icon: HomeIcon },
-    { label: "Vaults", href: ".." },
-    { label: "My Vault" },
+    { label: "Spaces", href: ".." },
+    { label: "My Space" },
   ];
   const items2 = [
     { label: "Home", href: "#", icon: HomeIcon },
-    { label: "Vaults", href: "#", icon: CompanyIcon },
-    { label: "My Vault", href: "#" },
+    { label: "Spaces", href: "#", icon: CompanyIcon },
+    { label: "My Space", href: "#" },
     { label: "loooong name in the end, like very very long long" },
   ];
 
@@ -35,7 +35,7 @@ export const BreadcrumbsExample = () => {
       href: "#",
       icon: CompanyIcon,
     },
-    { label: "My Vault", href: "#" },
+    { label: "My Space", href: "#" },
     { label: "Data Sources", href: ".." },
     { label: "Folder1", href: "#", icon: FolderIcon },
     { label: "With ellipsis", href: "#" },
@@ -48,7 +48,7 @@ export const BreadcrumbsExample = () => {
       href: "#",
       icon: CompanyIcon,
     },
-    { label: "My Vault", href: "#" },
+    { label: "My Space", href: "#" },
     { label: "Data Sources" },
     { label: "Folder1", href: "#", icon: FolderIcon },
     { label: "Folder2", href: "#", icon: FolderIcon },
@@ -63,7 +63,7 @@ export const BreadcrumbsExample = () => {
       href: "#",
       icon: CompanyIcon,
     },
-    { label: "My Vault", href: "#" },
+    { label: "My Space", href: "#" },
     { label: "Data Sources" },
   ];
 

@@ -4,12 +4,12 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use tokio_postgres::{types::ToSql, NoTls};
+use tracing::info;
 
 use crate::{databases::table::Row, utils};
 
 #[async_trait]
 pub trait DatabasesStore {
-    async fn init(&self) -> Result<()>;
     async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<Row>>;
     async fn list_table_rows(
         &self,
@@ -42,14 +42,11 @@ pub struct PostgresDatabasesStore {
 impl PostgresDatabasesStore {
     pub async fn new(db_uri: &str) -> Result<Self> {
         let manager = PostgresConnectionManager::new_from_stringlike(db_uri, NoTls)?;
-        let pool = Pool::builder().max_size(16).build(manager).await?;
+        let pool = Pool::builder().max_size(32).build(manager).await?;
         Ok(Self { pool })
     }
-}
 
-#[async_trait]
-impl DatabasesStore for PostgresDatabasesStore {
-    async fn init(&self) -> Result<()> {
+    pub async fn init(&self) -> Result<()> {
         let conn = self.pool.get().await?;
         for table in POSTGRES_TABLES {
             conn.execute(table, &[]).await?;
@@ -59,7 +56,10 @@ impl DatabasesStore for PostgresDatabasesStore {
         }
         Ok(())
     }
+}
 
+#[async_trait]
+impl DatabasesStore for PostgresDatabasesStore {
     async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<Row>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -150,46 +150,66 @@ impl DatabasesStore for PostgresDatabasesStore {
         truncate: bool,
     ) -> Result<()> {
         let pool = self.pool.clone();
-        let mut c = pool.get().await?;
-        // Start transaction.
-        let c = c.transaction().await?;
+        let c = pool.get().await?;
 
-        // Truncate table if required.
+        // Truncate table if required. Rows can be numerous so we delete rows in small batches to
+        // avoid long running operations.
         if truncate {
+            let deletion_batch_size: u64 = 512;
+
             let stmt = c
                 .prepare(
-                    "DELETE FROM tables_rows
-                    WHERE table_id = $1",
+                    "DELETE FROM tables_rows WHERE id IN (
+                   SELECT id FROM tables_rows WHERE table_id = $1 LIMIT $2
+                 )",
                 )
                 .await?;
-            c.execute(&stmt, &[&table_id]).await?;
+
+            loop {
+                let now = utils::now();
+                let deleted_rows = c
+                    .execute(&stmt, &[&table_id, &(deletion_batch_size as i64)])
+                    .await?;
+
+                info!(
+                    duration = utils::now() - now,
+                    table_id, deleted_rows, "DSSTRUCTSTAT [upsert_rows] truncation batch"
+                );
+
+                if deleted_rows < deletion_batch_size {
+                    break;
+                }
+            }
         }
 
-        // Prepare insertion/updation statement.
         let stmt = c
             .prepare(
                 "INSERT INTO tables_rows
-                (id, table_id, row_id, created, content)
-                VALUES (DEFAULT, $1, $2, $3, $4)
-                ON CONFLICT (table_id, row_id) DO UPDATE
-                SET content = EXCLUDED.content",
+                   (table_id, row_id, created, content)
+                   SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
+                   ON CONFLICT (table_id, row_id) DO UPDATE
+                   SET content = EXCLUDED.content",
             )
             .await?;
 
-        for row in rows {
-            c.execute(
-                &stmt,
-                &[
-                    &table_id,
-                    &row.row_id(),
-                    &(utils::now() as i64),
-                    &row.content().to_string(),
-                ],
-            )
-            .await?;
+        for chunk in rows.chunks(1024) {
+            let now = utils::now() as i64;
+
+            let table_ids: Vec<&str> = vec![table_id; chunk.len()];
+            let row_ids: Vec<&str> = chunk.iter().map(|r| r.row_id()).collect();
+            let createds: Vec<i64> = vec![now; chunk.len()];
+            let contents: Vec<String> = chunk.iter().map(|r| r.content().to_string()).collect();
+
+            c.execute(&stmt, &[&table_ids, &row_ids, &createds, &contents])
+                .await?;
+
+            info!(
+                duration = utils::now() - now as u64,
+                table_id,
+                inserted_rows = chunk.len(),
+                "DSSTRUCTSTAT [upsert_rows] insertion batch"
+            );
         }
-
-        c.commit().await?;
 
         Ok(())
     }
@@ -198,11 +218,25 @@ impl DatabasesStore for PostgresDatabasesStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
+        let deletion_batch_size: u64 = 512;
+
         let stmt = c
-            .prepare("DELETE FROM tables_rows WHERE table_id = $1")
+            .prepare(
+                "DELETE FROM tables_rows WHERE id IN (
+                   SELECT id FROM tables_rows WHERE table_id = $1 LIMIT $2
+                 )",
+            )
             .await?;
 
-        c.execute(&stmt, &[&table_id]).await?;
+        loop {
+            let deleted_rows = c
+                .execute(&stmt, &[&table_id, &(deletion_batch_size as i64)])
+                .await?;
+
+            if deleted_rows < deletion_batch_size {
+                break;
+            }
+        }
 
         Ok(())
     }

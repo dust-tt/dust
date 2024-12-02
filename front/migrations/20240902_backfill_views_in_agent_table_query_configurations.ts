@@ -7,7 +7,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 
@@ -25,11 +25,11 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
   );
 
-  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   // Retrieve data source views for data sources.
   const dataSourceViews =
-    await DataSourceViewResource.listForDataSourcesInVault(
+    await DataSourceViewResource.listForDataSourcesInSpace(
       auth,
       dataSources,
       globalVault

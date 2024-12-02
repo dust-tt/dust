@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
@@ -109,5 +110,30 @@ export function useWorkspaceActiveSubscription({
     activeSubscription,
     isActiveSubscriptionLoading: !error && !data,
     isActiveSubscriptionError: error,
+  };
+}
+
+export function useFeatureFlags({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const featureFlagsFetcher: Fetcher<GetWorkspaceFeatureFlagsResponseType> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/feature-flags`,
+    featureFlagsFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    featureFlags: data ? data.feature_flags : [],
+    isFeatureFlagsLoading: !error && !data,
+    isFeatureFlagsError: error,
   };
 }

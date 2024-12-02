@@ -29,7 +29,7 @@ export default function DustAppSelectionSection({
 }) {
   const router = useRouter();
 
-  const appPath = `/w/${owner.sId}/vaults/${dustAppConfiguration.app?.vault.sId}/apps/${dustAppConfiguration.app?.sId}`;
+  const appPath = `/w/${owner.sId}/spaces/${dustAppConfiguration.app?.space.sId}/apps/${dustAppConfiguration.app?.sId}`;
   return (
     <Transition
       show={show}

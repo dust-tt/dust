@@ -34,6 +34,7 @@ import {
   assertNever,
   ConversationError,
   getSmallWhitelistedModel,
+  isContentFragmentType,
   isProviderWhitelisted,
   md5,
   removeNulls,
@@ -47,6 +48,7 @@ import {
   Ok,
   rateLimiter,
 } from "@dust-tt/types";
+import { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -55,7 +57,7 @@ import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
   batchRenderMessages,
   canReadMessage,
@@ -82,7 +84,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
-  generateLegacyModelSId,
+  generateRandomModelSId,
   getResourceIdFromSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -111,11 +113,13 @@ export async function createConversation(
   }
 
   const conversation = await Conversation.create({
-    sId: generateLegacyModelSId(),
+    sId: generateRandomModelSId(),
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   });
 
   return {
@@ -127,6 +131,10 @@ export async function createConversation(
     visibility: conversation.visibility,
     content: [],
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   };
 }
 
@@ -229,6 +237,7 @@ export async function getUserConversations(
   }
 
   const participations = await ConversationParticipant.findAll({
+    attributes: ["userId", "createdAt"],
     where: {
       userId: user.id,
       action: "posted",
@@ -258,20 +267,24 @@ export async function getUserConversations(
       }
 
       const conversation = {
-        id: p.conversationId,
+        id: p.conversation.id,
         created: p.conversation.createdAt.getTime(),
         sId: p.conversation.sId,
         owner,
         title: p.conversation.title,
         visibility: p.conversation.visibility,
+        // TODO(2024-11-04 flav) `group-id` clean-up.
         groupIds: getConversationGroupIdsFromModel(owner, p.conversation),
+        requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+          owner,
+          p.conversation
+        ),
       };
 
       return [...acc, conversation];
     },
     []
   );
-
   return conversations;
 }
 
@@ -391,7 +404,12 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   });
 }
 
@@ -428,7 +446,12 @@ export async function getConversationWithoutContent(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   });
 }
 
@@ -489,7 +512,7 @@ export async function generateConversationTitle(
   const MIN_GENERATION_TOKENS = 1024;
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModelMultiActions({
+  const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
@@ -769,7 +792,7 @@ export async function* postUserMessage(
       async function createMessageAndUserMessage() {
         return Message.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             rank: nextMessageRank++,
             conversationId: conversation.id,
             parentId: null,
@@ -849,7 +872,7 @@ export async function* postUserMessage(
               );
               const messageRow = await Message.create(
                 {
-                  sId: generateLegacyModelSId(),
+                  sId: generateRandomModelSId(),
                   rank: nextMessageRank++,
                   conversationId: conversation.id,
                   parentId: userMessage.id,
@@ -890,11 +913,18 @@ export async function* postUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       await updateConversationGroups({
         mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t
+      );
 
       return {
         userMessage,
@@ -1231,7 +1261,7 @@ export async function* editUserMessage(
       async function createMessageAndUserMessage(messageRow: Message) {
         return Message.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
@@ -1326,7 +1356,7 @@ export async function* editUserMessage(
             );
             const messageRow = await Message.create(
               {
-                sId: generateLegacyModelSId(),
+                sId: generateRandomModelSId(),
                 rank: nextMessageRank++,
                 conversationId: conversation.id,
                 parentId: userMessage.id,
@@ -1367,6 +1397,7 @@ export async function* editUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       // updateConversationGroups is purely additive, this will not remove any
       // group from the conversation (see function description)
       await updateConversationGroups({
@@ -1374,6 +1405,12 @@ export async function* editUserMessage(
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t
+      );
 
       return {
         userMessage,
@@ -1567,7 +1604,7 @@ export async function* retryAgentMessage(
       );
       const m = await Message.create(
         {
-          sId: generateLegacyModelSId(),
+          sId: generateRandomModelSId(),
           rank: messageRow.rank,
           conversationId: conversation.id,
           parentId: messageRow.parentId,
@@ -1579,11 +1616,18 @@ export async function* retryAgentMessage(
         }
       );
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       await updateConversationGroups({
         mentionedAgents: [message.configuration],
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        [message.configuration],
+        conversation,
+        t
+      );
 
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
@@ -1713,7 +1757,7 @@ export async function postNewContentFragment(
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
-  const messageId = generateLegacyModelSId();
+  const messageId = generateRandomModelSId();
 
   const cfBlobRes = await getContentFragmentBlob(
     auth,
@@ -1725,21 +1769,48 @@ export async function postNewContentFragment(
     return cfBlobRes;
   }
 
+  const supersededContentFragmentId = cf.supersededContentFragmentId;
+  // If the request is superseding an existing content fragment, we need to validate
+  // that it exists and is part of the conversation.
+  if (supersededContentFragmentId) {
+    const found = conversation.content.some((versions) => {
+      const latest = versions[versions.length - 1];
+      return (
+        isContentFragmentType(latest) &&
+        latest.contentFragmentId === supersededContentFragmentId
+      );
+    });
+
+    if (!found) {
+      return new Err(new Error("Superseded content fragment not found."));
+    }
+  }
+
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
-      const contentFragment = await ContentFragmentResource.makeNew(
-        {
-          ...cfBlobRes.value,
-          userId: auth.user()?.id,
-          userContextProfilePictureUrl: context?.profilePictureUrl,
-          userContextEmail: context?.email,
-          userContextFullName: context?.fullName,
-          userContextUsername: context?.username,
-        },
-        t
-      );
+      const fullBlob = {
+        ...cfBlobRes.value,
+        userId: auth.user()?.id,
+        userContextProfilePictureUrl: context?.profilePictureUrl,
+        userContextEmail: context?.email,
+        userContextFullName: context?.fullName,
+        userContextUsername: context?.username,
+      };
+
+      const contentFragment = await (() => {
+        if (supersededContentFragmentId) {
+          return ContentFragmentResource.makeNewVersion(
+            supersededContentFragmentId,
+            fullBlob,
+            t
+          );
+        } else {
+          return ContentFragmentResource.makeNew(fullBlob, t);
+        }
+      })();
+
       const nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
           where: {
@@ -1761,14 +1832,13 @@ export async function postNewContentFragment(
       return { contentFragment, messageRow };
     }
   );
+  const render = await contentFragment.renderFromMessage({
+    auth,
+    conversationId: conversation.sId,
+    message: messageRow,
+  });
 
-  return new Ok(
-    contentFragment.renderFromMessage({
-      auth,
-      conversationId: conversation.sId,
-      message: messageRow,
-    })
-  );
+  return new Ok(render);
 }
 
 async function* streamRunAgentEvents(
@@ -1864,6 +1934,7 @@ async function* streamRunAgentEvents(
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "conversation_include_file_params":
       case "generation_tokens":
         yield event;
         break;
@@ -1953,9 +2024,9 @@ export function normalizeContentFragmentType({
 }: {
   contentType: SupportedContentFragmentType;
   url?: string;
-}) {
+}): SupportedContentFragmentType {
   // hack: for users creating content_fragments through our public API
-  if (contentType === "file_attachment") {
+  if ((contentType as string) === "file_attachment") {
     logger.info(
       {
         url,
@@ -1994,7 +2065,7 @@ async function updateConversationGroups({
 
   const currentGroupIds = new Set(conversation.groupIds);
 
-  // no need to update if  newGroupIds is a subset of currentGroupIds
+  // No need to update if newGroupIds is a subset of currentGroupIds.
   if (newGroupIds.every((g) => currentGroupIds.has(g))) {
     return;
   }
@@ -2022,6 +2093,96 @@ async function updateConversationGroups({
   );
 }
 
+/**
+ * Update the conversation requestedGroupIds based on the mentioned agents.
+ * This function is purely additive - requirements are never removed.
+ *
+ * Each agent's requestedGroupIds represents a set of requirements that must be
+ * satisfied. When an agent is mentioned in a conversation, its requirements are
+ * added to the conversation's requirements.
+ *
+ * Within each requirement (sub-array), groups are combined with OR logic.
+ * Different requirements (different sub-arrays) are combined with AND logic.
+ */
+export async function updateConversationRequestedGroupIds(
+  mentionedAgents: LightAgentConfigurationType[],
+  conversation: ConversationType,
+  t: Transaction
+): Promise<void> {
+  const newRequirements = mentionedAgents.flatMap(
+    (agent) => agent.requestedGroupIds
+  );
+  const currentRequirements = conversation.requestedGroupIds;
+
+  // Check if each new requirement already exists in current requirements.
+  const areAllRequirementsPresent = newRequirements.every((newReq) =>
+    currentRequirements.some((currentReq) =>
+      isEqual(sortBy(newReq), sortBy(currentReq))
+    )
+  );
+
+  // Early return if all new requirements are already present.
+  if (areAllRequirementsPresent) {
+    return;
+  }
+
+  // Get missing requirements.
+  const requirementsToAdd = newRequirements.filter(
+    (newReq) =>
+      !currentRequirements.some((currentReq) =>
+        isEqual(sortBy(newReq), sortBy(currentReq))
+      )
+  );
+
+  // Convert all sIds to modelIds.
+  const sIdToModelId = new Map<string, number>();
+  const getModelId = (sId: string) => {
+    if (!sIdToModelId.has(sId)) {
+      const id = getResourceIdFromSId(sId);
+      if (id === null) {
+        throw new Error("Unexpected: invalid group id");
+      }
+      sIdToModelId.set(sId, id);
+    }
+    return sIdToModelId.get(sId)!;
+  };
+
+  const allRequirements = [
+    ...currentRequirements.map((req) => sortBy(req.map(getModelId))),
+    ...requirementsToAdd.map((req) => sortBy(req.map(getModelId))),
+  ];
+
+  // Hotfix: Postgres requires all subarrays to be of the same length
+  //
+  // since a requirement (subarray) is a set of groups that are linked with OR
+  // logic we can just repeat the last element of each requirement until all
+  // requirements have the maximal length.
+  const longestRequirement = allRequirements.reduce(
+    (max, req) => Math.max(max, req.length),
+    0
+  );
+  // for each requirement, repeatedly add the last id until array is of longest requirement length
+  const updatedRequirements = allRequirements.map((req) => {
+    while (req.length < longestRequirement) {
+      req.push(req[req.length - 1]);
+    }
+    return req;
+  });
+
+  await Conversation.update(
+    {
+      requestedGroupIds: updatedRequirements,
+    },
+    {
+      where: {
+        id: conversation.id,
+      },
+      transaction: t,
+    }
+  );
+}
+
+// TODO(2024-11-04 flav) `group-id` clean-up.
 function getConversationGroupIdsFromModel(
   owner: WorkspaceType,
   conversation: Conversation
@@ -2034,18 +2195,32 @@ function getConversationGroupIdsFromModel(
   );
 }
 
+function getConversationRequestedGroupIdsFromModel(
+  owner: WorkspaceType,
+  conversation: Conversation
+): string[][] {
+  return conversation.requestedGroupIds.map((groups) =>
+    groups.map((g) =>
+      GroupResource.modelIdToSId({
+        id: g,
+        workspaceId: owner.id,
+      })
+    )
+  );
+}
+
 export function canAccessConversation(
   auth: Authenticator,
   conversation: ConversationWithoutContentType | ConversationType | Conversation
 ): boolean {
   const owner = auth.getNonNullableWorkspace();
 
-  const groupIds =
+  const requestedGroupIds =
     conversation instanceof Conversation
-      ? getConversationGroupIdsFromModel(owner, conversation)
-      : conversation.groupIds;
+      ? getConversationRequestedGroupIdsFromModel(owner, conversation)
+      : conversation.requestedGroupIds;
 
   return auth.canRead(
-    Authenticator.createResourcePermissionsFromGroupIds(groupIds)
+    Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
   );
 }

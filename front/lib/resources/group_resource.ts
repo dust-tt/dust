@@ -23,7 +23,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -651,7 +651,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
-      await GroupVaultModel.destroy({
+      await GroupSpaceModel.destroy({
         where: {
           groupId: this.id,
         },
@@ -718,6 +718,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isGlobal(): boolean {
     return this.kind === "global";
+  }
+
+  isRegular(): boolean {
+    return this.kind === "regular";
   }
 
   // JSON Serialization

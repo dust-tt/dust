@@ -1,14 +1,22 @@
-import { CommandLineIcon, Item, Modal, Page, Spinner } from "@dust-tt/sparkle";
-import type { AppType, LightWorkspaceType, VaultType } from "@dust-tt/types";
+import {
+  CommandLineIcon,
+  ContextItem,
+  Icon,
+  Modal,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type { AppType, LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { sortBy } from "lodash";
 import { useMemo } from "react";
 
-import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
-import { useVaults } from "@app/lib/swr/vaults";
+import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { classNames } from "@app/lib/utils";
 
 interface AssistantBuilderDustAppModalProps {
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   dustApps: AppType[];
   isOpen: boolean;
   onSave: (app: AppType) => void;
@@ -17,7 +25,7 @@ interface AssistantBuilderDustAppModalProps {
 }
 
 export default function AssistantBuilderDustAppModal({
-  allowedVaults,
+  allowedSpaces,
   dustApps,
   isOpen,
   onSave,
@@ -38,7 +46,7 @@ export default function AssistantBuilderDustAppModal({
     >
       <div className="w-full pt-12">
         <PickDustApp
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           owner={owner}
           show={true}
           dustApps={dustApps}
@@ -53,7 +61,7 @@ export default function AssistantBuilderDustAppModal({
 }
 
 interface PickDustAppProps {
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   dustApps: AppType[];
   onPick: (app: AppType) => void;
   owner: LightWorkspaceType;
@@ -62,19 +70,19 @@ interface PickDustAppProps {
 
 function PickDustApp({
   owner,
-  allowedVaults,
+  allowedSpaces,
   dustApps,
   show,
   onPick,
 }: PickDustAppProps) {
-  const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
-  const filteredVaults = useMemo(
+  const filteredSpaces = useMemo(
     () =>
-      vaults.filter((vault) =>
-        dustApps.some((app) => app.vault.sId === vault.sId)
+      spaces.filter((space) =>
+        dustApps.some((app) => app.space.sId === space.sId)
       ),
-    [vaults, dustApps]
+    [spaces, dustApps]
   );
 
   const hasSomeUnselectableApps = dustApps.some(
@@ -91,16 +99,16 @@ function PickDustApp({
             App selectable, edit it and add a description.
           </Page.P>
         )}
-        {isVaultsLoading ? (
+        {isSpacesLoading ? (
           <Spinner />
         ) : (
-          <VaultSelector
-            vaults={filteredVaults}
-            allowedVaults={allowedVaults}
-            defaultVault={allowedVaults[0].sId}
-            renderChildren={(vault) => {
-              const allowedDustApps = vault
-                ? dustApps.filter((app) => app.vault.sId === vault.sId)
+          <SpaceSelector
+            spaces={filteredSpaces}
+            allowedSpaces={allowedSpaces}
+            defaultSpace={allowedSpaces[0].sId}
+            renderChildren={(space) => {
+              const allowedDustApps = space
+                ? dustApps.filter((app) => app.space.sId === space.sId)
                 : dustApps;
 
               if (allowedDustApps.length === 0) {
@@ -108,7 +116,7 @@ function PickDustApp({
               }
 
               return (
-                <>
+                <ContextItem.List>
                   {sortBy(
                     allowedDustApps,
                     (a) => !a.description || a.description.length === 0,
@@ -117,18 +125,31 @@ function PickDustApp({
                     const disabled =
                       !app.description || app.description.length === 0;
                     return (
-                      <Item.Navigation
-                        label={app.name + (disabled ? " (No description)" : "")}
-                        icon={CommandLineIcon}
-                        disabled={disabled}
+                      <ContextItem
                         key={app.sId}
-                        onClick={() => {
-                          onPick(app);
-                        }}
+                        title={
+                          <span
+                            className={classNames(
+                              disabled
+                                ? "s-text-element-500"
+                                : "s-text-element-900"
+                            )}
+                          >
+                            {app.name + (disabled ? " (No description)" : "")}
+                          </span>
+                        }
+                        visual={
+                          <Icon
+                            visual={CommandLineIcon}
+                            size="md"
+                            className={disabled ? "s-text-element-500" : ""}
+                          />
+                        }
+                        onClick={disabled ? undefined : () => onPick(app)}
                       />
                     );
                   })}
-                </>
+                </ContextItem.List>
               );
             }}
           />

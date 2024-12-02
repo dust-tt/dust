@@ -1,11 +1,4 @@
-import {
-  ChevronRightIcon,
-  Chip,
-  DataTable,
-  Icon,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Chip, DataTable, Page, Spinner } from "@dust-tt/sparkle";
 import type {
   RoleType,
   UserTypeWithWorkspaces,
@@ -18,7 +11,6 @@ import React, { useMemo, useState } from "react";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import { classNames } from "@app/lib/utils";
 
 type RowData = {
   icon: string;
@@ -74,6 +66,7 @@ export function MembersList({
   const columns = [
     {
       id: "name",
+      header: "Name",
       cell: (info: Info) => (
         <DataTable.CellContent
           avatarUrl={info.row.original.icon}
@@ -90,6 +83,7 @@ export function MembersList({
     },
     {
       id: "role",
+      header: "Role",
       cell: (info: Info) => (
         <DataTable.CellContent>
           <Chip
@@ -105,20 +99,6 @@ export function MembersList({
       meta: {
         width: "6rem",
       },
-    },
-    {
-      id: "open",
-      cell: (info: Info) => (
-        <DataTable.CellContent>
-          <Icon
-            visual={ChevronRightIcon}
-            className={classNames(
-              "text-element-600",
-              info.row.original.userId === currentUserId ? "invisible" : ""
-            )}
-          />
-        </DataTable.CellContent>
-      ),
     },
   ];
 

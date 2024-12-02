@@ -1,7 +1,7 @@
 import * as t from "io-ts";
 
+import { BaseAction } from "../../../front/assistant/actions";
 import { ModelId } from "../../../shared/model_id";
-import { BaseAction } from "../../lib/api/assistant/actions";
 
 export type BrowseConfigurationType = {
   id: ModelId;
@@ -38,3 +38,35 @@ export interface BrowseActionType extends BaseAction {
   step: number;
   type: "browse_action";
 }
+
+/**
+ * Browse Action Events
+ */
+
+// Event sent before the execution with the finalized params to be used.
+export type BrowseParamsEvent = {
+  type: "browse_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: BrowseActionType;
+};
+
+export type BrowseErrorEvent = {
+  type: "browse_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+export type BrowseSuccessEvent = {
+  type: "browse_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: BrowseActionType;
+};

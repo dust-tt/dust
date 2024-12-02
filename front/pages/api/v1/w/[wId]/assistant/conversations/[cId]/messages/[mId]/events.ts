@@ -1,3 +1,4 @@
+import type { AgentMessageEventType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -7,7 +8,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -144,7 +145,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const eventStream = getMessagesEvents(mId, lastEventId);
+      const eventStream: AsyncGenerator<AgentMessageEventType> =
+        getMessagesEvents(mId, lastEventId);
 
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -173,4 +175,7 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, { isStreaming: true });
+export default withPublicAPIAuthentication(handler, {
+  isStreaming: true,
+  requiredScopes: { GET: "read:conversation" },
+});

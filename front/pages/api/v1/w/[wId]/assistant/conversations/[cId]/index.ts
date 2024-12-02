@@ -1,9 +1,10 @@
-import type { ConversationType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { GetConversationResponseType } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -51,9 +52,7 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<{ conversation: ConversationType }>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetConversationResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const { cId } = req.query;
@@ -92,4 +91,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: { GET: "read:conversation" },
+});

@@ -1,13 +1,13 @@
 import type { Meta } from "@storybook/react";
 import React, { ComponentType } from "react";
 
+import { Button, CardButton } from "@sparkle/components";
+
 import {
   BookOpenStrokeIcon,
   BracesStrokeIcon,
-  CardButton,
   CommandLineStrokeIcon,
   Icon,
-  IconButton,
   MagnifyingGlassStrokeIcon,
   PlanetStrokeIcon,
   ScanStrokeIcon,
@@ -22,13 +22,48 @@ const meta = {
 
 export default meta;
 
-export const SimpleExample = () => (
-  <div className="s-flex s-flex-col s-gap-8">
-    <div className="s-flex s-gap-2">
-      <CardButton>hello</CardButton>
-      <CardButton variant="secondary">hello</CardButton>
-      <CardButton variant="tertiary">hello</CardButton>
+export const Demo = () => {
+  const variants: Array<"primary" | "secondary" | "tertiary"> = [
+    "primary",
+    "secondary",
+    "tertiary",
+  ];
+  const sizes: Array<"sm" | "md" | "lg"> = ["sm", "md", "lg"];
+
+  return (
+    <div className="s-flex s-flex-col s-gap-8">
+      {variants.map((variant) => (
+        <div key={variant} className="s-flex s-flex-col s-gap-4">
+          <h3 className="s-text-lg s-font-semibold">
+            {variant.charAt(0).toUpperCase() + variant.slice(1)} Variant
+          </h3>
+          <div className="s-flex s-gap-4">
+            {sizes.map((size) => (
+              <div>
+                <CardButton key={size} variant={variant} size={size}>
+                  Hello World
+                </CardButton>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
+  );
+};
+
+export const InteractiveStates = () => (
+  <div className="s-flex s-gap-4">
+    <CardButton
+      variant="primary"
+      onClick={() => alert("Primary Clicked")}
+      className="s-hover:bg-primary-200"
+    >
+      Hover/Active
+    </CardButton>
+    <CardButton variant="secondary" disabled>
+      Disabled
+    </CardButton>
   </div>
 );
 
@@ -76,22 +111,23 @@ const cardData: CardData[] = [
   },
 ];
 
-export const ActionCard: React.FC = () => (
+export const ActionCardDemo: React.FC = () => (
   <div className="s-grid s-grid-cols-3 s-gap-3">
     {cardData.map((card, index) => (
       <CardButton
         key={index}
-        variant="secondary"
+        variant="primary"
         onClick={() => {
           alert(`You clicked on ${card.title}`);
         }}
       >
-        <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
+        <div className="s-flex s-w-full s-flex-col s-text-sm">
           <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-element-900">
             <Icon visual={card.icon} size="sm" className="s-text-element-900" />
             <div className="s-w-full">{card.title}</div>
-            <IconButton
+            <Button
               icon={XMarkIcon}
+              className="-s-mr-2 -s-mt-2"
               variant="ghost"
               size="sm"
               onClick={(e) => {
@@ -100,7 +136,7 @@ export const ActionCard: React.FC = () => (
               }}
             />
           </div>
-          <div className="s-w-full s-truncate s-text-base s-text-element-700">
+          <div className="s-w-full s-truncate s-text-sm s-text-muted-foreground">
             {card.description}
           </div>
         </div>

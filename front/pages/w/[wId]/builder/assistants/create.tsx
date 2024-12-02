@@ -5,7 +5,7 @@ import {
   MagicIcon,
   Page,
   PencilSquareIcon,
-  Searchbar,
+  SearchInput,
 } from "@dust-tt/sparkle";
 import type {
   SubscriptionType,
@@ -207,19 +207,23 @@ export default function CreateAssistant({
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}`}
               >
-                <Button icon={DocumentIcon} label="New Assistant" size="md" />
+                <Button
+                  icon={DocumentIcon}
+                  label="New Assistant"
+                  size="md"
+                  variant="highlight"
+                />
               </Link>
             </div>
             <Page.Separator />
 
             <Page.Header title="Start from a template" icon={MagicIcon} />
             <div className="flex flex-col gap-6">
-              <Searchbar
+              <SearchInput
                 placeholder="Search templates"
                 name="input"
                 value={templateSearchTerm}
                 onChange={handleSearch}
-                size="md"
               />
               <div className="flex flex-row flex-wrap gap-2">
                 {filteredTemplates.tags

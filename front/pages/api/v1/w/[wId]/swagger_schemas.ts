@@ -93,6 +93,13 @@
  *           example: "openai"
  *     Context:
  *       type: object
+ *       required:
+ *         - username
+ *         - timezone
+ *         - fullName
+ *         - email
+ *         - profilePictureUrl
+ *         - origin
  *       properties:
  *         username:
  *           type: string
@@ -125,6 +132,9 @@
  *             - make
  *             - zendesk
  *             - raycast
+ *             - github-copilot-chat
+ *             - extension
+ *             - email
  *     AgentConfiguration:
  *       type: object
  *       properties:
@@ -173,10 +183,10 @@
  *           type: string
  *           description: Scope of the agent configuration
  *           example: "workspace"
- *         userListStatus:
- *           type: string
- *           description: Status of the user list for this configuration
- *           example: "all_users"
+ *         userFavorite:
+ *           type: boolean
+ *           description: Status of the user favorite for this configuration
+ *           example: true
  *         model:
  *           type: object
  *           properties:
@@ -345,26 +355,30 @@
  *           type: string
  *           description: The content type of the content fragment
  *           example: "text/plain"
+ *         fileId:
+ *           type: string
+ *           description: The id of the previously uploaded file
+ *           example: fil_123456
  *         context:
  *           $ref: '#/components/schemas/Context'
- *     Vault:
+ *     Space:
  *       type: object
  *       properties:
  *         sId:
  *           type: string
- *           description: Unique string identifier for the vault
+ *           description: Unique string identifier for the space
  *         name:
  *           type: string
- *           description: Name of the vault
+ *           description: Name of the space
  *         kind:
  *           type: string
  *           enum: [regular, global, system, public]
- *           description: The kind of the vault
+ *           description: The kind of the space
  *         groupIds:
  *           type: array
  *           items:
  *             type: string
- *           description: List of group IDs that have access to the vault
+ *           description: List of group IDs that have access to the space
  *     Datasource:
  *       type: object
  *       properties:
@@ -441,9 +455,9 @@
  *         updatedAt:
  *           type: number
  *           description: Timestamp of when the data source view was last updated
- *         vaultId:
+ *         spaceId:
  *           type: string
- *           description: ID of the vault containing the data source view
+ *           description: ID of the space containing the data source view
  *     Run:
  *       type: object
  *       properties:

@@ -1,4 +1,4 @@
-import { Label } from "@dust-tt/sparkle";
+import { Input, Label } from "@dust-tt/sparkle";
 import type * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
@@ -159,11 +159,30 @@ const FormMessage = React.forwardRef<
 });
 FormMessage.displayName = "FormMessage";
 
+// Override the default input component to add border and background styles.
+const FormInput = React.forwardRef<
+  HTMLInputElement,
+  Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> & {
+    value?: React.ComponentProps<typeof Input>["value"];
+  }
+>(({ className, value, ...props }, ref) => {
+  return (
+    <Input
+      ref={ref}
+      className={cn("border-2 border-border-dark bg-white", className)}
+      value={value}
+      {...props}
+    />
+  );
+});
+FormInput.displayName = "FormInput";
+
 export {
   Form as PokeForm,
   FormControl as PokeFormControl,
   FormDescription as PokeFormDescription,
   FormField as PokeFormField,
+  FormInput as PokeFormInput,
   FormItem as PokeFormItem,
   FormLabel as PokeFormLabel,
   FormMessage as PokeFormMessage,

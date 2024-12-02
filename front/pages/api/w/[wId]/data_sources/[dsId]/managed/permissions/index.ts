@@ -11,8 +11,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -56,17 +56,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that are `admins` for the current workspace can see or edit the permissions of a data source.",
-      },
-    });
-  }
-
   const { dsId } = req.query;
   if (typeof dsId !== "string") {
     return apiError(req, res, {
@@ -95,6 +84,17 @@ async function handler(
       api_error: {
         type: "data_source_not_managed",
         message: "The data source you requested is not managed.",
+      },
+    });
+  }
+
+  if (!dataSource.canAdministrate(auth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `admins` for the current workspace can administrate a data source.",
       },
     });
   }
@@ -272,6 +272,16 @@ export async function getManagedDataSourcePermissionsHandler(
     includeParents,
   });
   if (permissionsRes.isErr()) {
+    if (permissionsRes.error.type === "connector_rate_limit_error") {
+      return apiError(req, res, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message:
+            "Rate limit error while retrieving the data source permissions",
+        },
+      });
+    }
     return apiError(req, res, {
       status_code: 500,
       api_error: {

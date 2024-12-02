@@ -2,6 +2,7 @@ import {
   Collapsible,
   ContentMessage,
   GlobeAltIcon,
+  InformationCircleIcon,
   PaginatedCitationsGrid,
 } from "@dust-tt/sparkle";
 import type { WebsearchActionType } from "@dust-tt/types";
@@ -44,7 +45,10 @@ export function WebsearchActionDetails({
             <Collapsible.Panel>
               <PaginatedCitationsGrid items={resultsCitations} />
               {formattedError && (
-                <ContentMessage title="Error searching the web">
+                <ContentMessage
+                  title="Error searching the web"
+                  icon={InformationCircleIcon}
+                >
                   {formattedError}
                 </ContentMessage>
               )}

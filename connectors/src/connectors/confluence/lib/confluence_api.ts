@@ -2,7 +2,10 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
-import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
+import {
+  CONFLUENCE_SUPPORTED_SPACE_TYPES,
+  ConfluenceClient,
+} from "@connectors/connectors/confluence/lib/confluence_client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import logger from "@connectors/logger/logger";
@@ -75,15 +78,20 @@ export async function listConfluenceSpaces(
   });
 
   const allSpaces = new Map<string, ConfluenceSpaceType>();
-  let nextPageCursor: string | null = "";
-  do {
-    const { spaces, nextPageCursor: nextCursor } =
-      await client.getGlobalSpaces(nextPageCursor);
 
-    spaces.forEach((s) => allSpaces.set(s.id, s));
+  for (const spaceType of CONFLUENCE_SUPPORTED_SPACE_TYPES) {
+    let nextPageCursor: string | null = "";
+    do {
+      const { spaces, nextPageCursor: nextCursor } = await client.getSpaces(
+        spaceType,
+        { pageCursor: nextPageCursor }
+      );
 
-    nextPageCursor = nextCursor;
-  } while (nextPageCursor);
+      spaces.forEach((s) => allSpaces.set(s.id, s));
+
+      nextPageCursor = nextCursor;
+    } while (nextPageCursor);
+  }
 
   return new Ok([...allSpaces.values()]);
 }

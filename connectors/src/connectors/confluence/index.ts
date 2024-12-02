@@ -154,6 +154,11 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         newConfluenceCloudInformation.id === currentCloudInformation.cloudId
       ) {
         await connector.update({ connectionId });
+
+        // If connector was previously paused, unpause it.
+        if (connector.isPaused()) {
+          await this.unpause();
+        }
       } else {
         logger.info(
           {
@@ -508,8 +513,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
             getSpaceHierarchy,
             () => memoizationKey,
             60 * 60 * 1000,
-            undefined,
-            true
+            undefined
           )(this.connectorId, currentPage.spaceId)
         : undefined;
 

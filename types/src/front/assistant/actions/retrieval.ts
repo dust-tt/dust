@@ -2,11 +2,11 @@
  * Data Source configuration
  */
 
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
+import { BaseAction } from "../../../front/assistant/actions/index";
+import { ConnectorProvider } from "../../../front/data_source";
+import { DataSourceViewType } from "../../../front/data_source_view";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
-import { ConnectorProvider } from "../../data_source";
-import { DataSourceViewType } from "../../data_source_view";
 
 export const TIME_FRAME_UNITS = [
   "hour",
@@ -143,3 +143,36 @@ export interface RetrievalActionType extends BaseAction {
   step: number;
   type: "retrieval_action";
 }
+
+/**
+ * Retrieval Action Events
+ */
+
+// Event sent during retrieval with the finalized query used to retrieve documents.
+export type RetrievalParamsEvent = {
+  type: "retrieval_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  dataSources: DataSourceConfiguration[];
+  action: RetrievalActionType;
+};
+
+export type RetrievalErrorEvent = {
+  type: "retrieval_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+export type RetrievalSuccessEvent = {
+  type: "retrieval_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: RetrievalActionType;
+};

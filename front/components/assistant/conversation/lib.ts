@@ -1,3 +1,4 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import type {
   ConversationType,
   ConversationVisibility,
@@ -5,15 +6,14 @@ import type {
   MentionType,
   Result,
   SubmitMessageError,
+  UploadedContentFragment,
   UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
-import type { NotificationType } from "@app/components/sparkle/Notification";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 

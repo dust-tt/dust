@@ -3,30 +3,33 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
   Dialog,
-  Item,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   Label,
   ListCheckIcon,
   MoreIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
   PlusIcon,
   RobotIcon,
+  ScrollArea,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { ConversationType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
-import Link from "next/link";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
@@ -37,6 +40,14 @@ import { classNames } from "@app/lib/utils";
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
 };
+
+type GroupLabel =
+  | "Today"
+  | "Yesterday"
+  | "Last Week"
+  | "Last Month"
+  | "Last 12 Months"
+  | "Older";
 
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
@@ -54,7 +65,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
@@ -86,17 +97,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       type: "success",
       title: "Conversations successfully deleted",
       description:
-        conversations.length > 1
-          ? `${conversations.length} conversations have been deleted.`
-          : `${conversations.length} conversation has been deleted.`,
+        selectedConversations.length > 1
+          ? `${selectedConversations.length} conversations have been deleted.`
+          : `${selectedConversations.length} conversation has been deleted.`,
     });
-  }, [
-    conversations.length,
-    doDelete,
-    selectedConversations,
-    sendNotification,
-    toggleMultiSelect,
-  ]);
+  }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
@@ -122,12 +127,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     const lastMonth = moment().subtract(1, "months").startOf("day");
     const lastYear = moment().subtract(1, "years").startOf("day");
 
-    const groups: { [key: string]: ConversationType[] } = {
+    const groups: Record<GroupLabel, ConversationType[]> = {
       Today: [],
       Yesterday: [],
       "Last Week": [],
       "Last Month": [],
-      "Last Year": [],
+      "Last 12 Months": [],
       Older: [],
     };
 
@@ -142,7 +147,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       } else if (createdDate.isSameOrAfter(lastMonth)) {
         groups["Last Month"].push(conversation);
       } else if (createdDate.isSameOrAfter(lastYear)) {
-        groups["Last Year"].push(conversation);
+        groups["Last 12 Months"].push(conversation);
       } else {
         groups["Older"].push(conversation);
       }
@@ -153,7 +158,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const conversationsByDate = conversations.length
     ? groupConversationsByDate(conversations)
-    : {};
+    : ({} as Record<GroupLabel, ConversationType[]>);
 
   const { setAnimate } = useContext(InputBarContext);
 
@@ -195,78 +200,32 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         )}
       >
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
-          <div className="flex w-full flex-col px-2">
+          <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className={classNames("flex items-center pt-2")}>
-                <div className="flex-grow" />
+              <div className="z-50 flex justify-between gap-2 p-2 shadow-tale">
                 <Button
-                  size="sm"
-                  icon={MoreIcon}
-                  variant="ghost"
-                  className="invisible"
+                  variant={
+                    selectedConversations.length === 0 ? "outline" : "warning"
+                  }
+                  label="Delete"
+                  disabled={selectedConversations.length === 0}
+                  onClick={() => setShowDeleteDialog("selection")}
                 />
                 <Button
-                  size="xs"
                   variant="ghost"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
                   className="mr-2"
                 />
-                <Button
-                  icon={TrashIcon}
-                  size="xs"
-                  variant={
-                    selectedConversations.length === 0 ? "ghost" : "warning"
-                  }
-                  disabled={selectedConversations.length === 0}
-                  onClick={() => setShowDeleteDialog("selection")}
-                />
               </div>
             ) : (
-              <div className={classNames("flex justify-end gap-2 pt-2")}>
-                <NewDropdownMenu>
-                  <NewDropdownMenuTrigger asChild>
-                    <Button size="sm" icon={MoreIcon} variant="outline" />
-                  </NewDropdownMenuTrigger>
-                  <NewDropdownMenuContent>
-                    {isBuilder(owner) && (
-                      <>
-                        <NewDropdownMenuItem
-                          label="Create new assistant"
-                          onClick={async () => {
-                            await router.push(
-                              `/w/${owner.sId}/builder/assistants/create`
-                            );
-                          }}
-                          icon={PlusIcon}
-                        />
-                        <NewDropdownMenuItem
-                          onClick={async () => {
-                            await router.push(
-                              `/w/${owner.sId}/builder/assistants`
-                            );
-                          }}
-                          label="Manage assistants"
-                          icon={RobotIcon}
-                        />
-                      </>
-                    )}
-                    <NewDropdownMenuItem
-                      label="Edit conversations"
-                      onClick={toggleMultiSelect}
-                      icon={ListCheckIcon}
-                      disabled={conversations.length === 0}
-                    />
-                    <NewDropdownMenuItem
-                      label="Clear conversation history"
-                      onClick={() => setShowDeleteDialog("all")}
-                      icon={TrashIcon}
-                      disabled={conversations.length === 0}
-                    />
-                  </NewDropdownMenuContent>
-                </NewDropdownMenu>
-                <Link
+              <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
+                <Button
                   href={`/w/${owner.sId}/assistant/new`}
+                  label="New"
+                  icon={ChatBubbleBottomCenterPlusIcon}
+                  className="shrink"
+                  tooltip="Create a new conversation"
                   onClick={() => {
                     setSidebarOpen(false);
                     const { cId } = router.query;
@@ -279,13 +238,40 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       triggerInputAnimation();
                     }
                   }}
-                >
-                  <Button
-                    label="New conversation"
-                    icon={ChatBubbleBottomCenterPlusIcon}
-                    className="flex-none shrink"
-                  />
-                </Link>
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" icon={MoreIcon} variant="outline" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>Assistants</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      label="Create new assistant"
+                      href={`/w/${owner.sId}/builder/assistants/create`}
+                      icon={PlusIcon}
+                    />
+                    {isBuilder(owner) && (
+                      <DropdownMenuItem
+                        href={`/w/${owner.sId}/builder/assistants`}
+                        label="Manage assistants"
+                        icon={RobotIcon}
+                      />
+                    )}
+                    <DropdownMenuLabel>Conversations</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      label="Edit conversations"
+                      onClick={toggleMultiSelect}
+                      icon={ListCheckIcon}
+                      disabled={conversations.length === 0}
+                    />
+                    <DropdownMenuItem
+                      label="Clear conversation history"
+                      onClick={() => setShowDeleteDialog("all")}
+                      icon={TrashIcon}
+                      disabled={conversations.length === 0}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
             {isConversationsError && (
@@ -293,35 +279,21 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            {conversationsByDate &&
-              Object.keys(conversationsByDate).map((dateLabel) => {
-                const conversations = conversationsByDate[dateLabel];
-                return (
-                  conversations.length > 0 && (
-                    <React.Fragment key={dateLabel}>
-                      <Label className="py-1 text-xs font-medium text-element-800">
-                        {dateLabel.toUpperCase()}
-                      </Label>
-                      <Item.List>
-                        {conversations.map((c: ConversationType) => (
-                          <RenderConversation
-                            key={c.sId}
-                            conversation={c}
-                            isMultiSelect={isMultiSelect}
-                            selectedConversations={selectedConversations}
-                            toggleConversationSelection={
-                              toggleConversationSelection
-                            }
-                            setSidebarOpen={setSidebarOpen}
-                            router={router}
-                            owner={owner}
-                          />
-                        ))}
-                      </Item.List>
-                    </React.Fragment>
-                  )
-                );
-              })}
+            <ScrollArea className="w-full px-2">
+              {conversationsByDate &&
+                Object.keys(conversationsByDate).map((dateLabel) => (
+                  <RenderConversations
+                    key={dateLabel}
+                    conversations={conversationsByDate[dateLabel as GroupLabel]}
+                    dateLabel={dateLabel}
+                    isMultiSelect={isMultiSelect}
+                    selectedConversations={selectedConversations}
+                    toggleConversationSelection={toggleConversationSelection}
+                    router={router}
+                    owner={owner}
+                  />
+                ))}
+            </ScrollArea>
           </div>
         </div>
       </div>
@@ -329,12 +301,44 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   );
 }
 
+const RenderConversations = ({
+  conversations,
+  dateLabel,
+  ...props
+}: {
+  conversations: ConversationType[];
+  dateLabel: string;
+  isMultiSelect: boolean;
+  selectedConversations: ConversationType[];
+  toggleConversationSelection: (c: ConversationType) => void;
+  router: NextRouter;
+  owner: WorkspaceType;
+}) => {
+  if (!conversations.length) {
+    return null;
+  }
+
+  return (
+    <div>
+      <NavigationListLabel label={dateLabel} />
+      <NavigationList>
+        {conversations.map((conversation) => (
+          <RenderConversation
+            key={conversation.sId}
+            conversation={conversation}
+            {...props}
+          />
+        ))}
+      </NavigationList>
+    </div>
+  );
+};
+
 const RenderConversation = ({
   conversation,
   isMultiSelect,
   selectedConversations,
   toggleConversationSelection,
-  setSidebarOpen,
   router,
   owner,
 }: {
@@ -342,7 +346,6 @@ const RenderConversation = ({
   isMultiSelect: boolean;
   selectedConversations: ConversationType[];
   toggleConversationSelection: (c: ConversationType) => void;
-  setSidebarOpen: (open: boolean) => void;
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
@@ -352,36 +355,30 @@ const RenderConversation = ({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const conversationAction = isMultiSelect
-    ? () => (
-        <Checkbox
-          className="bg-white"
-          checked={selectedConversations.includes(conversation)}
-        />
-      )
-    : undefined;
-
   return (
-    <Item
-      style="item"
-      action={conversationAction}
-      hasAction="hover"
-      key={conversation.sId}
-      onClick={() => {
-        isMultiSelect
-          ? toggleConversationSelection(conversation)
-          : setSidebarOpen(false);
-      }}
-      selected={isMultiSelect ? false : router.query.cId === conversation.sId}
-      label={conversationLabel}
-      className="px-2"
-      link={
-        isMultiSelect
-          ? undefined
-          : {
-              href: `/w/${owner.sId}/assistant/${conversation.sId}`,
-            }
-      }
-    />
+    <>
+      {isMultiSelect ? (
+        <div className="flex items-center px-2 py-2">
+          <Checkbox
+            id={`conversation-${conversation.sId}`}
+            className="bg-white"
+            checked={selectedConversations.includes(conversation)}
+            onCheckedChange={() => toggleConversationSelection(conversation)}
+          />
+          <Label
+            htmlFor={`conversation-${conversation.sId}`}
+            className="ml-2 text-sm font-light text-muted-foreground"
+          >
+            {conversationLabel}
+          </Label>
+        </div>
+      ) : (
+        <NavigationListItem
+          selected={router.query.cId === conversation.sId}
+          label={conversationLabel}
+          href={`/w/${owner.sId}/assistant/${conversation.sId}`}
+        />
+      )}
+    </>
   );
 };

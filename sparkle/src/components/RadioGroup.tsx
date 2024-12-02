@@ -8,6 +8,7 @@ import { cn } from "@sparkle/lib/utils";
 const radioStyles = cva(
   cn(
     "s-aspect-square s-rounded-full s-border s-border-border-darker s-text-foreground",
+    "s-flex s-items-center s-justify-center",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50",
     "checked:s-ring-0 checked:s-bg-action-500"
@@ -30,8 +31,8 @@ const radioIndicatorStyles = cva(
   {
     variants: {
       size: {
-        xs: "s-h-2 s-w-2 s-ml-[3px]",
-        sm: "s-h-2.5 s-w-2.5 s-ml-1",
+        xs: "s-h-2 s-w-2",
+        sm: "s-h-2.5 s-w-2.5",
       },
     },
     defaultVariants: {
@@ -59,6 +60,7 @@ interface RadioGroupItemProps
     VariantProps<typeof radioStyles> {
   tooltipMessage?: string;
   tooltipAsChild?: boolean;
+  label?: React.ReactNode;
 }
 
 const RadioGroupItem = React.forwardRef<
@@ -66,7 +68,14 @@ const RadioGroupItem = React.forwardRef<
   RadioGroupItemProps
 >(
   (
-    { tooltipMessage, className, size, tooltipAsChild = false, ...props },
+    {
+      tooltipMessage,
+      className,
+      size,
+      tooltipAsChild = false,
+      label,
+      ...props
+    },
     ref
   ) => {
     const item = (
@@ -80,13 +89,9 @@ const RadioGroupItem = React.forwardRef<
         />
       </RadioGroupPrimitive.Item>
     );
-    return (
-      <div
-        className={cn(
-          "s-group",
-          size === "sm" ? "s-h-5 s-w-5" : "-s-mt-1.5 s-h-4 s-w-4"
-        )}
-      >
+
+    const wrappedItem = (
+      <div className="s-flex s-items-center s-gap-2">
         {tooltipMessage ? (
           <Tooltip
             triggerAsChild={tooltipAsChild}
@@ -96,11 +101,13 @@ const RadioGroupItem = React.forwardRef<
         ) : (
           item
         )}
+        {label}
       </div>
     );
+
+    return <div className="s-group s-w-full">{wrappedItem}</div>;
   }
 );
-RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
 
 type IconPosition = "start" | "center" | "end";
 
@@ -113,7 +120,9 @@ const RadioGroupChoice = React.forwardRef<
   RadioGroupChoiceProps
 >(({ className, size, iconPosition = "center", children, ...props }, ref) => {
   return (
-    <div className={cn("s-flex", className, `s-items-${iconPosition}`)}>
+    <div
+      className={cn("s-flex s-flex-col", className, `s-items-${iconPosition}`)}
+    >
       <RadioGroupItem
         ref={ref}
         className={cn(radioStyles({ size }))}

@@ -1,12 +1,12 @@
 import { BarHeader, Button, LockIcon, Page } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { BillingPeriod, WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useContext } from "react";
+import React from "react";
 
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -38,7 +38,7 @@ export default function Subscribe({
   isAdmin,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { user } = useUser();
 
   const { subscriptions } = useWorkspaceSubscriptions({
@@ -91,29 +91,24 @@ export default function Subscribe({
     <>
       <div className="mb-10">
         <BarHeader
-          title={"Joining Dust"}
+          title="Joining Dust"
           className="ml-10 lg:ml-0"
           rightActions={
             <>
               <div className="flex flex-row items-center">
                 {user && user.workspaces.length > 1 && (
-                  <div className="mr-4 flex flex-row gap-2">
-                    <div className="text-sm text-slate-500">Workspace:</div>
-                    <WorkspacePicker
-                      user={user}
-                      workspace={owner}
-                      readOnly={false}
-                      displayDropDownOrigin="topRight"
-                      onWorkspaceUpdate={(workspace) => {
-                        const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                        if (workspace.id !== owner.id) {
-                          void router
-                            .push(assistantRoute)
-                            .then(() => router.reload());
-                        }
-                      }}
-                    />
-                  </div>
+                  <WorkspacePicker
+                    user={user}
+                    workspace={owner}
+                    onWorkspaceUpdate={(workspace) => {
+                      const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+                      if (workspace.id !== owner.id) {
+                        void router
+                          .push(assistantRoute)
+                          .then(() => router.reload());
+                      }
+                    }}
+                  />
                 )}
                 <div>{user && <UserMenu user={user} owner={owner} />}</div>
               </div>
@@ -202,7 +197,7 @@ export default function Subscribe({
                   onClick={() => {
                     void handleSubscribePlan(billingPeriod);
                   }}
-                ></Button>
+                />
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
                 <ProPlansTable

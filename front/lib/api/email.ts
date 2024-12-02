@@ -203,7 +203,6 @@ export async function sendEmailWithTemplate({
 
   try {
     await sendEmail(to, message);
-    logger.info({ email: to, subject }, "Sending email");
     return new Ok(undefined);
   } catch (e) {
     logger.error(

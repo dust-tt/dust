@@ -13,33 +13,38 @@ export default meta;
 export const InputExample = () => (
   <div className="s-flex s-flex-col s-gap-20">
     <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input placeholder="placeholder" name="input" />
       <Input
         placeholder="placeholder"
         name="input"
-        value="value"
-        error="errored because it's a very long message"
-        showErrorLabel
+        message="Name must be unique"
+        messageStatus="info"
       />
       <Input
         placeholder="placeholder"
         name="input"
         value="value"
-        error="errored"
+        message="errored because it's a very long message"
+        messageStatus="error"
       />
       <Input
         placeholder="placeholder"
         name="input"
         value="value"
-        error="errored because it's a very long message"
-        showErrorLabel
+        message="Default message"
+      />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        value="value"
+        message="errored because it's a very long message"
+        messageStatus="error"
       />
       <Input
         placeholder="placeholder"
         name="input"
         value="disabled"
-        disabled={true}
-        showErrorLabel
+        disabled
+        messageStatus="error"
       />
     </div>
     <div className="s-grid s-grid-cols-3 s-gap-4">
@@ -48,41 +53,38 @@ export const InputExample = () => (
         placeholder="placeholder"
         name="input"
         value="value"
-        error="errored because it's a very long message"
-        showErrorLabel
+        message="errored because it's a very long message"
+        messageStatus="error"
       />
       <Input
         placeholder="placeholder"
         name="input"
         value="value"
-        error="errored"
+        message="Default message"
       />
       <Input
         placeholder="placeholder"
         name="input"
         value="value"
-        error="errored because it's a very long message"
-        showErrorLabel
+        message="errored because it's a very long message"
+        messageStatus="error"
       />
       <Input
         placeholder="placeholder"
         name="input"
         value="test"
-        showErrorLabel
+        messageStatus="error"
       />
     </div>
     <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input
-        placeholder="placeholder"
-        name="input"
-        label="Firstname"
-        showErrorLabel
-      />
+      <Input placeholder="placeholder" name="input" label="Firstname" isError />
       <Input
         placeholder="placeholder"
         name="input"
         label="Lastname"
-        showErrorLabel
+        message="Input your lastname"
+        messageStatus="info"
+        isError
       />
     </div>
   </div>

@@ -1,5 +1,6 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 
+import { getFeatureFlags } from "@app/lib/auth";
 import { updateTrackedDocuments } from "@app/lib/document_tracker";
 import type {
   DocumentsPostProcessHookFilterParams,
@@ -34,7 +35,9 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
     documentId,
   });
 
-  if (!owner.flags.includes("document_tracker")) {
+  const flags = await getFeatureFlags(owner);
+
+  if (!flags.includes("document_tracker")) {
     return false;
   }
 

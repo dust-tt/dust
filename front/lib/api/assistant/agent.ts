@@ -1,5 +1,5 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionsEvent,
   AgentActionSpecification,
   AgentActionSpecificEvent,
@@ -22,6 +22,7 @@ import type {
 import {
   assertNever,
   isBrowseConfiguration,
+  isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -31,7 +32,9 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { getEmulatedAndJITActions } from "@app/lib/api/assistant//jit_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
+import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -39,7 +42,7 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
-  renderConversationForModelMultiActions,
+  renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -48,8 +51,6 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
-
-import { getCitationsCount } from "./actions/utils";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -292,9 +293,9 @@ async function* runMultiActionsAgentLoop(
   }
 }
 
-// This method is used by the multi-actions execution loop to pick the next action
-// to execute and generate its inputs.
-export async function* runMultiActionsAgent(
+// This method is used by the multi-actions execution loop to pick the next action to execute and
+// generate its inputs.
+async function* runMultiActionsAgent(
   auth: Authenticator,
   {
     agentConfiguration,
@@ -309,7 +310,7 @@ export async function* runMultiActionsAgent(
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
-    availableActions: AgentActionConfigurationType[];
+    availableActions: ActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
   }
@@ -351,6 +352,15 @@ export async function* runMultiActionsAgent(
     fallbackPrompt += ".";
   }
 
+  const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
+    agentMessage,
+    conversation,
+  });
+
+  if (!isLastGenerationIteration) {
+    availableActions = availableActions.concat(jitActions);
+  }
+
   const prompt = await constructPromptMultiActions(auth, {
     userMessage,
     conversation,
@@ -362,13 +372,22 @@ export async function* runMultiActionsAgent(
 
   const MIN_GENERATION_TOKENS = 2048;
 
+  // Prepend emulated actions to the current agent message before rendering the conversation for the
+  // model.
+  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
+
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModelMultiActions({
+  const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
     prompt,
     allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
   });
+
+  // Scrub emulated actions from the agent message after rendering.
+  agentMessage.actions = agentMessage.actions.filter(
+    (a) => !emulatedActions.includes(a)
+  );
 
   if (modelConversationRes.isErr()) {
     logger.error(
@@ -431,6 +450,8 @@ export async function* runMultiActionsAgent(
 
     specifications.push(specRes.value);
   }
+
+  // If we have attachments inject a fake LS action to handle them.
 
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
@@ -689,10 +710,9 @@ export async function* runMultiActionsAgent(
   }
 
   const actions: AgentActionsEvent["actions"] = [];
-  const agentActions = agentConfiguration.actions;
 
   for (const a of output.actions) {
-    const action = agentActions.find((ac) => ac.name === a.name);
+    const action = availableActions.find((ac) => ac.name === a.name);
 
     if (!action) {
       logger.error(
@@ -783,7 +803,7 @@ async function* runAction(
     citationsRefsOffset,
   }: {
     configuration: AgentConfigurationType;
-    actionConfiguration: AgentActionConfigurationType;
+    actionConfiguration: ActionConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
@@ -792,7 +812,7 @@ async function* runAction(
     functionCallId: string | null;
     step: number;
     stepActionIndex: number;
-    stepActions: AgentActionConfigurationType[];
+    stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
   }
 ): AsyncGenerator<
@@ -1114,6 +1134,53 @@ async function* runAction(
           };
           return;
         case "browse_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isConversationIncludeFileConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "conversation_include_file_params":
+          yield event;
+          break;
+        case "conversation_include_file_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "conversation_include_file_success":
           yield {
             type: "agent_action_success",
             created: event.created,

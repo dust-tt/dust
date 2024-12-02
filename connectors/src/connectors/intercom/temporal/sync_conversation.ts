@@ -21,13 +21,14 @@ import {
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { IntercomTeam } from "@connectors/lib/models/intercom";
 import {
   IntercomConversation,
+  IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
 const turndownService = new TurndownService();
 
 export async function deleteTeamAndConversations({
@@ -295,7 +296,10 @@ export async function syncConversation({
     datasourceTags.push(`tag:${tag.name}`);
   });
 
-  const parents = [];
+  // parents in the Core datasource map the internal ids that are used in the permission system
+  // they self reference the document id
+  const documentId = getConversationInternalId(connectorId, conversation.id);
+  const parents = [documentId];
   if (conversationTeamId) {
     parents.push(getTeamInternalId(connectorId, conversationTeamId));
   }
@@ -303,7 +307,7 @@ export async function syncConversation({
 
   await upsertToDatasource({
     dataSourceConfig,
-    documentId: getConversationInternalId(connectorId, conversation.id),
+    documentId,
     documentContent: renderedPage,
     documentUrl: conversationUrl,
     timestampMs: updatedAtDate.getTime(),

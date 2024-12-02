@@ -192,6 +192,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
 
       await connector.update({ connectionId });
+
+      // If connector was previously paused, unpause it.
+      if (connector.isPaused()) {
+        await this.unpause();
+      }
     }
 
     return new Ok(connector.id.toString());

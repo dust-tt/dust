@@ -1,5 +1,5 @@
-import { ContentMessage } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, VaultType } from "@dust-tt/types";
+import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
+import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
@@ -25,7 +25,7 @@ export function isActionDustAppRunValid(
 
 interface ActionDustAppRunProps {
   action: AssistantBuilderActionConfiguration;
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   owner: LightWorkspaceType;
   setEdited: (edited: boolean) => void;
   updateAction: (args: {
@@ -39,7 +39,7 @@ interface ActionDustAppRunProps {
 
 export function ActionDustAppRun({
   action,
-  allowedVaults,
+  allowedSpaces,
   owner,
   setEdited,
   updateAction,
@@ -71,7 +71,7 @@ export function ActionDustAppRun({
   return (
     <>
       <AssistantBuilderDustAppModal
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         owner={owner}
         isOpen={showDustAppsModal}
         setOpen={(isOpen) => {
@@ -94,6 +94,7 @@ export function ActionDustAppRun({
       {noDustApp ? (
         <ContentMessage
           title="You don't have any Dust Application available"
+          icon={InformationCircleIcon}
           variant="warning"
         >
           <div className="flex flex-col gap-y-3">

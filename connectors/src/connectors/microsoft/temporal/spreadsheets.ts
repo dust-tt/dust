@@ -62,7 +62,7 @@ async function upsertWorksheetInDb(
   });
 }
 
-async function upsertTable(
+async function upsertMSTable(
   connector: ConnectorResource,
   internalId: string,
   spreadsheet: microsoftgraph.DriveItem,
@@ -97,6 +97,9 @@ async function upsertTable(
     truncate: true,
     parents,
     useAppForHeaderDetection: true,
+    title: `${spreadsheet.name} - ${worksheet.name}`,
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -187,7 +190,7 @@ async function processSheet({
     ];
 
     try {
-      await upsertTable(
+      await upsertMSTable(
         connector,
         worksheetInternalId,
         spreadsheet,

@@ -22,12 +22,12 @@ jobs:
       - name: Install Redis
         uses: zhulik/redis-action@1.1.0
         with:
-          redis version: '7.2.5'
+          redis version: "7.2.5"
 
       - name: Install Postgres
         uses: harmon758/postgresql-action@v1
         with:
-          postgresql version: '14.13'  # See https://hub.docker.com/_/postgres for available versions
+          postgresql version: "14.13" # See https://hub.docker.com/_/postgres for available versions
           postgresql db: oauth
           postgresql user: test
           postgresql password: test
@@ -46,12 +46,17 @@ jobs:
         working-directory: core
         run: cargo fmt --all -- --check
 
+      - name: Setup Tables
+        working-directory: core
+        run: cargo run --bin init_db
+        env:
+          OAUTH_DATABASE_URI: "postgres://test:test@localhost:5432/oauth"
+
       - name: Test
         working-directory: core
         run: cargo test --all
         env:
-          DISABLE_API_KEY_CHECK: 'true'
-          OAUTH_DATABASE_URI: 'postgres://test:test@localhost:5432/oauth'
-          REDIS_URI: 'redis://localhost:6379'
+          DISABLE_API_KEY_CHECK: "true"
+          OAUTH_DATABASE_URI: "postgres://test:test@localhost:5432/oauth"
+          REDIS_URI: "redis://localhost:6379"
           OAUTH_ENCRYPTION_KEY: ${{ secrets.TEST_OAUTH_ENCRYPTION_KEY }}
-

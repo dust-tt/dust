@@ -68,9 +68,9 @@ export function SubscriptionContactUsDrawer({
                 setEmail(e.target.value);
                 setEmailError(null);
               }}
-              error={emailError}
+              message={emailError}
+              messageStatus="error"
               name="assistantName"
-              showErrorLabel
               className="text-sm"
             />
             <Page.Horizontal align="right">

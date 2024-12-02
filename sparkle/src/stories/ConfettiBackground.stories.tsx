@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import { ConfettiBackground } from "@sparkle/index";
 
 const meta = {
-  title: "Components/ConfettiBackground",
+  title: "Effects/ConfettiBackground",
   component: ConfettiBackground,
 } satisfies Meta<typeof ConfettiBackground>;
 

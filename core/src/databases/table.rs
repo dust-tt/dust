@@ -7,6 +7,7 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::{
+    data_sources::node::{Node, NodeType},
     databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -57,6 +58,8 @@ pub struct Table {
     description: String,
     timestamp: u64,
     tags: Vec<String>,
+    title: String,
+    mime_type: String,
     parents: Vec<String>,
 
     schema: Option<TableSchema>,
@@ -68,31 +71,35 @@ pub struct Table {
 
 impl Table {
     pub fn new(
-        project: &Project,
-        data_source_id: &str,
+        project: Project,
+        data_source_id: String,
         created: u64,
-        table_id: &str,
-        name: &str,
-        description: &str,
+        table_id: String,
+        name: String,
+        description: String,
         timestamp: u64,
+        title: String,
+        mime_type: String,
         tags: Vec<String>,
         parents: Vec<String>,
-        schema: &Option<TableSchema>,
+        schema: Option<TableSchema>,
         schema_stale_at: Option<u64>,
         remote_database_table_id: Option<String>,
         remote_database_secret_id: Option<String>,
     ) -> Self {
         Table {
-            project: project.clone(),
-            data_source_id: data_source_id.to_string(),
+            project: project,
+            data_source_id: data_source_id,
             created,
-            table_id: table_id.to_string(),
-            name: name.to_string(),
-            description: description.to_string(),
+            table_id: table_id,
+            name: name,
+            description: description,
             timestamp,
             tags,
+            title: title,
+            mime_type: mime_type,
             parents,
-            schema: schema.clone(),
+            schema: schema,
             schema_stale_at,
             remote_database_table_id,
             remote_database_secret_id,
@@ -110,6 +117,15 @@ impl Table {
     }
     pub fn table_id(&self) -> &str {
         &self.table_id
+    }
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    pub fn parents(&self) -> &Vec<String> {
+        &self.parents
     }
     pub fn name(&self) -> &str {
         &self.name
@@ -180,7 +196,7 @@ impl Table {
         }
 
         store
-            .delete_table(&self.project, &self.data_source_id, &self.table_id)
+            .delete_data_source_table(&self.project, &self.data_source_id, &self.table_id)
             .await?;
 
         Ok(())
@@ -192,7 +208,7 @@ impl Table {
         parents: Vec<String>,
     ) -> Result<()> {
         store
-            .update_table_parents(
+            .update_data_source_table_parents(
                 &self.project,
                 &self.data_source_id,
                 &&self.table_id,
@@ -200,6 +216,21 @@ impl Table {
             )
             .await?;
         Ok(())
+    }
+}
+
+impl From<Table> for Node {
+    fn from(table: Table) -> Node {
+        Node::new(
+            &table.project,
+            &table.data_source_id,
+            &table.table_id,
+            NodeType::Table,
+            table.timestamp,
+            &table.title,
+            &table.mime_type,
+            table.parents.clone(),
+        )
     }
 }
 
@@ -266,7 +297,9 @@ impl LocalTable {
         }
         info!(
             duration = utils::now() - now,
-            "DSSTRUCTSTAT Upsert rows validation"
+            table_id = self.table.table_id(),
+            rows_count = rows.len(),
+            "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
         now = utils::now();
@@ -285,12 +318,14 @@ impl LocalTable {
         };
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            rows_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows] table schema"
         );
 
         now = utils::now();
         store
-            .update_table_schema(
+            .update_data_source_table_schema(
                 &self.table.project,
                 &self.table.data_source_id,
                 &self.table.table_id,
@@ -299,6 +334,7 @@ impl LocalTable {
             .await?;
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] update table_schema"
         );
 
@@ -312,7 +348,7 @@ impl LocalTable {
             // This is why we invalidate the schema when doing incremental updates, and next time
             // the schema is requested, it will be recomputed from all the rows.
             store
-                .invalidate_table_schema(
+                .invalidate_data_source_table_schema(
                     &self.table.project,
                     &self.table.data_source_id,
                     &self.table.table_id,
@@ -321,6 +357,7 @@ impl LocalTable {
         }
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] invalidate table schema"
         );
 
@@ -335,6 +372,8 @@ impl LocalTable {
             .await?;
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            rows_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows] rows upsert"
         );
 
@@ -361,6 +400,7 @@ impl LocalTable {
         .await?;
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
         );
 
@@ -407,7 +447,7 @@ impl LocalTable {
                 let schema = self.compute_schema(databases_store).await?;
 
                 store
-                    .update_table_schema(
+                    .update_data_source_table_schema(
                         &self.table.project,
                         &self.table.data_source_id,
                         &self.table.table_id,
@@ -525,16 +565,18 @@ mod tests {
 
         let schema = TableSchema::from_rows_async(rows).await?;
         let table = Table::new(
-            &Project::new_from_id(42),
-            "data_source_id",
+            Project::new_from_id(42),
+            "data_source_id".to_string(),
             utils::now(),
-            "table_id",
-            "test_dbml",
-            "Test records for DBML rendering",
+            "table_id".to_string(),
+            "test_dbml".to_string(),
+            "Test records for DBML rendering".to_string(),
             utils::now(),
+            "test_dbml".to_string(),
+            "text/plain".to_string(),
             vec![],
             vec![],
-            &Some(schema),
+            Some(schema),
             None,
             None,
             None,

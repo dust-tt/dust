@@ -6,9 +6,9 @@ WORKDIR /app
 
 COPY . .
 
-RUN cargo build --release --bin dust-api --bin sqlite-worker
+RUN cargo build --release --bin core-api --bin sqlite-worker
 
 EXPOSE 3001
 
 # Set a default command, it will start the API service if no command is provided
-CMD ["cargo", "run", "--release", "--bin", "dust-api"]
+CMD ["cargo", "run", "--release", "--bin", "core-api"]

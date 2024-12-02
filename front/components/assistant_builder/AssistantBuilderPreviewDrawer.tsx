@@ -2,13 +2,18 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   LightbulbIcon,
   MagicIcon,
   Markdown,
   MoreIcon,
   Page,
   Spinner,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -17,7 +22,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -64,28 +69,6 @@ export default function AssistantBuilderRightPanel({
   builderState,
   setAction,
 }: AssistantBuilderRightPanelProps) {
-  const tabsConfig = useMemo(
-    () => [
-      {
-        label: "Template",
-        current: rightPanelStatus.tab === "Template",
-        onClick: () => {
-          openRightPanelTab("Template");
-        },
-        icon: MagicIcon,
-      },
-      {
-        label: "Preview",
-        current: rightPanelStatus.tab === "Preview",
-        onClick: () => {
-          openRightPanelTab("Preview");
-        },
-        icon: ChatBubbleBottomCenterTextIcon,
-      },
-    ],
-    [rightPanelStatus.tab, openRightPanelTab]
-  );
-
   const {
     shouldAnimate: shouldAnimatePreviewDrawer,
     draftAssistant,
@@ -123,7 +106,22 @@ export default function AssistantBuilderRightPanel({
     <div className="flex h-full flex-col">
       {template && (
         <div className="shrink-0 bg-white pt-5">
-          <Tab tabs={tabsConfig} variant="default" className="hidden lg:flex" />
+          <Tabs
+            value={rightPanelStatus.tab ?? "Preview"}
+            onValueChange={(t) =>
+              openRightPanelTab(t as AssistantBuilderRightPanelTab)
+            }
+            className="hidden lg:flex"
+          >
+            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+              <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+              <TabsTrigger
+                value="Preview"
+                label="Preview"
+                icon={ChatBubbleBottomCenterTextIcon}
+              />
+            </TabsList>
+          </Tabs>
         </div>
       )}
       <div
@@ -154,7 +152,6 @@ export default function AssistantBuilderRightPanel({
                         conversationId={conversation.sId}
                         onStickyMentionsChange={setStickyMentions}
                         isInModal
-                        hideReactions
                         isFading={isFading}
                         key={conversation.sId}
                       />
@@ -227,8 +224,7 @@ export default function AssistantBuilderRightPanel({
                     <div>
                       <Markdown
                         content={template?.helpActions ?? ""}
-                        className=""
-                        size="sm"
+                        textSize="sm"
                       />
                     </div>
                     <Separator />
@@ -297,28 +293,30 @@ const TemplateAddActionButton = ({
   );
 };
 
-const TemplateDropDownMenu = ({
-  screen,
-  removeTemplate,
-  resetToTemplateInstructions,
-  resetToTemplateActions,
-  openRightPanelTab,
-}: {
-  screen: BuilderScreen;
-  removeTemplate: () => Promise<void>;
-  resetToTemplateInstructions: () => Promise<void>;
-  resetToTemplateActions: () => Promise<void>;
+interface TemplateDropDownMenuProps {
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
-}) => {
+  removeTemplate: () => Promise<void>;
+  resetToTemplateActions: () => Promise<void>;
+  resetToTemplateInstructions: () => Promise<void>;
+  screen: BuilderScreen;
+}
+
+const TemplateDropDownMenu = ({
+  openRightPanelTab,
+  removeTemplate,
+  resetToTemplateActions,
+  resetToTemplateInstructions,
+  screen,
+}: TemplateDropDownMenuProps) => {
   const confirm = useContext(ConfirmContext);
 
   return (
-    <DropdownMenu className="text-element-700">
-      <DropdownMenu.Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button icon={MoreIcon} size="sm" variant="ghost" />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items width={320} origin="topRight">
-        <DropdownMenu.Item
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
           label="Close the template"
           onClick={async () => {
             const confirmed = await confirm({
@@ -335,7 +333,7 @@ const TemplateDropDownMenu = ({
           icon={XMarkIcon}
         />
         {screen === "instructions" && (
-          <DropdownMenu.Item
+          <DropdownMenuItem
             label="Reset instructions"
             description="Set instructions back to template's default"
             onClick={async () => {
@@ -353,9 +351,9 @@ const TemplateDropDownMenu = ({
           />
         )}
         {screen === "actions" && (
-          <DropdownMenu.Item
-            label={"Reset tools"}
-            description={"Remove all tools"}
+          <DropdownMenuItem
+            label="Reset tools"
+            description="Remove all tools"
             onClick={async () => {
               const confirmed = await confirm({
                 title: "Are you sure?",
@@ -370,7 +368,7 @@ const TemplateDropDownMenu = ({
             icon={MagicIcon}
           />
         )}
-      </DropdownMenu.Items>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 };

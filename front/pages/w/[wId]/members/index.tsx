@@ -4,18 +4,21 @@ import {
   Page,
   PlusIcon,
   Popup,
-  Searchbar,
+  SearchInput,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceDomain, WorkspaceType } from "@dust-tt/types";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
   SubscriptionType,
+  UserType,
+  WorkspaceDomain,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -24,11 +27,14 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import config from "@app/lib/api/config";
-import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
+import {
+  makeAudienceUri,
+  makeEnterpriseConnectionInitiateLoginUrl,
+  makeSamlAcsUrl,
+} from "@app/lib/api/enterprise_connection";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
@@ -66,6 +72,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     {
       callbackUrl: config.getAuth0TenantUrl(),
       initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
+      // SAML specific.
+      audienceUri: makeAudienceUri(owner),
+      samlAcsUrl: makeSamlAcsUrl(owner),
     };
 
   const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
@@ -214,7 +223,7 @@ export default function WorkspaceAdmin({
           workspaceVerifiedDomain={workspaceVerifiedDomain}
         />
         <div className="flex flex-row gap-2">
-          <Searchbar
+          <SearchInput
             placeholder="Search members (email)"
             value={searchTerm}
             name="search"
@@ -262,7 +271,7 @@ function DomainAutoJoinModal({
   onClose: () => void;
   owner: WorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const title = domainAutoJoinEnabled
     ? "De-activate Auto-join"

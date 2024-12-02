@@ -1,0 +1,23 @@
+name: Lint & Build (extension)
+
+on:
+  push:
+    paths:
+      - types/**
+      - extension/**
+      - .github/workflows/build-and-lint-extension.yml
+
+jobs:
+  check-eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+          cache: "npm"
+          cache-dependency-path: ./front/package-lock.json
+      - working-directory: sdks/js
+        run: npm install && npm run build
+      - working-directory: extension
+        run: npm install && npm run lint && npm run format:check && npm run build

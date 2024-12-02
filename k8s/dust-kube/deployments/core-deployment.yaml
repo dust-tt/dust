@@ -20,7 +20,7 @@ spec:
       containers:
         - name: web
           image: gcr.io/or1g1n-186209/core-image:latest
-          command: ["cargo", "run", "--release", "--bin", "dust-api"]
+          command: ["cargo", "run", "--release", "--bin", "core-api"]
           imagePullPolicy: Always
           ports:
             - containerPort: 3001

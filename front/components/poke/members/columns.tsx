@@ -18,14 +18,16 @@ export type MemberDisplayType = {
 export function makeColumnsForMembers({
   onRevokeMember,
   onUpdateMemberRole,
+  readonly,
 }: {
   onRevokeMember: (m: MemberDisplayType) => Promise<void>;
   onUpdateMemberRole: (
     m: MemberDisplayType,
     role: ActiveRoleType
   ) => Promise<void>;
+  readonly?: boolean;
 }): ColumnDef<MemberDisplayType>[] {
-  return [
+  const baseColumns: ColumnDef<MemberDisplayType>[] = [
     {
       accessorKey: "sId",
       header: ({ column }) => {
@@ -33,7 +35,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Id</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -50,7 +52,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -88,7 +90,7 @@ export function makeColumnsForMembers({
           <div className="flex space-x-2">
             <p>Role</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -105,6 +107,11 @@ export function makeColumnsForMembers({
         if (member.role === "none") {
           return <span className="py-2 pl-3 italic">revoked</span>;
         }
+
+        if (readonly) {
+          return <span>{member.role}</span>;
+        }
+
         return (
           <select
             className="rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
@@ -125,7 +132,10 @@ export function makeColumnsForMembers({
         );
       },
     },
-    {
+  ];
+
+  if (!readonly) {
+    baseColumns.push({
       id: "actions",
       cell: ({ row }) => {
         const member = row.original;
@@ -134,13 +144,15 @@ export function makeColumnsForMembers({
           <IconButton
             icon={TrashIcon}
             size="xs"
-            variant="ghost"
+            variant="outline"
             onClick={async () => {
               await onRevokeMember(member);
             }}
           />
         ) : null;
       },
-    },
-  ];
+    });
+  }
+
+  return baseColumns;
 }

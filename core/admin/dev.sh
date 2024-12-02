@@ -1,2 +1,2 @@
 #!/bin/sh
-cargo run --bin dust-api
+cargo run --bin core-api

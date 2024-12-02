@@ -1,4 +1,4 @@
-export const WORKFLOW_VERSION = 42;
+export const WORKFLOW_VERSION = 43;
 export const QUEUE_NAME = `notion-queue-v${WORKFLOW_VERSION}`;
 export const GARBAGE_COLLECT_QUEUE_NAME = `notion-gc-queue-v${WORKFLOW_VERSION}`;
 
@@ -25,3 +25,9 @@ export const DATABASE_TO_CSV_MAX_SIZE = 256 * 1024 * 1024; // 256MB
 export const GARBAGE_COLLECT_MAX_DURATION_MS = Math.floor(
   1000 * 60 * 60 * 2 * 0.9
 );
+
+// The notion search API sometimes will return an infinite number of pages.
+// This appears to be a bug in Notion's API.
+// The only workaround is to limit the search pages.
+export const MAX_SEARCH_PAGE_INDEX = 50_000;
+export const MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX = 25_000;

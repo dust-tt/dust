@@ -100,21 +100,6 @@ export default function AssistantConversation({
     }
   }, [cId, assistant, setConversationKey, initialConversationId]);
 
-  useEffect(() => {
-    function handleNewConvoShortcut(event: KeyboardEvent) {
-      // Check for Command on Mac or Ctrl on others
-      const isModifier = event.metaKey || event.ctrlKey;
-      if (isModifier && event.key === "/") {
-        void router.push(`/w/${owner.sId}/assistant/new`);
-      }
-    }
-
-    window.addEventListener("keydown", handleNewConvoShortcut);
-    return () => {
-      window.removeEventListener("keydown", handleNewConvoShortcut);
-    };
-  }, [owner.sId, router]);
-
   return (
     <ConversationContainer
       // Key ensures the component re-renders when conversation changes except for shallow browse.

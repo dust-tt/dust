@@ -1,6 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, CubeIcon, Tooltip } from "@dust-tt/sparkle";
+import { Button, CubeIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
@@ -59,19 +59,16 @@ export default function CopyRun({
         onClose={() => setShowViewAppAPIModal(false)}
         inputs={inputs}
       />
-      <Tooltip
-        label="Copy run specifications."
-        trigger={
-          <Button
-            label="API"
-            variant="primary"
-            onClick={() => {
-              setShowViewAppAPIModal(true);
-            }}
-            disabled={disabled}
-            icon={CubeIcon}
-          />
-        }
+
+      <Button
+        tooltip="Copy run specifications."
+        label="API"
+        variant="primary"
+        onClick={() => {
+          setShowViewAppAPIModal(true);
+        }}
+        disabled={disabled}
+        icon={CubeIcon}
       />
     </div>
   );

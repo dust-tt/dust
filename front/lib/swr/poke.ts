@@ -9,6 +9,7 @@ import type { Fetcher } from "swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
+import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 
 export function usePokeConnectorPermissions({
@@ -94,5 +95,20 @@ export function usePokePlans() {
     plans: useMemo(() => (data ? data.plans : []), [data]),
     isPlansLoading: !error && !data,
     isPlansError: error,
+  };
+}
+
+export function usePokeFeatureFlags({ workspaceId }: { workspaceId: string }) {
+  const featureFlagsFetcher: Fetcher<GetPokeFeaturesResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/poke/workspaces/${workspaceId}/features`,
+    featureFlagsFetcher
+  );
+
+  return {
+    featureFlags: useMemo(() => (data ? data.features : []), [data]),
+    isFeatureFlagsLoading: !error && !data,
+    isFeatureFlagsError: error,
   };
 }

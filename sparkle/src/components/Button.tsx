@@ -2,32 +2,32 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { Icon } from "@sparkle/components/Icon";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import Spinner, { SpinnerProps } from "@sparkle/components/Spinner";
 import {
-  Icon,
-  Spinner,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-} from "@sparkle/components";
-import { SpinnerProps } from "@sparkle/components/Spinner";
+} from "@sparkle/components/Tooltip";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-const BUTTON_VARIANTS = [
+export const BUTTON_VARIANTS = [
   "primary",
   "highlight",
   "warning",
   "outline",
   "ghost",
-  "white",
+  "ghost-secondary",
 ] as const;
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-const BUTTON_SIZES = ["xs", "sm", "md"] as const;
+export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
 
-type ButtonSizeType = (typeof BUTTON_SIZES)[number];
+export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 const styleVariants: Record<ButtonVariantType, string> = {
   primary:
@@ -37,11 +37,11 @@ const styleVariants: Record<ButtonVariantType, string> = {
   warning:
     "s-bg-warning s-text-white hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
   outline:
-    "s-border s-text-primary-dark s-border-border-dark hover:s-text-primary hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
+    "s-border s-text-primary-dark s-bg-background s-border-border-dark hover:s-text-primary hover:s-bg-primary-150 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
   ghost:
-    "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-100 hover:s-text-primary-900 active:s-bg-primary-200 hover:s-border-primary-200 disabled:s-text-primary-400",
-  white:
-    "s-bg-white s-text-primary-dark s-border s-border-border-dark hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-muted",
+    "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
+  "ghost-secondary":
+    "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {
@@ -70,23 +70,23 @@ const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
   warning: "light",
   outline: "dark",
   ghost: "dark",
-  white: "light",
+  "ghost-secondary": "dark",
 };
 
 const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
   primary: "light",
   highlight: "light",
   warning: "light",
-  white: "light",
   outline: "slate400",
   ghost: "slate400",
+  "ghost-secondary": "dark",
 };
 
-interface MetaButtonProps
+export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  variant?: ButtonVariantType;
+  variant?: ButtonVariantType | null;
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
@@ -98,7 +98,7 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size }), className)}
+        className={cn(variant && buttonVariants({ variant, size }), className)}
         ref={ref}
         {...props}
       >
@@ -109,7 +109,9 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 );
 MetaButton.displayName = "MetaButton";
 
-export interface ButtonProps extends MetaButtonProps {
+export interface ButtonProps
+  extends Omit<MetaButtonProps, "children">,
+    Omit<LinkWrapperProps, "children" | "className"> {
   label?: string;
   icon?: React.ComponentType;
   isSelect?: boolean;
@@ -129,14 +131,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isSelect = false,
       isPulsing = false,
       size,
+      href,
+      target,
+      rel,
+      replace,
+      shallow,
+      "aria-label": ariaLabel,
       ...props
     },
     ref
   ) => {
     const buttonSize = size || "sm";
     const spinnerVariant = isLoading
-      ? spinnerVariantsMapIsLoading[variant] || "slate400"
-      : spinnerVariantsMap[variant] || "slate400";
+      ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
+      : (variant && spinnerVariantsMap[variant]) || "slate400";
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={buttonSize} className={extraClass} />
@@ -156,13 +164,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
-    const buttonElement = (
+    const innerButton = (
       <MetaButton
         ref={ref}
         size={buttonSize}
         variant={variant}
         disabled={isLoading || props.disabled}
         className={isPulsing ? "s-animate-pulse" : ""}
+        aria-label={ariaLabel || tooltip || label}
         style={
           {
             "--pulse-color": "#93C5FD",
@@ -175,17 +184,29 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </MetaButton>
     );
 
-    return tooltip ? (
+    const wrappedContent = tooltip ? (
       <TooltipProvider>
         <TooltipRoot>
-          <TooltipTrigger asChild ref={ref}>
-            {buttonElement}
-          </TooltipTrigger>
+          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
           <TooltipContent>{tooltip}</TooltipContent>
         </TooltipRoot>
       </TooltipProvider>
     ) : (
-      buttonElement
+      innerButton
+    );
+
+    return href ? (
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+      >
+        {wrappedContent}
+      </LinkWrapper>
+    ) : (
+      wrappedContent
     );
   }
 );

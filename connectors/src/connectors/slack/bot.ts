@@ -1,18 +1,19 @@
+import type {
+  ConversationPublicType,
+  PublicPostContentFragmentRequestBody,
+} from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type {
   AgentMessageSuccessEvent,
   APIError,
-  ConversationType,
   LightAgentConfigurationType,
   ModelId,
-  PublicPostContentFragmentRequestBodySchema,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
 import { Err, Ok, sectionFullText } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import type * as t from "io-ts";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -384,7 +385,7 @@ async function answerMessage(
     (ac) => ac.status === "active"
   );
 
-  // Slack sends the message with user ids when someone is mentionned (bot or user).
+  // Slack sends the message with user ids when someone is mentioned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
   // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
   // <@U91J1JEQZ1A>) ?
@@ -589,7 +590,7 @@ async function answerMessage(
     return buildSlackMessageError(buildContentFragmentRes);
   }
 
-  let conversation: ConversationType | undefined = undefined;
+  let conversation: ConversationPublicType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastSlackChatBotMessage?.conversationId) {
@@ -693,12 +694,7 @@ async function makeContentFragment(
   threadTs: string,
   startingAtTs: string | null,
   connector: ConnectorResource
-): Promise<
-  Result<
-    t.TypeOf<typeof PublicPostContentFragmentRequestBodySchema> | null,
-    Error
-  >
-> {
+): Promise<Result<PublicPostContentFragmentRequestBody | null, Error>> {
   let allMessages: MessageElement[] = [];
 
   const slackBotMessages = await SlackChatBotMessage.findAll({

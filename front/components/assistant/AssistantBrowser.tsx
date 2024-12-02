@@ -4,37 +4,32 @@ import {
   CompanyIcon,
   LockIcon,
   MagnifyingGlassIcon,
+  MoreIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
-  Searchbar,
+  ScrollArea,
+  ScrollBar,
+  SearchInput,
   StarIcon,
-  Tab,
-  Tooltip,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  useHashParam,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
-import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
-import { classNames, subFilter } from "@app/lib/utils";
+import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
-}
-
-interface AssistantListProps {
-  owner: WorkspaceType;
-  isBuilder: boolean;
-  agents: LightAgentConfigurationType[];
-  loadingStatus: "loading" | "finished";
-  handleAssistantClick: (agent: LightAgentConfigurationType) => void;
 }
 
 const ALL_AGENTS_TABS = [
@@ -54,6 +49,14 @@ const ALL_AGENTS_TABS = [
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
+interface AssistantListProps {
+  owner: WorkspaceType;
+  isBuilder: boolean;
+  agents: LightAgentConfigurationType[];
+  loadingStatus: "loading" | "finished";
+  handleAssistantClick: (agent: LightAgentConfigurationType) => void;
+}
+
 export function AssistantBrowser({
   owner,
   isBuilder,
@@ -62,7 +65,13 @@ export function AssistantBrowser({
   handleAssistantClick,
 }: AssistantListProps) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const [selectedTab, setSelectedTab] = useHashParam(
+    "selectedTab",
+    "favorites"
+  );
+
   const router = useRouter();
+
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents
       .filter(
@@ -113,77 +122,48 @@ export function AssistantBrowser({
 
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
-  const selectedTab = useMemo(() => {
-    const selectedTab = router.query.selectedTab;
-    return typeof selectedTab === "string" &&
+  const viewTab = useMemo(() => {
+    return selectedTab &&
       isValidTab(
         selectedTab,
         visibleTabs.map((tab) => tab.id)
       )
       ? selectedTab
       : visibleTabs[0]?.id;
-  }, [router.query.selectedTab, visibleTabs]);
-
-  const displayedTab = visibleTabs.find((tab) => tab.id === selectedTab)
-    ? selectedTab
-    : visibleTabs.length > 0
-      ? visibleTabs[0].id
-      : null;
+  }, [selectedTab, visibleTabs]);
 
   return (
     <>
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-4 px-4 align-middle"
+        className="flex w-full flex-row items-center justify-center gap-2 px-4 align-middle"
       >
-        <Searchbar
+        <SearchInput
           name="search"
-          size="sm"
           placeholder="Search (Name)"
           value={assistantSearch}
           onChange={setAssistantSearch}
         />
         <div className="hidden sm:block">
           <div className="flex gap-2">
-            <Tooltip
-              label="Create your own assistant"
-              tooltipTriggerAsChild
-              trigger={
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                >
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create"
-                    size="sm"
-                  />
-                  <div className="sm:hidden">
-                    <Button
-                      variant="primary"
-                      icon={PlusIcon}
-                      size="sm"
-                      className="sm:hidden"
-                    />
-                  </div>
-                </Link>
-              }
+            <Button
+              tooltip="Create your own assistant"
+              href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+              variant="primary"
+              icon={PlusIcon}
+              label="Create"
+              size="sm"
             />
+
             {isBuilder && (
-              <Tooltip
-                label="Manage assistants"
-                tooltipTriggerAsChild
-                trigger={
-                  <Link href={`/w/${owner.sId}/builder/assistants/`}>
-                    <Button
-                      variant="primary"
-                      icon={RobotIcon}
-                      label="Manage"
-                      size="sm"
-                    />
-                  </Link>
-                }
+              <Button
+                tooltip="Manage assistants"
+                href={`/w/${owner.sId}/builder/assistants/`}
+                variant="primary"
+                icon={RobotIcon}
+                label="Manage"
+                size="sm"
               />
             )}
           </div>
@@ -191,28 +171,38 @@ export function AssistantBrowser({
       </div>
 
       {/* Assistant tabs */}
-      <div className="flex flex-row space-x-4 px-4">
-        <Tab
-          className="grow"
-          tabs={visibleTabs.map((tab) => ({
-            ...tab,
-            current: tab.id === displayedTab,
-          }))}
-          tabClassName={classNames(
-            assistantSearch !== "" ? "text-element-700 border-element-700" : ""
-          )}
-          setCurrentTab={(t) => setQueryParam(router, "selectedTab", t)}
-        />
+      <div className="w-full px-4">
+        <ScrollArea aria-orientation="horizontal">
+          <Tabs value={viewTab} onValueChange={setSelectedTab}>
+            <TabsList>
+              {visibleTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                  className={
+                    assistantSearch !== ""
+                      ? "border-element-700 text-element-700"
+                      : ""
+                  }
+                />
+              ))}
+            </TabsList>
+          </Tabs>
+          <ScrollBar orientation="horizontal" className="hidden" />
+        </ScrollArea>
       </div>
-      {!displayedTab && (
+
+      {!viewTab && (
         <div className="text-center">
           No assistants found. Try adjusting your search criteria.
         </div>
       )}
 
-      {displayedTab && (
+      {viewTab && (
         <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
-          {agentsByTab[displayedTab].map((agent) => (
+          {agentsByTab[viewTab].map((agent) => (
             <AssistantPreview
               key={agent.sId}
               title={agent.name}
@@ -222,13 +212,14 @@ export function AssistantBrowser({
               variant="minimal"
               onClick={() => handleAssistantClick(agent)}
               actionElement={
-                <AssistantDropdownMenu
-                  agentConfiguration={agent}
-                  owner={owner}
-                  variant="button"
-                  isMoreInfoVisible
-                  showAddRemoveToFavorite
-                  canDelete
+                <Button
+                  icon={MoreIcon}
+                  variant="outline"
+                  size="sm"
+                  onClick={(e: Event) => {
+                    e.stopPropagation();
+                    setQueryParam(router, "assistantDetails", agent.sId);
+                  }}
                 />
               }
             />

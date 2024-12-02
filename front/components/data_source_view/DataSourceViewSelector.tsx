@@ -13,7 +13,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LightWorkspaceType,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
@@ -21,7 +21,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import { useMemo } from "react";
 
-import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
+import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import type {
   ContentNodeTreeItemStatus,
   TreeSelectionModelUpdater,
@@ -38,9 +38,9 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useVaults } from "@app/lib/swr/vaults";
+import { useSpaces } from "@app/lib/swr/spaces";
 
-const ONLY_ONE_VAULT_PER_SELECTION = true;
+const ONLY_ONE_SPACE_PER_SELECTION = true;
 
 const getUseResourceHook =
   (
@@ -87,9 +87,12 @@ const getNodesFromConfig = (
 
 interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
-  useCase: "vaultDatasourceManagement" | "assistantBuilder";
+  useCase:
+    | "spaceDatasourceManagement"
+    | "assistantBuilder"
+    | "transcriptsProcessing";
   dataSourceViews: DataSourceViewType[];
-  allowedVaults?: VaultType[];
+  allowedSpaces?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
@@ -102,13 +105,13 @@ export function DataSourceViewsSelector({
   owner,
   useCase,
   dataSourceViews,
-  allowedVaults,
+  allowedSpaces,
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
   isRootSelectable,
 }: DataSourceViewsSelectorProps) {
-  const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
@@ -153,34 +156,35 @@ export function DataSourceViewsSelector({
   const folders = filteredDSVs.filter((dsv) => isFolder(dsv.dataSource));
   const websites = filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource));
 
-  const defaultVault = useMemo(() => {
+  const defaultSpace = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
     return firstKey
-      ? selectionConfigurations[firstKey]?.dataSourceView?.vaultId ?? ""
+      ? selectionConfigurations[firstKey]?.dataSourceView?.spaceId ?? ""
       : "";
   }, [selectionConfigurations]);
 
-  const filteredVaults = useMemo(() => {
-    const vaultIds = [...new Set(dataSourceViews.map((dsv) => dsv.vaultId))];
-    return vaults.filter((v) => vaultIds.includes(v.sId));
-  }, [vaults, dataSourceViews]);
+  const filteredSpaces = useMemo(() => {
+    const spaceIds = [...new Set(dataSourceViews.map((dsv) => dsv.spaceId))];
 
-  if (isVaultsLoading) {
+    return spaces.filter((s) => spaceIds.includes(s.sId));
+  }, [spaces, dataSourceViews]);
+
+  if (isSpacesLoading) {
     return <Spinner />;
   }
 
-  if (filteredVaults.length > 1) {
+  if (filteredSpaces.length > 1) {
     return (
-      <VaultSelector
-        vaults={filteredVaults}
-        allowedVaults={allowedVaults}
-        defaultVault={defaultVault}
-        renderChildren={(vault) => {
-          const dataSourceViewsForVault = vault
-            ? dataSourceViews.filter((dsv) => dsv.vaultId === vault.sId)
+      <SpaceSelector
+        spaces={filteredSpaces}
+        allowedSpaces={allowedSpaces}
+        defaultSpace={defaultSpace}
+        renderChildren={(space) => {
+          const dataSourceViewsForSpace = space
+            ? dataSourceViews.filter((dsv) => dsv.spaceId === space.sId)
             : dataSourceViews;
 
-          if (dataSourceViewsForVault.length === 0) {
+          if (dataSourceViewsForSpace.length === 0) {
             return <>No data source in this space.</>;
           }
 
@@ -188,7 +192,7 @@ export function DataSourceViewsSelector({
             <DataSourceViewsSelector
               owner={owner}
               useCase={useCase}
-              dataSourceViews={dataSourceViewsForVault}
+              dataSourceViews={dataSourceViewsForSpace}
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
@@ -222,12 +226,13 @@ export function DataSourceViewsSelector({
                   viewType={viewType}
                   isRootSelectable={isRootSelectable}
                   defaultCollapsed={filteredDSVs.length > 1}
+                  useCase={useCase}
                 />
               ))}
           </Tree.Item>
         )}
         {managedDsv.length > 0 &&
-          useCase === "vaultDatasourceManagement" &&
+          useCase === "spaceDatasourceManagement" &&
           managedDsv.map((dataSourceView) => (
             <DataSourceViewSelector
               key={dataSourceView.sId}
@@ -240,6 +245,7 @@ export function DataSourceViewsSelector({
               viewType={viewType}
               isRootSelectable={false}
               defaultCollapsed={filteredDSVs.length > 1}
+              useCase={useCase}
             />
           ))}
         {folders.length > 0 && (
@@ -261,11 +267,12 @@ export function DataSourceViewsSelector({
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
+                useCase={useCase}
               />
             ))}
           </Tree.Item>
         )}
-        {websites.length > 0 && (
+        {websites.length > 0 && useCase !== "transcriptsProcessing" && (
           <Tree.Item
             key="websites"
             label="Websites"
@@ -284,6 +291,7 @@ export function DataSourceViewsSelector({
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
+                useCase={useCase}
               />
             ))}
           </Tree.Item>
@@ -304,6 +312,7 @@ interface DataSourceViewSelectorProps {
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
   defaultCollapsed?: boolean;
+  useCase?: DataSourceViewsSelectorProps["useCase"];
 }
 
 export function DataSourceViewSelector({
@@ -315,6 +324,7 @@ export function DataSourceViewSelector({
   viewType,
   isRootSelectable,
   defaultCollapsed = true,
+  useCase,
 }: DataSourceViewSelectorProps) {
   const dataSourceView = selectionConfiguration.dataSourceView;
 
@@ -327,21 +337,21 @@ export function DataSourceViewSelector({
     (r) => r.internalId
   );
 
-  // When users have multiple vaults, they can opt to select only one vault per tool.
+  // When users have multiple spaces, they can opt to select only one space per tool.
   // This is enforced in the UI via a radio button, ensuring single selection at a time.
-  // However, selecting a new item in a different vault doesn't automatically clear previous selections.
-  // This function ensures that only the selections matching the current vault are retained, removing any others.
-  const keepOnlyOneVaultIfApplicable = useCallback(
+  // However, selecting a new item in a different space doesn't automatically clear previous selections.
+  // This function ensures that only the selections matching the current space are retained, removing any others.
+  const keepOnlyOneSpaceIfApplicable = useCallback(
     (config: DataSourceViewSelectionConfigurations) => {
-      if (!ONLY_ONE_VAULT_PER_SELECTION) {
+      if (!ONLY_ONE_SPACE_PER_SELECTION) {
         return config;
       }
 
-      const { vaultId, sId } = dataSourceView;
+      const { spaceId, sId } = dataSourceView;
       return Object.fromEntries(
         Object.entries(config).filter(
           ([key, value]) =>
-            key === sId || value.dataSourceView.vaultId === vaultId
+            key === sId || value.dataSourceView.spaceId === spaceId
         )
       );
     },
@@ -381,7 +391,7 @@ export function DataSourceViewSelector({
             };
 
         // Return a new object to trigger a re-render
-        return keepOnlyOneVaultIfApplicable({
+        return keepOnlyOneSpaceIfApplicable({
           ...prevState,
           [dataSourceView.sId]: updatedConfig,
         });
@@ -430,13 +440,13 @@ export function DataSourceViewSelector({
         }
 
         // Return a new object to trigger a re-render
-        return keepOnlyOneVaultIfApplicable({
+        return keepOnlyOneSpaceIfApplicable({
           ...prevState,
           [dataSourceView.sId]: updatedConfig,
         });
       });
     },
-    [dataSourceView, keepOnlyOneVaultIfApplicable, setSelectionConfigurations]
+    [dataSourceView, keepOnlyOneSpaceIfApplicable, setSelectionConfigurations]
   );
 
   const useResourcesHook = useCallback(
@@ -483,19 +493,21 @@ export function DataSourceViewSelector({
           )
         }
       >
-        <ContentNodeTree
-          selectedNodes={selectedNodes}
-          setSelectedNodes={readonly ? undefined : setSelectedNodes}
-          parentIsSelected={selectionConfiguration.isSelectAll}
-          useResourcesHook={useResourcesHook}
-          emptyComponent={
-            viewType === "tables" ? (
-              <Tree.Empty label="No tables" />
-            ) : (
-              <Tree.Empty label="No documents" />
-            )
-          }
-        />
+        {useCase !== "transcriptsProcessing" && (
+          <ContentNodeTree
+            selectedNodes={selectedNodes}
+            setSelectedNodes={readonly ? undefined : setSelectedNodes}
+            parentIsSelected={selectionConfiguration.isSelectAll}
+            useResourcesHook={useResourcesHook}
+            emptyComponent={
+              viewType === "tables" ? (
+                <Tree.Empty label="No tables" />
+              ) : (
+                <Tree.Empty label="No documents" />
+              )
+            }
+          />
+        )}
       </Tree.Item>
     </div>
   );

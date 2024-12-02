@@ -16,6 +16,7 @@ import {
   runNotionWorker,
 } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
+import { runZendeskWorkers } from "./connectors/zendesk/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
@@ -34,9 +35,7 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   slack: runSlackWorker,
   webcrawler: runWebCrawlerWorker,
   snowflake: runSnowflakeWorker,
-  zendesk: async () => {
-    logger.info("Zendesk worker not implemented yet.");
-  },
+  zendesk: runZendeskWorkers,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];

@@ -2,16 +2,16 @@ import type {
   FileUploadedRequestResponseBody,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { maybeApplyPreProcessing } from "@app/lib/api/files/preprocessing";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
+import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-
-const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
 export const config = {
   api: {
@@ -19,8 +19,32 @@ export const config = {
   },
 };
 
-const validActions = ["view", "download"] as const;
-type Action = (typeof validActions)[number];
+// Declared here because endpoint-specific.
+const VALID_VIEW_VERSIONS: FileVersion[] = [
+  "original",
+  "processed",
+  "public",
+  "snippet",
+];
+function isValidViewVersion(
+  // Because coming from the URL, it can be a string or an array of strings.
+  version: string | string[] | undefined
+): version is FileVersion {
+  return (
+    typeof version === "string" &&
+    VALID_VIEW_VERSIONS.includes(version as FileVersion)
+  );
+}
+
+// Declared here because endpoint-specific.
+const VALID_ACTIONS = ["view", "download"] as const;
+type Action = (typeof VALID_ACTIONS)[number];
+function isValidAction(
+  // Because coming from the URL, it can be a string or an array of strings.
+  action: string | string[] | undefined
+): action is Action {
+  return typeof action === "string" && VALID_ACTIONS.includes(action as Action);
+}
 
 async function handler(
   req: NextApiRequest,
@@ -51,15 +75,19 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const action: Action = validActions.includes(req.query.action as Action)
-        ? (req.query.action as Action)
+      const action = isValidAction(req.query.action)
+        ? req.query.action
         : "download";
 
-      // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
+        // Get the version of the file.
+        const version = isValidViewVersion(req.query.version)
+          ? req.query.version
+          : "original";
+
         const readStream = file.getReadStream({
           auth,
-          version: "original",
+          version,
         });
         readStream.on("error", () => {
           return apiError(req, res, {
@@ -99,110 +127,39 @@ async function handler(
     }
 
     case "POST": {
-      if (file.isReady || file.isFailed) {
+      const r = await processAndStoreFile(auth, { file, req });
+
+      if (r.isErr()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: r.error.code == "internal_server_error" ? 500 : 400,
           api_error: {
-            type: "invalid_request_error",
-            message:
-              "The file has already been uploaded or the upload has failed.",
+            type: r.error.code,
+            message: r.error.message,
           },
         });
       }
 
-      if (
-        file.createdAt.getTime() + UPLOAD_DELAY_AFTER_CREATION_MS <
-        Date.now()
-      ) {
-        await file.markAsFailed();
+      // Only upsert immediately in case of conversation
+      if (file.useCase === "conversation") {
+        const rUpsert = await processAndUpsertToDataSource(auth, { file });
 
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "File upload has expired. Create a new file.",
-          },
-        });
-      }
-
-      try {
-        const form = new IncomingForm({
-          // Stream the uploaded document to the cloud storage.
-          fileWriteStreamHandler: () => {
-            return file.getWriteStream({
-              auth,
-              version: "original",
-            });
-          },
-
-          // Support only one file upload.
-          maxFiles: 1,
-
-          // Validate the file size.
-          maxFileSize: file.fileSize,
-
-          // Ensure the file is of the correct type.
-          filter: function (part) {
-            if (part.mimetype !== file.contentType) {
-              return false;
-            }
-
-            return true;
-          },
-        });
-        const [, files] = await form.parse(req);
-
-        const maybeFiles = files.file;
-
-        if (!maybeFiles || maybeFiles.length === 0) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "file_type_not_supported",
-              message: "File is not supported.",
-            },
-          });
-        }
-      } catch (error) {
-        if (error instanceof Error) {
-          if (error.message.startsWith("options.maxTotalFileSize")) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "file_too_large",
-                message: "File is too large.",
-              },
+        // For now, silently log the error
+        if (rUpsert.isErr()) {
+          {
+            logger.warn({
+              fileModelId: file.id,
+              workspaceId: auth.workspace()?.sId,
+              contentType: file.contentType,
+              useCase: file.useCase,
+              useCaseMetadata: file.useCaseMetadata,
+              message: "Failed to upsert the file.",
+              error: rUpsert.error,
             });
           }
         }
-
-        return apiError(
-          req,
-          res,
-          {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Error uploading file.",
-            },
-          },
-          error instanceof Error ? error : new Error(JSON.stringify(error))
-        );
       }
 
-      const preProcessingRes = await maybeApplyPreProcessing(auth, file);
-      if (preProcessingRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Failed to process the file.",
-          },
-        });
-      }
-
-      res.status(200).json({ file: file.toJSON(auth) });
-      return;
+      return res.status(200).json({ file: file.toJSON(auth) });
     }
 
     default:

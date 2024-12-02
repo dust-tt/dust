@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Dust",
+  "version": "0.0.2",
+  "description": "Get more done, faster, with the power of your assistants at your fingertips.",
+  "icons": {
+    "16": "images/dust16.png",
+    "32": "images/dust32.png",
+    "48": "images/dust48.png",
+    "128": "images/dust128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Dust side panel"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl + Right",
+        "mac": "Command + Right"
+      }
+    }
+  },
+  "side_panel": {
+    "default_path": "main.html"
+  },
+  "permissions": [
+    "sidePanel",
+    "identity",
+    "storage",
+    "tabs",
+    "scripting",
+    "contextMenus"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu2kn2r/3emY/9AwPzAH0qb1KskhZCqLp4PE3o1PqD1hyLTf9fJ+VC0CPyy3F6bep/6mjVZaN+Ufw7bTn3XFoj3TW+Xg5e/KLg+qUn2pUS973j68IyhyIamydfx90ZZajCU1XwB666+8dFwgB6sy4sGe86WNKu0Be+EDhhVFCFVI2D7CyJjlmQXUXTYDr6U41MsdI1DlDK6jrv6N9IkHKhvq1o06GN0W8CpoPJ554iBHWcw5UYNHi6ySxA+u7OoV58tDkTyVOS9sQ8WGIge3hDmhc2jcUhsJTzkeAS3ijShKVdYC0i+5n5g6SnQ4N7y2xehEYsms0ARqkUkF/QPwmTQIDAQAB"
+}

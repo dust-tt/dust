@@ -40,8 +40,8 @@ export function VerticalSection() {
       >
         <Carousel className="w-full rounded-3xl" isLooping={true}>
           <div className="flex w-full flex-row gap-4">
-            <CarouselPrevious variant="white" />
-            <CarouselNext variant="white" />
+            <CarouselPrevious />
+            <CarouselNext />
           </div>
           <CarouselContent className="rounded-xl">
             <CarouselItem className="basis-full">

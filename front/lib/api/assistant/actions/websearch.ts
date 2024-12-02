@@ -1,5 +1,5 @@
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentActionSpecification,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -17,7 +17,7 @@ import { BaseAction, Ok, WebsearchAppActionOutputSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import {
@@ -68,7 +68,7 @@ export class WebsearchAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "WEBSEARCH OUTPUT:\n";
     if (this.output === null) {
       content += "The web search failed.\n";
@@ -137,7 +137,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       citationsRefsOffset,
     }: {
       stepActionIndex: number;
-      stepActions: AgentActionConfigurationType[];
+      stepActions: ActionConfigurationType[];
       citationsRefsOffset: number;
     }
   ): AsyncGenerator<

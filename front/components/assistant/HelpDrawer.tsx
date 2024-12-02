@@ -1,75 +1,45 @@
 import {
-  ArrowRightIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   FolderIcon,
-  Item,
   LightbulbIcon,
   Modal,
   Page,
   UserGroupIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   MentionType,
+  Result,
   RoleType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useCallback, useContext } from "react";
+import { useCallback, useState } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useSubmitFunction } from "@app/lib/client/utils";
+import type { DustError } from "@app/lib/error";
 
 // describe the type of userContent where the
 
 const userContent: Record<
   RoleType,
   {
-    topPicks: {
-      title: string;
-      href: string;
-      icon: React.ComponentType;
-    }[];
     helpIceBreakers: string[];
   }
 > = {
   user: {
-    topPicks: [
-      {
-        title: "How to talk to assistants?",
-        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
-        icon: ArrowRightIcon,
-      },
-    ],
     helpIceBreakers: [
       "What are assistants?",
       "What are the limitations of assistants?",
     ],
   },
   builder: {
-    topPicks: [
-      {
-        title: "How to create assistants?",
-        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
-        icon: ArrowRightIcon,
-      },
-      {
-        title: "What can I use Dust for?",
-        href: "https://docs.dust.tt/docs/use-cases",
-        icon: ArrowRightIcon,
-      },
-      {
-        title: "What is a Dust App?",
-        href: "https://docs.dust.tt/reference/developer-platform-overview",
-        icon: ArrowRightIcon,
-      },
-    ],
     helpIceBreakers: [
       "How to upload a file to a folder in Dust?",
       "What are good use-cases for Customer support?",
@@ -77,23 +47,6 @@ const userContent: Record<
     ],
   },
   admin: {
-    topPicks: [
-      {
-        title: "How to create assistants?",
-        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
-        icon: ArrowRightIcon,
-      },
-      {
-        title: "How to add new connections?",
-        href: "https://docs.dust.tt/docs/google-drive-connection",
-        icon: ArrowRightIcon,
-      },
-      {
-        title: "How to manage users?",
-        href: "https://docs.dust.tt/docs/manage-users",
-        icon: ArrowRightIcon,
-      },
-    ],
     helpIceBreakers: [
       "How to invite a new user?",
       "How to use assistants in Slack workflows?",
@@ -101,7 +54,6 @@ const userContent: Record<
     ],
   },
   none: {
-    topPicks: [],
     helpIceBreakers: [],
   },
 };
@@ -120,19 +72,23 @@ function LinksList({
   title?: string;
 }) {
   return (
-    <Item.List>
-      {title && <Item.SectionHeader label={title} variant="secondary" />}
+    <div className="flex flex-col gap-2">
+      {title && (
+        <div className="text-xs font-medium text-muted-foreground">{title}</div>
+      )}
       {linksList.map((link, index) => (
-        <Item.Link
-          icon={link.icon}
-          label={link.title}
-          link={link.href ? { href: link.href, target: "_blank" } : undefined}
-          onClick={link.onClick}
-          key={index}
-          description={link.description}
-        />
+        <div key={index}>
+          <Button
+            icon={link.icon}
+            variant="ghost"
+            label={link.title}
+            link={link.href ? { href: link.href, target: "_blank" } : undefined}
+            onClick={link.onClick}
+            description={link.description}
+          />
+        </div>
       ))}
-    </Item.List>
+    </div>
   );
 }
 
@@ -150,46 +106,69 @@ export function HelpDrawer({
   setShowQuickGuide: (show: boolean) => void;
 }) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { submit: handleHelpSubmit } = useSubmitFunction(
-    useCallback(
-      async (input: string, mentions: MentionType[]) => {
-        const inputWithHelp = input.includes("@help")
-          ? input
-          : `@help ${input.trimStart()}`;
-        const mentionsWithHelp = mentions.some(
-          (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
-        )
-          ? mentions
-          : [
-              ...mentions,
-              { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
-            ];
-        const conversationRes = await createConversationWithMessage({
-          owner,
-          user,
-          messageData: {
-            input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
-            mentions: mentionsWithHelp,
-            contentFragments: [],
-          },
+  const handleHelpSubmit = useCallback(
+    async (
+      input: string,
+      mentions: MentionType[]
+    ): Promise<Result<undefined, DustError>> => {
+      if (isSubmitting) {
+        return new Err({
+          code: "internal_error",
+          name: "Already submitting",
+          message: "Please wait for the previous submission to finish",
         });
-        if (conversationRes.isErr()) {
-          sendNotification({
-            title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
-          });
-        } else {
-          // We start the push before creating the message to optimize for instantaneity as well.
-          void router.push(
-            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
-          );
-        }
-      },
-      [owner, user, router, sendNotification]
-    )
+      }
+
+      setIsSubmitting(true);
+
+      const inputWithHelp = input.includes("@help")
+        ? input
+        : `@help ${input.trimStart()}`;
+      const mentionsWithHelp = mentions.some(
+        (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
+      )
+        ? mentions
+        : [
+            ...mentions,
+            { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
+          ];
+      const conversationRes = await createConversationWithMessage({
+        owner,
+        user,
+        messageData: {
+          input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
+          mentions: mentionsWithHelp,
+          contentFragments: [],
+        },
+      });
+
+      setIsSubmitting(false);
+
+      if (conversationRes.isErr()) {
+        sendNotification({
+          title: conversationRes.error.title,
+          description: conversationRes.error.message,
+          type: "error",
+        });
+
+        return new Err({
+          code: "internal_error",
+          name: conversationRes.error.title,
+          message: conversationRes.error.message,
+        });
+      } else {
+        // We start the push before creating the message to optimize for instantaneity as well.
+        void router.push(
+          `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
+        );
+
+        return new Ok(undefined);
+      }
+    },
+    [isSubmitting, owner, user, sendNotification, router]
   );
 
   return (
@@ -211,15 +190,13 @@ export function HelpDrawer({
               icon: FolderIcon,
             },
             {
-              title: "Community Support",
-              href: "https://community.dust.tt",
+              title: "Join the Slack community",
+              href: "https://join.slack.com/t/dustcommunity/shared_invite/zt-2tu2obwzo-ZyT1dUR6~qwSncVpIy7yTA",
               description: "Stuck? Ask your questions to the community",
               icon: UserGroupIcon,
             },
           ]}
         />
-        <Page.SectionHeader title="Top picks for you" />
-        <LinksList linksList={userContent[owner.role].topPicks} />
 
         <div className="flex flex-col gap-4 [&>*]:pl-px">
           <Page.SectionHeader title="Ask questions to @help" />

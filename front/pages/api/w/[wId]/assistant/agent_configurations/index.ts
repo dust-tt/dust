@@ -1,9 +1,7 @@
 import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
-  DustAppRunConfigurationType,
   LightAgentConfigurationType,
-  ModelId,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
   WithAPIErrorResponse,
@@ -12,14 +10,12 @@ import {
   assertNever,
   Err,
   GetAgentConfigurationsQuerySchema,
-  isDustAppRunConfiguration,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
-  removeNulls,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import _, { uniq } from "lodash";
+import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
@@ -29,12 +25,15 @@ import {
   getAgentConfigurations,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
+import {
+  getAgentConfigurationGroupIdsFromActions,
+  getAgentConfigurationGroupIdsFromActionsLegacy,
+} from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 
@@ -300,7 +299,14 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    groupIds: await getAgentConfigurationGroupIdsFromActions(auth, actions),
+    groupIds: await getAgentConfigurationGroupIdsFromActionsLegacy(
+      auth,
+      actions
+    ),
+    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
+      auth,
+      actions
+    ),
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -449,58 +455,4 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   return new Ok(agentConfiguration);
-}
-
-export function getDataSourceViewIdsFromActions(
-  actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
-): string[] {
-  const relevantActions = actions.filter(
-    (action) =>
-      action.type === "retrieval_configuration" ||
-      action.type === "process_configuration" ||
-      action.type === "tables_query_configuration"
-  );
-
-  return removeNulls(
-    relevantActions.flatMap((action) => {
-      if (
-        action.type === "retrieval_configuration" ||
-        action.type === "process_configuration"
-      ) {
-        return action.dataSources.map(
-          (dataSource) => dataSource.dataSourceViewId
-        );
-      } else if (action.type === "tables_query_configuration") {
-        return action.tables.map((table) => table.dataSourceViewId);
-      }
-      return [];
-    })
-  );
-}
-
-async function getAgentConfigurationGroupIdsFromActions(
-  auth: Authenticator,
-  actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
-): Promise<number[]> {
-  const dsViews = await DataSourceViewResource.fetchByIds(
-    auth,
-    getDataSourceViewIdsFromActions(actions)
-  );
-  const dustApps = await AppResource.fetchByIds(
-    auth,
-    actions
-      .filter((action) => isDustAppRunConfiguration(action))
-      .map((action) => (action as DustAppRunConfigurationType).appId)
-  );
-
-  // TODO(2024-10-25 flav) Refactor to store a list of ResourcePermission.
-  const dataSourceViewGroupIds: ModelId[] = dsViews.flatMap((view) =>
-    view.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
-  );
-
-  const dustAppGroupIds: ModelId[] = dustApps.flatMap((app) =>
-    app.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
-  );
-
-  return uniq([...dataSourceViewGroupIds, ...dustAppGroupIds].flat());
 }

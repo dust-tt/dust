@@ -1,15 +1,12 @@
+import type { MeResponseType } from "@dust-tt/client";
 import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withAuth0TokenAuthentication } from "@app/lib/api/wrappers";
+import { withAuth0TokenAuthentication } from "@app/lib/api/auth_wrappers";
 import { apiError } from "@app/logger/withlogging";
-
-export type MeResponseBody = {
-  user: UserTypeWithWorkspaces;
-};
 
 /**
  * @ignoreswagger
@@ -19,7 +16,7 @@ export type MeResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<MeResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<MeResponseType>>,
   user: UserTypeWithWorkspaces
 ): Promise<void> {
   switch (req.method) {
@@ -37,4 +34,6 @@ async function handler(
   }
 }
 
-export default withAuth0TokenAuthentication(handler);
+export default withAuth0TokenAuthentication(handler, {
+  requiredScopes: { GET: "read:user_profile" },
+});

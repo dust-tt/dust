@@ -1,6 +1,7 @@
 import type {
   AgentAction,
   BrowseConfigurationType,
+  ConversationIncludeFileConfigurationType,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
@@ -9,6 +10,7 @@ import type {
 } from "@dust-tt/types";
 
 import { BrowseConfigurationServerRunner } from "@app/lib/api/assistant/actions/browse";
+import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
 import { RetrievalConfigurationServerRunner } from "@app/lib/api/assistant/actions/retrieval";
@@ -27,6 +29,7 @@ interface ActionToConfigTypeMap {
   tables_query_configuration: TablesQueryConfigurationType;
   websearch_configuration: WebsearchConfigurationType;
   browse_configuration: BrowseConfigurationType;
+  conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
 }
 
 interface ActionTypeToClassMap {
@@ -36,6 +39,7 @@ interface ActionTypeToClassMap {
   tables_query_configuration: TablesQueryConfigurationServerRunner;
   websearch_configuration: WebsearchConfigurationServerRunner;
   browse_configuration: BrowseConfigurationServerRunner;
+  conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -78,6 +82,8 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   websearch_configuration: WebsearchConfigurationServerRunner,
   browse_configuration: BrowseConfigurationServerRunner,
   retrieval_configuration: RetrievalConfigurationServerRunner,
+  conversation_include_file_configuration:
+    ConversationIncludeFileConfigurationServerRunner,
 } as const;
 
 export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(

@@ -88,6 +88,9 @@ export async function upsertTableActivity(
     csv: upsertQueueItem.csv,
     truncate: upsertQueueItem.truncate,
     useAppForHeaderDetection: upsertQueueItem.useAppForHeaderDetection ?? false,
+    detectedHeaders: upsertQueueItem.detectedHeaders,
+    title: upsertQueueItem.title,
+    mimeType: upsertQueueItem.mimeType,
   });
 
   if (tableRes.isErr()) {

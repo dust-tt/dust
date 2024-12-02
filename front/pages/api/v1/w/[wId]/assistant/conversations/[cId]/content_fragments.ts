@@ -1,8 +1,6 @@
-import type { ContentFragmentType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import type * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import type { PostContentFragmentResponseType } from "@dust-tt/client";
+import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -11,17 +9,9 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-
-export type PostContentFragmentsResponseBody = {
-  contentFragment: ContentFragmentType;
-};
-
-export type PostContentFragmentRequestBody = t.TypeOf<
-  typeof PublicPostContentFragmentRequestBodySchema
->;
 
 /**
  * @swagger
@@ -69,7 +59,7 @@ export type PostContentFragmentRequestBody = t.TypeOf<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const { cId } = req.query;
@@ -93,50 +83,45 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PublicPostContentFragmentRequestBodySchema.decode(
-        req.body
-      );
+      const r = PublicPostContentFragmentRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${r.error.message}`,
           },
         });
       }
 
-      const { right: contentFragmentBody } = bodyValidation;
-      const { content, contentType } = contentFragmentBody;
-
-      if (content.length === 0 || content.length > 128 * 1024) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The content must be a non-empty string of less than 128kb.",
-          },
+      if (r.data.content) {
+        const { content, contentType } = r.data;
+        if (content.length === 0 || content.length > 128 * 1024) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The content must be a non-empty string of less than 128kb.",
+            },
+          });
+        }
+        const normalizedContentType = normalizeContentFragmentType({
+          contentType,
+          url: req.url,
         });
+        r.data.contentType = normalizedContentType;
       }
-
-      const normalizedContentType = normalizeContentFragmentType({
-        contentType,
-        url: req.url,
-      });
+      const { context, ...contentFragment } = r.data;
 
       const contentFragmentRes = await postNewContentFragment(
         auth,
         conversation,
-        {
-          ...contentFragmentBody,
-          contentType: normalizedContentType,
-        },
-        contentFragmentBody.context
+        contentFragment,
+        context
       );
+
       if (contentFragmentRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
@@ -146,10 +131,8 @@ async function handler(
           },
         });
       }
-
       res.status(200).json({ contentFragment: contentFragmentRes.value });
       return;
-
     default:
       return apiError(req, res, {
         status_code: 405,
@@ -161,4 +144,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: { POST: "update:conversation" },
+});

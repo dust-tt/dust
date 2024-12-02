@@ -14,6 +14,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -32,7 +33,9 @@ export class Conversation extends Model<
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
 
+  // TODO(2024-11-04 flav) `groupId` clean-up.
   declare groupIds: number[];
+  declare requestedGroupIds: number[][];
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -67,8 +70,14 @@ Conversation.init(
       allowNull: false,
       defaultValue: "unlisted",
     },
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: {
       type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: false,
+      defaultValue: [],
+    },
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
       allowNull: false,
       defaultValue: [],
     },
@@ -149,6 +158,10 @@ ConversationParticipant.init(
       },
       {
         fields: ["conversationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["userId", "action"],
         concurrently: true,
       },
     ],
@@ -318,6 +331,91 @@ AgentMessage.init(
     sequelize: frontSequelize,
   }
 );
+
+export class AgentMessageFeedback extends Model<
+  InferAttributes<AgentMessageFeedback>,
+  InferCreationAttributes<AgentMessageFeedback>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare agentConfigurationId: string;
+  declare agentConfigurationVersion: number;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare userId: ForeignKey<User["id"]>;
+
+  declare thumbDirection: AgentMessageFeedbackDirection;
+  declare content: string | null;
+}
+
+AgentMessageFeedback.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    agentConfigurationVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    thumbDirection: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "agent_message_feedback",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentConfigurationId"],
+      },
+      {
+        fields: ["agentMessageId"],
+      },
+      {
+        fields: ["userId"],
+      },
+      {
+        fields: ["agentConfigurationId", "agentMessageId", "userId"],
+        unique: true,
+        name: "agent_message_feedbacks_agent_configuration_id_agent_message_id",
+      },
+    ],
+  }
+);
+
+Workspace.hasMany(AgentMessageFeedback, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+AgentMessage.hasMany(AgentMessageFeedback, {
+  onDelete: "RESTRICT",
+});
+User.hasMany(AgentMessageFeedback, {
+  onDelete: "SET NULL",
+});
 
 export class Message extends Model<
   InferAttributes<Message>,

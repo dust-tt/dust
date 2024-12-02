@@ -22,4 +22,4 @@ jobs:
       - working-directory: sdks/js
         run: npm install && npm run build
       - working-directory: front
-        run: npm install && npm run tsc && npm run lint && npm run extension:lint && npm run format:check && npm run docs:check
+        run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check

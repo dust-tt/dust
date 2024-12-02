@@ -163,6 +163,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
       await connector.update({ connectionId: newConnectionId });
 
+      // If connector was previously paused, unpause it.
+      if (connector.isPaused()) {
+        await this.unpause();
+      }
+
       await IntercomWorkspace.update(
         {
           intercomWorkspaceId: newIntercomWorkspace.id,

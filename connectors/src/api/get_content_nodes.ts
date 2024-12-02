@@ -4,11 +4,12 @@ import type {
   Result,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { contentNodeTypeSortOrder, removeNulls } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import { sortBy } from "lodash";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { augmentContentNodesWithParentIds } from "@connectors/lib/api/content_nodes";
@@ -89,8 +90,9 @@ const _getContentNodes = async (
     {} as Record<string, ContentNode>
   );
 
-  const contentNodes = removeNulls(
-    internalIds.map((internalId) => contentNodesMap[internalId])
+  const contentNodes = sortBy(
+    removeNulls(internalIds.map((internalId) => contentNodesMap[internalId])),
+    (c) => [contentNodeTypeSortOrder[c.type], c.title.toLowerCase()]
   );
 
   if (includeParents) {

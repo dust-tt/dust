@@ -140,26 +140,34 @@ export async function getReposPage(
 export async function getRepo(
   connectionId: string,
   repoId: number
-): Promise<GithubRepo> {
+): Promise<Result<GithubRepo, ExternalOAuthTokenError>> {
   const octokit = await getOctokit(connectionId);
 
-  const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
-    repo_id: repoId,
-  });
+  try {
+    const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
+      repo_id: repoId,
+    });
 
-  return {
-    id: r.id,
-    name: r.name,
-    private: r.private,
-    url: r.html_url,
-    createdAt: r.created_at ? new Date(r.created_at) : null,
-    updatedAt: r.updated_at ? new Date(r.updated_at) : null,
-    description: r.description,
-    owner: {
-      id: r.owner.id,
-      login: r.owner.login,
-    },
-  };
+    return new Ok({
+      id: r.id,
+      name: r.name,
+      private: r.private,
+      url: r.html_url,
+      createdAt: r.created_at ? new Date(r.created_at) : null,
+      updatedAt: r.updated_at ? new Date(r.updated_at) : null,
+      description: r.description,
+      owner: {
+        id: r.owner.id,
+        login: r.owner.login,
+      },
+    });
+  } catch (err) {
+    if (isGithubRequestErrorNotFound(err)) {
+      return new Err(new ExternalOAuthTokenError(err));
+    }
+
+    throw err;
+  }
 }
 
 export async function getRepoIssuesPage(
@@ -560,36 +568,95 @@ export async function getOctokit(connectionId: string): Promise<Octokit> {
 // Repository processing
 
 const EXTENSION_WHITELIST = [
+  // Programming Languages - General Purpose
   ".js",
   ".ts",
   ".tsx",
   ".jsx",
-  ".rb",
   ".py",
+  ".rb",
   ".rs",
   ".go",
   ".swift",
-  ".css",
-  ".html",
-  ".less",
-  ".sass",
-  ".scss",
-  ".php",
   ".java",
-  ".yaml",
-  ".yml",
-  ".md",
   ".c",
   ".h",
   ".cc",
   ".cpp",
   ".hpp",
+  ".php",
+
+  // .NET Ecosystem
+  ".cs",
+  ".csproj", // XML-based
+  ".sln", // Text-based solution file
+  ".cshtml", // Razor template
+  ".razor", // Razor component
+  ".resx", // XML-based resource
+  ".vb", // Visual Basic
+  ".fs", // F#
+  ".fsproj", // XML-based F# project
+  ".props", // MSBuild properties (XML)
+  ".targets", // MSBuild targets (XML)
+  ".nuspec", // NuGet specification (XML)
+
+  // Web Technologies
+  ".html",
+  ".htm",
+  ".css",
+  ".scss",
+  ".sass",
+  ".less",
+
+  // Data & Configuration
+  ".json",
+  ".yaml",
+  ".yml",
+  ".toml",
+  ".ini",
+  ".env",
+  ".conf",
+  ".config",
+
+  // Build & Dependencies
+  ".gradle",
+  ".lock", // Text-based lock files
+  ".mk", // Makefile
+  ".just", // Justfile
+  ".dockerfile",
+  ".editorconfig",
+
+  // Infrastructure as Code
+  ".tf", // Terraform
+  ".hcl", // HashiCorp Configuration Language
+  ".nix", // Nix expressions
+
+  // Documentation
+  ".md", // Markdown
+  ".rst", // ReStructured Text
+  ".adoc", // AsciiDoc
+  ".tex", // LaTeX
+  ".txt",
+
+  // Shell & Scripts
   ".sh",
   ".sql",
-  ".kt",
-  ".kts",
-  ".gradle",
-  ".xml",
+  ".kt", // Kotlin
+  ".kts", // Kotlin script
+
+  // Version Control
+  ".gitignore",
+  ".dockerignore",
+
+  // Testing
+  ".test.cs",
+  ".spec.cs",
+  ".tests.cs",
+
+  // Templates
+  ".liquid",
+  ".mustache",
+  ".handlebars",
 ];
 
 const SUFFIX_BLACKLIST = [".min.js", ".min.css"];

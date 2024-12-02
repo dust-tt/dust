@@ -1,6 +1,9 @@
 import {
   Button,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Hoverable,
   IconButton,
   Input,
@@ -8,24 +11,27 @@ import {
   SparklesIcon,
   Spinner,
   TextArea,
-  Tooltip,
   XCircleIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { Result, TimeframeUnit, VaultType } from "@dust-tt/types";
-import type { ProcessSchemaPropertyType, WorkspaceType } from "@dust-tt/types";
+import { useSendNotification } from "@dust-tt/sparkle";
+import type {
+  ProcessSchemaPropertyType,
+  Result,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
+import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { classNames } from "@app/lib/utils";
 
 export function hasErrorActionProcess(
@@ -166,7 +172,7 @@ function PropertiesFields({
                       handlePropertyChange(index, "name", e.target.value);
                     }}
                     disabled={readOnly}
-                    error={
+                    message={
                       prop["name"].length === 0
                         ? "Name is required"
                         : properties.find(
@@ -175,6 +181,7 @@ function PropertiesFields({
                           ? "Name must be unique"
                           : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
 
@@ -191,27 +198,28 @@ function PropertiesFields({
                       );
                     }}
                     disabled={readOnly}
-                    error={
+                    message={
                       prop["description"].length === 0
                         ? "Description is required"
                         : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
 
                 <div className="col-span-2">
                   <DropdownMenu>
-                    <DropdownMenu.Button tooltipPosition="top">
+                    <DropdownMenuTrigger asChild>
                       <Button
                         isSelect
                         label={prop["type"]}
                         variant="ghost"
                         size="sm"
                       />
-                    </DropdownMenu.Button>
-                    <DropdownMenu.Items origin="bottomLeft">
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
                       {["string", "number", "boolean"].map((value, i) => (
-                        <DropdownMenu.Item
+                        <DropdownMenuItem
                           key={`${value}-${i}`}
                           label={value}
                           onClick={() => {
@@ -222,7 +230,7 @@ function PropertiesFields({
                           }}
                         />
                       ))}
-                    </DropdownMenu.Items>
+                    </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
 
@@ -230,7 +238,7 @@ function PropertiesFields({
                   <IconButton
                     icon={XMarkIcon}
                     tooltip="Remove Property"
-                    variant="ghost"
+                    variant="outline"
                     onClick={async () => {
                       handleRemoveProperty(index);
                     }}
@@ -259,7 +267,7 @@ type ActionProcessProps = {
   owner: WorkspaceType;
   instructions: string | null;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderProcessConfiguration
@@ -274,7 +282,7 @@ export function ActionProcess({
   owner,
   instructions,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
   description,
@@ -293,7 +301,7 @@ export function ActionProcess({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (actionConfiguration) {
@@ -383,7 +391,7 @@ export function ActionProcess({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 
@@ -466,7 +474,7 @@ export function ActionProcess({
                         };
                       });
                     }}
-                    error={
+                    message={
                       t.length === 0
                         ? "Tag is required"
                         : (actionConfiguration.tagsFilter?.in || []).filter(
@@ -475,6 +483,7 @@ export function ActionProcess({
                           ? "Tag must be unique"
                           : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
                 <div className="flex items-end pb-2">
@@ -557,36 +566,11 @@ export function ActionProcess({
             }
           }}
         />
-        <DropdownMenu>
-          <DropdownMenu.Button tooltipPosition="top">
-            <Button
-              isSelect
-              label={
-                TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
-              }
-              variant="outline"
-              size="sm"
-            />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items origin="bottomLeft">
-            {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(([key, value]) => (
-              <DropdownMenu.Item
-                key={key}
-                label={value}
-                onClick={() => {
-                  setEdited(true);
-                  updateAction((previousAction) => ({
-                    ...previousAction,
-                    timeFrame: {
-                      value: previousAction.timeFrame.value,
-                      unit: key as TimeframeUnit,
-                    },
-                  }));
-                }}
-              />
-            ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+        <TimeUnitDropdown
+          timeFrame={actionConfiguration.timeFrame}
+          updateAction={updateAction}
+          onEdit={() => setEdited(true)}
+        />
       </div>
 
       <div className="flex flex-col">
@@ -596,20 +580,14 @@ export function ActionProcess({
           </div>
           {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (
             <div>
-              <Tooltip
-                label={
-                  "Automatically re-generate the extraction schema based on Instructions"
-                }
-                trigger={
-                  <Button
-                    label="Re-generate from Instructions"
-                    variant="ghost"
-                    icon={SparklesIcon}
-                    size="xs"
-                    disabled={isGeneratingSchema}
-                    onClick={generateSchemaFromInstructions}
-                  />
-                }
+              <Button
+                tooltip="Automatically re-generate the extraction schema based on Instructions"
+                label="Re-generate from Instructions"
+                variant="ghost"
+                icon={SparklesIcon}
+                size="xs"
+                disabled={isGeneratingSchema}
+                onClick={generateSchemaFromInstructions}
               />
             </div>
           )}

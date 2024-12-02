@@ -34,21 +34,6 @@ export type CitationType =
   | "slack"
   | "snowflake";
 
-interface CitationProps {
-  avatarSrc?: string;
-  description?: string;
-  href?: string;
-  imgSrc?: string;
-  index?: ReactNode;
-  isBlinking?: boolean;
-  isLoading?: boolean;
-  onClose?: () => void;
-  size?: "xs" | "sm";
-  sizing?: "fixed" | "fluid";
-  title: string;
-  type?: CitationType;
-}
-
 const typeIcons = {
   confluence: ConfluenceLogo,
   document: DocumentTextStrokeIcon,
@@ -67,6 +52,21 @@ const typeSizing = {
   fixed: { xs: "s-w-48", sm: "s-w-64" },
   fluid: "s-w-full",
 };
+
+interface CitationProps {
+  avatarSrc?: string;
+  description?: string;
+  href?: string;
+  imgSrc?: string;
+  index?: ReactNode;
+  isBlinking?: boolean;
+  isLoading?: boolean;
+  onClose?: () => void;
+  size?: "xs" | "sm";
+  sizing?: "fixed" | "fluid";
+  title: string;
+  type?: CitationType;
+}
 
 export function Citation({
   avatarSrc,
@@ -128,7 +128,7 @@ export function Citation({
           >
             <IconButton
               icon={XCircleIcon}
-              variant={type === "image" ? "primary" : "ghost"}
+              variant="outline"
               onClick={onClose}
             />
           </div>
@@ -151,18 +151,22 @@ export function Citation({
     </>
   );
 
+  const props = href
+    ? { href, target: "_blank", rel: "noopener noreferrer" }
+    : {};
+
   const cardButton = (
     <CardButton
       variant="secondary"
       size="sm"
       className={classNames(
-        "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+        "s-relative s-flex s-h-full s-w-48 s-flex-none s-flex-col s-gap-1",
         sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
         size === "sm" ? "sm:s-w-64" : "",
         isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
         type === "image" ? "s-min-h-20" : ""
       )}
-      {...(href && { href, target: "_blank", rel: "noopener noreferrer" })}
+      {...props}
     >
       {isLoading && (
         <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">

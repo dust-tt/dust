@@ -13,7 +13,7 @@ function isADustProdWorkspace(owner: LightWorkspaceType) {
   );
 }
 
-export function canForceUserRole(owner: LightWorkspaceType) {
+export function showDebugTools(owner: LightWorkspaceType) {
   return isDevelopment() || isADustProdWorkspace(owner);
 }
 
@@ -23,7 +23,7 @@ export async function forceUserRole(
   role: "user" | "builder" | "admin"
 ) {
   // Ideally we should check if the user is dust super user but we don't have this information in the front-end
-  if (!canForceUserRole(owner)) {
+  if (!showDebugTools(owner)) {
     return new Err("Not allowed");
   }
 

@@ -1,5 +1,5 @@
 import { ModelId } from "../shared/model_id";
-import { DataSourceViewCategory } from "./api_handlers/public/vaults";
+import { DataSourceViewCategory } from "./api_handlers/public/spaces";
 import {
   ConnectorStatusDetails,
   DataSourceType,
@@ -18,7 +18,7 @@ export interface DataSourceViewType {
   parentsIn: string[] | null;
   sId: string;
   updatedAt: number;
-  vaultId: string;
+  spaceId: string;
 }
 
 export type DataSourceViewsWithDetails = DataSourceViewType & {

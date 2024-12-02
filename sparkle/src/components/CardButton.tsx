@@ -1,54 +1,82 @@
+import { cva } from "class-variance-authority";
 import React, { ReactNode } from "react";
-import type { UrlObject } from "url";
 
 import {
   noHrefLink,
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
-interface CardButtonProps {
-  children: ReactNode;
-  variant?: "primary" | "secondary" | "tertiary";
-  size?: "sm" | "md" | "lg";
-  className?: string;
-  onClick?: () => void;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-  href?: string | UrlObject;
-  target?: string;
-  rel?: string;
-  replace?: boolean;
-  shallow?: boolean;
-}
+const CARD_BUTTON_VARIANTS = ["primary", "secondary", "tertiary"] as const;
 
-const variantClasses = {
-  primary: "s-bg-structure-50 s-border s-border-structure-200",
-  secondary: "s-bg-structure-0 s-border s-border-structure-100",
-  tertiary: "s-border-structure-100/0 s-border s-border-structure-0",
+type CardButtonVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
+
+const variantClasses: Record<CardButtonVariantType, string> = {
+  primary: "s-bg-structure-50 s-border-border-dark/0",
+  secondary: "s-bg-background s-border-border-dark",
+  tertiary: "s-bg-background s-border-border-dark/0",
 };
 
-const hoverVariantClasses = {
-  primary:
-    "hover:s-bg-white hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
-  secondary:
-    "hover:s-bg-structure-50 hover:s-border-structure-200 active:s-bg-structure-100 active:s-border-structure-300 s-cursor-pointer",
-  tertiary:
-    "hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
-};
+const CARD_BUTTON_SIZES = ["sm", "md", "lg"] as const;
 
-const sizeClasses = {
+type CardButtonSizeType = (typeof CARD_BUTTON_SIZES)[number];
+
+const sizeVariants: Record<CardButtonSizeType, string> = {
   sm: "s-p-3 s-rounded-xl",
   md: "s-p-4 s-rounded-2xl",
   lg: "s-p-5 s-rounded-3xl",
 };
 
+const cardButtonVariants = cva(
+  "s-flex s-text-left s-group s-transition s-duration-200 s-border s-overflow-hidden s-text-foreground s-cursor-pointer hover:s-border-primary-100 hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none",
+  {
+    variants: {
+      variant: variantClasses,
+      size: sizeVariants,
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  }
+);
+
+interface CommonProps {
+  variant?: CardButtonVariantType;
+  size?: CardButtonSizeType;
+  className?: string;
+}
+
+interface LinkProps extends CommonProps {
+  children?: ReactNode;
+  href: string;
+  target?: string;
+  rel?: string;
+  replace?: boolean;
+  shallow?: boolean;
+  onClick?: never;
+  onMouseEnter?: never;
+  onMouseLeave?: never;
+}
+
+interface ButtonProps
+  extends CommonProps,
+    React.ButtonHTMLAttributes<HTMLDivElement> {
+  href?: never;
+  target?: never;
+  rel?: never;
+  replace?: never;
+  shallow?: never;
+}
+
+type CardButtonProps = LinkProps | ButtonProps;
+
 export function CardButton({
   children,
-  variant = "primary",
-  size = "md",
-  className = "",
+  variant,
+  size,
+  className,
   onClick,
   onMouseEnter,
   onMouseLeave,
@@ -57,23 +85,21 @@ export function CardButton({
   rel = "",
   replace,
   shallow,
+  ...props
 }: CardButtonProps) {
   const { components } = React.useContext(SparkleContext);
-
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
-  const commonClasses = classNames(
-    "s-flex s-group s-transition s-duration-200 s-overflow-hidden",
-    onClick ? hoverVariantClasses[variant] : "",
-    variantClasses[variant],
-    sizeClasses[size],
+  const cardButtonClassNames = cn(
+    cardButtonVariants({ variant, size }),
     className
   );
+
   if (href) {
     return (
       <Link
         href={href}
-        className={commonClasses}
+        className={cardButtonClassNames}
         replace={replace}
         shallow={shallow}
         target={target}
@@ -82,16 +108,17 @@ export function CardButton({
         {children}
       </Link>
     );
-  } else {
-    return (
-      <div
-        className={commonClasses}
-        onClick={onClick}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        {children}
-      </div>
-    );
   }
+
+  return (
+    <div
+      className={cardButtonClassNames}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 }

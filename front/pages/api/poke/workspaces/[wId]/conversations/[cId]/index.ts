@@ -1,14 +1,17 @@
-import type { ConversationType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  PokeConversationType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { getPokeConversation } from "@app/lib/poke/conversations";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetConversationResponseBody = {
-  conversation: ConversationType;
+  conversation: PokeConversationType;
 };
 
 async function handler(
@@ -44,7 +47,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const conversationRes = await getConversation(auth, cId, true);
+      const conversationRes = await getPokeConversation(auth, cId, true);
 
       if (conversationRes.isErr()) {
         return apiErrorForConversation(req, res, conversationRes.error);

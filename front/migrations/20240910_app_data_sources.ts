@@ -7,8 +7,8 @@ import { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 
 function searchInJson(
@@ -42,12 +42,12 @@ async function migrateApps(
   after: fs.WriteStream
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const vaults = await VaultResource.listWorkspaceVaults(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
 
-  for (const vault of vaults) {
-    const apps = await AppResource.listByVault(auth, vault);
+  for (const space of spaces) {
+    const apps = await AppResource.listBySpace(auth, space);
     if (apps.length > 0) {
-      logger.info(`Found ${apps.length} apps in vault ${vault.name}.`);
+      logger.info(`Found ${apps.length} apps in space ${space.name}.`);
 
       const dataSourceNames = new Set<string>();
       const dataSourceNameFinder = (obj: any, key: string) => {
@@ -80,10 +80,10 @@ async function migrateApps(
       );
 
       const dataSourceViews: Record<string, DataSourceViewResource> = (
-        await DataSourceViewResource.listForDataSourcesInVault(
+        await DataSourceViewResource.listForDataSourcesInSpace(
           auth,
           dataSources,
-          vault
+          space
         )
       ).reduce(
         (acc, dataSourceView) => ({
@@ -104,7 +104,7 @@ async function migrateApps(
           if (dataSourceViews[value]?.sId) {
             obj[key] = dataSourceViews[value]?.sId;
           } else {
-            logger.warn({}, `Cannot find datasource ${value} in ${vault.name}`);
+            logger.warn({}, `Cannot find datasource ${value} in ${space.name}`);
           }
         }
       };

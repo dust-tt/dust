@@ -1,9 +1,6 @@
-import React, { ComponentType, MouseEventHandler } from "react";
+import React from "react";
 
-import {
-  ConversationMessageActions,
-  ConversationMessageEmojiSelectorProps,
-} from "@sparkle/components/ConversationMessageActions";
+import { Button } from "@sparkle/components";
 import { ConversationMessageContent } from "@sparkle/components/ConversationMessageContent";
 import { ConversationMessageHeader } from "@sparkle/components/ConversationMessageHeader";
 import { cn } from "@sparkle/lib/utils";
@@ -24,15 +21,9 @@ const messageTypeClasses: Record<MessageType, string> = {
 
 type ConversationMessageProps = {
   avatarBusy?: boolean;
-  buttons?: {
-    disabled?: boolean;
-    icon: ComponentType;
-    label: string;
-    onClick: MouseEventHandler<HTMLButtonElement>;
-  }[];
+  buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
   citations?: React.ReactElement[];
-  messageEmoji?: ConversationMessageEmojiSelectorProps;
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
@@ -49,7 +40,6 @@ export function ConversationMessage({
   buttons,
   children,
   citations,
-  messageEmoji,
   name,
   pictureUrl,
   renderName = (name) => (
@@ -61,7 +51,7 @@ export function ConversationMessage({
   return (
     <div
       className={cn(
-        "s-mt-2 s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-2xl",
+        "s-mt-2 s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-3xl",
         messageTypeClasses[type],
         messageSizeClasses[size]
       )}
@@ -78,10 +68,7 @@ export function ConversationMessage({
         {children}
       </ConversationMessageContent>
 
-      <ConversationMessageActions
-        buttons={buttons}
-        messageEmoji={messageEmoji}
-      />
+      <div className="s-flex s-justify-end s-gap-2">{buttons}</div>
     </div>
   );
 }

@@ -5,8 +5,8 @@ import { Workspace } from "@app/lib/models/workspace";
 import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 async function main() {
@@ -30,18 +30,18 @@ async function main() {
   const auth = await Authenticator.internalAdminForWorkspace(
     lightWorkspace.sId
   );
-  await VaultResource.makeDefaultsForWorkspace(auth, {
+  await SpaceResource.makeDefaultsForWorkspace(auth, {
     systemGroup,
     globalGroup,
   });
 
   const group = await GroupResource.makeNew({
-    name: `Group for vault Public Dust Apps`,
+    name: `Group for space Public Dust Apps`,
     workspaceId: w.id,
     kind: "regular",
   });
 
-  await VaultResource.makeNew(
+  await SpaceResource.makeNew(
     { id: 93077, name: "Public Dust Apps", kind: "public", workspaceId: w.id },
     [group]
   );

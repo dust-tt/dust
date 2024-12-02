@@ -1,7 +1,8 @@
+import type { CitationType, FeedbackSelectorProps } from "@dust-tt/sparkle";
 import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
-import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
-  ConversationMessageReactions,
+  MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -10,18 +11,17 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 interface MessageItemProps {
   conversationId: string;
-  hideReactions: boolean;
+  messageFeedback: AgentMessageFeedbackType | undefined;
   isInModal: boolean;
   isLastMessage: boolean;
   message: MessageWithContentFragmentsType;
   owner: WorkspaceType;
-  reactions: ConversationMessageReactions;
   user: UserType;
 }
 
@@ -29,45 +29,54 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
       conversationId,
-      hideReactions,
+      messageFeedback,
       isInModal,
       isLastMessage,
       message,
       owner,
-      reactions,
       user,
     }: MessageItemProps,
     ref
   ) {
     const { sId, type } = message;
+    const sendNotification = useSendNotification();
 
-    const convoReactions = reactions.find((r) => r.messageId === sId);
-    const messageReactions = convoReactions?.reactions || [];
     const { mutate } = useSWRConfig();
-    const { submit: onSubmitEmoji, isSubmitting: isSubmittingEmoji } =
+    const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
       useSubmitFunction(
         async ({
-          emoji,
+          thumb,
           isToRemove,
+          feedbackContent,
         }: {
-          emoji: string;
+          thumb: string;
           isToRemove: boolean;
+          feedbackContent?: string | null;
         }) => {
           const res = await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/reactions`,
+            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
             {
               method: isToRemove ? "DELETE" : "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                reaction: emoji,
+                thumbDirection: thumb,
+                feedbackContent,
               }),
             }
           );
           if (res.ok) {
+            if (feedbackContent && !isToRemove) {
+              sendNotification({
+                title: "Feedback submitted",
+                description:
+                  "Your comment has been submitted successfully to the Builder of this assistant. Thank you!",
+                type: "success",
+              });
+            }
             await mutate(
-              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
+              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/feedbacks`
             );
           }
         }
@@ -77,17 +86,16 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    const messageEmoji = hideReactions
-      ? undefined
-      : {
-          reactions: messageReactions.map((reaction) => ({
-            emoji: reaction.emoji,
-            hasReacted: reaction.users.some((u) => u.userId === user.id),
-            count: reaction.users.length,
-          })),
-          onSubmitEmoji,
-          isSubmittingEmoji,
-        };
+    const messageFeedbackWithSubmit: FeedbackSelectorProps = {
+      feedback: messageFeedback
+        ? {
+            thumb: messageFeedback.thumbDirection,
+            feedbackContent: messageFeedback.content,
+          }
+        : null,
+      onSubmitThumb,
+      isSubmittingThumb,
+    };
 
     switch (type) {
       case "user_message":
@@ -98,6 +106,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               );
               const citationType: CitationType = [
                 "dust-application/slack",
+                "text/vnd.dust.attachment.slack.thread",
               ].includes(contentFragment.contentType)
                 ? "slack"
                 : "document";
@@ -117,6 +126,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                   <Citation
                     key={contentFragment.sId}
                     title={contentFragment.title}
+                    sizing="fluid"
                     size="xs"
                     type={citationType}
                     href={contentFragment.sourceUrl || undefined}
@@ -151,8 +161,9 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isInModal={isInModal}
               isLastMessage={isLastMessage}
               message={message}
-              messageEmoji={messageEmoji}
+              messageFeedback={messageFeedbackWithSubmit}
               owner={owner}
+              user={user}
               size={isInModal ? "compact" : "normal"}
             />
           </div>

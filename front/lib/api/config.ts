@@ -11,6 +11,12 @@ const config = {
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },
+  getAuth0AudienceUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_AUDIENCE_URI");
+  },
+  getDustApiAudience: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_API_AUDIENCE");
+  },
   getAuth0M2MClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_M2M_CLIENT_ID");
   },
@@ -19,6 +25,9 @@ const config = {
   },
   getAuth0WebApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_WEB_APP_CLIENT_ID");
+  },
+  getAuth0ExtensionApplicationId: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
   },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
@@ -102,7 +111,7 @@ const config = {
       "DEVELOPMENT_DUST_APPS_WORKSPACE_ID"
     );
   },
-  getDevelopmentDustAppsVaultId: (): string | undefined => {
+  getDevelopmentDustAppsSpaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "DEVELOPMENT_DUST_APPS_VAULT_ID"
     );

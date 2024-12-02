@@ -88,6 +88,7 @@ export async function autoReadChannel(
         slackChannelId,
         slackChannelName: remoteChannelName,
         permission: "read_write",
+        private: remoteChannel.channel?.is_private ?? false,
       });
     } else {
       await channel.update({

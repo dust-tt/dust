@@ -29,7 +29,7 @@ export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
 export type OAuthConnectionType = {
   connection_id: string;
   created: number;
-  metdata: Record<string, unknown>;
+  metadata: Record<string, unknown>;
   provider: OAuthProvider;
   status: "pending" | "finalized";
 };
@@ -43,6 +43,14 @@ export function isOAuthConnectionType(
     typeof connection.created === "number" &&
     isOAuthProvider(connection.provider) &&
     (connection.status === "pending" || connection.status === "finalized")
+  );
+}
+
+// OAuth Providers utils
+
+export function isValidZendeskSubdomain(s: unknown): s is string {
+  return (
+    typeof s === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s)
   );
 }
 

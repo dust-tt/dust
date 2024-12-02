@@ -1,13 +1,13 @@
+import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
 import { Chip, Collapsible, ScanIcon, Tooltip } from "@dust-tt/sparkle";
+import { CodeBlock } from "@dust-tt/sparkle";
+import { ContentBlockWrapper } from "@dust-tt/sparkle";
 import type { ProcessActionType } from "@dust-tt/types";
 import { PROCESS_ACTION_TOP_K } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
-import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
-import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 
 export function ProcessActionDetails({
   action,
@@ -59,15 +59,17 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
         {makeQueryDescription(action)}
       </p>
       {overflow && (
-        <Tooltip
-          label={`Too much data to process over time frame. Processed ${action.outputs?.total_documents} documents (for a total of ${action.outputs?.total_tokens} tokens) up to to ${minProcessingDateAsString}.`}
-          trigger={
-            <Chip
-              color="warning"
-              label={`Limited processing (up to ${minProcessingDateAsString})`}
-            />
-          }
-        />
+        <div>
+          <Tooltip
+            label={`Too much data to process over time frame. Processed ${action.outputs?.total_documents} documents (for a total of ${action.outputs?.total_tokens} tokens) up to to ${minProcessingDateAsString}.`}
+            trigger={
+              <Chip
+                color="warning"
+                label={`Limited processing (up to ${minProcessingDateAsString})`}
+              />
+            }
+          />
+        </div>
       )}
     </div>
   );
@@ -83,7 +85,11 @@ function makeQueryDescription(action: ProcessActionType) {
         : `${relativeTimeFrame.unit}`)
     : "all time";
 
-  return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}.`;
+  if (action.outputs?.total_documents) {
+    return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}.`;
+  } else {
+    return `Extracted from documents over ${timeFrameAsString}.`;
+  }
 }
 
 function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {

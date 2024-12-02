@@ -1,16 +1,16 @@
 import type { LabsConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { CreationAttributes } from "sequelize";
 import type {
   Attributes,
   InferAttributes,
   ModelStatic,
   Transaction,
 } from "sequelize";
-import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -37,12 +37,13 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static async makeNew(
     blob: Omit<
       CreationAttributes<LabsTranscriptsConfigurationModel>,
-      "isActive"
+      "isActive" | "isDefaultFullStorage"
     >
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
       isActive: false,
+      isDefaultFullStorage: false,
     });
 
     return new LabsTranscriptsConfigurationResource(
@@ -131,18 +132,68 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
-  async setDataSourceId(auth: Authenticator, dataSourceId: string | null) {
-    if (!dataSourceId) {
+  async setIsDefaultFullStorage(isDefaultFullStorage: boolean) {
+    if (this.isDefaultFullStorage === isDefaultFullStorage) {
       return;
     }
 
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+    // Update all other configurations to be false.
+    if (isDefaultFullStorage) {
+      await LabsTranscriptsConfigurationModel.update(
+        { isDefaultFullStorage: false },
+        {
+          where: {
+            workspaceId: this.workspaceId,
+          },
+        }
+      );
+    }
 
-    if (!dataSource || this.dataSourceId === dataSource.id) {
+    return this.update({ isDefaultFullStorage });
+  }
+
+  async setDataSourceViewId(
+    auth: Authenticator,
+    dataSourceViewId: string | null
+  ) {
+    if (dataSourceViewId === undefined) {
       return;
     }
 
-    return this.update({ dataSourceId: dataSource.id });
+    if (dataSourceViewId === null) {
+      return this.update({ dataSourceViewId: null });
+    }
+
+    const dataSourceView = await DataSourceViewResource.fetchById(
+      auth,
+      dataSourceViewId
+    );
+
+    if (!dataSourceView || this.dataSourceViewId === dataSourceView.id) {
+      return;
+    }
+
+    return this.update({ dataSourceViewId: dataSourceView.id });
+  }
+
+  static async fetchDefaultFullStorageConfigurationForWorkspace(
+    auth: Authenticator
+  ): Promise<LabsTranscriptsConfigurationResource | null> {
+    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        isDefaultFullStorage: true,
+      },
+    });
+
+    if (!configuration) {
+      return null;
+    }
+
+    return new LabsTranscriptsConfigurationResource(
+      LabsTranscriptsConfigurationModel,
+      configuration.get()
+    );
   }
 
   async delete(

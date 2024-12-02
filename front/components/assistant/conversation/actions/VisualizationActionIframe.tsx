@@ -1,4 +1,12 @@
-import { Button, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  CodeBlock,
+  Markdown,
+  MarkdownContentContext,
+  Modal,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   LightWorkspaceType,
@@ -16,10 +24,6 @@ import {
   useState,
 } from "react";
 
-import {
-  MarkDownContentContext,
-  RenderMessageMarkdown,
-} from "@app/components/assistant/RenderMessageMarkdown";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
@@ -45,17 +49,29 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   );
 };
 
+const getExtensionFromBlob = (blob: Blob): string => {
+  const mimeToExt: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "text/csv": "csv",
+  };
+
+  return mimeToExt[blob.type] || "txt"; // Default to 'txt' if mime type is unknown.
+};
+
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
   visualization,
   setContentHeight,
   setErrorMessage,
+  setCodeDrawerOpened,
   vizIframeRef,
   workspaceId,
 }: {
   visualization: Visualization;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
+  setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string;
 }) {
@@ -79,12 +95,19 @@ function useVisualizationDataHandler({
     [workspaceId]
   );
 
-  const downloadScreenshotFromBlob = useCallback(
-    (blob: Blob) => {
+  const downloadFileFromBlob = useCallback(
+    (blob: Blob, filename?: string) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `visualization-${visualization.identifier}.png`;
+
+      if (filename) {
+        link.download = filename;
+      } else {
+        const ext = getExtensionFromBlob(blob);
+        link.download = `visualization-${visualization.identifier}.${ext}`;
+      }
+
       link.click();
       URL.revokeObjectURL(url);
     },
@@ -128,8 +151,12 @@ function useVisualizationDataHandler({
           setErrorMessage(data.params.errorMessage);
           break;
 
-        case "sendScreenshotBlob":
-          downloadScreenshotFromBlob(data.params.blob);
+        case "downloadFileRequest":
+          downloadFileFromBlob(data.params.blob, data.params.filename);
+          break;
+
+        case "displayCode":
+          setCodeDrawerOpened(true);
           break;
 
         default:
@@ -141,13 +168,38 @@ function useVisualizationDataHandler({
     return () => window.removeEventListener("message", listener);
   }, [
     code,
-    downloadScreenshotFromBlob,
+    downloadFileFromBlob,
     getFileBlob,
     setContentHeight,
     setErrorMessage,
+    setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
   ]);
+}
+
+export function CodeDrawer({
+  isOpened,
+  onClose,
+  code,
+}: {
+  isOpened: boolean;
+  onClose: () => void;
+  code: string;
+}) {
+  return (
+    <Modal
+      isOpen={isOpened}
+      onClose={onClose}
+      title="Code for this visualization"
+      variant="side-md"
+      hasChanged={false}
+    >
+      <Page variant="modal">
+        <CodeBlock className="language-jsx">{code}</CodeBlock>
+      </Page>
+    </Modal>
+  );
 }
 
 export function VisualizationActionIframe({
@@ -164,7 +216,7 @@ export function VisualizationActionIframe({
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryClicked, setRetryClicked] = useState(false);
-
+  const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const isErrored = !!errorMessage || retryClicked;
@@ -174,6 +226,7 @@ export function VisualizationActionIframe({
     workspaceId: owner.sId,
     setContentHeight,
     setErrorMessage,
+    setCodeDrawerOpened,
     vizIframeRef,
   });
 
@@ -202,7 +255,7 @@ export function VisualizationActionIframe({
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
 
-  const canRetry = useContext(MarkDownContentContext)?.isLastMessage ?? false;
+  const canRetry = useContext(MarkdownContentContext)?.isLastMessage ?? false;
 
   return (
     <div className="relative flex flex-col">
@@ -210,6 +263,13 @@ export function VisualizationActionIframe({
         <div className="absolute inset-0 flex items-center justify-center bg-white">
           <Spinner size="xl" />
         </div>
+      )}
+      {code && (
+        <CodeDrawer
+          isOpened={isCodeDrawerOpen}
+          onClose={() => setCodeDrawerOpened(false)}
+          code={code}
+        />
       )}
       <div
         className={classNames(
@@ -221,7 +281,7 @@ export function VisualizationActionIframe({
         <div className="flex">
           {!codeFullyGenerated ? (
             <div className="flex h-full w-full shrink-0">
-              <RenderMessageMarkdown
+              <Markdown
                 content={"```javascript\n" + (code ?? "") + "\n```"}
                 isStreaming={!codeFullyGenerated}
                 isLastMessage={true}

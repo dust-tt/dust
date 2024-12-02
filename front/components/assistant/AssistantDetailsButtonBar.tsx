@@ -2,13 +2,12 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   MoreIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   PencilSquareIcon,
-  Separator,
   StarIcon,
   StarStrokeIcon,
   TrashIcon,
@@ -43,7 +42,7 @@ export function AssistantDetailsButtonBar({
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const router = useRouter();
 
-  const updateUserFavorite = useUpdateUserFavorite({
+  const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -72,12 +71,12 @@ export function AssistantDetailsButtonBar({
           }}
           isPrivateAssistant={agentConfiguration.scope === "private"}
         />
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger asChild>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button icon={MoreIcon} size="sm" variant="ghost" />
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
-            <NewDropdownMenuItem
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
               label="Copy assistant ID"
               onClick={async (e) => {
                 e.stopPropagation();
@@ -87,7 +86,7 @@ export function AssistantDetailsButtonBar({
             />
             {agentConfiguration.scope !== "global" && (
               <>
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   label="Duplicate (New)"
                   icon={ClipboardIcon}
                   onClick={async (e) => {
@@ -98,18 +97,19 @@ export function AssistantDetailsButtonBar({
                   }}
                 />
                 {allowDeletion && (
-                  <NewDropdownMenuItem
+                  <DropdownMenuItem
                     label="Delete"
                     icon={TrashIcon}
                     onClick={() => {
                       setShowDeletionModal(true);
                     }}
+                    variant="warning"
                   />
                 )}
               </>
             )}
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </>
     );
   }
@@ -122,23 +122,27 @@ export function AssistantDetailsButtonBar({
     <div className="flex flex-row items-center gap-2 px-1.5">
       <div className="group">
         <Button
-          icon={agentConfiguration.userFavorite ? StarIcon : StarStrokeIcon}
+          icon={
+            agentConfiguration.userFavorite || isUpdatingFavorite
+              ? StarIcon
+              : StarStrokeIcon
+          }
           size="sm"
           className="group-hover:hidden"
-          variant="ghost"
+          variant="outline"
+          disabled={isUpdatingFavorite}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
 
         <Button
-          icon={agentConfiguration.userFavorite ? StarStrokeIcon : StarIcon}
+          icon={StarIcon}
           size="sm"
           className="hidden group-hover:block"
-          variant="ghost"
+          variant="outline"
+          disabled={isUpdatingFavorite}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
       </div>
-
-      <Separator orientation="vertical" className="h-6" />
 
       <Link
         href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
@@ -146,7 +150,7 @@ export function AssistantDetailsButtonBar({
         <Button
           icon={ChatBubbleBottomCenterTextIcon}
           size="sm"
-          variant="ghost"
+          variant="outline"
         />
       </Link>
 
@@ -163,7 +167,7 @@ export function AssistantDetailsButtonBar({
           <Button
             size="sm"
             disabled={!canEditAssistant}
-            variant="ghost"
+            variant="outline"
             icon={PencilSquareIcon}
           />
         </Link>

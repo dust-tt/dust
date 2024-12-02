@@ -7,11 +7,11 @@ import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_ap
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
+  AgentMessageFeedback,
   ConversationParticipant,
   Mention,
   Message,
@@ -55,9 +55,6 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
   await AgentBrowseAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
-  await AgentVisualizationAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
 }
 
 async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
@@ -93,7 +90,7 @@ async function destroyContentFragments(
   }
 
   const contentFragments =
-    await ContentFragmentResource.fetchMany(contentFragmentIds);
+    await ContentFragmentResource.fetchManyByModelIds(contentFragmentIds);
 
   for (const contentFragment of contentFragments) {
     const messageContentFragmentId = messageAndContentFragmentIds.find(
@@ -157,6 +154,9 @@ export async function destroyConversation(
 
     await UserMessage.destroy({
       where: { id: userMessageIds },
+    });
+    await AgentMessageFeedback.destroy({
+      where: { agentMessageId: agentMessageIds },
     });
     await AgentMessage.destroy({
       where: { id: agentMessageIds },

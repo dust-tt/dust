@@ -7,7 +7,10 @@ import {
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { deleteTable, upsertTable } from "@connectors/lib/data_sources";
+import {
+  deleteTable,
+  upsertTableFromConnectors,
+} from "@connectors/lib/data_sources";
 import {
   RemoteDatabaseModel,
   RemoteSchemaModel,
@@ -148,7 +151,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           });
         }
 
-        await upsertTable({
+        await upsertTableFromConnectors({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           tableId: internalId,
           tableName: internalId,
@@ -160,6 +163,8 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
             `${table.databaseName}.${table.schemaName}`,
             table.databaseName,
           ],
+          title: table.name,
+          mimeType: "application/vnd.snowflake.table",
         });
         await table.update({
           lastUpsertedAt: new Date(),

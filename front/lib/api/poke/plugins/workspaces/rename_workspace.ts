@@ -33,6 +33,9 @@ export const renameWorkspace = createPlugin(
       return res;
     }
 
-    return new Ok(`Workspace renamed to ${newName}.`);
+    return new Ok({
+      display: "text",
+      value: `Workspace renamed to ${newName}.`,
+    });
   }
 );

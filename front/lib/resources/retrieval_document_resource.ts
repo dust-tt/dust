@@ -162,11 +162,11 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
   getSourceUrl(auth: Authenticator): string | null {
     // Prevent users from accessing document contents of a public data source
     // not associated with their workspace, unless it's a website.
-    const { vault, workspaceId, dataSource } = this.dataSourceView || {};
+    const { space, workspaceId, dataSource } = this.dataSourceView || {};
     const userWorkspaceId = auth.getNonNullableWorkspace().id;
 
     if (
-      vault?.isPublic() &&
+      space?.isPublic() &&
       workspaceId !== userWorkspaceId &&
       dataSource &&
       !isWebsite(dataSource)
@@ -186,7 +186,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
 
     return `${config.getClientFacingUrl()}/w/${
       auth.getNonNullableWorkspace().sId
-    }/vaults/${dsv.vaultId}/categories/${
+    }/spaces/${dsv.spaceId}/categories/${
       dsv.category
     }/data_source_views/${dsv.sId}#?documentId=${encodeURIComponent(this.documentId)}`;
   }

@@ -6,7 +6,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 
 let client: RedisClientType;
 
-type RedisUsageTagsType = "notion_gc";
+type RedisUsageTagsType = "notion_gc" | "google_drive_incremental_sync";
 
 export async function redisClient({
   origin,

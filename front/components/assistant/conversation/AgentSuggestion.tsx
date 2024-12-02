@@ -1,14 +1,19 @@
-import { AssistantPreview, Button, RobotIcon, Spinner } from "@dust-tt/sparkle";
+import {
+  AssistantPreview,
+  Button,
+  RobotIcon,
+  Spinner,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
@@ -29,7 +34,7 @@ export function AgentSuggestion({
     agentsGetView: "list",
     includes: ["authors", "usage"],
   });
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const [isLoading, setIsLoading] = useState(false);
 

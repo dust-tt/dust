@@ -49,10 +49,10 @@ export function AssistantUsageSection({
 
       {(agentConfiguration.scope === "workspace" ||
         agentConfiguration.scope === "published") && (
-        <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2">
           {agentConfiguration.lastAuthors && (
             <div>
-              <span className="font-bold">By: </span>{" "}
+              <span className="font-medium">By: </span>{" "}
               {agentConfiguration.lastAuthors.join(", ")}
             </div>
           )}

@@ -7,9 +7,8 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import _ from "lodash";
-import * as readline from "readline"; // Add this line
-import type { Readable } from "stream";
 
+import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 
@@ -20,36 +19,16 @@ export async function getVisualizationPrompt({
   auth: Authenticator;
   conversation: ConversationType;
 }) {
-  const readFirstFiveLines = (inputStream: Readable): Promise<string[]> => {
-    return new Promise((resolve, reject) => {
-      const rl: readline.Interface = readline.createInterface({
-        input: inputStream,
-        crlfDelay: Infinity,
-      });
-
-      let lineCount: number = 0;
-      const lines: string[] = [];
-
-      rl.on("line", (line: string) => {
-        lines.push(line);
-        lineCount++;
-        if (lineCount === 5) {
-          rl.close();
-        }
-      });
-
-      rl.on("close", () => {
-        resolve(lines);
-      });
-
-      rl.on("error", (err: Error) => {
-        reject(err);
-      });
-    });
-  };
+  // If `jit_conversations_actions` is enabled we rely on the `conversations_list_files` emulated
+  // actions to make the list of files available to the agent.
+  if (await isJITActionsEnabled(auth)) {
+    return visualizationSystemPrompt(true);
+  }
 
   const contentFragmentMessages: Array<ContentFragmentType> = [];
-  for (const m of conversation.content.flat(1)) {
+  for (const versions of conversation.content) {
+    const m = versions[versions.length - 1];
+
     if (isContentFragmentType(m)) {
       contentFragmentMessages.push(m);
     }
@@ -62,28 +41,12 @@ export async function getVisualizationPrompt({
     "sId"
   );
 
-  const contentFragmentTextByMessageId: Record<string, string[]> = {};
-  for (const m of contentFragmentMessages) {
-    if (!m.fileId || !m.contentType.startsWith("text/")) {
-      continue;
-    }
-
-    const file = contentFragmentFileBySid[m.fileId];
-    if (!file) {
-      continue;
-    }
-    const readStream = file.getReadStream({
-      auth,
-      version: "original",
-    });
-    contentFragmentTextByMessageId[m.sId] =
-      await readFirstFiveLines(readStream);
-  }
-
-  let prompt = visualizationSystemPrompt.trim() + "\n\n";
+  let prompt = visualizationSystemPrompt(false).trim() + "\n\n";
 
   const fileAttachments: string[] = [];
-  for (const m of conversation.content.flat(1)) {
+  for (const versions of conversation.content) {
+    const m = versions[versions.length - 1];
+
     if (isContentFragmentType(m)) {
       if (!m.fileId || !contentFragmentFileBySid[m.fileId]) {
         continue;
@@ -120,7 +83,7 @@ export async function getVisualizationPrompt({
   return prompt;
 }
 
-export const visualizationSystemPrompt = `\
+export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
 Guidelines using the :::visualization tag:
@@ -136,8 +99,10 @@ Guidelines using the :::visualization tag:
 - Props:
   - The generated component should not have any required props / parameters
 - Responsiveness:
-  - The content should be responsive
-  - The outermost container should have a fixed height between 200 and 600 pixels, set using the \`style\` prop such as \`<div style={{height: "600px"}}>\`
+  - Use ResponsiveContainer for charts to adapt to parent dimensions
+  - Leave adequate padding around charts for labels and legends
+  - Content should adapt gracefully to different widths
+  - For multi-chart layouts, use flex or grid to maintain spacing
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 - Styling:
@@ -147,10 +112,11 @@ Guidelines using the :::visualization tag:
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
-- Using files from the conversation when available:
- - Files from the conversation can be accessed using the \`useFile()\` hook.
+- Using ${jitActionsEnabled ? "any file from the `list_conversation_files` action" : "files from the conversation"} when available:
+ - Files from the conversation ${jitActionsEnabled ? "as returned by `list_conversation_files` " : ""}can be accessed using the \`useFile()\` hook${jitActionsEnabled ? " (all files can be accessed by the hook irrespective of their status)" : ""}.
  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
  - Always use \`papaparse\` to parse CSV files.
+ - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function. Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
 - Available third-party libraries:
   - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
   - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
@@ -165,6 +131,7 @@ Guidelines using the :::visualization tag:
 Example using the \`useFile\` hook:
 
 \`\`\`
+// Reading files from conversation
 import { useFile } from "@dust/react-hooks";
 const file = useFile(fileId);
 if (file) {
@@ -176,7 +143,21 @@ if (file) {
 }
 \`\`\`
 
-\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags in the conversation history.
+\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags ${jitActionsEnabled ? "returned by the `list_conversation_files` action" : "in the conversation history"}.
+
+Example using the \`triggerUserFileDownload\` hook:
+
+\`\`\`
+// Adding download capability
+import { triggerUserFileDownload } from "@dust/react-hooks";
+
+<button onClick={() => triggerUserFileDownload({
+  content: csvContent,  // string or Blob
+  filename: "data.csv"
+})}>
+  Download Data
+</button>
+\`\`\`
 
 General example of a visualization component:
 

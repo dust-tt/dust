@@ -22,8 +22,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import {
@@ -31,7 +31,7 @@ import {
   isConnectorProviderAssistantDefaultSelected,
 } from "@app/lib/connector_providers";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
@@ -295,9 +295,9 @@ async function handler(
         });
       }
 
-      const vault = await (provider === "webcrawler"
-        ? VaultResource.fetchWorkspaceGlobalVault(auth)
-        : VaultResource.fetchWorkspaceSystemVault(auth));
+      const space = await (provider === "webcrawler"
+        ? SpaceResource.fetchWorkspaceGlobalSpace(auth)
+        : SpaceResource.fetchWorkspaceSystemSpace(auth));
 
       const dataSourceView =
         await DataSourceViewResource.createDataSourceAndDefaultView(
@@ -312,7 +312,7 @@ async function handler(
             name: dataSourceName,
             workspaceId: owner.id,
           },
-          vault
+          space
         );
 
       const dataSource = dataSourceView.dataSource;

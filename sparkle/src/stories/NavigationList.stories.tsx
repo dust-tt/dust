@@ -2,11 +2,20 @@ import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
 import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  LockIcon,
+  MoreIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
+  PencilSquareIcon,
   ScrollArea,
   ScrollBar,
+  TrashIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -27,16 +36,34 @@ export const NewNavigationListDemo = () => {
   >([]);
 
   useEffect(() => {
-    // Generate random titles for each date section only once
     setConversationTitles([
       { label: "Today", items: getRandomTitles(5) },
       { label: "Yesterday", items: getRandomTitles(10) },
     ]);
-    console.log(conversationTitles); // Add this line
   }, []);
 
-  // Flatten the items array to easily manage indices
   const allItems = conversationTitles.flatMap((section) => section.items);
+
+  const getMoreMenu = (title: string) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" icon={MoreIcon} size="xs" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
+          label={`Rename ${title}`}
+          icon={PencilSquareIcon}
+          onClick={(e) => e.stopPropagation()}
+        />
+        <DropdownMenuItem
+          label="Delete"
+          icon={TrashIcon}
+          variant="warning"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div className="s-h-[400px] s-w-[200px] s-py-12">
@@ -46,14 +73,17 @@ export const NewNavigationListDemo = () => {
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} />
               {section.items.map((title, index) => {
-                const itemIndex = allItems.indexOf(title); // Calculate the global index
+                const itemIndex = allItems.indexOf(title);
                 return (
                   <NavigationListItem
                     key={index}
+                    href={index % 2 === 0 ? "title" : undefined}
                     selected={itemIndex === selectedIndex}
                     onClick={() => setSelectedIndex(itemIndex)}
                     label={title}
                     className="s-w-full"
+                    moreMenu={getMoreMenu(title)}
+                    icon={LockIcon}
                   />
                 );
               })}

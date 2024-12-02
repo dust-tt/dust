@@ -5,8 +5,9 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import type { PluginResponse } from "@app/lib/api/poke/types";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
@@ -24,7 +25,7 @@ export const RunPluginParamsCodec = t.intersection([
 ]);
 
 export interface PokeRunPluginResponseBody {
-  result: string;
+  result: PluginResponse;
 }
 
 async function handler(
@@ -98,6 +99,7 @@ async function handler(
         {
           pluginId,
           author: auth.getNonNullableUser().email,
+          args: pluginArgsValidation.right,
         },
         "Running Poke plugin."
       );

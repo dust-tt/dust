@@ -2,7 +2,7 @@ import { XMarkIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
-import React, { Fragment, useContext, useState } from "react";
+import React, { Fragment, useContext } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
@@ -18,6 +18,8 @@ interface NavigationProps {
   subscription: SubscriptionType;
   navChildren?: React.ReactNode;
   subNavigation?: SidebarNavigation[] | null;
+  isNavigationBarOpen: boolean;
+  setNavigationBarOpen: (isOpen: boolean) => void;
 }
 
 export function Navigation({
@@ -26,9 +28,10 @@ export function Navigation({
   subscription,
   navChildren,
   subNavigation,
+  isNavigationBarOpen,
+  setNavigationBarOpen,
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
-  const [isNavigationBarOpen, setNavigationBarOpen] = useState(true);
 
   if (hideSidebar) {
     return null;

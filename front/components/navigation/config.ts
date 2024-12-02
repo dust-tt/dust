@@ -38,7 +38,7 @@ export type SubNavigationAssistantsId =
   | "developers"
   | "documentation"
   | "community"
-  | "vaults";
+  | "spaces";
 
 export type SubNavigationAdminId =
   | "subscription"
@@ -108,7 +108,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
     label: "Chat",
     href: `/w/${owner.sId}/assistant/new`,
     icon: ChatBubbleLeftRightIcon,
-    sizing: "expand",
+    sizing: "hug",
     isCurrent: (currentRoute) =>
       [
         "/w/[wId]/assistant/new",
@@ -121,10 +121,10 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
     id: "data_sources",
     label: "Knowledge",
     icon: BookOpenIcon,
-    href: `/w/${owner.sId}/vaults`,
+    href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
-      currentRoute.startsWith("/w/[wId]/vaults/"),
-    sizing: "expand",
+      currentRoute.startsWith("/w/[wId]/spaces/"),
+    sizing: "hug",
   });
 
   if (isAdmin(owner)) {
@@ -139,6 +139,9 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
+          "/w/[wId]/developers/providers",
+          "/w/[wId]/developers/api-keys",
+          "/w/[wId]/developers/dev-secrets",
         ].includes(currentRoute),
       sizing: "hug",
     });
@@ -167,8 +170,8 @@ export const subNavigationAdmin = ({
   if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
-      label: null,
-      variant: "secondary",
+      label: "Workspace Settings",
+      variant: "primary",
       menus: [
         {
           id: "members",
@@ -203,7 +206,7 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "developers",
       label: "Developers",
-      variant: "secondary",
+      variant: "primary",
       menus: [
         {
           id: "providers",
@@ -248,21 +251,19 @@ export const subNavigationApp = ({
   app: AppType;
   current: SubNavigationAppId;
 }) => {
-  let nav: AppLayoutNavigation[] = [
+  let nav = [
     {
-      id: "specification",
+      value: "specification",
       label: "Specification",
       icon: CommandLineIcon,
-      href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
-      sizing: "expand",
+      href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
       current: current === "specification",
     },
     {
-      id: "datasets",
+      value: "datasets",
       label: "Datasets",
       icon: DocumentTextIcon,
-      href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`,
-      sizing: "expand",
+      href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`,
       current: current === "datasets",
     },
   ];
@@ -270,19 +271,17 @@ export const subNavigationApp = ({
   if (isAdmin(owner) || isBuilder(owner)) {
     nav = nav.concat([
       {
-        id: "runs",
+        value: "runs",
         label: "Logs",
         icon: FolderOpenIcon,
-        href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs`,
-        sizing: "expand",
+        href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs`,
         current: current === "runs",
       },
       {
-        id: "settings",
+        value: "settings",
         label: "Settings",
         icon: Cog6ToothIcon,
-        href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/settings`,
-        sizing: "expand",
+        href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/settings`,
         current: current === "settings",
       },
     ]);

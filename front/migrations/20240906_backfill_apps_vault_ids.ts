@@ -2,8 +2,8 @@ import assert from "assert";
 
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
@@ -17,15 +17,15 @@ makeScript({}, async ({ execute }, logger) => {
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
     if (execute) {
-      await app.update({ vaultId: globalVault.id });
+      await app.update({ vaultId: globalSpace.id });
       logger.info(
         {
           workspaceId: workspace.sId,
           appId: app.sId,
-          vaultId: globalVault.sId,
+          vaultId: globalSpace.sId,
           execute,
         },
         "Updated app"
@@ -35,7 +35,7 @@ makeScript({}, async ({ execute }, logger) => {
         {
           workspaceId: workspace.sId,
           appId: app.sId,
-          vaultId: globalVault.sId,
+          vaultId: globalSpace.sId,
           execute,
         },
         "Would have updated app"

@@ -1,4 +1,5 @@
 import type {
+  ActionGeneratedFileType,
   AgentActionSpecification,
   DustAppParameters,
   FunctionCallType,
@@ -21,25 +22,24 @@ import {
 import { stringify } from "csv-stringify";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { generateCSVSnippet } from "@app/lib/api/csv";
 import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 // Need a model with at least 32k to run tables query.
 const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
-
-// Max number of characters in the snippet.
-const MAX_SNIPPET_CHARS = 16384;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -51,6 +51,7 @@ interface TablesQueryActionBlob {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  generatedFiles: ActionGeneratedFileType[];
 }
 
 export class TablesQueryAction extends BaseAction {
@@ -65,7 +66,7 @@ export class TablesQueryAction extends BaseAction {
   readonly type = "tables_query_action";
 
   constructor(blob: TablesQueryActionBlob) {
-    super(blob.id, "tables_query_action");
+    super(blob.id, "tables_query_action", blob.generatedFiles);
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
@@ -85,7 +86,7 @@ export class TablesQueryAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     const partialOutput: Omit<FunctionMessageTypeModel, "content"> = {
       role: "function" as const,
       name: this.functionCallName ?? DEFAULT_TABLES_QUERY_ACTION_NAME,
@@ -189,9 +190,32 @@ export async function tableQueryTypesFromAgentMessageIds(
     where: {
       agentMessageId: agentMessageIds,
     },
+    include: [
+      {
+        model: FileModel,
+        as: "resultsFile",
+      },
+    ],
   });
 
   return actions.map((action) => {
+    const resultsFile: ActionGeneratedFileType | null = action.resultsFile
+      ? {
+          fileId: FileResource.modelIdToSId({
+            id: action.resultsFile.id,
+            workspaceId: owner.id,
+          }),
+          title: getTablesQueryResultsFileTitle({
+            output: action.output as Record<
+              string,
+              string | number | boolean
+            > | null,
+          }),
+          contentType: action.resultsFile.contentType,
+          snippet: action.resultsFile.snippet,
+        }
+      : null;
+
     return new TablesQueryAction({
       id: action.id,
       params: action.params as DustAppParameters,
@@ -200,13 +224,9 @@ export async function tableQueryTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
-      resultsFileId: action.resultsFileId
-        ? FileResource.modelIdToSId({
-            id: action.resultsFileId,
-            workspaceId: owner.id,
-          })
-        : null,
+      resultsFileId: resultsFile ? resultsFile.fileId : null,
       resultsFileSnippet: action.resultsFileSnippet,
+      generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
 }
@@ -308,6 +328,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         step: action.step,
         resultsFileId: null,
         resultsFileSnippet: null,
+        generatedFiles: [],
       }),
     };
 
@@ -334,14 +355,13 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       return;
     }
 
-    const renderedConversationRes =
-      await renderConversationForModelMultiActions({
-        conversation,
-        model: supportedModel,
-        prompt: agentConfiguration.instructions ?? "",
-        allowedTokenCount,
-        excludeImages: true,
-      });
+    const renderedConversationRes = await renderConversationForModel(auth, {
+      conversation,
+      model: supportedModel,
+      prompt: agentConfiguration.instructions ?? "",
+      allowedTokenCount,
+      excludeImages: true,
+    });
     if (renderedConversationRes.isErr()) {
       yield {
         type: "tables_query_error",
@@ -508,6 +528,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
                 step: action.step,
                 resultsFileId: null,
                 resultsFileSnippet: null,
+                generatedFiles: [],
               }),
             };
           }
@@ -534,6 +555,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       output: null,
     };
 
+    let resultFile: ActionGeneratedFileType | null = null;
+
     if (
       "results" in sanitizedOutput &&
       Array.isArray(sanitizedOutput.results)
@@ -547,9 +570,17 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         auth,
         {
           title: queryTitle,
+          conversationId: conversation.sId,
           results,
         }
       );
+
+      resultFile = {
+        fileId: file.sId,
+        title: queryTitle,
+        contentType: file.contentType,
+        snippet: file.snippet,
+      };
 
       delete sanitizedOutput.results;
       updateParams.resultsFileId = file.id;
@@ -576,13 +607,9 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,
         step: action.step,
-        resultsFileId: updateParams.resultsFileId
-          ? FileResource.modelIdToSId({
-              id: updateParams.resultsFileId,
-              workspaceId: owner.id,
-            })
-          : null,
+        resultsFileId: resultFile?.fileId ?? null,
         resultsFileSnippet: updateParams.resultsFileSnippet,
+        generatedFiles: resultFile ? [resultFile] : [],
       }),
     };
     return;
@@ -593,9 +620,11 @@ async function getTablesQueryOutputCsvFileAndSnippet(
   auth: Authenticator,
   {
     title,
+    conversationId,
     results,
   }: {
     title: string;
+    conversationId: string;
     results: Array<Record<string, string | number | boolean>>;
   }
 ): Promise<{
@@ -619,58 +648,10 @@ async function getTablesQueryOutputCsvFileAndSnippet(
 
   const file = await internalCreateToolOutputCsvFile(auth, {
     title,
+    conversationId: conversationId,
     content: csvOutput,
     contentType: "text/csv",
   });
 
-  if (results.length === 0) {
-    return { file, snippet: "TOTAL_LINES: 0\n(empty result set)\n" };
-  }
-
-  let snippetOutput = `TOTAL_LINES: ${results.length}\n`;
-  let currentCharCount = snippetOutput.length;
-  let linesIncluded = 0;
-
-  const truncationString = "(...truncated)";
-  const endOfSnippetString = (omitted: number) =>
-    omitted > 0 ? `\n(${omitted} lines omitted)\n` : "\n(end of file)\n";
-
-  // Process header
-  const header = csvOutput.split("\n")[0];
-  if (currentCharCount + header.length + 1 <= MAX_SNIPPET_CHARS) {
-    snippetOutput += header + "\n";
-    currentCharCount += header.length + 1;
-  } else {
-    const remainingChars =
-      MAX_SNIPPET_CHARS - currentCharCount - truncationString.length;
-    if (remainingChars > 0) {
-      snippetOutput += header.slice(0, remainingChars) + truncationString;
-    }
-    snippetOutput += endOfSnippetString(results.length);
-    return { file, snippet: snippetOutput };
-  }
-
-  // Process data rows
-  for (const row of results) {
-    const rowCsv = await toCsv([row], { header: false });
-    const trimmedRowCsv = rowCsv.trim(); // Remove trailing newline
-    if (currentCharCount + trimmedRowCsv.length + 1 <= MAX_SNIPPET_CHARS) {
-      snippetOutput += trimmedRowCsv + "\n";
-      currentCharCount += trimmedRowCsv.length + 1;
-      linesIncluded++;
-    } else {
-      const remainingChars =
-        MAX_SNIPPET_CHARS - currentCharCount - truncationString.length;
-      if (remainingChars > 0) {
-        snippetOutput +=
-          trimmedRowCsv.slice(0, remainingChars) + truncationString;
-        linesIncluded++;
-      }
-      break;
-    }
-  }
-
-  const linesOmitted = results.length - linesIncluded;
-  snippetOutput += endOfSnippetString(linesOmitted);
-  return { file, snippet: snippetOutput };
+  return { file, snippet: generateCSVSnippet(csvOutput) };
 }

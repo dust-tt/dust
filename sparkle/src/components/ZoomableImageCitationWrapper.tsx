@@ -26,8 +26,14 @@ export function ZoomableImageCitationWrapper({
 
   return (
     <>
-      <div onClick={handleZoomToggle} className="s-min-h-76 s-group s-h-full">
-        <Citation title={title} size={size} type="image" imgSrc={imgSrc} />
+      <div onClick={handleZoomToggle} className="s-min-h-76 s-group s-flex">
+        <Citation
+          title={title}
+          size={size}
+          type="image"
+          imgSrc={imgSrc}
+          sizing="fluid"
+        />
       </div>
 
       <Dialog

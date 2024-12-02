@@ -3,6 +3,7 @@ import type {
   CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
+  PatchDataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
@@ -11,8 +12,12 @@ import assert from "assert";
 import config from "@app/lib/api/config";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
+import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+
+const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
@@ -104,6 +109,9 @@ async function getContentNodesForManagedDataSourceView(
     });
 
     if (connectorsRes.isErr()) {
+      if (connectorsRes.error.type === "connector_rate_limit_error") {
+        return new Err(new Error(connectorsRes.error.message));
+      }
       return new Err(
         new Error(
           "An error occurred while fetching the resources' children content nodes."
@@ -148,6 +156,13 @@ async function getContentNodesForStaticDataSourceView(
 > {
   const { dataSource } = dataSourceView;
 
+  // Use a high pagination limit since the product UI doesn't support pagination yet,
+  // even though static data sources can contain many documents via API ingestion.
+  const paginationParams = pagination ?? {
+    limit: DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT,
+    offset: 0,
+  };
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   // Early return if there are no internalIds.
@@ -166,7 +181,7 @@ async function getContentNodesForStaticDataSourceView(
         projectId: dataSource.dustAPIProjectId,
         viewFilter: dataSourceView.toViewFilter(),
       },
-      pagination
+      paginationParams
     );
 
     if (documentsRes.isErr()) {
@@ -209,7 +224,7 @@ async function getContentNodesForStaticDataSourceView(
         tableIds: internalIds,
         viewFilter: dataSourceView.toViewFilter(),
       },
-      pagination
+      paginationParams
     );
 
     if (tablesRes.isErr()) {
@@ -284,4 +299,53 @@ export async function getContentNodesForDataSourceView(
     nodes: contentNodesInView,
     total: contentNodesResult.total,
   });
+}
+
+export async function handlePatchDataSourceView(
+  auth: Authenticator,
+  patchBody: PatchDataSourceViewType,
+  dataSourceView: DataSourceViewResource
+): Promise<
+  Result<
+    DataSourceViewResource,
+    Omit<DustError, "code"> & {
+      code: "unauthorized" | "internal_error";
+    }
+  >
+> {
+  if (!dataSourceView.canWrite(auth)) {
+    return new Err({
+      name: "dust_error",
+      code: "unauthorized",
+      message: "Only admins and builders can update data source views.",
+    });
+  }
+
+  let updateResultRes;
+  if ("parentsIn" in patchBody) {
+    const { parentsIn } = patchBody;
+    updateResultRes = await dataSourceView.setParents(parentsIn ?? []);
+  } else {
+    const parentsToAdd =
+      "parentsToAdd" in patchBody ? patchBody.parentsToAdd : [];
+    const parentsToRemove =
+      "parentsToRemove" in patchBody ? patchBody.parentsToRemove : [];
+
+    updateResultRes = await dataSourceView.updateParents(
+      parentsToAdd,
+      parentsToRemove
+    );
+  }
+
+  if (updateResultRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message: updateResultRes.error.message,
+    });
+  }
+
+  await dataSourceView.setEditedBy(auth);
+
+  return new Ok(dataSourceView);
 }

@@ -15,6 +15,8 @@ import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { uniqueId } from "lodash";
+import type { SVGProps } from "react";
+import type React from "react";
 
 import {
   DEFAULT_PROCESS_ACTION_NAME,
@@ -22,7 +24,7 @@ import {
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
+} from "@app/lib/api/assistant/actions/constants";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 export const ACTION_MODES = [
@@ -47,8 +49,11 @@ export type AssistantBuilderTagsFilter = {
 
 export type AssistantBuilderRetrievalConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  timeFrame: AssistantBuilderTimeFrame;
 };
+
+export type AssistantBuilderRetrievalExhaustiveConfiguration = {
+  timeFrame?: AssistantBuilderTimeFrame;
+} & AssistantBuilderRetrievalConfiguration;
 
 // DustAppRun configuration
 
@@ -64,8 +69,9 @@ export type AssistantBuilderTableConfiguration =
 // Process configuration
 
 export type AssistantBuilderProcessConfiguration = {
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   timeFrame: AssistantBuilderTimeFrame;
+} & {
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   tagsFilter: AssistantBuilderTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
 };
@@ -73,14 +79,16 @@ export type AssistantBuilderProcessConfiguration = {
 // Websearch configuration
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet
 
-export type AssistantBuilderVisualizationConfiguration = Record<string, never>; // no relevant params identified yet
-
 // Builder State
 
 export type AssistantBuilderActionConfiguration = (
   | {
-      type: "RETRIEVAL_SEARCH" | "RETRIEVAL_EXHAUSTIVE";
+      type: "RETRIEVAL_SEARCH";
       configuration: AssistantBuilderRetrievalConfiguration;
+    }
+  | {
+      type: "RETRIEVAL_EXHAUSTIVE";
+      configuration: AssistantBuilderRetrievalExhaustiveConfiguration;
     }
   | {
       type: "DUST_APP_RUN";
@@ -190,7 +198,7 @@ export function getDefaultAssistantState() {
       temperature: 0.7,
     },
     maxStepsPerRun: 3,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
   } satisfies AssistantBuilderState;
 }
@@ -215,11 +223,7 @@ export function getDefaultRetrievalExhaustiveActionConfiguration() {
     type: "RETRIEVAL_EXHAUSTIVE",
     configuration: {
       dataSourceConfigurations: {},
-      timeFrame: {
-        value: 1,
-        unit: "month",
-      },
-    } as AssistantBuilderRetrievalConfiguration,
+    } as AssistantBuilderRetrievalExhaustiveConfiguration,
     name: DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
     description: "",
   } satisfies AssistantBuilderActionConfiguration;
@@ -331,15 +335,31 @@ export type AssistantBuilderProps = {
   subscription: SubscriptionType;
 };
 
-export const BUILDER_SCREENS = {
-  instructions: {
-    label: "Instructions",
-    icon: CircleIcon,
-  },
-  actions: {
-    label: "Tools & Data sources",
-    icon: SquareIcon,
-  },
-  naming: { label: "Naming", icon: TriangleIcon },
+export const BUILDER_SCREENS = ["instructions", "actions", "naming"] as const;
+
+export type BuilderScreen = (typeof BUILDER_SCREENS)[number];
+
+type BuilderScreenInfos = {
+  id: string;
+  label: string;
+  icon: (props: SVGProps<SVGSVGElement>) => React.JSX.Element;
 };
-export type BuilderScreen = keyof typeof BUILDER_SCREENS;
+
+export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
+  {
+    instructions: {
+      id: "instructions",
+      label: "Instructions",
+      icon: CircleIcon,
+    },
+    actions: {
+      id: "actions",
+      label: "Tools & Data sources",
+      icon: SquareIcon,
+    },
+    naming: {
+      id: "naming",
+      label: "Naming",
+      icon: TriangleIcon,
+    },
+  };

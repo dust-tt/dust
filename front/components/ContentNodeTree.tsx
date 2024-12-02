@@ -4,11 +4,11 @@ import {
   ExternalLinkIcon,
   IconButton,
   ListCheckIcon,
-  Searchbar,
+  SearchInput,
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
-import type { BaseContentNode } from "@dust-tt/types";
+import type { APIError, BaseContentNode } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
@@ -35,6 +35,7 @@ export type UseResourcesHook = (parentId: string | null) => {
   resources: BaseContentNode[];
   isResourcesLoading: boolean;
   isResourcesError: boolean;
+  resourcesError?: APIError | null;
 };
 
 export type ContentNodeTreeItemStatus = {
@@ -112,7 +113,7 @@ function ContentNodeTreeChildren({
 
   const { useResourcesHook, emptyComponent } = useContentNodeTreeContext();
 
-  const { resources, isResourcesLoading, isResourcesError } =
+  const { resources, isResourcesLoading, isResourcesError, resourcesError } =
     useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
@@ -151,8 +152,15 @@ function ContentNodeTreeChildren({
 
   if (isResourcesError) {
     return (
-      <div className="text-warning text-sm">
-        Failed to retrieve permissions likely due to a revoked authorization.
+      <div className="text-sm text-warning">
+        {resourcesError?.type === "rate_limit_error" ? (
+          <>Connected service's API limit reached. Please retry shortly.</>
+        ) : (
+          <>
+            Failed to retrieve permissions likely due to a revoked
+            authorization.
+          </>
+        )}
       </div>
     );
   }
@@ -170,6 +178,11 @@ function ContentNodeTreeChildren({
             key={n.internalId}
             type={n.expandable ? "node" : "leaf"}
             label={n.title}
+            labelClassName={
+              n.providerVisibility === "private"
+                ? "after:content-['(private)'] after:text-red-500 after:ml-1"
+                : ""
+            }
             visual={getVisualForContentNode(n)}
             className={`whitespace-nowrap tree-depth-${depth}`}
             checkbox={
@@ -269,7 +282,7 @@ function ContentNodeTreeChildren({
         <>
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
-              <Searchbar
+              <SearchInput
                 name="search"
                 placeholder="Search..."
                 value={search}
@@ -280,12 +293,12 @@ function ContentNodeTreeChildren({
               />
             </div>
 
-            <div className="p-1">
+            {search.trim().length > 0 && (
               <Button
-                disabled={search.trim().length === 0}
                 icon={ListCheckIcon}
                 label={selectAllClicked ? "Unselect All" : "Select All"}
                 size="sm"
+                className="m-1"
                 variant="ghost"
                 onClick={() => {
                   const isSelected = !selectAllClicked;
@@ -303,7 +316,7 @@ function ContentNodeTreeChildren({
                   });
                 }}
               />
-            </div>
+            )}
           </div>
         </>
       )}

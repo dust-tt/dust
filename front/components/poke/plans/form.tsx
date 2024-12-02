@@ -260,7 +260,7 @@ export const PLAN_FIELDS = {
   maxVaults: {
     type: "number",
     width: "small",
-    title: "# Vaults",
+    title: "# Spaces",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxVaults),
   },
   trialPeriodDays: {
@@ -325,7 +325,8 @@ export const Field: React.FC<FieldProps> = ({
               setEditingPlan({ ...editingPlan, [fieldName]: x.target.value });
             }}
             name={fieldName}
-            error={editingPlan && field.error(editingPlan)}
+            message={editingPlan && field.error(editingPlan)}
+            messageStatus="error"
           />
         ) : (
           renderPlanFieldValue(plan[fieldName])

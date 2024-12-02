@@ -57,30 +57,9 @@ export default function Pricing() {
         }
       />
       <Grid>
-        <div className="s-dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">
+        <div className="dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">
           <PricePlans
             display="landing"
-            size="xs"
-            className="lg:hidden"
-            isTabs
-            onClickProPlan={() => {
-              window.location.href = "/api/auth/login";
-            }}
-            onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
-          />
-          <PricePlans
-            display="landing"
-            size="xs"
-            className="hidden lg:flex xl:hidden"
-            onClickProPlan={() => {
-              window.location.href = "/api/auth/login";
-            }}
-            onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
-          />
-          <PricePlans
-            display="landing"
-            size="sm"
-            className="hidden xl:flex"
             onClickProPlan={() => {
               window.location.href = "/api/auth/login";
             }}

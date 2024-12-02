@@ -1,10 +1,11 @@
+import type { ConversationEventType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -77,9 +78,14 @@ async function handler(
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       });
+      res.flushHeaders();
 
-      for await (const event of getConversationEvents(conversation.sId, null)) {
-        res.write(JSON.stringify(event));
+      const eventStream: AsyncGenerator<ConversationEventType> =
+        getConversationEvents(conversation.sId, null);
+
+      for await (const event of eventStream) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+
         // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
         res.flush();
       }
@@ -102,4 +108,7 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, { isStreaming: true });
+export default withPublicAPIAuthentication(handler, {
+  isStreaming: true,
+  requiredScopes: { GET: "read:conversation" },
+});

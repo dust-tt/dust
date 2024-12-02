@@ -2,15 +2,15 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   EyeIcon,
   Icon,
   MoreIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuSeparator,
-  NewDropdownMenuTrigger,
   PencilSquareIcon,
   StarIcon,
   StarStrokeIcon,
@@ -18,6 +18,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
@@ -32,6 +33,7 @@ import { setQueryParam } from "@app/lib/utils/router";
 interface AssistantDetailsMenuProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
+  user: UserType;
   variant?: "button" | "plain";
   canDelete?: boolean;
   isMoreInfoVisible?: boolean;
@@ -46,13 +48,12 @@ export function AssistantDropdownMenu({
   isMoreInfoVisible,
   showAddRemoveToFavorite = false,
 }: AssistantDetailsMenuProps) {
-  const [isUpdatingFavorites, setIsUpdatingFavorite] = useState(false);
   const [showDeletionModal, setShowDeletionModal] = useState(false);
 
   const router = useRouter();
 
   const { user } = useUser();
-  const doFavoriteUpdate = useUpdateUserFavorite({
+  const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -65,6 +66,11 @@ export function AssistantDropdownMenu({
     return <></>;
   }
 
+  const isPrivate = agentConfiguration.scope === "private";
+  if (isPrivate && agentConfiguration.versionAuthorId !== user.id) {
+    return <></>;
+  }
+
   const isAgentWorkspace = agentConfiguration.scope === "workspace";
   const isGlobalAgent = agentConfiguration.scope === "global";
 
@@ -72,9 +78,7 @@ export function AssistantDropdownMenu({
   const allowDeletion = canDelete && (isBuilder(owner) || !isAgentWorkspace);
 
   const updateFavorite = async (favorite: boolean) => {
-    setIsUpdatingFavorite(true);
-    await doFavoriteUpdate(favorite);
-    setIsUpdatingFavorite(false);
+    await updateUserFavorite(favorite);
   };
 
   const dropdownButton = (() => {
@@ -116,13 +120,11 @@ export function AssistantDropdownMenu({
         isPrivateAssistant={agentConfiguration.scope === "private"}
       />
 
-      <NewDropdownMenu>
-        <NewDropdownMenuTrigger asChild>
-          {dropdownButton}
-        </NewDropdownMenuTrigger>
-        <NewDropdownMenuContent>
-          <NewDropdownMenuLabel>{agentConfiguration.name}</NewDropdownMenuLabel>
-          <NewDropdownMenuItem
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{dropdownButton}</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuLabel>{agentConfiguration.name}</DropdownMenuLabel>
+          <DropdownMenuItem
             label="Start new conversation"
             icon={ChatBubbleBottomCenterTextIcon}
             onClick={() =>
@@ -132,7 +134,7 @@ export function AssistantDropdownMenu({
             }
           />
           {isMoreInfoVisible ? (
-            <NewDropdownMenuItem
+            <DropdownMenuItem
               label="More info"
               icon={EyeIcon}
               onClick={(e) => {
@@ -145,7 +147,7 @@ export function AssistantDropdownMenu({
               }}
             />
           ) : (
-            <NewDropdownMenuItem
+            <DropdownMenuItem
               label="Copy assistant ID"
               icon={ClipboardIcon}
               onClick={async (e) => {
@@ -155,10 +157,10 @@ export function AssistantDropdownMenu({
             />
           )}
           {showAddRemoveToFavorite && (
-            <NewDropdownMenuItem
+            <DropdownMenuItem
               label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-              icon={isFavorite ? StarStrokeIcon : StarIcon}
-              disabled={isUpdatingFavorites}
+              icon={isFavorite ? StarIcon : StarStrokeIcon}
+              disabled={isUpdatingFavorite}
               onClick={async (e) => {
                 e.stopPropagation();
                 await updateFavorite(!isFavorite);
@@ -167,10 +169,10 @@ export function AssistantDropdownMenu({
           )}
           {!isGlobalAgent && (
             <>
-              <NewDropdownMenuSeparator />
-              <NewDropdownMenuLabel>Edition</NewDropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Edition</DropdownMenuLabel>
               {(isBuilder(owner) || !isAgentWorkspace) && (
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   label="Edit"
                   icon={PencilSquareIcon}
                   onClick={async (e) => {
@@ -181,7 +183,7 @@ export function AssistantDropdownMenu({
                   }}
                 />
               )}
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 label="Duplicate (New)"
                 icon={ClipboardIcon}
                 onClick={async (e) => {
@@ -192,16 +194,17 @@ export function AssistantDropdownMenu({
                 }}
               />
               {allowDeletion && (
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   label="Delete"
                   icon={TrashIcon}
+                  variant="warning"
                   onClick={() => setShowDeletionModal(true)}
                 />
               )}
             </>
           )}
-        </NewDropdownMenuContent>
-      </NewDropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }

@@ -1,60 +1,29 @@
 import {
+  Avatar,
   Button,
-  IconButton,
-  Item,
-  MoreIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   PlusIcon,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
   RobotIcon,
   ScrollArea,
-  Searchbar,
-  Separator,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { filterAndSortAgents } from "@app/lib/utils";
-import { setQueryParam } from "@app/lib/utils/router";
-
-const ShowAssistantDetailsButton = ({
-  assistant,
-}: {
-  assistant: LightAgentConfigurationType;
-}) => {
-  const router = useRouter();
-
-  const showAssistantDetails = useCallback(
-    (agentConfiguration: LightAgentConfigurationType) => {
-      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
-    },
-    [router]
-  );
-  return (
-    <IconButton
-      icon={MoreIcon}
-      onClick={() => {
-        close();
-        showAssistantDetails(assistant);
-      }}
-      variant="ghost"
-      size="sm"
-    />
-  );
-};
 
 export function AssistantPicker({
   owner,
   assistants,
   onItemClick,
   pickerButton,
-  showMoreDetailsButtons = true,
   showFooterButtons = true,
   size = "md",
 }: {
@@ -82,26 +51,25 @@ export function AssistantPicker({
   };
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         {pickerButton ? (
           pickerButton
         ) : (
           <Button
             icon={RobotIcon}
-            variant="ghost"
+            variant="ghost-secondary"
             isSelect
             size={size}
             tooltip="Pick an assistant"
           />
         )}
-      </PopoverTrigger>
-      <PopoverContent className="mr-2 p-2">
-        <Searchbar
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-[300px]">
+        <DropdownMenuSearchbar
           ref={searchbarRef}
           placeholder="Search"
           name="input"
-          size="xs"
           value={searchText}
           onChange={setSearchText}
           onKeyDown={(e) => {
@@ -112,48 +80,33 @@ export function AssistantPicker({
             }
           }}
         />
-        <ScrollArea className="mt-2 h-[300px]">
+        <DropdownMenuSeparator />
+        <ScrollArea className="border-1 -mb-1 -mt-1 h-[300px]">
           {searchedAssistants.map((c) => (
-            <div
-              key={`assistant-picker-container-${c.sId}`}
-              className="flex flex-row items-center justify-between px-2"
-            >
-              <Item.Avatar
-                key={`assistant-picker-${c.sId}`}
-                label={c.name}
-                visual={c.pictureUrl}
-                hasAction={false}
-                onClick={() => {
-                  onItemClick(c);
-                  setSearchText("");
-                }}
-                className="truncate"
-              />
-              {showMoreDetailsButtons && (
-                <ShowAssistantDetailsButton assistant={c} />
-              )}
-            </div>
+            <DropdownMenuItem
+              key={`assistant-picker-${c.sId}`}
+              icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
+              label={c.name}
+              onClick={() => {
+                onItemClick(c);
+                setSearchText("");
+              }}
+            />
           ))}
         </ScrollArea>
+        <DropdownMenuSeparator />
         {showFooterButtons && (
-          <>
-            <Separator />
-            <div className="mt-2 flex justify-end">
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-              >
-                <Button
-                  label="Create"
-                  size="xs"
-                  variant="primary"
-                  icon={PlusIcon}
-                  className="mr-2"
-                />
-              </Link>
-            </div>
-          </>
+          <div className="flex justify-end p-1">
+            <Button
+              label="Create"
+              size="xs"
+              variant="primary"
+              icon={PlusIcon}
+              href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+            />
+          </div>
         )}
-      </PopoverContent>
-    </PopoverRoot>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

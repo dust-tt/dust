@@ -6,10 +6,13 @@ import {
 } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
-import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
 import { Input } from "@sparkle/components/Input";
 
-import { DataTable, FolderIcon } from "../index_with_tw_base";
+import {
+  DataTable,
+  DropdownMenuItemProps,
+  FolderIcon,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Components/DataTable",
@@ -29,7 +32,7 @@ type Data = {
   avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  moreMenuItems?: DropdownItemProps[];
+  moreMenuItems?: DropdownMenuItemProps[];
   roundedAvatar?: boolean;
 };
 

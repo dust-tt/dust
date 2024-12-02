@@ -1,16 +1,22 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
   CloudArrowLeftRightIcon,
+  ContentMessage,
   Dialog,
+  Hoverable,
   Icon,
+  Input,
   LockIcon,
   Modal,
   Page,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
+  BaseContentNode,
   ConnectorPermission,
   ConnectorProvider,
   ConnectorType,
@@ -22,27 +28,28 @@ import type {
 import {
   CONNECTOR_TYPE_TO_MISMATCH_ERROR,
   isOAuthProvider,
+  isValidZendeskSubdomain,
   MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import type { ConfirmDataType } from "@app/components/Confirm";
+import { ConfirmContext } from "@app/components/Confirm";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
-import { ConnectorDataUpdatedModal } from "@app/components/vaults/ConnectorDataUpdatedModal";
+import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
+import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useSystemVault, useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
 import { ContentNodeTree } from "./ContentNodeTree";
-import type { NotificationType } from "./sparkle/Notification";
-import { SendNotificationsContext } from "./sparkle/Notification";
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "confluence",
@@ -51,6 +58,7 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "microsoft",
   "intercom",
   "snowflake",
+  "zendesk",
 ]);
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
@@ -75,7 +83,10 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   },
   notion: undefined,
   github: undefined,
-  zendesk: undefined,
+  zendesk: {
+    selected: "read",
+    unselected: "none",
+  },
   intercom: {
     selected: "read",
     unselected: "none",
@@ -107,7 +118,7 @@ interface DataSourceEditionModalProps {
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: () => void;
-  onEditPermissionsClick: () => void;
+  onEditPermissionsClick: (extraConfig: Record<string, string>) => void;
   owner: LightWorkspaceType;
 }
 
@@ -115,6 +126,7 @@ export async function handleUpdatePermissions(
   connector: ConnectorType,
   dataSource: DataSourceType,
   owner: LightWorkspaceType,
+  extraConfig: Record<string, string>,
   sendNotification: (notification: NotificationType) => void
 ) {
   const provider = connector.type;
@@ -122,6 +134,7 @@ export async function handleUpdatePermissions(
   const connectionIdRes = await setupConnection({
     owner,
     provider,
+    extraConfig,
   });
   if (connectionIdRes.isErr()) {
     sendNotification({
@@ -144,7 +157,12 @@ export async function handleUpdatePermissions(
       title: "Failed to update the permissions of the Data Source",
       description: updateRes.error,
     });
-    return;
+  } else {
+    sendNotification({
+      type: "success",
+      title: "Successfully updated connection",
+      description: "The connection was successfully updated.",
+    });
   }
 }
 
@@ -211,10 +229,28 @@ function DataSourceEditionModal({
   onEditPermissionsClick,
   owner,
 }: DataSourceEditionModalProps) {
+  const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
 
   const { connectorProvider, editedByUser } = dataSource;
+
+  const isExtraConfigValid = useCallback(
+    (extraConfig: Record<string, string>) => {
+      if (connectorProvider === "zendesk") {
+        return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+      } else {
+        return true;
+      }
+    },
+    [connectorProvider]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setExtraConfig({});
+    }
+  }, [isOpen]);
 
   if (!connectorProvider || !user) {
     return null;
@@ -285,67 +321,70 @@ function DataSourceEditionModal({
             </div>
           )}
         </div>
-        {!isDataSourceOwner && (
-          <div className="item flex flex-col gap-2 border-t pb-4 pt-4">
-            <Page.SectionHeader title="Editing permissions" />
-            <div className="mb-4 w-full rounded-lg border-pink-200 bg-pink-50 p-3">
-              <div className="flex items-center gap-2 font-medium text-pink-900">
-                <Icon visual={InformationCircleIcon} />
-                Important
-              </div>
-              <div className="pl-4 pt-2 font-medium text-pink-900">
-                You are not the owner of this connection.
-              </div>
-              <div className="p-4 text-sm text-amber-900">
-                Editing permission rights with a different account will likely
-                break the existing data structure in Dust and Assistants using
-                them.
-              </div>
 
+        {!isDataSourceOwner && (
+          <div className="item flex flex-col gap-2 border-t pt-4">
+            <Page.SectionHeader title="Editing permissions" />
+            <ContentMessage
+              size="md"
+              variant="pink"
+              title="You are not the owner of this connection."
+              icon={InformationCircleIcon}
+            >
+              Editing permission rights with a different account will likely
+              break the existing data structure in Dust and Assistants using
+              them.
               {connectorConfiguration.guideLink && (
-                <div className="pl-4 text-sm text-amber-800">
+                <div>
                   Read our{" "}
-                  <a
+                  <Hoverable
                     href={connectorConfiguration.guideLink}
-                    className="text-blue-600"
+                    variant="primary"
                     target="_blank"
                   >
                     Playbook
-                  </a>
+                  </Hoverable>
                   .
                 </div>
               )}
-            </div>
-            <div className="flex items-center justify-center">
-              <Button
-                label="Edit Permissions"
-                icon={LockIcon}
-                variant="warning"
-                onClick={() => {
-                  setShowConfirmDialog(true);
-                }}
-              />
-            </div>
+            </ContentMessage>
           </div>
         )}
-        {isDataSourceOwner && (
-          <div className="flex items-center justify-center">
-            <Button
-              label="Edit Permissions"
-              icon={LockIcon}
-              variant="warning"
-              onClick={() => {
-                setShowConfirmDialog(true);
+
+        {connectorProvider === "zendesk" && (
+          <div className="pb-4">
+            <Input
+              label="Zendesk account subdomain"
+              message="The first part of your Zendesk account URL."
+              messageStatus="info"
+              name="subdomain"
+              value={extraConfig.zendesk_subdomain ?? ""}
+              placeholder="my-subdomain"
+              onChange={(e) => {
+                setExtraConfig({ zendesk_subdomain: e.target.value });
               }}
             />
           </div>
         )}
+
+        <div className="flex items-center justify-center">
+          <Button
+            label="Edit Permissions"
+            icon={LockIcon}
+            variant="warning"
+            disabled={!isExtraConfigValid(extraConfig)}
+            onClick={() => {
+              setShowConfirmDialog(true);
+            }}
+          />
+        </div>
+
         <Dialog
           title="Are you sure?"
           isOpen={showConfirmDialog}
           onCancel={() => setShowConfirmDialog(false)}
           onValidate={() => {
-            void onEditPermissionsClick();
+            void onEditPermissionsClick(extraConfig);
             setShowConfirmDialog(false);
           }}
           validateVariant="warning"
@@ -374,21 +413,21 @@ function DataSourceDeletionModal({
   owner,
 }: DataSourceDeletionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
-  const { systemVault } = useSystemVault({
+  const { systemSpace } = useSystemSpace({
     workspaceId: owner.sId,
   });
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
+  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: systemVault?.sId ?? "",
+      spaceId: systemSpace?.sId ?? "",
       disabled: true,
     });
   const { connectorProvider, editedByUser } = dataSource;
 
-  if (!connectorProvider || !user || !systemVault) {
+  if (!connectorProvider || !user || !systemSpace) {
     return null;
   }
 
@@ -398,7 +437,7 @@ function DataSourceDeletionModal({
   const handleDelete = async () => {
     setIsLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${systemVault.sId}/data_sources/${dataSource.sId}`,
+      `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources/${dataSource.sId}`,
       {
         method: "DELETE",
       }
@@ -409,7 +448,7 @@ function DataSourceDeletionModal({
         type: "success",
         description: "The connection has been successfully deleted.",
       });
-      await mutateVaultDataSourceViews();
+      await mutateSpaceDataSourceViews();
       onClose();
     } else {
       const err = (await res.json()) as { error: APIError };
@@ -512,6 +551,7 @@ export function ConnectorPermissionsModal({
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
 
+  const confirm = useContext(ConfirmContext);
   const [selectedNodes, setSelectedNodes] = useState<
     Record<string, ContentNodeTreeItemStatus>
   >({});
@@ -578,7 +618,7 @@ export function ConnectorPermissionsModal({
   const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { user } = useUser();
 
   function closeModal(save: boolean) {
@@ -590,6 +630,16 @@ export function ConnectorPermissionsModal({
   }
 
   async function save() {
+    if (
+      !(await confirmPrivateNodesSync({
+        selectedNodes: Object.values(selectedNodes)
+          .filter((sn) => sn.isSelected)
+          .map((sn) => sn.node),
+        confirm,
+      }))
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       if (Object.keys(selectedNodes).length) {
@@ -760,13 +810,15 @@ export function ConnectorPermissionsModal({
         onClose={() => closeModal(false)}
         dataSource={dataSource}
         owner={owner}
-        onEditPermissionsClick={() => {
-          void handleUpdatePermissions(
+        onEditPermissionsClick={async (extraConfig: Record<string, string>) => {
+          await handleUpdatePermissions(
             connector,
             dataSource,
             owner,
+            extraConfig,
             sendNotification
           );
+          closeModal(false);
         }}
       />
       <DataSourceDeletionModal
@@ -785,4 +837,31 @@ export function ConnectorPermissionsModal({
       />
     </>
   );
+}
+
+export async function confirmPrivateNodesSync({
+  selectedNodes,
+  confirm,
+}: {
+  selectedNodes: BaseContentNode[];
+  confirm: (n: ConfirmDataType) => Promise<boolean>;
+}): Promise<boolean> {
+  // confirmation in case there are private nodes
+  const privateNodes = selectedNodes.filter(
+    (node) => node.providerVisibility === "private"
+  );
+
+  if (privateNodes.length > 0) {
+    const warnNodes = privateNodes.slice(0, 3).map((node) => node.title);
+    if (privateNodes.length > 3) {
+      warnNodes.push(` and ${privateNodes.length - 3} more...`);
+    }
+
+    return confirm({
+      title: "Sensitive data synchronization",
+      message: `You are synchronizing data from private source(s): ${warnNodes.join(", ")}. Is this okay?`,
+      validateVariant: "warning",
+    });
+  }
+  return true;
 }

@@ -28,13 +28,17 @@ type InferPluginArgs<T extends PluginArgs> = {
   >;
 };
 
+export type PluginResponse =
+  | { display: "text"; value: string }
+  | { display: "json"; value: Record<string, unknown> };
+
 export interface Plugin<T extends PluginArgs> {
   manifest: PluginManifest<T>;
   execute: (
     auth: Authenticator,
     resourceId: string | undefined,
     args: InferPluginArgs<T>
-  ) => Promise<Result<string, Error>>;
+  ) => Promise<Result<PluginResponse, Error>>;
 }
 
 export function createPlugin<T extends PluginArgs>(

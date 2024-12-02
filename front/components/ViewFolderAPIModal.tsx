@@ -1,7 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, ClipboardIcon, Modal, Page } from "@dust-tt/sparkle";
-import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, SpaceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -13,24 +13,24 @@ const CodeEditor = dynamic(
 );
 
 interface ViewFolderAPIModalProps {
-  owner: WorkspaceType;
-  vault: VaultType;
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: () => void;
+  owner: WorkspaceType;
+  space: SpaceType;
 }
 
 export function ViewFolderAPIModal({
-  owner,
-  vault,
   dataSource,
   isOpen,
   onClose,
+  owner,
+  space,
 }: ViewFolderAPIModalProps) {
   const cURLRequest = (type: "upsert" | "search") => {
     switch (type) {
       case "upsert":
-        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSource.sId}/documents/YOUR_DOCUMENT_ID" \\
+        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/documents/YOUR_DOCUMENT_ID" \\
     -H "Authorization: Bearer YOUR_API_KEY" \\
     -H "Content-Type: application/json" \\
     -d '{
@@ -38,7 +38,7 @@ export function ViewFolderAPIModal({
       "source_url": "https://acme.com"
     }'`;
       case "search":
-        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSource.sId}/search?query=foo+bar&top_k=16&full_text=false" \\
+        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSource.sId}/search?query=foo+bar&top_k=16&full_text=false" \\
     -H "Authorization: Bearer YOUR_API_KEY"`;
       default:
         assertNever(type);
@@ -84,7 +84,7 @@ export function ViewFolderAPIModal({
             <Page.P>
               <ul className="text-gray-500">
                 <li>
-                  vaultId: <span className="font-bold">{vault.sId}</span>{" "}
+                  spaceId: <span className="font-bold">{space.sId}</span>{" "}
                 </li>
                 <li>
                   dataSourceId:{" "}

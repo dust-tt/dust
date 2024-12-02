@@ -2,7 +2,6 @@ import type {
   ConnectorProvider,
   DataSourceType,
   ModelId,
-  PokeDataSourceType,
   Result,
 } from "@dust-tt/types";
 import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
@@ -15,12 +14,12 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
-import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -29,8 +28,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
-import { getWorkspaceByModelId } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
@@ -63,7 +60,7 @@ export type FetchDataSourceOptions = {
 export interface DataSourceResource
   extends ReadonlyAttributesType<DataSourceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
+export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static model: ModelStatic<DataSourceModel> = DataSourceModel;
 
   readonly editedByUser?: Attributes<User>;
@@ -71,10 +68,10 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
   constructor(
     model: ModelStatic<DataSourceModel>,
     blob: Attributes<DataSourceModel>,
-    vault: VaultResource,
+    space: SpaceResource,
     { editedByUser }: { editedByUser?: Attributes<User> } = {}
   ) {
-    super(DataSourceResource.model, blob, vault);
+    super(DataSourceResource.model, blob, space);
 
     this.editedByUser = editedByUser;
   }
@@ -85,20 +82,20 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       CreationAttributes<DataSourceModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
-    vault: VaultResource,
+    space: SpaceResource,
     transaction?: Transaction
   ) {
     const dataSource = await DataSourceModel.create(
       {
         ...blob,
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: auth.user()?.id ?? null,
         editedAt: new Date(),
-        vaultId: vault.id,
+        vaultId: space.id,
       },
       { transaction }
     );
 
-    return new this(DataSourceResource.model, dataSource.get(), vault);
+    return new this(DataSourceResource.model, dataSource.get(), space);
   }
 
   // Fetching.
@@ -113,6 +110,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
         {
           model: User,
           as: "editedByUser",
+          required: false,
         },
       ];
     }
@@ -263,6 +261,21 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     return dataSource ?? null;
   }
 
+  static async fetchByConversationId(
+    auth: Authenticator,
+    conversationId: number,
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource | null> {
+    const [dataSource] = await this.baseFetch(auth, options, {
+      where: {
+        conversationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return dataSource ?? null;
+  }
+
   // TODO(DATASOURCE_SID): remove
   static async fetchByNames(
     auth: Authenticator,
@@ -342,22 +355,22 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     });
   }
 
-  static async listByVault(
+  static async listBySpace(
     auth: Authenticator,
-    vault: VaultResource,
+    space: SpaceResource,
     options?: FetchDataSourceOptions
   ) {
-    return this.listByVaults(auth, [vault], options);
+    return this.listBySpaces(auth, [space], options);
   }
 
-  static async listByVaults(
+  static async listBySpaces(
     auth: Authenticator,
-    vaults: VaultResource[],
+    spaces: SpaceResource[],
     options?: FetchDataSourceOptions
   ) {
     return this.baseFetch(auth, options, {
       where: {
-        vaultId: vaults.map((v) => v.id),
+        vaultId: spaces.map((s) => s.id),
       },
     });
   }
@@ -441,7 +454,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }
@@ -487,16 +500,6 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     return getDataSourceUsage({ auth, dataSource: this });
   }
 
-  // Permissions.
-
-  canRead(auth: Authenticator) {
-    return this.vault.canRead(auth);
-  }
-
-  canWrite(auth: Authenticator) {
-    return this.vault.canWrite(auth);
-  }
-
   // sId logic.
 
   get sId(): string {
@@ -538,19 +541,6 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       connectorProvider: this.connectorProvider,
       assistantDefaultSelected: this.assistantDefaultSelected,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
-    };
-  }
-
-  async toPokeJSON(): Promise<PokeDataSourceType> {
-    const workspace = await getWorkspaceByModelId(this.workspaceId);
-
-    return {
-      ...this.toJSON(),
-      link: workspace
-        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/data_sources/${this.sId}`
-        : null,
-      name: `Data Source View (${this.name})`,
-      vault: this.vault.toPokeJSON(),
     };
   }
 }

@@ -7,6 +7,8 @@ import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
 import { BrowseActionType } from "./actions/browse";
+import { ConversationIncludeFileActionType } from "./actions/conversation/include_file";
+import { ConversationListFilesActionType } from "./actions/conversation/list_files";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -44,6 +46,12 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
+export type MessageWithContentFragmentsType =
+  | AgentMessageType
+  | (UserMessageType & {
+      contenFragments?: ContentFragmentType[];
+    });
+
 export type WithRank<T> = T & {
   rank: number;
 };
@@ -57,12 +65,15 @@ export type UserMessageOrigin =
   | "slack"
   | "web"
   | "api"
+  | "email"
   | "gsheet"
   | "zapier"
   | "make"
   | "zendesk"
   | "raycast"
-  | "extension";
+  | "github-copilot-chat"
+  | "extension"
+  | "email";
 
 export type UserMessageContext = {
   username: string;
@@ -70,7 +81,7 @@ export type UserMessageContext = {
   fullName: string | null;
   email: string | null;
   profilePictureUrl: string | null;
-  origin: UserMessageOrigin | null;
+  origin?: UserMessageOrigin | null;
 };
 
 export type UserMessageType = {
@@ -94,14 +105,21 @@ export function isUserMessageType(arg: MessageType): arg is UserMessageType {
 /**
  * Agent messages
  */
-
-export type AgentActionType =
+export type ConfigurableAgentActionType =
   | RetrievalActionType
   | DustAppRunActionType
   | TablesQueryActionType
   | ProcessActionType
   | WebsearchActionType
   | BrowseActionType;
+
+export type ConversationAgentActionType =
+  | ConversationListFilesActionType
+  | ConversationIncludeFileActionType;
+
+export type AgentActionType =
+  | ConfigurableAgentActionType
+  | ConversationAgentActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -116,6 +134,8 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
+  conversation_list_files_action: "Listing files",
+  conversation_include_file_action: "Reading file",
 };
 
 /**
@@ -180,7 +200,9 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
   visibility: ConversationVisibility;
+  // TODO(2024-11-04 flav) `group-id` clean-up.
   groupIds: string[];
+  requestedGroupIds: string[][];
 };
 
 /**
@@ -247,4 +269,48 @@ export type SubmitMessageError = {
     | "content_too_large";
   title: string;
   message: string;
+};
+
+export interface FetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: MessageWithRankType[];
+}
+
+/**
+ * Conversation events.
+ */
+
+// Event sent when the user message is created.
+export type UserMessageNewEvent = {
+  type: "user_message_new";
+  created: number;
+  messageId: string;
+  message: UserMessageWithRankType;
+};
+
+// Event sent when the user message is created.
+export type UserMessageErrorEvent = {
+  type: "user_message_error";
+  created: number;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+// Event sent when a new message is created (empty) and the agent is about to be executed.
+export type AgentMessageNewEvent = {
+  type: "agent_message_new";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageWithRankType;
+};
+
+// Event sent when the conversation title is updated.
+export type ConversationTitleEvent = {
+  type: "conversation_title";
+  created: number;
+  title: string;
 };

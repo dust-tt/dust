@@ -1,4 +1,4 @@
-import handler from "@app/pages/api/v1/w/[wId]/vaults/[vId]/apps/[aId]/runs";
+import handler from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
 
 /**
  * @ignoreswagger

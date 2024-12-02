@@ -1,7 +1,7 @@
-import { Page } from "@dust-tt/sparkle";
+import { Button, Page } from "@dust-tt/sparkle";
 import type {
-  AgentMessageType,
   ContentFragmentType,
+  PokeAgentMessageType,
   UserMessageType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -9,6 +9,7 @@ import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { DustProdActionRegistry } from "@app/lib/registry";
 import { useConversation } from "@app/poke/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
@@ -53,7 +54,9 @@ const UserMessageView = ({ message }: { message: UserMessageType }) => {
   );
 };
 
-const AgentMessageView = ({ message }: { message: AgentMessageType }) => {
+const AgentMessageView = ({ message }: { message: PokeAgentMessageType }) => {
+  const multiActionsApp =
+    DustProdActionRegistry["assistant-v2-multi-actions-agent"];
   return (
     <div className="ml-4 pt-2 text-sm text-element-700">
       <div className="font-bold">
@@ -67,15 +70,49 @@ const AgentMessageView = ({ message }: { message: AgentMessageType }) => {
         </a>
         {")"}
       </div>
-      <div className="text-element-600">version={message.version}</div>
+
+      <div className="text-element-600">
+        version={message.version}
+        {message.runIds && (
+          <>
+            , agent logs:{" "}
+            {message.runIds.map((runId, i) => (
+              <a
+                key={`runId-${i}`}
+                href={`/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs/${runId}`}
+                target="_blank"
+                className="text-action-500"
+              >
+                {runId.substring(0, 8)}{" "}
+              </a>
+            ))}
+          </>
+        )}
+      </div>
       {message.actions.map((a, i) => {
         return (
           <div key={`action-${i}`} className="pl-2 text-element-600">
-            action: step={a.step} type={a.type}
+            action: step={a.step} type={a.type}{" "}
+            {a.runId && (
+              <>
+                log:{" "}
+                <a
+                  key={`runId-${i}`}
+                  href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
+                  target="_blank"
+                  className="text-action-500"
+                >
+                  {a.runId.substring(0, 8)}{" "}
+                </a>
+              </>
+            )}
           </div>
         );
       })}
-      <div>{message.content}</div>
+      {message.content && <div>{message.content}</div>}
+      {message.error && (
+        <div className="text-warning">{message.error.message}</div>
+      )}
     </div>
   );
 };
@@ -111,21 +148,20 @@ const ConversationPage = ({
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { conversation } = useConversation({ workspaceId, conversationId });
-
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
       {conversation && (
         <div className="mx-auto max-w-4xl pt-8">
           <Page.Vertical align="stretch">
-            <div className="ml-4 text-sm text-element-600">
-              <a
+            <div className="flex space-x-2">
+              <Button
                 href={`http://go/trace-conversation/${conversation.sId}`}
+                label="Trace Conversation"
+                variant="primary"
+                size="xs"
                 target="_blank"
-                className="text-action-500"
-              >
-                [trace-conversation]
-              </a>
+              />
             </div>
             {conversation.content.map((messages, i) => {
               return (

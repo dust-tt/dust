@@ -42,8 +42,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   ttlMs: number,
-  redisUri?: string,
-  lockCaching?: boolean
+  redisUri?: string
 ): (...args: Args) => Promise<JsonSerializable<T>> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
@@ -74,14 +73,12 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
       // specific try-finally to ensure unlock is called only after lock
       try {
-        if (lockCaching) {
-          // if value not found, lock, recheck and set
-          // we avoid locking for the first read to allow parallel calls to redis if the value is set
-          await lock(key);
-          cacheVal = await redisCli.get(key);
-          if (cacheVal) {
-            return JSON.parse(cacheVal) as JsonSerializable<T>;
-          }
+        // if value not found, lock, recheck and set
+        // we avoid locking for the first read to allow parallel calls to redis if the value is set
+        await lock(key);
+        cacheVal = await redisCli.get(key);
+        if (cacheVal) {
+          return JSON.parse(cacheVal) as JsonSerializable<T>;
         }
 
         const result = await fn(...args);
@@ -90,9 +87,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
         });
         return result;
       } finally {
-        if (lockCaching) {
-          unlock(key);
-        }
+        unlock(key);
       }
     } finally {
       if (redisCli) {

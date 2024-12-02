@@ -63,6 +63,7 @@ async function main() {
           slackChannelId: channel.id,
           slackChannelName: channel.name,
           permission: "read_write",
+          private: !!channel.is_private,
         });
       }
     }

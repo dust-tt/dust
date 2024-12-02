@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ContentNode, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -6,7 +6,16 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
+import {
+  getArticleInternalId,
+  getBrandInternalId,
+  getCategoryInternalId,
+  getHelpCenterInternalId,
+  getTicketInternalId,
+  getTicketsInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   ZendeskArticle,
   ZendeskBrand,
@@ -35,6 +44,36 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
     super(ZendeskConfiguration, blob);
   }
 
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskConfiguration>;
+    transaction?: Transaction;
+  }): Promise<ZendeskConfigurationResource> {
+    const configuration = await ZendeskConfiguration.create(
+      { ...blob },
+      transaction && { transaction }
+    );
+    return new this(this.model, configuration.get());
+  }
+
+  static async fetchByConnectorId(
+    connectorId: number
+  ): Promise<ZendeskConfigurationResource | null> {
+    const configuration = await ZendeskConfiguration.findOne({
+      where: { connectorId },
+    });
+    return configuration && new this(this.model, configuration.get());
+  }
+
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ): Promise<void> {
+    await this.model.destroy({ where: { connectorId }, transaction });
+  }
+
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -56,7 +95,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
       updatedAt: this.updatedAt,
 
       subdomain: this.subdomain,
-      conversationsSlidingWindow: this.conversationsSlidingWindow,
+      retentionPeriodDays: this.retentionPeriodDays,
 
       connectorId: this.connectorId,
     };
@@ -83,11 +122,12 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return;
   }
 
+  /**
+   * Deletes the brand data, keeping all children data (tickets, categories, articles).
+   */
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, brandId: this.brandId },
       transaction,
     });
     return new Ok(undefined);
@@ -117,42 +157,35 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     blob: CreationAttributes<ZendeskBrand>;
     transaction?: Transaction;
   }): Promise<ZendeskBrandResource> {
-    let brand;
-    if (transaction) {
-      brand = await ZendeskBrand.create({ ...blob }, { transaction });
-    } else {
-      brand = await ZendeskBrand.create({ ...blob });
-    }
+    const brand = await ZendeskBrand.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, brand.get());
   }
 
-  async revokePermissions(): Promise<void> {
-    await this.revokeHelpCenterPermissions();
-    await this.revokeTicketsPermissions();
+  async grantHelpCenterPermissions(): Promise<void> {
+    if (this.helpCenterPermission === "none") {
+      await this.update({ helpCenterPermission: "read" });
+    }
+  }
+
+  async grantTicketsPermissions(): Promise<void> {
+    if (this.ticketsPermission === "none") {
+      await this.update({ ticketsPermission: "read" });
+    }
   }
 
   async revokeHelpCenterPermissions(): Promise<void> {
     if (this.helpCenterPermission === "read") {
       await this.update({ helpCenterPermission: "none" });
     }
-    await ZendeskCategory.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
-    await ZendeskArticle.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
   }
 
   async revokeTicketsPermissions(): Promise<void> {
     if (this.ticketsPermission === "read") {
       await this.update({ ticketsPermission: "none" });
     }
-    await ZendeskTicket.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
   }
 
   static async fetchByBrandId({
@@ -168,46 +201,172 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return blob && new this(this.model, blob.get());
   }
 
-  static async fetchAllReadOnly({
+  static async fetchByBrandIds({
     connectorId,
+    brandIds,
   }: {
     connectorId: number;
+    brandIds: number[];
   }): Promise<ZendeskBrandResource[]> {
-    return ZendeskBrand.findAll({
-      where: {
-        connectorId,
-        helpCenterPermission: "read",
-        ticketsPermission: "read",
-      },
-    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, brandId: { [Op.in]: brandIds } },
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchReadOnlyTickets({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskTicket[]> {
-    return ZendeskTicket.findAll({
-      where: { connectorId, brandId, permission: "read" },
+  static async fetchAllReadOnly(
+    connectorId: number
+  ): Promise<ZendeskBrandResource[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: {
+        connectorId,
+        [Op.or]: [
+          { helpCenterPermission: "read" },
+          { ticketsPermission: "read" },
+        ],
+      },
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
+  }
+
+  static async fetchAllBrandIds(connectorId: number): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => Number(brand.get().brandId));
+  }
+
+  static async fetchHelpCenterReadAllowedBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, helpCenterPermission: "read" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => Number(brand.get().brandId));
+  }
+
+  static async fetchHelpCenterReadForbiddenBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, helpCenterPermission: "none" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => Number(brand.get().brandId));
+  }
+
+  static async fetchHelpCenterReadAllowedBrands(
+    connectorId: number
+  ): Promise<ZendeskBrandResource[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, helpCenterPermission: "read" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
+  }
+
+  static async fetchTicketsAllowedBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, ticketsPermission: "read" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => Number(brand.get().brandId));
+  }
+
+  static async fetchTicketsReadForbiddenBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, ticketsPermission: "none" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => Number(brand.get().brandId));
+  }
+
+  static async deleteBrandsWithNoPermission(
+    connectorId: number,
+    transaction?: Transaction
+  ): Promise<number> {
+    return ZendeskBrand.destroy({
+      where: {
+        connectorId,
+        helpCenterPermission: "none",
+        ticketsPermission: "none",
+      },
+      transaction,
     });
   }
 
-  static async fetchReadOnlyCategories({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskCategoryResource[]> {
-    return ZendeskCategory.findAll({
-      where: { connectorId, brandId, permission: "read" },
-    }).then((categories) =>
-      categories.map(
-        (category) => new ZendeskCategoryResource(ZendeskCategory, category)
-      )
-    );
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction?: Transaction
+  ) {
+    await ZendeskBrand.destroy({ where: { connectorId }, transaction });
+  }
+
+  toContentNode(connectorId: number): ContentNode {
+    const { brandId } = this;
+    return {
+      provider: "zendesk",
+      internalId: getBrandInternalId({ connectorId, brandId }),
+      parentInternalId: null,
+      type: "folder",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: true,
+      permission:
+        this.helpCenterPermission === "read" &&
+        this.ticketsPermission === "read"
+          ? "read"
+          : "none",
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  getHelpCenterContentNode(
+    connectorId: number,
+    { richTitle = false }: { richTitle?: boolean } = {}
+  ): ContentNode {
+    const { brandId } = this;
+    return {
+      provider: "zendesk",
+      internalId: getHelpCenterInternalId({ connectorId, brandId }),
+      parentInternalId: getBrandInternalId({ connectorId, brandId }),
+      type: "folder",
+      title: richTitle ? `${this.name} - Help Center` : "Help Center",
+      sourceUrl: null,
+      expandable: true,
+      permission: this.helpCenterPermission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    };
+  }
+
+  getTicketsContentNode(
+    connectorId: number,
+    {
+      expandable = false,
+      richTitle = false,
+    }: { expandable?: boolean; richTitle?: boolean } = {}
+  ): ContentNode {
+    const { brandId } = this;
+    return {
+      provider: "zendesk",
+      internalId: getTicketsInternalId({ connectorId, brandId }),
+      parentInternalId: getBrandInternalId({ connectorId, brandId }),
+      type: "folder",
+      title: richTitle ? `${this.name} - Tickets` : "Tickets",
+      sourceUrl: null,
+      expandable: expandable,
+      permission: this.ticketsPermission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    };
   }
 }
 
@@ -234,12 +393,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     blob: CreationAttributes<ZendeskCategory>;
     transaction?: Transaction;
   }): Promise<ZendeskCategoryResource> {
-    let category;
-    if (transaction) {
-      category = await ZendeskCategory.create({ ...blob }, { transaction });
-    } else {
-      category = await ZendeskCategory.create({ ...blob });
-    }
+    const category = await ZendeskCategory.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, category.get());
   }
 
@@ -249,9 +406,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, categoryId: this.categoryId },
       transaction,
     });
     return new Ok(undefined);
@@ -273,6 +428,34 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     };
   }
 
+  static async fetchReadForbiddenCategoryIds({
+    connectorId,
+    batchSize,
+  }: {
+    connectorId: number;
+    batchSize: number;
+  }): Promise<number[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, permission: "none" },
+      attributes: ["categoryId"],
+      limit: batchSize,
+    });
+    return categories.map((category) => Number(category.get().categoryId));
+  }
+
+  static async fetchIdsForConnector(
+    connectorId: number
+  ): Promise<{ categoryId: number; brandId: number }[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId },
+      attributes: ["categoryId", "brandId"],
+    });
+    return categories.map((category) => {
+      const { categoryId, brandId } = category.get();
+      return { categoryId, brandId };
+    });
+  }
+
   static async fetchByCategoryId({
     connectorId,
     categoryId,
@@ -280,39 +463,603 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     categoryId: number;
   }): Promise<ZendeskCategoryResource | null> {
-    const blob = await ZendeskCategory.findOne({
+    const category = await ZendeskCategory.findOne({
       where: { connectorId, categoryId },
     });
-    return blob && new this(this.model, blob.get());
+    return category && new this(this.model, category.get());
   }
 
-  static async fetchAllReadOnly({
+  static async fetchByCategoryIds({
     connectorId,
+    categoryIds,
   }: {
     connectorId: number;
+    categoryIds: number[];
   }): Promise<ZendeskCategoryResource[]> {
-    return ZendeskCategory.findAll({
-      where: { connectorId, permission: "read" },
-    }).then((categories) =>
-      categories.map((category) => new this(this.model, category))
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, categoryId: { [Op.in]: categoryIds } },
+    });
+    return categories.map(
+      (category) => category && new this(this.model, category.get())
     );
   }
 
-  static async fetchReadOnlyArticles({
+  static async fetchReadOnlyCategoryIdsByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<number[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId, permission: "read" },
+      attributes: ["categoryId"],
+    });
+    return categories.map((category) => category.get().categoryId);
+  }
+
+  static async fetchBrandIdsOfReadOnlyCategories(
+    connectorId: number
+  ): Promise<number[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, permission: "read" },
+      attributes: [[fn("DISTINCT", col("brandId")), "brandId"]],
+    });
+    return categories.map((category) => category.get().brandId);
+  }
+
+  static async fetchByBrandIdReadOnly({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId, permission: "read" },
+    });
+    return categories.map(
+      (category) => category && new this(this.model, category.get())
+    );
+  }
+
+  static async deleteByCategoryId({
     connectorId,
     categoryId,
   }: {
     connectorId: number;
     categoryId: number;
-  }): Promise<ZendeskArticle[]> {
-    return ZendeskArticle.findAll({
-      where: { connectorId, categoryId, permission: "read" },
+  }): Promise<void> {
+    await ZendeskCategory.destroy({ where: { connectorId, categoryId } });
+  }
+
+  static async deleteByBrandId({
+    connectorId,
+    brandId,
+    batchSize = null,
+  }: {
+    connectorId: number;
+    brandId: number;
+    batchSize?: number | null;
+  }): Promise<number> {
+    return ZendeskCategory.destroy({
+      where: { connectorId, brandId },
+      ...(batchSize && { limit: batchSize }),
     });
   }
 
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ) {
+    await ZendeskCategory.destroy({ where: { connectorId }, transaction });
+  }
+
+  static async revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }) {
+    await ZendeskCategory.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
+    );
+  }
+
+  async grantPermissions(): Promise<void> {
+    if (this.permission === "none") {
+      await this.update({ permission: "read" });
+    }
+  }
+
   async revokePermissions(): Promise<void> {
-    if (this?.permission === "read") {
+    if (this.permission === "read") {
       await this.update({ permission: "none" });
     }
+  }
+
+  toContentNode(
+    connectorId: number,
+    { expandable = false }: { expandable?: boolean } = {}
+  ): ContentNode {
+    const { brandId, categoryId, permission } = this;
+    return {
+      provider: "zendesk",
+      internalId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+      parentInternalId: getHelpCenterInternalId({ connectorId, brandId }),
+      type: "folder",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: expandable,
+      permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  getParentInternalIds(connectorId: number): string[] {
+    /// Categories have two parents: the Help Center and the Brand.
+    const { brandId, categoryId } = this;
+    return [
+      getCategoryInternalId({ connectorId, brandId, categoryId }),
+      getHelpCenterInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
+    ];
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ZendeskTicketResource
+  extends ReadonlyAttributesType<ZendeskTicket> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
+  static model: ModelStatic<ZendeskTicket> = ZendeskTicket;
+
+  constructor(
+    model: ModelStatic<ZendeskTicket>,
+    blob: Attributes<ZendeskTicket>
+  ) {
+    super(ZendeskTicket, blob);
+  }
+
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskTicket>;
+    transaction?: Transaction;
+  }): Promise<ZendeskTicketResource> {
+    const article = await ZendeskTicket.create(
+      { ...blob },
+      transaction && { transaction }
+    );
+    return new this(this.model, article.get());
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: { connectorId: this.connectorId, ticketId: this.ticketId },
+      transaction,
+    });
+    return new Ok(undefined);
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+
+      subject: this.subject,
+      url: this.url,
+
+      ticketId: this.ticketId,
+      brandId: this.brandId,
+      permission: this.permission,
+
+      connectorId: this.connectorId,
+    };
+  }
+
+  toContentNode(connectorId: number): ContentNode {
+    const { brandId, ticketId } = this;
+    return {
+      provider: "zendesk",
+      internalId: getTicketInternalId({ connectorId, ticketId }),
+      parentInternalId: getTicketsInternalId({ connectorId, brandId }),
+      type: "file",
+      title: this.subject,
+      sourceUrl: this.url,
+      expandable: false,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  getParentInternalIds(connectorId: number): string[] {
+    const { brandId, ticketId } = this;
+    /// Tickets have two parents: the Tickets and the Brand.
+    return [
+      getTicketInternalId({ connectorId, ticketId }),
+      getTicketsInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
+    ];
+  }
+
+  static async fetchOutdatedTicketIds({
+    connectorId,
+    expirationDate,
+    batchSize,
+  }: {
+    connectorId: number;
+    expirationDate: Date;
+    batchSize: number;
+  }): Promise<number[]> {
+    const tickets = await ZendeskTicket.findAll({
+      attributes: ["ticketId"],
+      where: { connectorId, ticketUpdatedAt: { [Op.lt]: expirationDate } },
+      limit: batchSize,
+    });
+    return tickets.map((ticket) => Number(ticket.get().ticketId));
+  }
+
+  static async fetchByTicketId({
+    connectorId,
+    ticketId,
+  }: {
+    connectorId: number;
+    ticketId: number;
+  }): Promise<ZendeskTicketResource | null> {
+    const ticket = await ZendeskTicket.findOne({
+      where: { connectorId, ticketId },
+    });
+    return ticket && new this(this.model, ticket.get());
+  }
+
+  static async fetchByTicketIds({
+    connectorId,
+    ticketIds,
+  }: {
+    connectorId: number;
+    ticketIds: number[];
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+    });
+    return tickets.map((ticket) => new this(this.model, ticket.get()));
+  }
+
+  static async fetchByBrandIdReadOnly({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, brandId, permission: "read" },
+    });
+    return tickets.map((ticket) => new this(this.model, ticket.get()));
+  }
+
+  static async fetchTicketIdsByBrandId({
+    connectorId,
+    brandId,
+    batchSize = null,
+  }: {
+    connectorId: number;
+    brandId: number;
+    batchSize?: number | null;
+  }): Promise<number[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, brandId },
+      attributes: ["ticketId"],
+      ...(batchSize && { limit: batchSize }),
+    });
+    return tickets.map((ticket) => Number(ticket.get().ticketId));
+  }
+
+  static async deleteByTicketId({
+    connectorId,
+    ticketId,
+  }: {
+    connectorId: number;
+    ticketId: number;
+  }): Promise<void> {
+    await ZendeskTicket.destroy({ where: { connectorId, ticketId } });
+  }
+
+  static async deleteByTicketIds({
+    connectorId,
+    ticketIds,
+  }: {
+    connectorId: number;
+    ticketIds: number[];
+  }): Promise<void> {
+    await ZendeskTicket.destroy({
+      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+    });
+  }
+
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ) {
+    await ZendeskTicket.destroy({ where: { connectorId }, transaction });
+  }
+
+  static async revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<void> {
+    await ZendeskTicket.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
+    );
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ZendeskArticleResource
+  extends ReadonlyAttributesType<ZendeskArticle> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
+  static model: ModelStatic<ZendeskArticle> = ZendeskArticle;
+
+  constructor(
+    model: ModelStatic<ZendeskArticle>,
+    blob: Attributes<ZendeskArticle>
+  ) {
+    super(ZendeskArticle, blob);
+  }
+
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskArticle>;
+    transaction?: Transaction;
+  }): Promise<ZendeskArticleResource> {
+    const article = await ZendeskArticle.create(
+      { ...blob },
+      transaction && { transaction }
+    );
+    return new this(this.model, article.get());
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: { connectorId: this.connectorId, articleId: this.articleId },
+      transaction,
+    });
+    return new Ok(undefined);
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+
+      name: this.name,
+      url: this.url,
+      articleId: this.articleId,
+      categoryId: this.categoryId,
+      brandId: this.brandId,
+      permission: this.permission,
+
+      connectorId: this.connectorId,
+    };
+  }
+
+  toContentNode(connectorId: number): ContentNode {
+    const { brandId, categoryId, articleId } = this;
+    return {
+      provider: "zendesk",
+      internalId: getArticleInternalId({ connectorId, articleId }),
+      parentInternalId: getCategoryInternalId({
+        connectorId,
+        brandId,
+        categoryId,
+      }),
+      type: "file",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: false,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  getParentInternalIds(connectorId: number): string[] {
+    const { brandId, categoryId, articleId } = this;
+    /// Articles have three parents: the Category, the Help Center and the Brand.
+    return [
+      getArticleInternalId({ connectorId, articleId }),
+      getCategoryInternalId({ connectorId, brandId, categoryId }),
+      getHelpCenterInternalId({ connectorId, brandId }),
+      getBrandInternalId({ connectorId, brandId }),
+    ];
+  }
+
+  /**
+   * Fetches a batch of article IDs.
+   */
+  static async fetchBatchByBrandId({
+    connectorId,
+    brandId,
+    batchSize,
+    cursor,
+  }: {
+    connectorId: number;
+    brandId: number;
+    batchSize: number;
+    cursor: number | null;
+  }): Promise<{ articleIds: number[]; cursor: number | null }> {
+    const articles = await ZendeskArticle.findAll({
+      where: {
+        connectorId,
+        brandId,
+        ...(cursor && { id: { [Op.gt]: cursor } }),
+      },
+      order: [["id", "ASC"]],
+      limit: batchSize,
+    });
+    return {
+      articleIds: articles.map((article) => article.get().articleId),
+      cursor: articles[batchSize - 1]?.get().id || null, // returning the last ID if it's a complete batch
+    };
+  }
+
+  static async fetchByArticleId({
+    connectorId,
+    articleId,
+  }: {
+    connectorId: number;
+    articleId: number;
+  }): Promise<ZendeskArticleResource | null> {
+    const article = await ZendeskArticle.findOne({
+      where: { connectorId, articleId },
+    });
+    return article && new this(this.model, article.get());
+  }
+
+  static async fetchByArticleIds({
+    connectorId,
+    articleIds,
+  }: {
+    connectorId: number;
+    articleIds: number[];
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, articleId: { [Op.in]: articleIds } },
+    });
+    return articles.map((article) => new this(this.model, article.get()));
+  }
+
+  static async fetchByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, categoryId },
+    });
+    return articles.map((article) => new this(this.model, article.get()));
+  }
+
+  static async fetchByCategoryIdReadOnly({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, categoryId, permission: "read" },
+    });
+    return articles.map((article) => new this(this.model, article.get()));
+  }
+
+  static async fetchArticleIdsByBrandId({
+    connectorId,
+    brandId,
+    batchSize = null,
+  }: {
+    connectorId: number;
+    brandId: number;
+    batchSize?: number | null;
+  }): Promise<number[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, brandId },
+      ...(batchSize && { limit: batchSize }),
+    });
+    return articles.map((article) => Number(article.get().articleId));
+  }
+
+  static async deleteByArticleId({
+    connectorId,
+    articleId,
+  }: {
+    connectorId: number;
+    articleId: number;
+  }) {
+    await ZendeskArticle.destroy({ where: { connectorId, articleId } });
+  }
+
+  static async deleteByArticleIds({
+    connectorId,
+    articleIds,
+  }: {
+    connectorId: number;
+    articleIds: number[];
+  }) {
+    await ZendeskArticle.destroy({
+      where: { connectorId, articleId: { [Op.in]: articleIds } },
+    });
+  }
+
+  static async deleteByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }) {
+    await ZendeskArticle.destroy({ where: { connectorId, categoryId } });
+  }
+
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ) {
+    await ZendeskArticle.destroy({ where: { connectorId }, transaction });
+  }
+
+  static async revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }) {
+    await ZendeskArticle.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
+    );
+  }
+
+  static async revokePermissionsForCategory({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }) {
+    await ZendeskArticle.update(
+      { permission: "none" },
+      { where: { connectorId, categoryId } }
+    );
   }
 }

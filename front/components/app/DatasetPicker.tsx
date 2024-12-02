@@ -45,7 +45,7 @@ export default function DatasetPicker({
         <div>
           {datasets.length == 0 && !dataset && !readOnly ? (
             <Link
-              href={`/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/new`}
+              href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/new`}
               className={classNames(
                 "inline-flex items-center rounded-md py-1 text-sm font-normal",
                 dataset ? "px-1" : "border px-3",
@@ -112,7 +112,7 @@ export default function DatasetPicker({
               <Menu.Item key="__create_dataset">
                 {({ active }) => (
                   <Link
-                    href={`/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/new`}
+                    href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/new`}
                   >
                     <div
                       className={classNames(

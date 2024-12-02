@@ -163,7 +163,7 @@ export function CreateConnectionSnowflakeModal({
             <div className="w-full space-y-4">
               <Input
                 label="Snowflake Account identifier"
-                name="username"
+                name="account_identifier"
                 value={credentials.account}
                 placeholder="au12345.us-east-1"
                 onChange={(e) => {
@@ -173,7 +173,7 @@ export function CreateConnectionSnowflakeModal({
               />
               <Input
                 label="Role"
-                name="username"
+                name="role"
                 value={credentials.role}
                 placeholder="dev_role"
                 onChange={(e) => {
@@ -217,7 +217,7 @@ export function CreateConnectionSnowflakeModal({
             <div className="flex justify-center pt-2">
               <div className="flex gap-2">
                 <Button
-                  variant="primary"
+                  variant="highlight"
                   size="md"
                   icon={CloudArrowLeftRightIcon}
                   onClick={() => {

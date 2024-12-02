@@ -6,6 +6,9 @@ import {
   CompanyIcon,
   Dialog,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   DustIcon,
   IconButton,
   LockIcon,
@@ -20,6 +23,7 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   DataSourceType,
+  LightWorkspaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
@@ -170,7 +174,7 @@ export function SharingButton({
         />
       )}
       <PopoverRoot open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-        <PopoverTrigger>
+        <PopoverTrigger asChild>
           <Button
             size="sm"
             label="Sharing"
@@ -291,6 +295,15 @@ export function SharingButton({
   );
 }
 
+interface SharingDropdownProps {
+  owner: LightWorkspaceType;
+  agentConfiguration: AgentConfigurationType | null;
+  disabled?: boolean;
+  initialScope: AgentConfigurationScope;
+  newScope: AgentConfigurationScope;
+  setNewScope: (scope: NonGlobalScope) => void;
+}
+
 /*
  * Note: Non-builders cannot change to/from company assistant
  */
@@ -301,14 +314,7 @@ export function SharingDropdown({
   initialScope,
   newScope,
   setNewScope,
-}: {
-  owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationType | null;
-  disabled?: boolean;
-  initialScope: AgentConfigurationScope;
-  newScope: AgentConfigurationScope;
-  setNewScope: (scope: NonGlobalScope) => void;
-}) {
+}: SharingDropdownProps) {
   const [requestNewScope, setModalNewScope] = useState<NonGlobalScope | null>(
     null
   );
@@ -375,7 +381,7 @@ export function SharingDropdown({
         />
       )}
       <DropdownMenu>
-        <DropdownMenu.Button disabled={!allowedToChange}>
+        <DropdownMenuTrigger disabled={!allowedToChange} asChild>
           <div className="group flex cursor-pointer items-center gap-2">
             <SharingChip scope={newScope} />
             {allowedToChange && (
@@ -387,8 +393,8 @@ export function SharingDropdown({
               />
             )}
           </div>
-        </DropdownMenu.Button>
-        <DropdownMenu.Items origin="topRight" width={200}>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
           {Object.entries(SCOPE_INFO)
             .filter(
               // can't change to those scopes
@@ -397,30 +403,33 @@ export function SharingDropdown({
                 (isBuilder(owner) || entryScope !== "workspace")
             )
             .map(([entryScope, entryData]) => (
-              <DropdownMenu.Item
+              <DropdownMenuItem
                 key={entryData.label}
                 label={entryData.label}
                 icon={entryData.icon}
-                selected={entryScope === newScope}
                 onClick={() => {
-                  // no need for modal in the following cases
-                  if (
-                    // assistant is being created
+                  /**
+                   * Skip confirmation modal in the following cases:
+                   * 1. Assistant is being created (agentConfiguration is null)
+                   * 2. Selection is unchanged (newScope === value)
+                   * 3. Selection reverts to initial state (value === initialScope)
+                   */
+                  const shouldSkipModal =
                     !agentConfiguration ||
-                    // selection unchanged
-                    entryScope === newScope ||
-                    // selection back to initial state
-                    entryScope === initialScope
-                  ) {
+                    newScope === entryScope ||
+                    entryScope === initialScope;
+
+                  if (shouldSkipModal) {
                     setNewScope(entryScope as NonGlobalScope);
                     return;
                   }
-                  // in all other cases, show modal
+
+                  // Show confirmation modal for scope changes on existing assistants
                   setModalNewScope(entryScope as NonGlobalScope);
                 }}
               />
             ))}
-        </DropdownMenu.Items>
+        </DropdownMenuContent>
       </DropdownMenu>
     </div>
   );
@@ -458,6 +467,7 @@ function ScopeChangeModal({
         setSharingScope();
         onClose();
       }}
+      alertDialog
     >
       <div>
         <div className="pb-2">

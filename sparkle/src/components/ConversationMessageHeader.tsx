@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Avatar } from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
 import { ConversationMessageSizeType } from "@sparkle/components/ConversationMessage";
 import { cn } from "@sparkle/lib/utils";
 

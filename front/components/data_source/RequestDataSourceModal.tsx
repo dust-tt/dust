@@ -1,15 +1,18 @@
 import {
   Button,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Modal,
   PlusIcon,
   TextArea,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import * as _ from "lodash";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
@@ -31,7 +34,7 @@ export function RequestDataSourceModal({
     useState<DataSourceType | null>(null);
 
   const [message, setMessage] = useState("");
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (dataSources.length === 1) {
@@ -77,10 +80,10 @@ export function RequestDataSourceModal({
                   <p>Where are the requested Data hosted?</p>
                 </label>
                 <DropdownMenu>
-                  <DropdownMenu.Button>
+                  <DropdownMenuTrigger asChild>
                     {selectedDataSource && isManaged(selectedDataSource) ? (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         label={getDisplayNameForDataSource(selectedDataSource)}
                         icon={getConnectorProviderLogoWithFallback(
                           selectedDataSource.connectorProvider
@@ -89,17 +92,17 @@ export function RequestDataSourceModal({
                     ) : (
                       <Button
                         label="Pick your platform"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         isSelect
                       />
                     )}
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items width={180}>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
                     {dataSources.map(
                       (dataSource) =>
                         dataSource.connectorProvider && (
-                          <DropdownMenu.Item
+                          <DropdownMenuItem
                             key={dataSource.sId}
                             label={getDisplayNameForDataSource(dataSource)}
                             onClick={() => setSelectedDataSource(dataSource)}
@@ -109,7 +112,7 @@ export function RequestDataSourceModal({
                           />
                         )
                     )}
-                  </DropdownMenu.Items>
+                  </DropdownMenuContent>
                 </DropdownMenu>
               </>
             )}
@@ -129,7 +132,7 @@ export function RequestDataSourceModal({
                 placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="s-mb-2"
+                className="mb-2"
               />
               <div>
                 <Button

@@ -21,7 +21,13 @@ export async function launchRetrieveTranscriptsWorkflow(
       args: [transcriptsConfiguration.id],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-      cronSchedule: "*/15 * * * *",
+      cronSchedule: "*/5 * * * *",
+      memo: {
+        configurationId: transcriptsConfiguration.id,
+        IsProcessingTranscripts: transcriptsConfiguration.isActive,
+        IsStoringTranscripts:
+          transcriptsConfiguration.dataSourceViewId !== null,
+      },
     });
     logger.info(
       {
@@ -43,7 +49,8 @@ export async function launchRetrieveTranscriptsWorkflow(
 }
 
 export async function stopRetrieveTranscriptsWorkflow(
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
+  setIsActiveToFalse: boolean = true
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
   const workflowId = makeRetrieveTranscriptWorkflowId(transcriptsConfiguration);
@@ -58,7 +65,9 @@ export async function stopRetrieveTranscriptsWorkflow(
         throw e;
       }
     }
-    await transcriptsConfiguration.setIsActive(false);
+    if (setIsActiveToFalse) {
+      await transcriptsConfiguration.setIsActive(false);
+    }
     return new Ok(undefined);
   } catch (e) {
     logger.error(

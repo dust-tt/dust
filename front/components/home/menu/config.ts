@@ -20,7 +20,7 @@ const CareersMenuConfig: MenuConfig = {
   items: [
     {
       title: "Jobs",
-      href: "https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/",
+      href: "https://jobs.ashbyhq.com/dust",
       isExternal: true,
     },
     {
@@ -57,6 +57,7 @@ const AboutMenuConfig: MenuConfig = {
   ],
 };
 
+// If you change this, make sure to update the links in the extension as well.
 const LegalMenuConfig: MenuConfig = {
   title: "Legal",
   items: [

@@ -102,7 +102,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
           </p>
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             label="Sign in"
             icon={LoginIcon}

@@ -1,19 +1,28 @@
-import { Button, DropdownMenu, Modal, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Modal,
+  Spinner,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceType,
+  SubscriptionType,
   WhitelistableFeature,
   WorkspaceDomain,
   WorkspaceSegmentationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import { WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useContext } from "react";
+import React from "react";
 
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
@@ -21,9 +30,10 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import {
   getWorkspaceCreationDate,
@@ -46,6 +56,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   registry: typeof DustProdActionRegistry;
   workspaceVerifiedDomain: WorkspaceDomain | null;
   worspaceCreationDay: string;
+  baseUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -95,6 +106,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       registry: DustProdActionRegistry,
       workspaceVerifiedDomain,
       worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
+      baseUrl: config.getClientFacingUrl(),
     },
   };
 });
@@ -108,6 +120,7 @@ const WorkspacePage = ({
   registry,
   workspaceVerifiedDomain,
   worspaceCreationDay,
+  baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
@@ -147,6 +160,7 @@ const WorkspacePage = ({
         }}
         owner={owner}
         registry={registry}
+        baseUrl={baseUrl}
       />
       <DeleteWorkspaceModal
         show={showDeleteWorkspaceModal}
@@ -195,17 +209,17 @@ const WorkspacePage = ({
             </div>
             <div>
               <DropdownMenu>
-                <DropdownMenu.Button>
+                <DropdownMenuTrigger asChild>
                   <Button
                     isSelect
                     label={`Segmentation: ${owner.segmentation ?? "none"}`}
                     variant="outline"
                     size="sm"
                   />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="auto" width={240}>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
                   {[null, "interesting"].map((segment) => (
-                    <DropdownMenu.Item
+                    <DropdownMenuItem
                       label={segment ?? "none"}
                       key={segment ?? "all"}
                       onClick={() => {
@@ -213,9 +227,9 @@ const WorkspacePage = ({
                           segment as WorkspaceSegmentationType
                         );
                       }}
-                    ></DropdownMenu.Item>
+                    />
                   ))}
-                </DropdownMenu.Items>
+                </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
@@ -245,6 +259,7 @@ const WorkspacePage = ({
               </div>
               <DataSourceDataTable owner={owner} />
               <DataSourceViewsDataTable owner={owner} />
+              <SpaceDataTable owner={owner} />
               <AssistantsDataTable owner={owner} />
               <FeatureFlagsDataTable
                 owner={owner}
@@ -263,11 +278,13 @@ function DustAppLogsModal({
   onClose,
   owner,
   registry,
+  baseUrl,
 }: {
   show: boolean;
   onClose: () => void;
   owner: WorkspaceType;
   registry: typeof DustProdActionRegistry;
+  baseUrl: string;
 }) {
   return (
     <Modal
@@ -281,10 +298,11 @@ function DustAppLogsModal({
           ([
             action,
             {
-              app: { appId, workspaceId: appWorkspaceid, appVaultId },
+              app: { appId, workspaceId: appWorkspaceid, appSpaceId },
             },
           ]) => {
-            const url = `https://dust.tt/w/${appWorkspaceid}/vaults/${appVaultId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
+            const url = `${baseUrl}/w/${appWorkspaceid}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
+
             return (
               <div key={appId}>
                 <div className="flex flex-row items-center space-x-2">
@@ -323,7 +341,7 @@ function DeleteWorkspaceModal({
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { submit: onDeleteWorkspace } = useSubmitFunction(async () => {
     if (
@@ -373,17 +391,17 @@ function DeleteWorkspaceModal({
         <div className="flex flex-col gap-2 pt-4">
           <div>
             {dataSources.length > 0 && (
-              <p className="text-warning mb-4 text-sm">
+              <p className="mb-4 text-sm text-warning">
                 Delete data sources before deleting the workspace.
               </p>
             )}
             {subscription.plan.code !== FREE_NO_PLAN_CODE && (
-              <p className="text-warning mb-4 text-sm">
+              <p className="mb-4 text-sm text-warning">
                 Downgrade workspace before deleting its data.
               </p>
             )}
             {isLoading ? (
-              <p className="text-warning mb-4 text-sm">
+              <p className="mb-4 text-sm text-warning">
                 Deleting workspace data...
                 <Spinner />
               </p>

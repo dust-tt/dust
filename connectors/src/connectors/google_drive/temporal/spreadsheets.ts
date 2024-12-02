@@ -47,7 +47,7 @@ async function upsertSheetInDb(connector: ConnectorResource, sheet: Sheet) {
   });
 }
 
-async function upsertTable(
+async function upsertGdriveTable(
   connector: ConnectorResource,
   sheet: Sheet,
   parents: string[],
@@ -83,6 +83,8 @@ async function upsertTable(
     truncate: true,
     parents: [tableId, ...parents],
     useAppForHeaderDetection: true,
+    title: `${spreadsheet.title} - ${title}`,
+    mimeType: "application/vnd.google-apps.spreadsheet",
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -182,7 +184,7 @@ async function processSheet(
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
     try {
-      await upsertTable(connector, sheet, parents, rows, loggerArgs);
+      await upsertGdriveTable(connector, sheet, parents, rows, loggerArgs);
     } catch (err) {
       if (err instanceof TablesError) {
         logger.warn(

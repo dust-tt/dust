@@ -1,14 +1,11 @@
+import type { ListMemberEmailsResponseType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { getMembers } from "@app/lib/api/workspace";
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-
-export type ListMemberEmailsResponseBody = {
-  emails: string[];
-};
 
 /**
  * @ignoreswagger
@@ -17,7 +14,7 @@ export type ListMemberEmailsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ListMemberEmailsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<ListMemberEmailsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isSystemKey()) {

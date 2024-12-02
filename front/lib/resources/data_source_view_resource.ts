@@ -2,10 +2,10 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
+  ConversationType,
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
-  PokeDataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
@@ -19,18 +19,18 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -38,8 +38,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
-import { getWorkspaceByModelId } from "@app/lib/workspace";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -68,7 +66,7 @@ type AllowedSearchColumns = "vaultId" | "dataSourceId" | "kind" | "vaultKind";
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceViewResource extends ResourceWithVault<DataSourceViewModel> {
+export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
   private ds?: DataSourceResource;
@@ -77,10 +75,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   constructor(
     model: ModelStatic<DataSourceViewModel>,
     blob: Attributes<DataSourceViewModel>,
-    vault: VaultResource,
+    space: SpaceResource,
     { editedByUser }: { editedByUser?: Attributes<User> } = {}
   ) {
-    super(DataSourceViewModel, blob, vault);
+    super(DataSourceViewModel, blob, space);
 
     this.editedByUser = editedByUser;
   }
@@ -93,16 +91,16 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       CreationAttributes<DataSourceViewModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
-    vault: VaultResource,
+    space: SpaceResource,
     dataSource: DataSourceResource,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
       {
         ...blob,
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: auth.user()?.id ?? null,
         editedAt: new Date(),
-        vaultId: vault.id,
+        vaultId: space.id,
       },
       { transaction }
     );
@@ -110,7 +108,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     const dsv = new this(
       DataSourceViewResource.model,
       dataSourceView.get(),
-      vault
+      space
     );
     dsv.ds = dataSource;
     return dsv;
@@ -119,27 +117,27 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   static async createDataSourceAndDefaultView(
     auth: Authenticator,
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
-    vault: VaultResource
+    space: SpaceResource
   ) {
     return frontSequelize.transaction(async (transaction) => {
       const dataSource = await DataSourceResource.makeNew(
         auth,
         blob,
-        vault,
+        space,
         transaction
       );
-      return this.createDefaultViewInVaultFromDataSourceIncludingAllDocuments(
+      return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
         auth,
-        dataSource.vault,
+        dataSource.space,
         dataSource,
         transaction
       );
     });
   }
 
-  static async createViewInVaultFromDataSource(
+  static async createViewInSpaceFromDataSource(
     auth: Authenticator,
-    vault: VaultResource,
+    space: SpaceResource,
     dataSource: DataSourceResource,
     parentsIn: string[]
   ) {
@@ -148,18 +146,18 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       {
         dataSourceId: dataSource.id,
         parentsIn,
-        workspaceId: vault.workspaceId,
+        workspaceId: space.workspaceId,
         kind: "custom",
       },
-      vault,
+      space,
       dataSource
     );
   }
 
   // This view has access to all documents, which is represented by null.
-  private static async createDefaultViewInVaultFromDataSourceIncludingAllDocuments(
+  private static async createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
     auth: Authenticator,
-    vault: VaultResource,
+    space: SpaceResource,
     dataSource: DataSourceResource,
     transaction?: Transaction
   ) {
@@ -168,10 +166,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
-        workspaceId: vault.workspaceId,
+        workspaceId: space.workspaceId,
         kind: "default",
       },
-      vault,
+      space,
       dataSource,
       transaction
     );
@@ -189,6 +187,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         {
           model: User,
           as: "editedByUser",
+          required: false,
         },
       ];
     }
@@ -253,36 +252,36 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return dataSourceViews.filter((dsv) => dsv.canList(auth));
   }
 
-  static async listByVault(
+  static async listBySpace(
     auth: Authenticator,
-    vault: VaultResource,
+    space: SpaceResource,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
-    return this.listByVaults(auth, [vault], fetchDataSourceViewOptions);
+    return this.listBySpaces(auth, [space], fetchDataSourceViewOptions);
   }
 
-  static async listByVaults(
+  static async listBySpaces(
     auth: Authenticator,
-    vaults: VaultResource[],
+    spaces: SpaceResource[],
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
-        vaultId: vaults.map((v) => v.id),
+        vaultId: spaces.map((s) => s.id),
       },
     });
   }
 
-  static async listForDataSourcesInVault(
+  static async listForDataSourcesInSpace(
     auth: Authenticator,
     dataSources: DataSourceResource[],
-    vault: VaultResource,
+    space: SpaceResource,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
         dataSourceId: dataSources.map((ds) => ds.id),
-        vaultId: vault.id,
+        vaultId: space.id,
       },
     });
   }
@@ -357,6 +356,33 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return dataSourceViews ?? null;
   }
 
+  static async fetchByConversation(
+    auth: Authenticator,
+    conversation: ConversationType
+  ): Promise<DataSourceViewResource | null> {
+    // Fetch the data source view associated with the datasource that is associated with the conversation.
+    const dataSource = await DataSourceResource.fetchByConversationId(
+      auth,
+      conversation.id
+    );
+    if (!dataSource) {
+      return null;
+    }
+
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          kind: "default",
+          dataSourceId: dataSource.id,
+        },
+      }
+    );
+
+    return dataSourceViews[0] ?? null;
+  }
+
   static async search(
     auth: Authenticator,
     searchParams: {
@@ -376,7 +402,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       if (value && key !== "vaultKind") {
         whereClause[key] = value;
       } else {
-        whereClause["$vault.kind$"] = searchParams.vaultKind;
+        whereClause["$space.kind$"] = searchParams.vaultKind;
       }
     }
 
@@ -388,8 +414,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         order: [["updatedAt", "DESC"]],
         includes: [
           {
-            model: VaultModel,
-            as: "vault",
+            model: SpaceModel,
+            as: "space",
           },
         ],
       }
@@ -400,7 +426,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }
@@ -551,7 +577,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
-      vaultId: this.vault.sId,
+      spaceId: this.space.sId,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
     };
   }
@@ -572,20 +598,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       },
       tags: null,
       timestamp: null,
-    };
-  }
-
-  async toPokeJSON(): Promise<PokeDataSourceViewType> {
-    const workspace = await getWorkspaceByModelId(this.workspaceId);
-
-    return {
-      ...this.toJSON(),
-      dataSource: await this.dataSource.toPokeJSON(),
-      link: workspace
-        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/vaults/${this.vault.sId}/data_source_views/${this.sId}`
-        : null,
-      name: `Data Source (${this.dataSource.name})`,
-      vault: this.vault.toPokeJSON(),
     };
   }
 }

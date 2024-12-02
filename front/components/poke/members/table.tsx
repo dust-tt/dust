@@ -28,9 +28,14 @@ function prepareMembersForDisplay(
 interface MembersDataTableProps {
   members: UserTypeWithWorkspaces[];
   owner: WorkspaceType;
+  readonly?: boolean;
 }
 
-export function MembersDataTable({ members, owner }: MembersDataTableProps) {
+export function MembersDataTable({
+  members,
+  owner,
+  readonly,
+}: MembersDataTableProps) {
   const router = useRouter();
 
   const onRevokeMember = async (m: MemberDisplayType) => {
@@ -98,6 +103,7 @@ export function MembersDataTable({ members, owner }: MembersDataTableProps) {
           columns={makeColumnsForMembers({
             onRevokeMember,
             onUpdateMemberRole,
+            readonly,
           })}
           data={prepareMembersForDisplay(members)}
           facets={[

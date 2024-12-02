@@ -3,6 +3,10 @@ import {
   ContextItem,
   DocumentTextIcon,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   EyeIcon,
   Input,
   Page,
@@ -882,27 +886,34 @@ function SlackWhitelistBot({
       <div className="flex items-center gap-2">
         <div className="grow">
           <Input
-            placeholder={`Bot or workflow name`}
+            placeholder="Bot or workflow name"
             onChange={(e) => setBotName(e.target.value)}
             value={botName}
           />
         </div>
         <div>
           <DropdownMenu>
-            <DropdownMenu.Button
-              label={selectedGroupName ?? "Select a group"}
-            />
-
-            <DropdownMenu.Items width={220}>
-              {groups.map((group) => (
-                <DropdownMenu.Item
-                  selected={selectedGroup === group.sId}
-                  key={group.sId}
-                  label={group.name}
-                  onClick={() => setSelectedGroup(group.sId)}
-                />
-              ))}
-            </DropdownMenu.Items>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                label={selectedGroupName ?? "Select a group"}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup
+                value={selectedGroup ?? undefined}
+                onValueChange={setSelectedGroup}
+              >
+                {groups.map((group) => (
+                  <DropdownMenuRadioItem
+                    value={group.sId}
+                    key={group.sId}
+                    label={group.name}
+                    className="p-1"
+                  />
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
           </DropdownMenu>
         </div>
         <Button

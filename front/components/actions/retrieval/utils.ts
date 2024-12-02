@@ -1,26 +1,23 @@
-import type { Citation } from "@dust-tt/sparkle";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import {
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
 } from "@dust-tt/types";
 
-interface RetrievedDocumentCitation {
-  href?: string;
-  title: string;
-  type: Exclude<React.ComponentProps<typeof Citation>["type"], undefined>;
+import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+
+export function makeDocumentCitation(
+  document: RetrievalDocumentType
+): MarkdownCitation {
+  return {
+    href: document.sourceUrl ?? undefined,
+    title: getTitleFromRetrievedDocument(document),
+    type: getProviderFromRetrievedDocument(document),
+  };
 }
 
 export function makeDocumentCitations(
   documents: RetrievalDocumentType[]
-): RetrievedDocumentCitation[] {
-  return documents.reduce((acc, doc) => {
-    acc.push({
-      href: doc.sourceUrl ?? undefined,
-      title: getTitleFromRetrievedDocument(doc),
-      type: getProviderFromRetrievedDocument(doc),
-    });
-
-    return acc;
-  }, [] as RetrievedDocumentCitation[]);
+): MarkdownCitation[] {
+  return documents.map(makeDocumentCitation);
 }

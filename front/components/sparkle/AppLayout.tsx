@@ -4,12 +4,11 @@ import type { NextRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
-import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
-import { useUser } from "@app/lib/swr/user";
+import { QuickStartGuide } from "@app/components/QuickStartGuide";
+import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { classNames } from "@app/lib/utils";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
@@ -38,7 +37,6 @@ export default function AppLayout({
   navChildren,
   titleChildren,
   children,
-  hideHelpOnMobile,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -49,10 +47,11 @@ export default function AppLayout({
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
-  hideHelpOnMobile?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
-  const user = useUser();
+
+  const { isNavigationBarOpen, setIsNavigationBarOpen } =
+    useAppKeyboardShortcuts(owner);
 
   useEffect(() => {
     setLoaded(true);
@@ -115,6 +114,8 @@ export default function AppLayout({
       <div className="light flex h-full flex-row">
         <Navigation
           hideSidebar={hideSidebar}
+          isNavigationBarOpen={isNavigationBarOpen}
+          setNavigationBarOpen={setIsNavigationBarOpen}
           owner={owner}
           subscription={subscription}
           navChildren={navChildren}
@@ -143,7 +144,7 @@ export default function AppLayout({
               </div>
             </div>
 
-            <div className="flex h-[calc(100%-5rem)] w-full flex-col items-center px-6">
+            <div className="flex h-[calc(100%-5rem)] w-full flex-col items-center px-4 sm:px-8">
               {isWideMode ? (
                 loaded && children
               ) : (
@@ -155,18 +156,7 @@ export default function AppLayout({
           </main>
         </div>
       </div>
-      {user.user && !hideHelpOnMobile && (
-        <GenerationContextProvider>
-          <HelpAndQuickGuideWrapper owner={owner} user={user.user} />
-        </GenerationContextProvider>
-      )}
-      {user.user && hideHelpOnMobile && (
-        <div className="hidden sm:block">
-          <GenerationContextProvider>
-            <HelpAndQuickGuideWrapper owner={owner} user={user.user} />
-          </GenerationContextProvider>
-        </div>
-      )}
+      <QuickStartGuide />
       <>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}

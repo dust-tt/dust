@@ -4,8 +4,8 @@ import { Op } from "sequelize";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
@@ -15,19 +15,19 @@ makeScript({}, async ({ execute }, logger) => {
       sId: allDustAppRunConfigs.map((config) => config.appId),
     },
   });
-  const allDustAppVaults = await VaultModel.findAll({
+  const allDustAppVaults = await SpaceModel.findAll({
     where: {
       id: allDustAppModels.map((app) => app.vaultId),
     },
   });
-  const groupVaults = await GroupVaultModel.findAll({
+  const groupSpaces = await GroupSpaceModel.findAll({
     where: {
       vaultId: allDustAppVaults.map((vault) => vault.id),
     },
   });
   const groupIdsByVaultId = mapValues(
-    groupBy(groupVaults, "vaultId"),
-    (groupVaults) => groupVaults.map((groupVault) => groupVault.groupId)
+    groupBy(groupSpaces, "vaultId"),
+    (groupSpaces) => groupSpaces.map((groupVault) => groupVault.groupId)
   );
   const dustAppIdsByAgentConfigId = mapValues(
     groupBy(allDustAppRunConfigs, "agentConfigurationId"),

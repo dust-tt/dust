@@ -1,8 +1,10 @@
 import { cacheWithRedis } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
+import type { GaxiosError, GaxiosResponse } from "googleapis-common";
 import { OAuth2Client } from "googleapis-common";
 
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
@@ -13,7 +15,16 @@ export function getDocumentId(driveFileId: string): string {
 
 async function _getMyDriveId(auth_credentials: OAuth2Client) {
   const drive = await getDriveClient(auth_credentials);
-  const myDriveRes = await drive.files.get({ fileId: "root", fields: "id" });
+  let myDriveRes: GaxiosResponse<drive_v3.Schema$File>;
+  try {
+    myDriveRes = await drive.files.get({ fileId: "root", fields: "id" });
+  } catch (e) {
+    if ((e as GaxiosError).response?.status === 401) {
+      throw new ExternalOAuthTokenError();
+    }
+    throw e;
+  }
+
   if (myDriveRes.status !== 200) {
     throw new Error(
       `Error getting my drive. status_code: ${myDriveRes.status}. status_text: ${myDriveRes.statusText}`

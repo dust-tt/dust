@@ -4,9 +4,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   launchRetrieveTranscriptsWorkflow,
@@ -20,7 +22,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
   isActive: t.boolean,
-  dataSourceId: t.union([t.string, t.null]),
+  dataSourceViewId: t.union([t.string, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
   typeof PatchLabsTranscriptsConfigurationBodySchema
@@ -35,8 +37,9 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
+  const flags = await getFeatureFlags(owner);
 
-  if (!owner.flags.includes("labs_transcripts")) {
+  if (!flags.includes("labs_transcripts")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -99,10 +102,12 @@ async function handler(
         });
       }
 
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration, false);
+
       const {
         agentConfigurationId: patchAgentId,
         isActive,
-        dataSourceId,
+        dataSourceViewId,
       } = patchBodyValidation.right;
 
       if (patchAgentId) {
@@ -112,25 +117,66 @@ async function handler(
       }
 
       if (isActive !== undefined) {
+        logger.info(
+          {
+            configurationId: transcriptsConfiguration.id,
+            isActive,
+          },
+          "Setting transcript configuration active status."
+        );
         await transcriptsConfiguration.setIsActive(isActive);
-        if (isActive) {
-          await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-        } else {
-          // Cancel the workflow
-          await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      }
+
+      if (dataSourceViewId !== undefined) {
+        await transcriptsConfiguration.setDataSourceViewId(
+          auth,
+          dataSourceViewId
+        );
+
+        const flags = await getFeatureFlags(owner);
+        if (flags.includes("labs_transcripts_gong_full_storage")) {
+          await transcriptsConfiguration.setIsDefaultFullStorage(
+            !!dataSourceViewId
+          );
         }
       }
 
-      if (dataSourceId !== undefined) {
-        await transcriptsConfiguration.setDataSourceId(auth, dataSourceId);
+      const updatedTranscriptsConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchByModelId(
+          transcriptsConfiguration.id
+        );
+
+      if (!updatedTranscriptsConfiguration) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "transcripts_configuration_not_found",
+            message: "The transcript configuration was not found.",
+          },
+        });
       }
 
-      return res.status(200).json({ configuration: transcriptsConfiguration });
+      const shouldStartWorkflow =
+        !!updatedTranscriptsConfiguration.isActive ||
+        !!updatedTranscriptsConfiguration.dataSourceViewId;
+
+      if (shouldStartWorkflow) {
+        logger.info(
+          {
+            configurationId: updatedTranscriptsConfiguration.id,
+          },
+          "Starting transcript retrieval workflow."
+        );
+        await launchRetrieveTranscriptsWorkflow(
+          updatedTranscriptsConfiguration
+        );
+      }
+      return res
+        .status(200)
+        .json({ configuration: updatedTranscriptsConfiguration });
 
     case "DELETE":
-      if (transcriptsConfiguration.isActive) {
-        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-      }
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       await transcriptsConfiguration.delete(auth);
       return res.status(200).json({ configuration: null });
 

@@ -38,10 +38,9 @@ interface PageHeaderProps {
 }
 
 Page.Header = function ({ title, description, icon }: PageHeaderProps) {
-  const iconClasses = "s-text-brand";
   return (
     <Page.Vertical gap="xs">
-      <Icon visual={icon} className={iconClasses} size="lg" />
+      <Icon visual={icon} className="s-text-primary-400" size="lg" />
       <Page.H variant="h3">{title}</Page.H>
       {description && <Page.P variant="secondary">{description}</Page.P>}
     </Page.Vertical>

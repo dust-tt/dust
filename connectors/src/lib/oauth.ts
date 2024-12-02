@@ -41,7 +41,9 @@ export async function getOAuthConnectionAccessTokenWithThrow({
     ) {
       throw new ExternalOAuthTokenError(new Error(tokRes.error.message));
     } else {
-      throw new Error(`Error retrieving access token from ${provider}`);
+      throw new Error(
+        `Error retrieving access token from ${provider}: code=${tokRes.error.code} message=${tokRes.error.message}`
+      );
     }
   }
 

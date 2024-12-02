@@ -260,6 +260,14 @@ async fn fetch_and_encode_images(
     Ok(base64_pairs)
 }
 
+fn get_max_tokens(model_id: &str) -> u64 {
+    if model_id.starts_with("claude-3-5-sonnet") {
+        8192
+    } else {
+        4096
+    }
+}
+
 struct ChatMessageConversionInput<'a> {
     chat_message: &'a ChatMessage,
     base64_map: &'a HashMap<String, AnthropicImageContent>,
@@ -1550,7 +1558,7 @@ impl LLM for AnthropicLLM {
                 let tokens = self.encode(prompt).await?;
                 max_tokens = Some(std::cmp::min(
                     (self.context_size() - tokens.len()) as i32,
-                    4096,
+                    get_max_tokens(self.id.as_str()) as i32,
                 ));
             }
         }
@@ -1600,7 +1608,7 @@ impl LLM for AnthropicLLM {
                         prompt,
                         match max_tokens {
                             Some(m) => m,
-                            None => 4096,
+                            None => get_max_tokens(self.id.as_str()) as i32,
                         },
                         temperature,
                         match top_p {
@@ -1679,7 +1687,7 @@ impl LLM for AnthropicLLM {
 
         if let Some(m) = max_tokens {
             if m == -1 {
-                max_tokens = Some(4096);
+                max_tokens = Some(get_max_tokens(self.id.as_str()) as i32);
             }
         }
 
@@ -1750,7 +1758,7 @@ impl LLM for AnthropicLLM {
                     stop,
                     match max_tokens {
                         Some(m) => m,
-                        None => 4096,
+                        None => get_max_tokens(self.id.as_str()) as i32,
                     },
                     es,
                 )
@@ -1770,7 +1778,7 @@ impl LLM for AnthropicLLM {
                     stop,
                     match max_tokens {
                         Some(m) => m,
-                        None => 4096,
+                        None => get_max_tokens(self.id.as_str()) as i32,
                     },
                 )
                 .await?

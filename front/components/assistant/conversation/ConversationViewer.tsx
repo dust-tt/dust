@@ -3,11 +3,11 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMention,
   AgentMessageNewEvent,
-  AgentMessageType,
   ContentFragmentType,
   ConversationTitleEvent,
+  FetchConversationMessagesResponse,
+  MessageWithContentFragmentsType,
   UserMessageNewEvent,
-  UserMessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -22,31 +22,23 @@ import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/con
 import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import {
   getUpdatedMessagesFromEvent,
   getUpdatedParticipantsFromEvent,
 } from "@app/lib/client/conversation/event_handlers";
 import {
   useConversation,
+  useConversationFeedbacks,
   useConversationMessages,
   useConversationParticipants,
-  useConversationReactions,
   useConversations,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
-export type MessageWithContentFragmentsType =
-  | AgentMessageType
-  | (UserMessageType & {
-      contenFragments?: ContentFragmentType[];
-    });
-
 interface ConversationViewerProps {
   conversationId: string;
-  hideReactions?: boolean;
   isFading?: boolean;
   isInModal?: boolean;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
@@ -69,7 +61,6 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     onStickyMentionsChange,
     isInModal = false,
-    hideReactions = false,
     isFading = false,
   },
   ref
@@ -100,11 +91,6 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
-  });
-
-  const { reactions } = useConversationReactions({
-    workspaceId: owner.sId,
-    conversationId,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({
@@ -198,6 +184,11 @@ const ConversationViewer = React.forwardRef<
   }, [agentMentions, onStickyMentionsChange]);
 
   const { ref: viewRef, inView: isTopOfListVisible } = useInView();
+
+  const { feedbacks } = useConversationFeedbacks({
+    conversationId: conversationId ?? "",
+    workspaceId: owner.sId,
+  });
 
   // On page load or when new data is loaded, check if the top of the list
   // is visible and there is more data to load. If so, set the current
@@ -353,10 +344,9 @@ const ConversationViewer = React.forwardRef<
               messages={typedGroup}
               isLastMessageGroup={isLastGroup}
               conversationId={conversationId}
-              hideReactions={hideReactions}
+              feedbacks={feedbacks}
               isInModal={isInModal}
               owner={owner}
-              reactions={reactions}
               prevFirstMessageId={prevFirstMessageId}
               prevFirstMessageRef={prevFirstMessageRef}
               user={user}
@@ -371,24 +361,24 @@ const ConversationViewer = React.forwardRef<
 export default ConversationViewer;
 
 /**
- * Groups and organizes messages by their type, associating content_fragments
- * with the following user_message.
- *
  * This function processes an array of messages, collecting content_fragments
- * and attaching them to subsequent user_messages, then groups these messages
- * with the previous user_message, ensuring consecutive messages are grouped
- * together.
+ * and attaching them to subsequent user_messages, then groups the agent messages
+ * with the previous user_message, ensuring question/answers are grouped
+ * together :
  *
- * Example:
- * Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
- * Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
- * This structure enables layout customization for consecutive messages of the same type
+ * - user message + potential content fragments posted with the user message
+ * - one or multiple agent messages depending on the number of mentions in the user message.
+ *
+ * That means we want this:
+ * Input [content_fragment, content_fragment, user_message, agent_message, agent_message, user_message, agent_message]
+ * Output [[user_message with content_fragment[], agent_message, agent_message], [user_message, agent_message ]]
+ * This structure enables layout customization for groups of question/answers
  * and displays content_fragments within user_messages.
  */
 const groupMessagesByType = (
   messages: FetchConversationMessagesResponse[]
-): MessageWithContentFragmentsType[][][] => {
-  const groupedMessages: MessageWithContentFragmentsType[][][] = [];
+): MessageWithContentFragmentsType[][] => {
+  const groupedMessages: MessageWithContentFragmentsType[][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
   messages
@@ -407,17 +397,16 @@ const groupMessagesByType = (
           tempContentFragments = []; // Reset the collected content fragments.
 
           // Start a new group for user messages.
-          groupedMessages.push([[messageWithContentFragments]]);
+          groupedMessages.push([messageWithContentFragments]);
         } else {
           messageWithContentFragments = message;
 
           const lastGroup = groupedMessages[groupedMessages.length - 1];
 
           if (!lastGroup) {
-            groupedMessages.push([[messageWithContentFragments]]);
+            groupedMessages.push([messageWithContentFragments]);
           } else {
-            const [lastMessageGroup] = lastGroup;
-            lastMessageGroup.push(messageWithContentFragments); // Add agent messages to the last group.
+            lastGroup.push(messageWithContentFragments); // Add agent messages to the last group.
           }
         }
       }

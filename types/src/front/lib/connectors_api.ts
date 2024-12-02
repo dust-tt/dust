@@ -22,6 +22,7 @@ const CONNECTORS_ERROR_TYPES = [
   "webcrawling_error_content_too_large",
   "webcrawling_error_blocked",
   "remote_database_connection_not_readonly",
+  "remote_database_network_error",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
@@ -54,6 +55,18 @@ export type ConnectorType = {
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
 export type ContentNodeType = "file" | "folder" | "database" | "channel";
+
+/*
+ * This constant defines the priority order for sorting content nodes by their type.
+ * The types are sorted in the following order: folder first, then file, database, and channel.
+ * This mapping is used to provide a numerical value representing the priority of each content node type.
+ */
+export const contentNodeTypeSortOrder: Record<ContentNodeType, number> = {
+  folder: 1,
+  file: 2,
+  database: 3,
+  channel: 4,
+};
 
 /**
  * A ContentNode represents a connector related node. As an example:
@@ -95,6 +108,7 @@ export interface BaseContentNode {
   permission: ConnectorPermission;
   dustDocumentId: string | null;
   lastUpdatedAt: number | null;
+  providerVisibility?: "public" | "private";
 }
 
 export type ContentNode = BaseContentNode & {
@@ -376,6 +390,15 @@ export class ConnectorsAPI {
   async getConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+    const parsedId = parseInt(connectorId, 10);
+    if (isNaN(parsedId)) {
+      const err: ConnectorsAPIError = {
+        type: "invalid_request_error",
+        message: "Invalid connector ID",
+      };
+      return new Err(err);
+    }
+
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(connectorId)}`,
       {

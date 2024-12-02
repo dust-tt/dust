@@ -1,9 +1,13 @@
-import { ClipboardCheckIcon, ClipboardIcon, Label } from "@dust-tt/sparkle";
+import {
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  Label,
+  LinkWrapper,
+} from "@dust-tt/sparkle";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import PokeLink from "@app/components/poke/shadcn/ui/link";
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -154,22 +158,19 @@ interface TableCellWithLinkProps
   extends React.TdHTMLAttributes<HTMLTableCellElement> {
   href: string;
   content: string;
-  external?: boolean;
 }
 
 const TableCellWithLink = React.forwardRef<
   HTMLTableCellElement,
   TableCellWithLinkProps
->(({ className, href, content, external = false, ...props }, ref) => {
+>(({ className, href, content, ...props }, ref) => {
   return (
     <TableCell
       ref={ref}
       className={cn("p-2 align-middle", className)}
       {...props}
     >
-      <PokeLink href={href} external={external}>
-        {content}
-      </PokeLink>
+      <LinkWrapper href={href}>{content}</LinkWrapper>
     </TableCell>
   );
 });

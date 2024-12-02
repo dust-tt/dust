@@ -162,6 +162,7 @@ export async function syncOneFile({
     name: file.name ?? "",
     parentInternalId,
     mimeType: file.file.mimeType ?? "",
+    webUrl: file.webUrl ?? "",
   };
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {

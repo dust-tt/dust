@@ -13,7 +13,7 @@ import {
   PokeDialog,
   PokeDialogContent,
 } from "@app/components/poke/shadcn/ui/dialog";
-import type { PluginListItem } from "@app/lib/api/poke/types";
+import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
 import { usePokePluginManifest, useRunPokePlugin } from "@app/poke/swr/plugins";
 
 type ExecutePluginDialogProps = {
@@ -28,7 +28,7 @@ export function RunPluginDialog({
   workspaceResource,
 }: ExecutePluginDialogProps) {
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<PluginResponse | null>(null);
 
   const { isLoading, manifest } = usePokePluginManifest({
     disabled: !open,
@@ -64,7 +64,7 @@ export function RunPluginDialog({
 
   return (
     <PokeDialog open={true} onOpenChange={handleClose}>
-      <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
+      <PokeDialogContent className="w-auto bg-structure-50 sm:min-w-[600px] sm:max-w-[1000px]">
         <h2>Run {plugin.name} plugin</h2>
         {isLoading ? (
           <Spinner />
@@ -84,15 +84,29 @@ export function RunPluginDialog({
                 <PokeAlertDescription>{error}</PokeAlertDescription>
               </PokeAlert>
             )}
-            {result && (
-              <PokeAlert variant="default">
+            {result && result.display === "text" && (
+              <PokeAlert variant="success">
                 <PokeAlertTitle>Success</PokeAlertTitle>
                 <PokeAlertDescription>
-                  {result} - Make sure to reload.
+                  {result.value} - Make sure to reload.
                 </PokeAlertDescription>
               </PokeAlert>
             )}
-            <PluginForm manifest={manifest} onSubmit={onSubmit} />
+            {result && result.display === "json" && (
+              <div className="mb-4 mt-4">
+                <div className="mb-2 font-medium">Result:</div>
+                <div className="max-h-[400px] overflow-auto rounded-lg bg-slate-800 p-4">
+                  <pre className="font-mono whitespace-pre-wrap break-words text-sm text-slate-200">
+                    {JSON.stringify(result.value, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+            <PluginForm
+              disabled={result !== null}
+              manifest={manifest}
+              onSubmit={onSubmit}
+            />
           </>
         )}
       </PokeDialogContent>

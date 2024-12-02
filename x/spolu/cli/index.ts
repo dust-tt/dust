@@ -1,4 +1,3 @@
-import type { AgentMessageType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { Command } from "commander";
 import * as readlinePromises from "readline/promises";
@@ -119,14 +118,11 @@ conversations
       throw new Error(`Failed to create conversation: ${res.error.message}`);
     }
 
-    const agentMessage = res.value.conversation.content.at(-1);
-    if (!agentMessage) {
-      throw new Error(`No agent message received`);
-    }
+    const { conversation, message } = res.value;
 
-    const streamRes = await state.dustAPI().streamAgentMessageEvents({
-      conversation: res.value.conversation,
-      message: agentMessage[0] as AgentMessageType,
+    const streamRes = await state.dustAPI().streamAgentAnswerEvents({
+      conversation: conversation,
+      userMessageId: message.sId,
     });
 
     if (streamRes.isErr()) {

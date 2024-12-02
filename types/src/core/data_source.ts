@@ -71,3 +71,11 @@ export type CoreAPILightDocument = {
   token_count: number;
   created: number;
 };
+
+export type CoreAPIDocumentVersionStatus = "latest" | "superseded" | "deleted";
+
+export type CoreAPIDocumentVersion = {
+  hash: string;
+  created: number;
+  status: CoreAPIDocumentVersionStatus;
+};

@@ -7,6 +7,7 @@ import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { augmentContentNodesWithParentIds } from "@connectors/lib/api/content_nodes";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -85,6 +86,18 @@ const _getConnectorPermissions = async (
   });
 
   if (pRes.isErr()) {
+    if (
+      pRes.error instanceof ProviderWorkflowError &&
+      pRes.error.type === "rate_limit_error"
+    ) {
+      return apiError(req, res, {
+        status_code: 429,
+        api_error: {
+          type: "connector_rate_limit_error",
+          message: pRes.error.message,
+        },
+      });
+    }
     return apiError(req, res, {
       status_code: 500,
       api_error: {

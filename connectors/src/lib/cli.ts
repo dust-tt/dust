@@ -23,6 +23,7 @@ import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
+import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -51,6 +52,8 @@ export async function runCommand(adminCommand: AdminCommandType) {
       return intercom(adminCommand);
     case "microsoft":
       return microsoft(adminCommand);
+    case "zendesk":
+      return zendesk(adminCommand);
     default:
       assertNever(adminCommand);
   }
@@ -266,6 +269,7 @@ export const batch = async ({
         "confluence",
         "github",
         "snowflake",
+        "zendesk",
       ];
       if (!PROVIDERS_ALLOWING_RESTART.includes(args.provider)) {
         throw new Error(

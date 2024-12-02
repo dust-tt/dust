@@ -12,7 +12,6 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -30,12 +29,14 @@ async function _getParents(
   pageOrDbId: string,
   seen: string[],
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-  memoizationKey?: string
+  memoizationKey?: string,
+  onProgress?: () => Promise<void>
 ): Promise<string[]> {
   const parents: string[] = [pageOrDbId];
   const pageOrDb =
     (await getNotionPageFromConnectorsDb(connectorId, pageOrDbId)) ||
     (await getNotionDatabaseFromConnectorsDb(connectorId, pageOrDbId));
+
   if (!pageOrDb) {
     // pageOrDb is either not synced yet (not an issue, see design doc) or
     // is not in Dust's scope, in both cases we can just return the page id
@@ -63,18 +64,6 @@ async function _getParents(
       return parents;
     case "page":
     case "database": {
-      if (seen.includes(pageOrDbId)) {
-        logger.error(
-          {
-            connectorId,
-            pageOrDbId,
-            seen,
-            parentId: pageOrDb.parentId,
-          },
-          "getParents infinite loop"
-        );
-        return parents.concat(seen);
-      }
       seen.push(pageOrDbId);
       if (!pageOrDb.parentId) {
         logger.error(
@@ -87,12 +76,33 @@ async function _getParents(
         );
         throw new Error("getParent parentId is undefined");
       }
+      if (seen.includes(pageOrDb.parentId)) {
+        logger.error(
+          {
+            connectorId,
+            pageOrDbId,
+            seen,
+            parentId: pageOrDb.parentId,
+          },
+          "getParents infinite loop"
+        );
+        return parents.concat(seen);
+      }
+      if (onProgress) {
+        await onProgress();
+      }
       return parents.concat(
         // parentId cannot be undefined if parentType is page or database as per
         // Notion API
         //
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        await getParents(connectorId, pageOrDb.parentId, seen, memoizationKey)
+        await getParents(
+          connectorId,
+          pageOrDb.parentId,
+          seen,
+          memoizationKey,
+          onProgress
+        )
       );
     }
     default:
@@ -102,7 +112,8 @@ async function _getParents(
 
 export const getParents = cacheWithRedis(
   _getParents,
-  (connectorId, pageOrDbId, seen, memoizationKey) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+  (connectorId, pageOrDbId, seen, memoizationKey, onProgress) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
   60 * 10 * 1000
@@ -113,7 +124,7 @@ export async function updateAllParentsFields(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
   memoizationKey?: string,
-  shouldHeartbeat = false
+  onProgress?: () => Promise<void>
 ): Promise<number> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -148,7 +159,8 @@ export async function updateAllParentsFields(
           connectorId,
           pageId,
           [],
-          memoizationKey
+          memoizationKey,
+          onProgress
         );
         logger.info(
           {
@@ -162,8 +174,8 @@ export async function updateAllParentsFields(
           documentId: `notion-${pageId}`,
           parents,
         });
-        if (shouldHeartbeat) {
-          await heartbeat();
+        if (onProgress) {
+          await onProgress();
         }
       })
     );

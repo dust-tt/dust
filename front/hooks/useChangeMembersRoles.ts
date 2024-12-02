@@ -1,3 +1,4 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
   RoleType,
@@ -5,7 +6,6 @@ import type {
 } from "@dust-tt/types";
 import { useCallback, useContext } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 
 type HandleMembersRoleChangeParams = {
@@ -18,7 +18,7 @@ export function useChangeMembersRoles({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateMembers } = useMembers({
     workspaceId: owner.sId,
     disabled: true,

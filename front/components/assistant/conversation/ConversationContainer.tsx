@@ -1,13 +1,16 @@
 import { Page } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
   MentionType,
+  Result,
   SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { useRouter } from "next/router";
 import {
@@ -30,10 +33,9 @@ import {
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
-import { useSubmitFunction } from "@app/lib/client/utils";
+import type { DustError } from "@app/lib/error";
 import { useConversationMessages } from "@app/lib/swr/conversations";
 
 interface ConversationContainerProps {
@@ -65,7 +67,7 @@ export function ConversationContainer({
 
   const router = useRouter();
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { mutateMessages } = useConversationMessages({
     conversationId: activeConversationId,
@@ -97,9 +99,13 @@ export function ConversationContainer({
     input: string,
     mentions: MentionType[],
     contentFragments: UploadedContentFragment[]
-  ) => {
+  ): Promise<Result<undefined, DustError>> => {
     if (!activeConversationId) {
-      return null;
+      return new Err({
+        code: "internal_error",
+        name: "NoActiveConversation",
+        message: "No active conversation",
+      });
     }
 
     const messageData = { input, mentions, contentFragments };
@@ -167,47 +173,75 @@ export function ConversationContainer({
       // If the API errors, the original data will be
       // rolled back by SWR automatically.
       console.error("Failed to post message:", err);
+      return new Err({
+        code: "internal_error",
+        name: "FailedToPostMessage",
+        message: `Failed to post message ${err}`,
+      });
     }
+
+    return new Ok(undefined);
   };
 
-  const { submit: handleMessageSubmit } = useSubmitFunction(
-    useCallback(
-      async (
-        input: string,
-        mentions: MentionType[],
-        contentFragments: UploadedContentFragment[]
-      ) => {
-        const conversationRes = await createConversationWithMessage({
-          owner,
-          user,
-          messageData: {
-            input,
-            mentions,
-            contentFragments,
-          },
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConversationCreation = useCallback(
+    async (
+      input: string,
+      mentions: MentionType[],
+      contentFragments: UploadedContentFragment[]
+    ): Promise<Result<undefined, DustError>> => {
+      if (isSubmitting) {
+        return new Err({
+          code: "internal_error",
+          name: "AlreadySubmitting",
+          message: "Already submitting",
         });
-        if (conversationRes.isErr()) {
-          if (conversationRes.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: conversationRes.error.title,
-              description: conversationRes.error.message,
-              type: "error",
-            });
-          }
+      }
+
+      setIsSubmitting(true);
+
+      const conversationRes = await createConversationWithMessage({
+        owner,
+        user,
+        messageData: {
+          input,
+          mentions,
+          contentFragments,
+        },
+      });
+
+      setIsSubmitting(false);
+
+      if (conversationRes.isErr()) {
+        if (conversationRes.error.type === "plan_limit_reached_error") {
+          setPlanLimitReached(true);
         } else {
-          // We start the push before creating the message to optimize for instantaneity as well.
-          setActiveConversationId(conversationRes.value.sId);
-          void router.push(
-            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
-            undefined,
-            { shallow: true }
-          );
+          sendNotification({
+            title: conversationRes.error.title,
+            description: conversationRes.error.message,
+            type: "error",
+          });
         }
-      },
-      [owner, user, sendNotification, setActiveConversationId, router]
-    )
+
+        return new Err({
+          code: "internal_error",
+          name: conversationRes.error.title,
+          message: conversationRes.error.message,
+        });
+      } else {
+        // We start the push before creating the message to optimize for instantaneity as well.
+        setActiveConversationId(conversationRes.value.sId);
+        void router.push(
+          `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
+          undefined,
+          { shallow: true }
+        );
+
+        return new Ok(undefined);
+      }
+    },
+    [isSubmitting, owner, user, sendNotification, router]
   );
 
   useEffect(() => {
@@ -288,16 +322,18 @@ export function ConversationContainer({
       >
         <div
           id="assistant-input-header"
-          className="mb-2 flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end px-4 py-2"
+          className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 px-4 py-2"
         >
-          <Page.SectionHeader title={greeting} />
+          <Page.Header title={greeting} />
           <Page.SectionHeader title="Start a conversation" />
         </div>
       </Transition>
 
       <FixedAssistantInputBar
         owner={owner}
-        onSubmit={activeConversationId ? handleSubmit : handleMessageSubmit}
+        onSubmit={
+          activeConversationId ? handleSubmit : handleConversationCreation
+        }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
       />

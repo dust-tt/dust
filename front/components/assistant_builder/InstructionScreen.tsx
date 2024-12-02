@@ -2,8 +2,13 @@ import {
   Button,
   ContentMessage,
   DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   Page,
   Popover,
+  ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -229,7 +234,7 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
-        <div className="self-end">
+        <div className="mt-2 self-end">
           <AdvancedSettings
             owner={owner}
             plan={plan}
@@ -313,7 +318,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
   return (
     <>
       {modelConfigs.map((modelConfig) => (
-        <DropdownMenu.Item
+        <DropdownMenuItem
           key={modelConfig.modelId}
           icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
           description={modelConfig.shortDescription}
@@ -346,29 +351,25 @@ function AdvancedSettings({
     alert("Unsupported model");
   }
 
-  const [bestPerformingModelConfig, otherModelsConfig] =
-    USED_MODEL_CONFIGS.reduce<
-      [ModelConfigurationType[], ModelConfigurationType[]]
-    >(
-      ([best, others], m) => {
-        if (
-          (m.largeModel && !isUpgraded(plan)) ||
-          !isProviderWhitelisted(owner, m.providerId)
-        ) {
-          return [best, others];
-        }
-        if (isBestPerformingModel(m.modelId)) {
-          best.push(m);
-        } else {
-          others.push(m);
-        }
-        return [best, others];
-      },
-      [[], []]
-    );
+  const bestPerformingModelConfigs: ModelConfigurationType[] = [];
+  const otherModelConfigs: ModelConfigurationType[] = [];
+  for (const modelConfig of USED_MODEL_CONFIGS) {
+    if (
+      !isProviderWhitelisted(owner, modelConfig.providerId) ||
+      (modelConfig.largeModel && !isUpgraded(plan))
+    ) {
+      continue;
+    }
+    if (isBestPerformingModel(modelConfig.modelId)) {
+      bestPerformingModelConfigs.push(modelConfig);
+    } else {
+      otherModelConfigs.push(modelConfig);
+    }
+  }
 
   return (
     <Popover
+      popoverTriggerAsChild
       trigger={
         <Button
           label="Advanced settings"
@@ -384,7 +385,7 @@ function AdvancedSettings({
               Model selection
             </div>
             <DropdownMenu>
-              <DropdownMenu.Button>
+              <DropdownMenuTrigger asChild>
                 <Button
                   isSelect
                   label={
@@ -394,14 +395,12 @@ function AdvancedSettings({
                   variant="outline"
                   size="sm"
                 />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight" width={250}>
-                <div className="z-[120]">
-                  <span className="text-sm uppercase text-element-700">
-                    Best performing models
-                  </span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel label="Best performing models" />
+                <ScrollArea className="h-[300px]">
                   <ModelList
-                    modelConfigs={bestPerformingModelConfig}
+                    modelConfigs={bestPerformingModelConfigs}
                     onClick={(modelSettings) => {
                       setGenerationSettings({
                         ...generationSettings,
@@ -409,11 +408,9 @@ function AdvancedSettings({
                       });
                     }}
                   />
-                  <span className="text-sm uppercase text-element-700">
-                    Other models
-                  </span>
+                  <DropdownMenuLabel label="Other models" />
                   <ModelList
-                    modelConfigs={otherModelsConfig}
+                    modelConfigs={otherModelConfigs}
                     onClick={(modelSettings) => {
                       setGenerationSettings({
                         ...generationSettings,
@@ -421,8 +418,8 @@ function AdvancedSettings({
                       });
                     }}
                   />
-                </div>
-              </DropdownMenu.Items>
+                </ScrollArea>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -430,7 +427,7 @@ function AdvancedSettings({
               Creativity level
             </div>
             <DropdownMenu>
-              <DropdownMenu.Button>
+              <DropdownMenuTrigger asChild>
                 <Button
                   isSelect
                   label={
@@ -441,10 +438,10 @@ function AdvancedSettings({
                   variant="outline"
                   size="sm"
                 />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
                 {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <DropdownMenu.Item
+                  <DropdownMenuItem
                     key={label}
                     label={label}
                     onClick={() => {
@@ -455,7 +452,7 @@ function AdvancedSettings({
                     }}
                   />
                 ))}
-              </DropdownMenu.Items>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>

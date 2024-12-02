@@ -39,19 +39,31 @@ export const EnqueueUpsertDocument = t.type({
   upsertContext: t.union([UpsertContextSchema, t.null]),
 });
 
-export const EnqueueUpsertTable = t.type({
-  workspaceId: t.string,
-  dataSourceId: t.string,
-  tableId: t.string,
-  tableName: t.string,
-  tableDescription: t.string,
-  tableTimestamp: t.union([t.number, t.undefined, t.null]),
-  tableTags: t.union([t.array(t.string), t.undefined, t.null]),
-  tableParents: t.union([t.array(t.string), t.undefined, t.null]),
-  csv: t.union([t.string, t.null]),
-  truncate: t.boolean,
-  useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
+const DetectedHeaders = t.type({
+  header: t.array(t.string),
+  rowIndex: t.number,
 });
+
+export const EnqueueUpsertTable = t.intersection([
+  t.type({
+    workspaceId: t.string,
+    dataSourceId: t.string,
+    tableId: t.string,
+    tableName: t.string,
+    tableDescription: t.string,
+    tableTimestamp: t.union([t.number, t.undefined, t.null]),
+    tableTags: t.union([t.array(t.string), t.undefined, t.null]),
+    tableParents: t.union([t.array(t.string), t.undefined, t.null]),
+    csv: t.union([t.string, t.null]),
+    truncate: t.boolean,
+    useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
+    detectedHeaders: t.union([DetectedHeaders, t.undefined]),
+  }),
+  t.partial({
+    title: t.string,
+    mimeType: t.string,
+  }),
+]);
 
 type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;
 

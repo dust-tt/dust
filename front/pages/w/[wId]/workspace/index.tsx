@@ -43,7 +43,6 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [isDownloadingData, setIsDownloadingData] = useState(false);
-  const [showProviderModal, setShowProviderModal] = useState(false);
 
   const { subscriptions } = useWorkspaceSubscriptions({
     workspaceId: owner.sId,
@@ -193,11 +192,6 @@ export default function WorkspaceAdmin({
 
   return (
     <>
-      <ProviderManagementModal
-        owner={owner}
-        showProviderModal={showProviderModal}
-        onClose={() => setShowProviderModal(false)}
-      />
       <AppLayout
         subscription={subscription}
         owner={owner}
@@ -242,8 +236,8 @@ export default function WorkspaceAdmin({
                   placeholder="Workspace name"
                   value={workspaceName}
                   onChange={(e) => setWorkspaceName(e.target.value)}
-                  error={workspaceNameError}
-                  showErrorLabel
+                  message={workspaceNameError}
+                  messageStatus="error"
                 />
                 {!disable && (
                   <Button
@@ -256,12 +250,7 @@ export default function WorkspaceAdmin({
                 )}
               </div>
               <div>
-                <Button
-                  variant="primary"
-                  onClick={() => setShowProviderModal(true)}
-                  label="Manage providers"
-                  className="grow-0"
-                />
+                <ProviderManagementModal owner={owner} />
               </div>
             </div>
           </Page.Vertical>

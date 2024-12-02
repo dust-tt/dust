@@ -22,7 +22,6 @@ export const IconButtonWithTooltip: Story = {
   args: {
     variant: "primary",
     tooltip: "Your settings",
-    tooltipPosition: "bottom",
     icon: Cog6ToothIcon,
   },
 };
@@ -31,7 +30,6 @@ export const IconButtonSecondary: Story = {
   args: {
     variant: "highlight",
     tooltip: "This a highlight IconButton",
-    tooltipPosition: "bottom",
     icon: Cog6ToothIcon,
   },
 };
@@ -40,7 +38,6 @@ export const IconButtonTertiary: Story = {
   args: {
     variant: "ghost",
     tooltip: "This a ghost IconButton",
-    tooltipPosition: "bottom",
     icon: Cog6ToothIcon,
   },
 };

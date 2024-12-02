@@ -150,10 +150,16 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           {
             error: e,
           },
-          `Error checking Microsoft organization - lets update the connector regardless`
+          "Error checking Microsoft organization - lets update the connector regardless"
         );
       }
+
       await connector.update({ connectionId });
+
+      // If connector was previously paused, unpause it.
+      if (connector.isPaused()) {
+        await this.unpause();
+      }
     }
 
     return new Ok(connector.id.toString());

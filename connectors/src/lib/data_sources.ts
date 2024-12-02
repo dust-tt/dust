@@ -11,6 +11,8 @@ import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
 import https from "https";
+import type { Branded } from "io-ts";
+import type { IntBrand } from "io-ts";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -119,11 +121,15 @@ async function _upsertToDatasource({
 
       const now = new Date();
 
+      const timestamp = timestampMs
+        ? (Math.floor(timestampMs) as Branded<number, IntBrand>)
+        : null;
+
       const dustRequestPayload: PostDataSourceDocumentRequestBody = {
         text: null,
         section: documentContent,
         source_url: documentUrl,
-        timestamp: timestampMs,
+        timestamp,
         tags: tags?.map((tag) => tag.substring(0, 512)),
         parents,
         light_document_output: true,
@@ -551,7 +557,7 @@ export function sectionLength(
   );
 }
 
-export async function upsertTable({
+export async function upsertTableFromConnectors({
   dataSourceConfig,
   tableId,
   tableName,
@@ -560,6 +566,8 @@ export async function upsertTable({
   remoteDatabaseSecretId,
   loggerArgs,
   parents,
+  title,
+  mimeType,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -569,6 +577,8 @@ export async function upsertTable({
   remoteDatabaseSecretId: string | null;
   loggerArgs?: Record<string, string | number>;
   parents: string[];
+  title: string;
+  mimeType: string;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -595,6 +605,8 @@ export async function upsertTable({
     table_id: tableId,
     remote_database_table_id: remoteDatabaseTableId,
     remote_database_secret_id: remoteDatabaseSecretId,
+    title,
+    mimeType,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -703,6 +715,8 @@ export async function upsertTableFromCsv({
   truncate,
   parents,
   useAppForHeaderDetection,
+  title,
+  mimeType,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -713,6 +727,8 @@ export async function upsertTableFromCsv({
   truncate: boolean;
   parents: string[];
   useAppForHeaderDetection?: boolean;
+  title: string;
+  mimeType: string;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -748,6 +764,8 @@ export async function upsertTableFromCsv({
     truncate,
     async: true,
     useAppForHeaderDetection,
+    title,
+    mimeType,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -852,7 +870,8 @@ export async function upsertTableFromCsv({
     if (dustRequestResult.status === 413) {
       throw new TablesError(
         "file_too_large",
-        dustRequestResult.data.error.message
+        dustRequestResult.data.error?.message ||
+          "File size exceeds the maximum limit"
       );
     }
     throw new Error(

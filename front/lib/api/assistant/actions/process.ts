@@ -25,7 +25,7 @@ import assert from "assert";
 import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import {
   parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,
@@ -91,7 +91,7 @@ export class ProcessAction extends BaseAction {
     };
   }
 
-  renderForMultiActionsModel(): FunctionMessageTypeModel {
+  async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content = "";
 
     content += "PROCESSED OUTPUTS:\n";
@@ -191,6 +191,9 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         relativeTimeFrame = parseTimeFrame(rawInputs.relativeTimeFrame);
       }
     }
+
+    const objective =
+      typeof rawInputs.objective === "string" ? rawInputs.objective : "n/a";
 
     const { model } = agentConfiguration;
 
@@ -336,6 +339,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           schema: renderSchemaPropertiesAsJSONSchema(
             actionConfiguration.schema
           ),
+          objective,
         },
       ],
       {
@@ -469,6 +473,14 @@ async function processActionSpecification({
   description: string;
 }): Promise<AgentActionSpecification> {
   const inputs = [];
+
+  inputs.push({
+    name: "objective",
+    description:
+      "The objective behind the use of the tool based on the conversation state." +
+      " This is used to guide the tool to extract the right data based on the user request.",
+    type: "string" as const,
+  });
 
   if (actionConfiguration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());

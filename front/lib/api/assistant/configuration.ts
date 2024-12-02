@@ -24,6 +24,7 @@ import {
   isTimeFrame,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 import assert from "assert";
 import type { Order, Transaction } from "sequelize";
@@ -35,7 +36,7 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/names";
+} from "@app/lib/api/assistant/actions/constants";
 import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
@@ -45,6 +46,7 @@ import {
   fetchTableQueryActionConfigurations,
 } from "@app/lib/api/assistant/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/api/assistant/configuration/websearch";
+import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   getGlobalAgents,
   isGlobalAgentId,
@@ -66,7 +68,7 @@ import {
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
@@ -118,7 +120,7 @@ export async function getAgentConfiguration(
 export async function searchAgentConfigurationsByName(
   auth: Authenticator,
   name: string
-): Promise<AgentConfiguration[] | []> {
+): Promise<LightAgentConfigurationType[]> {
   const owner = auth.getNonNullableWorkspace();
 
   const agentConfigurations = await AgentConfiguration.findAll({
@@ -131,7 +133,15 @@ export async function searchAgentConfigurationsByName(
       },
     },
   });
-  return agentConfigurations || [];
+  const r = removeNulls(
+    await getAgentConfigurations({
+      auth,
+      agentsGetView: { agentIds: agentConfigurations.map((c) => c.sId) },
+      variant: "light",
+    })
+  );
+
+  return r;
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
@@ -171,6 +181,7 @@ function determineGlobalAgentIdsToFetch(
     case "global":
     case "list":
     case "all":
+    case "favorites":
     case "admin_internal":
       return undefined; // undefined means all global agents will be fetched
     default:
@@ -204,6 +215,15 @@ async function fetchGlobalAgentConfigurationForView(
   ) {
     // All global agents in global and agent views.
     return matchingGlobalAgents;
+  }
+
+  if (agentsGetView === "favorites") {
+    const favoriteStates = await getFavoriteStates(auth, {
+      configurationIds: matchingGlobalAgents.map((a) => a.sId),
+    });
+    return matchingGlobalAgents.filter(
+      (a) => favoriteStates.get(a.sId) && a.status === "active"
+    );
   }
 
   // If not in global or agent view, filter out global agents that are not active.
@@ -319,16 +339,64 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
 
       return [...sharedAssistants, ...userAssistants];
+
+    case "favorites":
+      const userId = auth.user()?.id;
+      if (!userId) {
+        return [];
+      }
+      const relations = await AgentUserRelation.findAll({
+        where: {
+          userId,
+          favorite: true,
+        },
+      });
+
+      const sIds = relations.map((r) => r.agentConfiguration);
+      if (sIds.length === 0) {
+        return [];
+      }
+
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: {
+          ...baseWhereConditions,
+          sId: { [Op.in]: sIds },
+        },
+      });
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
+        if (agentsGetView.allVersions) {
+          return AgentConfiguration.findAll({
+            where: {
+              workspaceId: owner.id,
+              sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
+            },
+            order: [["version", "DESC"]],
+          });
+        }
+        const latestVersions = (await AgentConfiguration.findAll({
+          attributes: [
+            "sId",
+            [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
+          ],
+          where: {
+            workspaceId: owner.id,
+            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
+          },
+          group: ["sId"],
+          raw: true,
+        })) as unknown as { sId: string; max_version: number }[];
+
         return AgentConfiguration.findAll({
           where: {
             workspaceId: owner.id,
-            ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
-            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
+            sId: latestVersions.map((v) => v.sId),
+            version: {
+              [Op.in]: latestVersions.map((v) => v.max_version),
+            },
           },
           order: [["version", "DESC"]],
-          ...(agentsGetView.allVersions ? {} : { limit: 1 }),
         });
       }
       assertNever(agentsGetView);
@@ -373,7 +441,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tableQueryActionsConfigurationsPerAgent,
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
-    agentUserRelations,
+    favoriteStatePerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
     fetchAgentProcessActionConfigurations({ configurationIds, variant }),
@@ -381,22 +449,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchTableQueryActionConfigurations({ configurationIds, variant }),
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
-    user && configurationIds.length > 0
-      ? AgentUserRelation.findAll({
-          where: {
-            agentConfiguration: { [Op.in]: configurationSIds },
-            userId: user.id,
-          },
-        }).then((relations) =>
-          relations.reduce(
-            (acc, relation) => {
-              acc[relation.agentConfiguration] = relation;
-              return acc;
-            },
-            {} as Record<string, AgentUserRelation>
-          )
-        )
-      : Promise.resolve({} as Record<string, AgentUserRelation>),
+    user
+      ? getFavoriteStates(auth, { configurationIds: configurationSIds })
+      : Promise.resolve(new Map<string, boolean>()),
   ]);
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -452,8 +507,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       scope: agent.scope,
-      // no agentUserRelation means agent is not in favorites
-      userFavorite: !!agentUserRelations[agent.sId]?.favorite,
+      userFavorite: !!favoriteStatePerAgent.get(agent.sId),
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,
@@ -472,6 +526,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
       groupIds: agent.groupIds.map((id) =>
         GroupResource.modelIdToSId({ id, workspaceId: owner.id })
       ),
+      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
+        groups.map((id) =>
+          GroupResource.modelIdToSId({ id, workspaceId: owner.id })
+        )
+      ),
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
@@ -487,6 +546,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   variant,
   limit,
   sort,
+  dangerouslySkipPermissionFiltering,
 }: {
   auth: Authenticator;
   agentsGetView: AgentsGetViewType;
@@ -494,6 +554,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   variant: V;
   limit?: number;
   sort?: SortStrategyType;
+  dangerouslySkipPermissionFiltering?: boolean;
 }): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
@@ -527,6 +588,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
       "`list` or `assistants-search` view is specific to a user."
     );
   }
+  if (agentsGetView === "favorites" && !user) {
+    throw new Error("`favorites` view is specific to a user.");
+  }
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
 
@@ -555,13 +619,17 @@ export async function getAgentConfigurations<V extends "light" | "full">({
 
   // Filter out agents that the user does not have access to
   // user should be in all groups that are in the agent's groupIds
-  const allowedAgentConfigurations = allAgentConfigurations
-    .flat()
-    .filter((a) =>
-      auth.canRead(
-        Authenticator.createResourcePermissionsFromGroupIds(a.groupIds)
-      )
-    );
+  const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
+    ? allAgentConfigurations
+    : allAgentConfigurations
+        .flat()
+        .filter((a) =>
+          auth.canRead(
+            Authenticator.createResourcePermissionsFromGroupIds(
+              a.requestedGroupIds
+            )
+          )
+        );
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }
@@ -625,7 +693,9 @@ export async function createAgentConfiguration(
     model,
     agentConfigurationId,
     templateId,
+    // TODO(2024-11-04 flav) `groupIds` clean up.
     groupIds,
+    requestedGroupIds,
   }: {
     name: string;
     description: string;
@@ -638,7 +708,9 @@ export async function createAgentConfiguration(
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
     templateId: string | null;
+    // TODO(2024-11-04 flav) `groupIds` clean up.
     groupIds: number[];
+    requestedGroupIds: number[][];
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
@@ -712,7 +784,7 @@ export async function createAgentConfiguration(
           userFavorite = userRelation?.favorite ?? false;
         }
 
-        const sId = agentConfigurationId || generateLegacyModelSId();
+        const sId = agentConfigurationId || generateRandomModelSId();
 
         // Create Agent config.
         return AgentConfiguration.create(
@@ -734,6 +806,7 @@ export async function createAgentConfiguration(
             authorId: user.id,
             templateId: template?.id,
             groupIds,
+            requestedGroupIds,
           },
           {
             transaction: t,
@@ -766,8 +839,14 @@ export async function createAgentConfiguration(
       maxStepsPerRun: agent.maxStepsPerRun,
       visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
+      // TODO(2024-11-04 flav) `groupIds` clean up.
       groupIds: agent.groupIds.map((id) =>
         GroupResource.modelIdToSId({ id, workspaceId: owner.id })
+      ),
+      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
+        groups.map((id) =>
+          GroupResource.modelIdToSId({ id, workspaceId: owner.id })
+        )
       ),
     };
 
@@ -895,7 +974,7 @@ export async function createAgentActionConfiguration(
       return frontSequelize.transaction(async (t) => {
         const retrievalConfig = await AgentRetrievalConfiguration.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             query: action.query,
             relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
               ? "custom"
@@ -935,7 +1014,7 @@ export async function createAgentActionConfiguration(
     }
     case "dust_app_run_configuration": {
       const dustAppRunConfig = await AgentDustAppRunConfiguration.create({
-        sId: generateLegacyModelSId(),
+        sId: generateRandomModelSId(),
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
         agentConfigurationId: agentConfiguration.id,
@@ -955,7 +1034,7 @@ export async function createAgentActionConfiguration(
       return frontSequelize.transaction(async (t) => {
         const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             agentConfigurationId: agentConfiguration.id,
             name: action.name,
             description: action.description,
@@ -984,7 +1063,7 @@ export async function createAgentActionConfiguration(
       return frontSequelize.transaction(async (t) => {
         const processConfig = await AgentProcessConfiguration.create(
           {
-            sId: generateLegacyModelSId(),
+            sId: generateRandomModelSId(),
             relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
               ? "custom"
               : action.relativeTimeFrame,
@@ -1023,7 +1102,7 @@ export async function createAgentActionConfiguration(
     }
     case "websearch_configuration": {
       const websearchConfig = await AgentWebsearchConfiguration.create({
-        sId: generateLegacyModelSId(),
+        sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
@@ -1039,7 +1118,7 @@ export async function createAgentActionConfiguration(
     }
     case "browse_configuration": {
       const browseConfig = await AgentBrowseConfiguration.create({
-        sId: generateLegacyModelSId(),
+        sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
@@ -1123,24 +1202,34 @@ async function _createAgentDataSourcesConfigData(
   return agentDataSourcesConfigRows;
 }
 
-export async function agentNameIsAvailable(
+export async function getAgentSIdFromName(
   auth: Authenticator,
-  nameToCheck: string
-) {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  name: string
+): Promise<string | null> {
+  const owner = auth.getNonNullableWorkspace();
 
   const agent = await AgentConfiguration.findOne({
+    attributes: ["sId"],
     where: {
       workspaceId: owner.id,
-      name: nameToCheck,
+      name,
       status: "active",
     },
   });
 
-  return !agent;
+  if (!agent) {
+    return null;
+  }
+
+  return agent.sId;
+}
+
+export async function agentNameIsAvailable(
+  auth: Authenticator,
+  nameToCheck: string
+) {
+  const sId = await getAgentSIdFromName(auth, nameToCheck);
+  return !sId;
 }
 
 export async function setAgentScope(

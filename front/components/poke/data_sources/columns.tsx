@@ -1,9 +1,8 @@
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
+import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import PokeLink from "@app/components/poke/shadcn/ui/link";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 interface DataSources {
@@ -26,9 +25,9 @@ export function makeColumnsForDataSources(
         const sId: string = row.getValue("sId");
 
         return (
-          <PokeLink href={`/poke/${owner.sId}/data_sources/${sId}`}>
+          <LinkWrapper href={`/poke/${owner.sId}/data_sources/${sId}`}>
             {sId}
-          </PokeLink>
+          </LinkWrapper>
         );
       },
       header: ({ column }) => {
@@ -36,7 +35,7 @@ export function makeColumnsForDataSources(
           <div className="flex space-x-2">
             <p>sId</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -53,7 +52,7 @@ export function makeColumnsForDataSources(
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="ghost"
+              variant="outline"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -93,7 +92,7 @@ export function makeColumnsForDataSources(
           <IconButton
             icon={TrashIcon}
             size="xs"
-            variant="ghost"
+            variant="outline"
             onClick={async () => {
               await deleteDataSource(owner, dataSource.sId, onDeleted);
             }}

@@ -278,12 +278,17 @@ export async function getPagesAndDatabasesToSync({
   cursors,
   excludeUpToDatePages,
   loggerArgs,
+  filter,
 }: {
   connectorId: ModelId;
   lastSyncedAt: number | null;
-  cursors: string[];
+  cursors: {
+    previous: string | null;
+    last: string | null;
+  };
   excludeUpToDatePages: boolean;
   loggerArgs: Record<string, string | number>;
+  filter?: "page" | "database";
 }): Promise<{
   pageIds: string[];
   databaseIds: string[];
@@ -317,17 +322,18 @@ export async function getPagesAndDatabasesToSync({
 
   let res;
   try {
-    res = await getPagesAndDatabasesEditedSince(
-      accessToken,
-      lastSyncedAt,
+    res = await getPagesAndDatabasesEditedSince({
+      notionAccessToken: accessToken,
+      sinceTs: lastSyncedAt,
       cursors,
-      {
+      loggerArgs: {
         ...loggerArgs,
         dataSourceId: connector.dataSourceId,
         workspaceId: connector.workspaceId,
       },
-      skippedDatabaseIds
-    );
+      skippedDatabaseIds,
+      filter,
+    });
   } catch (e) {
     if (isNotionClientError(e)) {
       // Sometimes a cursor will consistently fail with 500.
@@ -1187,7 +1193,8 @@ export async function updateParentsFields(connectorId: ModelId) {
     connectorId,
     notionPageIds,
     notionDatabaseIds,
-    newParentsLastUpdatedAt.getTime().toString()
+    newParentsLastUpdatedAt.getTime().toString(),
+    async () => heartbeat()
   );
 
   await notionConnectorState.update({
@@ -1787,7 +1794,10 @@ export async function renderAndUpsertPageFromCache({
           connector.id,
           parentDb.notionDatabaseId,
           [],
-          runTimestamp.toString()
+          runTimestamp.toString(),
+          async () => {
+            await heartbeat();
+          }
         );
 
         await ignoreTablesError(
@@ -1802,6 +1812,8 @@ export async function renderAndUpsertPageFromCache({
               // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
               truncate: false,
               parents,
+              title: parentDb.title ?? "Untitled Notion Database",
+              mimeType: "application/vnd.notion.database",
             }),
           localLogger
         );
@@ -1886,7 +1898,10 @@ export async function renderAndUpsertPageFromCache({
       const blockParent = await getBlockParentMemoized(
         accessToken,
         parentId,
-        localLogger
+        localLogger,
+        async () => {
+          await heartbeat();
+        }
       );
       if (blockParent) {
         parentType = blockParent.parentType;
@@ -1979,7 +1994,10 @@ export async function renderAndUpsertPageFromCache({
       connectorId,
       pageId,
       [],
-      runTimestamp.toString()
+      runTimestamp.toString(),
+      async () => {
+        await heartbeat();
+      }
     );
 
     const content = await renderDocumentTitleAndContent({
@@ -2489,7 +2507,8 @@ export async function upsertDatabaseStructuredDataFromCache({
     connector.id,
     databaseId,
     [],
-    runTimestamp.toString()
+    runTimestamp.toString(),
+    async () => heartbeat()
   );
 
   localLogger.info("Upserting Notion Database as Table.");
@@ -2505,6 +2524,8 @@ export async function upsertDatabaseStructuredDataFromCache({
         // We overwrite the whole table since we just fetched all child pages.
         truncate: true,
         parents,
+        title: dbModel.title ?? "Untitled Notion Database",
+        mimeType: "notion/database",
       }),
     localLogger
   );
@@ -2571,6 +2592,31 @@ export async function upsertDatabaseStructuredDataFromCache({
   }
 
   await dbModel.update({ structuredDataUpsertedTs: upsertAt });
+}
+
+export async function logMaxSearchPageIndexReached({
+  connectorId,
+  searchPageIndex,
+  maxSearchPageIndex,
+}: {
+  connectorId: ModelId;
+  searchPageIndex: number;
+  maxSearchPageIndex: number;
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const localLogger = logger.child({
+    workspaceId: connector.workspaceId,
+    dataSourceId: connector.dataSourceId,
+    maxSearchPageIndex,
+    connectorId,
+    searchPageIndex,
+  });
+
+  localLogger.info("Max search page index reached.");
 }
 
 function getTableInfoFromDatabase(database: NotionDatabase): {

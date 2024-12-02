@@ -1,4 +1,10 @@
-import { Avatar, ContentMessage, ElementModal, Page } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  ContentMessage,
+  ElementModal,
+  InformationCircleIcon,
+  Page,
+} from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
@@ -65,16 +71,14 @@ export function AssistantDetails({
             )}
           >{`@${agentConfiguration.name}`}</div>
           {agentConfiguration.status === "active" && (
-            <>
-              <SharingDropdown
-                owner={owner}
-                agentConfiguration={agentConfiguration}
-                initialScope={agentConfiguration.scope}
-                newScope={agentConfiguration.scope}
-                disabled={isUpdatingScope}
-                setNewScope={(scope) => updateScope(scope)}
-              />
-            </>
+            <SharingDropdown
+              owner={owner}
+              agentConfiguration={agentConfiguration}
+              initialScope={agentConfiguration.scope}
+              newScope={agentConfiguration.scope}
+              disabled={isUpdatingScope}
+              setNewScope={(scope) => updateScope(scope)}
+            />
           )}
         </div>
       </div>
@@ -89,6 +93,7 @@ export function AssistantDetails({
         <ContentMessage
           variant="amber"
           title="This assistant has been deleted."
+          icon={InformationCircleIcon}
           size="md"
         >
           It is no longer active and cannot be used.
@@ -124,7 +129,7 @@ export function AssistantDetails({
       hasChanged={false}
       variant="side-sm"
     >
-      <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
+      <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
         <DescriptionSection />
         <AssistantActionsSection
           agentConfiguration={agentConfiguration}

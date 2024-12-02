@@ -1,11 +1,18 @@
 use anyhow::Result;
 use async_trait::async_trait;
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
 use std::collections::HashMap;
+use tokio_postgres::NoTls;
 
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
-    data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+    data_sources::{
+        data_source::{Chunk, DataSource, DataSourceConfig, Document, DocumentVersion},
+        folder::Folder,
+        node::Node,
+    },
     databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
@@ -19,8 +26,57 @@ use crate::{
     sqlite_workers::client::SqliteWorker,
 };
 
+pub struct UpsertDocument {
+    pub document_id: String,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
+    pub parents: Vec<String>,
+    pub source_url: Option<String>,
+    pub hash: String,
+    pub text_size: u64,
+    pub chunk_count: usize,
+    pub chunks: Vec<Chunk>,
+}
+
+impl From<Document> for UpsertDocument {
+    fn from(document: Document) -> Self {
+        UpsertDocument {
+            document_id: document.document_id,
+            timestamp: document.timestamp,
+            tags: document.tags,
+            parents: document.parents,
+            source_url: document.source_url,
+            hash: document.hash,
+            text_size: document.text_size,
+            chunk_count: document.chunk_count,
+            chunks: document.chunks,
+        }
+    }
+}
+
+pub struct UpsertTable {
+    pub table_id: String,
+    pub name: String,
+    pub description: String,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
+    pub parents: Vec<String>,
+    pub remote_database_table_id: Option<String>,
+    pub remote_database_secret_id: Option<String>,
+    pub title: Option<String>,
+    pub mime_type: Option<String>,
+}
+
+pub struct UpsertFolder {
+    pub folder_id: String,
+    pub timestamp: u64,
+    pub title: String,
+    pub parents: Vec<String>,
+}
+
 #[async_trait]
 pub trait Store {
+    fn raw_pool(&self) -> &Pool<PostgresConnectionManager<NoTls>>;
     // Projects
     async fn create_project(&self) -> Result<Project>;
     async fn delete_project(&self, project: &Project) -> Result<()>;
@@ -126,9 +182,9 @@ pub trait Store {
     async fn upsert_data_source_document(
         &self,
         project: &Project,
-        data_source_id: &str,
-        document: &Document,
-    ) -> Result<()>;
+        data_source_id: String,
+        params: UpsertDocument,
+    ) -> Result<Document>;
     async fn update_data_source_document_tags(
         &self,
         project: &Project,
@@ -175,6 +231,13 @@ pub trait Store {
         data_source_id: &str,
         document_id: &str,
     ) -> Result<()>;
+    async fn delete_data_source_document_version(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        version: &DocumentVersion,
+    ) -> Result<()>;
     async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<u64>;
     // Databases
     async fn upsert_database(
@@ -196,46 +259,39 @@ pub trait Store {
     ) -> Result<Vec<TransientDatabase>>;
     async fn delete_database(&self, table_ids_hash: &str) -> Result<()>;
     // Tables
-    async fn upsert_table(
+    async fn upsert_data_source_table(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        name: &str,
-        description: &str,
-        timestamp: u64,
-        tags: &Vec<String>,
-        parents: &Vec<String>,
-        remote_database_table_id: Option<String>,
-        remote_database_secret_id: Option<String>,
+        project: Project,
+        data_source_id: String,
+        params: UpsertTable,
     ) -> Result<Table>;
-    async fn update_table_schema(
+    async fn update_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()>;
-    async fn update_table_parents(
+    async fn update_data_source_table_parents(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
         parents: &Vec<String>,
     ) -> Result<()>;
-    async fn invalidate_table_schema(
+    async fn invalidate_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
-    async fn load_table(
+    async fn load_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<Option<Table>>;
-    async fn list_tables(
+    async fn list_data_source_tables(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -243,12 +299,46 @@ pub trait Store {
         table_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Table>, usize)>;
-    async fn delete_table(
+    async fn delete_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
+    // Folders
+    async fn upsert_data_source_folder(
+        &self,
+        project: Project,
+        data_source_id: String,
+        params: UpsertFolder,
+    ) -> Result<Folder>;
+    async fn load_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<Option<Folder>>;
+    async fn list_data_source_folders(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        view_filter: &Option<SearchFilter>,
+        folder_ids: &Option<Vec<String>>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Folder>, usize)>;
+    async fn delete_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
+    ) -> Result<()>;
+    // Data Sources Nodes
+    async fn get_data_source_node(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        node_id: &str,
+    ) -> Result<Option<(Node, i64)>>;
     // LLM Cache
     async fn llm_cache_get(
         &self,
@@ -333,7 +423,7 @@ impl Clone for Box<dyn Store + Sync + Send> {
     }
 }
 
-pub const POSTGRES_TABLES: [&'static str; 14] = [
+pub const POSTGRES_TABLES: [&'static str; 16] = [
     "-- projects
      CREATE TABLE IF NOT EXISTS projects (
         id BIGSERIAL PRIMARY KEY
@@ -475,9 +565,40 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        remote_database_secret_id    TEXT,
        FOREIGN KEY(data_source)     REFERENCES data_sources(id)
     );",
+    "-- data sources folders
+    CREATE TABLE IF NOT EXISTS data_sources_folders (
+       id                           BIGSERIAL PRIMARY KEY,
+       data_source                  BIGINT NOT NULL,
+       created                      BIGINT NOT NULL,
+       folder_id                    TEXT NOT NULL,
+       FOREIGN KEY(data_source)    REFERENCES data_sources(id)
+    );",
+    "-- data sources nodes
+    CREATE TABLE IF NOT EXISTS data_sources_nodes (
+       id                           BIGSERIAL PRIMARY KEY,
+       created                      BIGINT NOT NULL,
+       data_source                  BIGINT NOT NULL,
+       timestamp                    BIGINT NOT NULL,
+       node_id                      TEXT NOT NULL,
+       title                        TEXT NOT NULL,
+       mime_type                    TEXT NOT NULL,
+       parents                      TEXT[] NOT NULL,
+       document                     BIGINT,
+       \"table\"                      BIGINT,
+       folder                       BIGINT,
+       FOREIGN KEY(data_source)    REFERENCES data_sources(id),
+       FOREIGN KEY(document)       REFERENCES data_sources_documents(id),
+       FOREIGN KEY(\"table\")      REFERENCES tables(id),
+       FOREIGN KEY(folder)         REFERENCES data_sources_folders(id),
+       CONSTRAINT data_sources_nodes_document_id_table_id_folder_id_check CHECK (
+           (document IS NOT NULL AND \"table\" IS NULL AND folder IS NULL) OR
+           (document IS NULL AND \"table\" IS NOT NULL AND folder IS NULL) OR
+           (document IS NULL AND \"table\" IS NULL AND folder IS NOT NULL)
+        )
+    );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 27] = [
+pub const SQL_INDEXES: [&'static str; 30] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -538,6 +659,12 @@ pub const SQL_INDEXES: [&'static str; 27] = [
         idx_sqlite_workers_url ON sqlite_workers (url);",
     "CREATE INDEX IF NOT EXISTS
         idx_status_deleted ON data_sources_documents (id) WHERE status = 'deleted';",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_data_sources_folders_data_source_folder_id ON data_sources_folders(data_source, folder_id);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_data_source_node_id ON data_sources_nodes(data_source, node_id);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_parents_array ON data_sources_nodes USING GIN (parents);",
 ];
 
 pub const SQL_FUNCTIONS: [&'static str; 2] = [

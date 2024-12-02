@@ -67,6 +67,7 @@ import {
   ZendeskCategory,
   ZendeskConfiguration,
   ZendeskTicket,
+  ZendeskTimestampCursor,
 } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
@@ -120,6 +121,7 @@ async function main(): Promise<void> {
   await RemoteDatabaseModel.sync({ alter: true });
   await RemoteSchemaModel.sync({ alter: true });
   await RemoteTableModel.sync({ alter: true });
+  await ZendeskTimestampCursor.sync({ alter: true });
   await ZendeskConfiguration.sync({ alter: true });
   await ZendeskBrand.sync({ alter: true });
   await ZendeskCategory.sync({ alter: true });

@@ -4,14 +4,14 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
 import {
   deleteWorkspaceWorkflow,
   scrubDataSourceWorkflow,
-  scrubVaultWorkflow,
+  scrubSpaceWorkflow,
 } from "./workflows";
 
 export async function launchScrubDataSourceWorkflow(
@@ -47,22 +47,22 @@ export async function launchScrubDataSourceWorkflow(
   }
 }
 
-export async function launchScrubVaultWorkflow(
+export async function launchScrubSpaceWorkflow(
   auth: Authenticator,
-  vault: VaultResource
+  space: SpaceResource
 ) {
   const client = await getTemporalClient();
   const owner = auth.getNonNullableWorkspace();
 
-  await client.workflow.start(scrubVaultWorkflow, {
+  await client.workflow.start(scrubSpaceWorkflow, {
     args: [
       {
-        vaultId: vault.sId,
+        spaceId: space.sId,
         workspaceId: owner.sId,
       },
     ],
     taskQueue: "poke-queue",
-    workflowId: `poke-${owner.sId}-scrub-vault-${vault.sId}`,
+    workflowId: `poke-${owner.sId}-scrub-space-${space.sId}`,
   });
 }
 

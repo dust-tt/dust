@@ -1,7 +1,9 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   FileUploadedRequestResponseBody,
   FileUploadRequestResponseBody,
   FileUseCase,
+  FileUseCaseMetadata,
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
@@ -14,12 +16,11 @@ import {
   MAX_FILE_SIZES,
   Ok,
 } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getMimeTypeFromFile } from "@app/lib/file";
 
-interface FileBlob {
+export interface FileBlob {
   contentType: SupportedFileContentType;
   file: File;
   filename: string;
@@ -30,7 +31,7 @@ interface FileBlob {
   size: number;
   publicUrl?: string;
 }
-
+export type FileBlobWithFileId = FileBlob & { fileId: string };
 type FileBlobUploadErrorCode =
   | "failed_to_upload_file"
   | "file_type_not_supported";
@@ -51,14 +52,16 @@ const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 export function useFileUploaderService({
   owner,
   useCase,
+  useCaseMetadata,
 }: {
   owner: LightWorkspaceType;
   useCase: FileUseCase;
+  useCaseMetadata?: FileUseCaseMetadata;
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const handleFilesUpload = async (files: File[]) => {
     setIsProcessingFiles(true);
@@ -123,7 +126,7 @@ export function useFileUploaderService({
         if (fileBlobs.some((f) => f.id === file.name)) {
           sendNotification({
             type: "error",
-            title: "File already exists.",
+            title: `Failed to upload file ${file.name}`,
             description: `File "${file.name}" is already uploaded.`,
           });
 
@@ -168,6 +171,7 @@ export function useFileUploaderService({
             fileName: fileBlob.filename,
             fileSize: fileBlob.size,
             useCase,
+            useCaseMetadata,
           }),
         });
       } catch (err) {
@@ -257,8 +261,8 @@ export function useFileUploaderService({
         erroredBlobs.push(result.error);
         sendNotification({
           type: "error",
-          title: "Failed to upload file.",
-          description: result.error.message,
+          title: `Failed to upload file`,
+          description: `error uploading  ${result.error.file.name} ${result.error.message ? ": " + result.error.message : ""}`,
         });
       } else {
         successfulBlobs.push(result.value);
@@ -311,7 +315,6 @@ export function useFileUploaderService({
     setFileBlobs([]);
   };
 
-  type FileBlobWithFileId = FileBlob & { fileId: string };
   function fileBlobHasFileId(
     fileBlob: FileBlob
   ): fileBlob is FileBlobWithFileId {

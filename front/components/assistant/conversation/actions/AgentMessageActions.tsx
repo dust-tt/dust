@@ -1,50 +1,56 @@
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
-import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
+import { Button, Chip, CommandLineIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentActionType,
   AgentMessageType,
   LightWorkspaceType,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
+import type { AgentStateClassification } from "@app/components/assistant/conversation/AgentMessage";
 import { classNames } from "@app/lib/utils";
+
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
+  lastAgentStateClassification: AgentStateClassification;
   size?: ConversationMessageSizeType;
   owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({
   agentMessage,
+  lastAgentStateClassification,
   owner,
   size = "normal",
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
   const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
 
-  // We're thinking or acting if the message status is still "created" and we don't have content
-  // yet. Despite our work on chain of thoughts events, it's still possible for content to be
-  // emitted before actions in which case we will think we're not thinking or acting until an action
-  // gets emitted in which case the content will get requalified as chain of thoughts and this will
-  // switch back to true.
+  useEffect(() => {
+    switch (lastAgentStateClassification) {
+      case "thinking":
+        setChipLabel("Thinking");
+        break;
+      case "acting":
+        if (agentMessage.actions.length > 0) {
+          setChipLabel(renderActionName(agentMessage.actions));
+        }
+        break;
+      case "done":
+        setChipLabel(undefined);
+        break;
+      default:
+        assertNever(lastAgentStateClassification);
+    }
+  }, [lastAgentStateClassification, agentMessage.actions]);
+
   const isThinkingOrActing = useMemo(
     () => agentMessage.status === "created",
     [agentMessage.status]
   );
-
-  useEffect(() => {
-    if (isThinkingOrActing) {
-      if (agentMessage.actions.length === 0) {
-        setChipLabel("Thinking");
-      } else {
-        setChipLabel(renderActionName(agentMessage.actions));
-      }
-    } else {
-      setChipLabel(undefined);
-    }
-  }, [isThinkingOrActing, agentMessage.actions]);
 
   return (
     <div className="flex flex-col items-start gap-y-4">
@@ -52,7 +58,7 @@ export function AgentMessageActions({
         actions={agentMessage.actions}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
-        isStreaming={isThinkingOrActing || agentMessage.actions.length === 0}
+        isActing={lastAgentStateClassification === "acting"}
         owner={owner}
       />
       <ActionDetails
@@ -79,13 +85,20 @@ function ActionDetails({
   onClick: () => void;
   size: ConversationMessageSizeType;
 }) {
+  // We memoize the spinner as otherwise its state gets resetted on each token emission (despite
+  // memoization of label in the parent component).
+  const MemoizedSpinner = useMemo(
+    () => <Spinner variant="dark" size="xs" />,
+    []
+  );
+
   if (!label && (!isActionStepDone || !hasActions)) {
     return null;
   }
 
   return label ? (
-    <div key={label} className="animate-fadeIn duration-1000 fade-out">
-      <Chip size="sm" color="purple">
+    <div key={label}>
+      <Chip size="sm" color="slate" isBusy>
         <div
           className={classNames(
             "flex flex-row items-center gap-x-2",
@@ -93,8 +106,14 @@ function ActionDetails({
           )}
           onClick={hasActions ? onClick : undefined}
         >
-          <Spinner variant="purple900" size="xs" />
-          {label}
+          {MemoizedSpinner}
+          {label === "Thinking" ? (
+            <span>{label}</span>
+          ) : (
+            <>
+              Thinking <span className="text-regular">{label}</span>
+            </>
+          )}
         </div>
       </Chip>
     </div>
@@ -102,8 +121,8 @@ function ActionDetails({
     <Button
       size={size === "normal" ? "sm" : "xs"}
       label="Tools inspection"
-      icon={EyeIcon}
-      variant="ghost"
+      icon={CommandLineIcon}
+      variant="outline"
       onClick={onClick}
     />
   );

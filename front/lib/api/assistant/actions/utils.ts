@@ -8,7 +8,7 @@ import {
   TimeIcon,
 } from "@dust-tt/sparkle";
 import type {
-  AgentActionConfigurationType,
+  ActionConfigurationType,
   AgentConfigurationType,
   RetrievalConfigurationType,
   WebsearchConfigurationType,
@@ -33,8 +33,8 @@ export const ACTION_SPECIFICATIONS: Record<
   }
 > = {
   RETRIEVAL_EXHAUSTIVE: {
-    label: "Most recent data",
-    description: "Include as much data as possible",
+    label: "Include data",
+    description: "Include data exhaustively",
     cardIcon: TimeIcon,
     dropDownIcon: TimeIcon,
     flag: null,
@@ -90,7 +90,7 @@ export function getRetrievalTopK({
   stepActions,
 }: {
   agentConfiguration: AgentConfigurationType;
-  stepActions: AgentActionConfigurationType[];
+  stepActions: ActionConfigurationType[];
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
@@ -130,7 +130,7 @@ export function getRetrievalTopK({
 export function getWebsearchNumResults({
   stepActions,
 }: {
-  stepActions: AgentActionConfigurationType[];
+  stepActions: ActionConfigurationType[];
 }): number {
   const websearchActions = stepActions.filter(
     (action) => action.type === "websearch_configuration"
@@ -163,7 +163,7 @@ export function getCitationsCount({
   stepActionIndex,
 }: {
   agentConfiguration: AgentConfigurationType;
-  stepActions: AgentActionConfigurationType[];
+  stepActions: ActionConfigurationType[];
   stepActionIndex: number;
 }): number {
   const action = stepActions[stepActionIndex];
@@ -182,6 +182,7 @@ export function getCitationsCount({
     case "dust_app_run_configuration":
     case "process_configuration":
     case "browse_configuration":
+    case "conversation_include_file_configuration":
       return 0;
     default:
       assertNever(action);
@@ -207,7 +208,7 @@ export function actionRefsOffset({
 }: {
   agentConfiguration: AgentConfigurationType;
   stepActionIndex: number;
-  stepActions: AgentActionConfigurationType[];
+  stepActions: ActionConfigurationType[];
   refsOffset: number;
 }): number {
   for (let i = 0; i < stepActionIndex; i++) {

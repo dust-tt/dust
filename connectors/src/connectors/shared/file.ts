@@ -78,6 +78,8 @@ export async function handleCsvFile({
       },
       truncate: true,
       parents,
+      title: fileName,
+      mimeType: "text/csv",
     });
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing or upserting table");
