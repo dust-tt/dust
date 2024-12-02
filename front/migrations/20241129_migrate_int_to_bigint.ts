@@ -1,9 +1,9 @@
+import chalk from "chalk";
 import type { PoolClient } from "pg";
 import { Pool } from "pg";
 
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import chalk from "chalk";
 
 // Types.
 interface MigrationConfig {
@@ -40,8 +40,6 @@ interface MainTableSwitchConfig {
   legacyColumn: string; // e.g., 'id_legacy'
   sequenceName: string; // e.g., 'table_id_seq'
   indexName: string; // e.g., 'table_pkey_bigint'
-  triggerName: string; // e.g., 'bigint_sync'
-  triggerFunction: string; // e.g., 'table_bigint_sync_trigger'
 }
 
 interface ReferencingColumnSwitchConfig {
@@ -60,23 +58,58 @@ const MigrationSteps = [
 ] as const;
 type MigrationStepType = (typeof MigrationSteps)[number];
 
-const MAIN_TABLE_NEW_COLUMN = "new_id";
-const MAIN_TABLE_LEGACY_COLUMN = "id_legacy";
+const MAIN_ID_COLUMN = "id";
 
-const makeNewForeignKeyColumn = (column: string) => `${column}_new`;
+export const COLUMN_TYPE = {
+  INT: "int",
+  BIGINT: "bigint",
+} as const;
 
-const makeNewIndexName = (
-  indexName: string,
-  { isPrimary }: { isPrimary: boolean }
-) => `${indexName}_${isPrimary ? "pkey" : "fk"}_bigint`;
+export const SYNC_DIRECTION = {
+  TO_BIGINT: "to_bigint",
+  TO_LEGACY: "to_legacy",
+} as const;
 
-const makeTriggerName = ({ isLegacy }: { isLegacy: boolean }) =>
-  isLegacy ? "legacy_sync" : "bigint_sync";
+// Make these type-safe using TypeScript literal types
+type ColumnType = (typeof COLUMN_TYPE)[keyof typeof COLUMN_TYPE];
+type SyncDirection = (typeof SYNC_DIRECTION)[keyof typeof SYNC_DIRECTION];
 
-const makeTriggerFunctionName = (
-  tableName: string,
-  { isLegacy }: { isLegacy: boolean }
-) => `${tableName}_${isLegacy ? "legacy_sync_trigger" : "bigint_sync_trigger"}`;
+// naming.ts
+export const createColumnName = {
+  new: (baseColumn: string) => `${baseColumn}_new` as const,
+  legacy: (baseColumn: string) => `${baseColumn}_legacy` as const,
+};
+
+export const createIndexName = {
+  primary: (tableName: string, column: ColumnType) =>
+    `${tableName}_pkey_${column}` as const,
+  foreign: (tableName: string, columnName: string, column: ColumnType) =>
+    `${tableName}_${columnName}_fk_${column}` as const,
+};
+
+export const createTriggerNames = {
+  // For primary key (main table)
+  pk: (tableName: string, direction: SyncDirection) => ({
+    trigger: `${tableName}_pk_sync_${direction}` as const,
+    function: `${tableName}_pk_sync_${direction}_trigger` as const,
+  }),
+
+  // For foreign key (referencing tables)
+  fk: (tableName: string, direction: SyncDirection) => ({
+    trigger: `${tableName}_fk_sync_${direction}` as const,
+    function: `${tableName}_fk_sync_${direction}_trigger` as const,
+  }),
+};
+
+export const createConstraintName = {
+  notNull: (tableName: string, type: ColumnType) =>
+    `${tableName}_not_null_${type}` as const,
+  foreignKey: (tableName: string, columnName: string, type: ColumnType) =>
+    `${tableName}_${columnName}_fkey_${type}` as const,
+};
+
+export const createSequenceName = (tableName: string) =>
+  `${tableName}_id_seq` as const;
 
 /**
  * Converts Postgres array string to JS array
@@ -164,13 +197,16 @@ class IntToBigIntMigration {
 
       // Find referencing tables
       const referencingTables = await this.findReferencingTables(client);
-      console.log(`Found ${referencingTables.length} referencing tables`);
 
       // Add new columns
       await this.addNewColumns(client, referencingTables);
 
       // Setup triggers
-      await this.setupTriggers(client, referencingTables);
+      await this.setupTriggers(
+        client,
+        referencingTables,
+        SYNC_DIRECTION.TO_BIGINT
+      );
     } finally {
       client.release();
     }
@@ -182,24 +218,21 @@ class IntToBigIntMigration {
     try {
       // Find referencing tables
       const referencingTables = await this.findReferencingTables(client);
-      console.log(`Found ${referencingTables.length} referencing tables`);
 
       // Backfill main table
-      await this.backfillTable(
-        client,
-        this.config.tableName,
-        "id",
-        MAIN_TABLE_NEW_COLUMN
-      );
+      await this.backfillTable(client, {
+        tableName: this.config.tableName,
+        sourceColumn: MAIN_ID_COLUMN,
+        targetColumn: createColumnName.new(MAIN_ID_COLUMN),
+      });
 
       // Backfill referencing tables
       for (const ref of referencingTables) {
-        await this.backfillTable(
-          client,
-          ref.tableName,
-          ref.foreignKeyColumn,
-          makeNewForeignKeyColumn(ref.foreignKeyColumn)
-        );
+        await this.backfillTable(client, {
+          tableName: ref.tableName,
+          sourceColumn: ref.foreignKeyColumn,
+          targetColumn: createColumnName.new(ref.foreignKeyColumn),
+        });
       }
 
       // Show progress
@@ -217,7 +250,6 @@ class IntToBigIntMigration {
     try {
       // Find referencing tables
       const referencingTables = await this.findReferencingTables(client);
-      console.log(`Found ${referencingTables.length} referencing tables`);
 
       // Verify backfill is complete
       const progress = await this.checkProgress(client, referencingTables);
@@ -243,14 +275,30 @@ class IntToBigIntMigration {
     }
   }
 
+  private async dropTriggers(
+    client: PoolClient,
+    { tableName, isPrimaryKey }: { tableName: string; isPrimaryKey: boolean },
+    direction: SyncDirection
+  ): Promise<void> {
+    const triggerInfo = isPrimaryKey
+      ? createTriggerNames.pk(tableName, direction)
+      : createTriggerNames.fk(tableName, direction);
+
+    await this.executeSql(
+      client,
+      `
+      DROP TRIGGER IF EXISTS ${triggerInfo.trigger} ON ${tableName};
+      DROP FUNCTION IF EXISTS ${triggerInfo.function};
+      `
+    );
+  }
+
   // Cutover Phase
   private async cutover(): Promise<void> {
     const client = await this.pool.connect();
-
     try {
       // Find referencing tables
       const referencingTables = await this.findReferencingTables(client);
-      console.log(`Found ${referencingTables.length} referencing tables`);
 
       // Use one global transaction for all table switches.
       await this.executeSql(client, "BEGIN");
@@ -259,27 +307,30 @@ class IntToBigIntMigration {
       for (const ref of referencingTables) {
         await this.switchReferencingTable(client, ref, {
           currentColumn: ref.foreignKeyColumn,
-          newColumn: makeNewForeignKeyColumn(ref.foreignKeyColumn),
-          legacyColumn: `${ref.foreignKeyColumn}_legacy`,
+          newColumn: createColumnName.new(ref.foreignKeyColumn),
+          legacyColumn: createColumnName.legacy(ref.foreignKeyColumn),
           constraintName: ref.constraintName,
         });
       }
 
       // Switch main table.
       await this.switchMainTable(client, {
-        currentColumn: "id",
-        newColumn: MAIN_TABLE_NEW_COLUMN,
-        legacyColumn: MAIN_TABLE_LEGACY_COLUMN,
+        currentColumn: MAIN_ID_COLUMN,
+        newColumn: createColumnName.new(MAIN_ID_COLUMN),
+        legacyColumn: createColumnName.legacy(MAIN_ID_COLUMN),
         sequenceName: `${this.config.tableName}_id_seq`,
-        indexName: makeNewIndexName(this.config.tableName, { isPrimary: true }),
-        triggerName: makeTriggerName({ isLegacy: false }),
-        triggerFunction: makeTriggerFunctionName(this.config.tableName, {
-          isLegacy: false,
-        }),
+        indexName: createIndexName.primary(
+          this.config.tableName,
+          COLUMN_TYPE.BIGINT
+        ),
       });
 
-      // Setup legacy sync triggers for the main table and referencing tables.
-      await this.setupTriggers(client, referencingTables, { isLegacy: true });
+      // Setup legacy sync triggers to sync id to the legacy columns.
+      await this.setupTriggers(
+        client,
+        referencingTables,
+        SYNC_DIRECTION.TO_LEGACY
+      );
 
       await this.executeSql(client, "COMMIT");
       console.log(
@@ -301,23 +352,33 @@ class IntToBigIntMigration {
     try {
       // Find referencing tables
       const referencingTables = await this.findReferencingTables(client);
-      console.log(`Found ${referencingTables.length} referencing tables`);
 
       // Use one global transaction for all table switches.
       await this.executeSql(client, "BEGIN");
 
       // Switch referencing table first as we can't switch main table with active FK constraints.
       for (const ref of referencingTables) {
-        console.log(">> currentColon", ref.foreignKeyColumn);
-        console.log(">> constraintName", ref.constraintName);
+        // Create former FK indexes before renaming.
+        console.log(
+          chalk.yellow(
+            `[Indexes] Creating constraints for table: ${chalk.bold(ref.tableName)}`
+          )
+        );
+
+        // Create foreign key constraint.
+        await this.createForeignKeyConstraints(
+          client,
+          ref,
+          SYNC_DIRECTION.TO_LEGACY
+        );
 
         await this.switchReferencingTable(
           client,
           ref,
           {
             currentColumn: ref.foreignKeyColumn,
-            newColumn: `${ref.foreignKeyColumn}_temp`,
-            legacyColumn: `${ref.foreignKeyColumn}_legacy`,
+            newColumn: createColumnName.new(ref.foreignKeyColumn),
+            legacyColumn: createColumnName.legacy(ref.foreignKeyColumn),
             constraintName: ref.constraintName,
           },
           { isRollback: true }
@@ -328,19 +389,24 @@ class IntToBigIntMigration {
       await this.switchMainTable(
         client,
         {
-          currentColumn: "id",
-          newColumn: MAIN_TABLE_NEW_COLUMN,
-          legacyColumn: MAIN_TABLE_LEGACY_COLUMN,
+          currentColumn: MAIN_ID_COLUMN,
+          newColumn: createColumnName.new(MAIN_ID_COLUMN),
+          legacyColumn: createColumnName.legacy(MAIN_ID_COLUMN),
           sequenceName: `${this.config.tableName}_id_seq`,
-          indexName: makeNewIndexName(this.config.tableName, {
-            isPrimary: true,
-          }),
-          triggerName: makeTriggerName({ isLegacy: false }),
-          triggerFunction: makeTriggerFunctionName(this.config.tableName, {
-            isLegacy: false,
-          }),
+          indexName: createIndexName.primary(
+            this.config.tableName,
+            // We are rolling back to int
+            COLUMN_TYPE.INT
+          ),
         },
         { isRollback: true }
+      );
+
+      // Setup sync triggers to sync id to the new columns.
+      await this.setupTriggers(
+        client,
+        referencingTables,
+        SYNC_DIRECTION.TO_BIGINT
       );
 
       await this.executeSql(client, "COMMIT");
@@ -395,6 +461,18 @@ class IntToBigIntMigration {
       [this.config.tableName]
     );
 
+    console.log(
+      chalk.magenta(
+        `[Referencing Tables] Found ${rows.length} referencing tables for table ${this.config.tableName}`
+      )
+    );
+
+    rows.forEach((row) =>
+      console.log(
+        chalk.dim(`• ${row.schema}.${row.tableName} (${row.foreignKeyColumn})`)
+      )
+    );
+
     return rows;
   }
 
@@ -402,73 +480,105 @@ class IntToBigIntMigration {
     client: PoolClient,
     referencingTables: ReferencingTable[]
   ): Promise<void> {
-    // Add MAIN_TABLE_NEW_COLUMN column to main table
+    const newColumn = createColumnName.new(MAIN_ID_COLUMN);
+
+    console.log(chalk.blue("[Columns] Adding new BigInt columns"));
+
+    console.log(
+      chalk.yellow(`- Main table (${chalk.bold(this.config.tableName)}):`)
+    );
+
+    // Add new ID BigInt column to main table
     await this.executeSql(
       client,
       `
       ALTER TABLE ${this.config.tableName}
-      ADD COLUMN IF NOT EXISTS "${MAIN_TABLE_NEW_COLUMN}" BIGINT
+      ADD COLUMN IF NOT EXISTS "${newColumn}" BIGINT
     `
     );
+
+    console.log(chalk.dim(`✓ Added column "${newColumn}"`));
+
     console.log(
-      `Added ${MAIN_TABLE_NEW_COLUMN} column to ${this.config.tableName}`
+      chalk.yellow(
+        `- Referencing tables (${chalk.bold(referencingTables.length)}):`
+      )
     );
 
     // Add new columns to referencing tables
     for (const ref of referencingTables) {
+      const newRefColumn = createColumnName.new(ref.foreignKeyColumn);
+
       await this.executeSql(
         client,
         // We need double quote to escape the camel case column name
         `
         ALTER TABLE ${ref.tableName}
-        ADD COLUMN IF NOT EXISTS "${makeNewForeignKeyColumn(ref.foreignKeyColumn)}" BIGINT
+        ADD COLUMN IF NOT EXISTS "${newRefColumn}" BIGINT
       `
       );
-      console.log(
-        `Added ${makeNewForeignKeyColumn(ref.foreignKeyColumn)} column to ${ref.tableName}`
-      );
+
+      console.log(chalk.dim(`✓ ${ref.tableName} Added "${newRefColumn}"`));
     }
+
+    console.log(chalk.green(`[Columns] Successfully added all BigInt columns`));
   }
 
   private async setupTriggers(
     client: PoolClient,
     referencingTables: ReferencingTable[],
-    opts: { isLegacy?: boolean } = {}
+    direction: SyncDirection
   ): Promise<void> {
-    await this.createPKSyncTrigger(client, this.config.tableName, opts);
+    // Create PK sync trigger for the main table
+    await this.createPKSyncTrigger(client, this.config.tableName, direction);
+
+    // Create FK sync triggers for the referencing tables
     for (const ref of referencingTables) {
-      await this.createFKSyncTrigger(client, ref, opts);
+      await this.createFKSyncTrigger(client, ref, direction);
     }
   }
 
   private async createPKSyncTrigger(
     client: PoolClient,
     tableName: string,
-    { isLegacy = false }: { isLegacy?: boolean } = {}
+    direction: SyncDirection
   ): Promise<void> {
-    const triggerName = makeTriggerName({ isLegacy });
-    const sourceCol = "id";
-    const targetCol = isLegacy
-      ? MAIN_TABLE_LEGACY_COLUMN
-      : MAIN_TABLE_NEW_COLUMN;
+    const { trigger: triggerName, function: functionName } =
+      createTriggerNames.pk(tableName, direction);
+
+    const sourceCol = MAIN_ID_COLUMN;
+    const targetCol =
+      direction === SYNC_DIRECTION.TO_LEGACY
+        ? createColumnName.legacy(sourceCol)
+        : createColumnName.new(sourceCol);
+
+    console.log(
+      chalk.blue(
+        `[Trigger] Creating ${chalk.bold(triggerName)} for ${chalk.bold(tableName)}`
+      )
+    );
 
     await this.executeSql(
       client,
       `DROP TRIGGER IF EXISTS ${triggerName} ON ${tableName}`
     );
 
+    console.log(chalk.dim(`- Dropped existing trigger if present`));
+
     await this.executeSql(
       client,
       `
-      CREATE OR REPLACE FUNCTION ${tableName}_${triggerName}_trigger()
+      CREATE OR REPLACE FUNCTION ${functionName}()
       RETURNS TRIGGER AS $$
       BEGIN
-        NEW.${targetCol} := NEW.${sourceCol};
+        NEW."${targetCol}" := NEW."${sourceCol}";
         RETURN NEW;
       END;
       $$ LANGUAGE plpgsql
     `
     );
+
+    console.log(chalk.dim(`- Created trigger function`));
 
     await this.executeSql(
       client,
@@ -476,23 +586,30 @@ class IntToBigIntMigration {
       CREATE TRIGGER ${triggerName}
         BEFORE INSERT OR UPDATE ON ${tableName}
         FOR EACH ROW
-        EXECUTE FUNCTION ${tableName}_${triggerName}_trigger()
+        EXECUTE FUNCTION ${functionName}()
     `
     );
 
-    console.log(`Created ${triggerName} trigger on ${tableName}`);
+    console.log(
+      chalk.green(
+        `[Trigger] Completed ${chalk.bold(triggerName)} setup for ${chalk.bold(tableName)}`
+      )
+    );
   }
 
   private async createFKSyncTrigger(
     client: PoolClient,
     ref: ReferencingTable,
-    { isLegacy = false }: { isLegacy?: boolean } = {}
+    direction: SyncDirection
   ): Promise<void> {
-    const triggerName = isLegacy ? "legacy_fk_sync" : "fk_sync";
+    const { trigger: triggerName, function: functionName } =
+      createTriggerNames.fk(ref.tableName, direction);
+
     const sourceCol = ref.foreignKeyColumn;
-    const targetCol = isLegacy
-      ? `${ref.foreignKeyColumn}_legacy`
-      : makeNewForeignKeyColumn(ref.foreignKeyColumn);
+    const targetCol =
+      direction === SYNC_DIRECTION.TO_LEGACY
+        ? createColumnName.legacy(ref.foreignKeyColumn)
+        : createColumnName.new(ref.foreignKeyColumn);
 
     console.log(
       chalk.blue(
@@ -505,12 +622,12 @@ class IntToBigIntMigration {
       `DROP TRIGGER IF EXISTS ${triggerName} ON ${ref.tableName}`
     );
 
-    console.log(chalk.dim(`• Dropped existing trigger if present`));
+    console.log(chalk.dim(`- Dropped existing trigger if present`));
 
     await this.executeSql(
       client,
       `
-      CREATE OR REPLACE FUNCTION ${ref.tableName}_${triggerName}_trigger()
+      CREATE OR REPLACE FUNCTION ${functionName}()
       RETURNS TRIGGER AS $$
       BEGIN
         NEW."${targetCol}" := NEW."${sourceCol}";
@@ -520,7 +637,7 @@ class IntToBigIntMigration {
     `
     );
 
-    console.log(chalk.dim(`• Created trigger function`));
+    console.log(chalk.dim(`- Created trigger function`));
 
     await this.executeSql(
       client,
@@ -528,7 +645,7 @@ class IntToBigIntMigration {
       CREATE TRIGGER ${triggerName}
         BEFORE INSERT OR UPDATE ON ${ref.tableName}
         FOR EACH ROW
-        EXECUTE FUNCTION ${ref.tableName}_${triggerName}_trigger()
+        EXECUTE FUNCTION ${functionName}()
     `
     );
     console.log(chalk.dim(`• Created trigger`));
@@ -542,9 +659,11 @@ class IntToBigIntMigration {
 
   private async backfillTable(
     client: PoolClient,
-    tableName: string,
-    sourceColumn: string,
-    targetColumn: string
+    {
+      tableName,
+      sourceColumn,
+      targetColumn,
+    }: { tableName: string; sourceColumn: string; targetColumn: string }
   ): Promise<void> {
     let currentId = 0;
 
@@ -617,7 +736,9 @@ class IntToBigIntMigration {
     );
 
     console.log(
-      chalk.blue(`[Composite Indexes] Found ${chalk.bold(rows.length)}:`)
+      chalk.blue(
+        `[Composite Indexes] Found ${chalk.bold(rows.length)} for ${tableName}:`
+      )
     );
     rows.forEach((r) =>
       console.log(
@@ -636,9 +757,11 @@ class IntToBigIntMigration {
 
   private async createCompositeIndexes(
     client: PoolClient,
-    tableName: string,
-    oldColumn: string,
-    newColumn: string
+    {
+      tableName,
+      oldColumn,
+      newColumn,
+    }: { tableName: string; oldColumn: string; newColumn: string }
   ): Promise<void> {
     const compositeIndexes = await this.findCompositeIndexes(
       client,
@@ -652,7 +775,7 @@ class IntToBigIntMigration {
 
       // Replace old column with new column in the columns array
       const newColumns = index.columns.map((col) =>
-        col === oldColumn ? newColumn : `"${col}"`
+        col === oldColumn ? `"${newColumn}"` : `"${col}"`
       );
 
       await this.executeSql(
@@ -678,22 +801,39 @@ class IntToBigIntMigration {
       )
     );
 
-    // Create PK index
-    await this.createAndWaitForIndex(
-      client,
-      this.config.tableName,
-      MAIN_TABLE_NEW_COLUMN,
-      makeNewIndexName(this.config.tableName, { isPrimary: true }),
-      { isPrimary: true }
-    );
+    const newMainColumn = createColumnName.new(MAIN_ID_COLUMN);
+
+    // Create an index for the existing PK. In case we need to rollback.
+    // If we need to rollback, we will need to use this index to create the PK constraint from.
+    await this.createAndWaitForIndex(client, {
+      tableName: this.config.tableName,
+      columnName: MAIN_ID_COLUMN,
+      columnType: COLUMN_TYPE.INT,
+      indexName: createIndexName.primary(
+        this.config.tableName,
+        COLUMN_TYPE.INT
+      ),
+      isPrimary: true,
+    });
+
+    // Create PK index for the new column.
+    await this.createAndWaitForIndex(client, {
+      tableName: this.config.tableName,
+      columnName: newMainColumn,
+      columnType: COLUMN_TYPE.BIGINT,
+      indexName: createIndexName.primary(
+        this.config.tableName,
+        COLUMN_TYPE.BIGINT
+      ),
+      isPrimary: true,
+    });
 
     // Create composite indexes for the main table
-    await this.createCompositeIndexes(
-      client,
-      this.config.tableName,
-      "id", // Original column
-      MAIN_TABLE_NEW_COLUMN
-    );
+    await this.createCompositeIndexes(client, {
+      tableName: this.config.tableName,
+      oldColumn: MAIN_ID_COLUMN,
+      newColumn: newMainColumn,
+    });
 
     // Create FK indexes and their composite indexes
     for (const ref of referencingTables) {
@@ -703,38 +843,52 @@ class IntToBigIntMigration {
         )
       );
 
-      const newFKColumn = makeNewForeignKeyColumn(ref.foreignKeyColumn);
+      const newFKColumn = createColumnName.new(ref.foreignKeyColumn);
 
       // Create the basic FK index
-      await this.createAndWaitForIndex(
-        client,
-        ref.tableName,
-        newFKColumn,
-        makeNewIndexName(`${ref.tableName}_${ref.foreignKeyColumn}`, {
-          isPrimary: false,
-        }),
-        { isPrimary: false }
-      );
+      await this.createAndWaitForIndex(client, {
+        tableName: ref.tableName,
+        columnName: newFKColumn,
+        columnType: COLUMN_TYPE.BIGINT,
+        indexName: createIndexName.foreign(
+          ref.tableName,
+          ref.foreignKeyColumn,
+          COLUMN_TYPE.BIGINT
+        ),
+        isPrimary: false,
+      });
 
       // Create foreign key constraint.
-      await this.createForeignKeyConstraints(client, ref);
+      await this.createForeignKeyConstraints(
+        client,
+        ref,
+        SYNC_DIRECTION.TO_BIGINT
+      );
 
       // Create composite indexes for this referencing table
-      await this.createCompositeIndexes(
-        client,
-        ref.tableName,
-        ref.foreignKeyColumn,
-        newFKColumn
-      );
+      await this.createCompositeIndexes(client, {
+        tableName: ref.tableName,
+        oldColumn: ref.foreignKeyColumn,
+        newColumn: newFKColumn,
+      });
     }
   }
 
   private async createAndWaitForIndex(
     client: PoolClient,
-    tableName: string,
-    columnName: string,
-    indexName: string,
-    { isPrimary }: { isPrimary: boolean }
+    {
+      columnName,
+      columnType,
+      indexName,
+      isPrimary,
+      tableName,
+    }: {
+      columnName: string;
+      columnType: ColumnType;
+      indexName: string;
+      isPrimary: boolean;
+      tableName: string;
+    }
   ): Promise<void> {
     // Only primary key indexes are unique.
     await this.executeSql(
@@ -748,15 +902,18 @@ class IntToBigIntMigration {
     await this.waitForIndex(client, indexName);
 
     if (isPrimary) {
-      const contraintName = `${tableName}_not_null_bigint`;
+      const constraintName = createConstraintName.notNull(
+        tableName,
+        columnType
+      );
 
       try {
-        // We can't use `IF NOT EXISTS` for constraints with CHECL, so we need to catch the error.
+        // We can't use `IF NOT EXISTS` for constraints, so we need to catch the error.
         await this.executeSql(
           client,
           `
         ALTER TABLE ${tableName}
-        ADD CONSTRAINT ${contraintName}
+        ADD CONSTRAINT "${constraintName}"
         CHECK ("${columnName}" IS NOT NULL) NOT VALID;
         `
         );
@@ -772,7 +929,7 @@ class IntToBigIntMigration {
       await this.executeSql(
         client,
         `
-        ALTER TABLE ${tableName} VALIDATE CONSTRAINT ${contraintName};
+        ALTER TABLE ${tableName} VALIDATE CONSTRAINT ${constraintName};
         `
       );
     }
@@ -855,27 +1012,44 @@ class IntToBigIntMigration {
 
   private async createForeignKeyConstraints(
     client: PoolClient,
-    ref: ReferencingTable
+    ref: ReferencingTable,
+    direction: SyncDirection
   ): Promise<void> {
-    const newConstraintName = `${ref.constraintName}_bigint`;
-    const newColumn = makeNewForeignKeyColumn(ref.foreignKeyColumn);
+    const isForward = direction === SYNC_DIRECTION.TO_BIGINT;
+
+    const newConstraintName = createConstraintName.foreignKey(
+      ref.tableName,
+      ref.foreignKeyColumn,
+      isForward ? COLUMN_TYPE.BIGINT : COLUMN_TYPE.INT
+    );
+
+    // For forward (TO_BIGINT): new column references new PK
+    // For backward (TO_LEGACY): legacy column references legacy PK
+    const sourceColumn = isForward
+      ? createColumnName.new(ref.foreignKeyColumn)
+      : createColumnName.legacy(ref.foreignKeyColumn);
+
+    const targetColumn = isForward
+      ? createColumnName.new(MAIN_ID_COLUMN)
+      : createColumnName.legacy(MAIN_ID_COLUMN);
 
     console.log(
       chalk.yellow(
-        `[Setup] Creating FK constraint for ${chalk.bold(ref.tableName)}."${newColumn}"`
+        `[Setup] Creating FK constraint for ${chalk.bold(ref.tableName)}."${sourceColumn}"`
       )
     );
 
     // Create the new FK constraint concurrently.
     // /!\ We restrict the update and delete actions to RESTRICT.
+    // Even with rollback, we won't rollback to the previous constraint.
     try {
       await this.executeSql(
         client,
         `
           ALTER TABLE ${ref.tableName}
-          ADD CONSTRAINT ${newConstraintName}
-          FOREIGN KEY ("${newColumn}")
-          REFERENCES ${this.config.tableName}(${MAIN_TABLE_NEW_COLUMN})
+          ADD CONSTRAINT "${newConstraintName}"
+          FOREIGN KEY ("${sourceColumn}")
+          REFERENCES ${this.config.tableName}(${targetColumn})
           ON UPDATE RESTRICT
           ON DELETE RESTRICT
           NOT VALID;
@@ -892,7 +1066,7 @@ class IntToBigIntMigration {
       client,
       `
         ALTER TABLE ${ref.tableName}
-        VALIDATE CONSTRAINT ${newConstraintName};
+        VALIDATE CONSTRAINT "${newConstraintName}";
         `
     );
 
@@ -910,15 +1084,8 @@ class IntToBigIntMigration {
     config: MainTableSwitchConfig,
     { isRollback }: { isRollback: boolean } = { isRollback: false }
   ): Promise<void> {
-    const {
-      currentColumn,
-      newColumn,
-      legacyColumn,
-      sequenceName,
-      indexName,
-      triggerName,
-      triggerFunction,
-    } = config;
+    const { currentColumn, newColumn, legacyColumn, sequenceName, indexName } =
+      config;
 
     console.log(
       chalk.yellow(
@@ -932,42 +1099,65 @@ class IntToBigIntMigration {
     );
 
     if (isRollback) {
+      // First remove the to_bigint triggers on the main table.
+      await this.dropTriggers(
+        client,
+        {
+          tableName: this.config.tableName,
+          isPrimaryKey: true,
+        },
+        SYNC_DIRECTION.TO_LEGACY
+      );
+
       await this.executeSql(
         client,
         `
-          -- Convert sequence back to integer
-          ALTER SEQUENCE ${sequenceName} AS integer;
+        -- Drop current PK constraint
+        ALTER TABLE ${this.config.tableName}
+        DROP CONSTRAINT ${this.config.tableName}_pkey;
 
-          -- Drop current PK constraint
-          ALTER TABLE ${this.config.tableName}
-          DROP CONSTRAINT ${this.config.tableName}_pkey;
+        -- Rename current column back to new
+        ALTER TABLE ${this.config.tableName}
+        RENAME COLUMN "${currentColumn}" TO "${newColumn}";
 
-          -- Rename current column to temp
-          ALTER TABLE ${this.config.tableName}
-          RENAME COLUMN "${currentColumn}" TO "${currentColumn}_temp";
+        -- Rename legacy column back to original
+        ALTER TABLE ${this.config.tableName}
+        RENAME COLUMN "${legacyColumn}" TO "${currentColumn}";
 
-          -- Restore from legacy
-          ALTER TABLE ${this.config.tableName}
-          RENAME COLUMN "${legacyColumn}" TO "${currentColumn}";
+        -- Add back original PK using the int index
+        ALTER TABLE ${this.config.tableName}
+        ADD CONSTRAINT "${this.config.tableName}_pkey"
+        PRIMARY KEY USING INDEX "${indexName}";
 
-          -- Add back original PK
-          ALTER TABLE ${this.config.tableName}
-          ADD CONSTRAINT ${this.config.tableName}_pkey
-          PRIMARY KEY (${currentColumn});
+        -- Convert sequence back to integer
+        ALTER SEQUENCE ${sequenceName} AS integer;
 
-          -- Set sequence ownership back to original column
-          ALTER SEQUENCE ${sequenceName}
-          OWNED BY ${this.config.tableName}."${currentColumn}";
+        -- Set sequence ownership back to original column
+        ALTER SEQUENCE ${sequenceName}
+        OWNED BY ${this.config.tableName}."${currentColumn}";
 
-          -- Clean up temp column
-          ALTER TABLE ${this.config.tableName}
-          DROP COLUMN ${currentColumn}_temp;
+        -- Remove default from new column
+        ALTER TABLE groups
+        ALTER COLUMN "${newColumn}"
+        DROP DEFAULT;
 
-          DROP TRIGGER IF EXISTS ${triggerName} ON ${this.config.tableName};
-          DROP FUNCTION IF EXISTS ${triggerFunction}();
+        -- Set default on column
+        ALTER TABLE groups
+        ALTER COLUMN "${currentColumn}"
+        SET DEFAULT nextval('"${sequenceName}"'::regclass);
         `
       );
     } else {
+      // First remove the to_bigint triggers on the main table.
+      await this.dropTriggers(
+        client,
+        {
+          tableName: this.config.tableName,
+          isPrimaryKey: true,
+        },
+        SYNC_DIRECTION.TO_BIGINT
+      );
+
       await this.executeSql(
         client,
         `
@@ -988,16 +1178,22 @@ class IntToBigIntMigration {
 
           -- Add new PK using the prepared unique index
           ALTER TABLE ${this.config.tableName}
-          ADD CONSTRAINT ${this.config.tableName}_pkey
-          PRIMARY KEY USING INDEX ${indexName};
+          ADD CONSTRAINT "${this.config.tableName}_pkey"
+          PRIMARY KEY USING INDEX "${indexName}";
 
-          -- Set sequence ownership (this also sets the default and removes old defaults)
+          -- Set sequence ownership
           ALTER SEQUENCE ${sequenceName}
           OWNED BY ${this.config.tableName}."${currentColumn}";
 
-          -- Drop old trigger and function
-          DROP TRIGGER IF EXISTS ${triggerName} ON ${this.config.tableName};
-          DROP FUNCTION IF EXISTS ${triggerFunction}();
+          -- Remove default from legacy column
+          ALTER TABLE groups
+          ALTER COLUMN "${legacyColumn}"
+          DROP DEFAULT;
+
+          -- Set default on column
+          ALTER TABLE groups
+          ALTER COLUMN "${currentColumn}"
+          SET DEFAULT nextval('"${sequenceName}"'::regclass);
           `
       );
     }
@@ -1025,41 +1221,48 @@ class IntToBigIntMigration {
     );
 
     if (isRollback) {
+      // First remove the to_bigint triggers on the referencing table.
+      await this.dropTriggers(
+        client,
+        {
+          tableName: ref.tableName,
+          isPrimaryKey: false,
+        },
+        SYNC_DIRECTION.TO_LEGACY
+      );
+
       await this.executeSql(
         client,
         `
-          -- Drop current FK constraint (bigint version)
-          ALTER TABLE ${ref.tableName}
-          DROP CONSTRAINT "${constraintName}";
+        -- Drop new FK constraint (this has to happen before we can drop the PK constraint)
+        ALTER TABLE ${ref.tableName}
+        DROP CONSTRAINT "${constraintName}";
 
-          -- Rename current bigint column to temp
-          ALTER TABLE ${ref.tableName}
-          RENAME COLUMN "${currentColumn}" TO "${newColumn}";
+        ALTER TABLE ${ref.tableName}
+        RENAME COLUMN "${currentColumn}" TO "${newColumn}";
 
-          -- Restore original column from legacy
-          ALTER TABLE ${ref.tableName}
-          RENAME COLUMN "${legacyColumn}" TO "${currentColumn}";
-
-          -- Add back original FK constraint
-          ALTER TABLE ${ref.tableName}
-          ADD CONSTRAINT "${constraintName.replace("_bigint", "")}"
-          FOREIGN KEY ("${currentColumn}")
-          REFERENCES ${this.config.tableName}("${MAIN_TABLE_LEGACY_COLUMN}");
-
-          -- Clean up the bigint column
-          ALTER TABLE ${ref.tableName}
-          DROP COLUMN "${newColumn}";
-
-           -- Drop legacy sync trigger and function
-          DROP TRIGGER IF EXISTS ${makeTriggerName({ isLegacy: true })} ON ${ref.tableName};
-          DROP FUNCTION IF EXISTS ${makeTriggerFunctionName(ref.tableName, { isLegacy: true })};
+        -- Rename old column to original name
+        ALTER TABLE ${ref.tableName}
+        RENAME COLUMN "${legacyColumn}" TO "${currentColumn}";
         `
       );
+
+      // TODO: Add back the old FK constraint.
     } else {
+      // First remove the to_bigint triggers on the referencing table.
+      await this.dropTriggers(
+        client,
+        {
+          tableName: ref.tableName,
+          isPrimaryKey: false,
+        },
+        SYNC_DIRECTION.TO_BIGINT
+      );
+
       await this.executeSql(
         client,
         `
-        -- Drop old FK constraint (this has to happen before we can rename)
+        -- Drop old FK constraint (this has to happen before we can drop the PK constraint)
         ALTER TABLE ${ref.tableName}
         DROP CONSTRAINT "${constraintName}";
 
@@ -1070,10 +1273,6 @@ class IntToBigIntMigration {
         -- Rename new column to final name
         ALTER TABLE ${ref.tableName}
         RENAME COLUMN "${newColumn}" TO "${currentColumn}";
-
-        -- Drop old trigger and function
-        DROP TRIGGER IF EXISTS fk_sync ON ${ref.tableName};
-        DROP FUNCTION IF EXISTS ${ref.tableName}_fk_sync_trigger();
         `
       );
     }
@@ -1089,7 +1288,7 @@ class IntToBigIntMigration {
     const mainProgress = await this.checkTableProgress(
       client,
       this.config.tableName,
-      MAIN_TABLE_NEW_COLUMN
+      createColumnName.new(MAIN_ID_COLUMN)
     );
     progress.push(mainProgress);
 
@@ -1098,7 +1297,7 @@ class IntToBigIntMigration {
       const refProgress = await this.checkTableProgress(
         client,
         ref.tableName,
-        makeNewForeignKeyColumn(ref.foreignKeyColumn)
+        createColumnName.new(ref.foreignKeyColumn)
       );
       progress.push(refProgress);
     }
@@ -1120,17 +1319,21 @@ class IntToBigIntMigration {
       `
       SELECT
         COUNT(*)::bigint as total_rows,
-        COUNT(${targetColumn})::bigint as migrated_rows,
-        ROUND((COUNT(${targetColumn})::numeric / NULLIF(COUNT(*)::numeric, 0) * 100), 2) as progress_percentage
+        COUNT("${targetColumn}")::bigint as migrated_rows,
+        ROUND((COUNT("${targetColumn}")::numeric / NULLIF(COUNT(*)::numeric, 0) * 100), 2) as progress_percentage
       FROM ${tableName}
     `
     );
 
+    const { total_rows, migrated_rows, progress_percentage } = rows[0];
+
     return {
       tableName,
-      totalRows: rows[0].total_rows,
-      migratedRows: rows[0].migrated_rows,
-      progressPercentage: parseInt(rows[0].progress_percentage, 10),
+      totalRows: total_rows,
+      migratedRows: migrated_rows,
+      progressPercentage: progress_percentage
+        ? parseInt(progress_percentage, 10)
+        : 100,
     };
   }
 
