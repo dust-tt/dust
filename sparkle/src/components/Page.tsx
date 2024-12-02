@@ -33,7 +33,7 @@ export function Page({ children, variant = "normal" }: PageProps) {
 
 interface PageHeaderProps {
   title: React.ReactNode;
-  description?: string;
+  description?: React.ReactNode;
   icon?: ComponentType<{ className?: string }>;
 }
 
