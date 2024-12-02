@@ -372,6 +372,7 @@ class IntToBigIntMigration {
           SYNC_DIRECTION.TO_LEGACY
         );
 
+        // Then rename.
         await this.switchReferencingTable(
           client,
           ref,
@@ -1246,8 +1247,6 @@ class IntToBigIntMigration {
         RENAME COLUMN "${legacyColumn}" TO "${currentColumn}";
         `
       );
-
-      // TODO: Add back the old FK constraint.
     } else {
       // First remove the to_bigint triggers on the referencing table.
       await this.dropTriggers(
