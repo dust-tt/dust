@@ -495,9 +495,26 @@ export class DustAPI {
     return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations(view?: AgentConfigurationViewType) {
-    const path = view
-      ? `assistant/agent_configurations?view=${view}`
+  async getAgentConfigurations(
+    view?: AgentConfigurationViewType,
+    includes: "authors"[] = []
+  ) {
+    // Function to generate query parameters.
+    function getQueryString() {
+      const params = new URLSearchParams();
+      if (typeof view === "string") {
+        params.append("view", view);
+      }
+      if (includes.includes("authors")) {
+        params.append("withAuthors", "true");
+      }
+
+      return params.toString();
+    }
+
+    const queryString = view || includes.length > 0 ? getQueryString() : null;
+    const path = queryString
+      ? `assistant/agent_configurations?${queryString}`
       : "assistant/agent_configurations";
 
     const res = await this.request({

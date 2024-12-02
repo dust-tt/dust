@@ -8,7 +8,7 @@ export function AssistantFavorites() {
     agentConfigurations,
     isAgentConfigurationsLoading,
     isAgentConfigurationsError,
-  } = usePublicAgentConfigurations("favorites");
+  } = usePublicAgentConfigurations("favorites", ["authors"]);
 
   const { setSelectedAssistant } = useContext(InputBarContext);
 
