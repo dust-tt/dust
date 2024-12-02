@@ -82,6 +82,7 @@ export const supportedPlainText = {
   "text/plain": [".txt"],
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
+  "text/vnd.dust.attachment.slack.thread": [".txt"],
 } as const;
 
 // Supported content types for images.
