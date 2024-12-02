@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  ConversationMessageFeedbackSelectorProps,
   FeedbackSelector,
-} from "@sparkle/components/ConversationMessageFeedbackSelector";
+  FeedbackSelectorProps,
+} from "@sparkle/components/FeedbackSelector";
 
 const meta = {
   title: "Primitives/FeedbackSelector",
@@ -35,7 +35,7 @@ type Story = StoryObj<typeof meta>;
 // Wrap the story in a component that can use hooks
 const ExampleFeedbackComponent = () => {
   const [messageFeedback, setMessageFeedback] =
-    React.useState<ConversationMessageFeedbackSelectorProps>({
+    React.useState<FeedbackSelectorProps>({
       feedback: {
         thumb: "up",
         feedbackContent: null,
@@ -50,6 +50,7 @@ const ExampleFeedbackComponent = () => {
         }));
       },
       isSubmittingThumb: false,
+      getPopoverInfo: () => <div>Some info here, like the last author</div>,
     });
 
   return <FeedbackSelector {...messageFeedback} />;
