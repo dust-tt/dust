@@ -141,6 +141,22 @@ export class DustAPI {
     return this._credentials.apiKey;
   }
 
+  async baseHeaders() {
+    const headers: RequestInit["headers"] = {
+      Authorization: `Bearer ${await this.getApiKey()}`,
+    };
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
+    }
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
+    }
+    if (this._credentials.extraHeaders) {
+      Object.assign(headers, this._credentials.extraHeaders);
+    }
+    return headers;
+  }
+
   /**
    * Fetches the current user's information from the API.
    *
@@ -183,19 +199,8 @@ export class DustAPI {
       url += `?${args.query.toString()}`;
     }
 
-    const headers: RequestInit["headers"] = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${await this.getApiKey()}`,
-    };
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-    if (this._credentials.extraHeaders) {
-      Object.assign(headers, this._credentials.extraHeaders);
-    }
+    const headers = await this.baseHeaders();
+    headers["Content-Type"] = "application/json";
 
     const res = await this._fetchWithError(url, {
       method: args.method,
@@ -801,6 +806,7 @@ export class DustAPI {
     fileName,
     fileSize,
     useCase,
+    useCaseMetadata,
     fileObject,
   }: FileUploadUrlRequestType & { fileObject: File }) {
     FileUploadUrlRequestSchema;
@@ -812,6 +818,7 @@ export class DustAPI {
         fileName,
         fileSize,
         useCase,
+        useCaseMetadata,
       },
     });
 
@@ -834,9 +841,7 @@ export class DustAPI {
     try {
       uploadResult = await fetch(file.uploadUrl, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${await this.getApiKey()}`,
-        },
+        headers: await this.baseHeaders(),
         body: formData,
       });
     } catch (err) {

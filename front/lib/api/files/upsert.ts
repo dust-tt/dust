@@ -357,6 +357,13 @@ const processingPerContentType: ProcessingPerContentType = {
     avatar: notSupportedError,
     tool_output: notSupportedError,
   },
+  "text/vnd.dust.attachment.slack.thread": {
+    conversation: upsertDocumentToDatasource,
+    folder_document: notSupportedError,
+    folder_table: notSupportedError,
+    avatar: notSupportedError,
+    tool_output: notSupportedError,
+  },
 };
 
 const maybeApplyProcessing: ProcessingFunction = async ({
