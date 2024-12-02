@@ -1,9 +1,10 @@
 import { CoreAPI } from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
-import { QueryTypes, Sequelize } from "sequelize";
+import { QueryTypes } from "sequelize";
 
 import config from "@app/lib/api/config";
+import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -14,9 +15,7 @@ const UPDATE_CHUNK_SIZE = 10;
 makeScript({}, async ({ execute }, logger) => {
   assert(CORE_DATABASE_URI, "CORE_DATABASE_URI is required");
 
-  const coreSequelize = new Sequelize(CORE_DATABASE_URI as string, {
-    logging: false,
-  });
+  const coreSequelize = getCorePrimaryDbConnection();
 
   const frontIntercomDataSources = await DataSourceModel.findAll({
     where: { connectorProvider: "intercom" },
