@@ -1,6 +1,6 @@
 import type {
-  ConversationMessageFeedbackSelectorProps,
   ConversationMessageSizeType,
+  FeedbackSelectorProps,
 } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
@@ -15,6 +15,7 @@ import {
   EyeIcon,
   FeedbackSelector,
   Markdown,
+  Page,
   Popover,
 } from "@dust-tt/sparkle";
 import type {
@@ -73,6 +74,7 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -84,7 +86,7 @@ interface AgentMessageProps {
   isInModal: boolean;
   isLastMessage: boolean;
   message: AgentMessageType;
-  messageFeedback: ConversationMessageFeedbackSelectorProps;
+  messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
   size: ConversationMessageSizeType;
@@ -358,6 +360,32 @@ export function AgentMessage({
     conversationId,
   ]);
 
+  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentMessageToRender.configuration.sId,
+  });
+
+  const PopoverContent = useCallback(
+    () =>
+      agentLastAuthor && (
+        <div className="itemcenter mt-4 flex gap-2">
+          {agentLastAuthor?.image && (
+            <img
+              src={agentLastAuthor?.image}
+              alt={agentLastAuthor?.firstName}
+              className="h-8 w-8 rounded-full"
+            />
+          )}
+          <Page.P variant="secondary">
+            Your feedback will be sent to:
+            <br />
+            {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
+          </Page.P>
+        </div>
+      ),
+    [agentLastAuthor]
+  );
+
   const buttons =
     message.status === "failed"
       ? []
@@ -385,7 +413,11 @@ export function AgentMessage({
             icon={ArrowPathIcon}
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
-          <FeedbackSelector key="feedback-selector" {...messageFeedback} />,
+          <FeedbackSelector
+            key="feedback-selector"
+            {...messageFeedback}
+            getPopoverInfo={PopoverContent}
+          />,
         ];
 
   // References logic.

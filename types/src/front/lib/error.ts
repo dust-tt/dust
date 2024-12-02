@@ -52,6 +52,7 @@ export type APIErrorType =
   | "connector_provider_not_supported"
   | "connector_credentials_error"
   | "agent_configuration_not_found"
+  | "agent_last_author_not_found"
   | "agent_message_error"
   | "message_not_found"
   | "plan_message_limit_exceeded"
