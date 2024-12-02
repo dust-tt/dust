@@ -88,7 +88,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     const dataSource = await DataSourceModel.create(
       {
         ...blob,
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: auth.user()?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },
@@ -453,7 +453,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }

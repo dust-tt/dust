@@ -98,7 +98,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     const dataSourceView = await DataSourceViewResource.model.create(
       {
         ...blob,
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: auth.user()?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },
@@ -425,7 +425,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }
