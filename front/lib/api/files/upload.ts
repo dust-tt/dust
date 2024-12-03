@@ -8,6 +8,7 @@ import { parse } from "csv-parse";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
+import { Readable } from "stream";
 import { PassThrough, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
@@ -303,7 +304,7 @@ const processingPerContentType: ProcessingPerContentType = {
     folder_document: notSupportedError,
     folder_table: notSupportedError,
     avatar: uploadToPublicBucket,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "image/png": {
     conversation: resizeAndUploadToFileStorage,
@@ -317,42 +318,42 @@ const processingPerContentType: ProcessingPerContentType = {
     folder_document: storeRawText,
     folder_table: extractContentAndSchemaFromCSV,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/csv": {
     conversation: extractContentAndSchemaFromCSV,
     folder_document: storeRawText,
     folder_table: extractContentAndSchemaFromCSV,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/markdown": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: notSupportedError,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/plain": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: notSupportedError,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/tab-separated-values": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: storeRawText,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/tsv": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: storeRawText,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/vnd.dust.attachment.slack.thread": {
     conversation: storeRawText,
@@ -421,16 +422,10 @@ export async function processAndStoreFile(
   }
 
   if (typeof reqOrString === "string") {
-    const writeStream = file.getWriteStream({ auth, version: "original" });
-    // Promise wrapper for stream completion.
-    const streamEnd = new Promise((resolve, reject) => {
-      writeStream.on("error", reject);
-      writeStream.on("finish", resolve);
-    });
-    writeStream.write(reqOrString);
-    writeStream.end();
-    // Wait for completion to ensure file is created.
-    await streamEnd;
+    await pipeline(
+      Readable.from(reqOrString),
+      file.getWriteStream({ auth, version: "original" })
+    );
   } else {
     const r = await parseUploadRequest(
       file,
