@@ -135,7 +135,7 @@ async function _upsertToDatasource({
         source_url: documentUrl,
         timestamp,
         title,
-        mimeType,
+        mime_type: mimeType,
         tags: tags?.map((tag) => tag.substring(0, 512)),
         parents,
         light_document_output: true,
