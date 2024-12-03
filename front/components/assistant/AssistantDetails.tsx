@@ -2,8 +2,13 @@ import {
   Avatar,
   ContentMessage,
   ElementModal,
+  HandThumbUpIcon,
   InformationCircleIcon,
   Page,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
@@ -55,7 +60,7 @@ export function AssistantDetails({
     return <></>;
   }
 
-  const DescriptionSection = () => (
+  const TopSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
         <Avatar
@@ -82,6 +87,28 @@ export function AssistantDetails({
           )}
         </div>
       </div>
+    </div>
+  );
+
+  const TabsSection = () => (
+    <Tabs defaultValue="info">
+      <TabsList>
+        <TabsTrigger value="info" label="Info" icon={InformationCircleIcon} />
+        <TabsTrigger
+          value="feedbacks"
+          label="Feedbacks"
+          icon={HandThumbUpIcon}
+        />
+      </TabsList>
+      <TabsContent value="info">
+        <InfoSection />
+      </TabsContent>
+      <TabsContent value="feedbacks">World</TabsContent>
+    </Tabs>
+  );
+
+  const InfoSection = () => (
+    <div className="mt-2 flex flex-col gap-5">
       {agentConfiguration.status === "active" && (
         <AssistantDetailsButtonBar
           owner={owner}
@@ -108,6 +135,11 @@ export function AssistantDetails({
         owner={owner}
       />
       <Page.Separator />
+      <AssistantActionsSection
+        agentConfiguration={agentConfiguration}
+        owner={owner}
+      />
+      <InstructionsSection />
     </div>
   );
 
@@ -130,12 +162,8 @@ export function AssistantDetails({
       variant="side-sm"
     >
       <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
-        <DescriptionSection />
-        <AssistantActionsSection
-          agentConfiguration={agentConfiguration}
-          owner={owner}
-        />
-        <InstructionsSection />
+        <TopSection />
+        <TabsSection />
       </div>
     </ElementModal>
   );
