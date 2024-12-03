@@ -81,10 +81,12 @@ const TextStylesDisplay: React.FC = () => {
 };
 
 // Storybook metadata
-export default {
+const meta = {
   title: "Styles/Typography",
   component: TextStylesDisplay,
-} as Meta;
+} satisfies Meta<typeof TextStylesDisplay>;
+
+export default meta;
 
 // Define a template for the story
 const Template = () => <TextStylesDisplay />;
