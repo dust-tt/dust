@@ -209,10 +209,10 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   content,
   dataSource,
 }) => {
-  const documentId = file.sId; // Use the file id as the document id to make it easy to track the document back to the file.
-  const sourceUrl = file.getPublicUrl(auth);
+  // Use the file id as the document id to make it easy to track the document back to the file.
+  const documentId = file.sId;
+  const sourceUrl = file.getPrivateUrl(auth);
 
-  // TODO(JIT) note, upsertDocument do not call runPostUpsertHooks (seems used for document tracker)
   const upsertDocumentRes = await upsertDocument({
     name: documentId,
     source_url: sourceUrl,
@@ -511,13 +511,13 @@ export async function processAndUpsertToDataSource(
     const conversationsSpace =
       await SpaceResource.fetchWorkspaceConversationsSpace(auth);
 
-    // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs are used as secrets to share the conversation within the workspace users.
-    const name = generateRandomModelSId("conv-");
+    // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
+    // are used as secrets to share the conversation within the workspace users.
     const r = await createDataSourceWithoutProvider(auth, {
       plan: auth.getNonNullablePlan(),
       owner: auth.getNonNullableWorkspace(),
       space: conversationsSpace,
-      name: name,
+      name: generateRandomModelSId("conv"),
       description: "Files uploaded to conversation",
       conversationId: conversation.id,
     });
