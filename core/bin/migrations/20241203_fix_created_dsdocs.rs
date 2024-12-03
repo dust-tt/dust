@@ -150,32 +150,31 @@ async fn main() -> Result<()> {
             let doc_prefix = format!("{}/{}/", ds_bucket, doc_id_hash);
 
             let wrong_file_name = format!("{}_{}", doc.created, doc.hash);
-
             let matching_gcs_paths = list_files_with_prefix(&doc_prefix).await?;
 
-            let path = match matching_gcs_paths.len() {
+            let paths: Vec<String> = match matching_gcs_paths.len() {
                 0 => panic!("No matching files found"),
                 _ => {
                     // Find the path that has a filename that matches `*_<hash>.json`
                     matching_gcs_paths
-                        .iter()
-                        .find(|path| path.ends_with(&format!("{}.json", doc.hash)))
-                        .expect(&format!(
-                            "Unreachable: no matching file found for {}",
-                            wrong_file_name
-                        ))
+                        .into_iter()
+                        .filter(|path| path.ends_with(&format!("{}.json", doc.hash)))
+                        .collect()
                 }
             };
 
-            let new_file_name = path.split('/').last().unwrap();
-            let new_created = new_file_name
-                .split('_')
-                .next()
-                .unwrap()
-                .parse::<i64>()
-                .unwrap();
+            if paths.len() == 0 {
+                panic!("No matching files found for {}", wrong_file_name);
+            }
 
-            if doc.created == new_created {
+            let createds: Vec<i64> = paths
+                .iter()
+                .map(|path| path.split('_').next().unwrap().parse::<i64>().unwrap())
+                .collect();
+
+            let new_created = createds.iter().max().unwrap();
+
+            if doc.created == *new_created {
                 println!(
                     "Skipping data_sources_document id={} because created is already correct",
                     id
@@ -191,7 +190,7 @@ async fn main() -> Result<()> {
                 );
                 c.execute(
                     "UPDATE data_sources_documents SET created = $1 WHERE id = $2",
-                    &[&new_created, &id],
+                    &[new_created, &id],
                 )
                 .await?;
             } else {
