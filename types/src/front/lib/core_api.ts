@@ -831,6 +831,8 @@ export class CoreAPI {
     section,
     credentials,
     lightDocumentOutput = false,
+    title,
+    mimeType,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -842,6 +844,8 @@ export class CoreAPI {
     section: CoreAPIDataSourceDocumentSection;
     credentials: CredentialsType;
     lightDocumentOutput?: boolean;
+    title?: string | null;
+    mimeType?: string | null;
   }): Promise<
     CoreAPIResponse<{
       document:
@@ -870,6 +874,8 @@ export class CoreAPI {
           source_url: sourceUrl,
           credentials,
           light_document_output: lightDocumentOutput,
+          title: title ?? null,
+          mime_type: mimeType ?? null,
         }),
       }
     );

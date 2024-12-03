@@ -61,6 +61,8 @@ export type CoreAPIDocument = {
     vector?: number[] | null;
     score?: number | null;
   }[];
+  title: string | null;
+  mime_type: string | null;
   text?: string | null;
 };
 

@@ -27,17 +27,23 @@ import type { DataSourceResource } from "./resources/data_source_resource";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
-export const EnqueueUpsertDocument = t.type({
-  workspaceId: t.string,
-  dataSourceId: t.string,
-  documentId: t.string,
-  tags: t.union([t.array(t.string), t.null]),
-  parents: t.union([t.array(t.string), t.null]),
-  sourceUrl: t.union([t.string, t.null]),
-  timestamp: t.union([t.number, t.null]),
-  section: FrontDataSourceDocumentSection,
-  upsertContext: t.union([UpsertContextSchema, t.null]),
-});
+export const EnqueueUpsertDocument = t.intersection([
+  t.type({
+    workspaceId: t.string,
+    dataSourceId: t.string,
+    documentId: t.string,
+    tags: t.union([t.array(t.string), t.null]),
+    parents: t.union([t.array(t.string), t.null]),
+    sourceUrl: t.union([t.string, t.null]),
+    timestamp: t.union([t.number, t.null]),
+    section: FrontDataSourceDocumentSection,
+    upsertContext: t.union([UpsertContextSchema, t.null]),
+  }),
+  t.partial({
+    title: t.string,
+    mimeType: t.string,
+  }),
+]);
 
 const DetectedHeaders = t.type({
   header: t.array(t.string),
