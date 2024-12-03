@@ -2070,6 +2070,53 @@ const SupportedUsageTablesSchema = FlexibleEnumSchema(usageTables);
 
 export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
 
+// Folders
+const CoreAPIFolderSchema = z.object({
+  data_source_id: z.string(),
+  folder_id: z.string(),
+  title: z.string(),
+  parents: z.array(z.string()),
+  timestamp: z.number(),
+});
+
+export const GetFoldersResponseSchema = z.object({
+  folders: z.array(CoreAPIFolderSchema),
+  total: z.number(),
+});
+export type GetFoldersResponseType = z.infer<typeof GetFoldersResponseSchema>;
+
+export const GetFolderResponseSchema = z.object({
+  folder: CoreAPIFolderSchema,
+});
+export type GetFolderResponseType = z.infer<typeof GetFolderResponseSchema>;
+
+const DeleteFolderResponseSchema = z.object({
+  folder: z.object({
+    folder_id: z.string(),
+  }),
+});
+export type DeleteFolderResponseType = z.infer<
+  typeof DeleteFolderResponseSchema
+>;
+const UpsertFolderResponseSchema = z.object({
+  document: z.union([
+    CoreAPIFolderSchema,
+    z.object({
+      document_id: z.string(),
+    }),
+  ]),
+  data_source: DataSourceTypeSchema,
+});
+export type UpsertFolderResponseType = z.infer<
+  typeof UpsertFolderResponseSchema
+>;
+
+export const UpsertDataSourceFolderRequestSchema = z.object({
+  timestamp: z.number(),
+  parents: z.array(z.string()).nullable().optional(),
+  title: z.string(),
+});
+
 const DateSchema = z
   .string()
   .refine(
