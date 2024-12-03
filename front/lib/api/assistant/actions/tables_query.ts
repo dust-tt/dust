@@ -265,7 +265,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     }
 
     let actionDescription =
-      "Query data tables specificied by the user by executing a generated SQL query. " +
+      "Query data tables specified by the user by executing a generated SQL query. " +
       "The function does not require any inputs, the SQL query will be inferred from the conversation history.";
     if (description) {
       actionDescription += `\nDescription of the data tables:\n${description}`;
