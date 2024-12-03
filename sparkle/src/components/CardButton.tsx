@@ -101,7 +101,9 @@ export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
     const cardButtonClassNames = cn(
       cardButtonVariants({ variant, size }),
       (onClick || onMouseEnter) &&
-        "s-cursor-pointer hover:s-border-primary-100 hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200",
+        "s-cursor-pointer disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200",
+      "[&:not(:has(button:hover))]:hover:s-bg-primary-100", // apply hover style when no button children are hovered
+      "[&:not(:has(button:active))]:active:s-bg-primary-200", // apply hover style when no button children are hovered
       className
     );
 

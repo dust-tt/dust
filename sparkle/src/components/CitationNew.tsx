@@ -27,7 +27,7 @@ const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
         variant={variant}
         size="md"
         className={cn(
-          "s-group s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end",
+          "s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end",
           className
         )}
         {...props}
