@@ -2,66 +2,34 @@ import React, { ReactNode } from "react";
 
 import {
   Button,
-  ButtonProps,
   CardButton,
+  CardButtonProps,
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
-import { CardButtonVariantType } from "@sparkle/components/CardButton";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-interface CitationNewProps extends Omit<ButtonProps, "variant" | "size"> {
+type CitationNewProps = CardButtonProps & {
   children: React.ReactNode;
-  href?: string;
   isLoading?: boolean;
   tooltip?: string;
-  target?: string;
-  rel?: string;
-  replace?: boolean;
-  shallow?: boolean;
-  variant?: CardButtonVariantType;
-}
+};
 
 const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
   (
-    {
-      children,
-      variant = "primary",
-      href,
-      isLoading,
-      onClick,
-      className,
-      tooltip,
-      target = "_blank",
-      rel = "noopener noreferrer",
-      replace,
-      shallow,
-      ...props
-    },
+    { children, variant = "primary", isLoading, className, tooltip, ...props },
     ref
   ) => {
-    const linkProps = href
-      ? {
-          href,
-          target,
-          rel,
-          replace,
-          shallow,
-        }
-      : {};
-
     const cardButton = (
       <CardButton
         ref={ref}
         variant={variant}
         size="md"
-        onClick={onClick}
         className={cn(
           "s-group s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end",
           className
         )}
-        {...linkProps}
         {...props}
       >
         {children}
@@ -88,7 +56,7 @@ const CitationNewIndex = React.forwardRef<
       ref={ref}
       className={cn(
         "s-z-10",
-        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 s-text-xs s-font-medium s-text-foreground s-text-primary-200",
+        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 s-text-xs s-font-medium s-text-foreground",
         className
       )}
       {...props}
@@ -105,7 +73,7 @@ const CitationNewGrid = React.forwardRef<
 >(({ children, className, ...props }, ref) => {
   return (
     <div ref={ref} className={cn("s-@container", className)} {...props}>
-      <div className="@sm:s-grid-cols-2 @xl:s-grid-cols-3 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5 s-grid s-grid-cols-1 s-gap-2">
+      <div className="s-grid s-grid-cols-1 s-gap-2 @sm:s-grid-cols-2 @xl:s-grid-cols-3 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5">
         {children}
       </div>
     </div>

@@ -74,7 +74,7 @@ interface ButtonProps
   shallow?: never;
 }
 
-type CardButtonProps = LinkProps | ButtonProps;
+export type CardButtonProps = LinkProps | ButtonProps;
 
 export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
   (
