@@ -1661,8 +1661,11 @@ export type PublicPostContentFragmentRequestBody = z.infer<
 
 export const PublicPostConversationsRequestBodySchema = z.intersection(
   z.object({
-    title: z.string().nullable(),
-    visibility: z.enum(["unlisted", "workspace", "deleted", "test"]),
+    title: z.string().nullable().optional(),
+    visibility: z
+      .enum(["unlisted", "workspace", "deleted", "test"])
+      .optional()
+      .default("unlisted"),
     message: z.union([
       z.intersection(
         z.object({

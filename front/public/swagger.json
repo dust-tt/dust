@@ -49,6 +49,21 @@
                 "favorites"
               ]
             }
+          },
+          {
+            "in": "query",
+            "name": "includes",
+            "required": false,
+            "description": "Array of additional data to include in the response",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "authors"
+                ]
+              }
+            }
           }
         ],
         "security": [
@@ -3133,16 +3148,11 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "Name of the table",
-                    "deprecated": true
+                    "description": "Name of the table"
                   },
                   "title": {
                     "type": "string",
                     "description": "Title of the table"
-                  },
-                  "mime_type": {
-                    "type": "string",
-                    "description": "Mime type of the table"
                   },
                   "table_id": {
                     "type": "string",
@@ -3547,11 +3557,7 @@
         "type": "object",
         "required": [
           "username",
-          "timezone",
-          "fullName",
-          "email",
-          "profilePictureUrl",
-          "origin"
+          "timezone"
         ],
         "properties": {
           "username": {
