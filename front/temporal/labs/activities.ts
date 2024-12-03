@@ -377,6 +377,8 @@ export async function processTranscriptActivity(
       },
       credentials,
       lightDocumentOutput: true,
+      title: transcriptTitle,
+      mimeType: "text/plain",
     });
 
     if (upsertRes.isErr()) {
