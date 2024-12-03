@@ -1,9 +1,7 @@
 import type { PostContentFragmentResponseType } from "@dust-tt/client";
 import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
-import type {WithAPIErrorResponse} from "@dust-tt/types";
-import {
-  isContentFragmentInputWithContentType
-} from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isContentFragmentInputWithContentType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
