@@ -27,6 +27,8 @@ interface ReferencingTable {
   tableName: string;
   foreignKeyColumn: string;
   constraintName: string;
+  deleteAction?: string;
+  updateAction?: string;
 }
 
 interface MigrationProgress {
@@ -548,12 +550,16 @@ class IntToBigIntMigration {
         tc.table_schema as schema,
         tc.table_name as "tableName",
         kcu.column_name as "foreignKeyColumn",
-        tc.constraint_name as "constraintName"
+        tc.constraint_name as "constraintName",
+        pc.confdeltype as "deleteAction",
+        pc.confupdtype as "updateAction"
       FROM information_schema.table_constraints tc
       JOIN information_schema.key_column_usage kcu
         ON tc.constraint_name = kcu.constraint_name
       JOIN information_schema.constraint_column_usage ccu
         ON ccu.constraint_name = tc.constraint_name
+      JOIN pg_constraint pc 
+        ON tc.constraint_name = pc.conname
       WHERE tc.constraint_type = 'FOREIGN KEY'
         AND ccu.table_name = $1
         AND ccu.column_name = 'id'
