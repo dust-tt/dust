@@ -222,7 +222,6 @@ impl Table {
 impl From<Table> for Node {
     fn from(table: Table) -> Node {
         Node::new(
-            &table.project,
             &table.data_source_id,
             &table.table_id,
             NodeType::Table,

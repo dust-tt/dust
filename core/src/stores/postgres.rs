@@ -1342,6 +1342,9 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        let title = document_id.clone(); // TODO(KW_SEARCH_INFRA) use title
+        let mime_type = "application/octet-stream".to_string(); // TODO(KW_SEARCH_INFRA) use mime_type
+
         match d {
             None => Ok(None),
             Some((
@@ -1360,6 +1363,8 @@ impl Store for PostgresStore {
                 timestamp: timestamp as u64,
                 document_id,
                 tags,
+                title,
+                mime_type,
                 parents,
                 source_url,
                 hash,
@@ -1381,7 +1386,7 @@ impl Store for PostgresStore {
     ) -> Result<()> {
         let document_id = document_id.to_string();
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1399,12 +1404,25 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        c.execute(
+        let tx = c.transaction().await?;
+
+        // Update parents on tables table (TODO: remove this once we migrate to nodes table).
+        tx.execute(
             "UPDATE data_sources_documents SET parents = $1 \
             WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
             &[&parents, &data_source_row_id, &document_id],
         )
         .await?;
+
+        // Update parents on nodes table.
+        tx.execute(
+            "UPDATE data_sources_nodes SET parents = $1 \
+            WHERE data_source = $2 AND node_id = $3",
+            &[&parents, &data_source_row_id, &document_id],
+        )
+        .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -1732,6 +1750,8 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         document: &Document,
+        title: Option<String>,
+        mime_type: Option<String>,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1744,6 +1764,8 @@ impl Store for PostgresStore {
         let document_hash = document.hash.clone();
         let document_text_size = document.text_size;
         let document_chunk_count = document.chunks.len() as u64;
+        let document_title = title.clone();
+        let document_mime_type = mime_type.clone();
 
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
@@ -1782,24 +1804,37 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        tx.query_one(
-            &stmt,
-            &[
-                &data_source_row_id,
-                &(document_created as i64),
-                &document_id,
-                &(document_timestamp as i64),
-                &document_tags,
-                &document_parents,
-                &document_source_url,
-                &document_hash,
-                &(document_text_size as i64),
-                &(document_chunk_count as i64),
-                &"latest",
-            ],
-        )
-        .await?;
+        let document_row_id = tx
+            .query_one(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &(document_created as i64),
+                    &document_id,
+                    &(document_timestamp as i64),
+                    &document_tags,
+                    &document_parents,
+                    &document_source_url,
+                    &document_hash,
+                    &(document_text_size as i64),
+                    &(document_chunk_count as i64),
+                    &"latest",
+                ],
+            )
+            .await?
+            .get(0);
 
+        // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
+        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
+        if let (Some(_), Some(_)) = (document_title, document_mime_type) {
+            self.upsert_data_source_node(
+                &document.clone().into(),
+                data_source_row_id,
+                document_row_id,
+                &tx,
+            )
+            .await?;
+        }
         tx.commit().await?;
 
         Ok(())
@@ -1911,10 +1946,15 @@ impl Store for PostgresStore {
                     tags
                 };
 
+                let title = document_id.clone(); // TODO(KW_SEARCH_INFRA) use title
+                let mime_type = "application/octet-stream".to_string(); // TODO(KW_SEARCH_INFRA) use mime_type
+
                 Ok(Document {
                     data_source_id: data_source_id.clone(),
                     created: created as u64,
                     timestamp: timestamp as u64,
+                    title,
+                    mime_type,
                     document_id,
                     tags,
                     parents,
@@ -1961,9 +2001,11 @@ impl Store for PostgresStore {
         let document_id = document_id.to_string();
 
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
 
-        let r = c
+        let tx = c.transaction().await?;
+
+        let r = tx
             .query(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
@@ -1976,13 +2018,23 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let stmt = c
+        let stmt = tx
+            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND folder IS NOT NULL")
+            .await?;
+        let _ = tx
+            .query(&stmt, &[&data_source_row_id, &document_id])
+            .await?;
+        let stmt = tx
             .prepare(
                 "UPDATE data_sources_documents SET status = 'deleted' \
                    WHERE data_source = $1 AND document_id = $2",
             )
             .await?;
-        let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
+        let _ = tx
+            .query(&stmt, &[&data_source_row_id, &document_id])
+            .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -2016,6 +2068,14 @@ impl Store for PostgresStore {
             1 => r[0].get(0),
             _ => unreachable!(),
         };
+
+        if status == "active" {
+            let stmt = c
+                .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND folder IS NOT NULL")
+                .await?;
+
+            let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
+        }
 
         let stmt = c
             .prepare(
@@ -2060,6 +2120,38 @@ impl Store for PostgresStore {
         let deletion_batch_size: u64 = 512;
         let mut total_deleted_rows: u64 = 0;
 
+        let stmt_nodes = c
+            .prepare(
+                "DELETE FROM data_sources_nodes WHERE id IN (
+                   SELECT id FROM data_sources_nodes WHERE data_source = $1 AND document IS NOT NULL LIMIT $2
+                 ) RETURNING document",
+            )
+            .await?;
+
+        let stmt_documents = c
+            .prepare("DELETE FROM data_sources_documents WHERE id = ANY($1)")
+            .await?;
+
+        // First remove active documents, which are linked to a node
+        loop {
+            let documents: Vec<i64> = c
+                .query(
+                    &stmt_nodes,
+                    &[&data_source_row_id, &(deletion_batch_size as i64)],
+                )
+                .await?
+                .iter()
+                .map(|row| row.get(0))
+                .collect();
+
+            let deleted_rows = c.execute(&stmt_documents, &[&documents]).await?;
+            total_deleted_rows += deleted_rows;
+            if deleted_rows < deletion_batch_size {
+                break;
+            }
+        }
+
+        // Then remove all remaining documents
         let stmt = c
             .prepare(
                 "DELETE FROM data_sources_documents WHERE id IN (
@@ -2946,8 +3038,8 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let r = tx
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&folder.project().project_id(), &data_source_id],
+                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 1",
+                &[&data_source_id],
             )
             .await?;
         let data_source_row_id: i64 = match r.len() {
@@ -3139,7 +3231,6 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(3);
 
                 Ok(Folder::new(
-                    project,
                     &data_source_id,
                     &node_id,
                     timestamp as u64,
@@ -3240,7 +3331,6 @@ impl Store for PostgresStore {
                 };
                 Ok(Some((
                     Node::new(
-                        project,
                         &data_source_id,
                         &node_id,
                         node_type,

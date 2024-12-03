@@ -136,6 +136,8 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         document: &Document,
+        title: Option<String>,
+        mime_type: Option<String>,
     ) -> Result<()>;
     async fn update_data_source_document_tags(
         &self,
