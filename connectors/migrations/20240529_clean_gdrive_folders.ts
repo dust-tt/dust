@@ -1,10 +1,7 @@
 import { QueryTypes } from "sequelize";
 
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import {
-  getAuthObject,
-  getDocumentId,
-} from "@connectors/connectors/google_drive/temporal/utils";
+import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   GoogleDriveFiles,
@@ -104,7 +101,6 @@ async function main() {
         driveFileId: folderId,
         name: file.name,
         mimeType: file.mimeType,
-        dustFileId: getDocumentId(folderId),
       });
     }
   }
