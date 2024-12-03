@@ -1463,8 +1463,8 @@ class IntToBigIntMigration {
         ADD CONSTRAINT "${newConstraintName}"
         FOREIGN KEY ("${ref.foreignKeyColumn}")
         REFERENCES ${this.config.tableName}(${MAIN_ID_COLUMN})
-        ON UPDATE ${ref.updateAction === "r" ? "SET NULL" : "RESTRICT"}
-        ON DELETE ${ref.deleteAction === "r" ? "SET NULL" : "RESTRICT"}
+        ON UPDATE ${ref.updateAction === "n" ? "SET NULL" : "RESTRICT"}
+        ON DELETE ${ref.deleteAction === "n" ? "SET NULL" : "RESTRICT"}
         NOT VALID;
         `
       );
@@ -1533,8 +1533,8 @@ class IntToBigIntMigration {
           ADD CONSTRAINT "${newConstraintName}"
           FOREIGN KEY ("${sourceColumn}")
           REFERENCES ${this.config.tableName}(${targetColumn})
-          ON UPDATE ${ref.updateAction === "r" ? "SET NULL" : "RESTRICT"}
-          ON DELETE ${ref.deleteAction === "r" ? "SET NULL" : "RESTRICT"}
+          ON UPDATE ${ref.updateAction === "n" ? "SET NULL" : "RESTRICT"}
+          ON DELETE ${ref.deleteAction === "n" ? "SET NULL" : "RESTRICT"}
           NOT VALID;
           `
       );
