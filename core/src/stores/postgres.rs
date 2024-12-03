@@ -2019,7 +2019,7 @@ impl Store for PostgresStore {
         };
 
         let stmt = tx
-            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND folder IS NOT NULL")
+            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL")
             .await?;
         let _ = tx
             .query(&stmt, &[&data_source_row_id, &document_id])
@@ -2071,7 +2071,7 @@ impl Store for PostgresStore {
 
         if status == "active" {
             let stmt = c
-                .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND folder IS NOT NULL")
+                .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL")
                 .await?;
 
             let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
