@@ -348,6 +348,8 @@ class IntToBigIntMigration {
       throw new Error(
         `Failed to switch columns: ${error instanceof Error ? error.message : "Unknown error"}`
       );
+    } finally {
+      client.release();
     }
   }
 
