@@ -64,6 +64,8 @@ type UpsertToDataSourceParams = {
   parents: string[];
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
+  title: string;
+  mimeType: string;
   async: boolean;
 };
 
@@ -79,6 +81,8 @@ async function _upsertToDatasource({
   parents,
   loggerArgs = {},
   upsertContext,
+  title,
+  mimeType,
   async,
 }: UpsertToDataSourceParams) {
   return tracer.trace(
@@ -130,6 +134,8 @@ async function _upsertToDatasource({
         section: documentContent,
         source_url: documentUrl,
         timestamp,
+        title,
+        mimeType,
         tags: tags?.map((tag) => tag.substring(0, 512)),
         parents,
         light_document_output: true,
