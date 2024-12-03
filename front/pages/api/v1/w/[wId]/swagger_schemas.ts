@@ -96,10 +96,6 @@
  *       required:
  *         - username
  *         - timezone
- *         - fullName
- *         - email
- *         - profilePictureUrl
- *         - origin
  *       properties:
  *         username:
  *           type: string
