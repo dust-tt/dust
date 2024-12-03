@@ -19,10 +19,12 @@ import {
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { default as apiConfig } from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
@@ -450,11 +452,36 @@ export async function processTranscriptActivity(
       origin: null,
     };
 
+    const file = await FileResource.makeNew({
+      contentType: "text/plain",
+      fileName: `${transcriptTitle}.txt`,
+      fileSize: transcriptContent.length,
+      userId: user.id,
+      workspaceId: owner.id,
+      useCase: "conversation",
+      useCaseMetadata: null,
+    });
+
+    const processRes = await processAndStoreFile(auth, {
+      file,
+      reqOrString: transcriptContent,
+    });
+
+    if (processRes.isErr()) {
+      localLogger.error(
+        {
+          conversationSid: initialConversation.sId,
+          error: processRes.error,
+        },
+        "[processTranscriptActivity] Error creating file for content fragment. Stopping."
+      );
+      return;
+    }
+
     const contentFragmentData = {
       title: transcriptTitle,
-      content: transcriptContent.toString(),
       url: null,
-      contentType: "text/plain",
+      fileId: file.sId,
       baseContext,
     };
 

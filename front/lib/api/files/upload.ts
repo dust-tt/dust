@@ -8,6 +8,7 @@ import { parse } from "csv-parse";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
+import { Readable } from "stream";
 import { PassThrough, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
@@ -303,7 +304,7 @@ const processingPerContentType: ProcessingPerContentType = {
     folder_document: notSupportedError,
     folder_table: notSupportedError,
     avatar: uploadToPublicBucket,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "image/png": {
     conversation: resizeAndUploadToFileStorage,
@@ -317,42 +318,42 @@ const processingPerContentType: ProcessingPerContentType = {
     folder_document: storeRawText,
     folder_table: extractContentAndSchemaFromCSV,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/csv": {
     conversation: extractContentAndSchemaFromCSV,
     folder_document: storeRawText,
     folder_table: extractContentAndSchemaFromCSV,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/markdown": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: notSupportedError,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/plain": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: notSupportedError,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/tab-separated-values": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: storeRawText,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/tsv": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: storeRawText,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/vnd.dust.attachment.slack.thread": {
     conversation: storeRawText,
@@ -387,7 +388,10 @@ const maybeApplyProcessing: ProcessingFunction = async (
 
 export async function processAndStoreFile(
   auth: Authenticator,
-  { file, req }: { file: FileResource; req: IncomingMessage }
+  {
+    file,
+    reqOrString,
+  }: { file: FileResource; reqOrString: IncomingMessage | string }
 ): Promise<
   Result<
     FileResource,
@@ -417,14 +421,21 @@ export async function processAndStoreFile(
     });
   }
 
-  const r = await parseUploadRequest(
-    file,
-    req,
-    file.getWriteStream({ auth, version: "original" })
-  );
-  if (r.isErr()) {
-    await file.markAsFailed();
-    return r;
+  if (typeof reqOrString === "string") {
+    await pipeline(
+      Readable.from(reqOrString),
+      file.getWriteStream({ auth, version: "original" })
+    );
+  } else {
+    const r = await parseUploadRequest(
+      file,
+      reqOrString,
+      file.getWriteStream({ auth, version: "original" })
+    );
+    if (r.isErr()) {
+      await file.markAsFailed();
+      return r;
+    }
   }
 
   const processingRes = await maybeApplyProcessing(auth, file);

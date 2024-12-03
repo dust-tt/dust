@@ -234,7 +234,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       const file = await FileResource.fetchByModelId(this.fileId);
       fileSid = file?.sId ?? null;
 
-      // Note: For CSV files outputted by tools, we have a "snippet" version of the output with the first rows stored in GCP, maybe it's better than our "summary" snippet stored on File.
+      // Note: For CSV files outputted by tools, we have a "snippet" version of the output with the
+      // first rows stored in GCP, maybe it's better than our "summary" snippet stored on File.
       // Need more testing, for now we are using the "summary" snippet.
       snippet = file?.snippet ?? null;
     }
