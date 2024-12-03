@@ -1967,13 +1967,10 @@ makeScript(
       tables.forEach((t) => console.log(chalk.yellow(`- ${t}`)));
 
       for (const t of tables) {
-        if (["vaults", "groups", "users"].includes(t)) {
-          console.log("Skipping table: ", t);
-        }
-
         console.log(
           chalk.blue(`\n[Migration] Starting migration for table: ${t}`)
         );
+
         const migration = new IntToBigIntMigration(database, {
           tableName: t,
           schemaName: schema,
@@ -1984,6 +1981,11 @@ makeScript(
 
         // Run all steps for this table
         for (const step of MigrationSteps) {
+          if (step === "rollback") {
+            // Skip rollback for all tables
+            continue;
+          }
+
           console.log(chalk.blue(`\n[${t}] Executing step: ${step}`));
 
           try {
