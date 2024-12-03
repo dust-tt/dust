@@ -1608,6 +1608,8 @@ struct DataSourcesDocumentsUpsertPayload {
     section: Section,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
+    title: Option<String>,
+    mime_type: Option<String>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1646,6 +1648,8 @@ async fn data_sources_documents_upsert(
                         state.store.clone(),
                         state.qdrant_clients.clone(),
                         &payload.document_id,
+                        payload.title,
+                        payload.mime_type,
                         payload.timestamp,
                         &payload.tags,
                         &payload.parents,
@@ -2686,7 +2690,6 @@ async fn folders_upsert(
     let project = project::Project::new_from_id(project_id);
 
     let folder = Folder::new(
-        &project,
         &data_source_id,
         &payload.folder_id.clone(),
         payload.timestamp.unwrap_or(utils::now()),
@@ -2694,7 +2697,11 @@ async fn folders_upsert(
         payload.parents,
     );
 
-    match state.store.upsert_data_source_folder(&folder).await {
+    match state
+        .store
+        .upsert_data_source_folder(&project, &data_source_id, &folder)
+        .await
+    {
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,

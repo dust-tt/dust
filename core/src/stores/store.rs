@@ -136,6 +136,8 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         document: &Document,
+        title: Option<String>,
+        mime_type: Option<String>,
     ) -> Result<()>;
     async fn update_data_source_document_tags(
         &self,
@@ -267,7 +269,12 @@ pub trait Store {
         table_id: &str,
     ) -> Result<()>;
     // Folders
-    async fn upsert_data_source_folder(&self, folder: &Folder) -> Result<()>;
+    async fn upsert_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder: &Folder,
+    ) -> Result<()>;
     async fn load_data_source_folder(
         &self,
         project: &Project,
