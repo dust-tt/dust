@@ -13,8 +13,8 @@ import {
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
-  getDocumentId,
   getDriveClient,
+  getTableId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   handleCsvFile,
@@ -187,7 +187,7 @@ async function handleFileExport(
 
     result = await handleCsvFile({
       data: res.data,
-      tableId: getDocumentId(file.id),
+      tableId: getTableId(file.id),
       fileName: file.name || "",
       maxDocumentLen,
       localLogger,
