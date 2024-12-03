@@ -86,8 +86,18 @@ export const createColumnName = {
 export const createIndexName = {
   primary: (tableName: string, column: ColumnType) =>
     `${tableName}_pkey_${column}` as const,
-  foreign: (tableName: string, columnName: string, column: ColumnType) =>
-    `${tableName}_${columnName}_fk_${column}` as const,
+  foreign: (tableName: string, columnName: string, column: ColumnType) => {
+    // If table name is too long, create an abbreviation
+    const shortTableName =
+      tableName.length > 20
+        ? tableName
+            .split("_")
+            .map((word) => word[0])
+            .join("") // e.g., 'ncrce'
+        : tableName;
+
+    return `${shortTableName}_${columnName}_fk_${column}` as const;
+  },
 };
 
 export const createTriggerNames = {
