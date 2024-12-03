@@ -144,6 +144,8 @@ export const TableUploadOrEditModal = ({
           truncate: true,
           async: false,
           useAppForHeaderDetection,
+          title: table.name,
+          mimeType: tableState.file?.type ?? "text/csv",
         };
         let upsertRes = null;
         if (initialId) {
@@ -184,6 +186,7 @@ export const TableUploadOrEditModal = ({
       doUpdate,
       fileUploaderService,
       useAppForHeaderDetection,
+      tableState.file?.type,
     ]
   );
 

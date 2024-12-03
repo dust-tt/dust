@@ -128,6 +128,8 @@ export type CoreAPITable = {
   parents: string[];
   created: number;
   data_source_id: string;
+  title: string;
+  mime_type: string;
   remote_database_table_id: string | null;
   remote_database_secret_id: string | null;
 };

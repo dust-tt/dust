@@ -53,7 +53,7 @@ import { apiError } from "@app/logger/withlogging";
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Datasource'
+ *                 $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
  *   post:
@@ -92,6 +92,9 @@ import { apiError } from "@app/logger/withlogging";
  *               name:
  *                 type: string
  *                 description: Name of the table
+ *               title:
+ *                 type: string
+ *                 description: Title of the table
  *               table_id:
  *                 type: string
  *                 description: Unique identifier for the table
@@ -226,6 +229,8 @@ async function handler(
             timestamp: table.timestamp,
             tags: table.tags,
             parents: table.parents,
+            mime_type: table.mime_type,
+            title: table.title,
           };
         }),
       });
@@ -345,6 +350,12 @@ async function handler(
         });
       }
 
+      // Enforce that the table is a parent of itself by default.
+      const parentsWithTableId =
+        parents?.includes(tableId) && parents[0] === tableId
+          ? parents
+          : [tableId, ...(parents || []).filter((p) => p !== tableId)];
+
       const upsertRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
@@ -353,7 +364,8 @@ async function handler(
         description,
         timestamp: timestamp ?? null,
         tags: tags || [],
-        parents: parents || [],
+        // Table is a parent of itself by default.
+        parents: parentsWithTableId,
         remoteDatabaseTableId: remoteDatabaseTableId ?? null,
         remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
         title,
@@ -394,6 +406,8 @@ async function handler(
           timestamp: table.timestamp,
           tags: table.tags,
           parents: table.parents,
+          mime_type: table.mime_type,
+          title: table.title,
         },
       });
 
