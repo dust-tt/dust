@@ -323,7 +323,7 @@ class IntToBigIntMigration {
         currentColumn: MAIN_ID_COLUMN,
         newColumn: createColumnName.new(MAIN_ID_COLUMN),
         legacyColumn: createColumnName.legacy(MAIN_ID_COLUMN),
-        sequenceName: `${this.config.tableName}_id_seq`,
+        sequenceName: createSequenceName(this.config.tableName),
         indexName: createIndexName.primary(
           this.config.tableName,
           COLUMN_TYPE.BIGINT
@@ -398,7 +398,7 @@ class IntToBigIntMigration {
           currentColumn: MAIN_ID_COLUMN,
           newColumn: createColumnName.new(MAIN_ID_COLUMN),
           legacyColumn: createColumnName.legacy(MAIN_ID_COLUMN),
-          sequenceName: `${this.config.tableName}_id_seq`,
+          sequenceName: createSequenceName(this.config.tableName),
           indexName: createIndexName.primary(
             this.config.tableName,
             // We are rolling back to int
