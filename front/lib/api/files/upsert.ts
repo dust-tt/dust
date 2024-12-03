@@ -28,6 +28,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 
 const ENABLE_LLM_SNIPPETS = false;
 
@@ -514,7 +515,7 @@ export async function processAndUpsertToDataSource(
       plan: auth.getNonNullablePlan(),
       owner: auth.getNonNullableWorkspace(),
       space: conversationsSpace,
-      name: "Conversation data source",
+      name: generateRandomModelSId("conv"),
       description: "Files uploaded to conversation",
       conversationId: conversation.id,
     });
