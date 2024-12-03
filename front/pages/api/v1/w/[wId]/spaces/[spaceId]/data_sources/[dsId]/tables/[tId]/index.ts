@@ -53,7 +53,7 @@ import { apiError } from "@app/logger/withlogging";
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Datasource'
+ *               $ref: '#/components/schemas/Table'
  *       404:
  *         description: The table was not found
  *       405:
@@ -205,6 +205,8 @@ async function handler(
           timestamp: table.timestamp,
           tags: table.tags,
           parents: table.parents,
+          mime_type: table.mime_type,
+          title: table.title,
         },
       });
 

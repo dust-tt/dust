@@ -314,6 +314,8 @@ const CoreAPITablePublicSchema = z.object({
   timestamp: z.number(),
   tags: z.array(z.string()),
   parents: z.array(z.string()),
+  mime_type: z.string().optional(),
+  title: z.string().optional(),
 });
 
 export type CoreAPITablePublic = z.infer<typeof CoreAPITablePublicSchema>;
@@ -1855,6 +1857,8 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   section: FrontDataSourceDocumentSectionSchema.nullable().optional(),
   light_document_output: z.boolean().optional(),
   async: z.boolean().nullable().optional(),
+  mime_type: z.string().nullable().optional(),
+  title: z.string().nullable().optional(),
 });
 
 const GetDocumentResponseSchema = z.object({

@@ -128,6 +128,8 @@ export type CoreAPITable = {
   parents: string[];
   created: number;
   data_source_id: string;
+  title: string;
+  mime_type: string;
   remote_database_table_id: string | null;
   remote_database_secret_id: string | null;
 };
@@ -829,6 +831,8 @@ export class CoreAPI {
     section,
     credentials,
     lightDocumentOutput = false,
+    title,
+    mimeType,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -840,6 +844,8 @@ export class CoreAPI {
     section: CoreAPIDataSourceDocumentSection;
     credentials: CredentialsType;
     lightDocumentOutput?: boolean;
+    title?: string | null;
+    mimeType?: string | null;
   }): Promise<
     CoreAPIResponse<{
       document:
@@ -868,6 +874,8 @@ export class CoreAPI {
           source_url: sourceUrl,
           credentials,
           light_document_output: lightDocumentOutput,
+          title: title ?? null,
+          mime_type: mimeType ?? null,
         }),
       }
     );

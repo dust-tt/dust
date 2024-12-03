@@ -1960,6 +1960,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "The title of the document to upsert."
+                  },
+                  "mime_type": {
+                    "type": "string",
+                    "description": "The MIME type of the document to upsert."
+                  },
                   "text": {
                     "type": "string",
                     "description": "The text content of the document to upsert."
@@ -2571,7 +2579,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Datasource"
+                  "$ref": "#/components/schemas/Table"
                 }
               }
             }
@@ -3065,7 +3073,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Datasource"
+                    "$ref": "#/components/schemas/Table"
                   }
                 }
               }
@@ -3125,7 +3133,16 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "Name of the table"
+                    "description": "Name of the table",
+                    "deprecated": true
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Title of the table"
+                  },
+                  "mime_type": {
+                    "type": "string",
+                    "description": "Mime type of the table"
                   },
                   "table_id": {
                     "type": "string",
@@ -3957,6 +3974,98 @@
           }
         }
       },
+      "Table": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the table",
+            "example": "Roi data",
+            "deprecated": true
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the table",
+            "example": "ROI Data"
+          },
+          "table_id": {
+            "type": "string",
+            "description": "Unique identifier for the table",
+            "example": "1234f4567c"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the table",
+            "example": "roi data for Q1"
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type of the table",
+            "example": "text/csv"
+          },
+          "schema": {
+            "type": "array",
+            "description": "Array of column definitions",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name of the column",
+                  "example": "roi"
+                },
+                "value_type": {
+                  "type": "string",
+                  "description": "Data type of the column",
+                  "enum": [
+                    "text",
+                    "int",
+                    "float",
+                    "bool",
+                    "date"
+                  ],
+                  "example": "int"
+                },
+                "possible_values": {
+                  "type": "array",
+                  "description": "Array of possible values for the column (null if unrestricted)",
+                  "items": {
+                    "type": "string"
+                  },
+                  "nullable": true,
+                  "example": [
+                    "1",
+                    "2",
+                    "3"
+                  ]
+                }
+              }
+            }
+          },
+          "timestamp": {
+            "type": "number",
+            "description": "Unix timestamp of table creation/modification",
+            "example": 1732810375150
+          },
+          "tags": {
+            "type": "array",
+            "description": "Array of tags associated with the table",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parents": {
+            "type": "array",
+            "description": "Array of parent table IDs",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "1234f4567c"
+            ]
+          }
+        }
+      },
       "DatasourceView": {
         "type": "object",
         "properties": {
@@ -4100,6 +4209,16 @@
           "document_id": {
             "type": "string",
             "example": "2c4a6e8d0f"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the document",
+            "example": "Customer Support FAQ"
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type of the table",
+            "example": "text/md"
           },
           "timestamp": {
             "type": "number",
