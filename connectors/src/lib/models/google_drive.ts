@@ -123,7 +123,6 @@ export class GoogleDriveFiles extends Model<
   declare lastUpsertedTs: Date | null;
   declare skipReason: string | null;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare dustFileId: string;
   declare driveFileId: string;
   declare name: string;
   declare mimeType: string;
@@ -160,10 +159,6 @@ GoogleDriveFiles.init(
     },
     connectorId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    dustFileId: {
-      type: DataTypes.STRING,
       allowNull: false,
     },
     driveFileId: {

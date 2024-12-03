@@ -21,9 +21,9 @@ import {
   handleTextExtraction,
   handleTextFile,
 } from "@connectors/connectors/shared/file";
-import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
 import {
   MAX_DOCUMENT_TXT_LEN,
+  MAX_FILE_SIZE_TO_DOWNLOAD,
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
@@ -107,7 +107,6 @@ async function handleGoogleDriveExport(
 
 async function handleFileExport(
   oauth2client: OAuth2Client,
-  documentId: string,
   file: GoogleDriveObjectType,
   maxDocumentLen: number,
   localLogger: Logger,
@@ -188,7 +187,7 @@ async function handleFileExport(
 
     result = await handleCsvFile({
       data: res.data,
-      tableId: documentId,
+      tableId: getDocumentId(file.id),
       fileName: file.name || "",
       maxDocumentLen,
       localLogger,
@@ -235,7 +234,6 @@ export async function syncOneFile(
         },
       });
 
-      const documentId = getDocumentId(file.id);
       const fileInDb = await GoogleDriveFiles.findOne({
         where: { connectorId, driveFileId: file.id },
       });
@@ -245,7 +243,6 @@ export async function syncOneFile(
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
         connectorId,
-        documentId,
         fileId: file.id,
         title: file.name,
         mimeType: file.mimeType,
@@ -323,8 +320,6 @@ async function syncOneFileTable(
   let skipReason: string | undefined;
   const upsertTimestampMs = undefined;
 
-  const documentId = getDocumentId(file.id);
-
   if (isGoogleDriveSpreadSheetFile(file)) {
     const res = await syncSpreadSheet(
       oauth2client,
@@ -345,7 +340,6 @@ async function syncOneFileTable(
   } else {
     await handleFileExport(
       oauth2client,
-      documentId,
       file,
       maxDocumentLen,
       localLogger,
@@ -356,7 +350,6 @@ async function syncOneFileTable(
   }
   await updateGoogleDriveFiles(
     connectorId,
-    documentId,
     file,
     skipReason,
     upsertTimestampMs
@@ -383,8 +376,6 @@ async function syncOneFileTextDocument(
     csvEnabled: config?.csvEnabled || false,
   });
 
-  const documentId = getDocumentId(file.id);
-
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     documentContent = await handleGoogleDriveExport(
       oauth2client,
@@ -394,7 +385,6 @@ async function syncOneFileTextDocument(
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
     documentContent = await handleFileExport(
       oauth2client,
-      documentId,
       file,
       maxDocumentLen,
       localLogger,
@@ -408,7 +398,6 @@ async function syncOneFileTextDocument(
       dataSourceConfig,
       file,
       documentContent,
-      documentId,
       maxDocumentLen,
       localLogger,
       oauth2client,
@@ -419,7 +408,6 @@ async function syncOneFileTextDocument(
 
     await updateGoogleDriveFiles(
       connectorId,
-      documentId,
       file,
       undefined,
       upsertTimestampMs
@@ -433,7 +421,6 @@ async function upsertGdriveDocument(
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveObjectType,
   documentContent: CoreAPIDataSourceDocumentSection | null,
-  documentId: string,
   maxDocumentLen: number,
   localLogger: Logger,
   oauth2client: OAuth2Client,
@@ -478,7 +465,7 @@ async function upsertGdriveDocument(
 
     await upsertToDatasource({
       dataSourceConfig,
-      documentId,
+      documentId: file.id,
       documentContent: content,
       documentUrl: file.webViewLink,
       timestampMs: file.updatedAtMs,
@@ -501,14 +488,12 @@ async function upsertGdriveDocument(
 
 async function updateGoogleDriveFiles(
   connectorId: ModelId,
-  documentId: string,
   file: GoogleDriveObjectType,
   skipReason: string | undefined,
   upsertTimestampMs: number | undefined
 ): Promise<void> {
   const params: CreationAttributes<GoogleDriveFiles> = {
     connectorId,
-    dustFileId: documentId,
     driveFileId: file.id,
     name: file.name,
     mimeType: file.mimeType,

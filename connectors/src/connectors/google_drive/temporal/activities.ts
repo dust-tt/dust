@@ -1,8 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-import type { OAuth2Client } from "googleapis-common";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import StatsD from "hot-shots";
 import PQueue from "p-queue";
@@ -20,7 +19,6 @@ import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/
 import {
   driveObjectToDustType,
   getAuthObject,
-  getDocumentId,
   getDriveClient,
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
@@ -470,7 +468,6 @@ export async function incrementalSync(
       if (driveFile.mimeType === "application/vnd.google-apps.folder") {
         await GoogleDriveFiles.upsert({
           connectorId: connectorId,
-          dustFileId: getDocumentId(driveFile.id),
           driveFileId: file.id,
           name: file.name,
           mimeType: file.mimeType,
@@ -747,7 +744,7 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
   ) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
+    await deleteFromDataSource(dataSourceConfig, googleDriveFile.driveFileId);
   }
   const folder = await GoogleDriveFolders.findOne({
     where: {
@@ -786,7 +783,6 @@ export async function markFolderAsVisited(
 
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
-    dustFileId: getDocumentId(driveFileId),
     driveFileId: file.id,
     name: file.name,
     mimeType: file.mimeType,

@@ -10,7 +10,6 @@ import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   getAuthObject,
-  getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { throwOnError } from "@connectors/lib/cli";
@@ -162,7 +161,6 @@ export const google_drive = async ({
       } else {
         await GoogleDriveFiles.create({
           driveFileId: args.fileId,
-          dustFileId: getDocumentId(args.fileId),
           name: "unknown",
           mimeType: "unknown",
           connectorId: connector.id,
