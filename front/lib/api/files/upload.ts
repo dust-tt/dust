@@ -421,7 +421,16 @@ export async function processAndStoreFile(
   }
 
   if (typeof reqOrString === "string") {
-    file.getWriteStream({ auth, version: "original" }).end(reqOrString);
+    const writeStream = file.getWriteStream({ auth, version: "original" });
+    // Promise wrapper for stream completion.
+    const streamEnd = new Promise((resolve, reject) => {
+      writeStream.on("error", reject);
+      writeStream.on("finish", resolve);
+    });
+    writeStream.write(reqOrString);
+    writeStream.end();
+    // Wait for completion to ensure file is created.
+    await streamEnd;
   } else {
     const r = await parseUploadRequest(
       file,
