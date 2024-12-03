@@ -233,6 +233,8 @@ export async function upsertDocument({
   light_document_output,
   dataSource,
   auth,
+  mime_type,
+  title,
 }: {
   name: string;
   source_url?: string | null;
@@ -244,6 +246,8 @@ export async function upsertDocument({
   light_document_output?: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
+  mime_type?: string;
+  title?: string;
 }): Promise<
   Result<
     {
@@ -389,6 +393,8 @@ export async function upsertDocument({
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,
+    title,
+    mimeType: mime_type,
   });
 
   if (upsertRes.isErr()) {
