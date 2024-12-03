@@ -3026,8 +3026,14 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn upsert_data_source_folder(&self, folder: &Folder) -> Result<()> {
-        let data_source_id = folder.data_source_id();
+    async fn upsert_data_source_folder(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        folder: &Folder,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
@@ -3038,8 +3044,8 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let r = tx
             .query(
-                "SELECT id FROM data_sources WHERE data_source_id = $1 LIMIT 1",
-                &[&data_source_id],
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
             )
             .await?;
         let data_source_row_id: i64 = match r.len() {

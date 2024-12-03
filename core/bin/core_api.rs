@@ -2683,10 +2683,12 @@ struct FoldersUpsertPayload {
 }
 
 async fn folders_upsert(
-    Path((_, data_source_id)): Path<(i64, String)>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
     State(state): State<Arc<APIState>>,
     Json(payload): Json<FoldersUpsertPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
     let folder = Folder::new(
         &data_source_id,
         &payload.folder_id.clone(),
@@ -2695,7 +2697,11 @@ async fn folders_upsert(
         payload.parents,
     );
 
-    match state.store.upsert_data_source_folder(&folder).await {
+    match state
+        .store
+        .upsert_data_source_folder(&project, &data_source_id, &folder)
+        .await
+    {
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
