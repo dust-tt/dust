@@ -376,7 +376,7 @@ async function getSignedUrlForProcessedContent(
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
 }
 
-async function renderFromFileId(
+export async function renderFromFileId(
   workspace: WorkspaceType,
   {
     contentType,
@@ -581,8 +581,7 @@ export async function renderContentFragmentForModel(
         contentType,
         excludeImages,
         fileId,
-        // If there is a snippet, it means that JIT was used, therefor if we are rendering the content fragment: we want to include the full content.
-        forceFullCSVInclude: message.snippet != null,
+        forceFullCSVInclude: false,
         model,
         title,
         textBytes,

@@ -1,6 +1,5 @@
 import type {
   AgentActionSpecification,
-  ContentFragmentType,
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileErrorEvent,
@@ -12,16 +11,9 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
-  SupportedContentFragmentType,
 } from "@dust-tt/types";
 import { CoreAPI, Err, Ok } from "@dust-tt/types";
-import {
-  assertNever,
-  BaseAction,
-  isContentFragmentType,
-  isSupportedImageContentType,
-  isTextContent,
-} from "@dust-tt/types";
+import { BaseAction, isTextContent } from "@dust-tt/types";
 
 import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
@@ -31,40 +23,14 @@ import {
 } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
-import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { renderFromFileId } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-
-export function isConversationIncludableFileContentType(
-  contentType: SupportedContentFragmentType
-): boolean {
-  if (isSupportedImageContentType(contentType)) {
-    return false;
-  }
-  // For now we only allow including text files.
-  switch (contentType) {
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/pdf":
-    case "text/markdown":
-    case "text/plain":
-    case "dust-application/slack":
-    case "text/vnd.dust.attachment.slack.thread":
-    case "text/comma-separated-values":
-    case "text/csv":
-      return true;
-
-    case "text/tab-separated-values":
-    case "text/tsv":
-      return false;
-    default:
-      assertNever(contentType);
-  }
-}
 
 interface ConversationIncludeFileActionBlob {
   id: ModelId;
@@ -121,41 +87,38 @@ export class ConversationIncludeFileAction extends BaseAction {
     // be able to undertstand the state of affair. We use content.flat() to consider all versions of
     // messages here (to support rendering a file that was part of an old version of a previous
     // message).
-    const m = (conversation.content.flat().find((m) => {
-      if (
-        isContentFragmentType(m) &&
-        isConversationIncludableFileContentType(m.contentType) &&
-        m.fileId === fileId
-      ) {
-        return true;
+    const files = listFiles(conversation);
+    for (const f of files) {
+      if (f.fileId === fileId && f.isIncludable) {
+        const r = await renderFromFileId(conversation.owner, {
+          contentType: f.contentType,
+          excludeImages: true,
+          fileId: f.fileId,
+          forceFullCSVInclude: true, // We are using JIT so if we are rendering a CSV file we want to include it in full
+          model,
+          title: f.title,
+          textBytes: null,
+          contentFragmentVersion: f.contentFragmentVersion,
+        });
+
+        if (r.isErr()) {
+          return new Err(`${r.error}`);
+        }
+        if (!isTextContent(r.value.content[0])) {
+          return new Err(`File \`${fileId}\` has no text content`);
+        }
+
+        return new Ok({
+          fileId,
+          title: f.title,
+          content: r.value.content[0].text,
+        });
       }
-      return false;
-    }) || null) as ContentFragmentType | null;
-
-    if (!m) {
-      return new Err(
-        `File \`${fileId}\` not includable or not found in conversation`
-      );
     }
 
-    const rRes = await renderContentFragmentForModel(m, conversation, model, {
-      // We're not supposed to get images here and we would not know what to do with them.
-      excludeImages: true,
-    });
-
-    if (rRes.isErr()) {
-      return new Err(`${rRes.error}`);
-    }
-    if (!isTextContent(rRes.value.content[0])) {
-      return new Err(`File \`${fileId}\` has no text content`);
-    }
-    const text = rRes.value.content[0].text;
-
-    return new Ok({
-      fileId,
-      title: m.title,
-      content: text,
-    });
+    return new Err(
+      `File \`${fileId}\` not includable or not found in conversation`
+    );
   }
 
   renderForFunctionCall(): FunctionCallType {
