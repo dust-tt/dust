@@ -938,7 +938,7 @@ class IntToBigIntMigration {
       `
     );
 
-    let currentId = min_id_rows[0].min_id;
+    let currentId = min_id_rows[0].min_id > 0 ? min_id_rows[0].min_id - 1 : 0;
 
     const { rows: max_id_rows } = await this.executeSql<{ max_id: number }>(
       client,
