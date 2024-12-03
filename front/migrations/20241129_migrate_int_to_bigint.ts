@@ -2002,8 +2002,6 @@ makeScript(
         console.log(
           chalk.green(`\n[Migration] Completed migration for table: ${t}`)
         );
-
-        await migration.execute(step as MigrationStepType);
       }
     } else {
       const migration = new IntToBigIntMigration(database, {
