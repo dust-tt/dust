@@ -339,14 +339,6 @@ async function answerMessage(
     userType: slackUserInfo.is_bot ? "bot" : "user",
   });
 
-  const buildContentFragmentRes = await makeContentFragment(
-    slackClient,
-    slackChannel,
-    slackThreadTs || slackMessageTs,
-    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
-    connector
-  );
-
   if (!DUST_FRONT_API) {
     throw new Error("DUST_FRONT_API environment variable is not defined");
   }
@@ -374,6 +366,16 @@ async function answerMessage(
       useLocalInDev: false,
       urlOverride: DUST_FRONT_API,
     }
+  );
+
+  const buildContentFragmentRes = await makeContentFragment(
+    slackClient,
+    dustAPI,
+    slackChannel,
+    slackThreadTs || slackMessageTs,
+    lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
+    connector,
+    lastSlackChatBotMessage?.conversationId || null
   );
 
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
@@ -690,10 +692,12 @@ export async function getBotEnabled(
 
 async function makeContentFragment(
   slackClient: WebClient,
+  dustAPI: DustAPI,
   channelId: string,
   threadTs: string,
   startingAtTs: string | null,
-  connector: ConnectorResource
+  connector: ConnectorResource,
+  conversationId: string | null
 ): Promise<Result<PublicPostContentFragmentRequestBody | null, Error>> {
   let allMessages: MessageElement[] = [];
 
@@ -770,11 +774,26 @@ async function makeContentFragment(
   // Prepend $url to the content to make it available to the model.
   const section = `$url: ${url}\n${sectionFullText(content)}`;
 
+  const contentType = "text/vnd.dust.attachment.slack.thread";
+  const fileName = `slack_thread-${channel.channel.name}-${threadTs}.txt`;
+
+  const fileRes = await dustAPI.uploadFile({
+    contentType,
+    fileName,
+    fileSize: section.length,
+    useCase: "conversation",
+    useCaseMetadata: conversationId ? { conversationId } : undefined,
+    fileObject: new File([section], fileName, { type: contentType }),
+  });
+
+  if (fileRes.isErr()) {
+    return new Err(new Error(fileRes.error.message));
+  }
+
   return new Ok({
     title: `Thread content from #${channel.channel.name}`,
-    content: section,
     url: url,
-    contentType: "dust-application/slack",
+    fileId: fileRes.value.id,
     context: null,
   });
 }
