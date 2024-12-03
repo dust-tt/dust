@@ -95,9 +95,6 @@ import { apiError } from "@app/logger/withlogging";
  *               title:
  *                 type: string
  *                 description: Title of the table
- *               mime_type:
- *                 type: string
- *                 description: Mime type of the table
  *               table_id:
  *                 type: string
  *                 description: Unique identifier for the table
