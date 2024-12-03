@@ -56,7 +56,7 @@ const CitationNewIndex = React.forwardRef<
       ref={ref}
       className={cn(
         "s-z-10",
-        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 s-text-xs s-font-medium s-text-foreground",
+        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 s-text-xs s-font-medium s-text-primary-200",
         className
       )}
       {...props}
@@ -98,14 +98,9 @@ const CitationNewClose = React.forwardRef<
       size="xs"
       className={cn("s-z-10", "s-absolute s-right-2 s-top-2 s-z-10", className)}
       icon={XMarkIcon}
-      onClick={onClick}
-      onMouseEnter={(e) => {
+      onClick={(e) => {
         e.stopPropagation();
-        props.onMouseEnter?.(e);
-      }}
-      onMouseLeave={(e) => {
-        e.stopPropagation();
-        props.onMouseLeave?.(e);
+        onClick?.(e);
       }}
       {...props}
     />
