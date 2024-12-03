@@ -1,8 +1,8 @@
 import type { PostContentFragmentResponseType } from "@dust-tt/client";
 import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
+import type {WithAPIErrorResponse} from "@dust-tt/types";
 import {
-  isContentFragmentInputWithContentType,
-  type WithAPIErrorResponse,
+  isContentFragmentInputWithContentType
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -14,8 +14,8 @@ import {
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
 import logger from "@app/logger/logger";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @swagger
