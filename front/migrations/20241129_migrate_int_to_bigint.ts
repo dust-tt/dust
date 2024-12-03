@@ -1,4 +1,5 @@
 import { assertNever } from "@dust-tt/types";
+import assert from "assert";
 import chalk from "chalk";
 import type { PoolClient } from "pg";
 import { Pool } from "pg";
@@ -36,7 +37,7 @@ interface MigrationProgress {
 
 interface MainTableSwitchConfig {
   currentColumn: string; // e.g., 'id'
-  newColumn: string; // e.g., 'new_id'
+  newColumn: string; // e.g., 'id_new'
   legacyColumn: string; // e.g., 'id_legacy'
   sequenceName: string; // e.g., 'table_id_seq'
   indexName: string; // e.g., 'table_pkey_bigint'
@@ -183,7 +184,7 @@ class IntToBigIntMigration {
       }
     } catch (error) {
       throw new MigrationError(
-        `Migration failed during ${step}`,
+        `Migration failed during ${step} on table ${this.config.tableName}`,
         step,
         error instanceof Error ? error : undefined
       );
@@ -1766,20 +1767,20 @@ class IntToBigIntMigration {
     const progress: MigrationProgress[] = [];
 
     // Check main table
-    const mainProgress = await this.checkTableProgress(
-      client,
-      this.config.tableName,
-      createColumnName.new(MAIN_ID_COLUMN)
-    );
+    const mainProgress = await this.checkTableProgress(client, {
+      tableName: this.config.tableName,
+      sourceColumn: MAIN_ID_COLUMN,
+      targetColumn: createColumnName.new(MAIN_ID_COLUMN),
+    });
     progress.push(mainProgress);
 
     // Check referencing tables
     for (const ref of referencingTables) {
-      const refProgress = await this.checkTableProgress(
-        client,
-        ref.tableName,
-        createColumnName.new(ref.foreignKeyColumn)
-      );
+      const refProgress = await this.checkTableProgress(client, {
+        tableName: ref.tableName,
+        sourceColumn: ref.foreignKeyColumn,
+        targetColumn: createColumnName.new(ref.foreignKeyColumn),
+      });
       progress.push(refProgress);
     }
 
@@ -1788,30 +1789,45 @@ class IntToBigIntMigration {
 
   private async checkTableProgress(
     client: PoolClient,
-    tableName: string,
-    targetColumn: string
+    {
+      tableName,
+      sourceColumn,
+      targetColumn,
+    }: { tableName: string; sourceColumn: string; targetColumn: string }
   ): Promise<MigrationProgress> {
     const { rows } = await this.executeSql<{
-      total_rows: number;
-      migrated_rows: number;
+      source_count: number;
+      target_count: number;
       progress_percentage: string;
     }>(
       client,
       `
       SELECT
-        COUNT(*)::bigint as total_rows,
-        COUNT("${targetColumn}")::bigint as migrated_rows,
-        ROUND((COUNT("${targetColumn}")::numeric / NULLIF(COUNT(*)::numeric, 0) * 100), 2) as progress_percentage
+        COUNT("${sourceColumn}")::bigint as source_count,
+        COUNT("${targetColumn}")::bigint as target_count,
+        CASE
+          WHEN COUNT("${sourceColumn}") = 0 THEN 100
+          ELSE ROUND(
+            (COUNT("${targetColumn}")::numeric /
+            NULLIF(COUNT("${sourceColumn}")::numeric, 0)
+            * 100
+            ), 2
+          )
+        END as progress_percentage
       FROM ${tableName}
     `
     );
 
-    const { total_rows, migrated_rows, progress_percentage } = rows[0];
+    const { source_count, target_count, progress_percentage } = rows[0];
+
+    console.log(chalk.dim(`[Progress Details] ${tableName}:`));
+    console.log(chalk.dim(`- Non-NULL in ${sourceColumn}: ${source_count}`));
+    console.log(chalk.dim(`- Non-NULL in ${targetColumn}: ${target_count}`));
 
     return {
       tableName,
-      totalRows: total_rows,
-      migratedRows: migrated_rows,
+      totalRows: source_count,
+      migratedRows: target_count,
       progressPercentage: progress_percentage
         ? parseInt(progress_percentage, 10)
         : 100,
@@ -1870,6 +1886,24 @@ class IntToBigIntMigration {
   }
 }
 
+async function getAllTables(connectionString: string): Promise<string[]> {
+  const pool = new Pool({ connectionString });
+
+  const client = await pool.connect();
+  try {
+    const { rows } = await client.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      AND table_type = 'BASE TABLE'
+    `);
+
+    return rows.map((r) => r.table_name);
+  } finally {
+    client.release();
+  }
+}
+
 makeScript(
   {
     database: {
@@ -1909,14 +1943,67 @@ makeScript(
     },
   },
   async ({ database, table, step, batchSize, schema, timeout, execute }) => {
-    const migration = new IntToBigIntMigration(database, {
-      tableName: table,
-      schemaName: schema,
-      batchSize,
-      timeoutSeconds: timeout,
-      dryRun: !execute,
-    });
+    if (table === "all") {
+      assert(
+        process.env.NODE_ENV === "development",
+        "Only allowed in development"
+      );
 
-    await migration.execute(step as MigrationStepType);
+      console.log(
+        chalk.red("About to run migration on all tables in development")
+      );
+
+      const tables = await getAllTables(database);
+      console.log(chalk.yellow(`Found ${tables.length} tables`));
+      tables.forEach((t) => console.log(chalk.yellow(`- ${t}`)));
+
+      for (const t of tables) {
+        if (["vaults", "groups"].includes(t)) {
+          console.log("Skipping table: ", t);
+        }
+
+        console.log(
+          chalk.blue(`\n[Migration] Starting migration for table: ${t}`)
+        );
+        const migration = new IntToBigIntMigration(database, {
+          tableName: t,
+          schemaName: schema,
+          batchSize,
+          timeoutSeconds: timeout,
+          dryRun: !execute,
+        });
+
+        // Run all steps for this table
+        for (const step of MigrationSteps) {
+          console.log(chalk.blue(`\n[${t}] Executing step: ${step}`));
+
+          try {
+            await migration.execute(step);
+          } catch (error) {
+            console.error(
+              chalk.red(`Failed during ${step} for table ${t}:`),
+              error
+            );
+            throw error; // Stop the entire migration if any step fails
+          }
+        }
+
+        console.log(
+          chalk.green(`\n[Migration] Completed migration for table: ${t}`)
+        );
+
+        await migration.execute(step as MigrationStepType);
+      }
+    } else {
+      const migration = new IntToBigIntMigration(database, {
+        tableName: table,
+        schemaName: schema,
+        batchSize,
+        timeoutSeconds: timeout,
+        dryRun: !execute,
+      });
+
+      await migration.execute(step as MigrationStepType);
+    }
   }
 );
