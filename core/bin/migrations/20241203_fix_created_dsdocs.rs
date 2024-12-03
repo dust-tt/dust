@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
     let execute = args.execute;
 
     let created_start = 1733164800000 as i64; // 2024-12-02 18:40 UTC
-    let created_end = 99999999999999999 as i64; // 2024-12-03 08:25 UTC
+    let created_end = 1733214300000 as i64; // 2024-12-03 08:25 UTC
 
     let batch_size = 1000 as i64;
     let mut last_processed_id = 0 as i64;
@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
             .query(
                 "SELECT id, document_id, created, hash, data_source \
              FROM data_sources_documents \
-             WHERE created >= $1 AND created <= $2 AND id > $3 LIMIT $4",
+             WHERE created >= $1 AND created <= $2 AND id > $3 ORDER BY id ASC LIMIT $4",
                 &[
                     &created_start,
                     &created_end,
