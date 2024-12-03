@@ -457,6 +457,11 @@ class IntToBigIntMigration {
         this.config.tableName,
         COLUMN_TYPE.INT
       );
+      assert(
+        rollbackIndexName.length < 63,
+        `Index name too long: ${rollbackIndexName}`
+      );
+
       await this.executeSql(
         client,
         `DROP INDEX IF EXISTS "${rollbackIndexName}"`
@@ -558,7 +563,7 @@ class IntToBigIntMigration {
         ON tc.constraint_name = kcu.constraint_name
       JOIN information_schema.constraint_column_usage ccu
         ON ccu.constraint_name = tc.constraint_name
-      JOIN pg_constraint pc 
+      JOIN pg_constraint pc
         ON tc.constraint_name = pc.conname
       WHERE tc.constraint_type = 'FOREIGN KEY'
         AND ccu.table_name = $1
@@ -1287,6 +1292,8 @@ class IntToBigIntMigration {
       tableName: string;
     }
   ): Promise<void> {
+    assert(indexName.length < 63, `Index name too long: ${indexName}`);
+
     // Only primary key indexes are unique.
     await this.executeSql(
       client,
@@ -1417,6 +1424,8 @@ class IntToBigIntMigration {
       ref.foreignKeyColumn,
       COLUMN_TYPE.BIGINT
     );
+    assert(fkIndexName.length < 63, `Index name too long: ${fkIndexName}`);
+
     const newFkIndexName = fkIndexName.replace("_bigint", "");
 
     // Find existing FK indexes for all referencing tables at once
