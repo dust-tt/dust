@@ -36,7 +36,7 @@ async function main() {
 
     const fileHash = files.reduce(
       (acc, f) => {
-        acc[f.dustFileId] = f.id;
+        acc[f.driveFileId] = f.id;
         return acc;
       },
       {} as { [key: string]: number }

@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 import { getLocalParents as getGoogleParents } from "@connectors/connectors/google_drive/lib";
+import { getTableId } from "@connectors/connectors/google_drive/temporal/utils";
 import { getParents as getMicrosoftParents } from "@connectors/connectors/microsoft/temporal/file";
 import { getParents as getNotionParents } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -86,14 +87,14 @@ export async function googleTables(
     },
   });
   for (const file of csvFiles) {
-    const { driveFileId, dustFileId, connectorId } = file;
+    const { driveFileId, connectorId } = file;
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     const parents = await getGoogleParents(connectorId, driveFileId, memo);
     await updateParents({
       dataSourceConfig,
-      tableId: dustFileId,
+      tableId: getTableId(driveFileId),
       parents,
       execute,
       logger,
