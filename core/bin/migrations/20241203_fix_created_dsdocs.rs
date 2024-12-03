@@ -169,7 +169,16 @@ async fn main() -> Result<()> {
 
             let createds: Vec<i64> = paths
                 .iter()
-                .map(|path| path.split('_').next().unwrap().parse::<i64>().unwrap())
+                .map(|path| {
+                    path.split('/')
+                        .last()
+                        .unwrap()
+                        .split('_')
+                        .next()
+                        .unwrap()
+                        .parse::<i64>()
+                        .unwrap()
+                })
                 .collect();
 
             let new_created = createds.iter().max().unwrap();
