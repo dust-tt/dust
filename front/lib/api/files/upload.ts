@@ -387,7 +387,10 @@ const maybeApplyProcessing: ProcessingFunction = async (
 
 export async function processAndStoreFile(
   auth: Authenticator,
-  { file, req }: { file: FileResource; req: IncomingMessage }
+  {
+    file,
+    reqOrString,
+  }: { file: FileResource; reqOrString: IncomingMessage | string }
 ): Promise<
   Result<
     FileResource,
@@ -417,14 +420,18 @@ export async function processAndStoreFile(
     });
   }
 
-  const r = await parseUploadRequest(
-    file,
-    req,
-    file.getWriteStream({ auth, version: "original" })
-  );
-  if (r.isErr()) {
-    await file.markAsFailed();
-    return r;
+  if (typeof reqOrString === "string") {
+    file.getWriteStream({ auth, version: "original" }).end(reqOrString);
+  } else {
+    const r = await parseUploadRequest(
+      file,
+      reqOrString,
+      file.getWriteStream({ auth, version: "original" })
+    );
+    if (r.isErr()) {
+      await file.markAsFailed();
+      return r;
+    }
   }
 
   const processingRes = await maybeApplyProcessing(auth, file);
