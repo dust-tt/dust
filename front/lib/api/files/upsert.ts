@@ -27,8 +27,8 @@ import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import logger from "@app/logger/logger";
 
 const ENABLE_LLM_SNIPPETS = false;
 
