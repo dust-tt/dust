@@ -1,8 +1,8 @@
+import { assertNever } from "@dust-tt/types";
 import chalk from "chalk";
 import type { PoolClient } from "pg";
 import { Pool } from "pg";
 
-import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 // Types.
@@ -55,6 +55,7 @@ const MigrationSteps = [
   "pre-cutover",
   "cutover",
   "rollback",
+  "cleanup",
 ] as const;
 type MigrationStepType = (typeof MigrationSteps)[number];
 
@@ -102,6 +103,8 @@ export const createTriggerNames = {
 export const createConstraintName = {
   notNull: (tableName: string, type: ColumnType) =>
     `${tableName}_not_null_${type}` as const,
+  notNullForColumn: (tableName: string, columnName: string) =>
+    `${tableName}_not_null_${columnName}` as const,
   foreignKey: (tableName: string, columnName: string, type: ColumnType) =>
     `${tableName}_${columnName}_fkey_${type}` as const,
 };
@@ -171,8 +174,12 @@ class IntToBigIntMigration {
           await this.rollback();
           break;
 
+        case "cleanup":
+          await this.cleanup();
+          break;
+
         default:
-          throw new Error(`Unknown step: ${step}`);
+          assertNever(step);
       }
     } catch (error) {
       throw new MigrationError(
@@ -184,6 +191,7 @@ class IntToBigIntMigration {
   }
 
   // Setup Phase
+
   private async setup(): Promise<void> {
     const client = await this.pool.connect();
     try {
@@ -211,6 +219,7 @@ class IntToBigIntMigration {
   }
 
   // Backfill Phase
+
   private async backfill(): Promise<void> {
     const client = await this.pool.connect();
     try {
@@ -260,8 +269,23 @@ class IntToBigIntMigration {
         chalk.yellow(`[Pre-Cutover] Creating indexes and constraints`)
       );
 
-      // Create indexes concurrently.
+      // Create indexes concurrently
       await this.createIndexes(client, referencingTables);
+
+      // Set NOT NULL constraints on the new columns
+      for (const ref of referencingTables) {
+        const isNotNull = await this.isColumnNotNull(client, {
+          tableName: ref.tableName,
+          columnName: ref.foreignKeyColumn,
+        });
+
+        if (isNotNull) {
+          await this.setNotNullConstraint(client, {
+            tableName: ref.tableName,
+            columnName: createColumnName.new(ref.foreignKeyColumn),
+          });
+        }
+      }
 
       console.log(
         chalk.green(
@@ -273,25 +297,8 @@ class IntToBigIntMigration {
     }
   }
 
-  private async dropTriggers(
-    client: PoolClient,
-    { tableName, isPrimaryKey }: { tableName: string; isPrimaryKey: boolean },
-    direction: SyncDirection
-  ): Promise<void> {
-    const triggerInfo = isPrimaryKey
-      ? createTriggerNames.pk(tableName, direction)
-      : createTriggerNames.fk(tableName, direction);
-
-    await this.executeSql(
-      client,
-      `
-      DROP TRIGGER IF EXISTS ${triggerInfo.trigger} ON ${tableName};
-      DROP FUNCTION IF EXISTS ${triggerInfo.function};
-      `
-    );
-  }
-
   // Cutover Phase
+
   private async cutover(): Promise<void> {
     const client = await this.pool.connect();
     try {
@@ -420,6 +427,96 @@ class IntToBigIntMigration {
     }
   }
 
+  // Clean up Phase
+
+  // We can't use a transaction for cleanup as it does not support creating indexes concurrently.
+  private async cleanup(): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      // Find referencing tables
+      const referencingTables = await this.findReferencingTables(client);
+
+      // Drop Triggers for main table that was replicating to legacy columns
+      await this.dropTriggers(
+        client,
+        {
+          tableName: this.config.tableName,
+          isPrimaryKey: true,
+        },
+        SYNC_DIRECTION.TO_LEGACY
+      );
+
+      // Drop the rollback index that was created
+      const rollbackIndexName = createIndexName.primary(
+        this.config.tableName,
+        COLUMN_TYPE.INT
+      );
+      await this.executeSql(
+        client,
+        `DROP INDEX IF EXISTS "${rollbackIndexName}"`
+      );
+
+      // Drop the legacy column (this also drops the indexes)
+      const legacyColumn = createColumnName.legacy(MAIN_ID_COLUMN);
+      await this.dropColumn(client, {
+        tableName: this.config.tableName,
+        columnName: legacyColumn,
+      });
+
+      // Recreate the indexes without the `_bigint` suffix
+      await this.cleanupBigintIndexes(client, {
+        columnName: MAIN_ID_COLUMN,
+        tableName: this.config.tableName,
+      });
+
+      // Clean up the primary key constraint check.
+      const constraintName = createConstraintName.notNull(
+        this.config.tableName,
+        COLUMN_TYPE.BIGINT
+      );
+
+      await this.executeSql(
+        client,
+        `
+        ALTER TABLE ${this.config.tableName}
+        DROP CONSTRAINT IF EXISTS "${constraintName}";
+        `
+      );
+
+      for (const ref of referencingTables) {
+        // Drop Triggers for referencing tables that was replicating to legacy columns
+        await this.dropTriggers(
+          client,
+          {
+            tableName: ref.tableName,
+            isPrimaryKey: false,
+          },
+          SYNC_DIRECTION.TO_LEGACY
+        );
+
+        // Drop the legacy column (this also drops the indexes)
+        const legacyColumn = createColumnName.legacy(ref.foreignKeyColumn);
+        await this.dropColumn(client, {
+          tableName: ref.tableName,
+          columnName: legacyColumn,
+        });
+
+        // Recreate the indexes without the `_bigint` suffix
+        await this.cleanupBigintIndexes(client, {
+          columnName: ref.foreignKeyColumn,
+          tableName: ref.tableName,
+        });
+
+        // Recreate the foreign key constraints without the `_bigint` suffix
+        await this.cleanupForeignKeyConstraints(client, ref);
+      }
+
+      console.log(chalk.green("[Cleanup] Successfully cleaned up all tables"));
+    } finally {
+      client.release();
+    }
+  }
+
   // Helper methods
 
   private async verifyTableExists(client: PoolClient): Promise<boolean> {
@@ -475,6 +572,154 @@ class IntToBigIntMigration {
     return rows;
   }
 
+  // Columns helpers.
+
+  private async isColumnNotNull(
+    client: PoolClient,
+    {
+      tableName,
+      columnName,
+    }: {
+      tableName: string;
+      columnName: string;
+    }
+  ): Promise<boolean> {
+    const result = await this.executeSql<{ is_nullable: string }>(
+      client,
+      `
+    SELECT is_nullable
+    FROM information_schema.columns
+    WHERE table_name = $1
+      AND column_name = $2;
+    `,
+      [tableName, columnName]
+    );
+
+    return result.rows[0]?.is_nullable === "NO";
+  }
+
+  private async shouldUseCheckConstraint(
+    client: PoolClient,
+    tableName: string
+  ): Promise<boolean> {
+    // Get table size in bytes
+    const result = await this.executeSql<{ size_bytes: string }>(
+      client,
+      `
+      SELECT pg_table_size($1) as size_bytes
+      FROM pg_stat_user_tables
+      WHERE relname = $2
+      `,
+      [tableName, tableName]
+    );
+
+    const sizeBytes = parseInt(result.rows[0]?.size_bytes || "0", 10);
+    const sizeGB = sizeBytes / (1024 * 1024 * 1024);
+
+    console.log(
+      chalk.yellow(
+        `[Migration] Table ${chalk.bold(tableName)} size: ${chalk.bold(
+          `${Math.round(sizeGB * 100) / 100}GB`
+        )}`
+      )
+    );
+
+    // >= 1GB: Use CHECK constraint only
+    // < 1GB: Case by case
+    const LARGE_TABLE_THRESHOLD_GB = 1;
+    const useCheckConstraint = sizeGB >= LARGE_TABLE_THRESHOLD_GB;
+
+    console.log(
+      chalk.yellow(
+        `[Migration] Using ${chalk.bold(
+          useCheckConstraint ? "CHECK constraint" : "SET NOT NULL"
+        )} approach for table ${chalk.bold(tableName)}`
+      )
+    );
+
+    return useCheckConstraint;
+  }
+
+  private async setNotNullConstraint(
+    client: PoolClient,
+    {
+      tableName,
+      columnName,
+    }: {
+      tableName: string;
+      columnName: string;
+    }
+  ): Promise<void> {
+    try {
+      // PostgreSQL does not leverage the CHECK CONSRAINT when altering the table to set NOT NULL.
+      // Which involves a full table scan which creates an ACCESS EXCLUSIVE lock.
+      // For tables bigger than 10GB we set a CHECK CONSTRAINT temporary.
+      // We will clean up later during off hours.
+      const useNotNullConstraint = await this.shouldUseCheckConstraint(
+        client,
+        tableName
+      );
+      if (useNotNullConstraint) {
+        const constraintName = createConstraintName.notNullForColumn(
+          tableName,
+          columnName
+        );
+
+        console.log(
+          chalk.yellow(
+            `[Constraints] Adding NOT NULL constraint for ${chalk.bold(
+              `${tableName}.${columnName}`
+            )}`
+          )
+        );
+
+        // Add the NOT NULL constraint without validation
+        await this.executeSql(
+          client,
+          `
+          ALTER TABLE ${tableName}
+          ADD CONSTRAINT "${constraintName}"
+          CHECK ("${columnName}" IS NOT NULL) NOT VALID;
+          `
+        );
+
+        // Validate the constraint
+        console.log(
+          chalk.yellow(
+            `[Constraints] Validating NOT NULL constraint for ${chalk.bold(
+              `${tableName}.${columnName}`
+            )}`
+          )
+        );
+
+        await this.executeSql(
+          client,
+          `
+          ALTER TABLE ${tableName}
+          VALIDATE CONSTRAINT "${constraintName}";
+          `
+        );
+      } else {
+        // /!\ This performs a full table scan and locks the table.
+        // ONLY PERFORM THIS ON SMALL TABLE.
+        await this.executeSql(
+          client,
+          `
+          ALTER TABLE ${tableName}
+          ALTER COLUMN "${columnName}" SET NOT NULL;
+          `
+        );
+      }
+    } catch (error) {
+      console.error(
+        chalk.red(
+          `[ERROR] Failed to set NOT NULL constraint on ${tableName}.${columnName}`
+        )
+      );
+      throw error;
+    }
+  }
+
   private async addNewColumns(
     client: PoolClient,
     referencingTables: ReferencingTable[]
@@ -522,6 +767,18 @@ class IntToBigIntMigration {
 
     console.log(chalk.green(`[Columns] Successfully added all BigInt columns`));
   }
+
+  private async dropColumn(
+    client: PoolClient,
+    { tableName, columnName }: { tableName: string; columnName: string }
+  ): Promise<void> {
+    await this.executeSql(
+      client,
+      `ALTER TABLE ${tableName} DROP COLUMN IF EXISTS "${columnName}"`
+    );
+  }
+
+  // Triggers helpers.
 
   private async setupTriggers(
     client: PoolClient,
@@ -697,6 +954,54 @@ class IntToBigIntMigration {
     }
   }
 
+  // Indexes helpers.
+
+  private async findForeignKeyIndexes(
+    client: PoolClient,
+    referencingTables: ReferencingTable[]
+  ): Promise<
+    Array<{
+      tableName: string;
+      columnName: string;
+      indexName: string;
+    }>
+  > {
+    // Build the list of (table_name, column_name) pairs for the WHERE clause
+    const conditions = referencingTables
+      .map((ref, i) => `($${i * 2 + 1}::text, $${i * 2 + 2}::text)`)
+      .join(", ");
+
+    const params = referencingTables.flatMap((ref) => [
+      ref.tableName,
+      ref.foreignKeyColumn,
+    ]);
+
+    const result = await this.executeSql<{
+      tableName: string;
+      columnName: string;
+      indexName: string;
+    }>(
+      client,
+      `
+      SELECT DISTINCT
+        t.relname AS "tableName",
+        a.attname AS "columnName",
+        i.relname AS "indexName"
+      FROM pg_class t
+      JOIN pg_index ix ON t.oid = ix.indrelid
+      JOIN pg_class i ON ix.indexrelid = i.oid
+      JOIN pg_attribute a ON t.oid = a.attrelid
+      WHERE (t.relname, a.attname) IN (${conditions})
+        AND array_position(ix.indkey, a.attnum) = 0  -- Only when it's the first column
+        AND t.relkind = 'r'
+        AND ix.indisprimary = false;
+      `,
+      params
+    );
+
+    return result.rows;
+  }
+
   private async findCompositeIndexes(
     client: PoolClient,
     tableName: string,
@@ -757,10 +1062,16 @@ class IntToBigIntMigration {
   private async createCompositeIndexes(
     client: PoolClient,
     {
-      tableName,
-      oldColumn,
       newColumn,
-    }: { tableName: string; oldColumn: string; newColumn: string }
+      oldColumn,
+      tableName,
+      transformIndexName,
+    }: {
+      newColumn: string;
+      oldColumn: string;
+      tableName: string;
+      transformIndexName: (indexName: string) => string;
+    }
   ): Promise<void> {
     const compositeIndexes = await this.findCompositeIndexes(
       client,
@@ -769,8 +1080,7 @@ class IntToBigIntMigration {
     );
 
     for (const index of compositeIndexes) {
-      // Create new index name
-      const newIndexName = `${index.indexName}_bigint`;
+      const newIndexName = transformIndexName(index.indexName);
 
       // Replace old column with new column in the columns array
       const newColumns = index.columns.map((col) =>
@@ -787,6 +1097,43 @@ class IntToBigIntMigration {
       );
 
       await this.waitForIndex(client, newIndexName);
+    }
+  }
+
+  private async cleanupBigintIndexes(
+    client: PoolClient,
+    { tableName, columnName }: { tableName: string; columnName: string }
+  ): Promise<void> {
+    console.log(chalk.yellow(`[Cleanup] Processing indexes for ${tableName}`));
+
+    // Composite indexes.
+
+    // Create clean indexes (without the _bigint suffix)
+    await this.createCompositeIndexes(client, {
+      tableName,
+      oldColumn: columnName, // current bigint column
+      newColumn: columnName, // same column (we're just removing suffix)
+      transformIndexName: (indexName) => indexName.replace("_bigint", ""), // remove _bigint suffix
+    });
+
+    // Find and drop old _bigint indexes
+    const allIndexes = await this.findCompositeIndexes(
+      client,
+      tableName,
+      columnName
+    );
+
+    for (const index of allIndexes) {
+      if (index.indexName.endsWith("_bigint")) {
+        await this.executeSql(
+          client,
+          `DROP INDEX CONCURRENTLY IF EXISTS "${index.indexName}";`
+        );
+
+        console.log(
+          chalk.green(`[Cleanup] Dropped index ${chalk.bold(index.indexName)}`)
+        );
+      }
     }
   }
 
@@ -827,12 +1174,22 @@ class IntToBigIntMigration {
       isPrimary: true,
     });
 
+    // Transform index name to add _bigint suffix
+    const transformIndexName = (indexName: string) => `${indexName}_bigint`;
+
     // Create composite indexes for the main table
     await this.createCompositeIndexes(client, {
       tableName: this.config.tableName,
       oldColumn: MAIN_ID_COLUMN,
       newColumn: newMainColumn,
+      transformIndexName,
     });
+
+    // Find existing FK indexes for all referencing tables at once
+    const fkIndexes = await this.findForeignKeyIndexes(
+      client,
+      referencingTables
+    );
 
     // Create FK indexes and their composite indexes
     for (const ref of referencingTables) {
@@ -844,18 +1201,33 @@ class IntToBigIntMigration {
 
       const newFKColumn = createColumnName.new(ref.foreignKeyColumn);
 
-      // Create the basic FK index
-      await this.createAndWaitForIndex(client, {
-        tableName: ref.tableName,
-        columnName: newFKColumn,
-        columnType: COLUMN_TYPE.BIGINT,
-        indexName: createIndexName.foreign(
-          ref.tableName,
-          ref.foreignKeyColumn,
-          COLUMN_TYPE.BIGINT
-        ),
-        isPrimary: false,
-      });
+      // Check if this table/column has a dedicated FK index
+      const hasFKIndex = fkIndexes.some(
+        (idx) =>
+          idx.tableName === ref.tableName &&
+          idx.columnName === ref.foreignKeyColumn
+      );
+
+      // Only create FK index if one existed before
+      if (hasFKIndex) {
+        console.log(
+          chalk.yellow(
+            `[Indexes] Creating FK index for ${chalk.bold(ref.tableName)}`
+          )
+        );
+
+        await this.createAndWaitForIndex(client, {
+          tableName: ref.tableName,
+          columnName: newFKColumn,
+          columnType: COLUMN_TYPE.BIGINT,
+          indexName: createIndexName.foreign(
+            ref.tableName,
+            ref.foreignKeyColumn,
+            COLUMN_TYPE.BIGINT
+          ),
+          isPrimary: false,
+        });
+      }
 
       // Create foreign key constraint.
       await this.createForeignKeyConstraints(
@@ -869,6 +1241,7 @@ class IntToBigIntMigration {
         tableName: ref.tableName,
         oldColumn: ref.foreignKeyColumn,
         newColumn: newFKColumn,
+        transformIndexName,
       });
     }
   }
@@ -1009,6 +1382,99 @@ class IntToBigIntMigration {
     }
   }
 
+  private async cleanupForeignKeyConstraints(
+    client: PoolClient,
+    ref: ReferencingTable
+  ) {
+    // Foreign key index.
+    const fkIndexName = createIndexName.foreign(
+      ref.tableName,
+      ref.foreignKeyColumn,
+      COLUMN_TYPE.BIGINT
+    );
+    const newFkIndexName = fkIndexName.replace("_bigint", "");
+
+    // Find existing FK indexes for all referencing tables at once
+    const fkIndexes = await this.findForeignKeyIndexes(client, [ref]);
+
+    // Check if this table/column has a dedicated FK index
+    const hasFKIndex = fkIndexes.some(
+      (idx) =>
+        idx.tableName === ref.tableName &&
+        idx.columnName === ref.foreignKeyColumn
+    );
+
+    // Create new FK index without _bigint suffix
+    if (hasFKIndex) {
+      await this.createAndWaitForIndex(client, {
+        tableName: ref.tableName,
+        columnName: ref.foreignKeyColumn,
+        columnType: COLUMN_TYPE.BIGINT,
+        indexName: newFkIndexName,
+        isPrimary: false,
+      });
+
+      // Drop old FK index with _bigint suffix
+      await this.executeSql(
+        client,
+        `DROP INDEX CONCURRENTLY IF EXISTS "${fkIndexName}";`
+      );
+    }
+
+    // For cleanup, we want to rename from _bigint to clean name
+    const constraintName = createConstraintName.foreignKey(
+      ref.tableName,
+      ref.foreignKeyColumn,
+      COLUMN_TYPE.BIGINT
+    );
+
+    const newConstraintName = constraintName.replace("_bigint", "");
+
+    console.log(
+      chalk.yellow(
+        `[Cleanup] Creating clean FK constraint for ${chalk.bold(ref.tableName)}`
+      )
+    );
+
+    // Create new FK without _bigint suffix
+    try {
+      await this.executeSql(
+        client,
+        `
+        ALTER TABLE ${ref.tableName}
+        ADD CONSTRAINT "${newConstraintName}"
+        FOREIGN KEY ("${ref.foreignKeyColumn}")
+        REFERENCES ${this.config.tableName}(${MAIN_ID_COLUMN})
+        ON UPDATE RESTRICT
+        ON DELETE RESTRICT
+        NOT VALID;
+        `
+      );
+    } catch (error) {
+      if (error instanceof Error && !error.message.includes("already exists")) {
+        throw error;
+      }
+    }
+
+    await this.executeSql(
+      client,
+      `ALTER TABLE ${ref.tableName} VALIDATE CONSTRAINT "${newConstraintName}";`
+    );
+
+    // Drop old FK
+    await this.executeSql(
+      client,
+      `ALTER TABLE ${ref.tableName} DROP CONSTRAINT IF EXISTS "${constraintName}";`
+    );
+
+    console.log(
+      chalk.green(
+        `[Cleanup] Renamed FK constraint ${chalk.bold(constraintName)} to ${chalk.bold(newConstraintName)}`
+      )
+    );
+    return;
+  }
+
   private async createForeignKeyConstraints(
     client: PoolClient,
     ref: ReferencingTable,
@@ -1078,6 +1544,24 @@ class IntToBigIntMigration {
 
   // Swap columns
 
+  private async dropTriggers(
+    client: PoolClient,
+    { tableName, isPrimaryKey }: { tableName: string; isPrimaryKey: boolean },
+    direction: SyncDirection
+  ): Promise<void> {
+    const triggerInfo = isPrimaryKey
+      ? createTriggerNames.pk(tableName, direction)
+      : createTriggerNames.fk(tableName, direction);
+
+    await this.executeSql(
+      client,
+      `
+      DROP TRIGGER IF EXISTS ${triggerInfo.trigger} ON ${tableName};
+      DROP FUNCTION IF EXISTS ${triggerInfo.function};
+      `
+    );
+  }
+
   private async switchMainTable(
     client: PoolClient,
     config: MainTableSwitchConfig,
@@ -1136,12 +1620,12 @@ class IntToBigIntMigration {
         OWNED BY ${this.config.tableName}."${currentColumn}";
 
         -- Remove default from new column
-        ALTER TABLE groups
+        ALTER TABLE "${this.config.tableName}"
         ALTER COLUMN "${newColumn}"
         DROP DEFAULT;
 
         -- Set default on column
-        ALTER TABLE groups
+        ALTER TABLE "${this.config.tableName}"
         ALTER COLUMN "${currentColumn}"
         SET DEFAULT nextval('"${sequenceName}"'::regclass);
         `
@@ -1185,12 +1669,12 @@ class IntToBigIntMigration {
           OWNED BY ${this.config.tableName}."${currentColumn}";
 
           -- Remove default from legacy column
-          ALTER TABLE groups
+          ALTER TABLE "${this.config.tableName}"
           ALTER COLUMN "${legacyColumn}"
           DROP DEFAULT;
 
           -- Set default on column
-          ALTER TABLE groups
+          ALTER TABLE "${this.config.tableName}"
           ALTER COLUMN "${currentColumn}"
           SET DEFAULT nextval('"${sequenceName}"'::regclass);
           `
