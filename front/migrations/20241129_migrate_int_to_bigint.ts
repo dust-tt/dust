@@ -931,16 +931,23 @@ class IntToBigIntMigration {
       targetColumn,
     }: { tableName: string; sourceColumn: string; targetColumn: string }
   ): Promise<void> {
-    let currentId = 0;
+    const { rows: min_id_rows } = await this.executeSql<{ min_id: number }>(
+      client,
+      `
+        SELECT COALESCE(MIN(id), 0) AS min_id FROM ${tableName}
+      `
+    );
 
-    const { rows } = await this.executeSql<{ max_id: number }>(
+    let currentId = min_id_rows[0].min_id;
+
+    const { rows: max_id_rows } = await this.executeSql<{ max_id: number }>(
       client,
       `
         SELECT COALESCE(MAX(id), 0) AS max_id FROM ${tableName}
       `
     );
 
-    const maxId = rows[0].max_id;
+    const maxId = max_id_rows[0].max_id;
 
     while (currentId <= maxId) {
       await this.executeSql(
