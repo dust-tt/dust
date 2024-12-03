@@ -262,27 +262,6 @@ export function InstructionScreen({
             </span>
           </Page.P>
         </div>
-        <div className="flex-grow" />
-        <div className="mr-2 mt-2 self-end">
-          {agentConfigurationHistory &&
-            agentConfigurationHistory.length > 1 && (
-              <PromptHistory
-                history={configsWithUniqueInstructions}
-                onVersionPick={(config, isLatest: boolean) => {
-                  // Only allow edition of latest version, because no memory or other versions.
-                  editor?.setOptions({ editable: isLatest });
-                  // LAtest veresion points to current builderState, other versions point to configs
-                  editorService.resetContent(
-                    tipTapContentFromPlainText(
-                      isLatest
-                        ? builderState.instructions || ""
-                        : config.instructions || ""
-                    )
-                  );
-                }}
-              />
-            )}
-        </div>
         <div className="mt-2 self-end">
           <AdvancedSettings
             owner={owner}
@@ -300,6 +279,26 @@ export function InstructionScreen({
       </div>
       <div className="flex h-full flex-col gap-1">
         <div className="relative h-full min-h-[240px] grow gap-1 p-px">
+          <div className="absolute right-2 top-2 z-10">
+            {agentConfigurationHistory &&
+              agentConfigurationHistory.length > 1 && (
+                <PromptHistory
+                  history={configsWithUniqueInstructions}
+                  onVersionPick={(config, isLatest: boolean) => {
+                    // Only allow edition of latest version, because no memory or other versions.
+                    editor?.setOptions({ editable: isLatest });
+                    // LAtest veresion points to current builderState, other versions point to configs
+                    editorService.resetContent(
+                      tipTapContentFromPlainText(
+                        isLatest
+                          ? builderState.instructions || ""
+                          : config.instructions || ""
+                      )
+                    );
+                  }}
+                />
+              )}
+          </div>
           <EditorContent
             editor={editor}
             className="absolute bottom-0 left-0 right-0 top-0"
