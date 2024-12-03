@@ -83,21 +83,20 @@ export const createColumnName = {
   legacy: (baseColumn: string) => `${baseColumn}_legacy` as const,
 };
 
+// If table name is too long, create an abbreviation
+const shortenTableName = (tableName: string) =>
+  tableName.length > 35
+    ? tableName
+        .split("_")
+        .map((word) => word[0])
+        .join("") // e.g., 'ncrce'
+    : tableName;
+
 export const createIndexName = {
   primary: (tableName: string, column: ColumnType) =>
     `${tableName}_pkey_${column}` as const,
-  foreign: (tableName: string, columnName: string, column: ColumnType) => {
-    // If table name is too long, create an abbreviation
-    const shortTableName =
-      tableName.length > 20
-        ? tableName
-            .split("_")
-            .map((word) => word[0])
-            .join("") // e.g., 'ncrce'
-        : tableName;
-
-    return `${shortTableName}_${columnName}_fk_${column}` as const;
-  },
+  foreign: (tableName: string, columnName: string, column: ColumnType) =>
+    `${shortenTableName(tableName)}_${columnName}_fk_${column}` as const,
 };
 
 export const createTriggerNames = {
@@ -116,11 +115,11 @@ export const createTriggerNames = {
 
 export const createConstraintName = {
   notNull: (tableName: string, type: ColumnType) =>
-    `${tableName}_not_null_${type}` as const,
+    `${shortenTableName(tableName)}_not_null_${type}` as const,
   notNullForColumn: (tableName: string, columnName: string) =>
-    `${tableName}_not_null_${columnName}` as const,
+    `${shortenTableName(tableName)}_not_null_${columnName}` as const,
   foreignKey: (tableName: string, columnName: string, type: ColumnType) =>
-    `${tableName}_${columnName}_fkey_${type}` as const,
+    `${shortenTableName(tableName)}_${columnName}_fkey_${type}` as const,
 };
 
 export const createSequenceName = (tableName: string) =>
