@@ -692,6 +692,41 @@ impl DataSource {
         )
         .await?;
 
+        // dirty hack to check whether the file is a Google Drive file
+        if source_url.starts_with("https://drive.google.com") && !document_id.starts_with("gdrive-")
+        {
+            let old_document_id = format!("gdrive-{}", document_id);
+
+            match store
+                .load_data_source_document(
+                    &self.project,
+                    &self.data_source_id,
+                    &old_document_id,
+                    &None,
+                )
+                .await?
+            {
+                Some(_) => {
+                    match (self
+                        .delete_document(&self.project, &self.data_source_id, &old_document_id)
+                        .await)
+                    {
+                        Ok(_) => (),
+                        Err(e) => {
+                            error!(
+                                error = %e,
+                                data_source_id = &self.data_source_id,
+                                document_id = &document_id,
+                                old_document_id = &old_document_id,
+                                "[Google drive] Failed to delete old document"
+                            );
+                        }
+                    }
+                }
+                None => (), // we do nothing, we are in a world of new document IDs
+            }
+        }
+
         // Upsert the document in the main embedder collection.
         let main_collection_document = self
             .upsert_for_embedder(
