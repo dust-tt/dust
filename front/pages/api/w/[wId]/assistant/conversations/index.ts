@@ -22,7 +22,6 @@ import {
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -87,11 +86,6 @@ async function handler(
       };
 
       if (contentFragments.length > 0) {
-        await maybeUpsertFileAttachment(auth, {
-          contentFragments,
-          conversation,
-        });
-
         const newContentFragmentsRes = await Promise.all(
           contentFragments.map((contentFragment) => {
             return postNewContentFragment(auth, conversation, contentFragment, {
