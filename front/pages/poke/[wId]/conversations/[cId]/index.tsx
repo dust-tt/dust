@@ -8,14 +8,17 @@ import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DustProdActionRegistry } from "@app/lib/registry";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { useConversation } from "@app/poke/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspaceId: string;
   conversationId: string;
-}>(async (context) => {
+  conversationDataSourceId?: string;
+}>(async (context, auth) => {
   const cId = context.params?.cId;
   if (!cId || typeof cId !== "string") {
     return {
@@ -30,10 +33,23 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
+  const conversation = await getConversationWithoutContent(auth, cId);
+  if (conversation.isErr()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const conversationDataSource = await DataSourceResource.fetchByConversationId(
+    auth,
+    conversation.value.id
+  );
+
   return {
     props: {
       workspaceId: wId,
       conversationId: cId,
+      conversationDataSourceId: conversationDataSource?.sId,
     },
   };
 });
@@ -146,6 +162,7 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
 const ConversationPage = ({
   workspaceId,
   conversationId,
+  conversationDataSourceId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { conversation } = useConversation({ workspaceId, conversationId });
   return (
@@ -161,6 +178,14 @@ const ConversationPage = ({
                 variant="primary"
                 size="xs"
                 target="_blank"
+              />
+              <Button
+                href={`/poke/${workspaceId}/data_sources/${conversationDataSourceId}`}
+                label="Conversation DS"
+                variant="primary"
+                size="xs"
+                target="_blank"
+                enabled={!!conversationDataSourceId}
               />
             </div>
             {conversation.content.map((messages, i) => {
