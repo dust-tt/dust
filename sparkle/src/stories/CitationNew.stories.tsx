@@ -33,11 +33,7 @@ export const CitationsExample = () => (
   <div className="s-flex s-flex-col s-gap-8">
     Example of attachement
     <div className="s-flex s-gap-2">
-      <CitationNew
-        onClick={() => alert("Card clicked")}
-        className="s-w-48"
-        isPulsing={true}
-      >
+      <CitationNew onClick={() => alert("Card clicked")} className="s-w-48">
         <CitationNewIcons>
           <Icon visual={SlackLogo} size="sm" />
         </CitationNewIcons>
@@ -67,7 +63,7 @@ export const CitationsExample = () => (
         <CitationNewTitle>screenshot.png</CitationNewTitle>
       </CitationNew>
 
-      <CitationNew className="s-w-48" isBlinking={true} isLoading={true}>
+      <CitationNew className="s-w-48" isLoading={true}>
         <CitationNewIcons>
           <Icon visual={ImageIcon} size="sm" />
         </CitationNewIcons>
