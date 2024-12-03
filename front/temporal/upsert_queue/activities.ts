@@ -95,6 +95,8 @@ export async function upsertDocumentActivity(
     section: upsertQueueItem.section,
     credentials,
     lightDocumentOutput: true,
+    mimeType: upsertQueueItem.mimeType,
+    title: upsertQueueItem.title,
   });
 
   if (upsertRes.isErr()) {

@@ -222,6 +222,8 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
     light_document_output: true,
     dataSource,
     auth,
+    mime_type: file.contentType,
+    title: file.fileName,
   });
 
   if (upsertDocumentRes.isErr()) {
