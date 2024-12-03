@@ -34,15 +34,12 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
             className="w-full"
           />
           <Card
-            title="Active users"
-            subtitle="Daily Active Users"
+            title="Daily Active Users"
+            subtitle="Average on 7 days"
             content={
               <div className="flex flex-col gap-1">
                 <div className="text-lg font-semibold text-element-900">
                   {analytics.averageWeeklyDailyActiveUsers.count}
-                </div>
-                <div className="text-sm text-element-700">
-                  Average on 7 days
                 </div>
               </div>
             }
