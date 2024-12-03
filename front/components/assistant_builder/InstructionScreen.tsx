@@ -262,6 +262,7 @@ export function InstructionScreen({
             </span>
           </Page.P>
         </div>
+        <div className="flex-grow" />
         <div className="mt-2 self-end">
           <AdvancedSettings
             owner={owner}
