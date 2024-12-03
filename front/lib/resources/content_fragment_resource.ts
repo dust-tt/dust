@@ -28,6 +28,8 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
+export const CONTENT_OUTDATED_MSG =
+  "Content is outdated. Please refer to the latest version of this content.";
 const MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT = 500 * 1024; // 500 KB
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -568,8 +570,7 @@ export async function renderContentFragmentForModel(
               contentType,
               title,
               version: contentFragmentVersion,
-              content:
-                "Content is outdated. Please refer to the latest version of this content.",
+              content: CONTENT_OUTDATED_MSG,
             }),
           },
         ],

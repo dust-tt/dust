@@ -28,7 +28,10 @@ import config from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
-import { renderFromFileId } from "@app/lib/resources/content_fragment_resource";
+import {
+  CONTENT_OUTDATED_MSG,
+  renderFromFileId,
+} from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
@@ -90,6 +93,14 @@ export class ConversationIncludeFileAction extends BaseAction {
     const files = listFiles(conversation);
     for (const f of files) {
       if (f.fileId === fileId && f.isIncludable) {
+        if (f.contentFragmentVersion === "superseded") {
+          return new Ok({
+            fileId,
+            title: f.title,
+            content: CONTENT_OUTDATED_MSG,
+          });
+        }
+
         const r = await renderFromFileId(conversation.owner, {
           contentType: f.contentType,
           excludeImages: true,
