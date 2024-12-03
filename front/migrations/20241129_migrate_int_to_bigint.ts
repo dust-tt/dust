@@ -19,6 +19,7 @@ interface CompositeIndex {
   indexName: string;
   columns: string[];
   isUnique: boolean;
+  whereClause: string;
 }
 
 interface ReferencingTable {
@@ -967,6 +968,10 @@ class IntToBigIntMigration {
       indexName: string;
     }>
   > {
+    if (referencingTables.length === 0) {
+      return [];
+    }
+
     // Build the list of (table_name, column_name) pairs for the WHERE clause
     const conditions = referencingTables
       .map((ref, i) => `($${i * 2 + 1}::text, $${i * 2 + 2}::text)`)
@@ -1012,13 +1017,15 @@ class IntToBigIntMigration {
       index_name: string;
       column_names: string;
       is_unique: boolean;
+      where_clause: string;
     }>(
       client,
       `
       SELECT
         i.relname as index_name,
         ix.indisunique as is_unique,
-        array_agg(a.attname ORDER BY k.ordering) as column_names
+        array_agg(a.attname ORDER BY k.ordering) as column_names,
+        pg_get_expr(ix.indpred, ix.indrelid) as where_clause
       FROM pg_class t
       JOIN pg_index ix ON t.oid = ix.indrelid
       JOIN pg_class i ON ix.indexrelid = i.oid
@@ -1028,7 +1035,7 @@ class IntToBigIntMigration {
       WHERE t.relname = $1
         AND t.relkind = 'r'
         AND ix.indisprimary = false
-      GROUP BY i.relname, ix.indisunique
+      GROUP BY i.relname, ix.indisunique, ix.indpred, ix.indrelid
       HAVING
         array_length(array_agg(a.attname), 1) > 1
         AND EXISTS (
@@ -1048,7 +1055,7 @@ class IntToBigIntMigration {
     rows.forEach((r) =>
       console.log(
         chalk.magenta(
-          `  - ${chalk.bold(r.index_name)} (${r.column_names})${r.is_unique ? " UNIQUE" : ""}`
+          `  - ${chalk.bold(r.index_name)} (${r.column_names})${r.is_unique ? " UNIQUE" : ""}${r.where_clause ? ` WHERE ${r.where_clause}` : ""}`
         )
       )
     );
@@ -1057,6 +1064,7 @@ class IntToBigIntMigration {
       indexName: row.index_name,
       columns: parsePostgresArray(row.column_names),
       isUnique: row.is_unique,
+      whereClause: row.where_clause,
     }));
   }
 
@@ -1093,7 +1101,8 @@ class IntToBigIntMigration {
         `
         CREATE ${index.isUnique ? "UNIQUE" : ""} INDEX CONCURRENTLY
         IF NOT EXISTS "${newIndexName}"
-        ON ${tableName}(${newColumns.join(", ")});
+        ON ${tableName}(${newColumns.join(", ")})
+        ${index.whereClause ? `WHERE ${index.whereClause}` : ""};
         `
       );
 
@@ -1958,7 +1967,7 @@ makeScript(
       tables.forEach((t) => console.log(chalk.yellow(`- ${t}`)));
 
       for (const t of tables) {
-        if (["vaults", "groups"].includes(t)) {
+        if (["vaults", "groups", "users"].includes(t)) {
           console.log("Skipping table: ", t);
         }
 
