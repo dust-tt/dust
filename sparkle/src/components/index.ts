@@ -71,11 +71,7 @@ export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export * from "./markdown";
 export { Modal } from "./Modal";
-export {
-  NavigationList,
-  NavigationListItem,
-  NavigationListLabel,
-} from "./NavigationList";
+export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
