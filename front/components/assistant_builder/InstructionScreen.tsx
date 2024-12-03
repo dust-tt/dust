@@ -167,7 +167,7 @@ export function InstructionScreen({
     workspaceId: owner.sId,
     agentConfigurationId,
     disabled: !agentConfigurationId,
-    limit: 20,
+    limit: 30,
   });
 
   // Deduplicate configs based on instructions
@@ -268,9 +268,16 @@ export function InstructionScreen({
             agentConfigurationHistory.length > 1 && (
               <PromptHistory
                 history={configsWithUniqueInstructions}
-                onVersionPick={(config) => {
+                onVersionPick={(config, isLatest: boolean) => {
+                  // Only allow edition of latest version, because no memory or other versions.
+                  editor?.setOptions({ editable: isLatest });
+                  // LAtest veresion points to current builderState, other versions point to configs
                   editorService.resetContent(
-                    tipTapContentFromPlainText(config.instructions || "")
+                    tipTapContentFromPlainText(
+                      isLatest
+                        ? builderState.instructions || ""
+                        : config.instructions || ""
+                    )
                   );
                 }}
               />
@@ -508,7 +515,10 @@ function PromptHistory({
   onVersionPick,
 }: {
   history: LightAgentConfigurationType[];
-  onVersionPick: (config: LightAgentConfigurationType) => void;
+  onVersionPick: (
+    config: LightAgentConfigurationType,
+    isLatest: boolean
+  ) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const latestConfig = history[0];
@@ -517,9 +527,15 @@ function PromptHistory({
 
   const getStringRepresentation = useCallback(
     (config: LightAgentConfigurationType) => {
+      const dateAndHourMatch = config.versionCreatedAt?.match(
+        /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
+      )?.[0];
+
       return config.version === latestConfig?.version
         ? "Latest Version"
-        : `v${config.version}`;
+        : dateAndHourMatch
+          ? dateAndHourMatch.replace("T", " ")
+          : `v${config.version}`;
     },
     [latestConfig]
   );
@@ -543,7 +559,7 @@ function PromptHistory({
               label={getStringRepresentation(config)}
               onClick={() => {
                 setCurrentConfig(config);
-                onVersionPick(config);
+                onVersionPick(config, config.version === latestConfig?.version);
               }}
             />
           ))}
