@@ -20,8 +20,8 @@ async fn main() -> Result<()> {
     let execute = args.execute;
 
     let batch_size = 1000 as i64;
-    let mut last_processed_id = 64419136 as i64; // Picked an ID that is for sure before the start
-    let max_id = 65504666 as i64; // Picked an ID that is for sure after the end
+    let mut last_processed_id = 65481000 as i64; // Picked an ID that is for sure before the start
+    let max_id = 65804666 as i64; // Picked an ID that is for sure after the end
 
     let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
         Ok(db_uri) => {
