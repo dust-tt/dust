@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
     let execute = args.execute;
 
     let batch_size = 1000 as i64;
-    let mut last_processed_id = 65481000 as i64; // Picked an ID that is for sure before the start
+    let mut last_processed_id = 65496452 as i64; // Picked an ID that is for sure before the start
     let max_id = 65804666 as i64; // Picked an ID that is for sure after the end
 
     let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
@@ -36,6 +36,8 @@ async fn main() -> Result<()> {
         "Fixing created for data_sources_documents from id={} to id={} (execute={})",
         last_processed_id, max_id, execute
     );
+
+    let mut files_with_no_match: Vec<String> = Vec::new();
 
     loop {
         println!("Getting data_sources_documents batch {}", last_processed_id);
@@ -157,7 +159,8 @@ async fn main() -> Result<()> {
             };
 
             if paths.len() == 0 {
-                panic!("No matching files found for {}", wrong_file_name);
+                files_with_no_match.push(wrong_file_name);
+                continue;
             }
 
             let createds: Vec<i64> = paths
@@ -203,6 +206,8 @@ async fn main() -> Result<()> {
             }
         }
     }
+
+    println!("Files with no match: {:?}", files_with_no_match);
 
     Ok(())
 }
