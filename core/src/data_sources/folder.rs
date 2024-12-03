@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::project::Project;
 
+use super::node::{Node, NodeType};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
     project: Project,
@@ -17,21 +19,32 @@ pub const FOLDER_MIMETYPE: &str = "application/vnd.dust.folder";
 
 impl Folder {
     pub fn new(
-        project: Project,
-        data_source_id: String,
-        folder_id: String,
+        project: &Project,
+        data_source_id: &str,
+        folder_id: &str,
         timestamp: u64,
-        title: String,
+        title: &str,
         parents: Vec<String>,
     ) -> Self {
         Folder {
-            project: project,
-            data_source_id: data_source_id,
-            folder_id: folder_id,
+            project: project.clone(),
+            data_source_id: data_source_id.to_string(),
+            folder_id: folder_id.to_string(),
             timestamp,
-            title: title,
+            title: title.to_string(),
             parents,
         }
+    }
+
+    pub fn from_node(node: &Node) -> Self {
+        Folder::new(
+            node.project(),
+            node.data_source_id(),
+            node.node_id(),
+            node.timestamp(),
+            node.title(),
+            node.parents().clone(),
+        )
     }
 
     pub fn project(&self) -> &Project {
@@ -51,5 +64,33 @@ impl Folder {
     }
     pub fn parents(&self) -> &Vec<String> {
         &self.parents
+    }
+}
+
+impl From<Node> for Folder {
+    fn from(node: Node) -> Self {
+        Folder::new(
+            node.project(),
+            node.data_source_id(),
+            node.node_id(),
+            node.timestamp(),
+            node.title(),
+            node.parents().clone(),
+        )
+    }
+}
+
+impl From<Folder> for Node {
+    fn from(folder: Folder) -> Self {
+        Node::new(
+            &folder.project,
+            &folder.data_source_id,
+            &folder.folder_id,
+            NodeType::Folder,
+            folder.timestamp,
+            &folder.title,
+            FOLDER_MIMETYPE,
+            folder.parents.clone(),
+        )
     }
 }

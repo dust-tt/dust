@@ -71,35 +71,35 @@ pub struct Table {
 
 impl Table {
     pub fn new(
-        project: Project,
-        data_source_id: String,
+        project: &Project,
+        data_source_id: &str,
         created: u64,
-        table_id: String,
-        name: String,
-        description: String,
+        table_id: &str,
+        name: &str,
+        description: &str,
         timestamp: u64,
-        title: String,
-        mime_type: String,
+        title: &str,
+        mime_type: &str,
         tags: Vec<String>,
         parents: Vec<String>,
-        schema: Option<TableSchema>,
+        schema: &Option<TableSchema>,
         schema_stale_at: Option<u64>,
         remote_database_table_id: Option<String>,
         remote_database_secret_id: Option<String>,
     ) -> Self {
         Table {
-            project: project,
-            data_source_id: data_source_id,
+            project: project.clone(),
+            data_source_id: data_source_id.to_string(),
             created,
-            table_id: table_id,
-            name: name,
-            description: description,
+            table_id: table_id.to_string(),
+            name: name.to_string(),
+            description: description.to_string(),
             timestamp,
             tags,
-            title: title,
-            mime_type: mime_type,
+            title: title.to_string(),
+            mime_type: mime_type.to_string(),
             parents,
-            schema: schema,
+            schema: schema.clone(),
             schema_stale_at,
             remote_database_table_id,
             remote_database_secret_id,
@@ -196,7 +196,7 @@ impl Table {
         }
 
         store
-            .delete_data_source_table(&self.project, &self.data_source_id, &self.table_id)
+            .delete_table(&self.project, &self.data_source_id, &self.table_id)
             .await?;
 
         Ok(())
@@ -208,7 +208,7 @@ impl Table {
         parents: Vec<String>,
     ) -> Result<()> {
         store
-            .update_data_source_table_parents(
+            .update_table_parents(
                 &self.project,
                 &self.data_source_id,
                 &&self.table_id,
@@ -325,7 +325,7 @@ impl LocalTable {
 
         now = utils::now();
         store
-            .update_data_source_table_schema(
+            .update_table_schema(
                 &self.table.project,
                 &self.table.data_source_id,
                 &self.table.table_id,
@@ -348,7 +348,7 @@ impl LocalTable {
             // This is why we invalidate the schema when doing incremental updates, and next time
             // the schema is requested, it will be recomputed from all the rows.
             store
-                .invalidate_data_source_table_schema(
+                .invalidate_table_schema(
                     &self.table.project,
                     &self.table.data_source_id,
                     &self.table.table_id,
@@ -447,7 +447,7 @@ impl LocalTable {
                 let schema = self.compute_schema(databases_store).await?;
 
                 store
-                    .update_data_source_table_schema(
+                    .update_table_schema(
                         &self.table.project,
                         &self.table.data_source_id,
                         &self.table.table_id,
@@ -565,18 +565,18 @@ mod tests {
 
         let schema = TableSchema::from_rows_async(rows).await?;
         let table = Table::new(
-            Project::new_from_id(42),
-            "data_source_id".to_string(),
+            &Project::new_from_id(42),
+            "data_source_id",
             utils::now(),
-            "table_id".to_string(),
-            "test_dbml".to_string(),
-            "Test records for DBML rendering".to_string(),
+            "table_id",
+            "test_dbml",
+            "Test records for DBML rendering",
             utils::now(),
-            "test_dbml".to_string(),
-            "text/plain".to_string(),
+            "test_dbml",
+            "text/plain",
             vec![],
             vec![],
-            Some(schema),
+            &Some(schema),
             None,
             None,
             None,
