@@ -2,16 +2,16 @@ import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
 import {
-  Button,
-  ButtonSizeType,
-  MetaButtonProps,
-} from "@sparkle/components/Button";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@sparkle/components/Dropdown";
+} from "@sparkle/components/";
+import {
+  Button,
+  ButtonSizeType,
+  MetaButtonProps,
+} from "@sparkle/components/Button";
 import { Separator } from "@sparkle/components/Separator";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib";
@@ -38,7 +38,7 @@ interface SplitButtonActionProps {
 }
 
 export interface SplitButtonProps
-  extends Omit<MetaButtonProps, "children" | "onClick"> {
+  extends Omit<MetaButtonProps, "children" | "onClick" | "size"> {
   /**
    * List of possible actions, will be displayed in dropdown
    */
@@ -58,6 +58,7 @@ export interface SplitButtonProps
    * Event handler for action change
    */
   onActionChange?: (action: SplitButtonActionProps) => void;
+  size: ButtonSizeType;
 }
 
 export const SplitButton = React.forwardRef<

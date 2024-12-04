@@ -2,15 +2,18 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon } from "@sparkle/components/Icon";
-import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
-import Spinner, { SpinnerProps } from "@sparkle/components/Spinner";
 import {
+  Icon,
+  LinkWrapper,
+  LinkWrapperProps,
+  Separator,
+  Spinner,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-} from "@sparkle/components/Tooltip";
+} from "@sparkle/components/";
+import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -64,7 +67,7 @@ const buttonVariants = cva(
   }
 );
 
-const miniButtonVariant = "s-h-7 s-p-1.5 s-rounded-xl s-text-sm s-gap-1.5";
+const miniButtonVariant = "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5";
 
 const getMiniButtonClasses = (variant: ButtonVariantType | null) => {
   return cn(
@@ -131,6 +134,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     {
       label,
       icon,
+      className,
       isLoading = false,
       variant = "primary",
       tooltip,
@@ -176,7 +180,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isLoading || props.disabled}
         className={cn(
           buttonVariants({ variant, size }),
-          isPulsing && "s-animate-pulse"
+          isPulsing && "s-animate-pulse",
+          className
         )}
         aria-label={ariaLabel || tooltip || label}
         style={
@@ -217,6 +222,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
   }
 );
+
+Button.displayName = "Button";
 
 const MiniButton = React.forwardRef<
   HTMLButtonElement,
@@ -298,4 +305,49 @@ const MiniButton = React.forwardRef<
   }
 );
 
-export { Button, buttonVariants, MetaButton, MiniButton };
+MiniButton.displayName = "MiniButton";
+
+const splitVariants: Record<ButtonVariantType, string> = {
+  primary: "s-bg-white/50",
+  highlight: "s-bg-white/50",
+  warning: "s-bg-white/50",
+  outline: "s-bg-separator",
+  ghost: "s-bg-separator",
+  "ghost-secondary": "s-bg-separator",
+};
+
+export interface SplitButtonProps extends Omit<ButtonProps, "size"> {
+  containerClassName?: string;
+  splitAction: React.ReactElement<React.ComponentProps<typeof MiniButton>>;
+  className?: string;
+}
+
+const SplitButton2 = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
+  (
+    { splitAction, containerClassName, variant, className, ...buttonProps },
+    ref
+  ) => {
+    const separatorStyle = variant
+      ? splitVariants[variant]
+      : splitVariants.primary;
+    return (
+      <div className={cn("s-relative s-inline-block", containerClassName)}>
+        <Button
+          ref={ref}
+          variant={variant}
+          size="sm"
+          className={cn(className, "s-pr-12")}
+          {...buttonProps}
+        />
+        <span className="s-absolute s-right-1 s-top-1 s-flex s-items-center s-gap-1">
+          <div className={cn("s-h-4 s-w-px", separatorStyle)} />
+          {splitAction}
+        </span>
+      </div>
+    );
+  }
+);
+
+SplitButton2.displayName = "SplitButton";
+
+export { Button, buttonVariants, MetaButton, MiniButton, SplitButton2 };
