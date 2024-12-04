@@ -141,7 +141,7 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
-const MAX_RETRY_COUNT = 5;
+const MAX_RATE_LIMIT_RETRY_COUNT = 5;
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
   "global",
@@ -225,14 +225,14 @@ export class ConfluenceClient {
       }
       // retry the request after a delay: https://developer.atlassian.com/cloud/confluence/rate-limiting/
       if (response.status === 429) {
-        if (retryCount < MAX_RETRY_COUNT) {
+        if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs =
             Number(response.headers?.get("Retry-After") || 10) * 1000;
           await new Promise((resolve) => setTimeout(resolve, delayMs));
           return this.request(endpoint, codec, retryCount + 1);
         } else {
           throw new ConfluenceClientError(
-            `Rate limit hit on confluence API more than ${MAX_RETRY_COUNT} times.`,
+            `Rate limit hit on confluence API more than ${MAX_RATE_LIMIT_RETRY_COUNT} times.`,
             {
               type: "http_response_error",
               status: response.status,
