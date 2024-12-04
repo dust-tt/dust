@@ -7,6 +7,7 @@ import {
   assertNever,
   isAgentMessageType,
   isContentFragmentType,
+  isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
 } from "@dust-tt/types";
 
@@ -16,7 +17,7 @@ function isConversationIncludableFileContentType(
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
-  // For now we only allow including text files.
+  // We allow including everything except images.
   switch (contentType) {
     case "application/msword":
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
@@ -27,11 +28,10 @@ function isConversationIncludableFileContentType(
     case "text/vnd.dust.attachment.slack.thread":
     case "text/comma-separated-values":
     case "text/csv":
-      return true;
-
     case "text/tab-separated-values":
     case "text/tsv":
-      return false;
+      return true;
+
     default:
       assertNever(contentType);
   }
@@ -43,7 +43,10 @@ function isQueryableContentType(
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
-  // For now we only allow including text files.
+  if (isSupportedDelimitedTextContentType(contentType)) {
+    return true;
+  }
+  // For now we only allow querying tabular files.
   switch (contentType) {
     case "application/msword":
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
@@ -52,13 +55,8 @@ function isQueryableContentType(
     case "text/plain":
     case "dust-application/slack":
     case "text/vnd.dust.attachment.slack.thread":
-    case "text/tab-separated-values":
-    case "text/tsv":
       return false;
 
-    case "text/comma-separated-values":
-    case "text/csv":
-      return true;
     default:
       assertNever(contentType);
   }
@@ -70,7 +68,10 @@ function isSearchableContentType(
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
-  // For now we only allow including text files.
+  if (isSupportedDelimitedTextContentType(contentType)) {
+    return false;
+  }
+  // For now we only allow searching text files.
   switch (contentType) {
     case "application/msword":
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
@@ -79,13 +80,8 @@ function isSearchableContentType(
     case "text/plain":
     case "dust-application/slack":
     case "text/vnd.dust.attachment.slack.thread":
-    case "text/tab-separated-values":
-    case "text/tsv":
       return true;
 
-    case "text/comma-separated-values":
-    case "text/csv":
-      return false;
     default:
       assertNever(contentType);
   }
