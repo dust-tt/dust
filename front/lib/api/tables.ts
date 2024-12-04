@@ -376,7 +376,7 @@ export async function rowsFromCsv({
       for (const [i, h] of header.entries()) {
         try {
           valuesByCol[h] ??= [];
-          (valuesByCol[h] as string[]).push(record[i] || "");
+          (valuesByCol[h] as string[]).push(record[i] ?? "");
         } catch (e) {
           logger.error(
             // temporary log to fix the valuesByCol[h].push is not a function error
