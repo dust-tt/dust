@@ -5,9 +5,10 @@ import type {
 } from "@temporalio/worker";
 
 import {
+  isNodeZendeskEpipeError,
   isNodeZendeskForbiddenError,
-  isZendeskEpipeError,
   isZendeskExpiredCursorError,
+  isZendeskForbiddenError,
 } from "@connectors/connectors/zendesk/lib/errors";
 import {
   DustConnectorWorkflowError,
@@ -25,7 +26,7 @@ export class ZendeskCastKnownErrorsInterceptor
     try {
       return await next(input);
     } catch (err: unknown) {
-      if (isNodeZendeskForbiddenError(err)) {
+      if (isNodeZendeskForbiddenError(err) || isZendeskForbiddenError(err)) {
         throw new ExternalOAuthTokenError(err);
       } else if (isZendeskExpiredCursorError(err)) {
         throw new DustConnectorWorkflowError(
@@ -33,7 +34,7 @@ export class ZendeskCastKnownErrorsInterceptor
           "unhandled_internal_activity_error",
           err
         );
-      } else if (isZendeskEpipeError(err)) {
+      } else if (isNodeZendeskEpipeError(err)) {
         throw new ProviderWorkflowError(
           "zendesk",
           "EPIPE",

@@ -10,20 +10,12 @@ import type {
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
-
-/**
- * Retrieves the endpoint part from a URL used to call the Zendesk API.
- */
-function getEndpointFromUrl(url: string): string {
-  return url.split("api/v2")[1] as string;
-}
 
 export function createZendeskClient({
   accessToken,
@@ -158,29 +150,17 @@ async function fetchFromZendeskWithRetries({
     response = await rawResponse.json();
   } catch (e) {
     if (rawResponse.status === 404) {
-      logger.error(
-        { rawResponse, text: rawResponse.text },
-        `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
-      );
       return null;
-    } else if (rawResponse.status === 403) {
-      throw new ExternalOAuthTokenError();
     }
-    logger.error(
-      { rawResponse, status: rawResponse.status, text: rawResponse.text },
-      "[Zendesk] Error parsing Zendesk API response"
+    throw new ZendeskApiError(
+      "Error parsing Zendesk API response",
+      rawResponse.status,
+      rawResponse
     );
-    throw new Error("Error parsing Zendesk API response");
   }
   if (!rawResponse.ok) {
-    if (response.type === "error.list" && response.errors?.length) {
-      const error = response.errors[0];
-      if (error.code === "unauthorized") {
-        throw new ExternalOAuthTokenError();
-      }
-      if (error.code === "not_found") {
-        return null;
-      }
+    if (rawResponse.status === 404) {
+      return null;
     }
     throw new ZendeskApiError(
       "Zendesk API error.",
@@ -206,7 +186,7 @@ export async function fetchZendeskBrand({
 }): Promise<ZendeskFetchedBrand | null> {
   const url = `https://${subdomain}.zendesk.com/api/v2/brands/${brandId}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return response.brand ?? null;
+  return response?.brand ?? null;
 }
 
 /**
@@ -223,7 +203,7 @@ export async function fetchZendeskArticle({
 }): Promise<ZendeskFetchedArticle | null> {
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return response.article ?? null;
+  return response?.article ?? null;
 }
 
 /**

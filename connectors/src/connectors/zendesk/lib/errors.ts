@@ -29,6 +29,10 @@ export function isNodeZendeskForbiddenError(
   );
 }
 
+export function isZendeskForbiddenError(err: unknown): err is ZendeskApiError {
+  return err instanceof ZendeskApiError && err.status === 403;
+}
+
 export function isZendeskExpiredCursorError(
   err: unknown
 ): err is ZendeskApiError {
@@ -42,7 +46,7 @@ export function isZendeskExpiredCursorError(
   );
 }
 
-export function isZendeskEpipeError(err: unknown): err is NodeZendeskError {
+export function isNodeZendeskEpipeError(err: unknown): err is NodeZendeskError {
   return (
     typeof err === "object" &&
     err !== null &&
