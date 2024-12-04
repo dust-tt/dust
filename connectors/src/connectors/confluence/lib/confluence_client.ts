@@ -142,6 +142,8 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+// default number of ms we wait before retrying after a rate limit hit.
+const DEFAULT_RETRY_AFTER_DURATION_MS = 10 * 1000;
 // Number of times we retry when rate limited (429).
 const MAX_RATE_LIMIT_RETRY_COUNT = 5;
 // Space types that we support indexing in Dust.
@@ -163,13 +165,14 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
 }
 
 function getRetryAfterDuration(response: Response): number {
-  const defaultValue = 10 * 1000;
   const retryAfter = response.headers.get("Retry-After"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
   if (retryAfter) {
     const delay = parseInt(retryAfter, 10);
-    return !Number.isNaN(delay) ? delay * 1000 : defaultValue;
+    return !Number.isNaN(delay)
+      ? delay * 1000
+      : DEFAULT_RETRY_AFTER_DURATION_MS;
   }
-  return defaultValue;
+  return DEFAULT_RETRY_AFTER_DURATION_MS;
 }
 
 export class ConfluenceClient {
