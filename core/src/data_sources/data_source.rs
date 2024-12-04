@@ -10,7 +10,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::stores::store::Store;
+use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -750,15 +750,23 @@ impl DataSource {
             .await?;
         }
 
-        // Upsert document (SQL).
+        // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
+        let create_params = DocumentCreateParams {
+            document_id: main_collection_document.document_id.clone(),
+            title: Some(main_collection_document.title.clone()),
+            mime_type: Some(main_collection_document.mime_type.clone()),
+            timestamp: main_collection_document.timestamp,
+            tags: main_collection_document.tags.clone(),
+            parents: main_collection_document.parents.clone(),
+            source_url: main_collection_document.source_url.clone(),
+            hash: main_collection_document.hash.clone(),
+            text_size: main_collection_document.text_size,
+            chunk_count: main_collection_document.chunk_count,
+            created: main_collection_document.created,
+        };
+
         store
-            .upsert_data_source_document(
-                &self.project,
-                &self.data_source_id,
-                &main_collection_document,
-                title,
-                mime_type,
-            )
+            .create_data_source_document(&self.project, self.data_source_id.clone(), create_params)
             .await?;
 
         // Clean-up old superseded versions.
@@ -1981,7 +1989,7 @@ impl DataSource {
 
         // Delete tables (concurrently).
         let (tables, total) = store
-            .list_tables(&self.project, &self.data_source_id, &None, &None, None)
+            .list_data_source_tables(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
         try_join_all(
             tables
