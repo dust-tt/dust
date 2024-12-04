@@ -369,6 +369,7 @@ export async function rowsFromCsv({
 
   let i = 0;
   const parser = parse(csv, { delimiter });
+  // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
   for await (const anyRecord of parser) {
     if (i++ >= rowIndex) {
