@@ -256,19 +256,17 @@ export function useAgentConfigurationHistory({
     history: AgentConfigurationType[];
   }> = fetcher;
 
+  const queryParams = limit ? `?limit=${limit}` : "";
   const { data, error, mutate } = useSWRWithDefaults(
     agentConfigurationId
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/history`
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/history${queryParams}`
       : null,
     agentConfigurationHistoryFetcher,
     { disabled }
   );
 
-  // Slice the data if limit is provided
-  const sliceEnd = limit ? limit : data ? data.history.length : 0;
-
   return {
-    agentConfigurationHistory: data ? data.history.slice(0, sliceEnd) : [],
+    agentConfigurationHistory: data?.history,
     isAgentConfigurationHistoryLoading: !error && !data,
     isAgentConfigurationHistoryError: error,
     mutateAgentConfigurationHistory: mutate,

@@ -169,18 +169,37 @@ export function InstructionScreen({
     disabled: !agentConfigurationId,
     limit: 30,
   });
+  // Keep a memory of overriden versions, to not lose them when switching back and forth
+  const [currentConfig, setCurrentConfig] =
+    useState<LightAgentConfigurationType | null>(null);
+  // versionNumber -> instructions
+  const [overridenConfigInstructions, setOverridenConfigInstructions] =
+    useState<{
+      [key: string]: string;
+    }>({});
 
   // Deduplicate configs based on instructions
-  const uniqueInstructions = new Set<string>();
-  const configsWithUniqueInstructions: LightAgentConfigurationType[] = [];
-  agentConfigurationHistory?.forEach((config) => {
-    if (!config.instructions || uniqueInstructions.has(config.instructions)) {
-      return;
-    } else {
-      uniqueInstructions.add(config.instructions);
-      configsWithUniqueInstructions.push(config);
-    }
-  });
+  const configsWithUniqueInstructions: LightAgentConfigurationType[] =
+    useMemo(() => {
+      const uniqueInstructions = new Set<string>();
+      const configs: LightAgentConfigurationType[] = [];
+      agentConfigurationHistory?.forEach((config) => {
+        if (
+          !config.instructions ||
+          uniqueInstructions.has(config.instructions)
+        ) {
+          return;
+        } else {
+          uniqueInstructions.add(config.instructions);
+          configs.push(config);
+        }
+      });
+      return configs;
+    }, [agentConfigurationHistory]);
+
+  useEffect(() => {
+    setCurrentConfig(agentConfigurationHistory?.[0] || null);
+  }, [agentConfigurationHistory]);
 
   const [letterIndex, setLetterIndex] = useState(0);
 
@@ -280,26 +299,45 @@ export function InstructionScreen({
       </div>
       <div className="flex h-full flex-col gap-1">
         <div className="relative h-full min-h-[240px] grow gap-1 p-px">
-          <div className="absolute right-2 top-2 z-10">
-            {agentConfigurationHistory &&
-              agentConfigurationHistory.length > 1 && (
+          {configsWithUniqueInstructions &&
+            configsWithUniqueInstructions.length > 1 &&
+            currentConfig && (
+              <div className="absolute right-2 top-2 z-10">
                 <PromptHistory
                   history={configsWithUniqueInstructions}
-                  onVersionPick={(config, isLatest: boolean) => {
-                    // Only allow edition of latest version, because no memory or other versions.
-                    editor?.setOptions({ editable: isLatest });
-                    // LAtest veresion points to current builderState, other versions point to configs
+                  onConfigChange={(config) => {
+                    // Remember the instructions of the version we're leaving, if overriden
+                    if (
+                      currentConfig &&
+                      currentConfig.instructions !== builderState.instructions
+                    ) {
+                      setOverridenConfigInstructions((prev) => ({
+                        ...prev,
+                        [currentConfig.version]: builderState.instructions,
+                      }));
+                    }
+
+                    // Bring new version's instructions to the editor, fetch overriden instructions if any
+                    setCurrentConfig(config);
                     editorService.resetContent(
                       tipTapContentFromPlainText(
-                        isLatest
-                          ? builderState.instructions || ""
-                          : config.instructions || ""
+                        overridenConfigInstructions[config.version] ||
+                          config.instructions ||
+                          ""
                       )
                     );
+                    setBuilderState((state) => ({
+                      ...state,
+                      instructions:
+                        overridenConfigInstructions[config.version] ||
+                        config.instructions ||
+                        "",
+                    }));
                   }}
+                  currentConfig={currentConfig}
                 />
-              )}
-          </div>
+              </div>
+            )}
           <EditorContent
             editor={editor}
             className="absolute bottom-0 left-0 right-0 top-0"
@@ -512,18 +550,15 @@ function AdvancedSettings({
 
 function PromptHistory({
   history,
-  onVersionPick,
+  onConfigChange,
+  currentConfig,
 }: {
   history: LightAgentConfigurationType[];
-  onVersionPick: (
-    config: LightAgentConfigurationType,
-    isLatest: boolean
-  ) => void;
+  onConfigChange: (config: LightAgentConfigurationType) => void;
+  currentConfig: LightAgentConfigurationType;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const latestConfig = history[0];
-  const [currentConfig, setCurrentConfig] =
-    useState<LightAgentConfigurationType>(latestConfig);
 
   const getStringRepresentation = useCallback(
     (config: LightAgentConfigurationType) => {
@@ -555,11 +590,10 @@ function PromptHistory({
         <ScrollArea>
           {history.map((config) => (
             <DropdownMenuItem
-              key={config.id}
+              key={config.version}
               label={getStringRepresentation(config)}
               onClick={() => {
-                setCurrentConfig(config);
-                onVersionPick(config, config.version === latestConfig?.version);
+                onConfigChange(config);
               }}
             />
           ))}
