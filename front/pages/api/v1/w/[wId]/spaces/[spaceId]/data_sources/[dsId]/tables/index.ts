@@ -123,7 +123,7 @@ import { apiError } from "@app/logger/withlogging";
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Datasource'
+ *               $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
  *       405:
