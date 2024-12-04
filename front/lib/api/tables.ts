@@ -374,11 +374,16 @@ export async function rowsFromCsv({
     if (i++ >= rowIndex) {
       const record = anyRecord as string[];
       for (const [i, h] of header.entries()) {
-        const col = record[i] || "";
-        if (!valuesByCol[h]) {
-          valuesByCol[h] = [col];
-        } else {
-          (valuesByCol[h] as string[]).push(col);
+        try {
+          valuesByCol[h] ??= [];
+          (valuesByCol[h] as string[]).push(record[i] || "");
+        } catch (e) {
+          logger.error(
+            // temporary log to fix the valuesByCol[h].push is not a function error
+            { typeOf: typeof valuesByCol[h] },
+            "Error parsing record"
+          );
+          throw e;
         }
       }
     }
