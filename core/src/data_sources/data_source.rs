@@ -756,8 +756,6 @@ impl DataSource {
                 &self.project,
                 &self.data_source_id,
                 &main_collection_document,
-                title,
-                mime_type,
             )
             .await?;
 
