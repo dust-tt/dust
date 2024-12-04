@@ -1,23 +1,20 @@
+import type { CitationType, FeedbackSelectorProps } from "@dust-tt/sparkle";
 import {
   Avatar,
   CitationNew,
   CitationNewIcons,
   CitationNewImage,
   CitationNewTitle,
-  CitationType,
   DocumentTextIcon,
-  FeedbackSelectorProps,
   Icon,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import { ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isSupportedImageContentType } from "@dust-tt/types";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -112,9 +109,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const isZoomable = isSupportedImageContentType(
-                contentFragment.contentType
-              );
               const citationType: CitationType = [
                 "dust-application/slack",
                 "text/vnd.dust.attachment.slack.thread",
@@ -125,50 +119,36 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               const icon =
                 citationType === "slack" ? SlackLogo : DocumentTextIcon;
 
-              if (isZoomable) {
-                return (
-                  <ZoomableImageCitationWrapper
-                    key={contentFragment.sId}
-                    size="xs"
-                    title={contentFragment.title}
-                    imgSrc={`${contentFragment.sourceUrl}?action=view`}
-                    alt={contentFragment.title}
-                  />
-                );
-              } else {
-                return (
-                  <CitationNew
-                    key={contentFragment.sId}
-                    href={contentFragment.sourceUrl ?? undefined}
-                  >
-                    <div className="flex gap-2">
-                      {contentFragment.context.profilePictureUrl && (
-                        <CitationNewIcons>
-                          <Avatar
-                            visual={contentFragment.context.profilePictureUrl}
-                            size="xs"
-                          />
-                        </CitationNewIcons>
-                      )}
-                      {contentFragment.sourceUrl ? (
-                        <>
-                          <CitationNewImage
-                            imgSrc={contentFragment.sourceUrl}
-                          />
-                          <CitationNewIcons>
-                            <Icon visual={icon} />
-                          </CitationNewIcons>
-                        </>
-                      ) : (
+              return (
+                <CitationNew
+                  key={contentFragment.sId}
+                  href={contentFragment.sourceUrl ?? undefined}
+                >
+                  <div className="flex gap-2">
+                    {contentFragment.context.profilePictureUrl && (
+                      <CitationNewIcons>
+                        <Avatar
+                          visual={contentFragment.context.profilePictureUrl}
+                          size="xs"
+                        />
+                      </CitationNewIcons>
+                    )}
+                    {contentFragment.sourceUrl ? (
+                      <>
+                        <CitationNewImage imgSrc={contentFragment.sourceUrl} />
                         <CitationNewIcons>
                           <Icon visual={icon} />
                         </CitationNewIcons>
-                      )}
-                    </div>
-                    <CitationNewTitle>{contentFragment.title}</CitationNewTitle>
-                  </CitationNew>
-                );
-              }
+                      </>
+                    ) : (
+                      <CitationNewIcons>
+                        <Icon visual={icon} />
+                      </CitationNewIcons>
+                    )}
+                  </div>
+                  <CitationNewTitle>{contentFragment.title}</CitationNewTitle>
+                </CitationNew>
+              );
             })
           : undefined;
 
