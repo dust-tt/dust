@@ -57,7 +57,7 @@ export function FeedbackSelector({
       }
       setLocalFeedbackContent(feedback?.feedbackContent ?? null);
     }
-  }, [isPopoverOpen, feedback?.feedbackContent, getPopoverInfo]);
+  }, [isPopoverOpen, feedback?.feedbackContent]);
 
   const selectThumb = async (thumb: ThumbReaction) => {
     const isToRemove = feedback?.thumb === thumb;
