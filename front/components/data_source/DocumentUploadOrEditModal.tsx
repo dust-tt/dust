@@ -138,7 +138,7 @@ export const DocumentUploadOrEditModal = ({
       const body = {
         name: initialId ?? document.name,
         title: initialId ?? document.name,
-        mime_type: document.mimeType,
+        mime_type: document.mimeType ?? undefined,
         timestamp: null,
         parents: [initialId ?? document.name],
         section: { prefix: null, content: document.text, sections: [] },

@@ -2018,6 +2018,10 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
   ])
 );
 
+export type UpsertTableFromCsvRequestType = z.infer<
+  typeof UpsertTableFromCsvRequestSchema
+>;
+
 const PostTableCSVAsyncResponseSchema = z.object({
   table: z.object({
     table_id: z.string(),
@@ -2049,8 +2053,12 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string().optional(),
-  mimeType: z.string().optional(),
+  mime_type: z.string().optional(),
 });
+
+export type UpsertDatabaseTableRequestType = z.infer<
+  typeof UpsertDatabaseTableRequestSchema
+>;
 
 const UpsertTableResponseSchema = z.object({
   table: CoreAPITablePublicSchema,

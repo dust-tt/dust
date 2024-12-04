@@ -114,6 +114,9 @@ import { apiError } from "@app/logger/withlogging";
  *                 items:
  *                   type: string
  *                 description: Parent tables of this table
+ *               mime_type:
+ *                 type: string
+ *                 description: Mime type of the table
  *     responses:
  *       200:
  *         description: The table
@@ -263,7 +266,7 @@ async function handler(
       let title: string;
       if (auth.isSystemKey()) {
         // If the request is from a system key, the request must provide both title and mimeType.
-        if (!r.data.mimeType) {
+        if (!r.data.mime_type) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -282,11 +285,11 @@ async function handler(
           });
         }
 
-        mimeType = r.data.mimeType;
+        mimeType = r.data.mime_type;
         title = r.data.title;
       } else {
         // If the request is from a regular API key, the request must not provide mimeType.
-        if (r.data.mimeType) {
+        if (r.data.mime_type) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
