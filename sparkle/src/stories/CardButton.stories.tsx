@@ -40,7 +40,16 @@ export const Demo = () => {
           <div className="s-flex s-gap-4">
             {sizes.map((size) => (
               <div>
-                <CardButton key={size} variant={variant} size={size}>
+                <CardButton
+                  key={size}
+                  variant={variant}
+                  size={size}
+                  onClick={() => {
+                    console.log(
+                      `Button clicked - Size: ${size}, Variant: ${variant}`
+                    );
+                  }}
+                >
                   Hello World
                 </CardButton>
               </div>
