@@ -346,7 +346,10 @@ async function* runMultiActionsAgent(
   }
 
   let fallbackPrompt = "You are a conversational assistant";
-  if (agentConfiguration.actions.length) {
+  if (
+    agentConfiguration.actions.length ||
+    agentConfiguration.visualizationEnabled
+  ) {
     fallbackPrompt += " with access to tool use.";
   } else {
     fallbackPrompt += ".";
