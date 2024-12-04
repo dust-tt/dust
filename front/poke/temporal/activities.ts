@@ -624,7 +624,6 @@ export async function deleteTranscriptsActivity({
       where: {
         workspaceId: workspace.id,
       },
-      transaction: t,
     });
 
     await LabsTranscriptsHistoryModel.destroy({
