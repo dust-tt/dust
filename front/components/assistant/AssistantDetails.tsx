@@ -2,9 +2,11 @@ import {
   Avatar,
   ContentMessage,
   ElementModal,
+  HandThumbDownIcon,
   HandThumbUpIcon,
   InformationCircleIcon,
   Page,
+  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -20,9 +22,10 @@ import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
   useAgentConfiguration,
+  useAgentConfigurationFeedbacks,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import { classNames } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
@@ -91,19 +94,21 @@ export function AssistantDetails({
   );
 
   const TabsSection = () => (
-    <Tabs defaultValue="info">
+    <Tabs defaultValue="performance">
       <TabsList>
         <TabsTrigger value="info" label="Info" icon={InformationCircleIcon} />
         <TabsTrigger
-          value="feedbacks"
-          label="Feedbacks"
+          value="performance"
+          label="Performance"
           icon={HandThumbUpIcon}
         />
       </TabsList>
       <TabsContent value="info">
         <InfoSection />
       </TabsContent>
-      <TabsContent value="feedbacks">World</TabsContent>
+      <TabsContent value="performance">
+        <FeedbacksSection />
+      </TabsContent>
     </Tabs>
   );
 
@@ -152,6 +157,77 @@ export function AssistantDetails({
     ) : (
       "This assistant has no instructions."
     );
+
+  const FeedbacksSection = () => {
+    const {
+      agentConfigurationFeedbacks,
+      isAgentConfigurationFeedbacksLoading,
+    } = useAgentConfigurationFeedbacks({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId,
+    });
+
+    return isAgentConfigurationFeedbacksLoading ? (
+      <Spinner />
+    ) : (
+      <div>
+        {!agentConfigurationFeedbacks ||
+        agentConfigurationFeedbacks.length === 0 ? (
+          <div>No feedbacks.</div>
+        ) : (
+          <div className="mt-3">
+            <Page.H variant="h6">
+              Latest version ({agentConfiguration.version})
+            </Page.H>
+            {agentConfigurationFeedbacks.map((feedback, index) => (
+              <div key={feedback.id}>
+                {index > 0 &&
+                  feedback.agentConfigurationVersion !==
+                    agentConfigurationFeedbacks[index - 1]
+                      .agentConfigurationVersion && (
+                    <Page.H variant="h6">
+                      Version {feedback.agentConfigurationVersion}
+                    </Page.H>
+                  )}
+                <ContentMessage variant="slate" className="my-2">
+                  <div className="justify-content-around mb-3 flex items-center gap-2">
+                    <div className="flex w-full items-center gap-2">
+                      <Avatar size="xs" name="Eleanor Wright" /> Eleanor Wright
+                    </div>
+                    <div className="flex-shrink-0 text-xs text-muted-foreground">
+                      {timeAgoFrom(
+                        feedback.createdAt instanceof Date
+                          ? feedback.createdAt.getTime()
+                          : new Date(feedback.createdAt).getTime(),
+                        {
+                          useLongFormat: true,
+                        }
+                      )}{" "}
+                      ago
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-grow">{feedback.content}</div>
+                    <div className="flex-shrink-0">
+                      {feedback.thumbDirection === "up" ? (
+                        <button className="rounded bg-sky-200 p-2">
+                          <HandThumbUpIcon />
+                        </button>
+                      ) : (
+                        <button className="rounded bg-warning-200 p-2">
+                          <HandThumbDownIcon />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </ContentMessage>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <ElementModal

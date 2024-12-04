@@ -102,6 +102,21 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
+  static async fetchByAgentConfigurationId(
+    agentConfigurationId: string
+  ): Promise<AgentMessageFeedbackResource[]> {
+    const agentMessageFeedback = await AgentMessageFeedback.findAll({
+      where: {
+        agentConfigurationId,
+      },
+      order: [["agentConfigurationVersion", "DESC"]],
+    });
+
+    return agentMessageFeedback.map(
+      (feedback) => new this(this.model, feedback.get())
+    );
+  }
+
   static async listByWorkspaceAndDateRange({
     workspace,
     startDate,
