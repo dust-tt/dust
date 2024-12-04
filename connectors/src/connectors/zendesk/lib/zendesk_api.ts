@@ -159,10 +159,6 @@ async function fetchFromZendeskWithRetries({
     if (rawResponse.status === 404) {
       return null;
     }
-    logger.error(
-      { rawResponse, status: rawResponse.status, text: rawResponse.text },
-      "[Zendesk] Error parsing Zendesk API response"
-    );
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
