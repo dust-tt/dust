@@ -9,7 +9,7 @@ use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
     data_sources::{
-        data_source::{Chunk, DataSource, DataSourceConfig, Document, DocumentVersion},
+        data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
         folder::Folder,
         node::Node,
     },
@@ -26,7 +26,7 @@ use crate::{
     sqlite_workers::client::SqliteWorker,
 };
 
-pub struct UpsertDocument {
+pub struct DocumentUpsertParams {
     pub document_id: String,
     pub title: Option<String>,
     pub mime_type: Option<String>,
@@ -37,12 +37,11 @@ pub struct UpsertDocument {
     pub hash: String,
     pub text_size: u64,
     pub chunk_count: usize,
-    pub chunks: Vec<Chunk>,
 }
 
-impl From<Document> for UpsertDocument {
+impl From<Document> for DocumentUpsertParams {
     fn from(document: Document) -> Self {
-        UpsertDocument {
+        DocumentUpsertParams {
             document_id: document.document_id,
             title: Some(document.title),
             mime_type: Some(document.mime_type),
@@ -53,12 +52,15 @@ impl From<Document> for UpsertDocument {
             hash: document.hash,
             text_size: document.text_size,
             chunk_count: document.chunk_count,
-            chunks: document.chunks,
         }
     }
 }
 
-pub struct UpsertTable {
+pub struct DocumentCreateParams {
+    pub created: u64,
+}
+
+pub struct TableUpsertParams {
     pub table_id: String,
     pub name: String,
     pub description: String,
@@ -71,7 +73,7 @@ pub struct UpsertTable {
     pub mime_type: Option<String>,
 }
 
-pub struct UpsertFolder {
+pub struct FolderUpsertParams {
     pub folder_id: String,
     pub timestamp: u64,
     pub title: String,
@@ -187,7 +189,8 @@ pub trait Store {
         &self,
         project: &Project,
         data_source_id: String,
-        params: UpsertDocument,
+        upsert_params: DocumentUpsertParams,
+        create_params: Option<DocumentCreateParams>,
     ) -> Result<Document>;
     async fn update_data_source_document_tags(
         &self,
@@ -267,7 +270,7 @@ pub trait Store {
         &self,
         project: Project,
         data_source_id: String,
-        params: UpsertTable,
+        upsert_params: TableUpsertParams,
     ) -> Result<Table>;
     async fn update_data_source_table_schema(
         &self,
@@ -314,7 +317,7 @@ pub trait Store {
         &self,
         project: Project,
         data_source_id: String,
-        params: UpsertFolder,
+        upsert_params: FolderUpsertParams,
     ) -> Result<Folder>;
     async fn load_data_source_folder(
         &self,

@@ -10,7 +10,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::stores::store::{Store, UpsertDocument};
+use crate::stores::store::{DocumentCreateParams, DocumentUpsertParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -708,6 +708,8 @@ impl DataSource {
             full_text.len() as u64,
         )?;
 
+        let created = document.created;
+
         FileStorageDocument::save_document_in_file_storage(
             &self,
             &document,
@@ -750,14 +752,16 @@ impl DataSource {
             .await?;
         }
 
-        // Store upsert does not save the text and token count.
+        // Store upsert does not save the text, token count or chunks.
         // These fields don't actually exist in the SQL table.
         // Because of this, we have to manually construct the UpsertDocument, and save
         // owned values for text and token count so we can return them.
+        // We also don't have type safety as we just use default/empty values for chunks
+        // for code paths where we don't need / have them.
         // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
         let doc_text = main_collection_document.text;
         let doc_token_count = main_collection_document.token_count;
-        let params = UpsertDocument {
+        let upsert_params = DocumentUpsertParams {
             document_id: main_collection_document.document_id,
             title: Some(main_collection_document.title),
             mime_type: Some(main_collection_document.mime_type),
@@ -768,16 +772,21 @@ impl DataSource {
             hash: main_collection_document.hash,
             text_size: main_collection_document.text_size,
             chunk_count: main_collection_document.chunk_count,
-            chunks: main_collection_document.chunks,
         };
+        let create_params = DocumentCreateParams { created: created };
 
-        
         let mut doc = store
-            .upsert_data_source_document(&self.project, self.data_source_id.clone(), params)
+            .upsert_data_source_document(
+                &self.project,
+                self.data_source_id.clone(),
+                upsert_params,
+                Some(create_params),
+            )
             .await?;
 
         doc.text = doc_text;
         doc.token_count = doc_token_count;
+        doc.chunks = main_collection_document.chunks;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)

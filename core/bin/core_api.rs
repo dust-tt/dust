@@ -51,7 +51,7 @@ use dust::{
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
         postgres,
-        store::{self, UpsertFolder, UpsertTable},
+        store::{self, FolderUpsertParams, TableUpsertParams},
     },
     utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
 };
@@ -2073,7 +2073,7 @@ async fn tables_upsert(
         .upsert_data_source_table(
             project,
             data_source_id,
-            UpsertTable {
+            TableUpsertParams {
                 table_id: payload.table_id,
                 name: payload.name,
                 description: payload.description,
@@ -2695,7 +2695,7 @@ async fn folders_upsert(
         .upsert_data_source_folder(
             project,
             data_source_id,
-            UpsertFolder {
+            FolderUpsertParams {
                 folder_id: payload.folder_id,
                 timestamp: payload.timestamp.unwrap_or(utils::now()),
                 parents: payload.parents,

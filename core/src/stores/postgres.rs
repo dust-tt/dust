@@ -39,7 +39,9 @@ use crate::{
     utils,
 };
 
-use super::store::{UpsertDocument, UpsertFolder, UpsertTable};
+use super::store::{
+    DocumentCreateParams, DocumentUpsertParams, FolderUpsertParams, TableUpsertParams,
+};
 
 #[derive(Clone)]
 pub struct PostgresStore {
@@ -144,14 +146,14 @@ impl PostgresStore {
 
     async fn upsert_data_source_node(
         &self,
-        params: UpsertNode<'_>,
+        upsert_params: UpsertNode<'_>,
         data_source_row_id: i64,
         row_id: i64,
         tx: &Transaction<'_>,
     ) -> Result<()> {
         let created = utils::now();
 
-        let (document_row_id, table_row_id, folder_row_id) = match params.node_type {
+        let (document_row_id, table_row_id, folder_row_id) = match upsert_params.node_type {
             NodeType::Document => (Some(row_id), None, None),
             NodeType::Table => (None, Some(row_id), None),
             NodeType::Folder => (None, None, Some(row_id)),
@@ -175,11 +177,11 @@ impl PostgresStore {
                 &[
                     &data_source_row_id,
                     &(created as i64),
-                    &params.node_id,
-                    &(params.timestamp as i64),
-                    &params.title,
-                    &params.mime_type,
-                    &params.parents,
+                    &upsert_params.node_id,
+                    &(upsert_params.timestamp as i64),
+                    &upsert_params.title,
+                    &upsert_params.mime_type,
+                    &upsert_params.parents,
                     &document_row_id,
                     &table_row_id,
                     &folder_row_id,
@@ -1760,9 +1762,13 @@ impl Store for PostgresStore {
         &self,
         project: &Project,
         data_source_id: String,
-        params: UpsertDocument,
+        upsert_params: DocumentUpsertParams,
+        create_params: Option<DocumentCreateParams>,
     ) -> Result<Document> {
-        let document_created = utils::now();
+        let document_created = match create_params {
+            Some(create_params) => create_params.created,
+            None => utils::now(),
+        };
 
         let project_id = project.project_id();
 
@@ -1791,7 +1797,7 @@ impl Store for PostgresStore {
             )
             .await?;
         let _ = tx
-            .query(&stmt, &[&data_source_row_id, &params.document_id])
+            .query(&stmt, &[&data_source_row_id, &upsert_params.document_id])
             .await?;
 
         let stmt = tx
@@ -1803,21 +1809,20 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        // let document_row_id = tx
         let r = tx
             .query_one(
                 &stmt,
                 &[
                     &data_source_row_id,
                     &(document_created as i64),
-                    &params.document_id,
-                    &(params.timestamp as i64),
-                    &params.tags,
-                    &params.parents,
-                    &params.source_url,
-                    &params.hash,
-                    &(params.text_size as i64),
-                    &(params.chunk_count as i64),
+                    &upsert_params.document_id,
+                    &(upsert_params.timestamp as i64),
+                    &upsert_params.tags,
+                    &upsert_params.parents,
+                    &upsert_params.source_url,
+                    &upsert_params.hash,
+                    &(upsert_params.text_size as i64),
+                    &(upsert_params.chunk_count as i64),
                     &"latest",
                 ],
             )
@@ -1826,25 +1831,25 @@ impl Store for PostgresStore {
         let document_row_id: i64 = r.get(0);
         let created: i64 = r.get(1);
 
-        let should_upsert_node = params.title.is_some() && params.mime_type.is_some();
+        let should_upsert_node = upsert_params.title.is_some() && upsert_params.mime_type.is_some();
 
         // TODO: defaults
-        let title = params.title.unwrap_or("".to_string());
-        let mime_type = params.mime_type.unwrap_or("".to_string());
+        let title = upsert_params.title.unwrap_or("".to_string());
+        let mime_type = upsert_params.mime_type.unwrap_or("".to_string());
 
         let document = Document {
             data_source_id,
             title,
             mime_type,
             created: created as u64,
-            document_id: params.document_id,
-            timestamp: params.timestamp,
-            tags: params.tags,
-            parents: params.parents,
-            source_url: params.source_url,
-            hash: params.hash,
-            text_size: params.text_size,
-            chunk_count: params.chunk_count,
+            document_id: upsert_params.document_id,
+            timestamp: upsert_params.timestamp,
+            tags: upsert_params.tags,
+            parents: upsert_params.parents,
+            source_url: upsert_params.source_url,
+            hash: upsert_params.hash,
+            text_size: upsert_params.text_size,
+            chunk_count: upsert_params.chunk_count,
             chunks: vec![],
             text: None,
             token_count: None,
@@ -2510,7 +2515,7 @@ impl Store for PostgresStore {
         &self,
         project: Project,
         data_source_id: String,
-        params: UpsertTable,
+        upsert_params: TableUpsertParams,
     ) -> Result<Table> {
         let project_id = project.project_id();
 
@@ -2552,14 +2557,14 @@ impl Store for PostgresStore {
                 &[
                     &data_source_row_id,
                     &(table_created as i64),
-                    &params.table_id,
-                    &params.name,
-                    &params.description,
-                    &(params.timestamp as i64),
-                    &params.tags,
-                    &params.parents,
-                    &params.remote_database_table_id,
-                    &params.remote_database_secret_id,
+                    &upsert_params.table_id,
+                    &upsert_params.name,
+                    &upsert_params.description,
+                    &(upsert_params.timestamp as i64),
+                    &upsert_params.tags,
+                    &upsert_params.parents,
+                    &upsert_params.remote_database_table_id,
+                    &upsert_params.remote_database_secret_id,
                 ],
             )
             .await?;
@@ -2580,25 +2585,25 @@ impl Store for PostgresStore {
             }
         };
 
-        let should_upsert_node = params.title.is_some() && params.mime_type.is_some();
-        let title = params.title.unwrap_or(params.name.clone());
+        let should_upsert_node = upsert_params.title.is_some() && upsert_params.mime_type.is_some();
+        let title = upsert_params.title.unwrap_or(upsert_params.name.clone());
 
         let table = Table::new(
             project,
             data_source_id,
             table_created,
-            params.table_id,
-            params.name,
-            params.description,
-            params.timestamp,
+            upsert_params.table_id,
+            upsert_params.name,
+            upsert_params.description,
+            upsert_params.timestamp,
             title,
-            params.mime_type.unwrap_or("text/csv".to_string()),
-            params.tags,
-            params.parents,
+            upsert_params.mime_type.unwrap_or("text/csv".to_string()),
+            upsert_params.tags,
+            upsert_params.parents,
             parsed_schema,
             table_schema_stale_at.map(|t| t as u64),
-            params.remote_database_table_id,
-            params.remote_database_secret_id,
+            upsert_params.remote_database_table_id,
+            upsert_params.remote_database_secret_id,
         );
 
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
@@ -3073,15 +3078,9 @@ impl Store for PostgresStore {
 
     async fn upsert_data_source_folder(
         &self,
-        //     project: &Project,
-        //     data_source_id: &str,
-        //     folder: &Folder,
-        // ) -> Result<()> {
-        //     let project_id = project.project_id();
-        //     let data_source_id = data_source_id.to_string();
         project: Project,
         data_source_id: String,
-        params: UpsertFolder,
+        upsert_params: FolderUpsertParams,
     ) -> Result<Folder> {
         let project_id = project.project_id();
 
@@ -3118,7 +3117,11 @@ impl Store for PostgresStore {
         let r = tx
             .query_one(
                 &stmt,
-                &[&data_source_row_id, &(created as i64), &params.folder_id],
+                &[
+                    &data_source_row_id,
+                    &(created as i64),
+                    &upsert_params.folder_id,
+                ],
             )
             .await?;
 
@@ -3126,12 +3129,11 @@ impl Store for PostgresStore {
         let created: i64 = r.get(1);
 
         let folder = Folder::new(
-            // project,
             data_source_id,
-            params.folder_id,
+            upsert_params.folder_id,
             created as u64,
-            params.title,
-            params.parents,
+            upsert_params.title,
+            upsert_params.parents,
         );
 
         self.upsert_data_source_node(
@@ -3305,9 +3307,6 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(3);
 
                 Ok(Folder::new(
-                    // &data_source_id,
-                    // &node_id,
-                    // project.clone(),
                     data_source_id.clone(),
                     node_id,
                     timestamp as u64,
