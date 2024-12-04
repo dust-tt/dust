@@ -708,8 +708,6 @@ impl DataSource {
             full_text.len() as u64,
         )?;
 
-        let created = document.created;
-
         FileStorageDocument::save_document_in_file_storage(
             &self,
             &document,
@@ -772,7 +770,7 @@ impl DataSource {
             hash: main_collection_document.hash,
             text_size: main_collection_document.text_size,
             chunk_count: main_collection_document.chunk_count,
-            created,
+            created: main_collection_document.created,
         };
 
         let mut doc = store
