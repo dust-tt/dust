@@ -34,7 +34,7 @@ export function BrowseActionDetails({
                 </span>
 
                 {r.responseCode === "200" ? (
-                  <CitationNew key={idx} className="w-48" href={r.browsedUrl}>
+                  <CitationNew key={idx} href={r.browsedUrl}>
                     <CitationNewIcons>
                       <Icon visual={GlobeAltIcon} />
                     </CitationNewIcons>
