@@ -19,13 +19,13 @@ const CareersMenuConfig: MenuConfig = {
   title: "Careers",
   items: [
     {
-      title: "Jobs",
-      href: "https://jobs.ashbyhq.com/dust",
+      title: "Why Dust?",
+      href: "https://blog.dust.tt/why-dust/",
       isExternal: true,
     },
     {
-      title: "LinkedIn",
-      href: "https://www.linkedin.com/company/dust-tt/",
+      title: "Jobs",
+      href: "https://jobs.ashbyhq.com/dust",
       isExternal: true,
     },
   ],
@@ -50,8 +50,13 @@ const AboutMenuConfig: MenuConfig = {
       isExternal: true,
     },
     {
-      title: "@dust4ai",
+      title: "X",
       href: "https://x.com/dust4ai",
+      isExternal: true,
+    },
+    {
+      title: "LinkedIn",
+      href: "https://www.linkedin.com/company/dust-tt/",
       isExternal: true,
     },
   ],
