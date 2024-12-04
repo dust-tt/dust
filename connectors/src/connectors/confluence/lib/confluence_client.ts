@@ -141,6 +141,7 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+const MAX_RETRY_COUNT = 5;
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
   "global",
@@ -172,7 +173,11 @@ export class ConfluenceClient {
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
   }
 
-  private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    codec: t.Type<T>,
+    retryCount: number = 0
+  ): Promise<T> {
     const response = await (async () => {
       try {
         return await fetch(`${this.apiUrl}${endpoint}`, {
@@ -217,6 +222,24 @@ export class ConfluenceClient {
       // If the token is invalid, the API will return a 403 Forbidden response.
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
+      }
+      // retry the request after a delay: https://developer.atlassian.com/cloud/confluence/rate-limiting/
+      if (response.status === 429) {
+        if (retryCount < MAX_RETRY_COUNT) {
+          const delayMs =
+            Number(response.headers?.get("Retry-After") || 10) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          return this.request(endpoint, codec, retryCount + 1);
+        } else {
+          throw new ConfluenceClientError(
+            `Rate limit hit on confluence API more than ${MAX_RETRY_COUNT} times.`,
+            {
+              type: "http_response_error",
+              status: response.status,
+              data: { url: `${this.apiUrl}${endpoint}`, response },
+            }
+          );
+        }
       }
 
       throw new ConfluenceClientError(
