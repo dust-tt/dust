@@ -1987,7 +1987,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       useAppForHeaderDetection: z.boolean().nullable().optional(),
       async: z.boolean().optional(),
       title: z.string().optional(),
-      mimeType: z.string().optional(),
+      mime_type: z.string().optional(),
     })
     .transform((o) => ({
       name: o.name,
@@ -1999,7 +1999,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       useAppForHeaderDetection: o.useAppForHeaderDetection,
       async: o.async,
       title: o.title,
-      mimeType: o.mimeType,
+      mime_type: o.mime_type,
     })),
   z.union([
     z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
@@ -2017,6 +2017,10 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       })),
   ])
 );
+
+export type UpsertTableFromCsvRequestType = z.infer<
+  typeof UpsertTableFromCsvRequestSchema
+>;
 
 const PostTableCSVAsyncResponseSchema = z.object({
   table: z.object({
@@ -2049,8 +2053,12 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string().optional(),
-  mimeType: z.string().optional(),
+  mime_type: z.string().optional(),
 });
+
+export type UpsertDatabaseTableRequestType = z.infer<
+  typeof UpsertDatabaseTableRequestSchema
+>;
 
 const UpsertTableResponseSchema = z.object({
   table: CoreAPITablePublicSchema,

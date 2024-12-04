@@ -112,11 +112,11 @@ async function handler(
           },
         });
       }
+
       const upsertRes = await handleDataSourceTableCSVUpsert({
         auth,
         params: {
           ...r.data,
-          mimeType: r.data.mimeType,
           title: r.data.title ?? r.data.name,
         },
         dataSource,

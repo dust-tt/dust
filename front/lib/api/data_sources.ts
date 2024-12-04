@@ -659,7 +659,7 @@ export async function handleDataSourceTableCSVUpsert({
         useAppForHeaderDetection,
         detectedHeaders,
         title: params.title,
-        mimeType: params.mimeType,
+        mimeType: params.mime_type,
       },
     });
     if (enqueueRes.isErr()) {
@@ -690,7 +690,7 @@ export async function handleDataSourceTableCSVUpsert({
     truncate,
     useAppForHeaderDetection,
     title: params.title,
-    mimeType: params.mimeType,
+    mimeType: params.mime_type,
   });
 
   if (tableRes.isErr()) {
