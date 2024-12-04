@@ -476,6 +476,14 @@ export async function processAndUpsertToDataSource(
     : await getFileContent(auth, file);
 
   if (!content) {
+    logger.error(
+      {
+        fileId: file.sId,
+        workspaceId: auth.workspace()?.sId,
+        contentSupplied: !!optionalContent,
+      },
+      "No content extracted from file for JIT processing."
+    );
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
