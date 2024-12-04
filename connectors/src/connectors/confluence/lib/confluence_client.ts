@@ -161,6 +161,16 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
   return url.searchParams.get("cursor");
 }
 
+function getRetryAfterDuration(response: Response): number {
+  const defaultValue = 10 * 1000;
+  const retryAfter = response.headers.get("Retry-After"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+  if (retryAfter) {
+    const delay = parseInt(retryAfter, 10);
+    return !Number.isNaN(delay) ? delay * 1000 : defaultValue;
+  }
+  return defaultValue;
+}
+
 export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
@@ -227,9 +237,9 @@ export class ConfluenceClient {
       // retry the request after a delay: https://developer.atlassian.com/cloud/confluence/rate-limiting/
       if (response.status === 429) {
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
-          const delayMs =
-            Number(response.headers?.get("Retry-After") || 10) * 1000;
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          await new Promise((resolve) =>
+            setTimeout(resolve, getRetryAfterDuration(response))
+          );
           return this.request(endpoint, codec, retryCount + 1);
         } else {
           throw new ConfluenceClientError(
