@@ -171,6 +171,63 @@ export const HeaderContentBlock = ({
   </Grid>
 );
 
+interface MetricComponentProps {
+  metrics: {
+    value: string;
+    description: string;
+  }[];
+  from: string;
+  to: string;
+}
+
+export const MetricComponent = ({
+  metrics,
+  from,
+  to,
+}: MetricComponentProps) => (
+  <div
+    className={classNames(
+      "col-span-12 flex flex-col items-center py-8 text-center"
+    )}
+  >
+    <div
+      className={classNames(
+        "grid grid-cols-1 gap-x-6 gap-y-8",
+        "md:grid-cols-2 md:gap-x-12"
+      )}
+    >
+      {metrics.map((metric, index) => (
+        <div key={index} className="flex flex-col items-center gap-4">
+          <H1 from={from} to={to}>
+            {metric.value}
+          </H1>
+          <P size="md" className="max-w-[400px]">
+            {metric.description}
+          </P>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface QuoteProps {
+  quote: string;
+}
+
+export const Quote = ({ quote }: QuoteProps) => (
+  <div className={classNames("col-span-6 col-start-4 flex flex-col py-8")}>
+    <div>
+      <H1 className="text-sky-200">"</H1>
+    </div>
+    <div className="flex flex-col items-center text-white">
+      <H3>{quote}</H3>
+    </div>
+    <div className="flex justify-center pt-8">
+      <H2 className="text-red-400">Malt</H2>
+    </div>
+  </div>
+);
+
 interface CarousselContentBlockProps {
   title: ReactNode;
   subtitle?: ReactNode;
