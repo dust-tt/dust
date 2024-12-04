@@ -1,8 +1,8 @@
-import {
-  CitationNewIndex,
+import type {
   ConversationMessageSizeType,
   FeedbackSelectorProps,
 } from "@dust-tt/sparkle";
+import { CitationNewIndex } from "@dust-tt/sparkle";
 import {
   CitationNew,
   CitationNewIcons,
