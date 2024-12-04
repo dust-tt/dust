@@ -1,5 +1,16 @@
-import type { CitationType, FeedbackSelectorProps } from "@dust-tt/sparkle";
-import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  CitationNew,
+  CitationNewIcons,
+  CitationNewImage,
+  CitationNewTitle,
+  CitationType,
+  DocumentTextIcon,
+  FeedbackSelectorProps,
+  Icon,
+  SlackLogo,
+} from "@dust-tt/sparkle";
+import { ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   MessageWithContentFragmentsType,
@@ -111,6 +122,9 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 ? "slack"
                 : "document";
 
+              const icon =
+                citationType === "slack" ? SlackLogo : DocumentTextIcon;
+
               if (isZoomable) {
                 return (
                   <ZoomableImageCitationWrapper
@@ -123,18 +137,36 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 );
               } else {
                 return (
-                  <Citation
+                  <CitationNew
                     key={contentFragment.sId}
-                    title={contentFragment.title}
-                    sizing="fluid"
-                    size="xs"
-                    type={citationType}
-                    href={contentFragment.sourceUrl || undefined}
-                    imgSrc={contentFragment.sourceUrl || undefined}
-                    avatarSrc={
-                      contentFragment.context.profilePictureUrl || undefined
-                    }
-                  />
+                    href={contentFragment.sourceUrl ?? undefined}
+                  >
+                    <div className="flex gap-2">
+                      {contentFragment.context.profilePictureUrl && (
+                        <CitationNewIcons>
+                          <Avatar
+                            visual={contentFragment.context.profilePictureUrl}
+                            size="xs"
+                          />
+                        </CitationNewIcons>
+                      )}
+                      {contentFragment.sourceUrl ? (
+                        <>
+                          <CitationNewImage
+                            imgSrc={contentFragment.sourceUrl}
+                          />
+                          <CitationNewIcons>
+                            <Icon visual={icon} />
+                          </CitationNewIcons>
+                        </>
+                      ) : (
+                        <CitationNewIcons>
+                          <Icon visual={icon} />
+                        </CitationNewIcons>
+                      )}
+                    </div>
+                    <CitationNewTitle>{contentFragment.title}</CitationNewTitle>
+                  </CitationNew>
                 );
               }
             })
