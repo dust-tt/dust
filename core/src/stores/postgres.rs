@@ -39,9 +39,7 @@ use crate::{
     utils,
 };
 
-use super::store::{
-    DocumentCreateParams, DocumentUpsertParams, FolderUpsertParams, TableUpsertParams,
-};
+use super::store::{DocumentCreateParams, FolderUpsertParams, TableUpsertParams};
 
 #[derive(Clone)]
 pub struct PostgresStore {
@@ -1758,18 +1756,12 @@ impl Store for PostgresStore {
         Ok((document_ids, count as usize))
     }
 
-    async fn upsert_data_source_document(
+    async fn create_data_source_document(
         &self,
         project: &Project,
         data_source_id: String,
-        upsert_params: DocumentUpsertParams,
-        create_params: Option<DocumentCreateParams>,
+        create_params: DocumentCreateParams,
     ) -> Result<Document> {
-        let document_created = match create_params {
-            Some(create_params) => create_params.created,
-            None => utils::now(),
-        };
-
         let project_id = project.project_id();
 
         let pool = self.pool.clone();
@@ -1797,7 +1789,7 @@ impl Store for PostgresStore {
             )
             .await?;
         let _ = tx
-            .query(&stmt, &[&data_source_row_id, &upsert_params.document_id])
+            .query(&stmt, &[&data_source_row_id, &create_params.document_id])
             .await?;
 
         let stmt = tx
@@ -1814,15 +1806,15 @@ impl Store for PostgresStore {
                 &stmt,
                 &[
                     &data_source_row_id,
-                    &(document_created as i64),
-                    &upsert_params.document_id,
-                    &(upsert_params.timestamp as i64),
-                    &upsert_params.tags,
-                    &upsert_params.parents,
-                    &upsert_params.source_url,
-                    &upsert_params.hash,
-                    &(upsert_params.text_size as i64),
-                    &(upsert_params.chunk_count as i64),
+                    &(create_params.created as i64),
+                    &create_params.document_id,
+                    &(create_params.timestamp as i64),
+                    &create_params.tags,
+                    &create_params.parents,
+                    &create_params.source_url,
+                    &create_params.hash,
+                    &(create_params.text_size as i64),
+                    &(create_params.chunk_count as i64),
                     &"latest",
                 ],
             )
@@ -1831,25 +1823,25 @@ impl Store for PostgresStore {
         let document_row_id: i64 = r.get(0);
         let created: i64 = r.get(1);
 
-        let should_upsert_node = upsert_params.title.is_some() && upsert_params.mime_type.is_some();
+        let should_upsert_node = create_params.title.is_some() && create_params.mime_type.is_some();
 
         // TODO: defaults
-        let title = upsert_params.title.unwrap_or("".to_string());
-        let mime_type = upsert_params.mime_type.unwrap_or("".to_string());
+        let title = create_params.title.unwrap_or("".to_string());
+        let mime_type = create_params.mime_type.unwrap_or("".to_string());
 
         let document = Document {
             data_source_id,
             title,
             mime_type,
             created: created as u64,
-            document_id: upsert_params.document_id,
-            timestamp: upsert_params.timestamp,
-            tags: upsert_params.tags,
-            parents: upsert_params.parents,
-            source_url: upsert_params.source_url,
-            hash: upsert_params.hash,
-            text_size: upsert_params.text_size,
-            chunk_count: upsert_params.chunk_count,
+            document_id: create_params.document_id,
+            timestamp: create_params.timestamp,
+            tags: create_params.tags,
+            parents: create_params.parents,
+            source_url: create_params.source_url,
+            hash: create_params.hash,
+            text_size: create_params.text_size,
+            chunk_count: create_params.chunk_count,
             chunks: vec![],
             text: None,
             token_count: None,

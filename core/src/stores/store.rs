@@ -26,7 +26,7 @@ use crate::{
     sqlite_workers::client::SqliteWorker,
 };
 
-pub struct DocumentUpsertParams {
+pub struct DocumentCreateParams {
     pub document_id: String,
     pub title: Option<String>,
     pub mime_type: Option<String>,
@@ -37,11 +37,12 @@ pub struct DocumentUpsertParams {
     pub hash: String,
     pub text_size: u64,
     pub chunk_count: usize,
+    pub created: u64,
 }
 
-impl From<Document> for DocumentUpsertParams {
+impl From<Document> for DocumentCreateParams {
     fn from(document: Document) -> Self {
-        DocumentUpsertParams {
+        DocumentCreateParams {
             document_id: document.document_id,
             title: Some(document.title),
             mime_type: Some(document.mime_type),
@@ -52,12 +53,9 @@ impl From<Document> for DocumentUpsertParams {
             hash: document.hash,
             text_size: document.text_size,
             chunk_count: document.chunk_count,
+            created: document.created,
         }
     }
-}
-
-pub struct DocumentCreateParams {
-    pub created: u64,
 }
 
 pub struct TableUpsertParams {
@@ -185,12 +183,11 @@ pub trait Store {
         view_filter: &Option<SearchFilter>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<String>, usize)>;
-    async fn upsert_data_source_document(
+    async fn create_data_source_document(
         &self,
         project: &Project,
         data_source_id: String,
-        upsert_params: DocumentUpsertParams,
-        create_params: Option<DocumentCreateParams>,
+        create_params: DocumentCreateParams,
     ) -> Result<Document>;
     async fn update_data_source_document_tags(
         &self,

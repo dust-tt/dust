@@ -10,7 +10,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::stores::store::{DocumentCreateParams, DocumentUpsertParams, Store};
+use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -761,7 +761,7 @@ impl DataSource {
         // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
         let doc_text = main_collection_document.text;
         let doc_token_count = main_collection_document.token_count;
-        let upsert_params = DocumentUpsertParams {
+        let create_params = DocumentCreateParams {
             document_id: main_collection_document.document_id,
             title: Some(main_collection_document.title),
             mime_type: Some(main_collection_document.mime_type),
@@ -772,16 +772,11 @@ impl DataSource {
             hash: main_collection_document.hash,
             text_size: main_collection_document.text_size,
             chunk_count: main_collection_document.chunk_count,
+            created,
         };
-        let create_params = DocumentCreateParams { created: created };
 
         let mut doc = store
-            .upsert_data_source_document(
-                &self.project,
-                self.data_source_id.clone(),
-                upsert_params,
-                Some(create_params),
-            )
+            .create_data_source_document(&self.project, self.data_source_id.clone(), create_params)
             .await?;
 
         doc.text = doc_text;
