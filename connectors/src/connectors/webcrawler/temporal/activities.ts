@@ -332,6 +332,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               upsertContext: {
                 sync_type: "batch",
               },
+              title: pageTitle,
+              mimeType: "text/html",
               async: true,
             });
           } else {

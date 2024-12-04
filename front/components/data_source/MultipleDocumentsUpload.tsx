@@ -141,6 +141,8 @@ export const MultipleDocumentsUpload = ({
         // Create the document
         const body = {
           name: blob.filename,
+          title: blob.filename,
+          mime_type: blob.contentType ?? undefined,
           timestamp: null,
           parents: [blob.filename],
           section: {

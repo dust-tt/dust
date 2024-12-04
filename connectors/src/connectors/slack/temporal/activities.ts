@@ -592,6 +592,8 @@ export async function syncNonThreaded(
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
+    mimeType: "text/vnd.dust.slack-thread",
     async: true,
   });
 }
@@ -784,6 +786,8 @@ export async function syncThread(
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    title: tags.find((t) => t.startsWith("title:"))?.split(":")[1] ?? "",
+    mimeType: "text/vnd.dust.slack-thread",
     async: true,
   });
 }
