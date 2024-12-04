@@ -370,14 +370,12 @@ export async function rowsFromCsv({
   let i = 0;
   const parser = parse(csv, { delimiter });
   const valuesByCol: Record<string, string[]> = {};
-  // init arrays for all headers
-  header.forEach((h) => (valuesByCol[h] = []));
-
   for await (const anyRecord of parser) {
     if (i++ >= rowIndex) {
       const record = anyRecord as string[];
       for (const [i, h] of header.entries()) {
         try {
+          valuesByCol[h] ??= [];
           (valuesByCol[h] as string[]).push(record[i] ?? "");
         } catch (e) {
           logger.error(
