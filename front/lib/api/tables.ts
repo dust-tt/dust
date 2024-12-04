@@ -369,7 +369,7 @@ export async function rowsFromCsv({
 
   let i = 0;
   const parser = parse(csv, { delimiter });
-  const valuesByCol: Record<string, string[]> = {};
+  const valuesByCol: Record<string, string[]> = Object.create(null);
   for await (const anyRecord of parser) {
     if (i++ >= rowIndex) {
       const record = anyRecord as string[];
