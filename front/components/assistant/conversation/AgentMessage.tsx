@@ -1,4 +1,5 @@
-import type {
+import {
+  CitationNewIndex,
   ConversationMessageSizeType,
   FeedbackSelectorProps,
 } from "@dust-tt/sparkle";
@@ -474,20 +475,6 @@ export function AgentMessage({
     }
   }
 
-  const [lastHoveredReference, setLastHoveredReference] = useState<
-    number | null
-  >(null);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (lastHoveredReference !== null) {
-      timer = setTimeout(() => {
-        setLastHoveredReference(null);
-      }, 1000); // Reset after 1 second.
-    }
-    return () => clearTimeout(timer);
-  }, [lastHoveredReference]);
-
   useEffect(() => {
     // Retrieval actions
     const retrievalActionsWithDocs = agentMessageToRender.actions
@@ -546,8 +533,8 @@ export function AgentMessage({
   );
 
   const citations = useMemo(
-    () => getCitations({ activeReferences, lastHoveredReference }),
-    [activeReferences, lastHoveredReference]
+    () => getCitations({ activeReferences }),
+    [activeReferences]
   );
 
   const canMention =
@@ -656,7 +643,6 @@ export function AgentMessage({
                 value={{
                   references,
                   updateActiveReferences,
-                  setHoveredReference: setLastHoveredReference,
                 }}
               >
                 <Markdown
@@ -725,19 +711,18 @@ function AssitantName(
 
 function getCitations({
   activeReferences,
-  lastHoveredReference,
 }: {
   activeReferences: {
     index: number;
     document: MarkdownCitation;
   }[];
-  lastHoveredReference: number | null;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
       <CitationNew key={index} href={document.href}>
         <CitationNewIcons>
+          <CitationNewIndex>{index}</CitationNewIndex>
           <Icon visual={typeIcons[document.type]} />
         </CitationNewIcons>
         <CitationNewTitle>{document.title}</CitationNewTitle>
