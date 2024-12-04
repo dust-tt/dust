@@ -9,12 +9,7 @@ import {
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
-import {
-  Grid,
-  H1,
-  P,
-  Strong,
-} from "@app/components/home/ContentComponents";
+import { Grid, H1, P, Strong } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 import TrustedBy from "../../TrustedBy";
