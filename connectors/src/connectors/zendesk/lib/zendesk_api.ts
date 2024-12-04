@@ -10,6 +10,7 @@ import type {
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -104,7 +105,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
       { response, retryAfter },
       "[Zendesk] Rate limit hit, waiting before retrying."
     );
-    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+    await setTimeoutAsync(retryAfter * 1000);
     return true;
   }
   return false;

@@ -2,6 +2,7 @@ import { ConfluenceClientError } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
@@ -237,9 +238,7 @@ export class ConfluenceClient {
       // retry the request after a delay: https://developer.atlassian.com/cloud/confluence/rate-limiting/
       if (response.status === 429) {
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, getRetryAfterDuration(response))
-          );
+          await setTimeoutAsync(getRetryAfterDuration(response));
           return this.request(endpoint, codec, retryCount + 1);
         } else {
           throw new ConfluenceClientError(
