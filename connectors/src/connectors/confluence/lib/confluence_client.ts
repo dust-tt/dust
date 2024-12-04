@@ -244,7 +244,12 @@ export class ConfluenceClient {
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
           logger.warn(
-            { endpoint, retryCount, delayMs, headers: response.headers },
+            {
+              endpoint,
+              retryCount,
+              delayMs,
+              headers: Object.fromEntries(response.headers.entries()),
+            },
             "[Confluence] Rate limit hit, retrying after delay"
           );
           await setTimeoutAsync(delayMs);
