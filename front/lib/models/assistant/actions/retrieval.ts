@@ -326,11 +326,11 @@ RetrievalDocument.init(
 );
 
 AgentRetrievalAction.hasMany(RetrievalDocument, {
-  foreignKey: { name: "retrievalActionId", allowNull: false },
-  onDelete: "CASCADE",
+  foreignKey: { name: "retrievalActionId", allowNull: true },
+  onDelete: "SET NULL",
 });
 RetrievalDocument.belongsTo(AgentRetrievalAction, {
-  foreignKey: { name: "retrievalActionId", allowNull: false },
+  foreignKey: { name: "retrievalActionId", allowNull: true },
 });
 
 DataSourceViewModel.hasMany(RetrievalDocument, {
