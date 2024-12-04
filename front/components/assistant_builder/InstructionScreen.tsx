@@ -562,14 +562,17 @@ function PromptHistory({
 
   const getStringRepresentation = useCallback(
     (config: LightAgentConfigurationType) => {
-      const dateAndHourMatch = config.versionCreatedAt?.match(
-        /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
-      )?.[0];
-
+      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+      });
       return config.version === latestConfig?.version
         ? "Latest Version"
-        : dateAndHourMatch
-          ? dateAndHourMatch.replace("T", " ")
+        : config.versionCreatedAt
+          ? dateFormatter.format(new Date(config.versionCreatedAt))
           : `v${config.version}`;
     },
     [latestConfig]
