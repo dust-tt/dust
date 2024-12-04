@@ -56,6 +56,10 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { Provider } from "@app/lib/resources/storage/models/apps";
+import {
+  LabsTranscriptsConfigurationModel,
+  LabsTranscriptsHistoryModel,
+} from "@app/lib/resources/storage/models/labs_transcripts";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -601,6 +605,40 @@ export async function deleteWorkspaceActivity({
     await Workspace.destroy({
       where: {
         id: workspace.id,
+      },
+      transaction: t,
+    });
+  });
+}
+
+export async function deleteTranscriptsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const workspace = auth.getNonNullableWorkspace();
+
+  await frontSequelize.transaction(async (t) => {
+    const configs = await LabsTranscriptsConfigurationModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction: t,
+    });
+
+    await LabsTranscriptsHistoryModel.destroy({
+      where: {
+        configurationId: {
+          [Op.in]: configs.map((c) => c.id),
+        },
+      },
+      transaction: t,
+    });
+
+    await LabsTranscriptsConfigurationModel.destroy({
+      where: {
+        workspaceId: workspace.id,
       },
       transaction: t,
     });
