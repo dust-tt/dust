@@ -157,10 +157,6 @@ async function fetchFromZendeskWithRetries({
     response = await rawResponse.json();
   } catch (e) {
     if (rawResponse.status === 404) {
-      logger.error(
-        { rawResponse, text: rawResponse.text },
-        `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
-      );
       return null;
     }
     logger.error(
