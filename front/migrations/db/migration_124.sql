@@ -1,6 +1,6 @@
 -- Migration created on Dec 04, 2024
 
-CREATE TABLE IF NOT EXISTS "trackers" (
+CREATE TABLE IF NOT EXISTS "tracker_configurations" (
     "id" SERIAL,
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS "trackers" (
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "trackers_workspace_id" ON "trackers" ("workspaceId");
+CREATE INDEX "tracker_configurations_workspace_id" ON "tracker_configurations" ("workspaceId");
 
 CREATE TABLE IF NOT EXISTS "tracker_data_source_configurations" (
     "id" SERIAL,
@@ -28,13 +28,13 @@ CREATE TABLE IF NOT EXISTS "tracker_data_source_configurations" (
     "scope" VARCHAR(255) NOT NULL,
     "parentsIn" VARCHAR(255)[],
     "parentsNotIn" VARCHAR(255)[],
-    "trackerId" INTEGER NOT NULL REFERENCES "trackers" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "trackerConfigurationId" INTEGER NOT NULL REFERENCES "tracker_configurations" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "dataSourceId" INTEGER NOT NULL REFERENCES "data_sources" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "dataSourceViewId" INTEGER NOT NULL REFERENCES "data_source_views" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "tracker_data_source_configurations_tracker_id" ON "tracker_data_source_configurations" ("trackerId");
+CREATE INDEX "tracker_data_source_configurations_tracker_configuration_id" ON "tracker_data_source_configurations" ("trackerConfigurationId");
 
 CREATE TABLE IF NOT EXISTS "tracker_generations" (
     "id" SERIAL,
@@ -44,9 +44,9 @@ CREATE TABLE IF NOT EXISTS "tracker_generations" (
     "content" TEXT NOT NULL,
     "thinking" TEXT,
     "documentId" VARCHAR(255) NOT NULL,
-    "trackerId" INTEGER NOT NULL REFERENCES "trackers" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "trackerConfigurationId" INTEGER NOT NULL REFERENCES "tracker_configurations" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "dataSourceId" INTEGER NOT NULL REFERENCES "data_sources" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "tracker_generations_tracker_id" ON "tracker_generations" ("trackerId");
+CREATE INDEX "tracker_generations_tracker_configuration_id" ON "tracker_generations" ("trackerConfigurationId");

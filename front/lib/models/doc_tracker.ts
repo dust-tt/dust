@@ -15,7 +15,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class TrackerModel extends SoftDeletableModel<TrackerModel> {
+export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigurationModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -41,7 +41,7 @@ export class TrackerModel extends SoftDeletableModel<TrackerModel> {
   declare user: NonAttribute<User> | null;
 }
 
-TrackerModel.init(
+TrackerConfigurationModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -93,36 +93,36 @@ TrackerModel.init(
     },
   },
   {
-    modelName: "tracker",
+    modelName: "tracker_configuration",
     sequelize: frontSequelize,
     indexes: [{ fields: ["workspaceId"] }],
   }
 );
 
-Workspace.hasMany(TrackerModel, {
+Workspace.hasMany(TrackerConfigurationModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
 
-TrackerModel.belongsTo(Workspace, {
+TrackerConfigurationModel.belongsTo(Workspace, {
   foreignKey: { allowNull: false },
 });
 
-SpaceModel.hasMany(TrackerModel, {
+SpaceModel.hasMany(TrackerConfigurationModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
 
-TrackerModel.belongsTo(SpaceModel, {
+TrackerConfigurationModel.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false },
 });
 
-User.hasMany(TrackerModel, {
+User.hasMany(TrackerConfigurationModel, {
   foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
 
-TrackerModel.belongsTo(User, {
+TrackerConfigurationModel.belongsTo(User, {
   foreignKey: { allowNull: true },
 });
 
@@ -135,12 +135,12 @@ export class TrackerDataSouceConfigurationModel extends SoftDeletableModel<Track
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
-  declare trackerId: ForeignKey<TrackerModel["id"]>;
+  declare trackerConfigurationId: ForeignKey<TrackerConfigurationModel["id"]>;
 
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
-  declare tracker: NonAttribute<TrackerModel>;
+  declare trackerConfiguration: NonAttribute<TrackerConfigurationModel>;
   declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
@@ -181,15 +181,15 @@ TrackerDataSouceConfigurationModel.init(
   {
     modelName: "tracker_data_source_configuration",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["trackerId"] }],
+    indexes: [{ fields: ["trackerConfigurationId"] }],
   }
 );
 
-TrackerModel.hasMany(TrackerDataSouceConfigurationModel, {
+TrackerConfigurationModel.hasMany(TrackerDataSouceConfigurationModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-TrackerDataSouceConfigurationModel.belongsTo(TrackerModel, {
+TrackerDataSouceConfigurationModel.belongsTo(TrackerConfigurationModel, {
   foreignKey: { allowNull: false },
 });
 
@@ -217,11 +217,11 @@ export class TrackerGenerationModel extends SoftDeletableModel<TrackerGeneration
   declare content: string;
   declare thinking: string | null;
 
-  declare trackerId: ForeignKey<TrackerModel["id"]>;
+  declare trackerConfigurationId: ForeignKey<TrackerConfigurationModel["id"]>;
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare documentId: string;
 
-  declare tracker: NonAttribute<TrackerModel>;
+  declare trackerConfiguration: NonAttribute<TrackerConfigurationModel>;
 }
 
 TrackerGenerationModel.init(
@@ -260,15 +260,15 @@ TrackerGenerationModel.init(
   {
     modelName: "tracker_generation",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["trackerId"] }],
+    indexes: [{ fields: ["trackerConfigurationId"] }],
   }
 );
 
-TrackerModel.hasMany(TrackerGenerationModel, {
+TrackerConfigurationModel.hasMany(TrackerGenerationModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-TrackerGenerationModel.belongsTo(TrackerModel, {
+TrackerGenerationModel.belongsTo(TrackerConfigurationModel, {
   foreignKey: { allowNull: false },
 });
 
