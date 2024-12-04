@@ -88,10 +88,15 @@ export async function getZendeskBrandSubdomain({
  */
 async function handleZendeskRateLimit(response: Response): Promise<boolean> {
   if (response.status === 429) {
-    const retryAfter = Math.max(
-      Number(response.headers.get("Retry-After")) || 1,
-      1
-    );
+    let retryAfter = 1;
+
+    const headerValue = response.headers.get("Retry-After"); // https://developer.zendesk.com/api-reference/introduction/rate-limits/
+    if (headerValue) {
+      const delay = parseInt(headerValue, 10);
+      if (!Number.isNaN(delay)) {
+        retryAfter = Math.max(delay, 1);
+      }
+    }
     if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
         { retryAfter },
