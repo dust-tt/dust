@@ -409,7 +409,7 @@ export function AgentMessage({
           <Button
             key="copy-msg-button"
             tooltip="Copy to clipboard"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void navigator.clipboard.writeText(
@@ -417,18 +417,23 @@ export function AgentMessage({
               );
             }}
             icon={ClipboardIcon}
+            className="text-muted-foreground"
           />,
           <Button
             key="retry-msg-button"
             tooltip="Retry"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void retryHandler(agentMessageToRender);
             }}
             icon={ArrowPathIcon}
+            className="text-muted-foreground"
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
+          <div key="separator" className="flex items-center">
+            <div className="h-5 w-px bg-border" />
+          </div>,
           <FeedbackSelector
             key="feedback-selector"
             {...messageFeedback}
