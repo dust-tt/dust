@@ -141,6 +141,7 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+// Number of times we retry when rate limited (429).
 const MAX_RATE_LIMIT_RETRY_COUNT = 5;
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
