@@ -10,6 +10,7 @@ import type {
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -87,10 +88,15 @@ export async function getZendeskBrandSubdomain({
  */
 async function handleZendeskRateLimit(response: Response): Promise<boolean> {
   if (response.status === 429) {
-    const retryAfter = Math.max(
-      Number(response.headers.get("Retry-After")) || 1,
-      1
-    );
+    let retryAfter = 1;
+
+    const headerValue = response.headers.get("retry-after"); // https://developer.zendesk.com/api-reference/introduction/rate-limits/
+    if (headerValue) {
+      const delay = parseInt(headerValue, 10);
+      if (!Number.isNaN(delay)) {
+        retryAfter = Math.max(delay, 1);
+      }
+    }
     if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
         { retryAfter },
@@ -104,7 +110,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
       { response, retryAfter },
       "[Zendesk] Rate limit hit, waiting before retrying."
     );
-    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+    await setTimeoutAsync(retryAfter * 1000);
     return true;
   }
   return false;
