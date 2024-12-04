@@ -165,7 +165,7 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
 }
 
 function getRetryAfterDuration(response: Response): number {
-  const retryAfter = response.headers.get("Retry-After"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+  const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
   if (retryAfter) {
     const delay = parseInt(retryAfter, 10);
     return !Number.isNaN(delay)

@@ -90,7 +90,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
   if (response.status === 429) {
     let retryAfter = 1;
 
-    const headerValue = response.headers.get("Retry-After"); // https://developer.zendesk.com/api-reference/introduction/rate-limits/
+    const headerValue = response.headers.get("retry-after"); // https://developer.zendesk.com/api-reference/introduction/rate-limits/
     if (headerValue) {
       const delay = parseInt(headerValue, 10);
       if (!Number.isNaN(delay)) {
