@@ -374,12 +374,8 @@ export async function rowsFromCsv({
     if (i++ >= rowIndex) {
       const record = anyRecord as string[];
       for (const [i, h] of header.entries()) {
-        const col = record[i] || "";
-        if (!valuesByCol[h]) {
-          valuesByCol[h] = [col];
-        } else {
-          (valuesByCol[h] as string[]).push(col);
-        }
+        valuesByCol[h] ??= [];
+        (valuesByCol[h] as string[]).push(record[i] || "");
       }
     }
   }
