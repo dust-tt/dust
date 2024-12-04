@@ -13,11 +13,9 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class TrackerModel extends Model<
-  InferAttributes<TrackerModel>,
-  InferCreationAttributes<TrackerModel>
-> {
+export class TrackerModel extends SoftDeletableModel<TrackerModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -59,6 +57,9 @@ TrackerModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
     },
     status: {
       type: DataTypes.STRING,
@@ -125,10 +126,7 @@ TrackerModel.belongsTo(User, {
   foreignKey: { allowNull: true },
 });
 
-export class TrackerDataSouceConfigurationModel extends Model<
-  InferAttributes<TrackerDataSouceConfigurationModel>,
-  InferCreationAttributes<TrackerDataSouceConfigurationModel>
-> {
+export class TrackerDataSouceConfigurationModel extends SoftDeletableModel<TrackerDataSouceConfigurationModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -163,6 +161,9 @@ TrackerDataSouceConfigurationModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
     },
     scope: {
       type: DataTypes.STRING,
@@ -208,10 +209,7 @@ TrackerDataSouceConfigurationModel.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: false },
 });
 
-export class TrackerGenerationModel extends Model<
-  InferAttributes<TrackerGenerationModel>,
-  InferCreationAttributes<TrackerGenerationModel>
-> {
+export class TrackerGenerationModel extends SoftDeletableModel<TrackerGenerationModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -242,6 +240,9 @@ TrackerGenerationModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
     },
     content: {
       type: DataTypes.TEXT,
