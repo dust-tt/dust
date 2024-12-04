@@ -49,6 +49,9 @@ import { ConversationClassification } from "@app/lib/models/conversation_classif
 import {
   DocumentTrackerChangeSuggestion,
   TrackedDocument,
+  TrackerDataSouceConfigurationModel,
+  TrackerGenerationModel,
+  TrackerModel,
 } from "@app/lib/models/doc_tracker";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
@@ -121,6 +124,10 @@ async function main() {
   await RunUsageModel.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
+
+  await TrackerModel.sync({ alter: true });
+  await TrackerDataSouceConfigurationModel.sync({ alter: true });
+  await TrackerGenerationModel.sync({ alter: true });
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
