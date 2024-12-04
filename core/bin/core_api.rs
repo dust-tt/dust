@@ -2690,17 +2690,6 @@ async fn folders_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    // let folder = Folder::new(
-    //     &data_source_id,
-    //     &payload.folder_id.clone(),
-    //     payload.timestamp.unwrap_or(utils::now()),
-    //     &payload.title,
-    //     payload.parents,
-    // );
-
-    // match state
-    //     .store
-    //     .upsert_data_source_folder(&project, &data_source_id, &folder)
     match state
         .store
         .upsert_data_source_folder(
