@@ -93,32 +93,9 @@ async function handler(
         });
       }
 
-      const {
-        name,
-        description,
-        timestamp,
-        tags,
-        parents,
-        truncate,
-        async,
-        csv,
-        useAppForHeaderDetection,
-        title,
-        mime_type,
-      } = bodyValidation.right;
-
       const upsertRes = await upsertTable({
-        name,
-        description,
-        timestamp,
-        tags,
-        parents,
-        truncate,
-        async: async ?? false,
-        csv,
-        useAppForHeaderDetection,
-        title,
-        mimeType: mime_type,
+        ...bodyValidation.right,
+        async: bodyValidation.right.async ?? false,
         dataSource,
         auth,
       });

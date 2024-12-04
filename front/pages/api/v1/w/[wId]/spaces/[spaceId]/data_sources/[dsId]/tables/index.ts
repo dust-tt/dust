@@ -263,7 +263,7 @@ async function handler(
       let title: string;
       if (auth.isSystemKey()) {
         // If the request is from a system key, the request must provide both title and mimeType.
-        if (!r.data.mime_type) {
+        if (!r.data.mimeType) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -282,11 +282,11 @@ async function handler(
           });
         }
 
-        mimeType = r.data.mime_type;
+        mimeType = r.data.mimeType;
         title = r.data.title;
       } else {
         // If the request is from a regular API key, the request must not provide mimeType.
-        if (r.data.mime_type) {
+        if (r.data.mimeType) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {

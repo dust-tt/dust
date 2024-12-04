@@ -145,7 +145,7 @@ export const TableUploadOrEditModal = ({
           async: false,
           useAppForHeaderDetection,
           title: table.name,
-          mime_type: tableState.file?.type ?? "text/csv",
+          mimeType: tableState.file?.type ?? "text/csv",
         };
         let upsertRes = null;
         if (initialId) {

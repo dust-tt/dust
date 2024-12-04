@@ -79,7 +79,7 @@ export const PatchDataSourceTableRequestBodySchema = t.intersection([
   }),
   t.partial({
     title: t.string,
-    mime_type: t.string,
+    mimeType: t.string,
   }),
 ]);
 
@@ -120,7 +120,7 @@ export const UpsertTableFromCsvRequestSchema = t.intersection([
   ]),
   t.partial({
     title: t.string,
-    mime_type: t.string,
+    mimeType: t.string,
   }),
 ]);
 
