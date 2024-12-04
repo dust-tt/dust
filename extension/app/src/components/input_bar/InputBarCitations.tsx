@@ -1,4 +1,13 @@
-import { Citation } from "@dust-tt/sparkle";
+import {
+  CitationNew,
+  CitationNewClose,
+  CitationNewIcons,
+  CitationNewImage,
+  CitationNewTitle,
+  DocumentIcon,
+  Icon,
+  ImageIcon,
+} from "@dust-tt/sparkle";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 
 interface InputBarCitationsProps {
@@ -17,21 +26,31 @@ export function InputBarCitations({
       const isImage = Boolean(blob.preview);
 
       nodes.push(
-        <Citation
-          key={`cf-${blob.id}`}
-          title={blob.id}
-          size="xs"
-          type={isImage ? "image" : "document"}
-          imgSrc={blob.preview}
-          onClose={
-            disabled
-              ? undefined
-              : () => {
-                  fileUploaderService.removeFile(blob.id);
-                }
-          }
-          isLoading={blob.isUploading}
-        />
+        <>
+          <CitationNew
+            disabled={disabled}
+            key={`cf-${blob.id}`}
+            className="w-48"
+            isLoading={blob.isUploading}
+          >
+            {isImage ? (
+              <>
+                <CitationNewImage imgSrc={blob.preview ?? ""} />
+                <CitationNewIcons>
+                  <Icon visual={ImageIcon} />
+                </CitationNewIcons>
+              </>
+            ) : (
+              <CitationNewIcons>
+                <Icon visual={DocumentIcon} />
+              </CitationNewIcons>
+            )}
+            <CitationNewTitle>{blob.id}</CitationNewTitle>
+            <CitationNewClose
+              onClick={() => fileUploaderService.removeFile(blob.id)}
+            />
+          </CitationNew>
+        </>
       );
     }
 
