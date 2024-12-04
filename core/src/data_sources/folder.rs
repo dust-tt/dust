@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use super::node::{Node, NodeType};
-use crate::project::Project;
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
     data_source_id: String,

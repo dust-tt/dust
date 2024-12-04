@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::project::Project;
-
 use super::folder::Folder;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Copy)]

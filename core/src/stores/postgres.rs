@@ -1759,24 +1759,6 @@ impl Store for PostgresStore {
     async fn upsert_data_source_document(
         &self,
         project: &Project,
-        data_source_id: &str,
-        document: &Document,
-        title: Option<String>,
-        mime_type: Option<String>,
-        // ) -> Result<()> {
-        // let project_id = project.project_id();
-        // let data_source_id = data_source_id.to_string();
-        // let document_id = document.document_id.clone();
-        // let document_created = document.created;
-        // let document_timestamp = document.timestamp;
-        // let document_tags = document.tags.clone();
-        // let document_parents = document.parents.clone();
-        // let document_source_url = document.source_url.clone();
-        // let document_hash = document.hash.clone();
-        // let document_text_size = document.text_size;
-        // let document_chunk_count = document.chunks.len() as u64;
-        // let document_title = title.clone();
-        // let document_mime_type = mime_type.clone();
         data_source_id: String,
         params: UpsertDocument,
     ) -> Result<Document> {
@@ -1828,19 +1810,6 @@ impl Store for PostgresStore {
                 &[
                     &data_source_row_id,
                     &(document_created as i64),
-                    //         &document_id,
-                    //         &(document_timestamp as i64),
-                    //         &document_tags,
-                    //         &document_parents,
-                    //         &document_source_url,
-                    //         &document_hash,
-                    //         &(document_text_size as i64),
-                    //         &(document_chunk_count as i64),
-                    //         &"latest",
-                    //     ],
-                    // )
-                    // .await?
-                    // .get(0);
                     &params.document_id,
                     &(params.timestamp as i64),
                     &params.tags,
@@ -1854,24 +1823,19 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        let _id: i64 = r.get(0);
+        let document_row_id: i64 = r.get(0);
         let created: i64 = r.get(1);
 
-        // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
-        if let (Some(_), Some(_)) = (document_title, document_mime_type) {
-            self.upsert_data_source_node(
-                &document.clone().into(),
-                data_source_row_id,
-                document_row_id,
-                &tx,
-            )
-            .await?;
-        }
-        tx.commit().await?;
+        let should_upsert_node = params.title.is_some() && params.mime_type.is_some();
 
-        Ok(Document {
+        // TODO: defaults
+        let title = params.title.unwrap_or("".to_string());
+        let mime_type = params.mime_type.unwrap_or("".to_string());
+
+        let document = Document {
             data_source_id,
+            title,
+            mime_type,
             created: created as u64,
             document_id: params.document_id,
             timestamp: params.timestamp,
@@ -1884,7 +1848,29 @@ impl Store for PostgresStore {
             chunks: vec![],
             text: None,
             token_count: None,
-        })
+        };
+
+        // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
+        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
+        if should_upsert_node {
+            self.upsert_data_source_node(
+                UpsertNode {
+                    node_id: &document.document_id,
+                    node_type: &NodeType::Document,
+                    timestamp: document.timestamp,
+                    title: &document.title,
+                    mime_type: &document.mime_type,
+                    parents: &document.parents,
+                },
+                data_source_row_id,
+                document_row_id,
+                &tx,
+            )
+            .await?;
+        }
+        tx.commit().await?;
+
+        Ok(document)
     }
 
     async fn list_data_source_documents(

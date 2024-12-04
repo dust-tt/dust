@@ -28,6 +28,8 @@ use crate::{
 
 pub struct UpsertDocument {
     pub document_id: String,
+    pub title: Option<String>,
+    pub mime_type: Option<String>,
     pub timestamp: u64,
     pub tags: Vec<String>,
     pub parents: Vec<String>,
@@ -42,6 +44,8 @@ impl From<Document> for UpsertDocument {
     fn from(document: Document) -> Self {
         UpsertDocument {
             document_id: document.document_id,
+            title: Some(document.title),
+            mime_type: Some(document.mime_type),
             timestamp: document.timestamp,
             tags: document.tags,
             parents: document.parents,

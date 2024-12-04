@@ -759,6 +759,8 @@ impl DataSource {
         let doc_token_count = main_collection_document.token_count;
         let params = UpsertDocument {
             document_id: main_collection_document.document_id,
+            title: Some(main_collection_document.title),
+            mime_type: Some(main_collection_document.mime_type),
             timestamp: main_collection_document.timestamp,
             tags: main_collection_document.tags,
             parents: main_collection_document.parents,
@@ -769,15 +771,7 @@ impl DataSource {
             chunks: main_collection_document.chunks,
         };
 
-        // Upsert document (SQL).
-        // store
-        //     .upsert_data_source_document(
-        //         &self.project,
-        //         &self.data_source_id,
-        //         &main_collection_document,
-        //         title,
-        //         mime_type,
-        //     )
+        
         let mut doc = store
             .upsert_data_source_document(&self.project, self.data_source_id.clone(), params)
             .await?;
