@@ -270,7 +270,7 @@ export class RetrievalDocument extends Model<
 
   // This is nullable as it has to be set null when data sources are deleted.
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
-  declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
+  declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
 
   declare chunks: NonAttribute<RetrievalDocumentChunk[]>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;

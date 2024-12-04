@@ -754,6 +754,9 @@ export async function retrievalActionTypesFromAgentMessageIds(
   const documentRowsByActionId = documents.reduce<{
     [id: ModelId]: RetrievalDocumentResource[];
   }>((acc, d) => {
+    if (!d.retrievalActionId){
+      return acc;
+    }
     if (!acc[d.retrievalActionId]) {
       acc[d.retrievalActionId] = [];
     }
