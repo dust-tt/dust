@@ -6,7 +6,6 @@ import {
   Icon,
   LinkWrapper,
   LinkWrapperProps,
-  Separator,
   Spinner,
   TooltipContent,
   TooltipProvider,
