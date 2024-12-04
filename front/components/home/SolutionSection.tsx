@@ -84,7 +84,15 @@ const renderSolutionSectionBlock = ({
           : "col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
       )}
     >
-      <div className="flex grow basis-0 flex-col gap-8 p-8 md:flex-row">
+      <div
+        className={classNames(
+          "flex grow basis-0 flex-col gap-8 p-8 md:flex-row",
+          assistantBlocks
+            ? ""
+            : "border-slate-800/10 bg-gradient-to-br " +
+                SolutionSectionColor[color]
+        )}
+      >
         {renderContentBlocks()}
       </div>
       {assistantBlocks && (

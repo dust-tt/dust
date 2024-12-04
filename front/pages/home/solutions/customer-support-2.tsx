@@ -2,7 +2,19 @@ import { Avatar, Div3D, Hover3D } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react";
 
-import { ImgBlock } from "@app/components/home/ContentBlocks";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@app/components/home/Carousel";
+import {
+  BlogBlock,
+  ImgBlock,
+  MetricComponent,
+  Quote,
+} from "@app/components/home/ContentBlocks";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
@@ -11,6 +23,7 @@ import {
   A,
   Grid,
   H2,
+  H3,
   H4,
   P,
   Strong,
@@ -23,6 +36,7 @@ import {
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
+import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
@@ -43,7 +57,7 @@ interface pageSettingsProps {
 
 const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
-  title: <>Instant knowledge, Exceptional support.</>,
+  title: <>Instant knowledge, exceptional support.</>,
   from: "from-sky-200",
   to: "to-sky-500",
   description: (
@@ -68,7 +82,7 @@ export default function CustomerSupport() {
       <Grid>
         <div
           className={classNames(
-            "col-span-12 pt-8",
+            "col-span-12 py-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
             "md:grid-cols-3 md:gap-y-16",
             "2xl:col-span-10 2xl:col-start-2"
@@ -94,9 +108,9 @@ export default function CustomerSupport() {
           <ImgBlock
             title={
               <>
-                Boost Team
+                Boost
                 <br />
-                Productivity.
+                Team Productivity.
               </>
             }
             content={
@@ -109,7 +123,12 @@ export default function CustomerSupport() {
             <Avatar size="xl" emoji={"🪄"} backgroundColor={"bg-sky-300"} />
           </ImgBlock>
           <ImgBlock
-            title={<>Understand customer needs.</>}
+            title={
+              <>
+                Understand <br />
+                customer needs.
+              </>
+            }
             content={
               <>
                 Gain insights from coss-tool interactions to undertstand and act
@@ -121,130 +140,131 @@ export default function CustomerSupport() {
           </ImgBlock>
         </div>
 
+        <TrustedBy />
+
+        <MetricComponent
+          metrics={[
+            {
+              value: "15x",
+              description:
+                "Responses generated 15x faster after implementing Dust",
+            },
+            {
+              value: "8h",
+              description: "Save 8 hours per agent per week on average",
+            },
+          ]}
+          from={pageSettings.from}
+          to={pageSettings.to}
+        />
+
+        <SolutionSection
+          title="Top customer support use-cases."
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: <>Ticket resolution assistance</>,
+                  content: [
+                    <>
+                      Smart answer suggestions and contextual knowledge at your
+                      fingertips.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Onboarding, coaching</>,
+                  content: [
+                    <>
+                      Helps new support agents learn best practices and company
+                      knowledge faster.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Documentation builder</>,
+                  content: [
+                    <>
+                      Convert resolved support tickets into searchable knowledge
+                      base articles.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Customer insights and voice</>,
+                  content: [
+                    <>
+                      Turn customer feedback from every channel into actionable
+                      insights. Identify trends and opportunities to drive
+                      product decisions.
+                    </>,
+                  ],
+                },
+              ],
+            },
+          ]}
+        />
+
+        <Quote quote="We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds" />
+
         <div
           className={classNames(
-            "col-span-12 flex flex-col items-center py-8",
+            "flex flex-col gap-8",
+            "col-span-12",
             "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-8 xl:col-start-3"
+            "xl:col-span-9 xl:col-start-2",
+            "2xl:col-start-3"
           )}
         >
-          <H4 className="w-full text-center text-white">
-            Trusted by 500+ organizations, including:
-          </H4>
-          <div
-            className={classNames(
-              "max-w-[400px] sm:w-full sm:max-w-none",
-              "grid grid-cols-2 gap-x-2",
-              "md:grid-cols-5 md:gap-x-12"
-            )}
-          >
-            <img alt="alan" src="/static/landing/logos/alan.png" />
-            <img alt="qonto" src="/static/landing/logos/qonto.png" />
-            <img alt="pennylane" src="/static/landing/logos/pennylane.png" />
-            <img alt="payfit" src="/static/landing/logos/payfit.png" />
-            <img alt="watershed" src="/static/landing/logos/watershed.png" />
-          </div>
+          <H2 from={pageSettings.from} to={pageSettings.to}>
+            How Dust boosts
+            <br />
+            support teams at:
+          </H2>
         </div>
-      </Grid>
-
-      <Grid>
-        <SolutionSection
-          title={<>Exceed customer&nbsp;expectations.</>}
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: [
-                {
-                  title: (
-                    <>Parse tickets and&nbsp;get to&nbsp;resolution faster</>
-                  ),
-                  content: [
-                    <>
-                      Allow agents to&nbsp;understand customer messages
-                      and&nbsp;technical errors faster and&nbsp;in
-                      50+&nbsp;languages.
-                    </>,
-                    <>
-                      Build AI assistants based on&nbsp;company knowledge
-                      and&nbsp;past support interactions to&nbsp;bring
-                      the&nbsp;company's collective intelligence to&nbsp;the
-                      support team's fingertips.
-                    </>,
-                  ],
-                },
-                {
-                  title: (
-                    <>Keep your&nbsp;team up-to-date at&nbsp;all&nbsp;times</>
-                  ),
-                  content: [
-                    <>Break down information silos.</>,
-                    <>
-                      Give your frontline team access to&nbsp;up-to-date
-                      information on&nbsp;projects, ongoing product incidents
-                      or&nbsp;issues to&nbsp;help them&nbsp;take action
-                      thoughtfully.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [
-                assistantExamples[0],
-                assistantExamples[4],
-                assistantExamples[5],
-              ],
-            },
-          ]}
-        />
-        <SolutionSection
-          title="Elevated team collaboration."
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: [
-                {
-                  title: (
-                    <>
-                      Bring new team members
-                      <br />
-                      up-to-speed&nbsp;fast
-                    </>
-                  ),
-                  content: [
-                    <>
-                      Reduce your&nbsp;onboarding and&nbsp;training time
-                      drastically.
-                    </>,
-                    <>
-                      Put your&nbsp;documentation on&nbsp;processes
-                      and&nbsp;methods to&nbsp;work to&nbsp;help the&nbsp;team
-                      learn autonomously.
-                    </>,
-                  ],
-                },
-                {
-                  title: (
-                    <>
-                      Maintain visibility
-                      <br />
-                      on&nbsp;customer needs
-                    </>
-                  ),
-                  content: [
-                    <>
-                      Surface insights from&nbsp;interactions with customers
-                      to&nbsp;your Support, Success and&nbsp;Product teams.
-                    </>,
-                    <>
-                      Maintain a&nbsp;continuous understanding of&nbsp;customer
-                      needs to inform your&nbsp;product priorities.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [assistantExamples[3], assistantExamples[2]],
-            },
-          ]}
-        />
+        <div className="col-span-12 flex flex-col items-center gap-4">
+          <Carousel className="w-full">
+            <CarouselContent>
+              <CarouselItem className="basis-full md:basis-1/2 md:px-6 lg:basis-1/3">
+                <BlogBlock
+                  title="Navigating Growth and Innovation with November Five’s Dario Prskalo"
+                  content="Discover how November Five leverages AI with Dust to enhance efficiency and maintain a human touch in their digital solutions."
+                  href="https://blog.dust.tt/november-five-ai-transformation-dust/"
+                >
+                  <img
+                    src="https://blog.dust.tt/content/images/size/w2000/2024/04/DSCF6552-1.jpeg"
+                    alt="Blog Image"
+                  />
+                </BlogBlock>
+              </CarouselItem>
+              <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
+                <BlogBlock
+                  title="How Eléonore improved the efficiency of Pennylane’s Care team thanks to Dust"
+                  content="Discover how Pennylane leveraged Dust’s specialized virtual assistants to improve efficiency and optimize workflows."
+                  href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
+                >
+                  <img
+                    src="https://blog.dust.tt/content/images/size/w2000/2024/04/Ele-onore-MOTTE--1--1.jpg"
+                    alt="Blog Image"
+                  />
+                </BlogBlock>
+              </CarouselItem>
+              <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
+                <BlogBlock
+                  title="Integrating AI for Enhanced Workflows at Alan"
+                  content="Discover how Alan revolutionizes healthcare and enhances workflows using AI. See how @code-help and Dust streamline developer tasks."
+                  href="https://blog.dust.tt/integrating-ai-workflows-alan/"
+                >
+                  <img
+                    src="https://blog.dust.tt/content/images/size/w2000/2024/03/cover-vincent.png"
+                    alt="Blog Image"
+                  />
+                </BlogBlock>
+              </CarouselItem>
+            </CarouselContent>
+          </Carousel>
+        </div>
       </Grid>
     </>
   );
