@@ -1,7 +1,6 @@
 import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@app/poke/temporal/activities";
-import { deleteTranscriptsActivity } from "@app/poke/temporal/activities";
 
 // Create a single proxy with all activities
 const activityProxies = proxyActivities<typeof activities>({
@@ -16,6 +15,7 @@ const {
   deleteRunOnDustAppsActivity,
   deleteSpacesActivity,
   deleteWorkspaceActivity,
+  deleteTranscriptsActivity,
   isWorkflowDeletableActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
