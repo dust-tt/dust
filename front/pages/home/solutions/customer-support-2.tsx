@@ -1,13 +1,10 @@
-import { Avatar, Div3D, Hover3D } from "@dust-tt/sparkle";
-import Link from "next/link";
+import { Avatar } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@app/components/home/Carousel";
 import {
   BlogBlock,
@@ -15,26 +12,14 @@ import {
   MetricComponent,
   Quote,
 } from "@app/components/home/ContentBlocks";
-import {
-  CarousselContentBlock,
-  HeaderContentBlock,
-} from "@app/components/home/ContentBlocks";
-import {
-  A,
-  Grid,
-  H2,
-  H3,
-  H4,
-  P,
-  Strong,
-} from "@app/components/home/ContentComponents";
+import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import { Grid, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
@@ -276,93 +261,3 @@ CustomerSupport.getLayout = (
 ) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
-const assistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🤝",
-    backgroundColor: "bg-sky-300",
-    name: "@supportExpert",
-    description: (
-      <>
-        Surfaces relevant information from&nbsp;your Help Center, FAQs,
-        knowledge base, online documentation, and&nbsp;tickets. Understands
-        errors codes without help from&nbsp;the tech&nbsp;team
-      </>
-    ),
-  },
-  {
-    emoji: "📡",
-    backgroundColor: "bg-sky-300",
-    name: "@productInfo",
-    description: (
-      <>
-        Answer questions on&nbsp;product evolutions, engineering activity,
-        alerts, and&nbsp;downtime
-      </>
-    ),
-  },
-  {
-    emoji: "🔮",
-    backgroundColor: "bg-sky-300",
-    name: "@supportAnalyst",
-    description: (
-      <>
-        Identifies patterns and&nbsp;sentiment in&nbsp;support interactions
-        to&nbsp;highlight recurring needs and&nbsp;actionable initiatives based
-        on&nbsp;the internal product team nomenclature and&nbsp;infrastructure
-      </>
-    ),
-  },
-  {
-    emoji: "💡",
-    backgroundColor: "bg-sky-300",
-    name: "@supportOnboarding",
-    description: (
-      <>
-        Helps new members of&nbsp;the support team navigate the&nbsp;tools
-        and&nbsp;processes in&nbsp;their first weeks to&nbsp;set them up for
-        success
-      </>
-    ),
-  },
-  {
-    emoji: "🚨",
-    backgroundColor: "bg-sky-300",
-    name: "@supportAlerts",
-    description: (
-      <>
-        Connects to&nbsp;product and&nbsp;engineering communication channels
-        to&nbsp;surface ongoing engineering activity, incidents or&nbsp;issues
-        and&nbsp;highlight the&nbsp;possible impact on&nbsp;users
-        and&nbsp;customers
-      </>
-    ),
-  },
-  {
-    emoji: "😳",
-    backgroundColor: "bg-sky-300",
-    name: "@whatWouldUserDo",
-    description: (
-      <>
-        Crafts training, product documentation and&nbsp;training materials
-        through the&nbsp;eyes of&nbsp;your users to&nbsp;help improve content
-        ahead of&nbsp;issues
-      </>
-    ),
-  },
-];
-
-export function CustomerCaroussel() {
-  return (
-    <CarousselContentBlock
-      title={pageSettings.uptitle}
-      subtitle={pageSettings.title}
-      description={pageSettings.description}
-      assistants={assistantExamples}
-      from={pageSettings.from}
-      to={pageSettings.to}
-      border="border-pink-100/60"
-      href="/home/solutions/customer-support"
-    />
-  );
-}
