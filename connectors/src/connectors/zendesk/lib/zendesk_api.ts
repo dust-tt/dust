@@ -10,7 +10,6 @@ import type {
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -163,8 +162,6 @@ async function fetchFromZendeskWithRetries({
         `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
       );
       return null;
-    } else if (rawResponse.status === 403) {
-      throw new ExternalOAuthTokenError();
     }
     logger.error(
       { rawResponse, status: rawResponse.status, text: rawResponse.text },
@@ -177,9 +174,6 @@ async function fetchFromZendeskWithRetries({
     );
   }
   if (!rawResponse.ok) {
-    if (rawResponse.status === 403) {
-      throw new ExternalOAuthTokenError();
-    }
     if (rawResponse.status === 404) {
       return null;
     }
