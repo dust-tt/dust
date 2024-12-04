@@ -170,17 +170,18 @@ async function fetchFromZendeskWithRetries({
       { rawResponse, status: rawResponse.status, text: rawResponse.text },
       "[Zendesk] Error parsing Zendesk API response"
     );
-    throw new Error("Error parsing Zendesk API response");
+    throw new ZendeskApiError(
+      "Error parsing Zendesk API response",
+      rawResponse.status,
+      rawResponse
+    );
   }
   if (!rawResponse.ok) {
-    if (response.type === "error.list" && response.errors?.length) {
-      const error = response.errors[0];
-      if (error.code === "unauthorized") {
-        throw new ExternalOAuthTokenError();
-      }
-      if (error.code === "not_found") {
-        return null;
-      }
+    if (rawResponse.status === 403) {
+      throw new ExternalOAuthTokenError();
+    }
+    if (rawResponse.status === 404) {
+      return null;
     }
     throw new ZendeskApiError(
       "Zendesk API error.",
