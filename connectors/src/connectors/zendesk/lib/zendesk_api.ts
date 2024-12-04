@@ -193,7 +193,7 @@ export async function fetchZendeskBrand({
 }): Promise<ZendeskFetchedBrand | null> {
   const url = `https://${subdomain}.zendesk.com/api/v2/brands/${brandId}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return response.brand ?? null;
+  return response?.brand ?? null;
 }
 
 /**
@@ -210,7 +210,7 @@ export async function fetchZendeskArticle({
 }): Promise<ZendeskFetchedArticle | null> {
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return response.article ?? null;
+  return response?.article ?? null;
 }
 
 /**
