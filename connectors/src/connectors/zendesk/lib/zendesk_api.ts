@@ -17,13 +17,6 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 
-/**
- * Retrieves the endpoint part from a URL used to call the Zendesk API.
- */
-function getEndpointFromUrl(url: string): string {
-  return url.split("api/v2")[1] as string;
-}
-
 export function createZendeskClient({
   accessToken,
   subdomain,
