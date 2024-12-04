@@ -3,7 +3,10 @@ import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
@@ -248,20 +251,16 @@ export class ConfluenceClient {
               endpoint,
               retryCount,
               delayMs,
-              headers: Object.fromEntries(response.headers.entries()),
             },
             "[Confluence] Rate limit hit, retrying after delay"
           );
           await setTimeoutAsync(delayMs);
           return this.request(endpoint, codec, retryCount + 1);
         } else {
-          throw new ConfluenceClientError(
-            `Rate limit hit on confluence API more than ${MAX_RATE_LIMIT_RETRY_COUNT} times.`,
-            {
-              type: "http_response_error",
-              status: response.status,
-              data: { url: `${this.apiUrl}${endpoint}`, response },
-            }
+          throw new ProviderWorkflowError(
+            "confluence",
+            "Rate limit hit on confluence API more than 10 times.",
+            "rate_limit_error"
           );
         }
       }
