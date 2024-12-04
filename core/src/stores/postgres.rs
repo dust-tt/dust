@@ -1320,7 +1320,7 @@ impl Store for PostgresStore {
                 .query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
                        dsn.title, dsn.mime_type \
-                       FROM data_sources_documents dsd LEFT OUTER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                       FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                        WHERE dsd.data_source = $1 AND dsd.document_id = $2 AND dsd.status='latest' LIMIT 1",
                     &[&data_source_row_id, &document_id],
                 )
@@ -1329,7 +1329,7 @@ impl Store for PostgresStore {
                 .query(
                     "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
                        dsn.title, dsn.mime_type \
-                       FROM data_sources_documents dsd LEFT OUTER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                       FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                        WHERE dsd.data_source = $1 AND dsd.document_id = $2 AND dsd.hash = $3 LIMIT 1",
                     &[&data_source_row_id, &document_id, &version_hash],
                 )
@@ -1643,7 +1643,7 @@ impl Store for PostgresStore {
 
         let sql = format!(
             "SELECT dsd.hash, dsd.created, dsd.status \
-               FROM data_sources_documents dsd LEFT OUTER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+               FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                WHERE {} ORDER BY created DESC",
             where_clauses.join(" AND ")
         );
@@ -1753,7 +1753,7 @@ impl Store for PostgresStore {
         // compute the total count
         let count_query = format!(
             "SELECT COUNT(*) \
-               FROM data_sources_documents dsd LEFT OUTER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+               FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                WHERE {}",
             where_clauses.join(" AND ")
         );
@@ -1934,7 +1934,7 @@ impl Store for PostgresStore {
         let sql = format!(
             "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsd.tags_array, dsd.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
                dsn.title, dsn.mime_type \
-               FROM data_sources_documents dsd LEFT OUTER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+               FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                WHERE {} ORDER BY dsd.timestamp DESC",
             where_clauses.join(" AND "),
         );
@@ -2779,7 +2779,7 @@ impl Store for PostgresStore {
                         t.schema, t.schema_stale_at, \
                         t.remote_database_table_id, t.remote_database_secret_id, \
                         dsn.title, dsn.mime_type \
-                        FROM tables t LEFT OUTER JOIN data_sources_nodes dsn ON dsn.table=t.id \
+                        FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
                         WHERE t.data_source = $1 AND t.table_id = $2 LIMIT 1",
             )
             .await?;
@@ -2925,7 +2925,7 @@ impl Store for PostgresStore {
                     t.schema, t.schema_stale_at, \
                     t.remote_database_table_id, t.remote_database_secret_id, \
                     dsn.title, dsn.mime_type \
-                FROM tables t LEFT OUTER JOIN data_sources_nodes dsn ON dsn.table=t.id \
+                FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
                 WHERE {} ORDER BY t.timestamp DESC",
             where_clauses.join(" AND "),
         );
