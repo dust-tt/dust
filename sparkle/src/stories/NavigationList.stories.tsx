@@ -43,7 +43,7 @@ export const Demo = () => {
 
   const allItems = conversationTitles.flatMap((section) => section.items);
 
-  const getMoreMenu = (title: string, itemIndex: number) => (
+  const getMoreMenu = (title: string) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <NavigationListItemAction />
@@ -96,7 +96,7 @@ export const Demo = () => {
                       }}
                       label={title}
                       className="s-w-full"
-                      moreMenu={getMoreMenu(title, itemIndex)}
+                      moreMenu={getMoreMenu(title)}
                       icon={LockIcon}
                     />
                   );
