@@ -56,6 +56,12 @@ impl TablePrefix {
     }
 }
 
+impl std::fmt::Display for TablePrefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 #[derive(Clone)]
 pub struct PostgresStore {
     pool: Pool<PostgresConnectionManager<NoTls>>,
@@ -108,12 +114,12 @@ impl PostgresStore {
         if let Some(filter) = filter {
             if let Some(tags_filter) = &filter.tags {
                 if let Some(tags) = &tags_filter.is_in {
-                    where_clauses.push(format!("{}tags_array && ${}", prefix.as_str(), p_idx));
+                    where_clauses.push(format!("{}tags_array && ${}", prefix, p_idx));
                     params.push(tags as &(dyn ToSql + Sync));
                     p_idx += 1;
                 }
                 if let Some(tags) = &tags_filter.is_not {
-                    where_clauses.push(format!("NOT {}tags_array && ${}", prefix.as_str(), p_idx));
+                    where_clauses.push(format!("NOT {}tags_array && ${}", prefix, p_idx));
                     params.push(tags as &(dyn ToSql + Sync));
                     p_idx += 1;
                 }
@@ -134,12 +140,12 @@ impl PostgresStore {
 
             if let Some(ts_filter) = &filter.timestamp {
                 if let Some(ts) = ts_filter.gt.as_ref() {
-                    where_clauses.push(format!("{}timestamp > ${}", prefix.as_str(), p_idx));
+                    where_clauses.push(format!("{}timestamp > ${}", prefix, p_idx));
                     params.push(ts as &(dyn ToSql + Sync));
                     p_idx += 1;
                 }
                 if let Some(ts) = ts_filter.lt.as_ref() {
-                    where_clauses.push(format!("{}timestamp < ${}", prefix.as_str(), p_idx));
+                    where_clauses.push(format!("{}timestamp < ${}", prefix, p_idx));
                     params.push(ts as &(dyn ToSql + Sync));
                     p_idx += 1;
                 }
