@@ -750,42 +750,30 @@ impl DataSource {
             .await?;
         }
 
-        // Store upsert does not save the text, token count or chunks.
-        // These fields don't actually exist in the SQL table.
-        // Because of this, we have to manually construct the UpsertDocument, and save
-        // owned values for text and token count so we can return them.
-        // We also don't have type safety as we just use default/empty values for chunks
-        // for code paths where we don't need / have them.
         // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
-        let doc_text = main_collection_document.text;
-        let doc_token_count = main_collection_document.token_count;
         let create_params = DocumentCreateParams {
-            document_id: main_collection_document.document_id,
-            title: Some(main_collection_document.title),
-            mime_type: Some(main_collection_document.mime_type),
+            document_id: main_collection_document.document_id.clone(),
+            title: Some(main_collection_document.title.clone()),
+            mime_type: Some(main_collection_document.mime_type.clone()),
             timestamp: main_collection_document.timestamp,
-            tags: main_collection_document.tags,
-            parents: main_collection_document.parents,
-            source_url: main_collection_document.source_url,
-            hash: main_collection_document.hash,
+            tags: main_collection_document.tags.clone(),
+            parents: main_collection_document.parents.clone(),
+            source_url: main_collection_document.source_url.clone(),
+            hash: main_collection_document.hash.clone(),
             text_size: main_collection_document.text_size,
             chunk_count: main_collection_document.chunk_count,
             created: main_collection_document.created,
         };
 
-        let mut doc = store
+        store
             .create_data_source_document(&self.project, self.data_source_id.clone(), create_params)
             .await?;
-
-        doc.text = doc_text;
-        doc.token_count = doc_token_count;
-        doc.chunks = main_collection_document.chunks;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
             .await?;
 
-        Ok(doc)
+        Ok(main_collection_document)
     }
 
     async fn upsert_for_embedder(
