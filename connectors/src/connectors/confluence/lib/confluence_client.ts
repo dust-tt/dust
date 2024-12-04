@@ -4,6 +4,7 @@ import * as t from "io-ts";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
@@ -145,7 +146,7 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
 // default number of ms we wait before retrying after a rate limit hit.
 const DEFAULT_RETRY_AFTER_DURATION_MS = 10 * 1000;
 // Number of times we retry when rate limited (429).
-const MAX_RATE_LIMIT_RETRY_COUNT = 5;
+const MAX_RATE_LIMIT_RETRY_COUNT = 10;
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
   "global",
@@ -241,7 +242,12 @@ export class ConfluenceClient {
       // retry the request after a delay: https://developer.atlassian.com/cloud/confluence/rate-limiting/
       if (response.status === 429) {
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
-          await setTimeoutAsync(getRetryAfterDuration(response));
+          const delayMs = getRetryAfterDuration(response);
+          logger.warn(
+            { endpoint, retryCount, delayMs, headers: response.headers },
+            "[Confluence] Rate limit hit, retrying after delay"
+          );
+          await setTimeoutAsync(delayMs);
           return this.request(endpoint, codec, retryCount + 1);
         } else {
           throw new ConfluenceClientError(
