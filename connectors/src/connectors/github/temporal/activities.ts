@@ -1023,7 +1023,7 @@ export async function githubCodeSyncActivity({
     let repoUpdatedAt: Date | null = null;
 
     const fq = new PQueue({ concurrency: 4 });
-    files.forEach((f) =>
+    const fqPromises = files.map((f) =>
       fq.add(async () => {
         Context.current().heartbeat();
         // Read file (files are 1MB at most).
@@ -1123,10 +1123,10 @@ export async function githubCodeSyncActivity({
         await githubCodeFile.save();
       })
     );
-    await fq.onIdle();
+    await Promise.all(fqPromises);
 
     const dq = new PQueue({ concurrency: 8 });
-    directories.forEach((d) =>
+    const dqPromises = directories.map((d) =>
       dq.add(async () => {
         Context.current().heartbeat();
         const parentInternalId = d.parentInternalId || rootInternalId;
@@ -1180,7 +1180,7 @@ export async function githubCodeSyncActivity({
         await githubCodeDirectory.save();
       })
     );
-    await dq.onIdle();
+    await Promise.all(dqPromises);
 
     Context.current().heartbeat();
 
