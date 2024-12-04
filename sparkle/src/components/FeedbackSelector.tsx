@@ -84,7 +84,7 @@ export function FeedbackSelector({
                   disabled={isSubmittingThumb}
                   onClick={() => selectThumb("up")}
                   icon={HandThumbUpIcon}
-                  className={`${feedback?.thumb === "up" ? "" : "[&_svg]:s-text-muted-foreground"}`}
+                  className={feedback?.thumb === "up" ? "" : "[&_svg]:s-text-muted-foreground"}
                 />
               }
             />
