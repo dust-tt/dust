@@ -380,7 +380,7 @@ export async function rowsFromCsv({
         } catch (e) {
           logger.error(
             // temporary log to fix the valuesByCol[h].push is not a function error
-            { typeOf: typeof valuesByCol[h] },
+            { typeOf: typeof valuesByCol[h], columnName: h },
             "Error parsing record"
           );
           throw e;
