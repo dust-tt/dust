@@ -5,7 +5,10 @@ import {
   getConfluenceClient,
   getSpaceIdsToSyncActivity,
 } from "@connectors/connectors/confluence/temporal/activities";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 makeScript(
@@ -80,7 +83,10 @@ makeScript(
           connectorCount += recentlyModifiedPages.length;
         }
       } catch (e) {
-        if (e instanceof ProviderWorkflowError) {
+        if (
+          e instanceof ProviderWorkflowError ||
+          e instanceof ExternalOAuthTokenError
+        ) {
           console.error(
             `Error while checking connector ${connector.id}: ${e.message}`
           );
