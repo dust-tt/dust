@@ -34,6 +34,7 @@ import {
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
@@ -50,7 +51,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
@@ -233,6 +233,8 @@ export async function upsertDocument({
   light_document_output,
   dataSource,
   auth,
+  mime_type,
+  title,
 }: {
   name: string;
   source_url?: string | null;
@@ -244,6 +246,8 @@ export async function upsertDocument({
   light_document_output?: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
+  mime_type?: string;
+  title?: string;
 }): Promise<
   Result<
     {
@@ -389,6 +393,8 @@ export async function upsertDocument({
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,
+    title,
+    mimeType: mime_type,
   });
 
   if (upsertRes.isErr()) {
@@ -849,7 +855,7 @@ export async function createDataSourceWithoutProvider(
   try {
     // Asynchronous tracking without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
-      user: auth.getNonNullableUser(),
+      user: auth.user() ?? undefined,
       workspace: owner,
       dataSource: dataSourceView.dataSource.toJSON(),
     });

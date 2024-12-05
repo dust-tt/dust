@@ -11,6 +11,7 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -147,11 +148,28 @@ export default function Space({
   return (
     <Page.Vertical gap="xl" align="stretch">
       {space.kind === "system" && (
-        <Page.Header
-          title="Connection Admin"
-          description="Manage the applications and data Dust has access to."
-          icon={CloudArrowLeftRightIcon}
-        />
+        <>
+          <Page.Header
+            title="Connection Admin"
+            description={
+              <>
+                Here you can authorize Connections and control what data Dust
+                can access. Once connected, data can be distributed to Open
+                Spaces (accessible to all workspace members) or Restricted
+                Spaces (limited access). <br />
+                Need help? Check out our{" "}
+                <Link
+                  href="https://docs.dust.tt/docs/data"
+                  className="text-highlight"
+                  target="_blank"
+                >
+                  guide
+                </Link>
+              </>
+            }
+            icon={CloudArrowLeftRightIcon}
+          />
+        </>
       )}
       {category === "apps" ? (
         <SpaceAppsList

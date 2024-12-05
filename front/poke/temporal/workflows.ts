@@ -15,6 +15,7 @@ const {
   deleteRunOnDustAppsActivity,
   deleteSpacesActivity,
   deleteWorkspaceActivity,
+  deleteTranscriptsActivity,
   isWorkflowDeletableActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
@@ -55,5 +56,6 @@ export async function deleteWorkspaceWorkflow({
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteMembersActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
+  await deleteTranscriptsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });
 }

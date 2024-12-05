@@ -1,6 +1,5 @@
-import assert from "node:assert";
-
 import { isDevelopment } from "@dust-tt/types";
+import assert from "assert";
 import types, { builtins } from "pg-types";
 import { Sequelize } from "sequelize";
 

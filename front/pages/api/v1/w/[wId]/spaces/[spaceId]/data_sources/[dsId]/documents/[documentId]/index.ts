@@ -11,6 +11,7 @@ import {
   rateLimiter,
   sectionFullText,
 } from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -23,7 +24,6 @@ import {
   enqueueUpsertDocument,
   runPostUpsertHooks,
 } from "@app/lib/upsert_queue";
-import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, statsDClient } from "@app/logger/withlogging";
 import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
@@ -130,6 +130,12 @@ export const config = {
  *           schema:
  *             type: object
  *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The title of the document to upsert.
+ *               mime_type:
+ *                 type: string
+ *                 description: The MIME type of the document to upsert.
  *               text:
  *                 type: string
  *                 description: The text content of the document to upsert.
@@ -372,7 +378,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: "Invalid request body.",
+            request_format_errors: r.error.flatten(),
           },
         });
       }
@@ -499,6 +506,8 @@ async function handler(
             sourceUrl,
             section,
             upsertContext: r.data.upsert_context || null,
+            title: r.data.title ?? undefined,
+            mimeType: r.data.mime_type ?? undefined,
           },
         });
         if (enqueueRes.isErr()) {
@@ -537,6 +546,8 @@ async function handler(
           section,
           credentials,
           lightDocumentOutput: r.data.light_document_output === true,
+          title: r.data.title,
+          mimeType: r.data.mime_type,
         });
 
         if (upsertRes.isErr()) {

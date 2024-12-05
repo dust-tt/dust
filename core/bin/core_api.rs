@@ -35,7 +35,6 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
-        folder::Folder,
         qdrant::QdrantClients,
     },
     databases::{
@@ -50,7 +49,10 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
-    stores::{postgres, store},
+    stores::{
+        postgres,
+        store::{self, FolderUpsertParams, TableUpsertParams},
+    },
     utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
 };
 
@@ -1608,6 +1610,8 @@ struct DataSourcesDocumentsUpsertPayload {
     section: Section,
     credentials: run::Credentials,
     light_document_output: Option<bool>,
+    title: Option<String>,
+    mime_type: Option<String>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1646,6 +1650,8 @@ async fn data_sources_documents_upsert(
                         state.store.clone(),
                         state.qdrant_clients.clone(),
                         &payload.document_id,
+                        payload.title,
+                        payload.mime_type,
                         payload.timestamp,
                         &payload.tags,
                         &payload.parents,
@@ -2064,22 +2070,21 @@ async fn tables_upsert(
 
     match state
         .store
-        .upsert_table(
-            &project,
-            &data_source_id,
-            &payload.table_id,
-            &payload.name,
-            &payload.description,
-            match payload.timestamp {
-                Some(timestamp) => timestamp,
-                None => utils::now(),
+        .upsert_data_source_table(
+            project,
+            data_source_id,
+            TableUpsertParams {
+                table_id: payload.table_id,
+                name: payload.name,
+                description: payload.description,
+                timestamp: payload.timestamp.unwrap_or(utils::now()),
+                tags: payload.tags,
+                parents: payload.parents,
+                remote_database_table_id: payload.remote_database_table_id,
+                remote_database_secret_id: payload.remote_database_secret_id,
+                title: payload.title,
+                mime_type: payload.mime_type,
             },
-            &payload.tags,
-            &payload.parents,
-            payload.remote_database_table_id,
-            payload.remote_database_secret_id,
-            payload.title,
-            payload.mime_type,
         )
         .await
     {
@@ -2133,7 +2138,7 @@ async fn tables_retrieve(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2215,7 +2220,7 @@ async fn tables_list(
 
     match state
         .store
-        .list_tables(
+        .list_data_source_tables(
             &project,
             &data_source_id,
             &view_filter,
@@ -2253,7 +2258,7 @@ async fn tables_delete(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2302,7 +2307,7 @@ async fn tables_update_parents(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => error_response(
@@ -2355,7 +2360,7 @@ async fn tables_rows_upsert(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2444,7 +2449,7 @@ async fn tables_rows_retrieve(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2520,7 +2525,7 @@ async fn tables_rows_delete(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2612,7 +2617,7 @@ async fn tables_rows_list(
 
     match state
         .store
-        .load_table(&project, &data_source_id, &table_id)
+        .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
         Err(e) => {
@@ -2685,16 +2690,20 @@ async fn folders_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    let folder = Folder::new(
-        &project,
-        &data_source_id,
-        &payload.folder_id.clone(),
-        payload.timestamp.unwrap_or(utils::now()),
-        &payload.title,
-        payload.parents,
-    );
-
-    match state.store.upsert_data_source_folder(&folder).await {
+    match state
+        .store
+        .upsert_data_source_folder(
+            project,
+            data_source_id,
+            FolderUpsertParams {
+                folder_id: payload.folder_id,
+                timestamp: payload.timestamp.unwrap_or(utils::now()),
+                parents: payload.parents,
+                title: payload.title,
+            },
+        )
+        .await
+    {
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -2703,7 +2712,7 @@ async fn folders_upsert(
                 Some(e),
             )
         }
-        Ok(()) => (
+        Ok(folder) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
@@ -2738,6 +2747,89 @@ async fn folders_retrieve(
                 error: None,
                 response: Some(json!({
                     "folder": folder
+                })),
+            }),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct FoldersListQuery {
+    limit: Option<usize>,
+    offset: Option<usize>,
+    folder_ids: Option<String>,  // Parsed as JSON.
+    view_filter: Option<String>, // Parsed as JSON.
+}
+
+async fn folders_list(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<FoldersListQuery>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    let view_filter: Option<SearchFilter> = match query
+        .view_filter
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
+
+    let limit_offset: Option<(usize, usize)> = match (query.limit, query.offset) {
+        (Some(limit), Some(offset)) => Some((limit, offset)),
+        _ => None,
+    };
+
+    let folder_ids: Option<Vec<String>> = match query.folder_ids {
+        Some(ref ids) => match serde_json::from_str(ids) {
+            Ok(parsed_ids) => Some(parsed_ids),
+            Err(e) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_folder_ids",
+                    "Failed to parse folder_ids query parameter",
+                    Some(e.into()),
+                )
+            }
+        },
+        None => None,
+    };
+
+    match state
+        .store
+        .list_data_source_folders(
+            &project,
+            &data_source_id,
+            &view_filter,
+            &folder_ids,
+            limit_offset,
+        )
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list folders",
+            Some(e),
+        ),
+        Ok((folders, total)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "limit": query.limit,
+                    "offset": query.offset,
+                    "folders": folders,
+                    "total": total,
                 })),
             }),
         ),
@@ -2815,7 +2907,11 @@ async fn databases_query_run(
             .map(|(project_id, data_source_id, table_id)| {
                 let project = project::Project::new_from_id(project_id);
                 let store = state.store.clone();
-                async move { store.load_table(&project, &data_source_id, &table_id).await }
+                async move {
+                    store
+                        .load_data_source_table(&project, &data_source_id, &table_id)
+                        .await
+                }
             }),
     )
     .await
@@ -3249,6 +3345,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",
             get(folders_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/folders",
+            get(folders_list),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",

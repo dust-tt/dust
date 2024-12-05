@@ -343,6 +343,11 @@ async function answerMessage(
     throw new Error("DUST_FRONT_API environment variable is not defined");
   }
 
+  if (slackUserInfo.is_bot) {
+    const botName = slackUserInfo.real_name;
+    requestedGroups = await slackConfig.getBotGroupIds(botName);
+  }
+
   const userEmailHeader =
     slackChatBotMessage.slackEmail !== "unknown"
       ? slackChatBotMessage.slackEmail
@@ -373,11 +378,6 @@ async function answerMessage(
     lastSlackChatBotMessage?.conversationId || null
   );
 
-  if (slackUserInfo.is_bot) {
-    const botName = slackUserInfo.real_name;
-    requestedGroups = await slackConfig.getBotGroupIds(botName);
-  }
-
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
   if (agentConfigurationsRes.isErr()) {
     return new Err(new Error(agentConfigurationsRes.error.message));
@@ -387,7 +387,7 @@ async function answerMessage(
     (ac) => ac.status === "active"
   );
 
-  // Slack sends the message with user ids when someone is mentionned (bot or user).
+  // Slack sends the message with user ids when someone is mentioned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
   // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
   // <@U91J1JEQZ1A>) ?
@@ -774,19 +774,15 @@ async function makeContentFragment(
   // Prepend $url to the content to make it available to the model.
   const section = `$url: ${url}\n${sectionFullText(content)}`;
 
-  const contentType = "dust-application/slack";
-  const fileName = `slack_thread-${channel.channel.name}.txt`;
+  const contentType = "text/vnd.dust.attachment.slack.thread";
+  const fileName = `slack_thread-${channel.channel.name}-${threadTs}.txt`;
 
   const fileRes = await dustAPI.uploadFile({
     contentType,
     fileName,
     fileSize: section.length,
     useCase: "conversation",
-    useCaseMetadata: conversationId
-      ? {
-          conversationId,
-        }
-      : undefined,
+    useCaseMetadata: conversationId ? { conversationId } : undefined,
     fileObject: new File([section], fileName, { type: contentType }),
   });
 

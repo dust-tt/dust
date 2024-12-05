@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::project::Project;
+use super::folder::Folder;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Copy)]
 pub enum NodeType {
@@ -11,7 +11,6 @@ pub enum NodeType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
-    project: Project,
     data_source_id: String,
     node_id: String,
     node_type: NodeType,
@@ -23,7 +22,6 @@ pub struct Node {
 
 impl Node {
     pub fn new(
-        project: &Project,
         data_source_id: &str,
         node_id: &str,
         node_type: NodeType,
@@ -33,7 +31,6 @@ impl Node {
         parents: Vec<String>,
     ) -> Self {
         Node {
-            project: project.clone(),
             data_source_id: data_source_id.to_string(),
             node_id: node_id.to_string(),
             node_type,
@@ -44,9 +41,6 @@ impl Node {
         }
     }
 
-    pub fn project(&self) -> &Project {
-        &self.project
-    }
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
     }
@@ -67,5 +61,16 @@ impl Node {
     }
     pub fn parents(&self) -> &Vec<String> {
         &self.parents
+    }
+
+    // Consumes self into a Folder.
+    pub fn into_folder(self) -> Folder {
+        Folder::new(
+            self.data_source_id,
+            self.node_id,
+            self.timestamp,
+            self.title,
+            self.parents,
+        )
     }
 }

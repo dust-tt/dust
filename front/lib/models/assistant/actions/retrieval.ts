@@ -270,7 +270,7 @@ export class RetrievalDocument extends Model<
 
   // This is nullable as it has to be set null when data sources are deleted.
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
-  declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
+  declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
 
   declare chunks: NonAttribute<RetrievalDocumentChunk[]>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
@@ -326,11 +326,11 @@ RetrievalDocument.init(
 );
 
 AgentRetrievalAction.hasMany(RetrievalDocument, {
-  foreignKey: { name: "retrievalActionId", allowNull: false },
-  onDelete: "CASCADE",
+  foreignKey: { name: "retrievalActionId", allowNull: true },
+  onDelete: "SET NULL",
 });
 RetrievalDocument.belongsTo(AgentRetrievalAction, {
-  foreignKey: { name: "retrievalActionId", allowNull: false },
+  foreignKey: { name: "retrievalActionId", allowNull: true },
 });
 
 DataSourceViewModel.hasMany(RetrievalDocument, {

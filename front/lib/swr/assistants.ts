@@ -5,6 +5,7 @@ import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
   LightWorkspaceType,
+  UserType,
 } from "@dust-tt/types";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
@@ -270,6 +271,28 @@ export function useAgentConfigurationHistory({
     isAgentConfigurationHistoryLoading: !error && !data,
     isAgentConfigurationHistoryError: error,
     mutateAgentConfigurationHistory: mutate,
+  };
+}
+export function useAgentConfigurationLastAuthor({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+}) {
+  const userFetcher: Fetcher<{
+    user: UserType;
+  }> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/last_author`,
+    userFetcher
+  );
+
+  return {
+    agentLastAuthor: data ? data.user : null,
+    isLoading: !error && !data,
+    isError: error,
   };
 }
 

@@ -82,6 +82,7 @@ export const supportedPlainText = {
   "text/plain": [".txt"],
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
+  "text/vnd.dust.attachment.slack.thread": [".txt"],
 } as const;
 
 // Supported content types for images.
@@ -313,6 +314,8 @@ const CoreAPITablePublicSchema = z.object({
   timestamp: z.number(),
   tags: z.array(z.string()),
   parents: z.array(z.string()),
+  mime_type: z.string().optional(),
+  title: z.string().optional(),
 });
 
 export type CoreAPITablePublic = z.infer<typeof CoreAPITablePublicSchema>;
@@ -1658,8 +1661,11 @@ export type PublicPostContentFragmentRequestBody = z.infer<
 
 export const PublicPostConversationsRequestBodySchema = z.intersection(
   z.object({
-    title: z.string().nullable(),
-    visibility: z.enum(["unlisted", "workspace", "deleted", "test"]),
+    title: z.string().nullable().optional(),
+    visibility: z
+      .enum(["unlisted", "workspace", "deleted", "test"])
+      .optional()
+      .default("unlisted"),
     message: z.union([
       z.intersection(
         z.object({
@@ -1854,6 +1860,8 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   section: FrontDataSourceDocumentSectionSchema.nullable().optional(),
   light_document_output: z.boolean().optional(),
   async: z.boolean().nullable().optional(),
+  mime_type: z.string().nullable().optional(),
+  title: z.string().nullable().optional(),
 });
 
 const GetDocumentResponseSchema = z.object({
@@ -2013,6 +2021,10 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
   ])
 );
 
+export type UpsertTableFromCsvRequestType = z.infer<
+  typeof UpsertTableFromCsvRequestSchema
+>;
+
 const PostTableCSVAsyncResponseSchema = z.object({
   table: z.object({
     table_id: z.string(),
@@ -2044,8 +2056,12 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string().optional(),
-  mimeType: z.string().optional(),
+  mime_type: z.string().optional(),
 });
+
+export type UpsertDatabaseTableRequestType = z.infer<
+  typeof UpsertDatabaseTableRequestSchema
+>;
 
 const UpsertTableResponseSchema = z.object({
   table: CoreAPITablePublicSchema,
@@ -2064,6 +2080,53 @@ const usageTables = [
 const SupportedUsageTablesSchema = FlexibleEnumSchema(usageTables);
 
 export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
+
+// Folders
+const CoreAPIFolderSchema = z.object({
+  data_source_id: z.string(),
+  folder_id: z.string(),
+  title: z.string(),
+  parents: z.array(z.string()),
+  timestamp: z.number(),
+});
+
+export const GetFoldersResponseSchema = z.object({
+  folders: z.array(CoreAPIFolderSchema),
+  total: z.number(),
+});
+export type GetFoldersResponseType = z.infer<typeof GetFoldersResponseSchema>;
+
+export const GetFolderResponseSchema = z.object({
+  folder: CoreAPIFolderSchema,
+});
+export type GetFolderResponseType = z.infer<typeof GetFolderResponseSchema>;
+
+const DeleteFolderResponseSchema = z.object({
+  folder: z.object({
+    folder_id: z.string(),
+  }),
+});
+export type DeleteFolderResponseType = z.infer<
+  typeof DeleteFolderResponseSchema
+>;
+const UpsertFolderResponseSchema = z.object({
+  document: z.union([
+    CoreAPIFolderSchema,
+    z.object({
+      document_id: z.string(),
+    }),
+  ]),
+  data_source: DataSourceTypeSchema,
+});
+export type UpsertFolderResponseType = z.infer<
+  typeof UpsertFolderResponseSchema
+>;
+
+export const UpsertDataSourceFolderRequestSchema = z.object({
+  timestamp: z.number(),
+  parents: z.array(z.string()).nullable().optional(),
+  title: z.string(),
+});
 
 const DateSchema = z
   .string()

@@ -10,6 +10,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -88,7 +89,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     const dataSource = await DataSourceModel.create(
       {
         ...blob,
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: auth.user()?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },
@@ -110,6 +111,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         {
           model: User,
           as: "editedByUser",
+          required: false,
         },
       ];
     }
@@ -332,12 +334,19 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   static async listByWorkspace(
     auth: Authenticator,
-    options?: FetchDataSourceOptions
+    options?: FetchDataSourceOptions,
+    includeConversationDataSources?: boolean
   ): Promise<DataSourceResource[]> {
+    const where: WhereOptions<DataSourceModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+    if (!includeConversationDataSources) {
+      where["conversationId"] = {
+        [Op.is]: undefined,
+      };
+    }
     return this.baseFetch(auth, options, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where,
     });
   }
 
@@ -453,7 +462,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }

@@ -345,8 +345,7 @@ export async function handlePatchDataSourceView(
     });
   }
 
-  if (auth.user()) {
-    await dataSourceView.setEditedBy(auth);
-  }
+  await dataSourceView.setEditedBy(auth);
+
   return new Ok(dataSourceView);
 }

@@ -203,7 +203,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${parsing.error.message}`,
+            message: "Invalid request body.",
+            request_format_errors: parsing.error.flatten(),
           },
         });
       }

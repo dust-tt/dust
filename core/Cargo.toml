@@ -44,6 +44,12 @@ path = "bin/qdrant/delete_orphaned_points.rs"
 # name = "oauth_generate_key"
 # path = "bin/oauth_generate_key.rs"
 
+# MIGRATIONS
+
+[[bin]]
+name = "fix_created_dsdocs"
+path = "bin/migrations/20241203_fix_created_dsdocs.rs"
+
 [[test]]
 name = "oauth_connections_test"
 path = "src/oauth/tests/functional_connections.rs"

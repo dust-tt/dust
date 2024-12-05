@@ -60,10 +60,7 @@ export const InternalPostContentFragmentRequestBodySchema = t.intersection([
       profilePictureUrl: t.union([t.string, t.null]),
     }),
   }),
-  t.union([
-    ContentFragmentInputWithContentSchema,
-    ContentFragmentInputWithFileIdSchema,
-  ]),
+  ContentFragmentInputWithFileIdSchema,
 ]);
 
 export const InternalPostConversationsRequestBodySchema = t.type({

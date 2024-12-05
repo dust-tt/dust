@@ -1,13 +1,30 @@
 import type {
-  ConversationMessageFeedbackSelectorProps,
   ConversationMessageSizeType,
+  FeedbackSelectorProps,
+} from "@dust-tt/sparkle";
+import { CitationNewIndex } from "@dust-tt/sparkle";
+import {
+  CitationNew,
+  CitationNewIcons,
+  CitationNewTitle,
+  ConfluenceLogo,
+  DocumentTextIcon,
+  DriveLogo,
+  GithubLogo,
+  Icon,
+  ImageIcon,
+  IntercomLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SlackLogo,
+  SnowflakeLogo,
+  ZendeskLogo,
 } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
   ChatBubbleThoughtIcon,
   Chip,
-  Citation,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
@@ -15,6 +32,7 @@ import {
   EyeIcon,
   FeedbackSelector,
   Markdown,
+  Page,
   Popover,
 } from "@dust-tt/sparkle";
 import type {
@@ -73,18 +91,65 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
+
+const typeIcons = {
+  confluence: ConfluenceLogo,
+  document: DocumentTextIcon,
+  github: GithubLogo,
+  google_drive: DriveLogo,
+  intercom: IntercomLogo,
+  microsoft: MicrosoftLogo,
+  zendesk: ZendeskLogo,
+  notion: NotionLogo,
+  slack: SlackLogo,
+  image: ImageIcon,
+  snowflake: SnowflakeLogo,
+};
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
   return message.replace(regex, "");
 }
 
+export const FeedbackSelectorPopoverContent = ({
+  owner,
+  agentMessageToRender,
+}: {
+  owner: WorkspaceType;
+  agentMessageToRender: AgentMessageType;
+}) => {
+  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentMessageToRender.configuration.sId,
+  });
+
+  return (
+    agentLastAuthor && (
+      <div className="itemcenter mt-4 flex gap-2">
+        {agentLastAuthor?.image && (
+          <img
+            src={agentLastAuthor?.image}
+            alt={agentLastAuthor?.firstName}
+            className="h-8 w-8 rounded-full"
+          />
+        )}
+        <Page.P variant="secondary">
+          Your feedback will be sent to:
+          <br />
+          {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
+        </Page.P>
+      </div>
+    )
+  );
+};
+
 interface AgentMessageProps {
   conversationId: string;
   isInModal: boolean;
   isLastMessage: boolean;
   message: AgentMessageType;
-  messageFeedback: ConversationMessageFeedbackSelectorProps;
+  messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
   size: ConversationMessageSizeType;
@@ -358,6 +423,16 @@ export function AgentMessage({
     conversationId,
   ]);
 
+  const PopoverContent = useCallback(
+    () => (
+      <FeedbackSelectorPopoverContent
+        owner={owner}
+        agentMessageToRender={agentMessageToRender}
+      />
+    ),
+    [owner, agentMessageToRender]
+  );
+
   const buttons =
     message.status === "failed"
       ? []
@@ -365,7 +440,7 @@ export function AgentMessage({
           <Button
             key="copy-msg-button"
             tooltip="Copy to clipboard"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void navigator.clipboard.writeText(
@@ -373,19 +448,28 @@ export function AgentMessage({
               );
             }}
             icon={ClipboardIcon}
+            className="text-muted-foreground"
           />,
           <Button
             key="retry-msg-button"
             tooltip="Retry"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void retryHandler(agentMessageToRender);
             }}
             icon={ArrowPathIcon}
+            className="text-muted-foreground"
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
-          <FeedbackSelector key="feedback-selector" {...messageFeedback} />,
+          <div key="separator" className="flex items-center">
+            <div className="h-5 w-px bg-border" />
+          </div>,
+          <FeedbackSelector
+            key="feedback-selector"
+            {...messageFeedback}
+            getPopoverInfo={PopoverContent}
+          />,
         ];
 
   // References logic.
@@ -395,20 +479,6 @@ export function AgentMessage({
       setActiveReferences([...activeReferences, { index, document }]);
     }
   }
-
-  const [lastHoveredReference, setLastHoveredReference] = useState<
-    number | null
-  >(null);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (lastHoveredReference !== null) {
-      timer = setTimeout(() => {
-        setLastHoveredReference(null);
-      }, 1000); // Reset after 1 second.
-    }
-    return () => clearTimeout(timer);
-  }, [lastHoveredReference]);
 
   useEffect(() => {
     // Retrieval actions
@@ -468,8 +538,8 @@ export function AgentMessage({
   );
 
   const citations = useMemo(
-    () => getCitations({ activeReferences, lastHoveredReference }),
-    [activeReferences, lastHoveredReference]
+    () => getCitations({ activeReferences }),
+    [activeReferences]
   );
 
   const canMention =
@@ -578,7 +648,6 @@ export function AgentMessage({
                 value={{
                   references,
                   updateActiveReferences,
-                  setHoveredReference: setLastHoveredReference,
                 }}
               >
                 <Markdown
@@ -647,27 +716,22 @@ function AssitantName(
 
 function getCitations({
   activeReferences,
-  lastHoveredReference,
 }: {
   activeReferences: {
     index: number;
     document: MarkdownCitation;
   }[];
-  lastHoveredReference: number | null;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <Citation
-        key={index}
-        size="xs"
-        sizing="fluid"
-        isBlinking={lastHoveredReference === index}
-        type={document.type}
-        title={document.title}
-        href={document.href}
-        index={index}
-      />
+      <CitationNew key={index} href={document.href}>
+        <CitationNewIcons>
+          <CitationNewIndex>{index}</CitationNewIndex>
+          <Icon visual={typeIcons[document.type]} />
+        </CitationNewIcons>
+        <CitationNewTitle>{document.title}</CitationNewTitle>
+      </CitationNew>
     );
   });
 }

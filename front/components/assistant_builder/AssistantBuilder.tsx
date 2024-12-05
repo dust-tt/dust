@@ -481,7 +481,11 @@ export default function AssistantBuilder({
                     assertNever(screen);
                 }
               })()}
-              <PrevNextButtons screen={screen} setScreen={setScreen} />
+              <PrevNextButtons
+                screen={screen}
+                setScreen={setScreen}
+                setCurrentTab={setCurrentTab}
+              />
             </div>
           }
           buttonsRightPanel={

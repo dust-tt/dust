@@ -61,6 +61,8 @@ export type CoreAPIDocument = {
     vector?: number[] | null;
     score?: number | null;
   }[];
+  title: string | null;
+  mime_type: string | null;
   text?: string | null;
 };
 
@@ -70,6 +72,14 @@ export type CoreAPILightDocument = {
   chunk_count: number;
   token_count: number;
   created: number;
+};
+
+export type CoreAPIFolder = {
+  data_source_id: string;
+  folder_id: string;
+  timestamp: number;
+  title: string;
+  parents: string[];
 };
 
 export type CoreAPIDocumentVersionStatus = "latest" | "superseded" | "deleted";

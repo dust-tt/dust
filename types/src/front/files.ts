@@ -65,7 +65,7 @@ export function ensureFileSize(
 }
 
 // NOTE: if we add more content types, we need to update the public api package.
-const supportedTabular = {
+const supportedDelimitedText = {
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/tab-separated-values": [".tsv"],
@@ -75,7 +75,7 @@ const supportedTabular = {
 // Supported content types for plain text.
 const supportedPlainText = {
   // We support all tabular content types as plain text.
-  ...supportedTabular,
+  ...supportedDelimitedText,
 
   "application/msword": [".doc", ".docx"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
@@ -85,7 +85,8 @@ const supportedPlainText = {
   "application/pdf": [".pdf"],
   "text/markdown": [".md", ".markdown"],
   "text/plain": [".txt"],
-  "dust-application/slack": [".txt"],
+
+  "text/vnd.dust.attachment.slack.thread": [".txt"],
 } as const;
 
 // Supported content types for images.
@@ -100,8 +101,8 @@ export const supportedPlainTextExtensions = uniq(
   Object.values(supportedPlainText).flat()
 );
 
-export const supportedTableExtensions = uniq(
-  Object.values(supportedTabular).flat()
+export const supportedDelimitedTextExtensions = uniq(
+  Object.values(supportedDelimitedText).flat()
 );
 
 export const supportedImageExtensions = uniq(
@@ -119,9 +120,9 @@ export const supportedPlainTextContentTypes = Object.keys(
 export const supportedImageContentTypes = Object.keys(
   supportedImage
 ) as (keyof typeof supportedImage)[];
-export const supportedTableContentTypes = Object.keys(
-  supportedTabular
-) as (keyof typeof supportedTabular)[];
+export const supportedDelimitedTextContentTypes = Object.keys(
+  supportedDelimitedText
+) as (keyof typeof supportedDelimitedText)[];
 
 export const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
@@ -131,7 +132,7 @@ export const supportedUploadableContentType = [
 // Infer types from the arrays.
 export type PlainTextContentType = keyof typeof supportedPlainText;
 export type ImageContentType = keyof typeof supportedImage;
-export type TabularContentType = keyof typeof supportedTabular;
+export type DelimitedTextContentType = keyof typeof supportedDelimitedText;
 
 // Union type for all supported content types.
 export type SupportedFileContentType = PlainTextContentType | ImageContentType;
@@ -158,10 +159,12 @@ export function isSupportedImageContentType(
   return supportedImageContentTypes.includes(contentType as ImageContentType);
 }
 
-export function isSupportedTabularContentType(
+export function isSupportedDelimitedTextContentType(
   contentType: string
-): contentType is TabularContentType {
-  return supportedTableContentTypes.includes(contentType as TabularContentType);
+): contentType is DelimitedTextContentType {
+  return supportedDelimitedTextContentTypes.includes(
+    contentType as DelimitedTextContentType
+  );
 }
 
 // Types.
@@ -211,7 +214,7 @@ export function ensureContentTypeForUseCase(
   }
 
   if (useCase === "folder_table") {
-    return isSupportedTabularContentType(contentType);
+    return isSupportedDelimitedTextContentType(contentType);
   }
 
   return false;

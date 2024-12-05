@@ -98,7 +98,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     const dataSourceView = await DataSourceViewResource.model.create(
       {
         ...blob,
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: auth.user()?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },
@@ -187,6 +187,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         {
           model: User,
           as: "editedByUser",
+          required: false,
         },
       ];
     }
@@ -236,7 +237,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   static async listByWorkspace(
     auth: Authenticator,
-    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
+    includeConversationDataSources?: boolean
   ) {
     const dataSourceViews = await this.baseFetch(
       auth,
@@ -248,7 +250,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews.filter((dsv) => dsv.canList(auth));
+    return dataSourceViews.filter(
+      (dsv) =>
+        (!dsv.space.isConversations() || includeConversationDataSources) &&
+        dsv.canList(auth)
+    );
   }
 
   static async listBySpace(
@@ -425,7 +431,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: auth.getNonNullableUser().id,
+      editedByUserId: auth.user()?.id ?? null,
       editedAt: new Date(),
     });
   }

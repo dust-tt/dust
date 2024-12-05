@@ -8,7 +8,11 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { ConversationError, isEmptyString } from "@dust-tt/types";
+import {
+  ConversationError,
+  isContentFragmentInputWithContentType,
+  isEmptyString,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -21,8 +25,8 @@ import {
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 /**
@@ -105,7 +109,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: "Invalid request body.",
+            request_format_errors: r.error.flatten(),
           },
         });
       }
@@ -156,7 +161,7 @@ async function handler(
       }
 
       let conversation = await createConversation(auth, {
-        title,
+        title: title ?? null,
         visibility,
       });
 
@@ -171,12 +176,19 @@ async function handler(
           });
         }
 
-        await maybeUpsertFileAttachment(auth, {
-          contentFragments: [resolvedFragment],
-          conversation,
-        });
-
         const { context, ...cf } = resolvedFragment;
+
+        if (isContentFragmentInputWithContentType(cf)) {
+          logger.warn(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              conversationId: conversation.sId,
+              endpoint: "conversation",
+            },
+            "Public API: ContentFragmentInputWithContentType"
+          );
+        }
+
         const cfRes = await postNewContentFragment(auth, conversation, cf, {
           username: context?.username || null,
           fullName: context?.fullName || null,

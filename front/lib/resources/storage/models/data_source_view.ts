@@ -15,7 +15,7 @@ export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel>
   declare updatedAt: CreationOptional<Date>;
 
   // Corresponds to the ID of the last user to configure the connection.
-  declare editedByUserId: ForeignKey<User["id"]>;
+  declare editedByUserId: ForeignKey<User["id"]> | null;
   declare editedAt: Date;
 
   declare kind: DataSourceViewKind;
@@ -104,5 +104,5 @@ DataSourceViewModel.belongsTo(DataSourceModel, {
 
 DataSourceViewModel.belongsTo(User, {
   as: "editedByUser",
-  foreignKey: { name: "editedByUserId", allowNull: false },
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });

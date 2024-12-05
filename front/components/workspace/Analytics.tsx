@@ -1,38 +1,10 @@
-import { Page, Spinner } from "@dust-tt/sparkle";
+import { Card, Page, Spinner } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 
 import { useWorkspaceAnalytics } from "@app/lib/swr/workspaces";
 
 interface QuickInsightsProps {
   owner: WorkspaceType;
-}
-
-interface InsightCardProps {
-  title: string;
-  subtitle: string;
-  value1: string | number;
-  value2?: string | number;
-  metric?: string;
-}
-
-function InsightCard({
-  title,
-  subtitle,
-  value1,
-  value2,
-  metric,
-}: InsightCardProps) {
-  return (
-    <div className="flex flex-col gap-0.5 rounded-xl bg-structure-50 p-4 text-element-800">
-      <h5 className="text-sm font-semibold">{title}</h5>
-      <h5 className="text-sm text-element-700">{subtitle}</h5>
-      <div className="text-md grid grid-cols-2 pt-2 font-semibold">
-        <div>{value1}</div>
-        {value2 && <div>{value2}</div>}
-      </div>
-      {metric && <h5 className="text-sm text-element-700">{metric}</h5>}
-    </div>
-  );
 }
 
 export function QuickInsights({ owner }: QuickInsightsProps) {
@@ -50,32 +22,65 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
         </div>
       ) : (
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <InsightCard
+          <Card
             title="Members"
             subtitle="Total members"
-            value1={analytics.memberCount}
+            content={
+              <div className="text-lg font-semibold text-element-900">
+                {analytics.memberCount}
+              </div>
+            }
+            size="sm"
+            className="w-full"
           />
-          <InsightCard
-            title="Active users"
-            subtitle="Daily Active Users"
-            value1={analytics.averageWeeklyDailyActiveUsers.count}
-            metric="Average on 7 days"
+          <Card
+            title="Daily Active Users"
+            subtitle="Average on 7 days"
+            content={
+              <div className="flex flex-col gap-1">
+                <div className="text-lg font-semibold text-element-900">
+                  {analytics.averageWeeklyDailyActiveUsers.count}
+                </div>
+              </div>
+            }
+            size="sm"
+            className="w-full"
           />
-          <InsightCard
+          <Card
             title="Active Users"
             subtitle="Last 7 days"
-            value1={analytics.weeklyActiveUsers.count}
-            value2={`${
-              analytics.weeklyActiveUsers.growth >= 0 ? "+" : ""
-            }${Math.floor(analytics.weeklyActiveUsers.growth)}%`}
+            content={
+              <div className="grid grid-cols-2">
+                <div className="text-lg font-semibold text-element-900">
+                  {analytics.weeklyActiveUsers.count}
+                </div>
+                <div className="text-lg font-semibold text-element-900">
+                  {`${analytics.weeklyActiveUsers.growth >= 0 ? "+" : ""}${Math.floor(
+                    analytics.weeklyActiveUsers.growth
+                  )}%`}
+                </div>
+              </div>
+            }
+            size="sm"
+            className="w-full"
           />
-          <InsightCard
+          <Card
             title="Active Users"
             subtitle="Last 30 days"
-            value1={analytics.monthlyActiveUsers.count}
-            value2={`${
-              analytics.monthlyActiveUsers.growth >= 0 ? "+" : ""
-            }${Math.floor(analytics.monthlyActiveUsers.growth)}%`}
+            content={
+              <div className="grid grid-cols-2">
+                <div className="text-lg font-semibold text-element-900">
+                  {analytics.monthlyActiveUsers.count}
+                </div>
+                <div className="text-lg font-semibold text-element-900">
+                  {`${analytics.monthlyActiveUsers.growth >= 0 ? "+" : ""}${Math.floor(
+                    analytics.monthlyActiveUsers.growth
+                  )}%`}
+                </div>
+              </div>
+            }
+            size="sm"
+            className="w-full"
           />
         </div>
       )}

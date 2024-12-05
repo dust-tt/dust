@@ -2,7 +2,12 @@ import { ConfluenceClientError } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
@@ -141,6 +146,10 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
+// default number of ms we wait before retrying after a rate limit hit.
+const DEFAULT_RETRY_AFTER_DURATION_MS = 10 * 1000;
+// Number of times we retry when rate limited (429).
+const MAX_RATE_LIMIT_RETRY_COUNT = 10;
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
   "global",
@@ -159,6 +168,17 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
   return url.searchParams.get("cursor");
 }
 
+function getRetryAfterDuration(response: Response): number {
+  const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+  if (retryAfter) {
+    const delay = parseInt(retryAfter, 10);
+    return !Number.isNaN(delay)
+      ? delay * 1000
+      : DEFAULT_RETRY_AFTER_DURATION_MS;
+  }
+  return DEFAULT_RETRY_AFTER_DURATION_MS;
+}
+
 export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
@@ -172,7 +192,11 @@ export class ConfluenceClient {
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
   }
 
-  private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    codec: t.Type<T>,
+    retryCount: number = 0
+  ): Promise<T> {
     const response = await (async () => {
       try {
         return await fetch(`${this.apiUrl}${endpoint}`, {
@@ -217,6 +241,28 @@ export class ConfluenceClient {
       // If the token is invalid, the API will return a 403 Forbidden response.
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
+      }
+      // retry the request after a delay: https://developer.atlassian.com/cloud/confluence/rate-limiting/
+      if (response.status === 429) {
+        if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
+          const delayMs = getRetryAfterDuration(response);
+          logger.warn(
+            {
+              endpoint,
+              retryCount,
+              delayMs,
+            },
+            "[Confluence] Rate limit hit, retrying after delay"
+          );
+          await setTimeoutAsync(delayMs);
+          return this.request(endpoint, codec, retryCount + 1);
+        } else {
+          throw new ProviderWorkflowError(
+            "confluence",
+            "Rate limit hit on confluence API more than 10 times.",
+            "rate_limit_error"
+          );
+        }
       }
 
       throw new ConfluenceClientError(

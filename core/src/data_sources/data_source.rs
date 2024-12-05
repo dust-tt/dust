@@ -1,4 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
+use super::node::{Node, NodeType};
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
@@ -9,7 +10,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::stores::store::Store;
+use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -138,6 +139,8 @@ pub struct Document {
     pub created: u64,
     pub document_id: String,
     pub timestamp: u64,
+    pub title: String,
+    pub mime_type: String,
     pub tags: Vec<String>,
     pub parents: Vec<String>,
     pub source_url: Option<String>,
@@ -155,6 +158,8 @@ impl Document {
         data_source_id: &str,
         document_id: &str,
         timestamp: u64,
+        title: &str,
+        mime_type: &str,
         tags: &Vec<String>,
         parents: &Vec<String>,
         source_url: &Option<String>,
@@ -166,6 +171,8 @@ impl Document {
             created: utils::now(),
             document_id: document_id.to_string(),
             timestamp,
+            title: title.to_string(),
+            mime_type: mime_type.to_string(),
             tags: tags.clone(),
             parents: parents.clone(),
             source_url: source_url.clone(),
@@ -197,6 +204,20 @@ impl Filterable for Document {
 
     fn get_parents(&self) -> Vec<String> {
         self.parents.clone()
+    }
+}
+
+impl From<Document> for Node {
+    fn from(document: Document) -> Node {
+        Node::new(
+            &document.data_source_id,
+            &document.document_id,
+            NodeType::Document,
+            document.timestamp,
+            &document.title,
+            &document.mime_type,
+            document.parents.clone(),
+        )
     }
 }
 
@@ -581,6 +602,8 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
         document_id: &str,
+        title: Option<String>,
+        mime_type: Option<String>,
         timestamp: Option<u64>,
         tags: &Vec<String>,
         parents: &Vec<String>,
@@ -676,6 +699,8 @@ impl DataSource {
             &self.data_source_id,
             document_id,
             timestamp,
+            title.as_deref().unwrap_or(document_id),
+            mime_type.as_deref().unwrap_or("application/octet-stream"),
             &tags,
             &parents,
             source_url,
@@ -725,13 +750,23 @@ impl DataSource {
             .await?;
         }
 
-        // Upsert document (SQL).
+        // TODO(@fontanierh): use a different type for "DocumentWithTextAndTokenCount"
+        let create_params = DocumentCreateParams {
+            document_id: main_collection_document.document_id.clone(),
+            title: Some(main_collection_document.title.clone()),
+            mime_type: Some(main_collection_document.mime_type.clone()),
+            timestamp: main_collection_document.timestamp,
+            tags: main_collection_document.tags.clone(),
+            parents: main_collection_document.parents.clone(),
+            source_url: main_collection_document.source_url.clone(),
+            hash: main_collection_document.hash.clone(),
+            text_size: main_collection_document.text_size,
+            chunk_count: main_collection_document.chunk_count,
+            created: main_collection_document.created,
+        };
+
         store
-            .upsert_data_source_document(
-                &self.project,
-                &self.data_source_id,
-                &main_collection_document,
-            )
+            .create_data_source_document(&self.project, self.data_source_id.clone(), create_params)
             .await?;
 
         // Clean-up old superseded versions.
@@ -1954,7 +1989,7 @@ impl DataSource {
 
         // Delete tables (concurrently).
         let (tables, total) = store
-            .list_tables(&self.project, &self.data_source_id, &None, &None, None)
+            .list_data_source_tables(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
         try_join_all(
             tables
@@ -1967,6 +2002,20 @@ impl DataSource {
             data_source_internal_id = self.internal_id(),
             table_count = total,
             "Deleted tables"
+        );
+
+        let (folders, total) = store
+            .list_data_source_folders(&self.project, &self.data_source_id, &None, &None, None)
+            .await?;
+        try_join_all(folders.iter().map(|f| {
+            store.delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
+        }))
+        .await?;
+
+        info!(
+            data_source_internal_id = self.internal_id(),
+            table_count = total,
+            "Deleted folders"
         );
 
         // Delete data source and documents (SQL).

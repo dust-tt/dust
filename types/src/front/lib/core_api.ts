@@ -6,6 +6,7 @@ import {
   CoreAPIDataSourceDocumentSection,
   CoreAPIDocument,
   CoreAPIDocumentVersion,
+  CoreAPIFolder,
   CoreAPILightDocument,
   EmbedderType,
 } from "../../core/data_source";
@@ -128,6 +129,8 @@ export type CoreAPITable = {
   parents: string[];
   created: number;
   data_source_id: string;
+  title: string;
+  mime_type: string;
   remote_database_table_id: string | null;
   remote_database_secret_id: string | null;
 };
@@ -829,6 +832,8 @@ export class CoreAPI {
     section,
     credentials,
     lightDocumentOutput = false,
+    title,
+    mimeType,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -840,6 +845,8 @@ export class CoreAPI {
     section: CoreAPIDataSourceDocumentSection;
     credentials: CredentialsType;
     lightDocumentOutput?: boolean;
+    title?: string | null;
+    mimeType?: string | null;
   }): Promise<
     CoreAPIResponse<{
       document:
@@ -868,6 +875,8 @@ export class CoreAPI {
           source_url: sourceUrl,
           credentials,
           light_document_output: lightDocumentOutput,
+          title: title ?? null,
+          mime_type: mimeType ?? null,
         }),
       }
     );
@@ -1432,6 +1441,137 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async getDataSourceFolders(
+    {
+      projectId,
+      dataSourceId,
+      folderIds,
+      viewFilter,
+    }: {
+      projectId: string;
+      dataSourceId: string;
+      folderIds?: string[];
+      viewFilter?: CoreAPISearchFilter | null;
+    },
+    pagination?: { limit: number; offset: number }
+  ): Promise<
+    CoreAPIResponse<{
+      folders: CoreAPIFolder[];
+      limit: number;
+      offset: number;
+      total: number;
+    }>
+  > {
+    const queryParams = new URLSearchParams();
+
+    if (pagination) {
+      queryParams.append("limit", String(pagination.limit));
+      queryParams.append("offset", String(pagination.offset));
+    }
+
+    if (viewFilter) {
+      queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
+    if (folderIds && folderIds.length > 0) {
+      queryParams.append("document_ids", JSON.stringify(folderIds));
+    }
+
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/folders?${queryParams.toString()}`,
+      {
+        method: "GET",
+      }
+    );
+    return this._resultFromResponse(response);
+  }
+
+  async getDataSourceFolder({
+    projectId,
+    dataSourceId,
+    folderId,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    folderId: string;
+    viewFilter?: CoreAPISearchFilter | null;
+  }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/folders/${encodeURIComponent(folderId)}`,
+      {
+        method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async upsertDataSourceFolder({
+    projectId,
+    dataSourceId,
+    folderId,
+    timestamp,
+    parents,
+    title,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    folderId: string;
+    timestamp: number | null;
+    parents: string[];
+    title: string;
+  }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/folders`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          folder_id: folderId,
+          timestamp,
+          title,
+          parents,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async deleteDataSourceFolder({
+    projectId,
+    dataSourceId,
+    folderId,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    folderId: string;
+  }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/folders/${encodeURIComponent(folderId)}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
   private async _fetchWithError(
     url: string,
     init?: RequestInit

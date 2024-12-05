@@ -19,9 +19,11 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { sendEmail } from "@app/lib/api/email";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -307,14 +309,37 @@ export async function triggerFromEmail({
   // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
 
   if (restOfThread.length > 0) {
+    const file = await FileResource.makeNew({
+      contentType: "text/plain",
+      fileName: `email-${email.subject}.txt`,
+      fileSize: restOfThread.length,
+      userId: user.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      useCase: "conversation",
+      useCaseMetadata: null,
+    });
+
+    const processRes = await processAndStoreFile(auth, {
+      file,
+      reqOrString: restOfThread,
+    });
+
+    if (processRes.isErr()) {
+      return new Err({
+        type: "message_creation_error",
+        message:
+          `Error creating file for content fragment: ` +
+          processRes.error.message,
+      });
+    }
+
     await postNewContentFragment(
       auth,
       conversation,
       {
         title: `Email thread: ${email.subject}`,
-        content: restOfThread,
         url: null,
-        contentType: "file_attachment",
+        fileId: file.sId,
       },
       {
         username: user.username,

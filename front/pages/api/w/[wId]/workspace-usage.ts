@@ -11,6 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
+  getFeedbacksUsageData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
@@ -27,6 +28,7 @@ const usageTables = [
   "assistant_messages",
   "builders",
   "assistants",
+  "feedbacks",
   "all",
 ];
 type usageTableType = (typeof usageTables)[number];
@@ -185,19 +187,24 @@ async function fetchUsageData({
       return { mentions: await getMessageUsageData(start, end, workspaceId) };
     case "builders":
       return { builders: await getBuildersUsageData(start, end, workspaceId) };
+    case "feedbacks":
+      return {
+        feedbacks: await getFeedbacksUsageData(start, end, workspaceId),
+      };
     case "assistants":
       return {
         assistants: await getAssistantsUsageData(start, end, workspaceId),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants] =
+      const [users, assistant_messages, builders, assistants, feedbacks] =
         await Promise.all([
           getUserUsageData(start, end, workspaceId),
           getMessageUsageData(start, end, workspaceId),
           getBuildersUsageData(start, end, workspaceId),
           getAssistantsUsageData(start, end, workspaceId),
+          getFeedbacksUsageData(start, end, workspaceId),
         ]);
-      return { users, assistant_messages, builders, assistants };
+      return { users, assistant_messages, builders, assistants, feedbacks };
     default:
       return {};
   }

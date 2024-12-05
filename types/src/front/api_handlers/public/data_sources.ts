@@ -27,17 +27,23 @@ export type FrontDataSourceDocumentSectionType = t.TypeOf<
   typeof FrontDataSourceDocumentSection
 >;
 
-export const PostDataSourceDocumentRequestBodySchema = t.type({
-  timestamp: t.union([t.Int, t.undefined, t.null]),
-  tags: t.union([t.array(t.string), t.undefined, t.null]),
-  parents: t.union([t.array(t.string), t.undefined, t.null]),
-  source_url: t.union([t.string, t.undefined, t.null]),
-  upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
-  text: t.union([t.string, t.undefined, t.null]),
-  section: t.union([FrontDataSourceDocumentSection, t.undefined, t.null]),
-  light_document_output: t.union([t.boolean, t.undefined]),
-  async: t.union([t.boolean, t.undefined, t.null]),
-});
+export const PostDataSourceDocumentRequestBodySchema = t.intersection([
+  t.type({
+    timestamp: t.union([t.Int, t.undefined, t.null]),
+    tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parents: t.union([t.array(t.string), t.undefined, t.null]),
+    source_url: t.union([t.string, t.undefined, t.null]),
+    upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
+    text: t.union([t.string, t.undefined, t.null]),
+    section: t.union([FrontDataSourceDocumentSection, t.undefined, t.null]),
+    light_document_output: t.union([t.boolean, t.undefined]),
+    async: t.union([t.boolean, t.undefined, t.null]),
+  }),
+  t.partial({
+    title: t.string,
+    mime_type: t.string,
+  }),
+]);
 
 export type PostDataSourceDocumentRequestBody = t.TypeOf<
   typeof PostDataSourceDocumentRequestBodySchema

@@ -11,6 +11,7 @@ import {
   Input,
   Page,
   SliderToggle,
+  TableIcon,
 } from "@dust-tt/sparkle";
 import type {
   CoreAPIDataSource,
@@ -45,7 +46,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { useDocuments } from "@app/poke/swr";
+import { useDocuments, useTables } from "@app/poke/swr";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -285,10 +286,22 @@ const DataSourcePage = ({
   groupsForSlackBot,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const [limit] = useState(10);
-  const [offset, setOffset] = useState(0);
+  const [offsetDocument, setOffsetDocument] = useState(0);
+  const [offsetTable, setOffsetTable] = useState(0);
 
-  const { documents, total, isDocumentsLoading, isDocumentsError } =
-    useDocuments(owner, dataSource, limit, offset);
+  const {
+    documents,
+    total: totalDocuments,
+    isDocumentsLoading,
+    isDocumentsError,
+  } = useDocuments(owner, dataSource, limit, offsetDocument);
+
+  const { tables, total: totalTables } = useTables(
+    owner,
+    dataSource,
+    limit,
+    offsetTable
+  );
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
@@ -313,9 +326,14 @@ const DataSourcePage = ({
     }
   }, [documents, isDocumentsLoading, isDocumentsError]);
 
-  let last = offset + limit;
-  if (offset + limit > total) {
-    last = total;
+  let lastDocument = offsetDocument + limit;
+  if (offsetDocument + limit > totalDocuments) {
+    lastDocument = totalDocuments;
+  }
+
+  let lastTable = offsetTable + limit;
+  if (offsetTable + limit > totalTables) {
+    lastTable = totalTables;
   }
 
   const onDisplayDocumentSource = (documentId: string) => {
@@ -471,104 +489,177 @@ const DataSourcePage = ({
             />
           )}
 
-          {!dataSource.connectorId && (
-            <div className="mt-4 flex flex-row">
-              <div className="flex flex-1">
-                <div className="flex flex-col">
-                  <div className="flex flex-row">
-                    <div className="flex flex-initial gap-x-2">
-                      <Button
-                        variant="ghost"
-                        disabled={offset < limit}
-                        onClick={() => {
-                          if (offset >= limit) {
-                            setOffset(offset - limit);
-                          } else {
-                            setOffset(0);
-                          }
-                        }}
-                        label="Previous"
-                      />
-                      <Button
-                        variant="ghost"
-                        label="Next"
-                        disabled={offset + limit >= total}
-                        onClick={() => {
-                          if (offset + limit < total) {
-                            setOffset(offset + limit);
-                          }
-                        }}
-                      />
+          {!dataSource.connectorId ? (
+            <>
+              <div className="mt-4 flex flex-row">
+                <div className="flex flex-1">
+                  <div className="flex flex-col">
+                    <div className="flex flex-row">
+                      <div className="flex flex-initial gap-x-2">
+                        <Button
+                          variant="ghost"
+                          disabled={offsetDocument < limit}
+                          onClick={() => {
+                            if (offsetDocument >= limit) {
+                              setOffsetDocument(offsetDocument - limit);
+                            } else {
+                              setOffsetDocument(0);
+                            }
+                          }}
+                          label="Previous"
+                        />
+                        <Button
+                          variant="ghost"
+                          label="Next"
+                          disabled={offsetDocument + limit >= totalDocuments}
+                          onClick={() => {
+                            if (offsetDocument + limit < totalDocuments) {
+                              setOffsetDocument(offsetDocument + limit);
+                            }
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                    {total > 0 && (
-                      <span>
-                        Showing documents {offset + 1} - {last} of {total}{" "}
-                        documents
-                      </span>
-                    )}
+                    <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+                      {totalDocuments > 0 && (
+                        <span>
+                          Showing documents {offsetDocument + 1} -{" "}
+                          {lastDocument} of {totalDocuments} documents
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-          <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-            {!dataSource.connectorId ? (
-              <>
-                {" "}
-                <ContextItem.List>
-                  {documents.map((d) => (
-                    <ContextItem
-                      key={d.document_id}
-                      title={displayNameByDocId[d.document_id]}
-                      visual={
-                        <ContextItem.Visual
-                          visual={({ className }) =>
-                            DocumentTextIcon({
-                              className: className + " text-element-600",
-                            })
-                          }
-                        />
-                      }
-                      action={
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            icon={EyeIcon}
-                            onClick={() =>
-                              onDisplayDocumentSource(d.document_id)
+
+              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+                {documents.length > 0 ? (
+                  <ContextItem.List>
+                    {documents.map((d) => (
+                      <ContextItem
+                        key={d.document_id}
+                        title={displayNameByDocId[d.document_id]}
+                        visual={
+                          <ContextItem.Visual
+                            visual={({ className }) =>
+                              DocumentTextIcon({
+                                className: className + " text-element-600",
+                              })
                             }
-                            tooltip="View"
                           />
-                        </div>
-                      }
-                    >
-                      <ContextItem.Description>
-                        <div className="pt-2 text-sm text-element-700">
-                          {Math.floor(d.text_size / 1024)} kb,{" "}
-                          {timeAgoFrom(d.timestamp)} ago
-                        </div>
-                      </ContextItem.Description>
-                    </ContextItem>
-                  ))}
-                </ContextItem.List>
-                {documents.length == 0 ? (
+                        }
+                        action={
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              icon={EyeIcon}
+                              onClick={() =>
+                                onDisplayDocumentSource(d.document_id)
+                              }
+                              tooltip="View"
+                            />
+                          </div>
+                        }
+                      >
+                        <ContextItem.Description>
+                          <div className="pt-2 text-sm text-element-700">
+                            {Math.floor(d.text_size / 1024)} kb,{" "}
+                            {timeAgoFrom(d.timestamp)} ago
+                          </div>
+                        </ContextItem.Description>
+                      </ContextItem>
+                    ))}
+                  </ContextItem.List>
+                ) : (
                   <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
                     <p>Empty</p>
                   </div>
-                ) : null}
-              </>
-            ) : (
-              <PokePermissionTree
-                owner={owner}
-                dataSource={dataSource}
-                onDocumentViewClick={onDisplayDocumentSource}
-                permissionFilter="read"
-              />
-            )}
-          </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-row">
+                <div className="flex flex-1">
+                  <div className="flex flex-col">
+                    <div className="flex flex-row">
+                      <div className="flex flex-initial gap-x-2">
+                        <Button
+                          variant="ghost"
+                          disabled={offsetTable < limit}
+                          onClick={() => {
+                            if (offsetTable >= limit) {
+                              setOffsetTable(offsetTable - limit);
+                            } else {
+                              setOffsetTable(0);
+                            }
+                          }}
+                          label="Previous"
+                        />
+                        <Button
+                          variant="ghost"
+                          label="Next"
+                          disabled={offsetTable + limit >= totalTables}
+                          onClick={() => {
+                            if (offsetTable + limit < totalTables) {
+                              setOffsetTable(offsetTable + limit);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+                      {totalDocuments > 0 && (
+                        <span>
+                          Showing tables {offsetTable + 1} - {lastTable} of{" "}
+                          {totalTables} tables
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+                {tables.length > 0 ? (
+                  <ContextItem.List>
+                    {tables.map((t) => (
+                      <ContextItem
+                        key={t.table_id}
+                        title={t.name}
+                        visual={
+                          <ContextItem.Visual
+                            visual={({ className }) =>
+                              TableIcon({
+                                className: className + " text-element-600",
+                              })
+                            }
+                          />
+                        }
+                      >
+                        <ContextItem.Description>
+                          <div className="pt-2 text-sm text-element-700">
+                            {timeAgoFrom(t.timestamp)} ago
+                          </div>
+                        </ContextItem.Description>
+                      </ContextItem>
+                    ))}
+                  </ContextItem.List>
+                ) : (
+                  <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+                    <p>Empty</p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <PokePermissionTree
+              owner={owner}
+              dataSource={dataSource}
+              onDocumentViewClick={onDisplayDocumentSource}
+              permissionFilter="read"
+            />
+          )}
         </Page.Vertical>
       </div>
     </div>

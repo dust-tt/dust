@@ -141,6 +141,22 @@ export class DustAPI {
     return this._credentials.apiKey;
   }
 
+  async baseHeaders() {
+    const headers: RequestInit["headers"] = {
+      Authorization: `Bearer ${await this.getApiKey()}`,
+    };
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
+    }
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
+    }
+    if (this._credentials.extraHeaders) {
+      Object.assign(headers, this._credentials.extraHeaders);
+    }
+    return headers;
+  }
+
   /**
    * Fetches the current user's information from the API.
    *
@@ -169,22 +185,6 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.user);
-  }
-
-  async baseHeaders() {
-    const headers: RequestInit["headers"] = {
-      Authorization: `Bearer ${await this.getApiKey()}`,
-    };
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-    if (this._credentials.extraHeaders) {
-      Object.assign(headers, this._credentials.extraHeaders);
-    }
-    return headers;
   }
 
   async request(args: RequestArgsType) {
@@ -495,9 +495,26 @@ export class DustAPI {
     return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations(view?: AgentConfigurationViewType) {
-    const path = view
-      ? `assistant/agent_configurations?view=${view}`
+  async getAgentConfigurations(
+    view?: AgentConfigurationViewType,
+    includes: "authors"[] = []
+  ) {
+    // Function to generate query parameters.
+    function getQueryString() {
+      const params = new URLSearchParams();
+      if (typeof view === "string") {
+        params.append("view", view);
+      }
+      if (includes.includes("authors")) {
+        params.append("withAuthors", "true");
+      }
+
+      return params.toString();
+    }
+
+    const queryString = view || includes.length > 0 ? getQueryString() : null;
+    const path = queryString
+      ? `assistant/agent_configurations?${queryString}`
       : "assistant/agent_configurations";
 
     const res = await this.request({

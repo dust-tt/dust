@@ -26,6 +26,58 @@ use crate::{
     sqlite_workers::client::SqliteWorker,
 };
 
+pub struct DocumentCreateParams {
+    pub document_id: String,
+    pub title: Option<String>,
+    pub mime_type: Option<String>,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
+    pub parents: Vec<String>,
+    pub source_url: Option<String>,
+    pub hash: String,
+    pub text_size: u64,
+    pub chunk_count: usize,
+    pub created: u64,
+}
+
+impl From<Document> for DocumentCreateParams {
+    fn from(document: Document) -> Self {
+        DocumentCreateParams {
+            document_id: document.document_id,
+            title: Some(document.title),
+            mime_type: Some(document.mime_type),
+            timestamp: document.timestamp,
+            tags: document.tags,
+            parents: document.parents,
+            source_url: document.source_url,
+            hash: document.hash,
+            text_size: document.text_size,
+            chunk_count: document.chunk_count,
+            created: document.created,
+        }
+    }
+}
+
+pub struct TableUpsertParams {
+    pub table_id: String,
+    pub name: String,
+    pub description: String,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
+    pub parents: Vec<String>,
+    pub remote_database_table_id: Option<String>,
+    pub remote_database_secret_id: Option<String>,
+    pub title: Option<String>,
+    pub mime_type: Option<String>,
+}
+
+pub struct FolderUpsertParams {
+    pub folder_id: String,
+    pub timestamp: u64,
+    pub title: String,
+    pub parents: Vec<String>,
+}
+
 #[async_trait]
 pub trait Store {
     fn raw_pool(&self) -> &Pool<PostgresConnectionManager<NoTls>>;
@@ -131,12 +183,12 @@ pub trait Store {
         view_filter: &Option<SearchFilter>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<String>, usize)>;
-    async fn upsert_data_source_document(
+    async fn create_data_source_document(
         &self,
         project: &Project,
-        data_source_id: &str,
-        document: &Document,
-    ) -> Result<()>;
+        data_source_id: String,
+        create_params: DocumentCreateParams,
+    ) -> Result<Document>;
     async fn update_data_source_document_tags(
         &self,
         project: &Project,
@@ -211,48 +263,39 @@ pub trait Store {
     ) -> Result<Vec<TransientDatabase>>;
     async fn delete_database(&self, table_ids_hash: &str) -> Result<()>;
     // Tables
-    async fn upsert_table(
+    async fn upsert_data_source_table(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        name: &str,
-        description: &str,
-        timestamp: u64,
-        tags: &Vec<String>,
-        parents: &Vec<String>,
-        remote_database_table_id: Option<String>,
-        remote_database_secret_id: Option<String>,
-        title: Option<String>,
-        mime_type: Option<String>,
+        project: Project,
+        data_source_id: String,
+        upsert_params: TableUpsertParams,
     ) -> Result<Table>;
-    async fn update_table_schema(
+    async fn update_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()>;
-    async fn update_table_parents(
+    async fn update_data_source_table_parents(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
         parents: &Vec<String>,
     ) -> Result<()>;
-    async fn invalidate_table_schema(
+    async fn invalidate_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
-    async fn load_table(
+    async fn load_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<Option<Table>>;
-    async fn list_tables(
+    async fn list_data_source_tables(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -260,20 +303,33 @@ pub trait Store {
         table_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Table>, usize)>;
-    async fn delete_table(
+    async fn delete_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
     // Folders
-    async fn upsert_data_source_folder(&self, folder: &Folder) -> Result<()>;
+    async fn upsert_data_source_folder(
+        &self,
+        project: Project,
+        data_source_id: String,
+        upsert_params: FolderUpsertParams,
+    ) -> Result<Folder>;
     async fn load_data_source_folder(
         &self,
         project: &Project,
         data_source_id: &str,
         folder_id: &str,
     ) -> Result<Option<Folder>>;
+    async fn list_data_source_folders(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        view_filter: &Option<SearchFilter>,
+        folder_ids: &Option<Vec<String>>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<Folder>, usize)>;
     async fn delete_data_source_folder(
         &self,
         project: &Project,

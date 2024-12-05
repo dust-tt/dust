@@ -84,7 +84,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<FileUploadRequestResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.getNonNullableUser();
+  const user = auth.user();
   const owner = auth.getNonNullableWorkspace();
 
   switch (req.method) {
@@ -95,7 +95,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: "Invalid request body.",
+            request_format_errors: r.error.flatten(),
           },
         });
       }
@@ -154,7 +155,7 @@ async function handler(
         contentType,
         fileName,
         fileSize,
-        userId: user.id,
+        userId: user?.id ?? null,
         workspaceId: owner.id,
         useCase,
         useCaseMetadata: useCaseMetadata,
