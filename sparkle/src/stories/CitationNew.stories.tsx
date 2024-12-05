@@ -11,16 +11,17 @@ import {
   CitationNewImage,
   CitationNewIndex,
   CitationNewTitle,
+  Icon,
+  Popover,
+} from "@sparkle/components";
+import {
   DocumentIcon,
   ExternalLinkIcon,
   GlobeAltIcon,
-  Icon,
   ImageIcon,
-  NotionLogo,
-  Popover,
-  SlackLogo,
   TableIcon,
-} from "../index_with_tw_base";
+} from "@sparkle/icons";
+import { NotionLogo, SlackLogo } from "@sparkle/logo";
 
 const meta = {
   title: "Components/CitationNew",
