@@ -454,12 +454,13 @@ export class ConfluenceClient {
   async getPagesInSpace(
     spaceId: string,
     depth: "all" | "root" = "all",
-    pageCursor?: string
+    sort: "id" | "-modified-date" = "id",
+    pageCursor?: string | null
   ) {
     const params = new URLSearchParams({
       depth,
+      sort,
       limit: "25",
-      sort: "id",
       status: "current",
     });
 

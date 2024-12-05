@@ -71,15 +71,15 @@ async function getConfluenceAccessTokenWithThrow(connectionId: string) {
   return token.access_token;
 }
 
-async function getConfluenceClient(config: {
+export async function getConfluenceClient(config: {
   cloudId?: string;
   connectorId: ModelId;
 }): Promise<ConfluenceClient>;
-async function getConfluenceClient(
+export async function getConfluenceClient(
   config: { cloudId?: string },
   connector: ConnectorResource
 ): Promise<ConfluenceClient>;
-async function getConfluenceClient(
+export async function getConfluenceClient(
   config: {
     cloudId?: string;
     connectorId?: ModelId;
