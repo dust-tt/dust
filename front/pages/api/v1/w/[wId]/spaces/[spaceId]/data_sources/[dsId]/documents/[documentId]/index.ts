@@ -11,6 +11,7 @@ import {
   rateLimiter,
   sectionFullText,
 } from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -23,7 +24,6 @@ import {
   enqueueUpsertDocument,
   runPostUpsertHooks,
 } from "@app/lib/upsert_queue";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import logger from "@app/logger/logger";
 import { apiError, statsDClient } from "@app/logger/withlogging";
 import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
