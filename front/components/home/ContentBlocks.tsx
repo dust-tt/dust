@@ -1,4 +1,4 @@
-import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import { ArrowRightIcon, Avatar, Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
@@ -169,6 +169,67 @@ export const HeaderContentBlock = ({
       )}
     </div>
   </Grid>
+);
+
+interface MetricComponentProps {
+  metrics: {
+    value: string;
+    description: ReactNode;
+  }[];
+  from: string;
+  to: string;
+}
+
+export const MetricComponent = ({
+  metrics,
+  from,
+  to,
+}: MetricComponentProps) => (
+  <div
+    className={classNames(
+      "col-span-12 flex flex-col items-center py-8 text-center"
+    )}
+  >
+    <div
+      className={classNames(
+        "grid grid-cols-1 gap-x-6 gap-y-8",
+        "md:grid-cols-2 md:gap-x-12"
+      )}
+    >
+      {metrics.map((metric, index) => (
+        <div key={index} className="flex flex-col items-center gap-4">
+          <H1 from={from} to={to}>
+            {metric.value}
+          </H1>
+          <P size="md" className="max-w-[400px]">
+            {metric.description}
+          </P>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface QuoteProps {
+  quote: string;
+}
+
+export const Quote = ({ quote }: QuoteProps) => (
+  <div className="col-span-12 flex flex-col py-8 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
+    <div className="flex flex-col items-center text-center font-objektiv text-3xl italic text-white">
+      &ldquo; {quote} &rdquo;
+    </div>
+    <div className="flex justify-center pt-8">
+      <div className="flex items-center justify-center gap-3">
+        <Avatar size="lg" />
+        <P size="md" className="text-primary-400">
+          Walter Moniot,
+          <br />
+          CPO at Malt
+        </P>
+      </div>
+    </div>
+  </div>
 );
 
 interface CarousselContentBlockProps {
