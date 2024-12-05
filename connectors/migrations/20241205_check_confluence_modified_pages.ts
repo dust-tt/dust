@@ -20,7 +20,8 @@ makeScript(
     const connectors = await ConnectorResource.listByType("confluence", {});
 
     for (const connector of connectors) {
-      console.log(`Checking connector ${connector.id}`);
+      console.log(`\n -- ∆Checking connector ${connector.id}`);
+      let connectorCount = 0;
 
       const confluenceConfig = await fetchConfluenceConfigurationActivity(
         connector.id
@@ -46,7 +47,11 @@ makeScript(
         console.log(
           `${pages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
         );
+        connectorCount += recentlyModifiedPages.length;
       }
+      console.log(
+        `${connectorCount} pages modified for connector ${connector.id}`
+      );
     }
     console.log("Finished checking out all connectors");
   }
