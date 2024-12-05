@@ -83,6 +83,12 @@ export const createColumnName = {
   legacy: (baseColumn: string) => `${baseColumn}_legacy` as const,
 };
 
+function assertInProduction(value: unknown, message?: string): asserts value {
+  if (process.env.NODE_ENV !== "development") {
+    assert(value, message);
+  }
+}
+
 // If table name is too long, create an abbreviation
 const shortenTableName = (tableName: string) =>
   tableName.length > 35
@@ -466,7 +472,7 @@ class IntToBigIntMigration {
         this.config.tableName,
         COLUMN_TYPE.INT
       );
-      assert(
+      assertInProduction(
         rollbackIndexName.length < 63,
         `Index name too long: ${rollbackIndexName}`
       );
@@ -1301,7 +1307,10 @@ class IntToBigIntMigration {
       tableName: string;
     }
   ): Promise<void> {
-    assert(indexName.length < 63, `Index name too long: ${indexName}`);
+    assertInProduction(
+      indexName.length < 63,
+      `Index name too long: ${indexName}`
+    );
 
     // Only primary key indexes are unique.
     await this.executeSql(
@@ -1433,7 +1442,10 @@ class IntToBigIntMigration {
       ref.foreignKeyColumn,
       COLUMN_TYPE.BIGINT
     );
-    assert(fkIndexName.length < 63, `Index name too long: ${fkIndexName}`);
+    assertInProduction(
+      fkIndexName.length < 63,
+      `Index name too long: ${fkIndexName}`
+    );
 
     const newFkIndexName = fkIndexName.replace("_bigint", "");
 
