@@ -47,6 +47,10 @@ path = "bin/qdrant/delete_orphaned_points.rs"
 # MIGRATIONS
 
 [[bin]]
+name = "create_nodes"
+path = "bin/migrations/20241204_create_nodes.rs"
+
+[[bin]]
 name = "fix_created_dsdocs"
 path = "bin/migrations/20241203_fix_created_dsdocs.rs"
 
