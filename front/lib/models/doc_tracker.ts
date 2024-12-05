@@ -1,37 +1,24 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class TrackedDocument extends Model<
-  InferAttributes<TrackedDocument>,
-  InferCreationAttributes<TrackedDocument>
-> {
-  declare id: CreationOptional<number>;
+export class TrackedDocument extends BaseModel<TrackedDocument> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare documentId: string;
   declare trackingEnabledAt: Date | null;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
 }
 
 TrackedDocument.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -66,16 +53,12 @@ DataSourceModel.hasMany(TrackedDocument, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
-User.hasMany(TrackedDocument, {
+UserModel.hasMany(TrackedDocument, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
 
-export class DocumentTrackerChangeSuggestion extends Model<
-  InferAttributes<DocumentTrackerChangeSuggestion>,
-  InferCreationAttributes<DocumentTrackerChangeSuggestion>
-> {
-  declare id: CreationOptional<number>;
+export class DocumentTrackerChangeSuggestion extends BaseModel<DocumentTrackerChangeSuggestion> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -90,15 +73,9 @@ export class DocumentTrackerChangeSuggestion extends Model<
 
 DocumentTrackerChangeSuggestion.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: { type: DataTypes.DATE, allowNull: false },
     updatedAt: { type: DataTypes.DATE, allowNull: false },
     suggestion: { type: DataTypes.TEXT, allowNull: false },
-    //@ts-expect-error TODO remove once propagated
     suggestionTitle: { type: DataTypes.TEXT, allowNull: true },
     reason: { type: DataTypes.TEXT, allowNull: true },
     status: {

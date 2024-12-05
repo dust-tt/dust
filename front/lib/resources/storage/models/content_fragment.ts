@@ -2,23 +2,15 @@ import type {
   ContentFragmentVersion,
   SupportedContentFragmentType,
 } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class ContentFragmentModel extends Model<
-  InferAttributes<ContentFragmentModel>,
-  InferCreationAttributes<ContentFragmentModel>
-> {
-  declare id: CreationOptional<number>;
+export class ContentFragmentModel extends BaseModel<ContentFragmentModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -45,11 +37,6 @@ export class ContentFragmentModel extends Model<
 
 ContentFragmentModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -109,10 +96,10 @@ ContentFragmentModel.init(
   }
 );
 
-User.hasMany(ContentFragmentModel, {
+UserModel.hasMany(ContentFragmentModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = ContentFragment is not associated with a user
 });
-ContentFragmentModel.belongsTo(User, {
+ContentFragmentModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true },
 });
 

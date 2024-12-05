@@ -1,23 +1,14 @@
 import type { TimeframeUnit } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class AgentRetrievalConfiguration extends Model<
-  InferAttributes<AgentRetrievalConfiguration>,
-  InferCreationAttributes<AgentRetrievalConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentRetrievalConfiguration extends BaseModel<AgentRetrievalConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -38,11 +29,6 @@ export class AgentRetrievalConfiguration extends Model<
 
 AgentRetrievalConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -144,11 +130,7 @@ AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
 /**
  * Retrieval Action
  */
-export class AgentRetrievalAction extends Model<
-  InferAttributes<AgentRetrievalAction>,
-  InferCreationAttributes<AgentRetrievalAction>
-> {
-  declare id: CreationOptional<number>;
+export class AgentRetrievalAction extends BaseModel<AgentRetrievalAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -168,11 +150,6 @@ export class AgentRetrievalAction extends Model<
 }
 AgentRetrievalAction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -253,11 +230,7 @@ AgentMessage.hasMany(AgentRetrievalAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
-export class RetrievalDocument extends Model<
-  InferAttributes<RetrievalDocument>,
-  InferCreationAttributes<RetrievalDocument>
-> {
-  declare id: CreationOptional<number>;
+export class RetrievalDocument extends BaseModel<RetrievalDocument> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -278,11 +251,6 @@ export class RetrievalDocument extends Model<
 
 RetrievalDocument.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -342,11 +310,7 @@ RetrievalDocument.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: true },
 });
 
-export class RetrievalDocumentChunk extends Model<
-  InferAttributes<RetrievalDocumentChunk>,
-  InferCreationAttributes<RetrievalDocumentChunk>
-> {
-  declare id: CreationOptional<number>;
+export class RetrievalDocumentChunk extends BaseModel<RetrievalDocumentChunk> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -359,11 +323,6 @@ export class RetrievalDocumentChunk extends Model<
 
 RetrievalDocumentChunk.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

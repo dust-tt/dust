@@ -1,21 +1,13 @@
 import type { DustAppParameters } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class AgentDustAppRunConfiguration extends Model<
-  InferAttributes<AgentDustAppRunConfiguration>,
-  InferCreationAttributes<AgentDustAppRunConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentDustAppRunConfiguration extends BaseModel<AgentDustAppRunConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -29,11 +21,6 @@ export class AgentDustAppRunConfiguration extends Model<
 
 AgentDustAppRunConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -83,11 +70,7 @@ AgentDustAppRunConfiguration.belongsTo(AgentConfiguration, {
 /**
  * DustAppRun Action
  */
-export class AgentDustAppRunAction extends Model<
-  InferAttributes<AgentDustAppRunAction>,
-  InferCreationAttributes<AgentDustAppRunAction>
-> {
-  declare id: CreationOptional<number>;
+export class AgentDustAppRunAction extends BaseModel<AgentDustAppRunAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -108,11 +91,6 @@ export class AgentDustAppRunAction extends Model<
 }
 AgentDustAppRunAction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

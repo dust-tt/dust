@@ -7,11 +7,48 @@ import type {
   GroupedCountResultItem,
   InferAttributes,
   InferCreationAttributes,
+  InitOptions,
+  ModelAttributes,
   ModelStatic,
   UpdateOptions,
   WhereOptions,
 } from "sequelize";
-import { Model, Op } from "sequelize";
+import { DataTypes, Model, Op } from "sequelize";
+
+/**
+ * A wrapper class that enforces BIGINT for all model primary keys.
+ * All models should extend this class instead of Sequelize's Model.
+ */
+
+export class BaseModel<M extends Model = any> extends Model<
+  InferAttributes<M>,
+  InferCreationAttributes<M>
+> {
+  declare id: CreationOptional<number>;
+
+  static override init<MS extends ModelStatic<Model>>(
+    this: MS,
+    attributes: ModelAttributes<InstanceType<MS>, any>,
+    options: InitOptions<InstanceType<MS>>
+  ): MS {
+    const attrs = {
+      ...attributes,
+      id: {
+        type: DataTypes.BIGINT,
+        primaryKey: true,
+        autoIncrement: true,
+        ...("id" in attributes
+          ? {
+              autoIncrement: (attributes as any).id?.autoIncrement ?? true,
+              primaryKey: (attributes as any).id?.primaryKey ?? true,
+            }
+          : {}),
+      },
+    } as ModelAttributes<InstanceType<MS>, any>;
+
+    return super.init(attrs, options) as MS;
+  }
+}
 
 export type ModelStaticSoftDeletable<M extends SoftDeletableModel> =
   ModelStatic<M> & {
@@ -49,10 +86,7 @@ type WithIncludeDeleted<T> = T & {
  * Extend this class for models that require soft delete functionality. The `deletedAt` field
  * is automatically declared and managed by this class.
  */
-export class SoftDeletableModel<M extends Model = any> extends Model<
-  InferAttributes<M>,
-  InferCreationAttributes<M>
-> {
+export class SoftDeletableModel<M extends Model = any> extends BaseModel<M> {
   declare deletedAt: CreationOptional<Date | null>;
 
   // Delete.

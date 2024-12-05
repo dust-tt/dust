@@ -1,20 +1,12 @@
 import type { MESSAGE_CLASS } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { Conversation } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class ConversationClassification extends Model<
-  InferAttributes<ConversationClassification>,
-  InferCreationAttributes<ConversationClassification>
-> {
-  declare id: CreationOptional<number>;
+export class ConversationClassification extends BaseModel<ConversationClassification> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -25,12 +17,6 @@ export class ConversationClassification extends Model<
 
 ConversationClassification.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

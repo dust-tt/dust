@@ -6,21 +6,14 @@ import type {
   TemplateVisibility,
   TimeframeUnit,
 } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import type { TemplateActionType } from "@app/components/assistant_builder/types";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class TemplateModel extends Model<
-  InferAttributes<TemplateModel>,
-  InferCreationAttributes<TemplateModel>
-> {
-  declare id: CreationOptional<number>;
+export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -51,11 +44,6 @@ export class TemplateModel extends Model<
 
 TemplateModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
