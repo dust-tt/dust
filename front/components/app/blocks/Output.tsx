@@ -250,7 +250,7 @@ export function Execution({
             ) : (
               <div className="flex flex-row">
                 <div className="flex flex-initial">
-                  <CheckCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-emerald-300" />
+                  <CheckCircleIcon className="mt-0.5 h-4 w-4 min-w-4 text-emerald-300" />
                 </div>
                 <div className="flex flex-1">
                   <ValueViewer
@@ -293,7 +293,7 @@ export function InnerLogs({ trace }: { trace: TraceType }) {
   return (
     <div className="flex flex-row">
       <div className="flex flex-initial">
-        <InformationCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-gray-400" />
+        <InformationCircleIcon className="mt-0.5 h-4 w-4 min-w-4 text-gray-400" />
       </div>
       <div className="font-mono flex flex-1">
         <ValueViewer value={logs} topLevel={true} k={null} block={null} />
