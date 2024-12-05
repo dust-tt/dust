@@ -20,7 +20,7 @@ makeScript(
     const connectors = await ConnectorResource.listByType("confluence", {});
 
     for (const connector of connectors) {
-      console.log(`\n -- ∆Checking connector ${connector.id}`);
+      console.log(`\n -- Checking connector ${connector.id}`);
       let connectorCount = 0;
 
       const confluenceConfig = await fetchConfluenceConfigurationActivity(
