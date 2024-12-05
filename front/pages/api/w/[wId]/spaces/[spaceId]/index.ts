@@ -186,6 +186,16 @@ async function handler(
 
       if (name) {
         await space.updateName(auth, name);
+        // For regular spaces that only have a single group, update
+        // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
+        const singleGroup = space.groups[0];
+        if (
+          singleGroup &&
+          space.groups.length === 1 &&
+          space.kind === "regular"
+        ) {
+          await singleGroup.updateName(auth, `Group for space ${name}`);
+        }
       }
       return res.status(200).json({ space: space.toJSON() });
     }

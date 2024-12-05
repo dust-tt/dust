@@ -636,6 +636,20 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  // Updates
+
+  async updateName(
+    auth: Authenticator,
+    newName: string
+  ): Promise<Result<undefined, Error>> {
+    if (!auth.isAdmin()) {
+      return new Err(new Error("Only admins can update group names."));
+    }
+
+    await this.update({ name: newName });
+    return new Ok(undefined);
+  }
+
   // Deletion
 
   async delete(
