@@ -72,13 +72,14 @@ const supportedDelimitedText = {
   "text/tsv": [".tsv"],
 } as const;
 
+// Supported content types that are plain text and can be sent as file-less content fragment.
 const supportedRawText = {
   "text/markdown": [".md", ".markdown"],
   "text/plain": [".txt"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
 };
 
-// Supported content types for plain text.
+// Supported content types for plain text (after processing).
 const supportedPlainText = {
   // We support all tabular content types as plain text.
   ...supportedDelimitedText,
