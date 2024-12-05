@@ -5,7 +5,7 @@ export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type { ButtonProps } from "./Button";
-export { Button, MiniButton, SplitButton2 } from "./Button";
+export { Button } from "./Button";
 export { Card, ComposableCard } from "./Card";
 export type { CardButtonProps } from "./CardButton";
 export { CardButton } from "./CardButton";
@@ -103,7 +103,7 @@ export {
 } from "./Sheet";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
-export { SplitButton } from "./SplitButton";
+export { FlexSplitButton, SplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { TextArea } from "./TextArea";
 export {

@@ -27,11 +27,8 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
+export const BUTTON_SIZES = ["mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
-
-export const MINI_BUTTON_SIZE = "mini" as const;
-export type MiniButtonSizeType = typeof MINI_BUTTON_SIZE;
 
 const styleVariants: Record<ButtonVariantType, string> = {
   primary:
@@ -52,6 +49,7 @@ const sizeVariants: Record<ButtonSizeType, string> = {
   xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
   sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
   md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
+  mini: "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5",
 };
 
 const buttonVariants = cva(
@@ -65,15 +63,6 @@ const buttonVariants = cva(
     },
   }
 );
-
-const miniButtonVariant = "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5";
-
-const getMiniButtonClasses = (variant: ButtonVariantType | null) => {
-  return cn(
-    miniButtonVariant,
-    variant && buttonVariants({ variant, size: undefined })
-  );
-};
 
 type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
 
@@ -100,7 +89,7 @@ export interface MetaButtonProps
     Omit<VariantProps<typeof buttonVariants>, "size"> {
   asChild?: boolean;
   variant?: ButtonVariantType | null;
-  size?: ButtonSizeType | MiniButtonSizeType;
+  size?: ButtonSizeType;
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
@@ -150,19 +139,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    const iconsSize = size === "mini" ? "sm" : size;
+
     const spinnerVariant = isLoading
       ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
       : (variant && spinnerVariantsMap[variant]) || "slate400";
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon visual={visual} size={size} className={extraClass} />
+      <Icon visual={visual} size={iconsSize} className={extraClass} />
     );
 
     const content = (
       <>
         {isLoading ? (
           <div className="-s-mx-0.5">
-            <Spinner size={size} variant={spinnerVariant} />
+            <Spinner size={iconsSize} variant={spinnerVariant} />
           </div>
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
@@ -224,129 +215,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 
-const MiniButton = React.forwardRef<
-  HTMLButtonElement,
-  Omit<ButtonProps, "size" | "label" | "isSelect">
->(
-  (
-    {
-      icon,
-      isLoading = false,
-      variant = "primary",
-      tooltip,
-      href,
-      target,
-      rel,
-      replace,
-      shallow,
-      "aria-label": ariaLabel,
-      ...props
-    },
-    ref
-  ) => {
-    const spinnerVariant = isLoading
-      ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
-      : (variant && spinnerVariantsMap[variant]) || "slate400";
-
-    const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon visual={visual} size="sm" className={extraClass} />
-    );
-
-    const content = (
-      <>
-        {isLoading ? (
-          <div className="-s-mx-0.5">
-            <Spinner size="sm" variant={spinnerVariant} />
-          </div>
-        ) : (
-          icon && renderIcon(icon, "-s-mx-0.5")
-        )}
-      </>
-    );
-
-    const innerButton = (
-      <MetaButton
-        ref={ref}
-        size="mini"
-        className={cn(getMiniButtonClasses(variant))}
-        disabled={isLoading || props.disabled}
-        aria-label={ariaLabel || tooltip}
-        {...props}
-      >
-        {content}
-      </MetaButton>
-    );
-
-    const wrappedContent = tooltip ? (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
-        </TooltipRoot>
-      </TooltipProvider>
-    ) : (
-      innerButton
-    );
-
-    return href ? (
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-      >
-        {wrappedContent}
-      </LinkWrapper>
-    ) : (
-      wrappedContent
-    );
-  }
-);
-
-MiniButton.displayName = "MiniButton";
-
-const splitVariants: Record<ButtonVariantType, string> = {
-  primary: "s-bg-white/50",
-  highlight: "s-bg-white/50",
-  warning: "s-bg-white/50",
-  outline: "s-bg-separator",
-  ghost: "s-bg-separator",
-  "ghost-secondary": "s-bg-separator",
-};
-
-export interface SplitButtonProps extends Omit<ButtonProps, "size"> {
-  containerClassName?: string;
-  splitAction: React.ReactElement<React.ComponentProps<typeof MiniButton>>;
-  className?: string;
-}
-
-const SplitButton2 = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
-  (
-    { splitAction, containerClassName, variant, className, ...buttonProps },
-    ref
-  ) => {
-    const separatorStyle = variant
-      ? splitVariants[variant]
-      : splitVariants.primary;
-    return (
-      <div className={cn("s-relative s-inline-block", containerClassName)}>
-        <Button
-          ref={ref}
-          variant={variant}
-          size="sm"
-          className={cn(className, "s-pr-12")}
-          {...buttonProps}
-        />
-        <span className="s-absolute s-right-1 s-top-1 s-flex s-items-center s-gap-1">
-          <div className={cn("s-h-4 s-w-px", separatorStyle)} />
-          {splitAction}
-        </span>
-      </div>
-    );
-  }
-);
-
-SplitButton2.displayName = "SplitButton";
-
-export { Button, buttonVariants, MetaButton, MiniButton, SplitButton2 };
+export { Button, buttonVariants, MetaButton };
