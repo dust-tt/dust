@@ -2,15 +2,14 @@ import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   LockIcon,
-  MoreIcon,
   NavigationList,
   NavigationListItem,
+  NavigationListItemAction,
   NavigationListLabel,
   PencilSquareIcon,
   ScrollArea,
@@ -29,7 +28,7 @@ const getRandomTitles = (count: number) => {
   return shuffled.slice(0, count);
 };
 
-export const NewNavigationListDemo = () => {
+export const Demo = () => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [conversationTitles, setConversationTitles] = useState<
     { label: string; items: string[] }[]
@@ -47,49 +46,65 @@ export const NewNavigationListDemo = () => {
   const getMoreMenu = (title: string) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" icon={MoreIcon} size="xs" />
+        <NavigationListItemAction />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
           label={`Rename ${title}`}
           icon={PencilSquareIcon}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Add rename logic here
+          }}
         />
         <DropdownMenuItem
           label="Delete"
           icon={TrashIcon}
           variant="warning"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Add delete logic here
+          }}
         />
       </DropdownMenuContent>
     </DropdownMenu>
   );
 
   return (
-    <div className="s-h-[400px] s-w-[200px] s-py-12">
-      <ScrollArea>
-        <NavigationList className="s-w-full">
-          {conversationTitles.map((section, sectionIndex) => (
-            <React.Fragment key={sectionIndex}>
-              <NavigationListLabel label={section.label} />
-              {section.items.map((title, index) => {
-                const itemIndex = allItems.indexOf(title);
-                return (
-                  <NavigationListItem
-                    key={index}
-                    href={index % 2 === 0 ? "title" : undefined}
-                    selected={itemIndex === selectedIndex}
-                    onClick={() => setSelectedIndex(itemIndex)}
-                    label={title}
-                    className="s-w-full"
-                    moreMenu={getMoreMenu(title)}
-                    icon={LockIcon}
-                  />
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </NavigationList>
+    <div className="s-h-[400px] s-w-[240px] s-bg-muted s-py-3">
+      <ScrollArea className="s-h-full s-w-full">
+        <div className="s-px-3">
+          <NavigationList className="s-w-full">
+            {conversationTitles.map((section, sectionIndex) => (
+              <React.Fragment key={sectionIndex}>
+                <NavigationListLabel label={section.label} />
+                {section.items.map((title, index) => {
+                  const itemIndex = allItems.indexOf(title);
+                  return (
+                    <NavigationListItem
+                      key={index}
+                      href={index % 2 === 0 ? "#" : undefined}
+                      selected={itemIndex === selectedIndex}
+                      onClick={(e) => {
+                        // Prevent default only if it's not coming from the more menu
+                        if (!e.defaultPrevented) {
+                          e.preventDefault();
+                          setSelectedIndex(itemIndex);
+                        }
+                      }}
+                      label={title}
+                      className="s-w-full"
+                      moreMenu={getMoreMenu(title)}
+                      icon={LockIcon}
+                    />
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </NavigationList>
+        </div>
         <ScrollBar />
       </ScrollArea>
     </div>
