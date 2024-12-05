@@ -318,14 +318,26 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             extracted.length > 0 &&
             extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
           ) {
+            const formattedDocumentContent = formatDocumentContent({
+              title: pageTitle,
+              content: extracted,
+              url: request.url,
+            });
+            if (!formattedDocumentContent) {
+              childLogger.info(
+                {
+                  documentId,
+                  configId: webCrawlerConfig.id,
+                  url,
+                },
+                `Invalid url. Skipping`
+              );
+              return;
+            }
             await upsertToDatasource({
               dataSourceConfig,
               documentId: documentId,
-              documentContent: formatDocumentContent({
-                title: pageTitle,
-                content: extracted,
-                url: request.url,
-              }),
+              documentContent: formattedDocumentContent,
               documentUrl: request.url,
               timestampMs: new Date().getTime(),
               tags: [`title:${stripNullBytes(pageTitle)}`],
@@ -467,13 +479,13 @@ function formatDocumentContent({
   title: string;
   content: string;
   url: string;
-}): CoreAPIDataSourceDocumentSection {
+}): CoreAPIDataSourceDocumentSection | null {
   const URL_MAX_LENGTH = 128;
   const TITLE_MAX_LENGTH = 300;
 
   const validatedUrl = validateUrl(url);
   if (!validatedUrl.valid || !validatedUrl.standardized) {
-    throw new Error(`Invalid URL: ${url}`);
+    return null;
   }
 
   const parsedUrl = new URL(validatedUrl.standardized);

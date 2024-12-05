@@ -2,7 +2,6 @@ import type {
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -35,6 +34,7 @@ import {
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
