@@ -2,16 +2,19 @@ import type {
   BillingPeriod,
   LightWorkspaceType,
   Result,
+  SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+import {
+  isOldFreePlan,
+  PRO_PLAN_SEAT_29_CODE,
+} from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
   isEnterpriseReportUsage,
@@ -117,7 +120,7 @@ export const createProPlanCheckoutSession = async ({
       workspaceId: owner.id,
     },
   });
-  if (existingSubscription) {
+  if (existingSubscription && !isOldFreePlan(existingSubscription.plan.code)) {
     trialAllowed = false;
   }
 
