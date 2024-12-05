@@ -13,7 +13,7 @@ makeScript(
       type: "number",
       demandOption: false,
       default: 60 * 60 * 1000,
-      description: "Number of connectors to process concurrently",
+      description: "Size of the time window in ms.",
     },
   },
   async ({ timeWindowMs }) => {
