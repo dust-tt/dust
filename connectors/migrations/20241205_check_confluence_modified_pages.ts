@@ -36,18 +36,31 @@ makeScript(
       const spaceIds = await getSpaceIdsToSyncActivity(connector.id);
 
       for (const spaceId of spaceIds) {
-        const { pages } = await client.getPagesInSpace(
-          spaceId,
-          "all",
-          "-modified-date"
-        );
-        const recentlyModifiedPages = pages.filter(
+        const allPages: ({
+          version: { number: number; createdAt: string };
+        } & { [p: string]: unknown })[] = [];
+        let cursor = null;
+        for (;;) {
+          const { pages, nextPageCursor } = await client.getPagesInSpace(
+            spaceId,
+            "all",
+            "-modified-date",
+            cursor
+          );
+          if (pages.length === 0) {
+            break;
+          }
+          cursor = nextPageCursor;
+          pages.forEach((page) => allPages.push(page));
+        }
+
+        const recentlyModifiedPages = allPages.filter(
           (page) =>
             new Date(page.version.createdAt) >=
             new Date(Date.now() - timeWindowMs)
         );
         console.log(
-          `${pages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
+          `${allPages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
         );
         connectorCount += recentlyModifiedPages.length;
       }

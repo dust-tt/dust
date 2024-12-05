@@ -455,7 +455,7 @@ export class ConfluenceClient {
     spaceId: string,
     depth: "all" | "root" = "all",
     sort: "id" | "-modified-date" = "id",
-    pageCursor?: string
+    pageCursor?: string | null
   ) {
     const params = new URLSearchParams({
       depth,
