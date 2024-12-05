@@ -8,6 +8,7 @@ import { parse } from "csv-parse";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
+import { Readable } from "stream";
 import { PassThrough, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
@@ -171,10 +172,16 @@ class CSVColumnAnalyzerTransform extends Transform {
   }
 }
 
-const extractContentAndSchemaFromCSV: ProcessingFunction = async (
+const extractContentAndSchemaFromDelimitedTextFiles = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  const format =
+    file.contentType === "text/csv" ||
+    file.contentType === "text/comma-separated-values"
+      ? "csv"
+      : "tsv";
+
   try {
     const readStream = file.getReadStream({
       auth,
@@ -198,6 +205,7 @@ const extractContentAndSchemaFromCSV: ProcessingFunction = async (
         skip_empty_lines: true,
         trim: true,
         relax_column_count: true,
+        delimiter: format === "csv" ? "," : "\t",
       }),
       new CSVColumnAnalyzerTransform(),
       file.getWriteStream({
@@ -217,11 +225,15 @@ const extractContentAndSchemaFromCSV: ProcessingFunction = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to extract text or snippet from CSV."
+      `Failed to extract text or snippet from ${format.toUpperCase()}.`
     );
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
-    return new Err(new Error(`Failed extracting from CSV. ${errorMessage}`));
+    return new Err(
+      new Error(
+        `Failed extracting from ${format.toUpperCase()}. ${errorMessage}`
+      )
+    );
   }
 };
 
@@ -303,7 +315,7 @@ const processingPerContentType: ProcessingPerContentType = {
     folder_document: notSupportedError,
     folder_table: notSupportedError,
     avatar: uploadToPublicBucket,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "image/png": {
     conversation: resizeAndUploadToFileStorage,
@@ -313,46 +325,46 @@ const processingPerContentType: ProcessingPerContentType = {
     tool_output: notSupportedError,
   },
   "text/comma-separated-values": {
-    conversation: extractContentAndSchemaFromCSV,
+    conversation: extractContentAndSchemaFromDelimitedTextFiles,
     folder_document: storeRawText,
-    folder_table: extractContentAndSchemaFromCSV,
+    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/csv": {
-    conversation: extractContentAndSchemaFromCSV,
+    conversation: extractContentAndSchemaFromDelimitedTextFiles,
     folder_document: storeRawText,
-    folder_table: extractContentAndSchemaFromCSV,
+    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/markdown": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: notSupportedError,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/plain": {
     conversation: storeRawText,
     folder_document: storeRawText,
     folder_table: notSupportedError,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/tab-separated-values": {
-    conversation: storeRawText,
+    conversation: extractContentAndSchemaFromDelimitedTextFiles,
     folder_document: storeRawText,
-    folder_table: storeRawText,
+    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/tsv": {
-    conversation: storeRawText,
+    conversation: extractContentAndSchemaFromDelimitedTextFiles,
     folder_document: storeRawText,
-    folder_table: storeRawText,
+    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
     avatar: notSupportedError,
-    tool_output: notSupportedError,
+    tool_output: storeRawText,
   },
   "text/vnd.dust.attachment.slack.thread": {
     conversation: storeRawText,
@@ -387,7 +399,10 @@ const maybeApplyProcessing: ProcessingFunction = async (
 
 export async function processAndStoreFile(
   auth: Authenticator,
-  { file, req }: { file: FileResource; req: IncomingMessage }
+  {
+    file,
+    reqOrString,
+  }: { file: FileResource; reqOrString: IncomingMessage | string }
 ): Promise<
   Result<
     FileResource,
@@ -417,14 +432,21 @@ export async function processAndStoreFile(
     });
   }
 
-  const r = await parseUploadRequest(
-    file,
-    req,
-    file.getWriteStream({ auth, version: "original" })
-  );
-  if (r.isErr()) {
-    await file.markAsFailed();
-    return r;
+  if (typeof reqOrString === "string") {
+    await pipeline(
+      Readable.from(reqOrString),
+      file.getWriteStream({ auth, version: "original" })
+    );
+  } else {
+    const r = await parseUploadRequest(
+      file,
+      reqOrString,
+      file.getWriteStream({ auth, version: "original" })
+    );
+    if (r.isErr()) {
+      await file.markAsFailed();
+      return r;
+    }
   }
 
   const processingRes = await maybeApplyProcessing(auth, file);

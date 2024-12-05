@@ -41,7 +41,7 @@ export const PostDataSourceDocumentRequestBodySchema = t.intersection([
   }),
   t.partial({
     title: t.string,
-    mimeType: t.string,
+    mime_type: t.string,
   }),
 ]);
 

@@ -24,11 +24,30 @@ import {
 } from "@dust-tt/client";
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import {
+  ConfluenceLogo,
+  DocumentTextIcon,
+  DriveLogo,
+  GithubLogo,
+  ImageIcon,
+  IntercomLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SlackLogo,
+  SnowflakeLogo,
+  ZendeskLogo,
+} from "@dust-tt/sparkle";
+import {
+  CitationNew,
+  CitationNewIcons,
+  CitationNewIndex,
+  CitationNewTitle,
+  Icon,
+} from "@dust-tt/sparkle";
+import {
   ArrowPathIcon,
   Button,
   ChatBubbleThoughtIcon,
   Chip,
-  Citation,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
@@ -66,6 +85,20 @@ import type { Components } from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
+
+const typeIcons = {
+  confluence: ConfluenceLogo,
+  document: DocumentTextIcon,
+  github: GithubLogo,
+  google_drive: DriveLogo,
+  intercom: IntercomLogo,
+  microsoft: MicrosoftLogo,
+  zendesk: ZendeskLogo,
+  notion: NotionLogo,
+  slack: SlackLogo,
+  image: ImageIcon,
+  snowflake: SnowflakeLogo,
+};
 
 export function visualizationDirective() {
   return (tree: any) => {
@@ -345,20 +378,6 @@ export function AgentMessage({
     }
   }
 
-  const [lastHoveredReference, setLastHoveredReference] = useState<
-    number | null
-  >(null);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (lastHoveredReference !== null) {
-      timer = setTimeout(() => {
-        setLastHoveredReference(null);
-      }, 1000); // Reset after 1 second.
-    }
-    return () => clearTimeout(timer);
-  }, [lastHoveredReference]);
-
   const generationContext = useContext(GenerationContext);
   if (!generationContext) {
     throw new Error(
@@ -451,8 +470,8 @@ export function AgentMessage({
   );
 
   const citations = useMemo(
-    () => getCitations({ activeReferences, lastHoveredReference }),
-    [activeReferences, lastHoveredReference]
+    () => getCitations({ activeReferences }),
+    [activeReferences]
   );
 
   function cleanUpCitations(message: string): string {
@@ -576,7 +595,6 @@ export function AgentMessage({
                 value={{
                   references,
                   updateActiveReferences,
-                  setHoveredReference: setLastHoveredReference,
                 }}
               >
                 <Markdown
@@ -624,27 +642,22 @@ export function AgentMessage({
 
 function getCitations({
   activeReferences,
-  lastHoveredReference,
 }: {
   activeReferences: {
     index: number;
     document: MarkdownCitation;
   }[];
-  lastHoveredReference: number | null;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <Citation
-        key={index}
-        size="xs"
-        sizing="fluid"
-        isBlinking={lastHoveredReference === index}
-        type={document.type}
-        title={document.title}
-        href={document.href}
-        index={index}
-      />
+      <CitationNew key={index} href={document.href}>
+        <CitationNewIcons>
+          <CitationNewIndex>{index}</CitationNewIndex>
+          <Icon visual={typeIcons[document.type]} />
+        </CitationNewIcons>
+        <CitationNewTitle>{document.title}</CitationNewTitle>
+      </CitationNew>
     );
   });
 }

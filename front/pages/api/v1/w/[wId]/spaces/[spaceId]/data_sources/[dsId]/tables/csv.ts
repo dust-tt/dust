@@ -108,7 +108,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: "Invalid request body.",
+            request_format_errors: r.error.flatten(),
           },
         });
       }
@@ -116,7 +117,6 @@ async function handler(
         auth,
         params: {
           ...r.data,
-          mimeType: r.data.mimeType,
           title: r.data.title ?? r.data.name,
         },
         dataSource,

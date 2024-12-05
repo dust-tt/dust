@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import * as React from "react";
 
-import {
-  Avatar,
-} from "@sparkle/components";
+import { Avatar } from "@sparkle/components";
 import { HandThumbUpIcon } from "@sparkle/icons/solid";
 
-import { Card,ComposableCard } from "../components/Card";
+import { Card, ComposableCard } from "../components/Card";
 
 const meta: Meta<typeof Card> = {
   title: "Components/Card",
@@ -16,15 +14,15 @@ const meta: Meta<typeof Card> = {
   },
   argTypes: {
     size: {
-      control: 'select',
-      options: ['xs', 'sm', 'md', 'lg'],
+      control: "select",
+      options: ["xs", "sm", "md", "lg"],
     },
     className: {
-      control: 'text'
+      control: "text",
     },
   },
   args: {
-    size: 'sm',
+    size: "sm",
   },
   tags: ["autodocs"],
 };
@@ -38,9 +36,7 @@ export const Basic: Story = {
     subtitle: "Monthly activity",
     content: (
       <div className="s-flex s-items-center s-gap-2">
-        <div className="s-text-lg s-font-semibold s-text-element-900">
-          847
-        </div>
+        <div className="s-text-lg s-font-semibold s-text-element-900">847</div>
       </div>
     ),
   },
@@ -48,7 +44,7 @@ export const Basic: Story = {
 
 export const Loading: Story = {
   args: {
-    ...Basic.args, 
+    ...Basic.args,
     isLoading: true,
   },
 };

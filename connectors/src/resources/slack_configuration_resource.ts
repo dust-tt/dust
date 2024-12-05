@@ -10,6 +10,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import {
   SlackBotWhitelistModel,
   SlackChannel,
+  SlackChatBotMessage,
   SlackConfigurationModel,
   SlackMessages,
 } from "@connectors/lib/models/slack";
@@ -268,6 +269,13 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       });
 
       await SlackMessages.destroy({
+        where: {
+          connectorId: this.connectorId,
+        },
+        transaction,
+      });
+
+      await SlackChatBotMessage.destroy({
         where: {
           connectorId: this.connectorId,
         },

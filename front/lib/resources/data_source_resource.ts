@@ -10,6 +10,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -333,12 +334,19 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   static async listByWorkspace(
     auth: Authenticator,
-    options?: FetchDataSourceOptions
+    options?: FetchDataSourceOptions,
+    includeConversationDataSources?: boolean
   ): Promise<DataSourceResource[]> {
+    const where: WhereOptions<DataSourceModel> = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+    if (!includeConversationDataSources) {
+      where["conversationId"] = {
+        [Op.is]: undefined,
+      };
+    }
     return this.baseFetch(auth, options, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where,
     });
   }
 

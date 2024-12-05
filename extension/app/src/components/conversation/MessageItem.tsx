@@ -2,7 +2,16 @@ import type {
   ConversationMessageReactionsType,
   LightWorkspaceType,
 } from "@dust-tt/client";
-import { Citation } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  CitationNew,
+  CitationNewIcons,
+  CitationNewImage,
+  CitationNewTitle,
+  DocumentTextIcon,
+  Icon,
+  SlackLogo,
+} from "@dust-tt/sparkle";
 import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import { AgentMessage } from "@extension/components/conversation/AgentMessage";
 import { UserMessage } from "@extension/components/conversation/UserMessage";
@@ -42,19 +51,38 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 ? "slack"
                 : "document";
 
+              const icon =
+                citationType === "slack" ? SlackLogo : DocumentTextIcon;
+
               return (
-                <Citation
+                <CitationNew
                   key={contentFragment.sId}
-                  title={contentFragment.title}
-                  size="xs"
-                  sizing="fluid"
-                  type={citationType}
-                  href={contentFragment.sourceUrl || undefined}
-                  imgSrc={undefined}
-                  avatarSrc={
-                    contentFragment.context.profilePictureUrl || undefined
-                  }
-                />
+                  href={contentFragment.sourceUrl ?? undefined}
+                >
+                  <div className="flex gap-2">
+                    {contentFragment.context.profilePictureUrl && (
+                      <CitationNewIcons>
+                        <Avatar
+                          visual={contentFragment.context.profilePictureUrl}
+                          size="xs"
+                        />
+                      </CitationNewIcons>
+                    )}
+                    {contentFragment.sourceUrl ? (
+                      <>
+                        <CitationNewImage imgSrc={contentFragment.sourceUrl} />
+                        <CitationNewIcons>
+                          <Icon visual={icon} />
+                        </CitationNewIcons>
+                      </>
+                    ) : (
+                      <CitationNewIcons>
+                        <Icon visual={icon} />
+                      </CitationNewIcons>
+                    )}
+                  </div>
+                  <CitationNewTitle>{contentFragment.title}</CitationNewTitle>
+                </CitationNew>
               );
             })
           : undefined;

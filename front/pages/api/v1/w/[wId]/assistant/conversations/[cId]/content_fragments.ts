@@ -1,6 +1,7 @@
 import type { PostContentFragmentResponseType } from "@dust-tt/client";
 import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isContentFragmentInputWithContentType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -11,6 +12,7 @@ import {
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 /**
@@ -90,7 +92,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: "Invalid request body.",
+            request_format_errors: r.error.flatten(),
           },
         });
       }
@@ -114,6 +117,17 @@ async function handler(
         r.data.contentType = normalizedContentType;
       }
       const { context, ...contentFragment } = r.data;
+
+      if (isContentFragmentInputWithContentType(contentFragment)) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationId: conversation.sId,
+            endpoint: "content_fragment",
+          },
+          "Public API: ContentFragmentInputWithContentType"
+        );
+      }
 
       const contentFragmentRes = await postNewContentFragment(
         auth,

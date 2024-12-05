@@ -66,6 +66,7 @@ import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
+import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
@@ -1756,6 +1757,11 @@ export async function postNewContentFragment(
   if (!canAccessConversation(auth, conversation)) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
+
+  await maybeUpsertFileAttachment(auth, {
+    contentFragments: [cf],
+    conversation,
+  });
 
   const messageId = generateRandomModelSId();
 

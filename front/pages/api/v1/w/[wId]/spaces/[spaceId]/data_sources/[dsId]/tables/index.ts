@@ -114,13 +114,16 @@ import { apiError } from "@app/logger/withlogging";
  *                 items:
  *                   type: string
  *                 description: Parent tables of this table
+ *               mime_type:
+ *                 type: string
+ *                 description: Mime type of the table
  *     responses:
  *       200:
  *         description: The table
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Datasource'
+ *               $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
  *       405:
@@ -243,7 +246,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: "Invalid request body.",
+            request_format_errors: r.error.flatten(),
           },
         });
       }
@@ -263,7 +267,7 @@ async function handler(
       let title: string;
       if (auth.isSystemKey()) {
         // If the request is from a system key, the request must provide both title and mimeType.
-        if (!r.data.mimeType) {
+        if (!r.data.mime_type) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -282,11 +286,11 @@ async function handler(
           });
         }
 
-        mimeType = r.data.mimeType;
+        mimeType = r.data.mime_type;
         title = r.data.title;
       } else {
         // If the request is from a regular API key, the request must not provide mimeType.
-        if (r.data.mimeType) {
+        if (r.data.mime_type) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {

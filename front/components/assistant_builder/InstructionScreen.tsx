@@ -15,6 +15,7 @@ import type {
   APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
+  LightAgentConfigurationType,
   ModelConfigurationType,
   ModelIdType,
   PlanType,
@@ -42,7 +43,13 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
@@ -56,6 +63,7 @@ import {
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -111,6 +119,7 @@ export function InstructionScreen({
   instructionsError,
   doTypewriterEffect,
   setDoTypewriterEffect,
+  agentConfigurationId,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
@@ -124,6 +133,7 @@ export function InstructionScreen({
   instructionsError: string | null;
   doTypewriterEffect: boolean;
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
+  agentConfigurationId: string | null;
 }) {
   const editor = useEditor({
     extensions: [
@@ -152,6 +162,44 @@ export function InstructionScreen({
     },
   });
   const editorService = useInstructionEditorService(editor);
+
+  const { agentConfigurationHistory } = useAgentConfigurationHistory({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+    disabled: !agentConfigurationId,
+    limit: 30,
+  });
+  // Keep a memory of overriden versions, to not lose them when switching back and forth
+  const [currentConfig, setCurrentConfig] =
+    useState<LightAgentConfigurationType | null>(null);
+  // versionNumber -> instructions
+  const [overridenConfigInstructions, setOverridenConfigInstructions] =
+    useState<{
+      [key: string]: string;
+    }>({});
+
+  // Deduplicate configs based on instructions
+  const configsWithUniqueInstructions: LightAgentConfigurationType[] =
+    useMemo(() => {
+      const uniqueInstructions = new Set<string>();
+      const configs: LightAgentConfigurationType[] = [];
+      agentConfigurationHistory?.forEach((config) => {
+        if (
+          !config.instructions ||
+          uniqueInstructions.has(config.instructions)
+        ) {
+          return;
+        } else {
+          uniqueInstructions.add(config.instructions);
+          configs.push(config);
+        }
+      });
+      return configs;
+    }, [agentConfigurationHistory]);
+
+  useEffect(() => {
+    setCurrentConfig(agentConfigurationHistory?.[0] || null);
+  }, [agentConfigurationHistory]);
 
   const [letterIndex, setLetterIndex] = useState(0);
 
@@ -251,6 +299,45 @@ export function InstructionScreen({
       </div>
       <div className="flex h-full flex-col gap-1">
         <div className="relative h-full min-h-[240px] grow gap-1 p-px">
+          {configsWithUniqueInstructions &&
+            configsWithUniqueInstructions.length > 1 &&
+            currentConfig && (
+              <div className="absolute right-2 top-2 z-10">
+                <PromptHistory
+                  history={configsWithUniqueInstructions}
+                  onConfigChange={(config) => {
+                    // Remember the instructions of the version we're leaving, if overriden
+                    if (
+                      currentConfig &&
+                      currentConfig.instructions !== builderState.instructions
+                    ) {
+                      setOverridenConfigInstructions((prev) => ({
+                        ...prev,
+                        [currentConfig.version]: builderState.instructions,
+                      }));
+                    }
+
+                    // Bring new version's instructions to the editor, fetch overriden instructions if any
+                    setCurrentConfig(config);
+                    editorService.resetContent(
+                      tipTapContentFromPlainText(
+                        overridenConfigInstructions[config.version] ||
+                          config.instructions ||
+                          ""
+                      )
+                    );
+                    setBuilderState((state) => ({
+                      ...state,
+                      instructions:
+                        overridenConfigInstructions[config.version] ||
+                        config.instructions ||
+                        "",
+                    }));
+                  }}
+                  currentConfig={currentConfig}
+                />
+              </div>
+            )}
           <EditorContent
             editor={editor}
             className="absolute bottom-0 left-0 right-0 top-0"
@@ -458,6 +545,64 @@ function AdvancedSettings({
         </div>
       }
     />
+  );
+}
+
+function PromptHistory({
+  history,
+  onConfigChange,
+  currentConfig,
+}: {
+  history: LightAgentConfigurationType[];
+  onConfigChange: (config: LightAgentConfigurationType) => void;
+  currentConfig: LightAgentConfigurationType;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const latestConfig = history[0];
+
+  const getStringRepresentation = useCallback(
+    (config: LightAgentConfigurationType) => {
+      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+      });
+      return config.version === latestConfig?.version
+        ? "Latest Version"
+        : config.versionCreatedAt
+          ? dateFormatter.format(new Date(config.versionCreatedAt))
+          : `v${config.version}`;
+    },
+    [latestConfig]
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          label={getStringRepresentation(currentConfig)}
+          variant="outline"
+          size="sm"
+          isSelect
+          onClick={() => setIsOpen(!isOpen)}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <ScrollArea className="flex max-h-[300px] flex-col">
+          {history.map((config) => (
+            <DropdownMenuItem
+              key={config.version}
+              label={getStringRepresentation(config)}
+              onClick={() => {
+                onConfigChange(config);
+              }}
+            />
+          ))}
+        </ScrollArea>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

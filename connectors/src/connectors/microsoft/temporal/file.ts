@@ -308,6 +308,8 @@ export async function syncOneFile({
           upsertContext: {
             sync_type: isBatchSync ? "batch" : "incremental",
           },
+          title: file.name ?? "",
+          mimeType: file.file.mimeType ?? "application/octet-stream",
           async: true,
         });
 

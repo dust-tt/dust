@@ -19,11 +19,9 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let execute = args.execute;
 
-    let created_start = 1733164800000 as i64; // 2024-12-02 18:40 UTC
-    let created_end = 99999999999999999 as i64; // 2024-12-03 08:25 UTC
-
     let batch_size = 1000 as i64;
-    let mut last_processed_id = 0 as i64;
+    let mut last_processed_id = 65496452 as i64; // Picked an ID that is for sure before the start
+    let max_id = 65804666 as i64; // Picked an ID that is for sure after the end
 
     let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
         Ok(db_uri) => {
@@ -35,9 +33,11 @@ async fn main() -> Result<()> {
     };
 
     println!(
-        "Fixing created for data_sources_documents from {} to {} (execute={})",
-        created_start, created_end, execute
+        "Fixing created for data_sources_documents from id={} to id={} (execute={})",
+        last_processed_id, max_id, execute
     );
+
+    let mut files_with_no_match: Vec<String> = Vec::new();
 
     loop {
         println!("Getting data_sources_documents batch {}", last_processed_id);
@@ -50,13 +50,8 @@ async fn main() -> Result<()> {
             .query(
                 "SELECT id, document_id, created, hash, data_source \
              FROM data_sources_documents \
-             WHERE created >= $1 AND created <= $2 AND id > $3 LIMIT $4",
-                &[
-                    &created_start,
-                    &created_end,
-                    &last_processed_id,
-                    &batch_size,
-                ],
+             WHERE id > $1 AND id <= $2 ORDER BY id ASC LIMIT $3",
+                &[&last_processed_id, &max_id, &batch_size],
             )
             .await?;
 
@@ -164,7 +159,8 @@ async fn main() -> Result<()> {
             };
 
             if paths.len() == 0 {
-                panic!("No matching files found for {}", wrong_file_name);
+                files_with_no_match.push(wrong_file_name);
+                continue;
             }
 
             let createds: Vec<i64> = paths
@@ -210,6 +206,8 @@ async fn main() -> Result<()> {
             }
         }
     }
+
+    println!("Files with no match: {:?}", files_with_no_match);
 
     Ok(())
 }

@@ -1,7 +1,5 @@
-import { Readable } from "stream";
-import { pipeline } from "stream/promises";
-
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -36,26 +34,7 @@ export async function internalCreateToolOutputCsvFile(
     },
   });
 
-  // Write both the "original" and "processed" versions simultaneously
-
-  await Promise.all([
-    pipeline(
-      Readable.from(content),
-      fileResource.getWriteStream({
-        auth,
-        version: "original",
-      })
-    ),
-    pipeline(
-      Readable.from(content),
-      fileResource.getWriteStream({
-        auth,
-        version: "processed",
-      })
-    ),
-  ]);
-
-  await fileResource.markAsReady();
+  await processAndStoreFile(auth, { file: fileResource, reqOrString: content });
 
   // If the tool returned no content, it makes no sense to upsert it to the data source
   if (content && (await isJITActionsEnabled(auth))) {

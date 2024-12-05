@@ -99,7 +99,7 @@ async function handler(
     }
 
     case "POST": {
-      const r = await processAndStoreFile(auth, { file, req });
+      const r = await processAndStoreFile(auth, { file, reqOrString: req });
 
       if (r.isErr()) {
         return apiError(req, res, {

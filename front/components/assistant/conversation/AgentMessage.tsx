@@ -2,12 +2,29 @@ import type {
   ConversationMessageSizeType,
   FeedbackSelectorProps,
 } from "@dust-tt/sparkle";
+import { CitationNewIndex } from "@dust-tt/sparkle";
+import {
+  CitationNew,
+  CitationNewIcons,
+  CitationNewTitle,
+  ConfluenceLogo,
+  DocumentTextIcon,
+  DriveLogo,
+  GithubLogo,
+  Icon,
+  ImageIcon,
+  IntercomLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SlackLogo,
+  SnowflakeLogo,
+  ZendeskLogo,
+} from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
   ChatBubbleThoughtIcon,
   Chip,
-  Citation,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
@@ -75,6 +92,20 @@ import {
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
+
+const typeIcons = {
+  confluence: ConfluenceLogo,
+  document: DocumentTextIcon,
+  github: GithubLogo,
+  google_drive: DriveLogo,
+  intercom: IntercomLogo,
+  microsoft: MicrosoftLogo,
+  zendesk: ZendeskLogo,
+  notion: NotionLogo,
+  slack: SlackLogo,
+  image: ImageIcon,
+  snowflake: SnowflakeLogo,
+};
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -409,7 +440,7 @@ export function AgentMessage({
           <Button
             key="copy-msg-button"
             tooltip="Copy to clipboard"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void navigator.clipboard.writeText(
@@ -417,18 +448,23 @@ export function AgentMessage({
               );
             }}
             icon={ClipboardIcon}
+            className="text-muted-foreground"
           />,
           <Button
             key="retry-msg-button"
             tooltip="Retry"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={() => {
               void retryHandler(agentMessageToRender);
             }}
             icon={ArrowPathIcon}
+            className="text-muted-foreground"
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
+          <div key="separator" className="flex items-center">
+            <div className="h-5 w-px bg-border" />
+          </div>,
           <FeedbackSelector
             key="feedback-selector"
             {...messageFeedback}
@@ -443,20 +479,6 @@ export function AgentMessage({
       setActiveReferences([...activeReferences, { index, document }]);
     }
   }
-
-  const [lastHoveredReference, setLastHoveredReference] = useState<
-    number | null
-  >(null);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (lastHoveredReference !== null) {
-      timer = setTimeout(() => {
-        setLastHoveredReference(null);
-      }, 1000); // Reset after 1 second.
-    }
-    return () => clearTimeout(timer);
-  }, [lastHoveredReference]);
 
   useEffect(() => {
     // Retrieval actions
@@ -516,8 +538,8 @@ export function AgentMessage({
   );
 
   const citations = useMemo(
-    () => getCitations({ activeReferences, lastHoveredReference }),
-    [activeReferences, lastHoveredReference]
+    () => getCitations({ activeReferences }),
+    [activeReferences]
   );
 
   const canMention =
@@ -626,7 +648,6 @@ export function AgentMessage({
                 value={{
                   references,
                   updateActiveReferences,
-                  setHoveredReference: setLastHoveredReference,
                 }}
               >
                 <Markdown
@@ -695,27 +716,22 @@ function AssitantName(
 
 function getCitations({
   activeReferences,
-  lastHoveredReference,
 }: {
   activeReferences: {
     index: number;
     document: MarkdownCitation;
   }[];
-  lastHoveredReference: number | null;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <Citation
-        key={index}
-        size="xs"
-        sizing="fluid"
-        isBlinking={lastHoveredReference === index}
-        type={document.type}
-        title={document.title}
-        href={document.href}
-        index={index}
-      />
+      <CitationNew key={index} href={document.href}>
+        <CitationNewIcons>
+          <CitationNewIndex>{index}</CitationNewIndex>
+          <Icon visual={typeIcons[document.type]} />
+        </CitationNewIcons>
+        <CitationNewTitle>{document.title}</CitationNewTitle>
+      </CitationNew>
     );
   });
 }
