@@ -9,7 +9,8 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
   RobotIcon,
-  ScrollArea, ScrollBar,
+  ScrollArea,
+  ScrollBar,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -93,7 +94,7 @@ export function AssistantPicker({
               }}
             />
           ))}
-          <ScrollBar className="py-0"/>
+          <ScrollBar className="py-0" />
         </ScrollArea>
         <DropdownMenuSeparator />
         {showFooterButtons && (
