@@ -330,7 +330,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                   configId: webCrawlerConfig.id,
                   url,
                 },
-                `Invalid url. Skipping`
+                `Invalid document or URL. Skipping`
               );
               return;
             }
