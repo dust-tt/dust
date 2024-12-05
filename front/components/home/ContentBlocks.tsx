@@ -1,10 +1,4 @@
-import {
-  AnimatedText,
-  ArrowRightIcon,
-  Avatar,
-  Button,
-  RocketIcon,
-} from "@dust-tt/sparkle";
+import { ArrowRightIcon, Avatar, Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
@@ -217,18 +211,18 @@ export const MetricComponent = ({
 );
 
 interface QuoteProps {
-  quote: ReactNode;
+  quote: string;
 }
 
 export const Quote = ({ quote }: QuoteProps) => (
   <div className="col-span-12 flex flex-col py-8 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
     <div className="flex flex-col items-center text-center font-objektiv text-3xl italic text-white">
-      &ldquo; <AnimatedText>{quote}</AnimatedText> &rdquo;
+      &ldquo; {quote} &rdquo;
     </div>
     <div className="flex justify-center pt-8">
       <div className="flex items-center justify-center gap-3">
         <Avatar size="lg" />
-        <P size="lg" className="text-white">
+        <P size="md" className="text-primary-400">
           Walter Moniot,
           <br />
           CPO at Malt

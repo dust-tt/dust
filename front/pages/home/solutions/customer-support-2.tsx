@@ -71,7 +71,7 @@ export default function CustomerSupport() {
       />
 
       <Grid>
-        <div
+        {/* <div
           className={classNames(
             "col-span-12 py-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
@@ -129,7 +129,7 @@ export default function CustomerSupport() {
           >
             <Avatar size="xl" emoji={"🚀"} backgroundColor={"bg-sky-300"} />
           </ImgBlock>
-        </div>
+        </div> */}
 
         <TrustedBy />
 
@@ -156,7 +156,6 @@ export default function CustomerSupport() {
           from="from-amber-200"
           to="to-amber-500"
         />
-
         <SolutionSection
           title="Top customer support use-cases."
           blocks={[
@@ -164,55 +163,49 @@ export default function CustomerSupport() {
               color: "sky",
               contentBlocks: [
                 {
-                  title: <>Ticket resolution assistance</>,
+                  title: <>Resolve faster.</>,
                   content: [
                     <>
-                      Smart answer suggestions and contextual knowledge at your
-                      fingertips.
+                      Surface relevant information from all connected knowledge
+                      bases instantly and understand messages in 50+ languages.
                     </>,
                   ],
                 },
                 {
-                  title: <>Onboarding, coaching</>,
+                  title: <>Boost Team Productivity.</>,
                   content: [
                     <>
-                      Helps new support agents learn best practices and company
-                      knowledge faster.
+                      Keep teams synchronized with real-time access to
+                      information across all communication channels and reduce
+                      onboarding times.
                     </>,
                   ],
                 },
                 {
-                  title: <>Documentation builder</>,
+                  title: <>Understand customer needs.</>,
                   content: [
                     <>
-                      Convert resolved support tickets into searchable knowledge
-                      base articles.
+                      Gain insights from coss-tool interactions to undertstand
+                      and act on customer needs, improve documentation.
                     </>,
                   ],
                 },
-                {
-                  title: <>Customer insights and voice</>,
-                  content: [
-                    <>
-                      Turn customer feedback from every channel into actionable
-                      insights. Identify trends and opportunities to drive
-                      product decisions.
-                    </>,
-                  ],
-                },
+              ],
+              assistantBlocks: [
+                assistantExamples[1],
+                assistantExamples[2],
+                assistantExamples[3],
+                assistantExamples[4],
               ],
             },
           ]}
         />
 
         <Quote
-          quote={
-            <>
-              We're managing a&nbsp;higher volume of&nbsp;tickets and have
+          quote="We're managing a&nbsp;higher volume of&nbsp;tickets and have
               cut&nbsp;processing time from an&nbsp;average of 6&nbsp;minutes
               per&nbsp;ticket to&nbsp;just a&nbsp;few&nbsp;seconds…
-            </>
-          }
+            "
         />
 
         <div
@@ -274,6 +267,51 @@ export default function CustomerSupport() {
     </>
   );
 }
+
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
+  {
+    emoji: "🖋️",
+    name: "@TicketResolution",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Generates personalized and&nbsp;effective cold emails or&nbsp;follow-up
+        emails with the&nbsp;context of&nbsp;the relationship
+      </>
+    ),
+  },
+  {
+    emoji: "🔎",
+    name: "@AgentCoaching",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Creates a&nbsp;snapshot by&nbsp;retrieving data from&nbsp;your CRM,
+        Slack, Notion, including health and&nbsp;sentiment to&nbsp;understand
+        where to&nbsp;focus attention
+      </>
+    ),
+  },
+  {
+    emoji: "📞",
+    name: "@DocumentationBuilder",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Points to&nbsp;battle cards, competitive intelligence,
+        and&nbsp;objection handling documentation to&nbsp;increase conversion
+      </>
+    ),
+  },
+  {
+    emoji: "📊",
+    name: "@CustomerVoice",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>Answers any question on&nbsp;revenue metrics directly from&nbsp;Slack</>
+    ),
+  },
+];
 
 CustomerSupport.getLayout = (
   page: ReactElement,
