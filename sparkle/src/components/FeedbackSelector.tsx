@@ -16,11 +16,14 @@ export type FeedbackAssistantBuilder = {
   name: string;
   pictureUrl: string;
 };
+
 export type ThumbReaction = "up" | "down";
+
 export type FeedbackType = {
   thumb: ThumbReaction;
   feedbackContent: string | null;
 };
+
 export interface FeedbackSelectorProps {
   feedback: FeedbackType | null;
   onSubmitThumb: (
@@ -47,7 +50,6 @@ export function FeedbackSelector({
     null
   );
 
-  // Reset local feedback content when popup opens
   useEffect(() => {
     if (isPopoverOpen) {
       if (getPopoverInfo) {
@@ -72,17 +74,17 @@ export function FeedbackSelector({
     <div ref={containerRef} className="s-flex s-items-center">
       <PopoverRoot open={isPopoverOpen}>
         <PopoverTrigger asChild>
-          <div className="s-flex s-items-center">
+          <div className="s-flex s-items-center s-gap-2">
             <Tooltip
               label="I found this helpful"
               trigger={
                 <Button
-                  variant={feedback?.thumb === "up" ? "highlight" : "outline"}
+                  variant={feedback?.thumb === "up" ? "primary" : "ghost"}
                   size="xs"
                   disabled={isSubmittingThumb}
                   onClick={() => selectThumb("up")}
-                  className={"s-rounded-r-none s-border-r-0"}
                   icon={HandThumbUpIcon}
+                  className={feedback?.thumb === "up" ? "" : "[&_svg]:s-text-muted-foreground"}
                 />
               }
             />
@@ -90,12 +92,12 @@ export function FeedbackSelector({
               label="Report an issue with this answer"
               trigger={
                 <Button
-                  variant={feedback?.thumb === "down" ? "highlight" : "outline"}
+                  variant={feedback?.thumb === "down" ? "primary" : "ghost"}
                   size="xs"
                   disabled={isSubmittingThumb}
                   onClick={() => selectThumb("down")}
-                  className={"s-rounded-l-none s-border-l-0"}
                   icon={HandThumbDownIcon}
+                  className={feedback?.thumb === "down" ? "" : "[&_svg]:s-text-muted-foreground"}
                 />
               }
             />
