@@ -1,21 +1,12 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class RunModel extends Model<
-  InferAttributes<RunModel>,
-  InferCreationAttributes<RunModel>
-> {
-  declare id: CreationOptional<number>;
+export class RunModel extends BaseModel<RunModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -30,11 +21,6 @@ export class RunModel extends Model<
 
 RunModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -77,12 +63,7 @@ Workspace.hasMany(RunModel, {
   onDelete: "CASCADE",
 });
 
-export class RunUsageModel extends Model<
-  InferAttributes<RunUsageModel>,
-  InferCreationAttributes<RunUsageModel>
-> {
-  declare id: CreationOptional<number>;
-
+export class RunUsageModel extends BaseModel<RunUsageModel> {
   declare runId: ForeignKey<RunModel["id"]>;
 
   declare providerId: string; //ModelProviderIdType;
@@ -94,11 +75,6 @@ export class RunUsageModel extends Model<
 
 RunUsageModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,

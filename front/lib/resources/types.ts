@@ -6,7 +6,10 @@ import type {
   WhereOptions,
 } from "sequelize";
 
-import type { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import type {
+  BaseModel,
+  SoftDeletableModel,
+} from "@app/lib/resources/storage/wrappers";
 
 export type NonAttributeKeys<M> = {
   [K in keyof M]: M[K] extends NonAttribute<Model<any, any>> ? K : never;
@@ -15,7 +18,7 @@ export type NonAttributeKeys<M> = {
 
 export type InferIncludeType<M> = {
   [K in NonAttributeKeys<M>]: M[K] extends NonAttribute<infer T>
-    ? T extends Model<any, any>
+    ? T extends BaseModel<any>
       ? T
       : never
     : never;

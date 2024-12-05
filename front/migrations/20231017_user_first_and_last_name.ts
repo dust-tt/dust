@@ -1,8 +1,8 @@
-import { User } from "@app/lib/models/user";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 
 async function main() {
-  const users: User[] = await User.findAll({
+  const users: UserModel[] = await UserModel.findAll({
     // Was run with this were but then we make first name non nullable and linter is not happy
     // where: {
     //   firstName: {
@@ -22,7 +22,7 @@ async function main() {
     console.log(`Processing chunk ${i}/${chunks.length}...`);
     const chunk = chunks[i];
     await Promise.all(
-      chunk.map((u: User) => {
+      chunk.map((u: UserModel) => {
         return (async () => {
           if (!u.firstName) {
             const { firstName, lastName } = guessFirstAndLastNameFromFullName(

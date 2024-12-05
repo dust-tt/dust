@@ -3,10 +3,10 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { Conversation } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
@@ -15,7 +15,7 @@ export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare updatedAt: CreationOptional<Date>;
 
   // Corresponds to the ID of the last user to configure the connection.
-  declare editedByUserId: ForeignKey<User["id"]> | null;
+  declare editedByUserId: ForeignKey<UserModel["id"]> | null;
   declare editedAt: Date;
 
   declare name: string;
@@ -29,7 +29,7 @@ export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare conversationId: ForeignKey<Conversation["id"]>;
 
-  declare editedByUser: NonAttribute<User>;
+  declare editedByUser: NonAttribute<UserModel>;
   declare conversation: NonAttribute<Conversation>;
   declare space: NonAttribute<SpaceModel>;
   declare workspace: NonAttribute<Workspace>;
@@ -113,7 +113,7 @@ DataSourceModel.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
 });
 
-DataSourceModel.belongsTo(User, {
+DataSourceModel.belongsTo(UserModel, {
   as: "editedByUser",
   foreignKey: { name: "editedByUserId", allowNull: true },
 });

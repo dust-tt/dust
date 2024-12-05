@@ -6,21 +6,16 @@ import { SUBSCRIPTION_STATUSES } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
   NonAttribute,
   Transaction,
 } from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class Plan extends Model<
-  InferAttributes<Plan>,
-  InferCreationAttributes<Plan>
-> {
-  declare id: CreationOptional<number>;
+export class Plan extends BaseModel<Plan> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -48,11 +43,6 @@ export class Plan extends Model<
 }
 Plan.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -153,11 +143,7 @@ Plan.init(
   }
 );
 
-export class Subscription extends Model<
-  InferAttributes<Subscription>,
-  InferCreationAttributes<Subscription>
-> {
-  declare id: CreationOptional<number>;
+export class Subscription extends BaseModel<Subscription> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -183,11 +169,6 @@ export class Subscription extends Model<
 }
 Subscription.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

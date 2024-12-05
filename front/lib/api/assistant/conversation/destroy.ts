@@ -64,6 +64,7 @@ async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
   await Mention.destroy({
     where: { messageId: messageIds },
   });
+  // TODO: We should also destroy the parent message
   await Message.destroy({
     where: { id: messageIds },
   });

@@ -1,19 +1,11 @@
 import type { UserProviderType } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class User extends Model<
-  InferAttributes<User>,
-  InferCreationAttributes<User>
-> {
-  declare id: CreationOptional<number>;
+export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -31,13 +23,8 @@ export class User extends Model<
 
   declare isDustSuperUser: CreationOptional<boolean>;
 }
-User.init(
+UserModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -108,24 +95,15 @@ User.init(
   }
 );
 
-export class UserMetadata extends Model<
-  InferAttributes<UserMetadata>,
-  InferCreationAttributes<UserMetadata>
-> {
-  declare id: CreationOptional<number>;
+export class UserMetadataModel extends BaseModel<UserMetadataModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare key: string;
   declare value: string;
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
 }
-UserMetadata.init(
+UserMetadataModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -151,7 +129,7 @@ UserMetadata.init(
     indexes: [{ fields: ["userId", "key"], unique: true }],
   }
 );
-User.hasMany(UserMetadata, {
+UserModel.hasMany(UserMetadataModel, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });

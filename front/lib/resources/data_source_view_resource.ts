@@ -23,7 +23,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { User } from "@app/lib/models/user";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -31,6 +30,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -70,13 +70,13 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
   private ds?: DataSourceResource;
-  readonly editedByUser?: Attributes<User>;
+  readonly editedByUser?: Attributes<UserModel>;
 
   constructor(
     model: ModelStatic<DataSourceViewModel>,
     blob: Attributes<DataSourceViewModel>,
     space: SpaceResource,
-    { editedByUser }: { editedByUser?: Attributes<User> } = {}
+    { editedByUser }: { editedByUser?: Attributes<UserModel> } = {}
   ) {
     super(DataSourceViewModel, blob, space);
 
@@ -185,7 +185,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     if (options?.includeEditedBy) {
       result.includes = [
         {
-          model: User,
+          model: UserModel,
           as: "editedByUser",
           required: false,
         },
@@ -437,7 +437,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   }
 
   private makeEditedBy(
-    editedByUser: Attributes<User> | undefined,
+    editedByUser: Attributes<UserModel> | undefined,
     editedAt: Date | undefined
   ) {
     if (!editedByUser || !editedAt) {

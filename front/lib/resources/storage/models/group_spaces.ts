@@ -1,31 +1,18 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class GroupSpaceModel extends Model<
-  InferAttributes<GroupSpaceModel>,
-  InferCreationAttributes<GroupSpaceModel>
-> {
-  declare id: CreationOptional<number>;
+export class GroupSpaceModel extends BaseModel<GroupSpaceModel> {
   declare createdAt: CreationOptional<Date>;
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 }
 GroupSpaceModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
