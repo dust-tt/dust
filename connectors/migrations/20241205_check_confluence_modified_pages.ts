@@ -19,6 +19,8 @@ makeScript(
   async ({ timeWindowMs }) => {
     const connectors = await ConnectorResource.listByType("confluence", {});
 
+    const startDate = new Date(Date.now() - timeWindowMs);
+
     for (const connector of connectors) {
       console.log(`\n -- Checking connector ${connector.id}`);
       let connectorCount = 0;
@@ -50,6 +52,14 @@ makeScript(
           if (pages.length === 0) {
             break;
           }
+          const oldestPage = pages[pages.length - 1];
+          if (
+            oldestPage &&
+            new Date(oldestPage.version.createdAt) < startDate
+          ) {
+            break;
+          }
+
           cursor = nextPageCursor;
           pages.forEach((page) => allPages.push(page));
         }
