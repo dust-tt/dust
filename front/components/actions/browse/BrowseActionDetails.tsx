@@ -1,4 +1,11 @@
-import { Citation, GlobeAltIcon } from "@dust-tt/sparkle";
+import {
+  CitationNew,
+  CitationNewDescription,
+  CitationNewIcons,
+  CitationNewTitle,
+  GlobeAltIcon,
+  Icon,
+} from "@dust-tt/sparkle";
 import type { BrowseActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -27,15 +34,15 @@ export function BrowseActionDetails({
                 </span>
 
                 {r.responseCode === "200" ? (
-                  <Citation
-                    key={idx}
-                    size="xs"
-                    type="document"
-                    sizing="fluid"
-                    title={r.browsedUrl}
-                    description={r.content.slice(0, 500)}
-                    href={r.browsedUrl}
-                  />
+                  <CitationNew key={idx} href={r.browsedUrl}>
+                    <CitationNewIcons>
+                      <Icon visual={GlobeAltIcon} />
+                    </CitationNewIcons>
+                    <CitationNewTitle>{r.browsedUrl}</CitationNewTitle>
+                    <CitationNewDescription>
+                      {r.content.slice(0, 500)}
+                    </CitationNewDescription>
+                  </CitationNew>
                 ) : (
                   <span className="text-sm text-slate-900">
                     Cannot fetch content, error code : {r.responseCode}.

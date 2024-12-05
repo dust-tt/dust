@@ -2,6 +2,7 @@ import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import type { ModelId } from "@dust-tt/types";
 import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
 import { stripNullBytes } from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
@@ -317,14 +318,26 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             extracted.length > 0 &&
             extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
           ) {
+            const formattedDocumentContent = formatDocumentContent({
+              title: pageTitle,
+              content: extracted,
+              url: request.url,
+            });
+            if (!formattedDocumentContent) {
+              childLogger.info(
+                {
+                  documentId,
+                  configId: webCrawlerConfig.id,
+                  url,
+                },
+                `Invalid document or URL. Skipping`
+              );
+              return;
+            }
             await upsertToDatasource({
               dataSourceConfig,
               documentId: documentId,
-              documentContent: formatDocumentContent({
-                title: pageTitle,
-                content: extracted,
-                url: request.url,
-              }),
+              documentContent: formattedDocumentContent,
               documentUrl: request.url,
               timestampMs: new Date().getTime(),
               tags: [`title:${stripNullBytes(pageTitle)}`],
@@ -466,18 +479,25 @@ function formatDocumentContent({
   title: string;
   content: string;
   url: string;
-}): CoreAPIDataSourceDocumentSection {
+}): CoreAPIDataSourceDocumentSection | null {
   const URL_MAX_LENGTH = 128;
   const TITLE_MAX_LENGTH = 300;
-  const parsedUrl = new URL(url);
+
+  const validatedUrl = validateUrl(url);
+  if (!validatedUrl.valid || !validatedUrl.standardized) {
+    return null;
+  }
+
+  const parsedUrl = new URL(validatedUrl.standardized);
   const urlWithoutQuery = `${parsedUrl.origin}/${parsedUrl.pathname}`;
 
   const sanitizedContent = stripNullBytes(content);
   const sanitizedTitle = stripNullBytes(title);
+  const sanitizedUrlWithoutQuery = stripNullBytes(urlWithoutQuery);
 
   return {
-    prefix: `URL: ${urlWithoutQuery.slice(0, URL_MAX_LENGTH)}${
-      urlWithoutQuery.length > URL_MAX_LENGTH ? "..." : ""
+    prefix: `URL: ${sanitizedUrlWithoutQuery.slice(0, URL_MAX_LENGTH)}${
+      sanitizedUrlWithoutQuery.length > URL_MAX_LENGTH ? "..." : ""
     }\n`,
     content: `TITLE: ${sanitizedTitle.substring(0, TITLE_MAX_LENGTH)}\n${sanitizedContent}`,
     sections: [],
