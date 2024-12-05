@@ -468,7 +468,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   }
 
   private makeEditedBy(
-    editedByUser: Attributes<User> | undefined,
+    editedByUser: Attributes<UserModel> | undefined,
     editedAt: Date | undefined
   ) {
     if (!editedByUser || !editedAt) {

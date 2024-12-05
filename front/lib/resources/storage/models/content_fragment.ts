@@ -29,7 +29,7 @@ export class ContentFragmentModel extends BaseModel<ContentFragmentModel> {
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
 
-  declare userId: ForeignKey<User["id"]> | null;
+  declare userId: ForeignKey<UserModel["id"]> | null;
   declare fileId: ForeignKey<FileModel["id"]> | null;
 
   declare version: ContentFragmentVersion;

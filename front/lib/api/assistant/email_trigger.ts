@@ -24,7 +24,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import type { UserModel } from "@app/lib/resources/storage/models/user";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -106,7 +106,7 @@ export async function userAndWorkspacesFromEmail({
     EmailTriggerError
   >
 > {
-  const user = await User.findOne({
+  const user = await UserModel.findOne({
     where: { email },
   });
 
