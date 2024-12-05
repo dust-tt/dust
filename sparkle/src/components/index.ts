@@ -1,5 +1,3 @@
-import { TypingAnimation } from "@sparkle/index_with_tw_base";
-
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
 export { AssistantPreview } from "./AssistantPreview";
