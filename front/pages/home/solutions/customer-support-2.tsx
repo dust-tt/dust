@@ -42,13 +42,19 @@ interface pageSettingsProps {
 
 const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
-  title: <>Instant knowledge, exceptional support.</>,
+  title: (
+    <>
+      Instant knowledge,
+      <br />
+      exceptional support.
+    </>
+  ),
   from: "from-sky-200",
   to: "to-sky-500",
   description: (
     <>
-      Dust brings all your tools and company knowledge at your fingertips for
-      endless possibilities.
+      Dust brings all your&nbsp;tools and&nbsp;company knowledge at
+      your&nbsp;fingertips for&nbsp;endless&nbsp;possibilities.
     </>
   ),
 };
@@ -131,16 +137,24 @@ export default function CustomerSupport() {
           metrics={[
             {
               value: "15x",
-              description:
-                "Responses generated 15x faster after implementing Dust",
+              description: (
+                <>
+                  Responses generated 15x&nbsp;faster
+                  after&nbsp;implementing&nbsp;Dust
+                </>
+              ),
             },
             {
               value: "8h",
-              description: "Save 8 hours per agent per week on average",
+              description: (
+                <>
+                  Save 8&nbsp;hours per&nbsp;agent per&nbsp;week on&nbsp;average
+                </>
+              ),
             },
           ]}
-          from={pageSettings.from}
-          to={pageSettings.to}
+          from="from-amber-200"
+          to="to-amber-500"
         />
 
         <SolutionSection
@@ -191,7 +205,15 @@ export default function CustomerSupport() {
           ]}
         />
 
-        <Quote quote="We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds" />
+        <Quote
+          quote={
+            <>
+              We're managing a&nbsp;higher volume of&nbsp;tickets and have
+              cut&nbsp;processing time from an&nbsp;average of 6&nbsp;minutes
+              per&nbsp;ticket to&nbsp;just a&nbsp;few&nbsp;seconds…
+            </>
+          }
+        />
 
         <div
           className={classNames(
@@ -203,9 +225,7 @@ export default function CustomerSupport() {
           )}
         >
           <H2 from={pageSettings.from} to={pageSettings.to}>
-            How Dust boosts
-            <br />
-            support teams at:
+            How&nbsp;Dust boosts support teams&nbsp;at:
           </H2>
         </div>
         <div className="col-span-12 flex flex-col items-center gap-4">
