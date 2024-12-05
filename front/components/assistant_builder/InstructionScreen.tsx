@@ -590,7 +590,7 @@ function PromptHistory({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <ScrollArea>
+        <ScrollArea className="flex max-h-[300px] flex-col">
           {history.map((config) => (
             <DropdownMenuItem
               key={config.version}
