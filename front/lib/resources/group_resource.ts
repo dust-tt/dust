@@ -642,7 +642,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.isAdmin()) {
+    if (!auth.canAdministrate(this.requestedPermissions())) {
       return new Err(new Error("Only admins can update group names."));
     }
 
