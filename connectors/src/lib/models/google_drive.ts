@@ -1,19 +1,11 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
-export class GoogleDriveConfig extends Model<
-  InferAttributes<GoogleDriveConfig>,
-  InferCreationAttributes<GoogleDriveConfig>
-> {
-  declare id: CreationOptional<number>;
+export class GoogleDriveConfig extends BaseModel<GoogleDriveConfig> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -23,11 +15,6 @@ export class GoogleDriveConfig extends Model<
 }
 GoogleDriveConfig.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -67,11 +54,7 @@ GoogleDriveConfig.init(
 ConnectorModel.hasOne(GoogleDriveConfig);
 
 // GoogleDriveFolders stores the folders selected by the user to sync.
-export class GoogleDriveFolders extends Model<
-  InferAttributes<GoogleDriveFolders>,
-  InferCreationAttributes<GoogleDriveFolders>
-> {
-  declare id: CreationOptional<number>;
+export class GoogleDriveFolders extends BaseModel<GoogleDriveFolders> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -79,11 +62,6 @@ export class GoogleDriveFolders extends Model<
 }
 GoogleDriveFolders.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -112,11 +90,7 @@ GoogleDriveFolders.init(
 ConnectorModel.hasOne(GoogleDriveFolders);
 
 // GoogleDriveFiles stores files and folders synced from Google Drive.
-export class GoogleDriveFiles extends Model<
-  InferAttributes<GoogleDriveFiles>,
-  InferCreationAttributes<GoogleDriveFiles>
-> {
-  declare id: CreationOptional<number>;
+export class GoogleDriveFiles extends BaseModel<GoogleDriveFiles> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenTs: Date | null;
@@ -131,11 +105,6 @@ export class GoogleDriveFiles extends Model<
 }
 GoogleDriveFiles.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -196,11 +165,7 @@ GoogleDriveFiles.init(
 );
 ConnectorModel.hasOne(GoogleDriveFiles);
 
-export class GoogleDriveSheet extends Model<
-  InferAttributes<GoogleDriveSheet>,
-  InferCreationAttributes<GoogleDriveSheet>
-> {
-  declare id: CreationOptional<number>;
+export class GoogleDriveSheet extends BaseModel<GoogleDriveSheet> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -210,11 +175,6 @@ export class GoogleDriveSheet extends Model<
 }
 GoogleDriveSheet.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -254,11 +214,7 @@ ConnectorModel.hasOne(GoogleDriveSheet);
 
 // Sync Token are the equivalent of a timestamp for syncing the delta
 // between the last sync and the current sync.
-export class GoogleDriveSyncToken extends Model<
-  InferAttributes<GoogleDriveSyncToken>,
-  InferCreationAttributes<GoogleDriveSyncToken>
-> {
-  declare id: CreationOptional<number>;
+export class GoogleDriveSyncToken extends BaseModel<GoogleDriveSyncToken> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   // The driveId is the Google Drive Id of the user's drive.
@@ -271,11 +227,6 @@ export class GoogleDriveSyncToken extends Model<
 }
 GoogleDriveSyncToken.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

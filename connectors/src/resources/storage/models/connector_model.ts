@@ -3,20 +3,13 @@ import type {
   ConnectorProvider,
   ConnectorSyncStatus,
 } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
-export class ConnectorModel extends Model<
-  InferAttributes<ConnectorModel>,
-  InferCreationAttributes<ConnectorModel>
-> {
-  declare id: CreationOptional<number>;
+export class ConnectorModel extends BaseModel<ConnectorModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare type: ConnectorProvider;
@@ -40,11 +33,6 @@ export class ConnectorModel extends Model<
 
 ConnectorModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

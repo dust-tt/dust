@@ -1,19 +1,11 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
-export class ConfluenceConfiguration extends Model<
-  InferAttributes<ConfluenceConfiguration>,
-  InferCreationAttributes<ConfluenceConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class ConfluenceConfiguration extends BaseModel<ConfluenceConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -25,11 +17,6 @@ export class ConfluenceConfiguration extends Model<
 }
 ConfluenceConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     cloudId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -65,11 +52,7 @@ ConfluenceConfiguration.init(
 ConnectorModel.hasOne(ConfluenceConfiguration);
 
 // ConfluenceSpace stores the global spaces selected by the user to sync.
-export class ConfluenceSpace extends Model<
-  InferAttributes<ConfluenceSpace>,
-  InferCreationAttributes<ConfluenceSpace>
-> {
-  declare id: CreationOptional<number>;
+export class ConfluenceSpace extends BaseModel<ConfluenceSpace> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -79,11 +62,6 @@ export class ConfluenceSpace extends Model<
 }
 ConfluenceSpace.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     connectorId: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -120,11 +98,7 @@ ConfluenceSpace.init(
 ConnectorModel.hasOne(ConfluenceSpace);
 
 // ConfluencePages stores the pages.
-export class ConfluencePage extends Model<
-  InferAttributes<ConfluencePage>,
-  InferCreationAttributes<ConfluencePage>
-> {
-  declare id: CreationOptional<number>;
+export class ConfluencePage extends BaseModel<ConfluencePage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastVisitedAt: CreationOptional<Date>;
@@ -141,11 +115,6 @@ export class ConfluencePage extends Model<
 }
 ConfluencePage.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

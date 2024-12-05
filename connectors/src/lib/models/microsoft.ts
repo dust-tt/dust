@@ -1,20 +1,12 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
-export class MicrosoftConfigurationModel extends Model<
-  InferAttributes<MicrosoftConfigurationModel>,
-  InferCreationAttributes<MicrosoftConfigurationModel>
-> {
-  declare id: CreationOptional<number>;
+export class MicrosoftConfigurationModel extends BaseModel<MicrosoftConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -24,11 +16,6 @@ export class MicrosoftConfigurationModel extends Model<
 }
 MicrosoftConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -72,11 +59,7 @@ ConnectorModel.hasMany(MicrosoftConfigurationModel);
 // In order to be able to uniquely identify each node, we store the GET path
 // to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the toplevel
 // sites-root and teams-root, which are stored as "sites-root" and "teams-root" respectively.
-export class MicrosoftRootModel extends Model<
-  InferAttributes<MicrosoftRootModel>,
-  InferCreationAttributes<MicrosoftRootModel>
-> {
-  declare id: CreationOptional<number>;
+export class MicrosoftRootModel extends BaseModel<MicrosoftRootModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -85,11 +68,6 @@ export class MicrosoftRootModel extends Model<
 }
 MicrosoftRootModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -125,11 +103,7 @@ MicrosoftRootModel.init(
 ConnectorModel.hasMany(MicrosoftRootModel);
 
 // MicrosftNode stores nodes (e.g. files, folder, channels, ...) synced from Microsoft.
-export class MicrosoftNodeModel extends Model<
-  InferAttributes<MicrosoftNodeModel>,
-  InferCreationAttributes<MicrosoftNodeModel>
-> {
-  declare id: CreationOptional<number>;
+export class MicrosoftNodeModel extends BaseModel<MicrosoftNodeModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenTs: Date | null;
@@ -147,11 +121,6 @@ export class MicrosoftNodeModel extends Model<
 
 MicrosoftNodeModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
