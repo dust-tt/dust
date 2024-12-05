@@ -364,6 +364,29 @@ export default function LabsTranscriptsIndex({
     return updateIsActive(transcriptConfigurationId, isActive);
   };
 
+  const handleCreateApiKey = async (apiKey: string) => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/labs/transcripts/api_key`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ apiKey }),
+      }
+    );
+
+    if (!response.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update",
+        description: "Could not update the API key. Please try again.",
+      });
+    }
+
+    await mutateTranscriptsConfiguration();
+  };
+
   const saveOAuthConnection = async (
     connectionId: string,
     provider: string
@@ -500,6 +523,15 @@ export default function LabsTranscriptsIndex({
         return;
       }
 
+      if (!transcriptsConfigurationState.apiKey) {
+        sendNotification({
+          type: "error",
+          title: "Modjo API key is required",
+          description: "Please enter your Modjo API key.",
+        });
+        return;
+      }
+
       const response = await fetch(
         `/api/w/${owner.sId}/labs/transcripts/default?provider=modjo`
       );
@@ -509,10 +541,10 @@ export default function LabsTranscriptsIndex({
         const defaultConfiguration: LabsTranscriptsConfigurationResource =
           defaultConfigurationRes.configuration;
 
-        if (defaultConfiguration.provider !== "gong") {
+        if (defaultConfiguration.provider !== "modjo") {
           sendNotification({
             type: "error",
-            title: "Failed to connect Gong",
+            title: "Failed to connect Modjo",
             description:
               "Your workspace is already connected to another provider",
           });

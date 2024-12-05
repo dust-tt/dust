@@ -17,12 +17,19 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 export const acceptableTranscriptProvidersCodec = t.union([
   t.literal("google_drive"),
   t.literal("gong"),
+  t.literal("modjo"),
 ]);
 
-export const PostLabsTranscriptsConfigurationBodySchema = t.type({
-  connectionId: t.string,
-  provider: acceptableTranscriptProvidersCodec,
-});
+export const PostLabsTranscriptsConfigurationBodySchema = t.union([
+  t.type({
+    connectionId: t.string,
+    provider: acceptableTranscriptProvidersCodec,
+  }),
+  t.type({
+    apiKey: t.string,
+    provider: acceptableTranscriptProvidersCodec,
+  }),
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -80,7 +87,14 @@ async function handler(
         });
       }
 
-      const { connectionId, provider } = bodyValidation.right;
+      const validatedBody = bodyValidation.right;
+      const connectionId =
+        "connectionId" in validatedBody
+          ? validatedBody.connectionId
+          : undefined;
+      const apiKey =
+        "apiKey" in validatedBody ? validatedBody.apiKey : undefined;
+      const { provider } = validatedBody;
 
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
@@ -103,7 +117,8 @@ async function handler(
           userId: user.id,
           workspaceId: owner.id,
           provider,
-          connectionId,
+          connectionId: connectionId ?? null,
+          apiKey: apiKey ?? null,
         });
 
       return res
