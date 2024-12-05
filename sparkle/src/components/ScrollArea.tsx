@@ -3,7 +3,7 @@ import * as React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-interface ScrollAreaProps
+export interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   hideScrollBar?: boolean;
 }
