@@ -33,6 +33,9 @@ module.exports = {
       zIndex: {
         60: "60",
       },
+      minWidth: (theme) => ({
+        ...theme("spacing"),
+      }),
       minHeight: (theme) => ({
         ...theme("spacing"),
       }),
