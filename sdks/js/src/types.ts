@@ -68,6 +68,7 @@ export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
 
+// Supported content types that are plain text and can be sent as file-less content fragment.
 export const supportedRawText = {
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
@@ -78,7 +79,7 @@ export const supportedRawText = {
   "text/vnd.dust.attachment.slack.thread": [".txt"],
 } as const;
 
-// Supported content types for plain text.
+// Supported content types for plain text (after processing).
 export const supportedPlainText = {
   "application/msword": [".doc", ".docx"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
@@ -95,9 +96,14 @@ export const supportedImage = {
   "image/png": [".png"],
 } as const;
 
+// Legacy content types still retuned by the API when rendering old messages.
+export const supportedLegacy = {
+  "dust-application/slack": [],
+} as const;
+
 export type PlainTextContentType = keyof typeof supportedPlainText;
-export type RawTextContentType = keyof typeof supportedRawText;
 export type ImageContentType = keyof typeof supportedImage;
+export type LegacyContentType = keyof typeof supportedLegacy;
 
 export const supportedPlainTextContentTypes = Object.keys(
   supportedPlainText
@@ -108,9 +114,6 @@ export const supportedImageContentTypes = Object.keys(
 export const supportedLegacyContentTypes = Object.keys(
   supportedImage
 ) as ImageContentType[];
-export const supportedRawTextContentTypes = Object.keys(
-  supportedRawText
-) as RawTextContentType[];
 
 export type SupportedFileContentType = PlainTextContentType | ImageContentType;
 const supportedUploadableContentType = [
@@ -121,13 +124,16 @@ const supportedUploadableContentType = [
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
   ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
   ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
+  ...(Object.keys(supportedLegacy) as [keyof typeof supportedLegacy]),
 ]);
 
 const SupportedInlinedContentFragmentTypeSchema = FlexibleEnumSchema([
   ...(Object.keys(supportedRawText) as [keyof typeof supportedRawText]),
 ]);
-const SupportedFileContentFragmentTypeSchema =
-  SupportedContentFragmentTypeSchema;
+const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema([
+  ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
+  ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
+]);
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 

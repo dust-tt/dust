@@ -19,7 +19,6 @@ import {
   createConversation,
   getConversation,
   getUserConversations,
-  normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -169,13 +168,6 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       for (const resolvedFragment of resolvedFragments) {
-        if (resolvedFragment.content) {
-          resolvedFragment.contentType = normalizeContentFragmentType({
-            contentType: resolvedFragment.contentType,
-            url: req.url,
-          });
-        }
-
         const { context, ...cf } = resolvedFragment;
 
         if (isContentFragmentInputWithContentType(cf)) {
