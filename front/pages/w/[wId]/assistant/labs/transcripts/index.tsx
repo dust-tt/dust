@@ -5,6 +5,7 @@ import {
   CloudArrowLeftRightIcon,
   ContentMessage,
   Dialog,
+  Input,
   Page,
   SliderToggle,
   Spinner,
@@ -41,9 +42,11 @@ const defaultTranscriptConfigurationState = {
   provider: "",
   isGDriveConnected: false,
   isGongConnected: false,
+  isModjoConnected: false,
   assistantSelected: null,
   isActive: false,
   dataSourceView: null,
+  apiKey: null,
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -169,9 +172,11 @@ export default function LabsTranscriptsIndex({
       provider: string;
       isGDriveConnected: boolean;
       isGongConnected: boolean;
+      isModjoConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
       dataSourceView: DataSourceViewType | null;
+      apiKey: string | null;
     }>(defaultTranscriptConfigurationState);
 
   useEffect(() => {
@@ -489,6 +494,64 @@ export default function LabsTranscriptsIndex({
     }
   };
 
+  const handleConnectModjoTranscriptsSource = async () => {
+    try {
+      if (transcriptsConfigurationState.provider !== "modjo") {
+        return;
+      }
+
+      const response = await fetch(
+        `/api/w/${owner.sId}/labs/transcripts/default?provider=modjo`
+      );
+
+      if (response.ok) {
+        const defaultConfigurationRes = await response.json();
+        const defaultConfiguration: LabsTranscriptsConfigurationResource =
+          defaultConfigurationRes.configuration;
+
+        if (defaultConfiguration.provider !== "gong") {
+          sendNotification({
+            type: "error",
+            title: "Failed to connect Gong",
+            description:
+              "Your workspace is already connected to another provider",
+          });
+          return;
+        }
+
+        await saveOAuthConnection(
+          defaultConfiguration.connectionId,
+          transcriptsConfigurationState.provider
+        );
+
+        return;
+      } else {
+        const cRes = await setupOAuthConnection({
+          dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+          owner,
+          provider: "gong",
+          useCase: "connection",
+          extraConfig: {},
+        });
+        if (!cRes.isOk()) {
+          return cRes;
+        }
+        const connectionId = cRes.value.connection_id;
+
+        await saveOAuthConnection(
+          connectionId,
+          transcriptsConfigurationState.provider
+        );
+      }
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Gong",
+        description: "Could not connect to Gong. Please try again.",
+      });
+    }
+  };
+
   const handleDisconnectProvider = async () => {
     if (!transcriptsConfiguration) {
       return;
@@ -579,6 +642,19 @@ export default function LabsTranscriptsIndex({
                   style={{ maxHeight: "35px" }}
                 />
               </div>
+              <div
+                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                  transcriptsConfigurationState.provider == "gong"
+                    ? "border-gray-400"
+                    : "border-gray-200"
+                }`}
+                onClick={() => handleProviderChange("modjo")}
+              >
+                <img
+                  src="/static/labs/transcripts/modjo.png"
+                  style={{ maxHeight: "35px" }}
+                />
+              </div>
             </Page.Layout>
           )}
 
@@ -657,10 +733,59 @@ export default function LabsTranscriptsIndex({
               )}
             </Page.Layout>
           )}
+          {transcriptsConfigurationState.provider === "modjo" && (
+            <Page.Layout direction="vertical">
+              {transcriptsConfigurationState.isGongConnected ? (
+                <Page.Layout direction="horizontal">
+                  <Button
+                    label="Gong connected"
+                    size="sm"
+                    icon={CloudArrowLeftRightIcon}
+                    disabled={true}
+                  />
+                  <Button
+                    label="Disconnect"
+                    icon={XMarkIcon}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsDeleteProviderDialogOpened(true)}
+                  />
+                </Page.Layout>
+              ) : (
+                <>
+                  <Page.P>
+                    Connect to Modjo so Dust can access your meeting
+                    transcripts.
+                  </Page.P>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Modjo API key"
+                      value={transcriptsConfigurationState.apiKey}
+                      onChange={(e) =>
+                        setTranscriptsConfigurationState({
+                          ...transcriptsConfigurationState,
+                          apiKey: e.target.value,
+                        })
+                      }
+                    />
+                    <Button
+                      label="Connect Modjo"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      onClick={async () => {
+                        await handleConnectModjoTranscriptsSource();
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </Page.Layout>
+          )}
         </Page.Layout>
         {transcriptsConfiguration &&
           (transcriptsConfigurationState.isGDriveConnected ||
-            transcriptsConfigurationState.isGongConnected) && (
+            transcriptsConfigurationState.isGongConnected ||
+            transcriptsConfigurationState.isModjoConnected) && (
             <>
               {(!hasDefaultStorageConfiguration ||
                 (hasDefaultStorageConfiguration &&
