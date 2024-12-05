@@ -124,6 +124,7 @@ async function handler(
             workspaceId: auth.getNonNullableWorkspace().sId,
             conversationId: conversation.sId,
             endpoint: "content_fragment",
+            contentType: contentFragment.contentType,
           },
           "Public API: ContentFragmentInputWithContentType"
         );
