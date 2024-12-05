@@ -38,9 +38,7 @@ makeScript(
       const spaceIds = await getSpaceIdsToSyncActivity(connector.id);
 
       for (const spaceId of spaceIds) {
-        const allPages: ({
-          version: { number: number; createdAt: string };
-        } & { [p: string]: unknown })[] = [];
+        const allPages: ReturnType<typeof getPagesInSpace["pages"]> = [];
         let cursor = null;
         for (;;) {
           const { pages, nextPageCursor } = await client.getPagesInSpace(
