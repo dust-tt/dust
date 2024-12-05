@@ -42,7 +42,9 @@ makeScript(
           "-modified-date"
         );
         const recentlyModifiedPages = pages.filter(
-          (page) => new Date(page.version.createdAt) >= new Date(timeWindowMs)
+          (page) =>
+            new Date(page.version.createdAt) >=
+            new Date(Date.now() - timeWindowMs)
         );
         console.log(
           `${pages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
