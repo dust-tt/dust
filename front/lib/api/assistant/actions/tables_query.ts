@@ -309,6 +309,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       params: rawInputs,
       output,
       functionCallId,
+      functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step: step,
     });
