@@ -13,7 +13,7 @@ export class LabsTranscriptsConfigurationModel extends BaseModel<LabsTranscripts
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare connectionId: string;
+  declare connectionId: string | null;
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
@@ -39,7 +39,7 @@ LabsTranscriptsConfigurationModel.init(
     },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     provider: {
       type: DataTypes.STRING,
