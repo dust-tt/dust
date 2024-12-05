@@ -27,9 +27,9 @@ const CARD_BUTTON_SIZES = ["sm", "md", "lg"] as const;
 type CardButtonSizeType = (typeof CARD_BUTTON_SIZES)[number];
 
 const sizeVariants: Record<CardButtonSizeType, string> = {
-  sm: "s-p-3 s-rounded-xl",
-  md: "s-p-4 s-rounded-2xl",
-  lg: "s-p-5 s-rounded-3xl",
+  sm: "s-p-3 s-rounded-2xl",
+  md: "s-p-4 s-rounded-3xl",
+  lg: "s-p-5 s-rounded-[32px]",
 };
 
 const cardButtonVariants = cva(
@@ -84,8 +84,6 @@ export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
       size,
       className,
       onClick,
-      onMouseEnter,
-      onMouseLeave,
       href,
       target = "_blank",
       rel = "",
@@ -100,10 +98,8 @@ export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
 
     const cardButtonClassNames = cn(
       cardButtonVariants({ variant, size }),
-      (onClick || onMouseEnter) &&
-        "s-cursor-pointer disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200",
-      "[&:not(:has(button:hover))]:hover:s-bg-primary-100", // apply hover style when no button children are hovered
-      "[&:not(:has(button:active))]:active:s-bg-primary-200", // apply hover style when no button children are hovered
+      onClick &&
+        "s-cursor-pointer disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200 hover:s-bg-primary-100 active:s-bg-primary-200",
       className
     );
 
@@ -127,8 +123,6 @@ export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
         ref={ref}
         className={cardButtonClassNames}
         onClick={onClick}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
         {...props}
       >
         {children}
