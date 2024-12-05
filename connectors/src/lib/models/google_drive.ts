@@ -25,10 +25,6 @@ GoogleDriveConfig.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     pdfEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -51,7 +47,10 @@ GoogleDriveConfig.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-ConnectorModel.hasOne(GoogleDriveConfig);
+ConnectorModel.hasOne(GoogleDriveConfig, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 // GoogleDriveFolders stores the folders selected by the user to sync.
 export class GoogleDriveFolders extends BaseModel<GoogleDriveFolders> {
@@ -72,10 +71,6 @@ GoogleDriveFolders.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     folderId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -87,7 +82,10 @@ GoogleDriveFolders.init(
     indexes: [{ fields: ["connectorId", "folderId"], unique: true }],
   }
 );
-ConnectorModel.hasOne(GoogleDriveFolders);
+ConnectorModel.hasOne(GoogleDriveFolders, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 // GoogleDriveFiles stores files and folders synced from Google Drive.
 export class GoogleDriveFiles extends BaseModel<GoogleDriveFiles> {
@@ -127,10 +125,6 @@ GoogleDriveFiles.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     dustFileId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -163,7 +157,10 @@ GoogleDriveFiles.init(
     ],
   }
 );
-ConnectorModel.hasOne(GoogleDriveFiles);
+ConnectorModel.hasOne(GoogleDriveFiles, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 export class GoogleDriveSheet extends BaseModel<GoogleDriveSheet> {
   declare createdAt: CreationOptional<Date>;
@@ -184,10 +181,6 @@ GoogleDriveSheet.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     driveFileId: {
       type: DataTypes.STRING,
@@ -210,7 +203,10 @@ GoogleDriveSheet.init(
     ],
   }
 );
-ConnectorModel.hasOne(GoogleDriveSheet);
+ConnectorModel.hasOne(GoogleDriveSheet, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 // Sync Token are the equivalent of a timestamp for syncing the delta
 // between the last sync and the current sync.
@@ -237,10 +233,6 @@ GoogleDriveSyncToken.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     driveId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -256,4 +248,7 @@ GoogleDriveSyncToken.init(
     indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
   }
 );
-ConnectorModel.hasOne(GoogleDriveSyncToken);
+ConnectorModel.hasOne(GoogleDriveSyncToken, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});

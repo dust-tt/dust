@@ -62,10 +62,6 @@ export class ConfluenceSpace extends BaseModel<ConfluenceSpace> {
 }
 ConfluenceSpace.init(
   {
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -95,7 +91,10 @@ ConfluenceSpace.init(
     indexes: [{ fields: ["connectorId", "spaceId"], unique: true }],
   }
 );
-ConnectorModel.hasOne(ConfluenceSpace);
+ConnectorModel.hasOne(ConfluenceSpace, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 // ConfluencePages stores the pages.
 export class ConfluencePage extends BaseModel<ConfluencePage> {

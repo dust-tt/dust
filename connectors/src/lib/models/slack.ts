@@ -85,10 +85,6 @@ SlackMessages.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     channelId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -110,7 +106,10 @@ SlackMessages.init(
     ],
   }
 );
-ConnectorModel.hasOne(SlackMessages);
+ConnectorModel.hasOne(SlackMessages, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 export class SlackChannel extends BaseModel<SlackChannel> {
   declare createdAt: CreationOptional<Date>;
@@ -136,10 +135,6 @@ SlackChannel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     slackChannelId: {
       type: DataTypes.STRING,
@@ -172,7 +167,10 @@ SlackChannel.init(
     ],
   }
 );
-ConnectorModel.hasMany(SlackChannel);
+ConnectorModel.hasMany(SlackChannel, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 export class SlackChatBotMessage extends BaseModel<SlackChatBotMessage> {
   declare createdAt: CreationOptional<Date>;

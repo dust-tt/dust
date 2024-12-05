@@ -26,10 +26,6 @@ MicrosoftConfigurationModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     pdfEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -53,7 +49,10 @@ MicrosoftConfigurationModel.init(
   }
 );
 
-ConnectorModel.hasMany(MicrosoftConfigurationModel);
+ConnectorModel.hasMany(MicrosoftConfigurationModel, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 // MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
 // In order to be able to uniquely identify each node, we store the GET path
@@ -78,10 +77,6 @@ MicrosoftRootModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     internalId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -100,7 +95,10 @@ MicrosoftRootModel.init(
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftRootModel);
+ConnectorModel.hasMany(MicrosoftRootModel, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
 
 // MicrosftNode stores nodes (e.g. files, folder, channels, ...) synced from Microsoft.
 export class MicrosoftNodeModel extends BaseModel<MicrosoftNodeModel> {
@@ -143,10 +141,6 @@ MicrosoftNodeModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     internalId: {
       type: DataTypes.STRING(512),
       allowNull: false,
@@ -186,4 +180,7 @@ MicrosoftNodeModel.init(
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftNodeModel);
+ConnectorModel.hasMany(MicrosoftNodeModel, {
+  foreignKey: "connectorId",
+  onDelete: "RESTRICT",
+});
