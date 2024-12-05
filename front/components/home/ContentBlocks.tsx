@@ -1,4 +1,10 @@
-import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import {
+  AnimatedText,
+  ArrowRightIcon,
+  Avatar,
+  Button,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
@@ -174,7 +180,7 @@ export const HeaderContentBlock = ({
 interface MetricComponentProps {
   metrics: {
     value: string;
-    description: string;
+    description: ReactNode;
   }[];
   from: string;
   to: string;
@@ -211,19 +217,23 @@ export const MetricComponent = ({
 );
 
 interface QuoteProps {
-  quote: string;
+  quote: ReactNode;
 }
 
 export const Quote = ({ quote }: QuoteProps) => (
-  <div className={classNames("col-span-6 col-start-4 flex flex-col py-8")}>
-    <div>
-      <H1 className="text-sky-200">"</H1>
-    </div>
-    <div className="flex flex-col items-center text-white">
-      <H3>{quote}</H3>
+  <div className="col-span-12 flex flex-col py-8 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
+    <div className="flex flex-col items-center text-center font-objektiv text-3xl italic text-white">
+      &ldquo; <AnimatedText>{quote}</AnimatedText> &rdquo;
     </div>
     <div className="flex justify-center pt-8">
-      <H2 className="text-red-400">Malt</H2>
+      <div className="flex items-center justify-center gap-3">
+        <Avatar size="lg" />
+        <P size="lg" className="text-white">
+          Walter Moniot,
+          <br />
+          CPO at Malt
+        </P>
+      </div>
     </div>
   </div>
 );
