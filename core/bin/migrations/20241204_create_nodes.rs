@@ -48,6 +48,15 @@ lazy_static! {
         // Zendesk
         ((|s: &str| s.starts_with("zendesk-article-")), "application/vnd.dust.zendesk-article"),
         ((|s: &str| s.starts_with("zendesk-ticket-")), "application/vnd.dust.zendesk-ticket"),
+        // Folders
+        ((|s: &str| s.to_lowercase().ends_with(".pdf")), "application/pdf"),
+        ((|s: &str| s.to_lowercase().ends_with(".doc") || s.ends_with(".docx")), "application/msword"),
+        ((|s: &str| s.to_lowercase().ends_with(".csv")), "text/csv"),
+        ((|s: &str| s.to_lowercase().ends_with(".tsv")), "text/tsv"),
+        ((|s: &str| s.to_lowercase().ends_with(".txt")), "text/plain"),
+        ((|s: &str| s.to_lowercase().ends_with(".md") || s.ends_with(".markdown")), "text/markdown"),
+        ((|s: &str| s.to_lowercase().ends_with(".jpg") || s.ends_with(".jpeg")), "image/jpeg"),
+        ((|s: &str| s.to_lowercase().ends_with(".png")), "image/png"),
     ];
 
     static ref TABLE_MIME_TYPES_MATCH: Vec<(fn(&str) -> bool, &'static str)> = vec!(
