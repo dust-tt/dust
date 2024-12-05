@@ -4,31 +4,24 @@ import * as React from "react";
 import { Avatar } from "@sparkle/components";
 import { HandThumbUpIcon } from "@sparkle/icons/solid";
 
-import { Card, ComposableCard } from "../components/Card";
+import { ComposableCard, ValueCard } from "../components/ValueCard";
 
-const meta: Meta<typeof Card> = {
-  title: "Components/Card",
-  component: Card,
+const meta: Meta<typeof ValueCard> = {
+  title: "Module/ValueCard",
+  component: ValueCard,
   parameters: {
     layout: "padded",
   },
   argTypes: {
-    size: {
-      control: "select",
-      options: ["xs", "sm", "md", "lg"],
-    },
     className: {
       control: "text",
     },
-  },
-  args: {
-    size: "sm",
   },
   tags: ["autodocs"],
 };
 
 export default meta;
-type Story = StoryObj<typeof Card>;
+type Story = StoryObj<typeof ValueCard>;
 
 export const Basic: Story = {
   args: {
@@ -61,29 +54,9 @@ export const WithIcons: Story = {
   },
 };
 
-export const Sizes: Story = {
-  render: (args) => (
-    <div className="s-flex s-flex-wrap s-gap-4">
-      {(["xs", "sm", "md"] as const).map((size) => (
-        <Card
-          key={size}
-          {...args}
-          size={size}
-          title={`Size: ${size}`}
-          content={
-            <div className="s-text-lg s-font-semibold s-text-element-900">
-              847
-            </div>
-          }
-        />
-      ))}
-    </div>
-  ),
-};
-
 export const Composable: Story = {
   render: () => (
-    <ComposableCard.Root size="sm">
+    <ComposableCard.Root>
       <ComposableCard.Header>
         <ComposableCard.Title>Messages</ComposableCard.Title>
         <ComposableCard.Subtitle>Monthly activity</ComposableCard.Subtitle>

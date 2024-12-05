@@ -25,7 +25,7 @@ const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
       <CardButton
         ref={ref}
         variant={variant}
-        size="md"
+        size="sm"
         className={cn(
           "s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end",
           className
@@ -73,7 +73,7 @@ const CitationNewGrid = React.forwardRef<
 >(({ children, className, ...props }, ref) => {
   return (
     <div ref={ref} className={cn("s-@container", className)} {...props}>
-      <div className="s-grid s-grid-cols-1 s-gap-2 @sm:s-grid-cols-2 @xl:s-grid-cols-3 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5">
+      <div className="@sm:s-grid-cols-2 @xl:s-grid-cols-3 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5 s-grid s-grid-cols-1 s-gap-2">
         {children}
       </div>
     </div>

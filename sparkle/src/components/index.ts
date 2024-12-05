@@ -115,4 +115,5 @@ export {
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
+export { ComposableCard, ValueCard } from "./ValueCard";
 export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";
