@@ -81,7 +81,7 @@ makeScript(
             (page) => new Date(page.version.createdAt) >= startDate
           );
           console.log(
-            `${allPages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
+            `${recentlyModifiedPages.length} pages out of ${allPages.length} modified in the last hour for space ${spaceId}`
           );
           connectorCount += recentlyModifiedPages.length;
         }
