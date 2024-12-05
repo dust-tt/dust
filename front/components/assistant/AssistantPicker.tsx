@@ -83,7 +83,7 @@ export function AssistantPicker({
         />
         <DropdownMenuSeparator />
         <ScrollArea
-          className="flex flex-col max-h-[300px] overflow-y-auto"
+          className="flex max-h-[300px] flex-col overflow-y-auto"
           hideScrollBar
         >
           {searchedAssistants.map((c) => (
