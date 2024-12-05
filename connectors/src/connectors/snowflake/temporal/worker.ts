@@ -4,6 +4,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "@connectors/connectors/snowflake/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/snowflake/temporal/config";
+import { ZendeskCastKnownErrorsInterceptor } from "@connectors/connectors/zendesk/temporal/cast_known_errors";
 import * as sync_status from "@connectors/lib/sync_status";
 import {
   getTemporalWorkerConnection,
@@ -28,6 +29,7 @@ export async function runSnowflakeWorker() {
         (ctx: Context) => {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
+        () => new ZendeskCastKnownErrorsInterceptor(),
       ],
     },
     bundlerOptions: {
