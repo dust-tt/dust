@@ -21,7 +21,6 @@ import type {
   MentionType,
   PlanType,
   Result,
-  SupportedContentFragmentType,
   UserMessageContext,
   UserMessageErrorEvent,
   UserMessageNewEvent,
