@@ -1,16 +1,12 @@
 \set ON_ERROR_STOP on
 
 -- Check if the safety flag variable exists
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_settings
-        WHERE name = 'i_know_what_i_do'
-    ) THEN
-        RAISE EXCEPTION 'Safety flag not set. Run with: psql -v i_know_what_i_do=true -f migration_125.sql';
-    END IF;
-END $$;
+\if :i_know_what_i_do
+-- your migration code here
+\else
+\echo 'Safety flag not set. Run with: psql -v i_know_what_i_do=true -f migration_40.sql'
+\q
+\endif
 
 DO $$
 DECLARE
