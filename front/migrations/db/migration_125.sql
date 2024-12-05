@@ -8,7 +8,7 @@ BEGIN
         FROM pg_settings
         WHERE name = 'i_know_what_i_do'
     ) THEN
-        RAISE EXCEPTION 'Safety flag not set. Run with: psql -v i_know_what_i_do=true -f convert_to_bigint.sql';
+        RAISE EXCEPTION 'Safety flag not set. Run with: psql -v i_know_what_i_do=true -f migration_125.sql';
     END IF;
 END $$;
 
