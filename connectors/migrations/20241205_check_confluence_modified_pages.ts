@@ -5,6 +5,7 @@ import {
   getConfluenceClient,
   getSpaceIdsToSyncActivity,
 } from "@connectors/connectors/confluence/temporal/activities";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 makeScript(
@@ -15,14 +16,24 @@ makeScript(
       default: 60 * 60 * 1000,
       description: "Size of the time window in ms.",
     },
+    connectorsToSkip: {
+      type: "array",
+      demandOption: false,
+      default: [],
+      description: "IDs of the connectors to skip.",
+    },
   },
-  async ({ timeWindowMs }) => {
+  async ({ timeWindowMs, connectorsToSkip }) => {
     const connectors = await ConnectorResource.listByType("confluence", {});
 
     const startDate = new Date(Date.now() - timeWindowMs);
 
     for (const connector of connectors) {
-      console.log(`\n -- Checking connector ${connector.id}`);
+      if (connectorsToSkip.includes(connector.id.toString())) {
+        console.log(`-- Skipping connector ${connector.id}`);
+        continue;
+      }
+      console.log(`-- Checking connector ${connector.id}`);
       let connectorCount = 0;
 
       const confluenceConfig = await fetchConfluenceConfigurationActivity(
@@ -37,35 +48,45 @@ makeScript(
 
       const spaceIds = await getSpaceIdsToSyncActivity(connector.id);
 
-      for (const spaceId of spaceIds) {
-        const allPages: Awaited<
-          ReturnType<typeof client.getPagesInSpace>
-        >["pages"] = [];
+      try {
+        for (const spaceId of spaceIds) {
+          const allPages: Awaited<
+            ReturnType<typeof client.getPagesInSpace>
+          >["pages"] = [];
 
-        let cursor = null;
-        let oldestPage;
-        do {
-          const { pages, nextPageCursor } = await client.getPagesInSpace(
-            spaceId,
-            "all",
-            "-modified-date",
-            cursor
+          let cursor = null;
+          let oldestPage;
+          do {
+            const { pages, nextPageCursor } = await client.getPagesInSpace(
+              spaceId,
+              "all",
+              "-modified-date",
+              cursor
+            );
+            oldestPage = pages[pages.length - 1];
+            cursor = nextPageCursor;
+            pages.forEach((page) => allPages.push(page));
+          } while (
+            oldestPage && // oldestPage is undefined if there are no pages
+            new Date(oldestPage.version.createdAt) >= startDate
           );
-          oldestPage = pages[pages.length - 1];
-          cursor = nextPageCursor;
-          pages.forEach((page) => allPages.push(page));
-        } while (
-          oldestPage && // oldestPage is undefined if there are no pages
-          new Date(oldestPage.version.createdAt) >= startDate
-        );
 
-        const recentlyModifiedPages = allPages.filter(
-          (page) => new Date(page.version.createdAt) >= startDate
-        );
-        console.log(
-          `${allPages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
-        );
-        connectorCount += recentlyModifiedPages.length;
+          const recentlyModifiedPages = allPages.filter(
+            (page) => new Date(page.version.createdAt) >= startDate
+          );
+          console.log(
+            `${allPages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
+          );
+          connectorCount += recentlyModifiedPages.length;
+        }
+      } catch (e) {
+        if (e instanceof ProviderWorkflowError) {
+          console.error(
+            `Error while checking connector ${connector.id}: ${e.message}`
+          );
+          continue;
+        }
+        throw e;
       }
       console.log(
         `${connectorCount} pages modified for connector ${connector.id}`
