@@ -43,27 +43,21 @@ makeScript(
         >["pages"] = [];
 
         let cursor = null;
-        for (;;) {
+        let oldestPage;
+        do {
           const { pages, nextPageCursor } = await client.getPagesInSpace(
             spaceId,
             "all",
             "-modified-date",
             cursor
           );
-          if (pages.length === 0) {
-            break;
-          }
-          const oldestPage = pages[pages.length - 1];
-          if (
-            oldestPage &&
-            new Date(oldestPage.version.createdAt) < startDate
-          ) {
-            break;
-          }
-
+          oldestPage = pages[pages.length - 1];
           cursor = nextPageCursor;
           pages.forEach((page) => allPages.push(page));
-        }
+        } while (
+          oldestPage && // oldestPage is undefined if there are no pages
+          new Date(oldestPage.version.createdAt) >= startDate
+        );
 
         const recentlyModifiedPages = allPages.filter(
           (page) => new Date(page.version.createdAt) >= startDate
