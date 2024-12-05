@@ -28,11 +28,14 @@ makeScript(
   },
   async ({ timeWindowMs, connectorsToSkip }) => {
     const connectors = await ConnectorResource.listByType("confluence", {});
+    const skippedConnectorIdsAsStrings = connectorsToSkip.map(
+      (id) => id.toString() // we can actually get numbers from the CLI
+    );
 
     const startDate = new Date(Date.now() - timeWindowMs);
 
     for (const connector of connectors) {
-      if (connectorsToSkip.includes(connector.id.toString())) {
+      if (skippedConnectorIdsAsStrings.includes(connector.id.toString())) {
         console.log(`-- Skipping connector ${connector.id}`);
         continue;
       }
