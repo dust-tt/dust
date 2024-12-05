@@ -38,7 +38,10 @@ makeScript(
       const spaceIds = await getSpaceIdsToSyncActivity(connector.id);
 
       for (const spaceId of spaceIds) {
-        const allPages: ReturnType<typeof getPagesInSpace["pages"]> = [];
+        const allPages: Awaited<
+          ReturnType<typeof client.getPagesInSpace>
+        >["pages"] = [];
+
         let cursor = null;
         for (;;) {
           const { pages, nextPageCursor } = await client.getPagesInSpace(
@@ -63,9 +66,7 @@ makeScript(
         }
 
         const recentlyModifiedPages = allPages.filter(
-          (page) =>
-            new Date(page.version.createdAt) >=
-            new Date(Date.now() - timeWindowMs)
+          (page) => new Date(page.version.createdAt) >= startDate
         );
         console.log(
           `${allPages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
