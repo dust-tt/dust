@@ -1,20 +1,12 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
-export class IntercomWorkspace extends Model<
-  InferAttributes<IntercomWorkspace>,
-  InferCreationAttributes<IntercomWorkspace>
-> {
-  declare id: CreationOptional<number>;
+export class IntercomWorkspace extends BaseModel<IntercomWorkspace> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -30,11 +22,6 @@ export class IntercomWorkspace extends Model<
 }
 IntercomWorkspace.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -88,11 +75,7 @@ IntercomWorkspace.init(
 );
 ConnectorModel.hasMany(IntercomWorkspace);
 
-export class IntercomHelpCenter extends Model<
-  InferAttributes<IntercomHelpCenter>,
-  InferCreationAttributes<IntercomHelpCenter>
-> {
-  declare id: CreationOptional<number>;
+export class IntercomHelpCenter extends BaseModel<IntercomHelpCenter> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -110,11 +93,6 @@ export class IntercomHelpCenter extends Model<
 }
 IntercomHelpCenter.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -171,11 +149,7 @@ IntercomHelpCenter.init(
 );
 ConnectorModel.hasMany(IntercomHelpCenter);
 
-export class IntercomCollection extends Model<
-  InferAttributes<IntercomCollection>,
-  InferCreationAttributes<IntercomCollection>
-> {
-  declare id: CreationOptional<number>;
+export class IntercomCollection extends BaseModel<IntercomCollection> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -197,11 +171,6 @@ export class IntercomCollection extends Model<
 
 IntercomCollection.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -265,11 +234,7 @@ IntercomCollection.init(
 );
 ConnectorModel.hasMany(IntercomCollection);
 
-export class IntercomArticle extends Model<
-  InferAttributes<IntercomArticle>,
-  InferCreationAttributes<IntercomArticle>
-> {
-  declare id: CreationOptional<number>;
+export class IntercomArticle extends BaseModel<IntercomArticle> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -293,11 +258,6 @@ export class IntercomArticle extends Model<
 
 IntercomArticle.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -369,11 +329,7 @@ IntercomArticle.init(
 );
 ConnectorModel.hasMany(IntercomArticle);
 
-export class IntercomTeam extends Model<
-  InferAttributes<IntercomTeam>,
-  InferCreationAttributes<IntercomTeam>
-> {
-  declare id: CreationOptional<number>;
+export class IntercomTeam extends BaseModel<IntercomTeam> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -388,11 +344,6 @@ export class IntercomTeam extends Model<
 
 IntercomTeam.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -434,11 +385,7 @@ IntercomTeam.init(
 );
 ConnectorModel.hasMany(IntercomTeam);
 
-export class IntercomConversation extends Model<
-  InferAttributes<IntercomConversation>,
-  InferCreationAttributes<IntercomConversation>
-> {
-  declare id: CreationOptional<number>;
+export class IntercomConversation extends BaseModel<IntercomConversation> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -453,11 +400,6 @@ export class IntercomConversation extends Model<
 
 IntercomConversation.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
