@@ -27,7 +27,7 @@ export const supportedContentFragmentType = [
 export type SupportedContentFragmentType =
   (typeof supportedContentFragmentType)[number];
 
-export function getSupportedInlinedContentTypeCodec(): t.Mixed {
+export function getSupportedInlinedContentTypeCodec() {
   const [first, second, ...rest] = supportedInlinedContentType;
   return t.union([
     t.literal(first),
