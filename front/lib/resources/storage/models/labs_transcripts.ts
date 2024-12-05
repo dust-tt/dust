@@ -31,6 +31,7 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
+  declare apiKey: string | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -71,6 +72,10 @@ LabsTranscriptsConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    apiKey: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
