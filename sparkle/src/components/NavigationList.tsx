@@ -188,68 +188,6 @@ const NavigationListLabel = React.forwardRef<
 
 NavigationListLabel.displayName = "NavigationListLabel";
 
-// const SidebarMenuButton = React.forwardRef<
-//   HTMLButtonElement,
-//   React.ComponentProps<"button"> & {
-//     asChild?: boolean;
-//     isActive?: boolean;
-//     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-//   }
-// >(
-//   (
-//     { asChild = false, isActive = false, tooltip, className, ...props },
-//     ref
-//   ) => {
-//     const Comp = asChild ? Slot : "button";
-//     const { isMobile, state } = useSidebar();
-
-//     const button = (
-//       <Comp
-//         ref={ref}
-//         data-sidebar="menu-button"
-//         data-active={isActive}
-//         className={cn(
-//           "s-peer/menu-button",
-//           "s-flex s-w-full s-items-center s-gap-3",
-//           "s-rounded-lg s-p-2 s-text-left s-text-sm s-font-medium s-text-foreground",
-//           "hover:s-text-sidebar-accent-foreground hover:s-bg-primary-100",
-//           "focus-visible:s-ring-2",
-//           "active:bg-sidebar-accent active:text-sidebar-accent-foreground",
-//           "disabled:pointer-events-none disabled:opacity-50",
-//           "s-transition s-duration-300",
-//           "s-ring-sidebar-ring s-group-has-[[data-sidebar=menu-action]]/menu-item:s-pr-8 s-aria-disabled:pointer-events-none s-aria-disabled:opacity-50 s-overflow-hidden s-outline-none",
-//           "s-data-[active=true]:bg-sidebar-accent s-data-[active=true]:font-medium s-data-[active=true]:text-sidebar-accent-foreground s-data-[state=open]:hover:bg-sidebar-accent s-data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!s-size-8 [&>svg]:s-size-4 group-data-[collapsible=icon]:!s-p-2 [&>span:last-child]:s-truncate [&>svg]:s-shrink-0",
-//           className
-//         )}
-//         {...props}
-//       />
-//     );
-
-//     if (!tooltip) {
-//       return button;
-//     }
-
-//     if (typeof tooltip === "string") {
-//       tooltip = {
-//         children: tooltip,
-//       };
-//     }
-
-//     return (
-//       <TooltipRoot>
-//         <TooltipTrigger asChild>{button}</TooltipTrigger>
-//         <TooltipContent
-//           side="right"
-//           align="center"
-//           hidden={state !== "collapsed" || isMobile}
-//           {...tooltip}
-//         />
-//       </TooltipRoot>
-//     );
-//   }
-// );
-// SidebarMenuButton.displayName = "SidebarMenuButton";
-
 export {
   NavigationList,
   NavigationListItem,
