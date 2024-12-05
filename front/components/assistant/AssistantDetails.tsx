@@ -1,5 +1,6 @@
 import {
   Avatar,
+  Button,
   ContentMessage,
   ElementModal,
   HandThumbDownIcon,
@@ -17,6 +18,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { ExternalLinkIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
@@ -28,7 +30,7 @@ import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import {
   useAgentConfiguration,
   useAgentConfigurationFeedbacks,
-  useAgentConfigurations,
+  useAgentConfigurationHistory,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import { useUserDetails } from "@app/lib/swr/user";
@@ -174,17 +176,15 @@ export function AssistantDetails({
       agentConfigurationId: assistantId ?? "",
     });
 
-    // TODO This doesn't return old versions. replace by useAgentConversationHistory from
-    // https://github.com/dust-tt/dust/blob/1725-prompt-versioning/front/components/assistant_builder/InstructionScreen.tsx#L166
-    const { agentConfigurations, isAgentConfigurationsLoading } =
-      useAgentConfigurations({
+    const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
+      useAgentConfigurationHistory({
         workspaceId: owner.sId,
-        agentsGetView: { agentIds: [assistantId || ""], allVersions: true },
+        agentConfigurationId: assistantId || "",
         disabled: !assistantId,
       });
 
     return isAgentConfigurationFeedbacksLoading ||
-      isAgentConfigurationsLoading ? (
+      isAgentConfigurationHistoryLoading ? (
       <Spinner />
     ) : (
       <div>
@@ -206,7 +206,7 @@ export function AssistantDetails({
                     agentConfigurationFeedbacks[index - 1]
                       .agentConfigurationVersion && (
                     <ConfigVersionHeader
-                      agentConfiguration={agentConfigurations.find(
+                      agentConfiguration={agentConfigurationHistory?.find(
                         (c) => c.version === feedback.agentConfigurationVersion
                       )}
                       agentConfigurationVersion={
@@ -249,11 +249,30 @@ function ConfigVersionHeader({
   agentConfiguration: LightAgentConfigurationType | undefined;
   isLatestVersion: boolean;
 }) {
+  const getStringRepresentation = useCallback(
+    (config: LightAgentConfigurationType) => {
+      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+      });
+      return isLatestVersion
+        ? "Latest Version"
+        : config.versionCreatedAt
+          ? dateFormatter.format(new Date(config.versionCreatedAt))
+          : `v${config.version}`;
+    },
+    [isLatestVersion]
+  );
+
   return (
     <div className="flex items-center gap-2">
       <Page.H variant="h6">
-        {agentConfigurationVersion} : {agentConfiguration?.versionCreatedAt} (
-        {isLatestVersion ? "Latest" : ""})
+        {agentConfiguration
+          ? getStringRepresentation(agentConfiguration)
+          : `v${agentConfigurationVersion}`}
       </Page.H>
     </div>
   );
@@ -261,7 +280,7 @@ function ConfigVersionHeader({
 
 function FeedbackCard({ feedback }: { feedback: AgentMessageFeedbackType }) {
   const { userDetails } = useUserDetails(feedback.userId);
-  console.log(userDetails);
+  const conversationUrl = `https://dust.tt/w/0ec9852c2f/assistant/${feedback.c}`;
 
   return (
     <ContentMessage variant="slate" className="my-2">
@@ -299,6 +318,16 @@ function FeedbackCard({ feedback }: { feedback: AgentMessageFeedbackType }) {
             </button>
           )}
         </div>
+      </div>
+      <div className="mt-2">
+        <Button
+          variant="outline"
+          size="xs"
+          href={`https://google.com`}
+          label="Conversation"
+          icon={ExternalLinkIcon}
+          target="_blank"
+        />
       </div>
     </ContentMessage>
   );
