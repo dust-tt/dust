@@ -68,14 +68,7 @@ export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
 
-// Supported content types for plain text.
-export const supportedPlainText = {
-  "application/msword": [".doc", ".docx"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-    ".doc",
-    ".docx",
-  ],
-  "application/pdf": [".pdf"],
+export const supportedRawText = {
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
@@ -85,19 +78,26 @@ export const supportedPlainText = {
   "text/vnd.dust.attachment.slack.thread": [".txt"],
 } as const;
 
+// Supported content types for plain text.
+export const supportedPlainText = {
+  "application/msword": [".doc", ".docx"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".doc",
+    ".docx",
+  ],
+  "application/pdf": [".pdf"],
+  ...supportedRawText,
+} as const;
+
 // Supported content types for images.
 export const supportedImage = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
 } as const;
 
-export const supportedLegacy = {
-  "dust-application/slack": [],
-} as const;
-
 export type PlainTextContentType = keyof typeof supportedPlainText;
+export type RawTextContentType = keyof typeof supportedRawText;
 export type ImageContentType = keyof typeof supportedImage;
-export type LegacyContentType = keyof typeof supportedLegacy;
 
 export const supportedPlainTextContentTypes = Object.keys(
   supportedPlainText
@@ -108,22 +108,26 @@ export const supportedImageContentTypes = Object.keys(
 export const supportedLegacyContentTypes = Object.keys(
   supportedImage
 ) as ImageContentType[];
+export const supportedRawTextContentTypes = Object.keys(
+  supportedRawText
+) as RawTextContentType[];
 
-export type SupportedFileContentType =
-  | PlainTextContentType
-  | ImageContentType
-  | LegacyContentType;
+export type SupportedFileContentType = PlainTextContentType | ImageContentType;
 const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
   ...supportedImageContentTypes,
-  ...supportedLegacyContentTypes,
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
   ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
   ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
-  ...(Object.keys(supportedLegacy) as [keyof typeof supportedLegacy]),
 ]);
+
+const SupportedInlinedContentFragmentTypeSchema = FlexibleEnumSchema([
+  ...(Object.keys(supportedRawText) as [keyof typeof supportedRawText]),
+]);
+const SupportedFileContentFragmentTypeSchema =
+  SupportedContentFragmentTypeSchema;
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
@@ -1624,7 +1628,7 @@ export const PublicContentFragmentWithContentSchema = z.object({
   title: z.string(),
   url: z.string().nullable(),
   content: z.string(),
-  contentType: SupportedContentFragmentTypeSchema,
+  contentType: SupportedInlinedContentFragmentTypeSchema,
   fileId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
@@ -2155,9 +2159,7 @@ export type GetWorkspaceUsageRequestType = z.infer<
 >;
 
 export const FileUploadUrlRequestSchema = z.object({
-  contentType: z
-    .string()
-    .max(256, "Content type must be less than 256 characters"),
+  contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(256, "File name must be less than 256 characters"),
   fileSize: z.number(),
   useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
