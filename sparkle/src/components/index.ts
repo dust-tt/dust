@@ -1,4 +1,5 @@
 export { AnimatedText } from "./AnimatedText";
+export { AspectRatio } from "./AspectRatio";
 export { AssistantPreview } from "./AssistantPreview";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
@@ -8,6 +9,7 @@ export type { MetaButtonProps } from "./Button";
 export { Button } from "./Button";
 export { MetaButton } from "./Button";
 export { Card, ComposableCard } from "./Card";
+export type { CardButtonProps } from "./CardButton";
 export { CardButton } from "./CardButton";
 export type { CheckboxProps } from "./Checkbox";
 export {
@@ -17,6 +19,7 @@ export {
 } from "./Checkbox";
 export { Chip } from "./Chip";
 export * from "./Citation";
+export * from "./CitationNew";
 export { default as CollapseButton } from "./CollapseButton";
 export { Collapsible } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
@@ -117,4 +120,5 @@ export {
   TooltipTrigger,
 } from "./Tooltip";
 export { Tree } from "./Tree";
+export { TypingAnimation } from "./TypingAnimation";
 export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";

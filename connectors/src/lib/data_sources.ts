@@ -1,3 +1,7 @@
+import type {
+  UpsertDatabaseTableRequestType,
+  UpsertTableFromCsvRequestType,
+} from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type {
   CoreAPIDataSourceDocumentSection,
@@ -64,6 +68,8 @@ type UpsertToDataSourceParams = {
   parents: string[];
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
+  title: string;
+  mimeType: string;
   async: boolean;
 };
 
@@ -79,6 +85,8 @@ async function _upsertToDatasource({
   parents,
   loggerArgs = {},
   upsertContext,
+  title,
+  mimeType,
   async,
 }: UpsertToDataSourceParams) {
   return tracer.trace(
@@ -130,6 +138,8 @@ async function _upsertToDatasource({
         section: documentContent,
         source_url: documentUrl,
         timestamp,
+        title,
+        mime_type: mimeType,
         tags: tags?.map((tag) => tag.substring(0, 512)),
         parents,
         light_document_output: true,
@@ -598,7 +608,7 @@ export async function upsertTableFromConnectors({
   const endpoint =
     `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables`;
-  const dustRequestPayload = {
+  const dustRequestPayload: UpsertDatabaseTableRequestType = {
     name: tableName,
     parents,
     description: tableDescription,
@@ -606,7 +616,7 @@ export async function upsertTableFromConnectors({
     remote_database_table_id: remoteDatabaseTableId,
     remote_database_secret_id: remoteDatabaseSecretId,
     title,
-    mimeType,
+    mime_type: mimeType,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -755,7 +765,7 @@ export async function upsertTableFromCsv({
   const endpoint =
     `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
-  const dustRequestPayload = {
+  const dustRequestPayload: UpsertTableFromCsvRequestType = {
     name: tableName,
     parents,
     description: tableDescription,
@@ -766,6 +776,8 @@ export async function upsertTableFromCsv({
     useAppForHeaderDetection,
     title,
     mimeType,
+    timestamp: null,
+    tags: null,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -803,7 +815,7 @@ export async function upsertTableFromCsv({
           error: sanitizedError,
           payload: {
             ...dustRequestPayload,
-            csv: dustRequestPayload.csv.substring(0, 100),
+            csv: tableCsv.substring(0, 100),
           },
         },
         "Axios error uploading table to Dust."
@@ -814,7 +826,7 @@ export async function upsertTableFromCsv({
           error: e.message,
           payload: {
             ...dustRequestPayload,
-            csv: dustRequestPayload.csv.substring(0, 100),
+            csv: tableCsv.substring(0, 100),
           },
         },
         "Error uploading table to Dust."

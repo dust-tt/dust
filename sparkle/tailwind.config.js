@@ -353,6 +353,7 @@ module.exports = {
     require("@tailwindcss/forms"),
     require("tailwind-scrollbar-hide"),
     require("tailwindcss-animate"),
+    require("@tailwindcss/container-queries"),
   ],
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],

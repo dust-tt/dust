@@ -10,20 +10,13 @@ import type {
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
-
-/**
- * Retrieves the endpoint part from a URL used to call the Zendesk API.
- */
-function getEndpointFromUrl(url: string): string {
-  return url.split("api/v2")[1] as string;
-}
 
 export function createZendeskClient({
   accessToken,
@@ -95,10 +88,15 @@ export async function getZendeskBrandSubdomain({
  */
 async function handleZendeskRateLimit(response: Response): Promise<boolean> {
   if (response.status === 429) {
-    const retryAfter = Math.max(
-      Number(response.headers.get("Retry-After")) || 1,
-      1
-    );
+    let retryAfter = 1;
+
+    const headerValue = response.headers.get("retry-after"); // https://developer.zendesk.com/api-reference/introduction/rate-limits/
+    if (headerValue) {
+      const delay = parseInt(headerValue, 10);
+      if (!Number.isNaN(delay)) {
+        retryAfter = Math.max(delay, 1);
+      }
+    }
     if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
         { retryAfter },
@@ -112,7 +110,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
       { response, retryAfter },
       "[Zendesk] Rate limit hit, waiting before retrying."
     );
-    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+    await setTimeoutAsync(retryAfter * 1000);
     return true;
   }
   return false;
@@ -158,29 +156,17 @@ async function fetchFromZendeskWithRetries({
     response = await rawResponse.json();
   } catch (e) {
     if (rawResponse.status === 404) {
-      logger.error(
-        { rawResponse, text: rawResponse.text },
-        `[Zendesk] Zendesk API 404 error on: ${getEndpointFromUrl(url)}`
-      );
       return null;
-    } else if (rawResponse.status === 403) {
-      throw new ExternalOAuthTokenError();
     }
-    logger.error(
-      { rawResponse, status: rawResponse.status, text: rawResponse.text },
-      "[Zendesk] Error parsing Zendesk API response"
+    throw new ZendeskApiError(
+      "Error parsing Zendesk API response",
+      rawResponse.status,
+      rawResponse
     );
-    throw new Error("Error parsing Zendesk API response");
   }
   if (!rawResponse.ok) {
-    if (response.type === "error.list" && response.errors?.length) {
-      const error = response.errors[0];
-      if (error.code === "unauthorized") {
-        throw new ExternalOAuthTokenError();
-      }
-      if (error.code === "not_found") {
-        return null;
-      }
+    if (rawResponse.status === 404) {
+      return null;
     }
     throw new ZendeskApiError(
       "Zendesk API error.",
@@ -206,7 +192,7 @@ export async function fetchZendeskBrand({
 }): Promise<ZendeskFetchedBrand | null> {
   const url = `https://${subdomain}.zendesk.com/api/v2/brands/${brandId}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return response.brand ?? null;
+  return response?.brand ?? null;
 }
 
 /**
@@ -223,7 +209,7 @@ export async function fetchZendeskArticle({
 }): Promise<ZendeskFetchedArticle | null> {
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return response.article ?? null;
+  return response?.article ?? null;
 }
 
 /**

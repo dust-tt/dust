@@ -269,6 +269,37 @@ export function useAgentConfigurationFeedbacks({
   };
 }
 
+export function useAgentConfigurationHistory({
+  workspaceId,
+  agentConfigurationId,
+  limit,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const agentConfigurationHistoryFetcher: Fetcher<{
+    history: AgentConfigurationType[];
+  }> = fetcher;
+
+  const queryParams = limit ? `?limit=${limit}` : "";
+  const { data, error, mutate } = useSWRWithDefaults(
+    agentConfigurationId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/history${queryParams}`
+      : null,
+    agentConfigurationHistoryFetcher,
+    { disabled }
+  );
+
+  return {
+    agentConfigurationHistory: data?.history,
+    isAgentConfigurationHistoryLoading: !error && !data,
+    isAgentConfigurationHistoryError: error,
+    mutateAgentConfigurationHistory: mutate,
+  };
+}
 export function useAgentConfigurationLastAuthor({
   workspaceId,
   agentConfigurationId,

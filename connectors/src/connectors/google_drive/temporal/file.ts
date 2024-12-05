@@ -487,6 +487,8 @@ async function upsertGdriveDocument(
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
+      title: file.name,
+      mimeType: file.mimeType,
       async: true,
     });
     return file.updatedAtMs;

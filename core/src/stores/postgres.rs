@@ -39,9 +39,20 @@ use crate::{
     utils,
 };
 
+use super::store::{DocumentCreateParams, FolderUpsertParams, TableUpsertParams};
+
 #[derive(Clone)]
 pub struct PostgresStore {
     pool: Pool<PostgresConnectionManager<NoTls>>,
+}
+
+pub struct UpsertNode<'a> {
+    pub node_id: &'a str,
+    pub node_type: &'a NodeType,
+    pub timestamp: u64,
+    pub title: &'a str,
+    pub mime_type: &'a str,
+    pub parents: &'a Vec<String>,
 }
 
 impl PostgresStore {
@@ -133,14 +144,14 @@ impl PostgresStore {
 
     async fn upsert_data_source_node(
         &self,
-        node: &Node,
+        upsert_params: UpsertNode<'_>,
         data_source_row_id: i64,
         row_id: i64,
         tx: &Transaction<'_>,
     ) -> Result<()> {
         let created = utils::now();
 
-        let (document_row_id, table_row_id, folder_row_id) = match node.node_type() {
+        let (document_row_id, table_row_id, folder_row_id) = match upsert_params.node_type {
             NodeType::Document => (Some(row_id), None, None),
             NodeType::Table => (None, Some(row_id), None),
             NodeType::Folder => (None, None, Some(row_id)),
@@ -164,11 +175,11 @@ impl PostgresStore {
                 &[
                     &data_source_row_id,
                     &(created as i64),
-                    &node.node_id(),
-                    &(node.timestamp() as i64),
-                    &node.title(),
-                    &node.mime_type(),
-                    &node.parents(),
+                    &upsert_params.node_id,
+                    &(upsert_params.timestamp as i64),
+                    &upsert_params.title,
+                    &upsert_params.mime_type,
+                    &upsert_params.parents,
                     &document_row_id,
                     &table_row_id,
                     &folder_row_id,
@@ -1745,27 +1756,13 @@ impl Store for PostgresStore {
         Ok((document_ids, count as usize))
     }
 
-    async fn upsert_data_source_document(
+    async fn create_data_source_document(
         &self,
         project: &Project,
-        data_source_id: &str,
-        document: &Document,
-        title: Option<String>,
-        mime_type: Option<String>,
-    ) -> Result<()> {
+        data_source_id: String,
+        create_params: DocumentCreateParams,
+    ) -> Result<Document> {
         let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let document_id = document.document_id.clone();
-        let document_created = document.created;
-        let document_timestamp = document.timestamp;
-        let document_tags = document.tags.clone();
-        let document_parents = document.parents.clone();
-        let document_source_url = document.source_url.clone();
-        let document_hash = document.hash.clone();
-        let document_text_size = document.text_size;
-        let document_chunk_count = document.chunks.len() as u64;
-        let document_title = title.clone();
-        let document_mime_type = mime_type.clone();
 
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
@@ -1792,7 +1789,7 @@ impl Store for PostgresStore {
             )
             .await?;
         let _ = tx
-            .query(&stmt, &[&data_source_row_id, &document_id])
+            .query(&stmt, &[&data_source_row_id, &create_params.document_id])
             .await?;
 
         let stmt = tx
@@ -1800,35 +1797,68 @@ impl Store for PostgresStore {
                 "INSERT INTO data_sources_documents \
                    (id, data_source, created, document_id, timestamp, tags_array, parents, \
                     source_url, hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, created",
             )
             .await?;
 
-        let document_row_id = tx
+        let r = tx
             .query_one(
                 &stmt,
                 &[
                     &data_source_row_id,
-                    &(document_created as i64),
-                    &document_id,
-                    &(document_timestamp as i64),
-                    &document_tags,
-                    &document_parents,
-                    &document_source_url,
-                    &document_hash,
-                    &(document_text_size as i64),
-                    &(document_chunk_count as i64),
+                    &(create_params.created as i64),
+                    &create_params.document_id,
+                    &(create_params.timestamp as i64),
+                    &create_params.tags,
+                    &create_params.parents,
+                    &create_params.source_url,
+                    &create_params.hash,
+                    &(create_params.text_size as i64),
+                    &(create_params.chunk_count as i64),
                     &"latest",
                 ],
             )
-            .await?
-            .get(0);
+            .await?;
+
+        let document_row_id: i64 = r.get(0);
+        let created: i64 = r.get(1);
+
+        let should_upsert_node = create_params.title.is_some() && create_params.mime_type.is_some();
+
+        // TODO: defaults
+        let title = create_params.title.unwrap_or("".to_string());
+        let mime_type = create_params.mime_type.unwrap_or("".to_string());
+
+        let document = Document {
+            data_source_id,
+            title,
+            mime_type,
+            created: created as u64,
+            document_id: create_params.document_id,
+            timestamp: create_params.timestamp,
+            tags: create_params.tags,
+            parents: create_params.parents,
+            source_url: create_params.source_url,
+            hash: create_params.hash,
+            text_size: create_params.text_size,
+            chunk_count: create_params.chunk_count,
+            chunks: vec![],
+            text: None,
+            token_count: None,
+        };
 
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
         // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
-        if let (Some(_), Some(_)) = (document_title, document_mime_type) {
+        if should_upsert_node {
             self.upsert_data_source_node(
-                &document.clone().into(),
+                UpsertNode {
+                    node_id: &document.document_id,
+                    node_type: &NodeType::Document,
+                    timestamp: document.timestamp,
+                    title: &document.title,
+                    mime_type: &document.mime_type,
+                    parents: &document.parents,
+                },
                 data_source_row_id,
                 document_row_id,
                 &tx,
@@ -1837,7 +1867,7 @@ impl Store for PostgresStore {
         }
         tx.commit().await?;
 
-        Ok(())
+        Ok(document)
     }
 
     async fn list_data_source_documents(
@@ -2473,35 +2503,15 @@ impl Store for PostgresStore {
             .collect::<Vec<_>>())
     }
 
-    async fn upsert_table(
+    async fn upsert_data_source_table(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        name: &str,
-        description: &str,
-        timestamp: u64,
-        tags: &Vec<String>,
-        parents: &Vec<String>,
-        remote_database_table_id: Option<String>,
-        remote_database_secret_id: Option<String>,
-        title: Option<String>,
-        mime_type: Option<String>,
+        project: Project,
+        data_source_id: String,
+        upsert_params: TableUpsertParams,
     ) -> Result<Table> {
         let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
 
         let table_created = utils::now();
-        let table_id = table_id.to_string();
-        let table_name = name.to_string();
-        let table_description = description.to_string();
-        let table_timestamp = timestamp;
-        let table_tags = tags.clone();
-        let table_parents = parents.clone();
-        let table_remote_database_table_id = remote_database_table_id.clone();
-        let table_remote_database_secret_id = remote_database_secret_id.clone();
-        let table_title = title.clone();
-        let table_mime_type = mime_type.clone();
 
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
@@ -2529,52 +2539,77 @@ impl Store for PostgresStore {
                        SET name = EXCLUDED.name, description = EXCLUDED.description, \
                        timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents, \
                          remote_database_table_id = EXCLUDED.remote_database_table_id, remote_database_secret_id = EXCLUDED.remote_database_secret_id \
-                       RETURNING id",
+                       RETURNING id, created, schema, schema_stale_at",
                 )
                 .await?;
 
-        let table_row_id = tx
+        let table_row = tx
             .query_one(
                 &stmt,
                 &[
                     &data_source_row_id,
                     &(table_created as i64),
-                    &table_id,
-                    &table_name,
-                    &table_description,
-                    &(table_timestamp as i64),
-                    &table_tags,
-                    &table_parents,
-                    &table_remote_database_table_id,
-                    &table_remote_database_secret_id,
+                    &upsert_params.table_id,
+                    &upsert_params.name,
+                    &upsert_params.description,
+                    &(upsert_params.timestamp as i64),
+                    &upsert_params.tags,
+                    &upsert_params.parents,
+                    &upsert_params.remote_database_table_id,
+                    &upsert_params.remote_database_secret_id,
                 ],
             )
-            .await?
-            .get(0);
+            .await?;
+
+        let table_row_id = table_row.get::<usize, i64>(0);
+        let table_created = table_row.get::<usize, i64>(1) as u64;
+        let raw_schema = table_row.get::<usize, Option<String>>(2);
+        let table_schema_stale_at = table_row.get::<usize, Option<i64>>(3);
+
+        let parsed_schema: Option<TableSchema> = match raw_schema {
+            None => None,
+            Some(schema) => {
+                if schema.is_empty() {
+                    None
+                } else {
+                    Some(serde_json::from_str(&schema)?)
+                }
+            }
+        };
+
+        let should_upsert_node = upsert_params.title.is_some() && upsert_params.mime_type.is_some();
+        let title = upsert_params.title.unwrap_or(upsert_params.name.clone());
 
         let table = Table::new(
             project,
-            &data_source_id,
+            data_source_id,
             table_created,
-            &table_id,
-            &table_name,
-            &table_description,
-            table_timestamp,
-            &table_title.unwrap_or(table_name.clone()),
-            &table_mime_type.unwrap_or("text/csv".to_string()),
-            table_tags,
-            table_parents,
-            &None,
-            None,
-            table_remote_database_table_id,
-            table_remote_database_secret_id,
+            upsert_params.table_id,
+            upsert_params.name,
+            upsert_params.description,
+            upsert_params.timestamp,
+            title,
+            upsert_params.mime_type.unwrap_or("text/csv".to_string()),
+            upsert_params.tags,
+            upsert_params.parents,
+            parsed_schema,
+            table_schema_stale_at.map(|t| t as u64),
+            upsert_params.remote_database_table_id,
+            upsert_params.remote_database_secret_id,
         );
 
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
         // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
-        if let (Some(_), Some(_)) = (title, mime_type) {
+        if should_upsert_node {
             self.upsert_data_source_node(
-                &table.clone().into(),
+                UpsertNode {
+                    node_id: table.table_id(),
+                    node_type: &NodeType::Table,
+                    timestamp: table.timestamp(),
+                    title: table.title(),
+                    mime_type: table.mime_type(),
+                    parents: table.parents(),
+                },
                 data_source_row_id,
                 table_row_id,
                 &tx,
@@ -2586,7 +2621,7 @@ impl Store for PostgresStore {
         Ok(table)
     }
 
-    async fn update_table_schema(
+    async fn update_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2633,7 +2668,7 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn update_table_parents(
+    async fn update_data_source_table_parents(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2681,7 +2716,7 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn invalidate_table_schema(
+    async fn invalidate_data_source_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2721,7 +2756,7 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn load_table(
+    async fn load_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2813,19 +2848,23 @@ impl Store for PostgresStore {
                         }
                     }
                 };
+
+                // TODO(KW_SEARCH_INFRA) use title
+                let title = name.clone();
+
                 Ok(Some(Table::new(
-                    project,
-                    &data_source_id,
+                    project.clone(),
+                    data_source_id.clone(),
                     created as u64,
-                    &table_id,
-                    &name,
-                    &description,
+                    table_id,
+                    name,
+                    description,
                     timestamp as u64,
-                    &name,      // TODO(KW_SEARCH_INFRA) use title
-                    "text/csv", // TODO(KW_SEARCH_INFRA) use mimetype
+                    title,
+                    "text/csv".to_string(), // TODO(KW_SEARCH_INFRA) use mimetype
                     tags,
                     parents,
-                    &parsed_schema,
+                    parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                     remote_database_table_id,
                     remote_database_secret_id,
@@ -2834,7 +2873,7 @@ impl Store for PostgresStore {
         }
     }
 
-    async fn list_tables(
+    async fn list_data_source_tables(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2944,19 +2983,22 @@ impl Store for PostgresStore {
                     }
                 };
 
+                // TODO(KW_SEARCH_INFRA) use title
+                let title = name.clone();
+
                 Ok(Table::new(
-                    project,
-                    &data_source_id,
+                    project.clone(),
+                    data_source_id.clone(),
                     created as u64,
-                    &table_id,
-                    &name,
-                    &description,
+                    table_id,
+                    name,
+                    description,
                     timestamp as u64,
-                    &name,      // TODO(KW_SEARCH_INFRA) use title
-                    "text/csv", // TODO(KW_SEARCH_INFRA)use mimetype
+                    title,
+                    "text/csv".to_string(), // TODO(KW_SEARCH_INFRA)use mimetype
                     tags,
                     parents,
-                    &parsed_schema,
+                    parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                     remote_database_table_id,
                     remote_database_secret_id,
@@ -2985,7 +3027,7 @@ impl Store for PostgresStore {
         Ok((tables, total))
     }
 
-    async fn delete_table(
+    async fn delete_data_source_table(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -3028,12 +3070,11 @@ impl Store for PostgresStore {
 
     async fn upsert_data_source_folder(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        folder: &Folder,
-    ) -> Result<()> {
+        project: Project,
+        data_source_id: String,
+        upsert_params: FolderUpsertParams,
+    ) -> Result<Folder> {
         let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
 
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
@@ -3061,20 +3102,41 @@ impl Store for PostgresStore {
                        VALUES (DEFAULT, $1, $2, $3) \
                        ON CONFLICT (folder_id, data_source)  DO UPDATE \
                        SET folder_id = data_sources_folders.folder_id \
-                       RETURNING id",
+                       RETURNING id, created",
             )
             .await?;
 
-        let folder_row_id = tx
+        let r = tx
             .query_one(
                 &stmt,
-                &[&data_source_row_id, &(created as i64), &folder.folder_id()],
+                &[
+                    &data_source_row_id,
+                    &(created as i64),
+                    &upsert_params.folder_id,
+                ],
             )
-            .await?
-            .get(0);
+            .await?;
+
+        let folder_row_id: i64 = r.get(0);
+        let created: i64 = r.get(1);
+
+        let folder = Folder::new(
+            data_source_id,
+            upsert_params.folder_id,
+            created as u64,
+            upsert_params.title,
+            upsert_params.parents,
+        );
 
         self.upsert_data_source_node(
-            &folder.clone().into(),
+            UpsertNode {
+                node_id: folder.folder_id(),
+                node_type: &NodeType::Folder,
+                timestamp: folder.timestamp(),
+                title: folder.title(),
+                mime_type: "text/csv",
+                parents: folder.parents(),
+            },
             data_source_row_id,
             folder_row_id,
             &tx,
@@ -3082,7 +3144,7 @@ impl Store for PostgresStore {
         .await?;
         tx.commit().await?;
 
-        Ok(())
+        Ok(folder)
     }
 
     async fn load_data_source_folder(
@@ -3114,7 +3176,7 @@ impl Store for PostgresStore {
 
                 match row.len() {
                     0 => Ok(None),
-                    1 => Ok(Some(node.into())),
+                    1 => Ok(Some(node.into_folder())),
                     _ => unreachable!(),
                 }
             }
@@ -3237,10 +3299,10 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(3);
 
                 Ok(Folder::new(
-                    &data_source_id,
-                    &node_id,
+                    data_source_id.clone(),
+                    node_id,
                     timestamp as u64,
-                    &title,
+                    title,
                     parents,
                 ))
             })

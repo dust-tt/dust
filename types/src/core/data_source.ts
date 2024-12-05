@@ -74,6 +74,14 @@ export type CoreAPILightDocument = {
   created: number;
 };
 
+export type CoreAPIFolder = {
+  data_source_id: string;
+  folder_id: string;
+  timestamp: number;
+  title: string;
+  parents: string[];
+};
+
 export type CoreAPIDocumentVersionStatus = "latest" | "superseded" | "deleted";
 
 export type CoreAPIDocumentVersion = {

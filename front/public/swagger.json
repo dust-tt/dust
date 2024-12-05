@@ -3179,6 +3179,10 @@
                       "type": "string"
                     },
                     "description": "Parent tables of this table"
+                  },
+                  "mime_type": {
+                    "type": "string",
+                    "description": "Mime type of the table"
                   }
                 }
               }
@@ -3191,7 +3195,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Datasource"
+                  "$ref": "#/components/schemas/Table"
                 }
               }
             }

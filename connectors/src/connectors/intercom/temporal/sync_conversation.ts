@@ -320,6 +320,8 @@ export async function syncConversation({
     upsertContext: {
       sync_type: syncType,
     },
+    title: convoTitle,
+    mimeType: "application/vnd.dust.intercom-conversation",
     async: true,
   });
 }

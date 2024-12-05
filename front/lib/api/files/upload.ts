@@ -172,10 +172,16 @@ class CSVColumnAnalyzerTransform extends Transform {
   }
 }
 
-const extractContentAndSchemaFromCSV: ProcessingFunction = async (
+const extractContentAndSchemaFromDelimitedTextFiles = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  const format =
+    file.contentType === "text/csv" ||
+    file.contentType === "text/comma-separated-values"
+      ? "csv"
+      : "tsv";
+
   try {
     const readStream = file.getReadStream({
       auth,
@@ -199,6 +205,7 @@ const extractContentAndSchemaFromCSV: ProcessingFunction = async (
         skip_empty_lines: true,
         trim: true,
         relax_column_count: true,
+        delimiter: format === "csv" ? "," : "\t",
       }),
       new CSVColumnAnalyzerTransform(),
       file.getWriteStream({
@@ -218,11 +225,15 @@ const extractContentAndSchemaFromCSV: ProcessingFunction = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to extract text or snippet from CSV."
+      `Failed to extract text or snippet from ${format.toUpperCase()}.`
     );
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
-    return new Err(new Error(`Failed extracting from CSV. ${errorMessage}`));
+    return new Err(
+      new Error(
+        `Failed extracting from ${format.toUpperCase()}. ${errorMessage}`
+      )
+    );
   }
 };
 
@@ -314,16 +325,16 @@ const processingPerContentType: ProcessingPerContentType = {
     tool_output: notSupportedError,
   },
   "text/comma-separated-values": {
-    conversation: extractContentAndSchemaFromCSV,
+    conversation: extractContentAndSchemaFromDelimitedTextFiles,
     folder_document: storeRawText,
-    folder_table: extractContentAndSchemaFromCSV,
+    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
     avatar: notSupportedError,
     tool_output: storeRawText,
   },
   "text/csv": {
-    conversation: extractContentAndSchemaFromCSV,
+    conversation: extractContentAndSchemaFromDelimitedTextFiles,
     folder_document: storeRawText,
-    folder_table: extractContentAndSchemaFromCSV,
+    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
     avatar: notSupportedError,
     tool_output: storeRawText,
   },
@@ -342,16 +353,16 @@ const processingPerContentType: ProcessingPerContentType = {
     tool_output: storeRawText,
   },
   "text/tab-separated-values": {
-    conversation: storeRawText,
+    conversation: extractContentAndSchemaFromDelimitedTextFiles,
     folder_document: storeRawText,
-    folder_table: storeRawText,
+    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
     avatar: notSupportedError,
     tool_output: storeRawText,
   },
   "text/tsv": {
-    conversation: storeRawText,
+    conversation: extractContentAndSchemaFromDelimitedTextFiles,
     folder_document: storeRawText,
-    folder_table: storeRawText,
+    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
     avatar: notSupportedError,
     tool_output: storeRawText,
   },

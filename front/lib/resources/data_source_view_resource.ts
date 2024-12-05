@@ -237,7 +237,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   static async listByWorkspace(
     auth: Authenticator,
-    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
+    includeConversationDataSources?: boolean
   ) {
     const dataSourceViews = await this.baseFetch(
       auth,
@@ -249,7 +250,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews.filter((dsv) => dsv.canList(auth));
+    return dataSourceViews.filter(
+      (dsv) =>
+        (!dsv.space.isConversations() || includeConversationDataSources) &&
+        dsv.canList(auth)
+    );
   }
 
   static async listBySpace(
