@@ -41,7 +41,7 @@ interface SplitButtonActionProps {
 }
 
 export interface SplitButtonProps
-  extends Omit<MetaButtonProps, "children" | "onClick" | "size"> {
+  extends Omit<MetaButtonProps, "children" | "onClick"> {
   /**
    * List of possible actions, will be displayed in dropdown
    */
@@ -61,7 +61,6 @@ export interface SplitButtonProps
    * Event handler for action change
    */
   onActionChange?: (action: SplitButtonActionProps) => void;
-  size: ButtonSizeType;
 }
 
 const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
@@ -94,7 +93,7 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
       <div className="s-flex s-items-center">
         <Button
           {...props}
-          size={size}
+          size={size || undefined}
           variant={variant}
           label={actionToUse.label}
           icon={actionToUse.icon}
@@ -110,7 +109,7 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
           <DropdownMenuTrigger asChild>
             <Button
               {...props}
-              size={size}
+              size={size || undefined}
               variant={variant}
               icon={ChevronDownIcon}
               disabled={disabled}

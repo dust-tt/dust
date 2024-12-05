@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { Icon, LinkWrapper, LinkWrapperProps } from "@sparkle/components/";
-import { MiniButton } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -149,7 +149,7 @@ const NavigationListItemAction = React.forwardRef<
       )}
       {...props}
     >
-      <MiniButton icon={MoreIcon} variant={"ghost"} />
+      <Button size="mini" icon={MoreIcon} variant="ghost" />
     </div>
   );
 });

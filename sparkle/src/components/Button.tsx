@@ -86,10 +86,9 @@ const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
 
 export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    Omit<VariantProps<typeof buttonVariants>, "size"> {
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   variant?: ButtonVariantType | null;
-  size?: ButtonSizeType;
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
@@ -106,7 +105,7 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 MetaButton.displayName = "MetaButton";
 
 export interface ButtonProps
-  extends Omit<MetaButtonProps, "children" | "size">,
+  extends Omit<MetaButtonProps, "children">,
     Omit<LinkWrapperProps, "children" | "className"> {
   label?: string;
   icon?: React.ComponentType;
