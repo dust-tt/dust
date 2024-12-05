@@ -1,10 +1,5 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
