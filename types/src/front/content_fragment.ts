@@ -7,6 +7,7 @@ import {
   PlainTextContentType,
   SupportedFileContentType,
   supportedImageContentTypes,
+  supportedInlinedContentType,
   supportedPlainTextContentTypes,
   supportedUploadableContentType,
 } from "./files";
@@ -26,8 +27,8 @@ export const supportedContentFragmentType = [
 export type SupportedContentFragmentType =
   (typeof supportedContentFragmentType)[number];
 
-export function getSupportedContentFragmentTypeCodec(): t.Mixed {
-  const [first, second, ...rest] = supportedContentFragmentType;
+export function getSupportedInlinedContentTypeCodec(): t.Mixed {
+  const [first, second, ...rest] = supportedInlinedContentType;
   return t.union([
     t.literal(first),
     t.literal(second),
