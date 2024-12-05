@@ -89,26 +89,6 @@ export function formatTimestampToFriendlyDate(
   });
 }
 
-export const validateUrl = (
-  urlString: string
-): {
-  valid: boolean;
-  standardized: string | null;
-} => {
-  let url: URL;
-  try {
-    url = new URL(urlString);
-  } catch (e) {
-    return { valid: false, standardized: null };
-  }
-
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    return { valid: false, standardized: null };
-  }
-
-  return { valid: true, standardized: url.href };
-};
-
 // from http://emailregex.com/
 const EMAIL_REGEX =
   /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;

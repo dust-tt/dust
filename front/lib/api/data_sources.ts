@@ -2,6 +2,7 @@ import type {
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -50,7 +51,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
