@@ -698,7 +698,7 @@ export class GroupResource extends BaseResource<GroupModel> {
             permissions: ["read"],
           },
         ],
-        roles: [{ role: "admin", permissions: ["read", "write"] }],
+        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
         workspaceId: this.workspaceId,
       },
     ];
