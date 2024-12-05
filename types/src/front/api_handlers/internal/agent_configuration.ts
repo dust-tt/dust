@@ -33,6 +33,10 @@ export const GetAgentConfigurationsQuerySchema = t.type({
   ]),
 });
 
+export const GetAgentConfigurationsHistoryQuerySchema = t.type({
+  limit: t.union([LimitCodec, t.undefined]),
+});
+
 export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
   view: t.union([
     t.literal("list"),

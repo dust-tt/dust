@@ -450,6 +450,7 @@ export default function AssistantBuilder({
                         instructionsError={instructionsError}
                         doTypewriterEffect={doTypewriterEffect}
                         setDoTypewriterEffect={setDoTypewriterEffect}
+                        agentConfigurationId={agentConfigurationId}
                       />
                     );
                   case "actions":
