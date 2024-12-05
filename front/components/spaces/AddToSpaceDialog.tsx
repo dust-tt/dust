@@ -155,9 +155,9 @@ export const AddToSpaceDialog = ({
               variant="outline"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-[200px] p-2">
+          <DropdownMenuContent className="min-w-48 p-2">
             <ScrollArea
-              className="flex max-h-[300px] flex-col overflow-y-auto"
+              className="flex max-h-72 flex-col overflow-y-auto"
               hideScrollBar
             >
               {availableSpaces.map((currentSpace) => (
