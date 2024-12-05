@@ -308,7 +308,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
               title: f.name || "",
               dustDocumentId: getGoogleDriveEntityDocumentId(f),
               lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
-              sourceUrl: null,
+              sourceUrl: getSourceUrlForGoogleDriveFiles(f),
               expandable: await isDriveObjectExpandable({
                 objectId: f.driveFileId,
                 mimeType: f.mimeType,
@@ -631,15 +631,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       folderOrFiles,
       async (f): Promise<ContentNode> => {
         const type = getPermissionViewType(f);
-        let sourceUrl = null;
-
-        if (isGoogleDriveSpreadSheetFile(f)) {
-          sourceUrl = `https://docs.google.com/spreadsheets/d/${f.driveFileId}/edit`;
-        } else if (isGoogleDriveFolder(f)) {
-          sourceUrl = `https://drive.google.com/drive/folders/${f.driveFileId}`;
-        } else {
-          sourceUrl = `https://drive.google.com/file/d/${f.driveFileId}/view`;
-        }
+        const sourceUrl = getSourceUrlForGoogleDriveFiles(f);
 
         return {
           provider: "google_drive",
@@ -962,4 +954,14 @@ async function getFoldersAsContentNodes({
     },
     { concurrency: 4 }
   );
+}
+
+function getSourceUrlForGoogleDriveFiles(f: GoogleDriveFiles): string {
+  if (isGoogleDriveSpreadSheetFile(f)) {
+    return `https://docs.google.com/spreadsheets/d/${f.driveFileId}/edit`;
+  } else if (isGoogleDriveFolder(f)) {
+    return `https://drive.google.com/drive/folders/${f.driveFileId}`;
+  }
+
+  return `https://drive.google.com/file/d/${f.driveFileId}/view`;
 }
