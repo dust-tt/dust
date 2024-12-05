@@ -347,13 +347,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await this.update({ name: newName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const singleGroup = this.groups[0];
-    if (
-      singleGroup &&
-      this.groups.length === 1 &&
-      (this.kind === "regular" || this.kind === "public")
-    ) {
-      await singleGroup.updateName(auth, `Group for space ${newName}`);
+    const regularGroups = this.groups.filter((g) => g.isRegular());
+    if (regularGroups.length === 1 && (this.isRegular() || this.isPublic())) {
+      await regularGroups[0].updateName(auth, `Group for space ${newName}`);
     }
 
     return new Ok(undefined);
