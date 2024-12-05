@@ -15,7 +15,6 @@ import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
-import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
@@ -136,8 +135,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
 
       if (
         requireCanUseProduct &&
-        (!auth?.subscription()?.plan.limits.canUseProduct ||
-          isOldFreePlan(auth?.subscription()?.plan.code ?? ""))
+        !auth?.subscription()?.plan.limits.canUseProduct
       ) {
         if (typeof context.query.wId !== "string") {
           // this should never happen.
