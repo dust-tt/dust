@@ -192,7 +192,6 @@ export async function getRootNodesToSyncFromResources(
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId],
-        loggerArgs: {},
         title: createdOrUpdatedResource.name ?? "",
       }),
     { concurrency: 5 }
@@ -463,7 +462,6 @@ export async function syncFiles({
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId, ...parents],
-        loggerArgs: {},
         title: createdOrUpdatedResource.name ?? "",
       }),
     { concurrency: 5 }
@@ -636,7 +634,6 @@ export async function syncDeltaForRootNodesInDrive({
           dataSourceConfig,
           folderId: blob.internalId,
           parents: [blob.internalId],
-          loggerArgs: {},
           title: blob.name ?? "",
         });
 

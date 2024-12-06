@@ -1,6 +1,5 @@
 import type {
   UpsertDatabaseTableRequestType,
-  UpsertDataSourceFolderRequestType,
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
@@ -73,6 +72,18 @@ type UpsertToDataSourceParams = {
   mimeType: string;
   async: boolean;
 };
+
+function getDustAPI(dataSourceConfig: DataSourceConfig) {
+  return new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    {
+      apiKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+    },
+    logger,
+    { useLocalInDev: true }
+  );
+}
 
 export const upsertToDatasource = withRetries(_upsertToDatasource);
 
@@ -415,16 +426,7 @@ export async function renderPrefixSection({
 }
 
 async function tokenize(text: string, ds: DataSourceConfig) {
-  const dustAPI = new DustAPI(
-    apiConfig.getDustAPIConfig(),
-    {
-      apiKey: ds.workspaceAPIKey,
-      workspaceId: ds.workspaceId,
-    },
-    logger,
-    { useLocalInDev: true }
-  );
-  const tokensRes = await dustAPI.tokenize(text, ds.dataSourceId);
+  const tokensRes = await getDustAPI(ds).tokenize(text, ds.dataSourceId);
   if (tokensRes.isErr()) {
     logger.error(
       { error: tokensRes.error },
@@ -1131,124 +1133,43 @@ export async function upsertFolderNode({
   folderId,
   timestampMs,
   parents,
-  loggerArgs = {},
   title,
 }: {
   dataSourceConfig: DataSourceConfig;
   folderId: string;
   timestampMs?: number;
   parents: string[];
-  loggerArgs?: Record<string, string | number>;
   title: string;
 }) {
-  const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
-    `/data_sources/${dataSourceConfig.dataSourceId}/folders/${encodeURIComponent(folderId)}`;
-
   const now = new Date();
 
-  const timestamp = timestampMs ? Math.floor(timestampMs) : now.getTime();
-
-  const localLogger = logger.child({
-    ...loggerArgs,
+  const r = await getDustAPI(dataSourceConfig).upsertFolder(
+    dataSourceConfig.dataSourceId,
     folderId,
-    workspaceId: dataSourceConfig.workspaceId,
-    dataSourceId: dataSourceConfig.dataSourceId,
-    endpoint,
-    parents,
-  });
-
-  const dustRequestPayload: UpsertDataSourceFolderRequestType = {
-    timestamp,
+    timestampMs ? timestampMs : now.getTime(),
     title,
-    parents,
-  };
+    parents
+  );
 
-  const dustRequestConfig: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
-    },
-  };
-
-  let dustRequestResult: AxiosResponse;
-  try {
-    dustRequestResult = await axiosWithTimeout.post(
-      endpoint,
-      dustRequestPayload,
-      dustRequestConfig
-    );
-  } catch (e) {
-    if (axios.isAxiosError(e) && e.config?.data) {
-      e.config.data = "[REDACTED]";
-    }
-    localLogger.error({ error: e }, "Error upserting folder to Dust.");
-    throw e;
-  }
-
-  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    localLogger.info("Successfully upserted folder to Dust.");
-  } else {
-    localLogger.error(
-      {
-        status: dustRequestResult.status,
-      },
-      "Error upserting folder to Dust."
-    );
-    throw new Error(
-      `Error upserting folder to dust: ${JSON.stringify(dustRequestResult, null, 2)}`
-    );
+  if (r.isErr()) {
+    throw r.error;
   }
 }
 
 export async function deleteFolderNode({
   dataSourceConfig,
   folderId,
-  loggerArgs = {},
 }: {
   dataSourceConfig: DataSourceConfig;
   folderId: string;
   loggerArgs?: Record<string, string | number>;
 }) {
-  const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
-    `/data_sources/${dataSourceConfig.dataSourceId}/folders/${encodeURIComponent(folderId)}`;
+  const r = await getDustAPI(dataSourceConfig).deleteFolder(
+    dataSourceConfig.dataSourceId,
+    folderId
+  );
 
-  const localLogger = logger.child({
-    ...loggerArgs,
-    folderId,
-    workspaceId: dataSourceConfig.workspaceId,
-    dataSourceId: dataSourceConfig.dataSourceId,
-    endpoint,
-  });
-
-  const dustRequestConfig: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
-    },
-  };
-
-  let dustRequestResult: AxiosResponse;
-  try {
-    dustRequestResult = await axiosWithTimeout.delete(
-      endpoint,
-      dustRequestConfig
-    );
-  } catch (e) {
-    localLogger.error({ error: e }, "Error deleting folder from Dust.");
-    throw e;
-  }
-
-  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    localLogger.info("Successfully deleted folder from Dust.");
-  } else {
-    localLogger.error(
-      {
-        status: dustRequestResult.status,
-      },
-      "Error deleting folder from Dust."
-    );
-    throw new Error(
-      `Error deleting folder from dust: ${JSON.stringify(dustRequestResult, null, 2)}`
-    );
+  if (r.isErr()) {
+    throw r.error;
   }
 }

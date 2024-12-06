@@ -818,6 +818,39 @@ export class DustAPI {
     return new Ok(r.value.tokens);
   }
 
+  async upsertFolder(
+    dataSourceId: string,
+    folderId: string,
+    timestamp: number,
+    title: string,
+    parents: string[]
+  ) {
+    const r = await this.request({
+      method: "POST",
+      path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
+        folderId
+      )}`,
+      body: {
+        timestamp: Math.floor(timestamp),
+        title,
+        parents,
+      },
+    });
+
+    return r;
+  }
+
+  async deleteFolder(dataSourceId: string, folderId: string) {
+    const r = await this.request({
+      method: "DELETE",
+      path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
+        folderId
+      )}`,
+    });
+
+    return r;
+  }
+
   async uploadFile({
     contentType,
     fileName,
