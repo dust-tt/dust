@@ -822,10 +822,10 @@ export type LightAgentConfigurationType = z.infer<
 >;
 
 const ContentFragmentContextSchema = z.object({
-  username: z.string().nullable(),
-  fullName: z.string().nullable(),
-  email: z.string().nullable(),
-  profilePictureUrl: z.string().nullable(),
+  username: z.string().optional().nullable(),
+  fullName: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  profilePictureUrl: z.string().optional().nullable(),
 });
 
 const ContentFragmentSchema = z.object({
@@ -1632,11 +1632,11 @@ export type PublicPostEditMessagesRequestBody = z.infer<
 
 export const PublicContentFragmentWithContentSchema = z.object({
   title: z.string(),
-  url: z.string().nullable(),
+  url: z.string().optional().nullable(),
   content: z.string(),
   contentType: SupportedInlinedContentFragmentTypeSchema,
   fileId: z.undefined().nullable(),
-  context: ContentFragmentContextSchema.nullable(),
+  context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
 });
@@ -1647,11 +1647,11 @@ export type PublicContentFragmentWithContent = z.infer<
 
 export const PublicContentFragmentWithFileIdSchema = z.object({
   title: z.string(),
-  url: z.string().nullable(),
+  url: z.string().optional().nullable(),
   content: z.undefined().nullable(),
   contentType: z.undefined().nullable(),
   fileId: z.string(),
-  context: ContentFragmentContextSchema.nullable(),
+  context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
 });

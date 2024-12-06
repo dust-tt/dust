@@ -128,7 +128,12 @@ async function handler(
         auth,
         conversation,
         contentFragment,
-        context
+        {
+          email: context?.email ?? null,
+          fullName: context?.fullName ?? null,
+          username: context?.username ?? null,
+          profilePictureUrl: context?.profilePictureUrl ?? null,
+        }
       );
 
       if (contentFragmentRes.isErr()) {

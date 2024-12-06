@@ -183,10 +183,10 @@ async function handler(
         }
 
         const cfRes = await postNewContentFragment(auth, conversation, cf, {
-          username: context?.username || null,
-          fullName: context?.fullName || null,
-          email: context?.email || null,
-          profilePictureUrl: context?.profilePictureUrl || null,
+          username: context?.username ?? null,
+          fullName: context?.fullName ?? null,
+          email: context?.email ?? null,
+          profilePictureUrl: context?.profilePictureUrl ?? null,
         });
         if (cfRes.isErr()) {
           return apiError(req, res, {
