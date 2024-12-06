@@ -1,3 +1,4 @@
+import { ConfluenceClientError } from "@dust-tt/types/src";
 import { makeScript } from "scripts/helpers";
 
 import {
@@ -19,22 +20,35 @@ makeScript(
       default: 60 * 60 * 1000,
       description: "Size of the time window in ms.",
     },
-    connectorsToSkip: {
+    connectorsOut: {
       type: "array",
       demandOption: false,
       default: [],
       description: "IDs of the connectors to skip.",
     },
+    connectorsIn: {
+      type: "array",
+      demandOption: false,
+      default: [],
+      description: "IDs of the connectors to include.",
+    },
   },
-  async ({ timeWindowMs, connectorsToSkip }) => {
+  async ({ timeWindowMs, connectorsOut, connectorsIn }) => {
     const connectors = await ConnectorResource.listByType("confluence", {});
-    const skippedConnectorIdsAsStrings = connectorsToSkip.map(
+    const skippedConnectorIdsAsStrings = connectorsOut.map(
       (id) => id.toString() // we can actually get numbers from the CLI
     );
+    const connectorsToInclude = connectorsIn.map((id) => id.toString());
 
     const startDate = new Date(Date.now() - timeWindowMs);
 
     for (const connector of connectors) {
+      if (
+        connectorsToInclude.length > 0 ||
+        !connectorsToInclude.includes(connector.id.toString())
+      ) {
+        continue;
+      }
       if (skippedConnectorIdsAsStrings.includes(connector.id.toString())) {
         console.log(`-- Skipping connector ${connector.id}`);
         continue;
@@ -81,14 +95,15 @@ makeScript(
             (page) => new Date(page.version.createdAt) >= startDate
           );
           console.log(
-            `${recentlyModifiedPages.length} pages out of ${allPages.length} modified in the last hour for space ${spaceId}`
+            `${recentlyModifiedPages.length} pages modified in the last ${Math.floor(timeWindowMs / 1000)} s for space ${spaceId}`
           );
           connectorCount += recentlyModifiedPages.length;
         }
       } catch (e) {
         if (
           e instanceof ProviderWorkflowError ||
-          e instanceof ExternalOAuthTokenError
+          e instanceof ExternalOAuthTokenError ||
+          e instanceof ConfluenceClientError
         ) {
           console.error(
             `Error while checking connector ${connector.id}: ${e.message}`
