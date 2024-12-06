@@ -1,29 +1,18 @@
-import type {
-  CoreAPIDocument,
-  CoreAPILightDocument,
-  Result,
-  UpsertContext,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import {
   Err,
   FrontDataSourceDocumentSection,
   Ok,
-  sectionFullText,
   UpsertContextSchema,
 } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
 
-import { Authenticator } from "@app/lib/auth";
-import { getDocumentsPostUpsertHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
-import { launchRunPostUpsertHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
-
-import type { DataSourceResource } from "./resources/data_source_resource";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -178,50 +167,5 @@ async function enqueueUpsert({
     } else {
       throw e;
     }
-  }
-}
-
-export async function runPostUpsertHooks({
-  workspaceId,
-  dataSource,
-  documentId,
-  section,
-  document,
-  sourceUrl,
-  upsertContext,
-}: {
-  workspaceId: string;
-  dataSource: DataSourceResource;
-  documentId: string;
-  section: t.TypeOf<typeof FrontDataSourceDocumentSection>;
-  document: CoreAPILightDocument | CoreAPIDocument;
-  sourceUrl: string | null;
-  upsertContext?: UpsertContext;
-}) {
-  const fullText = sectionFullText(section);
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-
-  const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
-    auth,
-    dataSourceId: dataSource.sId,
-    documentId: documentId,
-    documentText: fullText,
-    documentHash: document.hash,
-    dataSourceConnectorProvider: dataSource.connectorProvider || null,
-    documentSourceUrl: sourceUrl || undefined,
-    upsertContext,
-  });
-
-  // TODO: parallel.
-  for (const { type: hookType, debounceMs } of postUpsertHooksToRun) {
-    await launchRunPostUpsertHooksWorkflow(
-      workspaceId,
-      dataSource.sId,
-      documentId,
-      document.hash,
-      dataSource.connectorProvider || null,
-      hookType,
-      debounceMs
-    );
   }
 }
