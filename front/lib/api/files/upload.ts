@@ -4,6 +4,7 @@ import type {
   SupportedFileContentType,
 } from "@dust-tt/types";
 import {
+  assertNever,
   Err,
   isTextExtractionSupportedContentType,
   Ok,
@@ -27,18 +28,6 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
-
-const notSupportedError: ProcessingFunction = async (
-  auth: Authenticator,
-  file: FileResource
-) => {
-  return new Err(
-    new Error(
-      "Processing not supported for " +
-        `content type ${file.contentType} and use case ${file.useCase}`
-    )
-  );
-};
 
 // Upload to public bucket.
 
@@ -291,121 +280,91 @@ type ProcessingFunction = (
   file: FileResource
 ) => Promise<Result<undefined, Error>>;
 
-type ProcessingPerUseCase = {
-  [k in FileUseCase]: ProcessingFunction | undefined;
+const getProcessingFunction = ({
+  contentType,
+  useCase,
+}: {
+  contentType: SupportedFileContentType;
+  useCase: FileUseCase;
+}): ProcessingFunction | undefined => {
+  switch (contentType) {
+    case "image/jpeg":
+    case "image/png":
+      if (useCase === "conversation") {
+        return resizeAndUploadToFileStorage;
+      } else if (useCase === "avatar") {
+        return uploadToPublicBucket;
+      }
+      break;
+
+    case "application/msword":
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/pdf":
+      if (useCase === "conversation" || useCase === "folder_document") {
+        return extractTextFromFileAndUpload;
+      }
+      break;
+    case "text/plain":
+    case "text/markdown":
+      if (
+        useCase === "conversation" ||
+        useCase === "folder_document" ||
+        useCase === "tool_output"
+      ) {
+        return storeRawText;
+      }
+      break;
+    case "text/vnd.dust.attachment.slack.thread":
+      if (useCase === "conversation") {
+        return storeRawText;
+      }
+      break;
+    case "text/comma-separated-values":
+    case "text/csv":
+    case "text/tab-separated-values":
+    case "text/tsv":
+      if (useCase === "conversation" || useCase === "folder_table") {
+        // TODO(JIT): after JIT enablement, store raw text here too, the snippet is useless
+        return extractContentAndSchemaFromDelimitedTextFiles;
+      } else if (useCase === "folder_document" || useCase === "tool_output") {
+        return storeRawText;
+      }
+      break;
+
+    default:
+      assertNever(contentType);
+  }
+
+  return undefined;
 };
 
-type ProcessingPerContentType = {
-  [k in SupportedFileContentType]: ProcessingPerUseCase | undefined;
-};
-
-const processingPerContentType: ProcessingPerContentType = {
-  "application/msword": {
-    conversation: extractTextFromFileAndUpload,
-    folder_document: extractTextFromFileAndUpload,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-    folder_document: extractTextFromFileAndUpload,
-    folder_table: notSupportedError,
-    conversation: extractTextFromFileAndUpload,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "application/pdf": {
-    folder_document: extractTextFromFileAndUpload,
-    folder_table: notSupportedError,
-    conversation: extractTextFromFileAndUpload,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "image/jpeg": {
-    conversation: resizeAndUploadToFileStorage,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: uploadToPublicBucket,
-    tool_output: storeRawText,
-  },
-  "image/png": {
-    conversation: resizeAndUploadToFileStorage,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: uploadToPublicBucket,
-    tool_output: notSupportedError,
-  },
-  "text/comma-separated-values": {
-    conversation: extractContentAndSchemaFromDelimitedTextFiles,
-    folder_document: storeRawText,
-    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
-    avatar: notSupportedError,
-    tool_output: storeRawText,
-  },
-  "text/csv": {
-    conversation: extractContentAndSchemaFromDelimitedTextFiles,
-    folder_document: storeRawText,
-    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
-    avatar: notSupportedError,
-    tool_output: storeRawText,
-  },
-  "text/markdown": {
-    conversation: storeRawText,
-    folder_document: storeRawText,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: storeRawText,
-  },
-  "text/plain": {
-    conversation: storeRawText,
-    folder_document: storeRawText,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: storeRawText,
-  },
-  "text/tab-separated-values": {
-    conversation: extractContentAndSchemaFromDelimitedTextFiles,
-    folder_document: storeRawText,
-    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
-    avatar: notSupportedError,
-    tool_output: storeRawText,
-  },
-  "text/tsv": {
-    conversation: extractContentAndSchemaFromDelimitedTextFiles,
-    folder_document: storeRawText,
-    folder_table: extractContentAndSchemaFromDelimitedTextFiles,
-    avatar: notSupportedError,
-    tool_output: storeRawText,
-  },
-  "text/vnd.dust.attachment.slack.thread": {
-    conversation: storeRawText,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
+export const isUploadSupported = (arg: {
+  contentType: SupportedFileContentType;
+  useCase: FileUseCase;
+}): boolean => {
+  const processing = getProcessingFunction(arg);
+  return !!processing;
 };
 
 const maybeApplyProcessing: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  const contentTypeProcessing = processingPerContentType[file.contentType];
-  if (!contentTypeProcessing) {
+  const processing = getProcessingFunction(file);
+  if (!processing) {
+    return new Err(
+      new Error(
+        `Processing not supported for content type ${file.contentType} and use case ${file.useCase}`
+      )
+    );
+  }
+
+  const res = await processing(auth, file);
+  if (res.isErr()) {
+    return res;
+  } else {
     return new Ok(undefined);
   }
-
-  const processing = contentTypeProcessing[file.useCase];
-  if (processing) {
-    const res = await processing(auth, file);
-    if (res.isErr()) {
-      return res;
-    } else {
-      return new Ok(undefined);
-    }
-  }
-
-  return new Ok(undefined);
 };
 
 export async function processAndStoreFile(
