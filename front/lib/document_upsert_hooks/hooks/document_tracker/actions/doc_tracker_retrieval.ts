@@ -2,8 +2,8 @@ import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
 import type { Authenticator } from "@app/lib/auth";
-import { getTrackableDataSourceViews } from "@app/lib/documents_post_process_hooks/hooks/document_tracker/lib";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 // Part of the new doc tracker pipeline, performs the retrieval (semantic search) step
 // it takes {input_text: string} as input
@@ -14,23 +14,25 @@ export async function callDocTrackerRetrievalAction(
     inputText,
     targetDocumentTokens,
     topK,
-  }: { inputText: string; targetDocumentTokens: number; topK: number }
+    dataSourceViews,
+  }: {
+    inputText: string;
+    targetDocumentTokens: number;
+    topK: number;
+    dataSourceViews: DataSourceViewResource[];
+  }
 ): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
-  const action = DustProdActionRegistry["doc-tracker-retrieval"];
-  const config = cloneBaseConfig(action.config);
-
-  const trackableDataSourceViews = await getTrackableDataSourceViews(auth);
-
-  if (!trackableDataSourceViews.length) {
+  if (!dataSourceViews.length) {
     return [];
   }
 
-  config.SEMANTIC_SEARCH.data_sources = trackableDataSourceViews.map(
-    (view) => ({
-      workspace_id: auth.getNonNullableWorkspace().sId,
-      data_source_id: view.sId,
-    })
-  );
+  const action = DustProdActionRegistry["doc-tracker-retrieval"];
+  const config = cloneBaseConfig(action.config);
+
+  config.SEMANTIC_SEARCH.data_sources = dataSourceViews.map((view) => ({
+    workspace_id: auth.getNonNullableWorkspace().sId,
+    data_source_id: view.sId,
+  }));
 
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
   config.SEMANTIC_SEARCH.top_k = topK;
