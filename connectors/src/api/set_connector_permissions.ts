@@ -7,6 +7,7 @@ import * as reporter from "io-ts-reporters";
 import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import logger from "@connectors/logger/logger";
 
 type SetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
   success: true;
@@ -74,6 +75,15 @@ const _setConnectorPermissions = async (
       },
     });
   }
+
+  // Log the permissions that are being set for tracing purposes
+  logger.info(
+    {
+      connectorId: connector.id,
+      resources,
+    },
+    "Setting connector permissions"
+  );
 
   const pRes = await getConnectorManager({
     connectorProvider: connector.type,
