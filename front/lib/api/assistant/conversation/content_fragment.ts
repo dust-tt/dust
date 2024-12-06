@@ -5,11 +5,7 @@ import type {
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
-import {
-  Err,
-  extensionsForContentType,
-  Ok,
-} from "@dust-tt/types";
+import { Err, extensionsForContentType, Ok } from "@dust-tt/types";
 
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
