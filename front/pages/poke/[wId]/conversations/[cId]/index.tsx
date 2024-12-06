@@ -17,7 +17,7 @@ import { useConversation } from "@app/poke/swr";
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspaceId: string;
   conversationId: string;
-  conversationDataSourceId?: string;
+  conversationDataSourceId: string | null;
 }>(async (context, auth) => {
   const cId = context.params?.cId;
   if (!cId || typeof cId !== "string") {
@@ -49,7 +49,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     props: {
       workspaceId: wId,
       conversationId: cId,
-      conversationDataSourceId: conversationDataSource?.sId,
+      conversationDataSourceId: conversationDataSource?.sId ?? null,
     },
   };
 });
