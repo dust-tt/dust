@@ -22,14 +22,24 @@ export const acceptableTranscriptProvidersCodec = t.union([
 ]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.union([
-  t.type({
-    connectionId: t.string,
-    provider: acceptableTranscriptProvidersCodec,
-  }),
-  t.type({
-    apiKey: t.string,
-    provider: acceptableTranscriptProvidersCodec,
-  }),
+  t.intersection([
+    t.type({
+      connectionId: t.string,
+      provider: acceptableTranscriptProvidersCodec,
+    }),
+    t.partial({
+      apiKeyIsEncrypted: t.boolean,
+    }),
+  ]),
+  t.intersection([
+    t.type({
+      apiKey: t.string,
+      provider: acceptableTranscriptProvidersCodec,
+    }),
+    t.partial({
+      apiKeyIsEncrypted: t.boolean,
+    }),
+  ]),
 ]);
 
 async function handler(
@@ -95,7 +105,7 @@ async function handler(
           : undefined;
       const apiKey =
         "apiKey" in validatedBody ? validatedBody.apiKey : undefined;
-      const { provider } = validatedBody;
+      const { provider, apiKeyIsEncrypted } = validatedBody;
 
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
@@ -121,7 +131,7 @@ async function handler(
           workspaceId: owner.id,
           provider,
           connectionId: connectionId ?? null,
-          apiKey: encryptedApiKey ?? null,
+          apiKey: apiKeyIsEncrypted ? apiKey : encryptedApiKey ?? null,
         });
 
       return res
