@@ -10,17 +10,16 @@ use url::Url;
  * Create an index in Elasticsearch
  *
  * Usage:
- * cargo run --bin create_index -- <index-name> <version>
+ * cargo run --bin create_index -- <index_alias> <version>
  *
- * Will look for index settings and mappings in migrations/elasticsearch/indices/[index_name]_[version].settings.[region].json
+ * Will look for index settings and mappings in migrations/elasticsearch/indices/[index_alias]_[version].settings.[region].json
  */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // get args
     let args = std::env::args().collect::<Vec<String>>();
-    let index_name = args[1].clone();
+    let index_alias = args[1].clone();
     let version = args[2].clone();
-    let region = args[3].clone();
 
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
 
@@ -43,11 +42,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // get index settings and mappings, parse them as json
     let settings_path = format!(
         "bin/migrations/elasticsearch/indices/{}_{}.settings.{}.json",
-        index_name, version, region
+        index_alias, version, region
     );
     let mappings_path = format!(
         "bin/migrations/elasticsearch/indices/{}_{}.mappings.json",
-        index_name, version, region
+        index_alias, version
     );
 
     let settings = std::fs::read_to_string(settings_path)?;
@@ -56,15 +55,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let settings: HashMap<String, serde_json::Value> = serde_json::from_str(&settings)?;
     let mappings: HashMap<String, serde_json::Value> = serde_json::from_str(&mappings)?;
 
-    let alias = format!("{}_{}", index_name, version);
-
     let body = serde_json::json!({
         "settings": settings,
         "mappings": mappings,
         "aliases": {
-            alias: {}
+            index_alias.clone(): {}
         }
     });
+
+    let index_name = format!("{}_{}", index_alias.clone(), version);
+    println!("{:?}", body);
 
     // check if index exists
     let response = client
