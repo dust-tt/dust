@@ -1764,12 +1764,7 @@ export async function postNewContentFragment(
 
   const messageId = generateRandomModelSId();
 
-  const cfBlobRes = await getContentFragmentBlob(
-    auth,
-    conversation,
-    cf,
-    messageId
-  );
+  const cfBlobRes = await getContentFragmentBlob(auth, cf);
   if (cfBlobRes.isErr()) {
     return cfBlobRes;
   }
