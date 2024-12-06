@@ -595,7 +595,7 @@ async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "multi_actions_error",
-          message: `Error running assistant: ${event.content.message}`,
+          message: `Error running assistant: [${event.content.code}] ${event.content.message}`,
         },
       } satisfies AgentErrorEvent;
       return;
