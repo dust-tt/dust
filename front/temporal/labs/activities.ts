@@ -16,15 +16,14 @@ import {
   getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { default as apiConfig } from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
-import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
@@ -452,43 +451,30 @@ export async function processTranscriptActivity(
       origin: null,
     };
 
-    const file = await FileResource.makeNew({
-      contentType: "text/plain",
+    const cfRes = await toFileContentFragment(auth, {
+      contentFragment: {
+        title: transcriptTitle,
+        content: transcriptContent,
+        contentType: "text/plain",
+        url: null,
+      },
       fileName: `${transcriptTitle}.txt`,
-      fileSize: transcriptContent.length,
-      userId: user.id,
-      workspaceId: owner.id,
-      useCase: "conversation",
-      useCaseMetadata: null,
     });
-
-    const processRes = await processAndStoreFile(auth, {
-      file,
-      reqOrString: transcriptContent,
-    });
-
-    if (processRes.isErr()) {
+    if (cfRes.isErr()) {
       localLogger.error(
         {
           conversationSid: initialConversation.sId,
-          error: processRes.error,
+          error: cfRes.error,
         },
         "[processTranscriptActivity] Error creating file for content fragment. Stopping."
       );
       return;
     }
 
-    const contentFragmentData = {
-      title: transcriptTitle,
-      url: null,
-      fileId: file.sId,
-      baseContext,
-    };
-
     const contentFragmentRes = await postNewContentFragment(
       auth,
       initialConversation,
-      contentFragmentData,
+      cfRes.value,
       baseContext
     );
 

@@ -9,10 +9,10 @@ import {
   getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 /**
@@ -113,18 +113,19 @@ async function handler(
           });
         }
       }
-      const { context, ...contentFragment } = r.data;
+      const { context, ...rest } = r.data;
+      let contentFragment = rest;
 
+      // If we receive a content fragment that is not file based, we transform it to a file-based
+      // one.
       if (isContentFragmentInputWithContentType(contentFragment)) {
-        logger.warn(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            conversationId: conversation.sId,
-            endpoint: "content_fragment",
-            contentType: contentFragment.contentType,
-          },
-          "Public API: ContentFragmentInputWithContentType"
-        );
+        const contentFragmentRes = await toFileContentFragment(auth, {
+          contentFragment,
+        });
+        if (contentFragmentRes.isErr()) {
+          throw new Error(contentFragmentRes.error.message);
+        }
+        contentFragment = contentFragmentRes.value;
       }
 
       const contentFragmentRes = await postNewContentFragment(

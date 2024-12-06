@@ -1,5 +1,7 @@
 import type {
   ContentFragmentInputType,
+  ContentFragmentInputWithContentType,
+  ContentFragmentInputWithFileIdType,
   ConversationType,
   ModelId,
   Result,
@@ -7,11 +9,13 @@ import type {
 } from "@dust-tt/types";
 import {
   Err,
+  extensionsForContentType,
   isContentFragmentInputWithContentType,
   isSupportedUploadableContentFragmentType,
   Ok,
 } from "@dust-tt/types";
 
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
   fileAttachmentLocation,
@@ -25,6 +29,47 @@ interface ContentFragmentBlob {
   sourceUrl: string | null;
   textBytes: number | null;
   title: string;
+}
+
+export async function toFileContentFragment(
+  auth: Authenticator,
+  {
+    contentFragment,
+    fileName,
+  }: {
+    contentFragment: ContentFragmentInputWithContentType;
+    fileName?: string;
+  }
+): Promise<Result<ContentFragmentInputWithFileIdType, { message: string }>> {
+  const file = await FileResource.makeNew({
+    contentType: contentFragment.contentType,
+    fileName:
+      fileName ??
+      "content" + extensionsForContentType(contentFragment.contentType)[0],
+    fileSize: contentFragment.content.length,
+    userId: auth.user()?.id,
+    workspaceId: auth.getNonNullableWorkspace().id,
+    useCase: "conversation",
+    useCaseMetadata: null,
+  });
+
+  const processRes = await processAndStoreFile(auth, {
+    file,
+    reqOrString: contentFragment.content,
+  });
+
+  if (processRes.isErr()) {
+    return new Err({
+      message:
+        `Error creating file for content fragment: ` + processRes.error.message,
+    });
+  }
+
+  return new Ok({
+    title: contentFragment.title,
+    url: contentFragment.url,
+    fileId: file.sId,
+  });
 }
 
 export async function getContentFragmentBlob(

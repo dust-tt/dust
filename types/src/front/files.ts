@@ -191,6 +191,20 @@ export function isSupportedDelimitedTextContentType(
   );
 }
 
+export function extensionsForContentType(
+  contentType: SupportedFileContentType
+): string[] {
+  if (isSupportedPlainTextContentType(contentType)) {
+    return [...supportedPlainText[contentType]];
+  }
+
+  if (isSupportedImageContentType(contentType)) {
+    return [...supportedImage[contentType]];
+  }
+
+  return [];
+}
+
 // Types.
 
 export type FileStatus = "created" | "failed" | "ready";
