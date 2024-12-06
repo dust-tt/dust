@@ -47,6 +47,7 @@ const defaultTranscriptConfigurationState = {
   isActive: false,
   dataSourceView: null,
   apiKey: null,
+  hasDefaultConfiguration: false,
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -177,6 +178,7 @@ export default function LabsTranscriptsIndex({
       isActive: boolean;
       dataSourceView: DataSourceViewType | null;
       apiKey: string | null;
+      hasDefaultConfiguration: boolean;
     }>(defaultTranscriptConfigurationState);
 
   useEffect(() => {
@@ -232,10 +234,19 @@ export default function LabsTranscriptsIndex({
   const handleProviderChange = async (
     provider: LabsTranscriptsProviderType
   ) => {
+    let hasDefaultConfiguration = false;
+    if (provider === "modjo") {
+      const defaultConfiguration = await getDefaultConfiguration(provider);
+      if (defaultConfiguration) {
+        hasDefaultConfiguration = true;
+      }
+    }
+
     setTranscriptsConfigurationState((prev) => {
       return {
         ...prev,
         provider,
+        hasDefaultConfiguration,
       };
     });
     await mutateTranscriptsConfiguration();
@@ -366,30 +377,27 @@ export default function LabsTranscriptsIndex({
     return updateIsActive(transcriptConfigurationId, isActive);
   };
 
-  const handleCreateApiKey = async (apiKey: string) => {
+  const getDefaultConfiguration = async (provider: string) => {
     const response = await fetch(
-      `/api/w/${owner.sId}/labs/transcripts/api_key`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ apiKey }),
-      }
+      `/api/w/${owner.sId}/labs/transcripts/default?provider=${provider}`
     );
 
-    if (!response.ok) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update",
-        description: "Could not update the API key. Please try again.",
-      });
+    if (response.ok) {
+      const defaultConfigurationRes = await response.json();
+      const defaultConfiguration: LabsTranscriptsConfigurationResource =
+        defaultConfigurationRes.configuration;
+
+      return defaultConfiguration;
     }
 
-    await mutateTranscriptsConfiguration();
+    return null;
   };
 
-  const saveApiConnection = async (apiKey: string, provider: string) => {
+  const saveApiConnection = async (
+    apiKey: string,
+    provider: string,
+    apiKeyIsEncrypted: boolean = false
+  ) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
       headers: {
@@ -398,6 +406,7 @@ export default function LabsTranscriptsIndex({
       body: JSON.stringify({
         apiKey,
         provider,
+        apiKeyIsEncrypted,
       }),
     });
 
@@ -482,15 +491,9 @@ export default function LabsTranscriptsIndex({
         return;
       }
 
-      const response = await fetch(
-        `/api/w/${owner.sId}/labs/transcripts/default?provider=gong`
-      );
+      const defaultConfiguration = await getDefaultConfiguration("gong");
 
-      if (response.ok) {
-        const defaultConfigurationRes = await response.json();
-        const defaultConfiguration: LabsTranscriptsConfigurationResource =
-          defaultConfigurationRes.configuration;
-
+      if (defaultConfiguration) {
         if (
           defaultConfiguration.provider !== "gong" ||
           !defaultConfiguration.connectionId
@@ -543,24 +546,9 @@ export default function LabsTranscriptsIndex({
         return;
       }
 
-      if (!transcriptsConfigurationState.apiKey) {
-        sendNotification({
-          type: "error",
-          title: "Modjo API key is required",
-          description: "Please enter your Modjo API key.",
-        });
-        return;
-      }
+      const defaultConfiguration = await getDefaultConfiguration("modjo");
 
-      const response = await fetch(
-        `/api/w/${owner.sId}/labs/transcripts/default?provider=modjo`
-      );
-
-      if (response.ok) {
-        const defaultConfigurationRes = await response.json();
-        const defaultConfiguration: LabsTranscriptsConfigurationResource =
-          defaultConfigurationRes.configuration;
-
+      if (defaultConfiguration) {
         if (
           defaultConfiguration.provider !== "modjo" ||
           !defaultConfiguration.apiKey
@@ -576,16 +564,33 @@ export default function LabsTranscriptsIndex({
 
         await saveApiConnection(
           defaultConfiguration.apiKey,
-          defaultConfiguration.provider
+          defaultConfiguration.provider,
+          true
         );
 
         return;
       } else {
+        if (!transcriptsConfigurationState.apiKey) {
+          sendNotification({
+            type: "error",
+            title: "Modjo API key is required",
+            description: "Please enter your Modjo API key.",
+          });
+          return;
+        }
         await saveApiConnection(
           transcriptsConfigurationState.apiKey,
           transcriptsConfigurationState.provider
         );
       }
+
+      sendNotification({
+        type: "success",
+        title: "Modjo connected",
+        description:
+          "Your transcripts provider has been connected successfully.",
+      });
+
       await mutateTranscriptsConfiguration();
     } catch (error) {
       sendNotification({
@@ -802,16 +807,18 @@ export default function LabsTranscriptsIndex({
                     transcripts.
                   </Page.P>
                   <div className="flex gap-2">
-                    <Input
-                      placeholder="Modjo API key"
-                      value={transcriptsConfigurationState.apiKey}
-                      onChange={(e) =>
-                        setTranscriptsConfigurationState({
-                          ...transcriptsConfigurationState,
-                          apiKey: e.target.value,
-                        })
-                      }
-                    />
+                    {!transcriptsConfigurationState.hasDefaultConfiguration && (
+                      <Input
+                        placeholder="Modjo API key"
+                        value={transcriptsConfigurationState.apiKey}
+                        onChange={(e) =>
+                          setTranscriptsConfigurationState({
+                            ...transcriptsConfigurationState,
+                            apiKey: e.target.value,
+                          })
+                        }
+                      />
+                    )}
                     <Button
                       label="Connect Modjo"
                       size="sm"
