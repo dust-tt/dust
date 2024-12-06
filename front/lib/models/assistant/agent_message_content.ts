@@ -58,7 +58,8 @@ AgentMessageContent.belongsTo(AgentMessage, {
     name: "agentMessageId",
     allowNull: false,
   },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
+  onUpdate: "RESTRICT",
 });
 
 AgentMessage.hasMany(AgentMessageContent, {
@@ -67,5 +68,6 @@ AgentMessage.hasMany(AgentMessageContent, {
     name: "agentMessageId",
     allowNull: false,
   },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
+  onUpdate: "RESTRICT",
 });
