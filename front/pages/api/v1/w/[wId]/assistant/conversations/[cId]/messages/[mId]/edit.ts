@@ -3,7 +3,7 @@ import { PublicPostEditMessagesRequestBodySchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isUserMessageType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import {fromError} from "zod-validation-error";
+import { fromError } from "zod-validation-error";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";

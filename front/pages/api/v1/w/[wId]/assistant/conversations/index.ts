@@ -14,7 +14,7 @@ import {
   isEmptyString,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import {fromError} from "zod-validation-error";
+import { fromError } from "zod-validation-error";
 
 import {
   createConversation,

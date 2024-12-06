@@ -7,7 +7,7 @@ import { assertNever } from "@dust-tt/types";
 import { endOfMonth } from "date-fns/endOfMonth";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
-import {fromError} from "zod-validation-error";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

@@ -2,7 +2,7 @@ import type { CancelMessageGenerationResponseType } from "@dust-tt/client";
 import { CancelMessageGenerationRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import {fromError} from "zod-validation-error";
+import { fromError } from "zod-validation-error";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";

@@ -3,7 +3,7 @@ import { PatchDataSourceViewRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import {fromError} from "zod-validation-error";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";

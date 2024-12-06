@@ -2,7 +2,7 @@ import type { GetOrPatchAgentConfigurationResponseType } from "@dust-tt/client";
 import { PatchAgentConfigurationRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import {fromError} from "zod-validation-error";
+import { fromError } from "zod-validation-error";
 
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";

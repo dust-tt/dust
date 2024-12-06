@@ -13,7 +13,7 @@ import {
 } from "@dust-tt/types";
 import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
-import {fromError} from "zod-validation-error";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
