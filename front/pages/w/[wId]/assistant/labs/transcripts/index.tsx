@@ -567,8 +567,6 @@ export default function LabsTranscriptsIndex({
           defaultConfiguration.provider,
           true
         );
-
-        return;
       } else {
         if (!transcriptsConfigurationState.apiKey) {
           sendNotification({
