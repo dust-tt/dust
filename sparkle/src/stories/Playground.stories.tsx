@@ -39,7 +39,9 @@ export const Demo = () => {
           label="Send"
           variant={"ghost"}
           icon={ArrowUpIcon}
-          splitAction={<Button size="mini" variant={"ghost"} icon={ChevronDownIcon} />}
+          splitAction={
+            <Button size="mini" variant={"ghost"} icon={ChevronDownIcon} />
+          }
         />
       </div>
     </div>

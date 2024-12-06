@@ -63,3 +63,7 @@ export const ExampleButton: Story = {
     isSelect: false,
   },
 };
+
+export const MiniButton: Story = {
+  render: () => <Button size="mini" icon={PlusIcon} />,
+};
