@@ -4,7 +4,7 @@ export { AssistantPreview } from "./AssistantPreview";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
-export type { ButtonProps } from "./Button";
+export type { ButtonProps, RegularButtonProps } from "./Button";
 export { Button } from "./Button";
 export { Card, ComposableCard } from "./Card";
 export type { CardButtonProps } from "./CardButton";

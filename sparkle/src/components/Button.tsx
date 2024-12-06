@@ -118,7 +118,7 @@ type MiniButtonProps = CommonButtonProps & {
   label?: never;
 };
 
-type RegularButtonProps = CommonButtonProps & {
+export type RegularButtonProps = CommonButtonProps & {
   size?: Exclude<ButtonSizeType, "mini">;
   icon?: React.ComponentType;
   label?: string;
