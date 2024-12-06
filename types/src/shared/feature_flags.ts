@@ -10,6 +10,7 @@ export const WHITELISTABLE_FEATURES = [
   "zendesk_connector_feature",
   "index_private_slack_channel",
   "conversations_jit_actions",
+  "labs_trackers",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
