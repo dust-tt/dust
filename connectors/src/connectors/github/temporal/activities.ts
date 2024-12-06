@@ -1035,7 +1035,10 @@ export async function githubCodeSyncActivity({
             { repoId, fileName: f.fileName, documentId: f.documentId, err: e },
             "[Github] Error reading file"
           );
-          return;
+          if (e instanceof Error && "code" in e && e.code === "ENOENT") {
+            return;
+          }
+          throw e;
         }
         const contentHash = blake3(content).toString("hex");
         const parentInternalId = f.parentInternalId || rootInternalId;
