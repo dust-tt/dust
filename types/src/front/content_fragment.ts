@@ -3,8 +3,6 @@ import * as t from "io-ts";
 import { ModelId } from "../shared/model_id";
 import { MessageType, MessageVisibility } from "./assistant/conversation";
 import {
-  ImageContentType,
-  supportedImageContentTypes,
   supportedInlinedContentType,
   supportedUploadableContentType,
 } from "./files";
@@ -63,8 +61,4 @@ export function isContentFragmentType(
   arg: MessageType
 ): arg is ContentFragmentType {
   return arg.type === "content_fragment";
-}
-
-export function isSupportedImageContentFragmentType(format: string) {
-  return supportedImageContentTypes.includes(format as ImageContentType);
 }

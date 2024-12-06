@@ -1,7 +1,5 @@
-import type {
-  FileUploadedRequestResponseBody,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { FileType } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -12,6 +10,10 @@ import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+export interface FileUploadedRequestResponseBody {
+  file: FileType;
+}
 
 export const config = {
   api: {

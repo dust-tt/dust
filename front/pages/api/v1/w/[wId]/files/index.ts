@@ -2,7 +2,6 @@ import type { FileUploadRequestResponseType } from "@dust-tt/client";
 import { FileUploadUrlRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
-  ensureContentTypeForUseCase,
   ensureFileSize,
   isSupportedFileContentType,
   rateLimiter,
@@ -11,6 +10,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { isUploadSupported } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -131,7 +131,7 @@ async function handler(
         });
       }
 
-      if (!ensureContentTypeForUseCase(contentType, useCase)) {
+      if (!isUploadSupported({ contentType, useCase })) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
