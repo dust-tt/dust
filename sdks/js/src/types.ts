@@ -865,9 +865,9 @@ export type AgentMentionType = z.infer<typeof AgentMentionSchema>;
 const UserMessageContextSchema = z.object({
   username: z.string(),
   timezone: Timezone,
-  fullName: z.string().nullable(),
-  email: z.string().nullable(),
-  profilePictureUrl: z.string().nullable(),
+  fullName: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
 });
 
