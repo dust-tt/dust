@@ -321,6 +321,9 @@
  *           example: "7f3a9c2b1e"
  *     Message:
  *       type: object
+ *       required:
+ *         - content
+ *         - mentions
  *       properties:
  *         content:
  *           type: string
@@ -334,6 +337,8 @@
  *           $ref: '#/components/schemas/Context'
  *     ContentFragment:
  *       type: object
+ *       required:
+ *         - title
  *       properties:
  *         title:
  *           type: string
@@ -341,19 +346,19 @@
  *           example: "My content fragment"
  *         content:
  *           type: string
- *           description: The content of the content fragment
+ *           description: The content of the content fragment (optional if `fileId` is set)
  *           example: "This is my content fragment extracted text"
+ *         contentType:
+ *           type: string
+ *           description: The content type of the content fragment (optional if `fileId` is set)
+ *           example: "text/plain"
  *         url:
  *           type: string
  *           description: The URL of the content fragment
  *           example: "https://example.com/content"
- *         contentType:
- *           type: string
- *           description: The content type of the content fragment
- *           example: "text/plain"
  *         fileId:
  *           type: string
- *           description: The id of the previously uploaded file
+ *           description: The id of the previously uploaded file (optional if `content` and `contentType` are set)
  *           example: fil_123456
  *         context:
  *           $ref: '#/components/schemas/Context'

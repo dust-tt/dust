@@ -51,6 +51,8 @@ import { apiError } from "@app/logger/withlogging";
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - message
  *             properties:
  *               message:
  *                 $ref: '#/components/schemas/Message'
@@ -66,7 +68,6 @@ import { apiError } from "@app/logger/withlogging";
  *               title:
  *                 type: string
  *                 description: The title of the conversation
- *                 nullable: true
  *                 example: My conversation
  *               visibility:
  *                 type: string
@@ -237,9 +238,9 @@ async function handler(
             context: {
               timezone: message.context.timezone,
               username: message.context.username,
-              fullName: message.context.fullName,
-              email: message.context.email,
-              profilePictureUrl: message.context.profilePictureUrl,
+              fullName: message.context.fullName ?? null,
+              email: message.context.email ?? null,
+              profilePictureUrl: message.context.profilePictureUrl ?? null,
               origin: message.context.origin ?? "api",
             },
           },

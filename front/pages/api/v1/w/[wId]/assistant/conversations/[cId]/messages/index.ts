@@ -112,7 +112,11 @@ async function handler(
           content,
           mentions,
           context: {
-            ...context,
+            timezone: context.timezone,
+            username: context.username,
+            fullName: context.fullName ?? null,
+            email: context.email ?? null,
+            profilePictureUrl: context.profilePictureUrl ?? null,
             origin: context.origin ?? "api",
           },
         },
