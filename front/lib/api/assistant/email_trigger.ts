@@ -316,23 +316,27 @@ export async function triggerFromEmail({
         contentType: "text/plain",
         url: null,
       },
-      fileName: `email-${email.subject}.txt`,
+      fileName: `email-thread.txt`,
     });
     if (cfRes.isErr()) {
       return new Err({
         type: "message_creation_error",
         message:
-          `Error creating file for content fragment: ` +
-          cfRes.error.message,
+          `Error creating file for content fragment: ` + cfRes.error.message,
       });
     }
 
-    const contentFragmentRes = await postNewContentFragment(auth, conversation, cfRes.value, {
-      username: user.username,
-      fullName: user.fullName,
-      email: user.email,
-      profilePictureUrl: user.image,
-    });
+    const contentFragmentRes = await postNewContentFragment(
+      auth,
+      conversation,
+      cfRes.value,
+      {
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        profilePictureUrl: user.image,
+      }
+    );
     if (contentFragmentRes.isErr()) {
       return new Err({
         type: "message_creation_error",
