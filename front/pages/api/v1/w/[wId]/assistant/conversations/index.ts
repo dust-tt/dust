@@ -110,7 +110,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body: " + fromError(r.error).toString(),
+            message: fromError(r.error).toString(),
           },
         });
       }
