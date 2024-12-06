@@ -20,7 +20,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { ExternalLinkIcon } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
@@ -174,6 +174,16 @@ export function AssistantDetails({
       agentConfigurationId: assistantId ?? "",
     });
 
+    const sortedFeedbacks = useMemo(() => {
+      if (!agentConfigurationFeedbacks) {
+        return null;
+      }
+      return agentConfigurationFeedbacks.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    }, [agentConfigurationFeedbacks]);
+
     const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
       useAgentConfigurationHistory({
         workspaceId: owner.sId,
@@ -186,9 +196,7 @@ export function AssistantDetails({
       <Spinner />
     ) : (
       <div>
-        {!agentConfigurationFeedbacks ||
-        agentConfigurationFeedbacks.length === 0 ||
-        !assistantId ? (
+        {!sortedFeedbacks || sortedFeedbacks.length === 0 || !assistantId ? (
           <div className="mt-3 text-sm text-element-900">No feedbacks.</div>
         ) : (
           <div className="mt-3">
@@ -197,12 +205,11 @@ export function AssistantDetails({
               agentConfigurationVersion={agentConfiguration.version}
               isLatestVersion={true}
             />
-            {agentConfigurationFeedbacks.map((feedback, index) => (
+            {sortedFeedbacks.map((feedback, index) => (
               <div key={feedback.id}>
                 {index > 0 &&
                   feedback.agentConfigurationVersion !==
-                    agentConfigurationFeedbacks[index - 1]
-                      .agentConfigurationVersion && (
+                    sortedFeedbacks[index - 1].agentConfigurationVersion && (
                     <ConfigVersionHeader
                       agentConfiguration={agentConfigurationHistory?.find(
                         (c) => c.version === feedback.agentConfigurationVersion
@@ -289,6 +296,12 @@ function FeedbackCard({
     feedbackId: feedback.id.toString(),
   });
 
+  const baseUrl =
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:3000"
+      : "https://dust.tt";
+  const conversationUrl = `${baseUrl}/w/${owner.sId}/assistant/${conversationId}`;
+
   return (
     <ContentMessage variant="slate" className="my-2">
       <div className="justify-content-around mb-3 flex items-center gap-2">
@@ -331,7 +344,7 @@ function FeedbackCard({
           <Button
             variant="outline"
             size="xs"
-            href={`https://dust.tt/w/${owner.sId}/assistant/${conversationId}`}
+            href={conversationUrl}
             label="Conversation"
             icon={ExternalLinkIcon}
             target="_blank"
