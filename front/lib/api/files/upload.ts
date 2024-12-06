@@ -3,7 +3,12 @@ import type {
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import {
+  Err,
+  isTextExtractionSupportedContentType,
+  Ok,
+  TextExtraction,
+} from "@dust-tt/types";
 import { parse } from "csv-parse";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
@@ -12,9 +17,9 @@ import { Readable } from "stream";
 import { PassThrough, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
+import config from "@app/lib/api/config";
 import type { CSVRow } from "@app/lib/api/csv";
 import { analyzeCSVColumns } from "@app/lib/api/csv";
-import { extractTextFromFile } from "@app/lib/api/files/text_extraction";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -126,13 +131,19 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
   file: FileResource
 ) => {
   try {
-    const content = await extractTextFromFile(auth, file);
+    if (!isTextExtractionSupportedContentType(file.contentType)) {
+      throw new Error(
+        `Cannot extract text from this file type ${file.contentType}. Action: check than caller filters out unsupported file types.`
+      );
+    }
+    const readStream = file.getReadStream({ auth, version: "original" });
     const writeStream = file.getWriteStream({ auth, version: "processed" });
 
-    // Use pipeline with an async generator
-    await pipeline(async function* () {
-      yield content;
-    }, writeStream);
+    const processedStream = await new TextExtraction(
+      config.getTextExtractionUrl()
+    ).fromStream(readStream, file.contentType);
+
+    await pipeline(processedStream, writeStream);
 
     return new Ok(undefined);
   } catch (err) {
