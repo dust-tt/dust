@@ -2,11 +2,11 @@ import type {
   AgentActionPublicType,
   ConversationPublicType,
   DustAPI,
+  UserMessageType,
 } from "@dust-tt/client";
 import type {
   LightAgentConfigurationType,
   Result,
-  UserMessageType,
 } from "@dust-tt/types";
 import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/types";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
