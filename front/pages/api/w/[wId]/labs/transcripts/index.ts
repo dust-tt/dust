@@ -1,4 +1,5 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { encrypt } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -112,13 +113,15 @@ async function handler(
         });
       }
 
+      const encryptedApiKey = apiKey ? encrypt(apiKey, owner.sId) : null;
+
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
           userId: user.id,
           workspaceId: owner.id,
           provider,
           connectionId: connectionId ?? null,
-          apiKey: apiKey ?? null,
+          apiKey: encryptedApiKey ?? null,
         });
 
       return res
