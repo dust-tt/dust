@@ -1,4 +1,4 @@
-import { ConfluenceClientError } from "@dust-tt/types/src";
+import { ConfluenceClientError } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import {
@@ -44,7 +44,7 @@ makeScript(
 
     for (const connector of connectors) {
       if (
-        connectorsToInclude.length > 0 ||
+        connectorsToInclude.length > 0 &&
         !connectorsToInclude.includes(connector.id.toString())
       ) {
         continue;
