@@ -6,9 +6,10 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
+  SupportedContentFragmentType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err, isSupportedImageContentFragmentType, Ok } from "@dust-tt/types";
+import { Err, isSupportedImageContentType, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -359,7 +360,7 @@ export async function renderFromFileId(
     textBytes,
     contentFragmentVersion,
   }: {
-    contentType: string;
+    contentType: SupportedContentFragmentType;
     excludeImages: boolean;
     fileId: string;
     forceFullCSVInclude: boolean;
@@ -369,7 +370,7 @@ export async function renderFromFileId(
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  if (isSupportedImageContentFragmentType(contentType)) {
+  if (isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return new Ok({
         role: "content_fragment",
@@ -449,7 +450,7 @@ export async function renderLightContentFragmentForModel(
 ): Promise<ContentFragmentMessageTypeModel> {
   const { contentType, fileId, title, contentFragmentVersion } = message;
 
-  if (fileId && isSupportedImageContentFragmentType(contentType)) {
+  if (fileId && isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return {
         role: "content_fragment",

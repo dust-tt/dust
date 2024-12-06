@@ -1,10 +1,14 @@
-import type { FileUseCase, PlainTextContentType, Result } from "@dust-tt/types";
+import type {
+  FileUseCase,
+  Result,
+  SupportedFileContentType,
+} from "@dust-tt/types";
 import {
   assertNever,
   CoreAPI,
   Err,
   getSmallWhitelistedModel,
-  isSupportedPlainTextContentType,
+  isSupportedDelimitedTextContentType,
   Ok,
   removeNulls,
   slugify,
@@ -53,15 +57,6 @@ class MemoryWritable extends Writable {
     return this.chunks.join("");
   }
 }
-
-const notSupportedError: ProcessingFunction = async ({ file }) => {
-  return new Err(
-    new Error(
-      "Processing not supported for " +
-        `content type ${file.contentType} and use case ${file.useCase}`
-    )
-  );
-};
 
 async function generateSnippet(
   auth: Authenticator,
@@ -309,85 +304,58 @@ type ProcessingFunction = ({
   dataSource: DataSourceResource;
 }) => Promise<Result<undefined, Error>>;
 
-type ProcessingPerUseCase = {
-  [k in FileUseCase]: ProcessingFunction | undefined;
+const getProcessingFunction = ({
+  contentType,
+  useCase,
+}: {
+  contentType: SupportedFileContentType;
+  useCase: FileUseCase;
+}): ProcessingFunction | undefined => {
+  // Use isSupportedDelimitedTextContentType() everywhere to have a common source of truth
+  if (isSupportedDelimitedTextContentType(contentType)) {
+    if (
+      useCase === "conversation" ||
+      useCase === "tool_output" ||
+      useCase === "folder_table"
+    ) {
+      return upsertTableToDatasource;
+    } else if (useCase === "folder_document") {
+      return upsertDocumentToDatasource;
+    } else {
+      return undefined;
+    }
+  }
+
+  switch (contentType) {
+    case "application/msword":
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/pdf":
+    case "text/markdown":
+    case "text/plain":
+    case "text/vnd.dust.attachment.slack.thread":
+      if (useCase === "conversation" || useCase === "tool_output") {
+        return upsertDocumentToDatasource;
+      }
+      break;
+
+    case "image/jpeg":
+    case "image/png":
+      // We do nothing for images.
+      break;
+
+    default:
+      assertNever(contentType);
+  }
+
+  return undefined;
 };
 
-type ProcessingPerContentType = {
-  [k in PlainTextContentType]: ProcessingPerUseCase | undefined;
-};
-
-const processingPerContentType: ProcessingPerContentType = {
-  "application/msword": {
-    conversation: upsertDocumentToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-    conversation: upsertDocumentToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "application/pdf": {
-    conversation: upsertDocumentToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/comma-separated-values": {
-    conversation: upsertTableToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: upsertTableToDatasource,
-  },
-  "text/csv": {
-    conversation: upsertTableToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: upsertTableToDatasource,
-  },
-  "text/markdown": {
-    conversation: upsertDocumentToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/plain": {
-    conversation: upsertDocumentToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/tab-separated-values": {
-    conversation: upsertTableToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/tsv": {
-    conversation: upsertTableToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
-  "text/vnd.dust.attachment.slack.thread": {
-    conversation: upsertDocumentToDatasource,
-    folder_document: notSupportedError,
-    folder_table: notSupportedError,
-    avatar: notSupportedError,
-    tool_output: notSupportedError,
-  },
+const isUpsertSupported = (arg: {
+  contentType: SupportedFileContentType;
+  useCase: FileUseCase;
+}): boolean => {
+  const processing = getProcessingFunction(arg);
+  return !!processing;
 };
 
 const maybeApplyProcessing: ProcessingFunction = async ({
@@ -396,14 +364,8 @@ const maybeApplyProcessing: ProcessingFunction = async ({
   file,
   dataSource,
 }) => {
-  const contentTypeProcessing =
-    isSupportedPlainTextContentType(file.contentType) &&
-    processingPerContentType[file.contentType];
-  if (!contentTypeProcessing) {
-    return new Ok(undefined);
-  }
+  const processing = getProcessingFunction(file);
 
-  const processing = contentTypeProcessing[file.useCase];
   if (processing) {
     const startTime = Date.now();
     const res = await processing({ auth, file, content, dataSource });
@@ -463,21 +425,16 @@ export async function processAndUpsertToDataSource(
   >
 > {
   const jitEnabled = await isJITActionsEnabled(auth);
-  const isJitCompatibleUseCase =
-    file.useCase === "conversation" || file.useCase === "tool_output";
-  const hasJitRequiredMetadata =
-    isJitCompatibleUseCase &&
-    !!file.useCaseMetadata &&
-    !!file.useCaseMetadata.conversationId;
-  const isJitSupportedContentType = isSupportedPlainTextContentType(
-    file.contentType
-  );
 
-  if (!jitEnabled || !isJitCompatibleUseCase || !isJitSupportedContentType) {
+  if (!jitEnabled || !isUpsertSupported(file)) {
     return new Ok(file);
   }
 
-  if (!hasJitRequiredMetadata) {
+  // Note: this assume that if we don't have useCaseMetadata, the file is fine.
+  const hasRequiredMetadata =
+    !!file.useCaseMetadata && !!file.useCaseMetadata.conversationId;
+
+  if (!hasRequiredMetadata) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",

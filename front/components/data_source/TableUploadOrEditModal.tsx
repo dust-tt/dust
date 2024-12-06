@@ -16,8 +16,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  BIG_FILE_SIZE,
   Err,
+  isBigFileSize,
   isSlugified,
   MAX_FILE_SIZES,
   maxFileSizeToHumanReadable,
@@ -237,7 +237,7 @@ export const TableUploadOrEditModal = ({
         name:
           prev.name.length > 0 ? prev.name : stripTableName(selectedFile.name),
       }));
-      setIsBigFile(selectedFile.size > BIG_FILE_SIZE);
+      setIsBigFile(isBigFileSize(selectedFile.size));
     } catch (error) {
       sendNotification({
         type: "error",

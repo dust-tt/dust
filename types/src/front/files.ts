@@ -1,31 +1,31 @@
-import * as t from "io-ts";
+// Types.
 
-// File upload form validation.
+export type FileStatus = "created" | "failed" | "ready";
 
-export const FileUploadUrlRequestSchema = t.type({
-  contentType: t.string,
-  fileName: t.string,
-  fileSize: t.number,
-  useCase: t.union([
-    t.literal("conversation"),
-    t.literal("avatar"),
-    t.literal("folder_document"),
-    t.literal("folder_table"),
-  ]),
-  useCaseMetadata: t.union([t.undefined, t.type({ conversationId: t.string })]),
-});
+export type FileUseCase =
+  | "conversation"
+  | "avatar"
+  | "tool_output"
+  | "folder_document"
+  | "folder_table";
 
-export type FileUploadUrlRequestType = t.TypeOf<
-  typeof FileUploadUrlRequestSchema
->;
+export type FileUseCaseMetadata = {
+  conversationId: string;
+};
 
-export interface FileUploadRequestResponseBody {
-  file: FileTypeWithUploadUrl;
+export interface FileType {
+  contentType: SupportedFileContentType;
+  downloadUrl?: string;
+  fileName: string;
+  fileSize: number;
+  id: string;
+  status: FileStatus;
+  uploadUrl?: string;
+  publicUrl?: string;
+  useCase: FileUseCase;
 }
 
-export interface FileUploadedRequestResponseBody {
-  file: FileType;
-}
+export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
 
 // Define max sizes for each category.
 export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
@@ -45,8 +45,11 @@ export function maxFileSizeToHumanReadable(size: number) {
   return `${size / (1024 * 1024)} MB`;
 }
 
-export const MAX_FILE_LENGTH = 50_000_000;
-export const BIG_FILE_SIZE = 5_000_000;
+const BIG_FILE_SIZE = 5_000_000;
+
+export function isBigFileSize(size: number) {
+  return size > BIG_FILE_SIZE;
+}
 
 // Function to ensure file size is within max limit for given content type.
 export function ensureFileSize(
@@ -105,32 +108,27 @@ export const supportedPlainTextExtensions = uniq(
   Object.values(supportedPlainText).flat()
 );
 
-export const supportedDelimitedTextExtensions = uniq(
-  Object.values(supportedDelimitedText).flat()
-);
-
-export const supportedImageExtensions = uniq(
-  Object.values(supportedImage).flat()
-);
+const supportedImageExtensions = uniq(Object.values(supportedImage).flat());
 
 export const supportedFileExtensions = uniq([
   ...supportedPlainTextExtensions,
   ...supportedImageExtensions,
 ]);
 
-export const supportedPlainTextContentTypes = Object.keys(
+const supportedPlainTextContentTypes = Object.keys(
   supportedPlainText
 ) as (keyof typeof supportedPlainText)[];
-export const supportedImageContentTypes = Object.keys(
+const supportedImageContentTypes = Object.keys(
   supportedImage
 ) as (keyof typeof supportedImage)[];
-export const supportedDelimitedTextContentTypes = Object.keys(
+const supportedDelimitedTextContentTypes = Object.keys(
   supportedDelimitedText
 ) as (keyof typeof supportedDelimitedText)[];
-export const supportedRawTextContentTypes = Object.keys(
+const supportedRawTextContentTypes = Object.keys(
   supportedRawText
 ) as (keyof typeof supportedRawText)[];
 
+// All the ones listed above
 export const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
   ...supportedImageContentTypes,
@@ -141,10 +139,9 @@ export const supportedInlinedContentType = [
 ];
 
 // Infer types from the arrays.
-export type PlainTextContentType = keyof typeof supportedPlainText;
-export type ImageContentType = keyof typeof supportedImage;
-export type DelimitedTextContentType = keyof typeof supportedDelimitedText;
-export type RawTextContentType = keyof typeof supportedRawText;
+type PlainTextContentType = keyof typeof supportedPlainText;
+type ImageContentType = keyof typeof supportedImage;
+type DelimitedTextContentType = keyof typeof supportedDelimitedText;
 
 // Union type for all supported content types.
 export type SupportedFileContentType = PlainTextContentType | ImageContentType;
@@ -157,19 +154,7 @@ export function isSupportedFileContentType(
   );
 }
 
-export type SupportedInlinedContentType =
-  | DelimitedTextContentType
-  | RawTextContentType;
-
-export function isSupportedInlinedContentType(
-  contentType: string
-): contentType is SupportedInlinedContentType {
-  return supportedInlinedContentType.includes(
-    contentType as SupportedInlinedContentType
-  );
-}
-
-export function isSupportedPlainTextContentType(
+function isSupportedPlainTextContentType(
   contentType: string
 ): contentType is PlainTextContentType {
   return supportedPlainTextContentTypes.includes(
@@ -203,57 +188,4 @@ export function extensionsForContentType(
   }
 
   return [];
-}
-
-// Types.
-
-export type FileStatus = "created" | "failed" | "ready";
-
-export type FileUseCase =
-  | "conversation"
-  | "avatar"
-  | "tool_output"
-  | "folder_document"
-  | "folder_table";
-
-export type FileUseCaseMetadata = {
-  conversationId: string;
-};
-
-export interface FileType {
-  contentType: SupportedFileContentType;
-  downloadUrl?: string;
-  fileName: string;
-  fileSize: number;
-  id: string;
-  status: FileStatus;
-  uploadUrl?: string;
-  publicUrl?: string;
-  useCase: FileUseCase;
-}
-
-export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
-
-export function ensureContentTypeForUseCase(
-  contentType: SupportedFileContentType,
-  useCase: FileUseCase
-) {
-  if (useCase === "conversation") {
-    return isSupportedFileContentType(contentType);
-  }
-
-  if (useCase === "avatar") {
-    return isSupportedImageContentType(contentType);
-  }
-
-  if (useCase === "folder_document") {
-    // Only allow users to upload text documents in folders.
-    return isSupportedPlainTextContentType(contentType);
-  }
-
-  if (useCase === "folder_table") {
-    return isSupportedDelimitedTextContentType(contentType);
-  }
-
-  return false;
 }
