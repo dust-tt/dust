@@ -46,7 +46,7 @@ const AboutMenuConfig: MenuConfig = {
     },
     {
       title: "Community Support",
-      href: "https://community.dust.tt",
+      href: "https://bit.ly/dust-slack",
       isExternal: true,
     },
     {
