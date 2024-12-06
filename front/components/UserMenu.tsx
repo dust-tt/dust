@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  EyeIcon,
   Icon,
   LightbulbIcon,
   LogoutIcon,
@@ -90,6 +91,13 @@ export function UserMenu({
                 label="Meeting transcripts"
                 icon={BookOpenIcon}
                 href={`/w/${owner.sId}/assistant/labs/transcripts`}
+              />
+            )}
+            {featureFlags.includes("labs_trackers") && (
+              <DropdownMenuItem
+                label="Trackers"
+                icon={EyeIcon}
+                href={`/w/${owner.sId}/assistant/labs/trackers`}
               />
             )}
           </>
