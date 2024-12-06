@@ -2,6 +2,7 @@ import type { GetOrPatchAgentConfigurationResponseType } from "@dust-tt/client";
 import { PatchAgentConfigurationRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import {fromError} from "zod-validation-error";
 
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
@@ -145,8 +146,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body.",
-            request_format_errors: r.error.flatten(),
+            message: "Invalid request body: " + fromError(r.error).toString(),
           },
         });
       }

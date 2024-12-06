@@ -2,6 +2,7 @@ import type { ValidateMemberResponseType } from "@dust-tt/client";
 import { ValidateMemberRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import {fromError} from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -25,8 +26,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid request body.",
-        request_format_errors: r.error.flatten(),
+        message: "Invalid request body: " + fromError(r.error).toString(),
       },
     });
   }
