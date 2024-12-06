@@ -29,25 +29,25 @@ enum NodeType {
 lazy_static! {
     static ref DOC_MIME_TYPES_MATCH: Vec<(fn(&str) -> bool, &'static str)> = vec![
         // Confluence
-        ((|s: &str| s.starts_with("confluence-page-")), "application/vnd.dust.confluence-page"),
+        ((|s: &str| s.starts_with("confluence-page-")), "application/vnd.dust.confluence.page"),
         // Github
-        ((|s: &str| s.starts_with("github-issue-")), "application/vnd.dust.github-issue"),
-        ((|s: &str| s.starts_with("github-discussion-")), "application/vnd.dust.github-discussion"),
-        ((|s: &str| s.starts_with("github-code-")), "application/vnd.dust.github-code-file"),
+        ((|s: &str| s.starts_with("github-issue-")), "application/vnd.dust.github.issue"),
+        ((|s: &str| s.starts_with("github-discussion-")), "application/vnd.dust.github.discussion"),
+        ((|s: &str| s.starts_with("github-code-")), "application/vnd.dust.github.code.file"),
         // Intercom
-        ((|s: &str| s.starts_with("intercom-conversation-")), "application/vnd.dust.intercom-conversation"),
-        ((|s: &str| s.starts_with("intercom-article-")), "application/vnd.dust.intercom-article"),
+        ((|s: &str| s.starts_with("intercom-conversation-")), "application/vnd.dust.intercom.conversation"),
+        ((|s: &str| s.starts_with("intercom-article-")), "application/vnd.dust.intercom.article"),
         // Notion
-        ((|s: &str| s.starts_with("notion-database-")), "application/vnd.notion.database"),
-        ((|s: &str| s.starts_with("notion-")), "application/vnd.notion.page"),
+        ((|s: &str| s.starts_with("notion-database-")), "application/vnd.dust.notion.database"),
+        ((|s: &str| s.starts_with("notion-")), "application/vnd.dust.notion.page"),
         // Slack
-        ((|s: &str| Regex::new(r"^slack-[A-Z0-9]+-thread-[0-9.-]+$").unwrap().is_match(s)), "text/vnd.dust.slack-thread"),
-        ((|s: &str| Regex::new(r"^slack-[A-Z0-9]+-messages-[0-9.-]+$").unwrap().is_match(s)), "text/vnd.dust.slack-thread"),
+        ((|s: &str| Regex::new(r"^slack-[A-Z0-9]+-thread-[0-9.-]+$").unwrap().is_match(s)), "text/vnd.dust.slack.thread"),
+        ((|s: &str| Regex::new(r"^slack-[A-Z0-9]+-messages-[0-9.-]+$").unwrap().is_match(s)), "text/vnd.dust.slack.thread"),
         // Webcrawler
         ((|s: &str| Regex::new(r"[a-f0-9]{64}").unwrap().is_match(s)), "text/html"),
         // Zendesk
-        ((|s: &str| s.starts_with("zendesk-article-")), "application/vnd.dust.zendesk-article"),
-        ((|s: &str| s.starts_with("zendesk-ticket-")), "application/vnd.dust.zendesk-ticket"),
+        ((|s: &str| s.starts_with("zendesk-article-")), "application/vnd.dust.zendesk.article"),
+        ((|s: &str| s.starts_with("zendesk-ticket-")), "application/vnd.dust.zendesk.ticket"),
         // Folders
         ((|s: &str| s.to_lowercase().ends_with(".pdf")), "application/pdf"),
         ((|s: &str| s.to_lowercase().ends_with(".doc") || s.ends_with(".docx")), "application/msword"),
@@ -77,7 +77,7 @@ lazy_static! {
             None => false,
         }), "text/csv"),
         // Notion
-        ((|s: &str| s.starts_with("notion-")), "application/vnd.notion.database"),
+        ((|s: &str| s.starts_with("notion-")), "application/vnd.dust.notion.database"),
         // Snowflake
         ((|s: &str| Regex::new(r"^[A-Z0-9_]+\.[A-Z0-9_]+\.[A-Z0-9_]+$").unwrap().is_match(s)), "application/vnd.snowflake.table"),
     );

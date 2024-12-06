@@ -297,7 +297,7 @@ export async function githubUpsertIssueActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: issue.title,
-    mimeType: "application/vnd.dust.github-issue",
+    mimeType: "application/vnd.dust.github.issue",
     async: true,
   });
 
@@ -483,7 +483,7 @@ export async function githubUpsertDiscussionActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: discussion.title,
-    mimeType: "application/vnd.dust.github-discussion",
+    mimeType: "application/vnd.dust.github.discussion",
     async: true,
   });
 
@@ -1098,7 +1098,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: "application/vnd.dust.github-code-file",
+            mimeType: "application/vnd.dust.github.code.file",
             async: true,
           });
 
