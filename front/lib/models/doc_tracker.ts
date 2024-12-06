@@ -1,3 +1,4 @@
+import type { ModelIdType, ModelProviderIdType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -15,9 +16,11 @@ export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigu
   declare updatedAt: CreationOptional<Date>;
 
   declare status: "active" | "inactive";
+  declare name: string;
+  declare description: string | null;
 
-  declare modelId: string;
-  declare providerId: string;
+  declare modelId: ModelIdType;
+  declare providerId: ModelProviderIdType;
   declare temperature: number;
 
   declare prompt: string | null;
@@ -54,6 +57,14 @@ TrackerConfigurationModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "active",
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     modelId: {
       type: DataTypes.STRING,
