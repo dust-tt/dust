@@ -1,24 +1,22 @@
 import type { Meta } from "@storybook/react";
 import React, { ComponentType } from "react";
 
-import { Button, CardButton } from "@sparkle/components";
-
+import { Button, Card, Icon } from "@sparkle/components";
 import {
   BookOpenStrokeIcon,
   BracesStrokeIcon,
   CommandLineStrokeIcon,
-  Icon,
   MagnifyingGlassStrokeIcon,
   PlanetStrokeIcon,
   ScanStrokeIcon,
   TableStrokeIcon,
   XMarkIcon,
-} from "../index_with_tw_base";
+} from "@sparkle/icons";
 
 const meta = {
-  title: "Primitives/CardButton",
-  component: CardButton,
-} satisfies Meta<typeof CardButton>;
+  title: "Primitives/Card",
+  component: Card,
+} satisfies Meta<typeof Card>;
 
 export default meta;
 
@@ -40,7 +38,7 @@ export const Demo = () => {
           <div className="s-flex s-gap-4">
             {sizes.map((size) => (
               <div>
-                <CardButton
+                <Card
                   key={size}
                   variant={variant}
                   size={size}
@@ -51,7 +49,7 @@ export const Demo = () => {
                   }}
                 >
                   Hello World
-                </CardButton>
+                </Card>
               </div>
             ))}
           </div>
@@ -63,16 +61,16 @@ export const Demo = () => {
 
 export const InteractiveStates = () => (
   <div className="s-flex s-gap-4">
-    <CardButton
+    <Card
       variant="primary"
       onClick={() => alert("Primary Clicked")}
       className="s-hover:bg-primary-200"
     >
       Hover/Active
-    </CardButton>
-    <CardButton variant="secondary" disabled>
+    </Card>
+    <Card variant="secondary" disabled>
       Disabled
-    </CardButton>
+    </Card>
   </div>
 );
 
@@ -123,7 +121,7 @@ const cardData: CardData[] = [
 export const ActionCardDemo: React.FC = () => (
   <div className="s-grid s-grid-cols-3 s-gap-3">
     {cardData.map((card, index) => (
-      <CardButton
+      <Card
         key={index}
         variant="primary"
         onClick={() => {
@@ -149,7 +147,7 @@ export const ActionCardDemo: React.FC = () => (
             {card.description}
           </div>
         </div>
-      </CardButton>
+      </Card>
     ))}
   </div>
 );

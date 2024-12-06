@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
-import { CardButton } from "@sparkle/components/CardButton";
+import { CardButton } from "@sparkle/components/Card";
 import { Icon } from "@sparkle/components/Icon";
 import { IconButton } from "@sparkle/components/IconButton";
 import Spinner from "@sparkle/components/Spinner";
