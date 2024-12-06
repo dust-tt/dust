@@ -16,6 +16,7 @@ import {
 import type {
   AgentConfigurationScope,
   LightAgentConfigurationType,
+  LightWorkspaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { ExternalLinkIcon } from "lucide-react";
@@ -33,6 +34,7 @@ import {
   useAgentConfigurationHistory,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
+import { useFeedbackConversation } from "@app/lib/swr/feedbacks";
 import { useUserDetails } from "@app/lib/swr/user";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -103,19 +105,15 @@ export function AssistantDetails({
   );
 
   const TabsSection = () => (
-    <Tabs defaultValue="performance">
+    <Tabs defaultValue="feedback">
       <TabsList>
         <TabsTrigger value="info" label="Info" icon={InformationCircleIcon} />
-        <TabsTrigger
-          value="performance"
-          label="Performance"
-          icon={HandThumbUpIcon}
-        />
+        <TabsTrigger value="feedback" label="Feedback" icon={HandThumbUpIcon} />
       </TabsList>
       <TabsContent value="info">
         <InfoSection />
       </TabsContent>
-      <TabsContent value="performance">
+      <TabsContent value="feedback">
         <FeedbacksSection />
       </TabsContent>
     </Tabs>
@@ -191,7 +189,7 @@ export function AssistantDetails({
         {!agentConfigurationFeedbacks ||
         agentConfigurationFeedbacks.length === 0 ||
         !assistantId ? (
-          <div>No feedbacks.</div>
+          <div className="mt-3 text-sm text-element-900">No feedbacks.</div>
         ) : (
           <div className="mt-3">
             <ConfigVersionHeader
@@ -215,7 +213,7 @@ export function AssistantDetails({
                       isLatestVersion={false}
                     />
                   )}
-                <FeedbackCard feedback={feedback} />
+                <FeedbackCard owner={owner} feedback={feedback} />
               </div>
             ))}
           </div>
@@ -278,9 +276,18 @@ function ConfigVersionHeader({
   );
 }
 
-function FeedbackCard({ feedback }: { feedback: AgentMessageFeedbackType }) {
+function FeedbackCard({
+  owner,
+  feedback,
+}: {
+  owner: LightWorkspaceType;
+  feedback: AgentMessageFeedbackType;
+}) {
   const { userDetails } = useUserDetails(feedback.userId);
-  const conversationUrl = `https://dust.tt/w/0ec9852c2f/assistant/${feedback.c}`;
+  const { conversationId } = useFeedbackConversation({
+    workspaceId: owner.sId,
+    feedbackId: feedback.id.toString(),
+  });
 
   return (
     <ContentMessage variant="slate" className="my-2">
@@ -319,16 +326,18 @@ function FeedbackCard({ feedback }: { feedback: AgentMessageFeedbackType }) {
           )}
         </div>
       </div>
-      <div className="mt-2">
-        <Button
-          variant="outline"
-          size="xs"
-          href={`https://google.com`}
-          label="Conversation"
-          icon={ExternalLinkIcon}
-          target="_blank"
-        />
-      </div>
+      {conversationId && (
+        <div className="mt-2">
+          <Button
+            variant="outline"
+            size="xs"
+            href={`https://dust.tt/w/${owner.sId}/assistant/${conversationId}`}
+            label="Conversation"
+            icon={ExternalLinkIcon}
+            target="_blank"
+          />
+        </div>
+      )}
     </ContentMessage>
   );
 }
