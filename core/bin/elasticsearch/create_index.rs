@@ -58,13 +58,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let body = serde_json::json!({
         "settings": settings,
         "mappings": mappings,
-        "aliases": {
+        /*"aliases": {
             index_alias.clone(): {}
-        }
+        }*/
     });
 
     let index_name = format!("{}_{}", index_alias.clone(), version);
-    println!("{:?}", body);
+    println!("{:?}", serde_json::to_string(&body)?);
 
     // check if index exists
     let response = client
@@ -87,5 +87,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     println!("{:?}", response);
+    // get the body
+    let body = response.json::<serde_json::Value>().await?;
+    println!("{:?}", body);
     Ok(())
 }
