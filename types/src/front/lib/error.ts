@@ -91,6 +91,7 @@ export type APIErrorType =
   | "file_not_found"
   | "file_too_large"
   | "file_type_not_supported"
+  | "file_is_empty"
   // Runs:
   | "run_not_found"
   // Spaces:
