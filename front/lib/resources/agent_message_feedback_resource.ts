@@ -7,7 +7,12 @@ import { Op } from "sequelize";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage as AgentMessageModel,
+  AgentMessageFeedback,
+  Conversation,
+  Message,
+} from "@app/lib/models/assistant/conversation";
 import type { Workspace } from "@app/lib/models/workspace";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -138,6 +143,44 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
 
     return feedbacks;
+  }
+
+  static async fetchConversationId(
+    agentMessageFeedbackId: string
+  ): Promise<string | null> {
+    const agentMessageFeedback = await AgentMessageFeedback.findByPk(
+      agentMessageFeedbackId,
+      {
+        // Feedback -> AgentMessage -> Message -> Conversation
+        include: [
+          {
+            model: AgentMessageModel,
+            attributes: ["id"],
+            include: [
+              {
+                model: Message,
+                as: "agentMessage",
+                attributes: ["id"],
+                include: [
+                  {
+                    model: Conversation,
+                    as: "conversation",
+                    attributes: ["sId"],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }
+    );
+
+    if (!agentMessageFeedback) {
+      return null;
+    }
+
+    // @ts-expect-error: sequelize cannot handle include easily
+    return agentMessageFeedback.agent_message.agentMessage.conversation.sId;
   }
 
   async fetchUser(): Promise<UserResource | null> {
