@@ -5,7 +5,10 @@ import {
   getConfluenceClient,
   getSpaceIdsToSyncActivity,
 } from "@connectors/connectors/confluence/temporal/activities";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 makeScript(
@@ -25,11 +28,14 @@ makeScript(
   },
   async ({ timeWindowMs, connectorsToSkip }) => {
     const connectors = await ConnectorResource.listByType("confluence", {});
+    const skippedConnectorIdsAsStrings = connectorsToSkip.map(
+      (id) => id.toString() // we can actually get numbers from the CLI
+    );
 
     const startDate = new Date(Date.now() - timeWindowMs);
 
     for (const connector of connectors) {
-      if (connectorsToSkip.includes(connector.id.toString())) {
+      if (skippedConnectorIdsAsStrings.includes(connector.id.toString())) {
         console.log(`-- Skipping connector ${connector.id}`);
         continue;
       }
@@ -75,12 +81,15 @@ makeScript(
             (page) => new Date(page.version.createdAt) >= startDate
           );
           console.log(
-            `${allPages.length} pages out of ${recentlyModifiedPages.length} modified in the last hour for space ${spaceId}`
+            `${recentlyModifiedPages.length} pages out of ${allPages.length} modified in the last hour for space ${spaceId}`
           );
           connectorCount += recentlyModifiedPages.length;
         }
       } catch (e) {
-        if (e instanceof ProviderWorkflowError) {
+        if (
+          e instanceof ProviderWorkflowError ||
+          e instanceof ExternalOAuthTokenError
+        ) {
           console.error(
             `Error while checking connector ${connector.id}: ${e.message}`
           );
