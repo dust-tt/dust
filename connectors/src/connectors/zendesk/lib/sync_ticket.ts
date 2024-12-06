@@ -225,7 +225,7 @@ ${comments
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
       title: ticket.subject,
-      mimeType: "application/vnd.dust.zendesk-ticket",
+      mimeType: "application/vnd.dust.zendesk.ticket",
       async: true,
     });
     await ticketInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });

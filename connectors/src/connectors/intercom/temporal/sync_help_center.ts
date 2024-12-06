@@ -390,7 +390,7 @@ export async function upsertArticle({
         sync_type: "batch",
       },
       title: article.title,
-      mimeType: "application/vnd.dust.intercom-article",
+      mimeType: "application/vnd.dust.intercom.article",
       async: true,
     });
     await articleOnDb.update({

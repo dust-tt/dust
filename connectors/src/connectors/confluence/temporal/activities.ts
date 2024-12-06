@@ -347,7 +347,7 @@ export async function confluenceCheckAndUpsertPageActivity({
         sync_type: isBatchSync ? "batch" : "incremental",
       },
       title: page.title,
-      mimeType: "application/vnd.dust.confluence-page",
+      mimeType: "application/vnd.dust.confluence.page",
       async: true,
     });
   }
