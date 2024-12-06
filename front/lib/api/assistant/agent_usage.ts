@@ -1,4 +1,5 @@
 import type { AgentConfigurationType } from "@dust-tt/types";
+import _ from "lodash";
 import type { RedisClientType } from "redis";
 import { literal, Op, Sequelize } from "sequelize";
 
@@ -174,6 +175,7 @@ export async function agentMentionsCount(
     group: ['"messages->mentions"."agentConfigurationId"'],
     raw: true,
   });
+
   return mentions.map((mention) => {
     const castMention = mention as unknown as {
       agentConfigurationId: string;
@@ -192,12 +194,30 @@ export async function storeCountsInRedis(
   agentMessageCounts: mentionCount[],
   redis: RedisClientType
 ) {
-  const transaction = redis.multi();
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
-  agentMessageCounts.forEach(({ agentId, count }) => {
+  // get agent keys that are not in the agentMessageCounts
+  const agentKeys = await redis.hKeys(agentMessageCountKey);
+
+  // fill in the missing agent ids, avoiding n^2 complexity
+  const amcByAgentId = _.keyBy(agentMessageCounts, "agentId");
+
+  for (const agentId of agentKeys) {
+    if (!amcByAgentId[agentId]) {
+      amcByAgentId[agentId] = {
+        agentId,
+        count: 0,
+        timePeriodSec: rankingTimeframeSec,
+      };
+    }
+  }
+
+  const transaction = redis.multi();
+
+  Object.values(amcByAgentId).forEach(({ agentId, count }) => {
     transaction.hSet(agentMessageCountKey, agentId, count);
   });
+
   transaction.expire(agentMessageCountKey, MENTION_COUNT_TTL);
 
   const results = await transaction.exec();
