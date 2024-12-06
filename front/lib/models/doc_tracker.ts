@@ -11,7 +11,6 @@ import { BaseModel } from "@app/lib/resources/storage/wrappers";
 import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigurationModel> {
-  declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -28,7 +27,7 @@ export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigu
   declare recipients: string[] | null;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare spaceId: ForeignKey<SpaceModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]> | null; // If a user is deleted, the tracker should still be available
 
   declare workspace: NonAttribute<Workspace>;
@@ -38,11 +37,6 @@ export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigu
 
 TrackerConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -104,12 +98,12 @@ TrackerConfigurationModel.belongsTo(Workspace, {
 });
 
 SpaceModel.hasMany(TrackerConfigurationModel, {
-  foreignKey: { allowNull: false },
+  foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
 
 TrackerConfigurationModel.belongsTo(SpaceModel, {
-  foreignKey: { allowNull: false },
+  foreignKey: { allowNull: false, name: "vaultId" },
 });
 
 UserModel.hasMany(TrackerConfigurationModel, {
@@ -122,7 +116,6 @@ TrackerConfigurationModel.belongsTo(UserModel, {
 });
 
 export class TrackerDataSouceConfigurationModel extends SoftDeletableModel<TrackerDataSouceConfigurationModel> {
-  declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -142,11 +135,6 @@ export class TrackerDataSouceConfigurationModel extends SoftDeletableModel<Track
 
 TrackerDataSouceConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -205,7 +193,6 @@ TrackerDataSouceConfigurationModel.belongsTo(DataSourceViewModel, {
 });
 
 export class TrackerGenerationModel extends SoftDeletableModel<TrackerGenerationModel> {
-  declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -221,11 +208,6 @@ export class TrackerGenerationModel extends SoftDeletableModel<TrackerGeneration
 
 TrackerGenerationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
