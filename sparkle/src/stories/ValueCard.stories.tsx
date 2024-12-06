@@ -27,6 +27,7 @@ export const Basic: Story = {
   args: {
     title: "Messages",
     subtitle: "Monthly activity",
+    className: "s-w-fit",
     content: (
       <div className="s-flex s-items-center s-gap-2">
         <div className="s-text-lg s-font-semibold s-text-element-900">847</div>
@@ -51,6 +52,7 @@ export const WithIcons: Story = {
         <div className="s-text-lg s-font-semibold s-text-element-900">12</div>
       </div>
     ),
+    className: "s-w-fit",
   },
 };
 

@@ -97,9 +97,10 @@ export const ValueCard = ({
   content,
   footer,
   isLoading = false,
+  className,
 }: CardProps) => {
   return (
-    <Root>
+    <Root className={className}>
       <Header>
         <Title>{title}</Title>
         {subtitle && <Subtitle>{subtitle}</Subtitle>}
