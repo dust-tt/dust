@@ -160,12 +160,15 @@ impl PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_nodes \
-               (id, data_source, created, node_id, timestamp, title, mime_type, parents, document, \"table\", folder) \
-               VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
-               ON CONFLICT (data_source, node_id) DO UPDATE \
-               SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
-                   mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, document = EXCLUDED.document, \
-                   \"table\" = EXCLUDED.\"table\", folder = EXCLUDED.folder RETURNING id",
+                  (id, data_source, created, node_id, timestamp, title, mime_type, parents, \
+                   document, \"table\", folder) \
+                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+                  ON CONFLICT (data_source, node_id) DO UPDATE \
+                  SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
+                    mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
+                    document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
+                    folder = EXCLUDED.folder \
+                  RETURNING id",
             )
             .await?;
 
@@ -817,8 +820,8 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let stmt = tx
             .prepare(
-                "INSERT INTO block_executions (id, execution, project, created) VALUES (DEFAULT, $1, $2, $3)
-                   RETURNING id",
+                "INSERT INTO block_executions (id, execution, project, created) \
+                   VALUES (DEFAULT, $1, $2, $3) RETURNING id",
             )
             .await?;
 
@@ -1003,12 +1006,14 @@ impl Store for PostgresStore {
                         let stmt = c
                             .prepare(
                                 "SELECT \
-                            runs_joins.block_idx, runs_joins.block_type, runs_joins.block_name, \
-                            runs_joins.input_idx, runs_joins.map_idx, block_executions.execution \
-                            FROM block_executions \
-                            INNER JOIN runs_joins \
-                            ON block_executions.id = runs_joins.block_execution \
-                            WHERE runs_joins.run = $1 AND block_type = $2 AND block_name = $3",
+                                   runs_joins.block_idx, runs_joins.block_type, \
+                                   runs_joins.block_name, runs_joins.input_idx, \
+                                   runs_joins.map_idx, block_executions.execution \
+                                   FROM block_executions \
+                                   INNER JOIN runs_joins \
+                                   ON block_executions.id = runs_joins.block_execution \
+                                   WHERE runs_joins.run = $1 AND block_type = $2 \
+                                   AND block_name = $3",
                             )
                             .await?;
                         let rows = c
@@ -1309,22 +1314,26 @@ impl Store for PostgresStore {
         };
 
         let r = match version_hash {
-            None => c
-                .query(
-                    "SELECT id, created, timestamp, tags_array, parents, source_url, hash, text_size, chunk_count \
+            None => {
+                c.query(
+                    "SELECT id, created, timestamp, tags_array, parents, source_url, hash, \
+                       text_size, chunk_count \
                        FROM data_sources_documents \
                        WHERE data_source = $1 AND document_id = $2 AND status='latest' LIMIT 1",
                     &[&data_source_row_id, &document_id],
                 )
-                .await?,
-            Some(version_hash) => c
-                .query(
-                    "SELECT id, created, timestamp, tags_array, parents, source_url, hash, text_size, chunk_count \
+                .await?
+            }
+            Some(version_hash) => {
+                c.query(
+                    "SELECT id, created, timestamp, tags_array, parents, source_url, hash, \
+                       text_size, chunk_count \
                        FROM data_sources_documents \
                        WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
                     &[&data_source_row_id, &document_id, &version_hash],
                 )
-                .await?,
+                .await?
+            }
         };
 
         let d: Option<(
@@ -1353,8 +1362,10 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let title = document_id.clone(); // TODO(KW_SEARCH_INFRA) use title
-        let mime_type = "application/octet-stream".to_string(); // TODO(KW_SEARCH_INFRA) use mime_type
+        // TODO(KW_SEARCH_INFRA) use title
+        let title = document_id.clone();
+        // TODO(KW_SEARCH_INFRA) use mime_type
+        let mime_type = "application/octet-stream".to_string();
 
         match d {
             None => Ok(None),
@@ -1797,7 +1808,8 @@ impl Store for PostgresStore {
                 "INSERT INTO data_sources_documents \
                    (id, data_source, created, document_id, timestamp, tags_array, parents, \
                     source_url, hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, created",
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \
+                   RETURNING id, created",
             )
             .await?;
 
@@ -1848,7 +1860,8 @@ impl Store for PostgresStore {
         };
 
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
+        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the
+        // upsert.
         if should_upsert_node {
             self.upsert_data_source_node(
                 UpsertNode {
@@ -1976,8 +1989,10 @@ impl Store for PostgresStore {
                     tags
                 };
 
-                let title = document_id.clone(); // TODO(KW_SEARCH_INFRA) use title
-                let mime_type = "application/octet-stream".to_string(); // TODO(KW_SEARCH_INFRA) use mime_type
+                // TODO(KW_SEARCH_INFRA) use title
+                let title = document_id.clone();
+                // TODO(KW_SEARCH_INFRA) use mime_type
+                let mime_type = "application/octet-stream".to_string();
 
                 Ok(Document {
                     data_source_id: data_source_id.clone(),
@@ -2049,7 +2064,10 @@ impl Store for PostgresStore {
         };
 
         let stmt = tx
-            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL")
+            .prepare(
+                "DELETE FROM data_sources_nodes \
+                   WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL",
+            )
             .await?;
         let _ = tx
             .query(&stmt, &[&data_source_row_id, &document_id])
@@ -2101,7 +2119,10 @@ impl Store for PostgresStore {
 
         if status == "active" {
             let stmt = c
-                .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL")
+                .prepare(
+                    "DELETE FROM data_sources_nodes \
+                            WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL",
+                )
                 .await?;
 
             let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
@@ -2153,7 +2174,8 @@ impl Store for PostgresStore {
         let stmt_nodes = c
             .prepare(
                 "DELETE FROM data_sources_nodes WHERE id IN (
-                   SELECT id FROM data_sources_nodes WHERE data_source = $1 AND document IS NOT NULL LIMIT $2
+                   SELECT id FROM data_sources_nodes WHERE data_source = $1 \
+                   AND document IS NOT NULL LIMIT $2
                  ) RETURNING document",
             )
             .await?;
@@ -2305,11 +2327,11 @@ impl Store for PostgresStore {
                     create_database(&mut tx, &table_ids_hash, worker_ttl, &Some(database_row_id))
                         .await
                 } else {
-                    // There is a sqlite_worker assigned to the database.
-                    // We need to check if the sqlite_worker is still alive.
-                    // If it is, we can release the lock and return the database.
-                    // If it is not, we need to delete the database and create a new one.
-                    // We need to keep the lock until the database is deleted and a new one is created.
+                    // There is a sqlite_worker assigned to the database. We need to check if the
+                    // sqlite_worker is still alive. If it is, we can release the lock and return
+                    // the database. If it is not, we need to delete the database and create a new
+                    // one. We need to keep the lock until the database is deleted and a new one is
+                    // created.
 
                     // Get the sqlite_worker row id.
                     let sqlite_worker_row_id = sqlite_worker_row_id.unwrap();
@@ -2530,18 +2552,20 @@ impl Store for PostgresStore {
         };
 
         let stmt = tx
-                .prepare(
-                    "INSERT INTO tables \
-                       (id, data_source, created, table_id, name, description,
-                        timestamp, tags_array, parents, remote_database_table_id, remote_database_secret_id) \
-                       VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
-                       ON CONFLICT (table_id, data_source) DO UPDATE \
-                       SET name = EXCLUDED.name, description = EXCLUDED.description, \
-                       timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents, \
-                         remote_database_table_id = EXCLUDED.remote_database_table_id, remote_database_secret_id = EXCLUDED.remote_database_secret_id \
-                       RETURNING id, created, schema, schema_stale_at",
-                )
-                .await?;
+            .prepare(
+                "INSERT INTO tables \
+                   (id, data_source, created, table_id, name, description, timestamp, \
+                    tags_array, parents, remote_database_table_id, remote_database_secret_id) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+                   ON CONFLICT (table_id, data_source) DO UPDATE \
+                   SET name = EXCLUDED.name, description = EXCLUDED.description, \
+                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, \
+                     parents = EXCLUDED.parents, \
+                     remote_database_table_id = EXCLUDED.remote_database_table_id, \
+                     remote_database_secret_id = EXCLUDED.remote_database_secret_id \
+                   RETURNING id, created, schema, schema_stale_at",
+            )
+            .await?;
 
         let table_row = tx
             .query_one(
@@ -2599,7 +2623,8 @@ impl Store for PostgresStore {
         );
 
         // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
+        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the
+        // upsert.
         if should_upsert_node {
             self.upsert_data_source_node(
                 UpsertNode {
@@ -2706,7 +2731,10 @@ impl Store for PostgresStore {
 
         // Update parents on nodes table.
         let stmt = tx
-            .prepare("UPDATE data_sources_nodes SET parents = $1 WHERE data_source = $2 AND node_id = $3")
+            .prepare(
+                "UPDATE data_sources_nodes SET parents = $1 \
+                   WHERE data_source = $2 AND node_id = $3",
+            )
             .await?;
         tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
             .await?;
@@ -3055,7 +3083,10 @@ impl Store for PostgresStore {
         };
 
         let stmt = tx
-            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND \"table\" IS NOT NULL")
+            .prepare(
+                "DELETE FROM data_sources_nodes WHERE data_source = $1 \
+                   AND node_id = $2 AND \"table\" IS NOT NULL",
+            )
             .await?;
         let _ = tx.query(&stmt, &[&data_source_row_id, &table_id]).await?;
         let stmt = tx
@@ -3335,7 +3366,10 @@ impl Store for PostgresStore {
         };
 
         let stmt = tx
-            .prepare("DELETE FROM data_sources_nodes WHERE data_source = $1 AND node_id = $2 AND folder IS NOT NULL")
+            .prepare(
+                "DELETE FROM data_sources_nodes \
+                   WHERE data_source = $1 AND node_id = $2 AND folder IS NOT NULL",
+            )
             .await?;
         let _ = tx.query(&stmt, &[&data_source_row_id, &folder_id]).await?;
         let stmt = tx
@@ -3374,8 +3408,8 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "SELECT timestamp, title, mime_type, parents, node_id, document, \"table\", folder \
-                 FROM data_sources_nodes \
-                 WHERE data_source = $1 AND node_id = $2 LIMIT 1",
+                   FROM data_sources_nodes \
+                   WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
             .await?;
         let row = c.query(&stmt, &[&data_source_row_id, &node_id]).await?;
