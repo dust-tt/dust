@@ -10,6 +10,12 @@ const getGongAccessToken = async (
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   logger: Logger
 ) => {
+  if (!transcriptsConfiguration.connectionId) {
+    throw new Error(
+      "[retrieveGongTranscripts] No connectionId found for transcriptsConfiguration Gong oauth connection."
+    );
+  }
+
   const tokRes = await getOAuthConnectionAccessToken({
     config: config.getOAuthAPIConfig(),
     logger,
@@ -22,7 +28,7 @@ const getGongAccessToken = async (
         connectionId: transcriptsConfiguration.connectionId,
         error: tokRes.error,
       },
-      "Error retrieving Gong access token"
+      "[retrieveGongTranscripts] Error retrieving Gong access token"
     );
     throw new Error("Error retrieving Gong access token");
   }

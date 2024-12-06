@@ -57,8 +57,6 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
-export type LabsConnectorProvider = "google_drive" | "gong";
-
 export const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = [
   "slack",
   "github",

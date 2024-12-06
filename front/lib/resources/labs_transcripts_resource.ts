@@ -1,4 +1,4 @@
-import type { LabsConnectorProvider, Result } from "@dust-tt/types";
+import type { LabsTranscriptsProviderType, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { CreationAttributes } from "sequelize";
 import type {
@@ -85,7 +85,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     provider,
   }: {
     auth: Authenticator;
-    provider: LabsConnectorProvider;
+    provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const owner = auth.workspace();
 
