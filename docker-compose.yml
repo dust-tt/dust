@@ -59,7 +59,7 @@ services:
       - 9200:9200
     environment:
       - discovery.type=single-node
-      - ELASTIC_PASSWORD=${ES_LOCAL_PASSWORD}
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=false
       - xpack.license.self_generated.type=trial
@@ -73,7 +73,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl --output /dev/null --silent --head --fail -u elastic:${ES_LOCAL_PASSWORD} http://elasticsearch:${ES_LOCAL_PORT}",
+          "curl --output /dev/null --silent --head --fail -u elastic:${ELASTICSEARCH_PASSWORD} http://elasticsearch:${ES_LOCAL_PORT}",
         ]
       interval: 5s
       timeout: 5s
@@ -89,7 +89,7 @@ services:
     command: >
       bash -c '
         echo "Setup the kibana_system password";
-        until curl -s -u "elastic:${ES_LOCAL_PASSWORD}" -X POST http://elasticsearch:${ES_LOCAL_PORT}/_security/user/kibana_system/_password -d "{\"password\":\"'${KIBANA_LOCAL_PASSWORD}'\"}" -H "Content-Type: application/json" | grep -q "^{}"; do sleep 5; done;
+        until curl -s -u "elastic:${ELASTICSEARCH_PASSWORD}" -X POST http://elasticsearch:${ES_LOCAL_PORT}/_security/user/kibana_system/_password -d "{\"password\":\"'${KIBANA_LOCAL_PASSWORD}'\"}" -H "Content-Type: application/json" | grep -q "^{}"; do sleep 5; done;
       '
 
   kibana:

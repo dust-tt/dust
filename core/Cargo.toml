@@ -24,6 +24,10 @@ name = "init_db"
 path = "bin/init_db.rs"
 
 [[bin]]
+name = "elasticsearch_create_index"
+path = "bin/elasticsearch/create_index.rs"
+
+[[bin]]
 name = "qdrant_create_collection"
 path = "bin/qdrant/create_collection.rs"
 
