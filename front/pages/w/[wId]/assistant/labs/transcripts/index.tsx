@@ -18,6 +18,7 @@ import type {
   LabsTranscriptsProviderType,
   LightAgentConfigurationType,
   SubscriptionType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
@@ -55,6 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   dataSourcesViews: DataSourceViewType[];
   hasDefaultStorageConfiguration: boolean;
+  featureFlags: WhitelistableFeature[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -76,8 +78,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const flags = await getFeatureFlags(owner);
-  if (!flags.includes("labs_transcripts")) {
+  const featureFlags = await getFeatureFlags(owner);
+  if (!featureFlags.includes("labs_transcripts")) {
     return {
       notFound: true,
     };
@@ -89,6 +91,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       dataSourcesViews,
       hasDefaultStorageConfiguration,
+      featureFlags,
     },
   };
 });
@@ -98,6 +101,7 @@ export default function LabsTranscriptsIndex({
   subscription,
   dataSourcesViews,
   hasDefaultStorageConfiguration,
+  featureFlags,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
   const {
@@ -689,19 +693,21 @@ export default function LabsTranscriptsIndex({
                   style={{ maxHeight: "35px" }}
                 />
               </div>
-              <div
-                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                  transcriptsConfigurationState.provider == "gong"
-                    ? "border-gray-400"
-                    : "border-gray-200"
-                }`}
-                onClick={() => handleProviderChange("modjo")}
-              >
-                <img
-                  src="/static/labs/transcripts/modjo.png"
-                  style={{ maxHeight: "35px" }}
-                />
-              </div>
+              {featureFlags.includes("labs_transcripts_modjo") && (
+                <div
+                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                    transcriptsConfigurationState.provider == "gong"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleProviderChange("modjo")}
+                >
+                  <img
+                    src="/static/labs/transcripts/modjo.png"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
+              )}
             </Page.Layout>
           )}
 
