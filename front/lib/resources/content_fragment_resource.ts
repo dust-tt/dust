@@ -289,37 +289,6 @@ export function fileAttachmentLocation({
   };
 }
 
-export async function storeContentFragmentText({
-  workspaceId,
-  conversationId,
-  messageId,
-  content,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
-  content: string;
-}): Promise<number | null> {
-  if (content === "") {
-    return null;
-  }
-
-  const { filePath } = fileAttachmentLocation({
-    workspaceId,
-    conversationId,
-    messageId,
-    contentFormat: "text",
-  });
-
-  await getPrivateUploadBucket().uploadRawContentToBucket({
-    content,
-    contentType: "text/plain",
-    filePath,
-  });
-
-  return Buffer.byteLength(content);
-}
-
 export async function getContentFragmentText({
   workspaceId,
   conversationId,
