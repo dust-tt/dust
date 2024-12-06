@@ -2,15 +2,15 @@ import React, { ReactNode } from "react";
 
 import {
   Button,
-  CardButton,
-  CardButtonProps,
+  Card,
+  CardProps,
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-type CitationNewProps = CardButtonProps & {
+type CitationNewProps = CardProps & {
   children: React.ReactNode;
   isLoading?: boolean;
   tooltip?: string;
@@ -22,7 +22,7 @@ const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
     ref
   ) => {
     const cardButton = (
-      <CardButton
+      <Card
         ref={ref}
         variant={variant}
         size="sm"
@@ -34,7 +34,7 @@ const CitationNew = React.forwardRef<HTMLDivElement, CitationNewProps>(
       >
         {children}
         {isLoading && <CitationNewLoading />}
-      </CardButton>
+      </Card>
     );
 
     if (tooltip) {
