@@ -18,12 +18,30 @@ struct Args {
 
     #[arg(long)]
     data_source: Option<i64>,
+
+    #[arg(long)]
+    offset: Option<i64>,
+
+    #[arg(long, default_value = "document")]
+    node_type: NodeType,
 }
 
 #[derive(Clone, Copy, Debug)]
 enum NodeType {
     Document,
     Table,
+}
+
+impl std::str::FromStr for NodeType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "document" => Ok(NodeType::Document),
+            "table" => Ok(NodeType::Table),
+            _ => Err(format!("Unknown node type: {}", s)),
+        }
+    }
 }
 
 lazy_static! {
@@ -200,8 +218,10 @@ async fn process_batch(
 async fn main() -> Result<()> {
     let args = Args::parse();
     let execute = args.execute;
+    let node_type = args.node_type;
     let batch_size = args.batch_size;
     let data_source = args.data_source;
+    let mut offset = args.offset.unwrap_or(0);
 
     let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
         Ok(db_uri) => {
@@ -212,124 +232,168 @@ async fn main() -> Result<()> {
         Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
     };
 
-    loop {
-        println!("Getting data_sources_documents batch");
+    match node_type {
+        NodeType::Document => loop {
+            println!(
+                "Getting data_sources_documents batch : {} / {}",
+                offset, batch_size
+            );
 
-        let pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>> =
-            store.raw_pool();
+            let pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>> =
+                store.raw_pool();
 
-        let c = pool.get().await?;
+            let c = pool.get().await?;
 
-        let dsdocs_rows = match data_source {
+            let dsdocs_rows = match data_source {
             Some(data_source) =>
                 c.query(
                     "SELECT dsd.id,dsd.data_source,dsd.document_id,dsd.timestamp,dsd.tags_array,dsd.parents \
-                    FROM data_sources_documents dsd LEFT OUTER JOIN data_sources_nodes dsn on dsn.document=dsd.id \
-                    WHERE dsn.id IS NULL AND dsd.data_source=$1 AND dsd.status='latest' LIMIT $2",
-                    &[&data_source,&batch_size],
+                    FROM data_sources_documents dsd \
+                    WHERE dsd.data_source=$1 AND dsd.status='latest' ORDER BY dsd.id LIMIT $2 OFFSET $3",
+                    &[&data_source,&batch_size,&offset],
                 )
                 .await?,
             None =>
                 c.query(
                     "SELECT dsd.id,dsd.data_source,dsd.document_id,dsd.timestamp,dsd.tags_array,dsd.parents \
-                    FROM data_sources_documents dsd LEFT OUTER JOIN data_sources_nodes dsn on dsn.document=dsd.id \
-                    WHERE dsn.id IS NULL AND dsd.status='latest' LIMIT $1",
-                    &[&batch_size],
+                    FROM data_sources_documents dsd \
+                    WHERE dsd.status='latest' ORDER BY dsd.id LIMIT $1 OFFSET $2",
+                    &[&batch_size, &offset],
                 )
                 .await?
         };
 
-        if dsdocs_rows.len() == 0 {
-            break;
-        }
-
-        let data = dsdocs_rows
-            .into_iter()
-            .map(|row| {
-                let id = row.get::<_, i64>(0);
-                let data_source = row.get::<_, i64>(1);
-                let node_id = row.get::<_, String>(2);
-                let timestamp = row.get::<_, i64>(3);
-                let tags = row.get::<_, Vec<String>>(4);
-                let title = extract_tag(&tags, "title").unwrap_or(node_id.clone());
-                let mime_type = extract_tag(&tags, "mimeType")
-                    .unwrap_or(guess_mime_type(&node_id, NodeType::Document));
-                let parents = row.get::<_, Vec<String>>(5);
-                (
-                    id,
-                    data_source,
-                    node_id,
-                    timestamp,
-                    title,
-                    mime_type,
-                    parents,
-                )
-            })
-            .collect();
-
-        if !process_batch(data, execute, &pool, NodeType::Document).await? {
-            break;
-        }
-    }
-
-    loop {
-        println!("Getting tables batch");
-
-        let pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>> =
-            store.raw_pool();
-
-        let c = pool.get().await?;
-
-        let table_rows = match data_source {
-            Some(data_source) => {
-                c.query(
-                    "SELECT t.id,t.data_source,t.table_id,t.timestamp,t.name,t.parents \
-                    FROM tables t LEFT OUTER JOIN data_sources_nodes dsn on dsn.\"table\"=t.id \
-                    WHERE dsn.id IS NULL AND t.data_source=$1 LIMIT $2",
-                    &[&data_source, &batch_size],
-                )
-                .await?
+            if dsdocs_rows.len() == 0 {
+                break;
             }
-            None => {
-                c.query(
-                    "SELECT t.id,t.data_source,t.table_id,t.timestamp,t.name,t.parents \
-                    FROM tables t LEFT OUTER JOIN data_sources_nodes dsn on dsn.\"table\"=t.id \
-                    WHERE dsn.id IS NULL LIMIT $1",
-                    &[&batch_size],
+
+            let data: Vec<(i64, i64, String, i64, String, String, Vec<String>)> = dsdocs_rows
+                .into_iter()
+                .map(|row| {
+                    let id = row.get::<_, i64>(0);
+                    let data_source = row.get::<_, i64>(1);
+                    let node_id = row.get::<_, String>(2);
+                    let timestamp = row.get::<_, i64>(3);
+                    let tags = row.get::<_, Vec<String>>(4);
+                    let title = extract_tag(&tags, "title").unwrap_or(node_id.clone());
+                    let mime_type = extract_tag(&tags, "mimeType")
+                        .unwrap_or(guess_mime_type(&node_id, NodeType::Document));
+                    let parents = row.get::<_, Vec<String>>(5);
+                    (
+                        id,
+                        data_source,
+                        node_id,
+                        timestamp,
+                        title,
+                        mime_type,
+                        parents,
+                    )
+                })
+                .collect();
+
+            let existing_documents_rows = c
+                .query(
+                    "SELECT document FROM data_sources_nodes \
+                    WHERE document = ANY($1)",
+                    &[&data.iter().map(|d| d.0).collect::<Vec<i64>>()],
                 )
-                .await?
+                .await?;
+
+            let existing_documents: Vec<i64> = existing_documents_rows
+                .into_iter()
+                .map(|row| row.get::<_, i64>(0))
+                .collect();
+
+            let data = data
+                .into_iter()
+                .filter(|d| !existing_documents.contains(&d.0))
+                .collect();
+
+            if !process_batch(data, execute, &pool, NodeType::Document).await? {
+                break;
             }
-        };
 
-        if table_rows.len() == 0 {
-            break;
-        }
+            offset += batch_size;
+        },
+        NodeType::Table => loop {
+            println!("Getting tables batch : {} / {}", offset, batch_size);
 
-        let data = table_rows
-            .into_iter()
-            .map(|row| {
-                let id = row.get::<_, i64>(0);
-                let data_source = row.get::<_, i64>(1);
-                let node_id = row.get::<_, String>(2);
-                let timestamp = row.get::<_, i64>(3);
-                let title = row.get::<_, String>(4);
-                let mime_type = guess_mime_type(&node_id, NodeType::Table);
-                let parents = row.get::<_, Vec<String>>(5);
-                (
-                    id,
-                    data_source,
-                    node_id,
-                    timestamp,
-                    title,
-                    mime_type,
-                    parents,
+            let pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>> =
+                store.raw_pool();
+
+            let c = pool.get().await?;
+
+            let table_rows = match data_source {
+                Some(data_source) => {
+                    c.query(
+                        "SELECT t.id,t.data_source,t.table_id,t.timestamp,t.name,t.parents \
+                        FROM tables t \
+                        WHERE t.data_source=$1 LIMIT $2 OFFSET $3",
+                        &[&data_source, &batch_size, &offset],
+                    )
+                    .await?
+                }
+                None => {
+                    c.query(
+                        "SELECT t.id,t.data_source,t.table_id,t.timestamp,t.name,t.parents \
+                        FROM tables t \
+                        LIMIT $1 OFFSET $2",
+                        &[&batch_size, &offset],
+                    )
+                    .await?
+                }
+            };
+
+            if table_rows.len() == 0 {
+                break;
+            }
+
+            let data: Vec<(i64, i64, String, i64, String, String, Vec<String>)> = table_rows
+                .into_iter()
+                .map(|row| {
+                    let id = row.get::<_, i64>(0);
+                    let data_source = row.get::<_, i64>(1);
+                    let node_id = row.get::<_, String>(2);
+                    let timestamp = row.get::<_, i64>(3);
+                    let title = row.get::<_, String>(4);
+                    let mime_type = guess_mime_type(&node_id, NodeType::Table);
+                    let parents = row.get::<_, Vec<String>>(5);
+                    (
+                        id,
+                        data_source,
+                        node_id,
+                        timestamp,
+                        title,
+                        mime_type,
+                        parents,
+                    )
+                })
+                .collect();
+
+            let existing_tables_rows = c
+                .query(
+                    "SELECT \"table\" FROM data_sources_nodes \
+                    WHERE \"table\" = ANY($1)",
+                    &[&data.iter().map(|d| d.0).collect::<Vec<i64>>()],
                 )
-            })
-            .collect();
+                .await?;
 
-        if !process_batch(data, execute, &pool, NodeType::Table).await? {
-            break;
-        }
+            let existing_tables: Vec<i64> = existing_tables_rows
+                .into_iter()
+                .map(|row| row.get::<_, i64>(0))
+                .collect();
+
+            let data = data
+                .into_iter()
+                .filter(|d| !existing_tables.contains(&d.0))
+                .collect();
+
+            if !process_batch(data, execute, &pool, NodeType::Table).await? {
+                break;
+            }
+
+            offset += batch_size;
+        },
     }
 
     Ok(())
