@@ -132,3 +132,22 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
 );
 
 Card.displayName = "Card";
+
+export const CardGrid = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ children, className, ...props }, ref) => {
+  return (
+    <div ref={ref} className={cn("s-@container", className)} {...props}>
+      <div
+        className={cn(
+          "s-grid s-grid-cols-1 s-gap-2",
+          "@xs:s-grid-cols-2 @sm:s-grid-cols-3 @lg:s-grid-cols-4 @xl:s-grid-cols-5"
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+});
+CardGrid.displayName = "CardGrid";
