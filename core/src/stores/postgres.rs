@@ -92,6 +92,9 @@ impl PostgresStore {
 
     fn where_clauses_and_params_for_filter<'a>(
         filter: &'a Option<SearchFilter>,
+        tags_column: Option<&str>,
+        parents_column: Option<&str>,
+        timestamp_column: Option<&str>,
         from_idx: usize,
     ) -> (Vec<String>, Vec<&'a (dyn ToSql + Sync)>, usize) {
         let mut where_clauses: Vec<String> = vec![];
@@ -99,42 +102,48 @@ impl PostgresStore {
         let mut p_idx: usize = from_idx;
 
         if let Some(filter) = filter {
-            if let Some(tags_filter) = &filter.tags {
-                if let Some(tags) = &tags_filter.is_in {
-                    where_clauses.push(format!("tags_array && ${}", p_idx));
-                    params.push(tags as &(dyn ToSql + Sync));
-                    p_idx += 1;
-                }
-                if let Some(tags) = &tags_filter.is_not {
-                    where_clauses.push(format!("NOT tags_array && ${}", p_idx));
-                    params.push(tags as &(dyn ToSql + Sync));
-                    p_idx += 1;
-                }
-            }
-
-            if let Some(parents_filter) = &filter.parents {
-                if let Some(parents) = &parents_filter.is_in {
-                    where_clauses.push(format!("parents && ${}", p_idx));
-                    params.push(parents as &(dyn ToSql + Sync));
-                    p_idx += 1;
-                }
-                if let Some(parents) = &parents_filter.is_not {
-                    where_clauses.push(format!("NOT parents && ${}", p_idx));
-                    params.push(parents as &(dyn ToSql + Sync));
-                    p_idx += 1;
+            if let Some(tags_column) = tags_column {
+                if let Some(tags_filter) = &filter.tags {
+                    if let Some(tags) = &tags_filter.is_in {
+                        where_clauses.push(format!("{} && ${}", tags_column, p_idx));
+                        params.push(tags as &(dyn ToSql + Sync));
+                        p_idx += 1;
+                    }
+                    if let Some(tags) = &tags_filter.is_not {
+                        where_clauses.push(format!("NOT {} && ${}", tags_column, p_idx));
+                        params.push(tags as &(dyn ToSql + Sync));
+                        p_idx += 1;
+                    }
                 }
             }
 
-            if let Some(ts_filter) = &filter.timestamp {
-                if let Some(ts) = ts_filter.gt.as_ref() {
-                    where_clauses.push(format!("timestamp > ${}", p_idx));
-                    params.push(ts as &(dyn ToSql + Sync));
-                    p_idx += 1;
+            if let Some(parents_column) = parents_column {
+                if let Some(parents_filter) = &filter.parents {
+                    if let Some(parents) = &parents_filter.is_in {
+                        where_clauses.push(format!("{} && ${}", parents_column, p_idx));
+                        params.push(parents as &(dyn ToSql + Sync));
+                        p_idx += 1;
+                    }
+                    if let Some(parents) = &parents_filter.is_not {
+                        where_clauses.push(format!("NOT {} && ${}", parents_column, p_idx));
+                        params.push(parents as &(dyn ToSql + Sync));
+                        p_idx += 1;
+                    }
                 }
-                if let Some(ts) = ts_filter.lt.as_ref() {
-                    where_clauses.push(format!("timestamp < ${}", p_idx));
-                    params.push(ts as &(dyn ToSql + Sync));
-                    p_idx += 1;
+            }
+
+            if let Some(timestamp_column) = timestamp_column {
+                if let Some(ts_filter) = &filter.timestamp {
+                    if let Some(ts) = ts_filter.gt.as_ref() {
+                        where_clauses.push(format!("{} > ${}", timestamp_column, p_idx));
+                        params.push(ts as &(dyn ToSql + Sync));
+                        p_idx += 1;
+                    }
+                    if let Some(ts) = ts_filter.lt.as_ref() {
+                        where_clauses.push(format!("{} < ${}", timestamp_column, p_idx));
+                        params.push(ts as &(dyn ToSql + Sync));
+                        p_idx += 1;
+                    }
                 }
             }
         }
@@ -1311,17 +1320,19 @@ impl Store for PostgresStore {
         let r = match version_hash {
             None => c
                 .query(
-                    "SELECT id, created, timestamp, tags_array, parents, source_url, hash, text_size, chunk_count \
-                       FROM data_sources_documents \
-                       WHERE data_source = $1 AND document_id = $2 AND status='latest' LIMIT 1",
+                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
+                       dsn.title, dsn.mime_type \
+                       FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                       WHERE dsd.data_source = $1 AND dsd.document_id = $2 AND dsd.status='latest' LIMIT 1",
                     &[&data_source_row_id, &document_id],
                 )
                 .await?,
             Some(version_hash) => c
                 .query(
-                    "SELECT id, created, timestamp, tags_array, parents, source_url, hash, text_size, chunk_count \
-                       FROM data_sources_documents \
-                       WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
+                    "SELECT dsd.id, dsd.created, dsd.timestamp, dsd.tags_array, dsn.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
+                       dsn.title, dsn.mime_type \
+                       FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                       WHERE dsd.data_source = $1 AND dsd.document_id = $2 AND dsd.hash = $3 LIMIT 1",
                     &[&data_source_row_id, &document_id, &version_hash],
                 )
                 .await?,
@@ -1337,6 +1348,8 @@ impl Store for PostgresStore {
             String,
             i64,
             i64,
+            Option<String>,
+            Option<String>,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -1349,12 +1362,11 @@ impl Store for PostgresStore {
                 r[0].get(6),
                 r[0].get(7),
                 r[0].get(8),
+                r[0].get(9),
+                r[0].get(10),
             )),
             _ => unreachable!(),
         };
-
-        let title = document_id.clone(); // TODO(KW_SEARCH_INFRA) use title
-        let mime_type = "application/octet-stream".to_string(); // TODO(KW_SEARCH_INFRA) use mime_type
 
         match d {
             None => Ok(None),
@@ -1368,14 +1380,16 @@ impl Store for PostgresStore {
                 hash,
                 text_size,
                 chunk_count,
+                node_title,
+                node_mime_type,
             )) => Ok(Some(Document {
                 data_source_id: data_source_id.clone(),
                 created: created as u64,
                 timestamp: timestamp as u64,
+                title: node_title.unwrap_or(document_id.clone()),
                 document_id,
                 tags,
-                title,
-                mime_type,
+                mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
                 parents,
                 source_url,
                 hash,
@@ -1613,21 +1627,27 @@ impl Store for PostgresStore {
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("dsd.data_source = $1".to_string());
         params.push(&data_source_row_id);
-        where_clauses.push("document_id = $2".to_string());
+        where_clauses.push("dsd.document_id = $2".to_string());
         params.push(&document_id);
-        where_clauses.push("created <= $3".to_string());
+        where_clauses.push("dsd.created <= $3".to_string());
         params.push(&latest_hash_created);
 
-        let (filter_clauses, filter_params, p_idx) =
-            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+        let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
+            view_filter,
+            Some("dsd.tags_array"),
+            Some("dsn.parents"),
+            Some("dsd.timestamp"),
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
 
         let sql = format!(
-            "SELECT hash, created, status FROM data_sources_documents \
+            "SELECT dsd.hash, dsd.created, dsd.status \
+               FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                WHERE {} ORDER BY created DESC",
             where_clauses.join(" AND ")
         );
@@ -1711,25 +1731,38 @@ impl Store for PostgresStore {
 
         let data_source_row_id: i64 = r.get(0);
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("dsd.data_source = $1".to_string());
         params.push(&data_source_row_id);
-        where_clauses.push("status = 'latest'".to_string());
+        where_clauses.push("dsd.status = 'latest'".to_string());
 
-        let (filter_clauses, filter_params, p_idx) =
-            Self::where_clauses_and_params_for_filter(filter, params.len() + 1);
+        let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
+            filter,
+            Some("dsd.tags_array"),
+            Some("dsn.parents"),
+            Some("dsd.timestamp"),
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
 
         let (view_filter_clauses, view_filter_params, p_idx) =
-            Self::where_clauses_and_params_for_filter(view_filter, p_idx);
+            Self::where_clauses_and_params_for_filter(
+                view_filter,
+                Some("dsd.tags_array"),
+                Some("dsn.parents"),
+                Some("dsd.timestamp"),
+                p_idx,
+            );
 
         where_clauses.extend(view_filter_clauses);
         params.extend(view_filter_params);
 
         // compute the total count
         let count_query = format!(
-            "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
+            "SELECT COUNT(*) \
+               FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+               WHERE {}",
             where_clauses.join(" AND ")
         );
         let count: i64 = c.query_one(&count_query, &params).await?.get(0);
@@ -1823,8 +1856,6 @@ impl Store for PostgresStore {
         let document_row_id: i64 = r.get(0);
         let created: i64 = r.get(1);
 
-        let should_upsert_node = create_params.title.is_some() && create_params.mime_type.is_some();
-
         // TODO: defaults
         let title = create_params.title.unwrap_or("".to_string());
         let mime_type = create_params.mime_type.unwrap_or("".to_string());
@@ -1847,24 +1878,21 @@ impl Store for PostgresStore {
             token_count: None,
         };
 
-        // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
-        if should_upsert_node {
-            self.upsert_data_source_node(
-                UpsertNode {
-                    node_id: &document.document_id,
-                    node_type: &NodeType::Document,
-                    timestamp: document.timestamp,
-                    title: &document.title,
-                    mime_type: &document.mime_type,
-                    parents: &document.parents,
-                },
-                data_source_row_id,
-                document_row_id,
-                &tx,
-            )
-            .await?;
-        }
+        self.upsert_data_source_node(
+            UpsertNode {
+                node_id: &document.document_id,
+                node_type: &NodeType::Document,
+                timestamp: document.timestamp,
+                title: &document.title,
+                mime_type: &document.mime_type,
+                parents: &document.parents,
+            },
+            data_source_row_id,
+            document_row_id,
+            &tx,
+        )
+        .await?;
+
         tx.commit().await?;
 
         Ok(document)
@@ -1901,12 +1929,17 @@ impl Store for PostgresStore {
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("dsd.data_source = $1".to_string());
         params.push(&data_source_row_id);
-        where_clauses.push("status = 'latest'".to_string());
+        where_clauses.push("dsd.status = 'latest'".to_string());
 
-        let (filter_clauses, filter_params, mut p_idx) =
-            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+        let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
+            view_filter,
+            Some("dsd.tags_array"),
+            Some("dsn.parents"),
+            Some("dsd.timestamp"),
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
@@ -1922,15 +1955,18 @@ impl Store for PostgresStore {
                 })
                 .collect();
 
-            where_clauses.push(format!("document_id IN ({})", id_placeholders.join(", ")));
+            where_clauses.push(format!(
+                "dsd.document_id IN ({})",
+                id_placeholders.join(", ")
+            ));
             params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
         }
 
         let sql = format!(
-            "SELECT id, created, document_id, timestamp, tags_array, parents, source_url, hash, \
-                    text_size, chunk_count \
-               FROM data_sources_documents \
-               WHERE {} ORDER BY timestamp DESC",
+            "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsd.tags_array, dsd.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
+               dsn.title, dsn.mime_type \
+               FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+               WHERE {} ORDER BY dsd.timestamp DESC",
             where_clauses.join(" AND "),
         );
 
@@ -1966,6 +2002,8 @@ impl Store for PostgresStore {
                 let hash: String = r.get(7);
                 let text_size: i64 = r.get(8);
                 let chunk_count: i64 = r.get(9);
+                let node_title: Option<String> = r.get(10);
+                let node_mime_type: Option<String> = r.get(11);
 
                 let tags = if remove_system_tags {
                     // Remove tags that are prefixed with the system tag prefix.
@@ -1976,15 +2014,12 @@ impl Store for PostgresStore {
                     tags
                 };
 
-                let title = document_id.clone(); // TODO(KW_SEARCH_INFRA) use title
-                let mime_type = "application/octet-stream".to_string(); // TODO(KW_SEARCH_INFRA) use mime_type
-
                 Ok(Document {
                     data_source_id: data_source_id.clone(),
                     created: created as u64,
                     timestamp: timestamp as u64,
-                    title,
-                    mime_type,
+                    title: node_title.unwrap_or(document_id.clone()),
+                    mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
                     document_id,
                     tags,
                     parents,
@@ -2005,7 +2040,7 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         format!(
-                            "SELECT COUNT(*) FROM data_sources_documents \
+                            "SELECT COUNT(*) FROM data_sources_documents dsd \
                                WHERE {}",
                             where_clauses.join(" AND ")
                         )
@@ -2577,7 +2612,6 @@ impl Store for PostgresStore {
             }
         };
 
-        let should_upsert_node = upsert_params.title.is_some() && upsert_params.mime_type.is_some();
         let title = upsert_params.title.unwrap_or(upsert_params.name.clone());
 
         let table = Table::new(
@@ -2598,24 +2632,20 @@ impl Store for PostgresStore {
             upsert_params.remote_database_secret_id,
         );
 
-        // TODO(KW_SEARCH_INFRA): make title/mime_type not optional.
-        // Upsert the data source node if title and mime_type are present. Otherwise, we skip the upsert.
-        if should_upsert_node {
-            self.upsert_data_source_node(
-                UpsertNode {
-                    node_id: table.table_id(),
-                    node_type: &NodeType::Table,
-                    timestamp: table.timestamp(),
-                    title: table.title(),
-                    mime_type: table.mime_type(),
-                    parents: table.parents(),
-                },
-                data_source_row_id,
-                table_row_id,
-                &tx,
-            )
-            .await?;
-        }
+        self.upsert_data_source_node(
+            UpsertNode {
+                node_id: table.table_id(),
+                node_type: &NodeType::Table,
+                timestamp: table.timestamp(),
+                title: table.title(),
+                mime_type: table.mime_type(),
+                parents: table.parents(),
+            },
+            data_source_row_id,
+            table_row_id,
+            &tx,
+        )
+        .await?;
         tx.commit().await?;
 
         Ok(table)
@@ -2784,11 +2814,13 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description, \
-                        timestamp, tags_array, parents, \
-                        schema, schema_stale_at, \
-                        remote_database_table_id, remote_database_secret_id FROM tables \
-                WHERE data_source = $1 AND table_id = $2 LIMIT 1",
+                "SELECT t.created, t.table_id, t.name, t.description, \
+                        t.timestamp, t.tags_array, dsn.parents, \
+                        t.schema, t.schema_stale_at, \
+                        t.remote_database_table_id, t.remote_database_secret_id, \
+                        dsn.title, dsn.mime_type \
+                        FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
+                        WHERE t.data_source = $1 AND t.table_id = $2 LIMIT 1",
             )
             .await?;
         let r = c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
@@ -2904,11 +2936,16 @@ impl Store for PostgresStore {
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("t.data_source = $1".to_string());
         params.push(&data_source_row_id);
 
-        let (filter_clauses, filter_params, mut p_idx) =
-            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+        let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
+            view_filter,
+            Some("t.tags_array"),
+            Some("dsn.parents"),
+            Some("t.timestamp"),
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
@@ -2924,16 +2961,18 @@ impl Store for PostgresStore {
                 })
                 .collect();
 
-            where_clauses.push(format!("table_id IN ({})", id_placeholders.join(", ")));
+            where_clauses.push(format!("t.table_id IN ({})", id_placeholders.join(", ")));
             params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
         }
 
         let sql = format!(
-            "SELECT created, table_id, name, description, timestamp, tags_array, \
-                                parents, schema, schema_stale_at, \
-                                remote_database_table_id, remote_database_secret_id \
-                                FROM tables \
-               WHERE {} ORDER BY timestamp DESC",
+            "SELECT t.created, t.table_id, t.name, t.description, \
+                    t.timestamp, t.tags_array, dsn.parents, \
+                    t.schema, t.schema_stale_at, \
+                    t.remote_database_table_id, t.remote_database_secret_id, \
+                    dsn.title, dsn.mime_type \
+                FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
+                WHERE {} ORDER BY t.timestamp DESC",
             where_clauses.join(" AND "),
         );
 
@@ -3012,7 +3051,7 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         format!(
-                            "SELECT COUNT(*) FROM tables \
+                            "SELECT COUNT(*) FROM tables t \
                                    WHERE {}",
                             where_clauses.join(" AND ")
                         )
@@ -3142,6 +3181,7 @@ impl Store for PostgresStore {
             &tx,
         )
         .await?;
+
         tx.commit().await?;
 
         Ok(folder)
@@ -3214,21 +3254,16 @@ impl Store for PostgresStore {
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        where_clauses.push("data_source = $1".to_string());
+        where_clauses.push("dsn.data_source = $1".to_string());
         params.push(&data_source_row_id);
 
-        // Don't support tags for folders yet.
-        let view_filter = match view_filter {
-            None => None,
-            Some(filter) => Some(SearchFilter {
-                tags: None,
-                parents: filter.parents.clone(),
-                timestamp: filter.timestamp.clone(),
-            }),
-        };
-
-        let (filter_clauses, filter_params, mut p_idx) =
-            Self::where_clauses_and_params_for_filter(&view_filter, params.len() + 1);
+        let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
+            &view_filter,
+            None,
+            Some("dsn.parents"),
+            Some("dsn.timestamp"),
+            params.len() + 1,
+        );
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
@@ -3244,14 +3279,14 @@ impl Store for PostgresStore {
                 })
                 .collect();
 
-            where_clauses.push(format!("node_id IN ({})", id_placeholders.join(", ")));
+            where_clauses.push(format!("dsn.node_id IN ({})", id_placeholders.join(", ")));
             params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
         }
 
         let sql = format!(
-            "SELECT node_id, title, timestamp, parents \
-               FROM data_sources_nodes \
-               WHERE folder IS NOT NULL AND {} ORDER BY timestamp DESC",
+            "SELECT dsn.node_id, dsn.title, dsn.timestamp, dsn.parents \
+               FROM data_sources_nodes dsn \
+               WHERE dsn.folder IS NOT NULL AND {} ORDER BY dsn.timestamp DESC",
             where_clauses.join(" AND "),
         );
 
@@ -3278,7 +3313,7 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         format!(
-                            "SELECT COUNT(*) FROM data_sources_nodes \
+                            "SELECT COUNT(*) FROM data_sources_nodes dsn \
                                 WHERE folder IS NOT NULL AND {}",
                             where_clauses.join(" AND ")
                         )
