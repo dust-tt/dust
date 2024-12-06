@@ -32,7 +32,7 @@ const MetaAssistantCard = React.forwardRef<
     >
       <Card
         variant={variant === "sm" ? "primary" : "tertiary"}
-        className={cn("s-flex s-h-full s-flex-col s-gap-3")}
+        className={cn("s-flex s-h-full s-w-full s-flex-col s-gap-3")}
         size={variant === "sm" ? "sm" : "md"}
         onClick={onClick}
       >

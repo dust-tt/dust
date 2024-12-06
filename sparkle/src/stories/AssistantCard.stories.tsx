@@ -4,6 +4,7 @@ import React from "react";
 import {
   AssistantCard,
   AssistantCardMore,
+  CardGrid,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -55,7 +56,7 @@ export const AssistantCardExample = () => (
       />
     </div>
     <h2>Minimal</h2>
-    <div className="s-grid s-w-full s-grid-cols-2 s-gap-2 md:s-grid-cols-3">
+    <CardGrid>
       <AssistantCard
         title={"gpt4-turbo"}
         pictureUrl={"https://dust.tt/static/systemavatar/gpt4_avatar_full.png"}
@@ -90,6 +91,6 @@ export const AssistantCardExample = () => (
         onClick={() => console.log("AssistantCard clicked")}
         action={<AssistantCardMore onClick={() => console.log("hello")} />}
       />
-    </div>
+    </CardGrid>
   </div>
 );

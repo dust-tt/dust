@@ -4,7 +4,7 @@ import React from "react";
 import { AssistantPreview } from "../index_with_tw_base";
 
 const meta: Meta<typeof AssistantPreview> = {
-  title: "Modules/AssistantPreview",
+  title: "DEPRECATED/AssistantPreview",
   component: AssistantPreview,
 };
 
