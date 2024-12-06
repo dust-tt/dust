@@ -8,7 +8,10 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 interface SnowflakeExpiredPasswordError extends Error {
   code: number;
-  name: string;
+  name: "OperationFailedError";
+  data: {
+    nextAction: "PWD_CHANGE";
+  };
 }
 
 function isSnowflakeExpiredPasswordError(
