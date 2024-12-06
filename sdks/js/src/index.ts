@@ -825,7 +825,7 @@ export class DustAPI {
     title: string,
     parents: string[]
   ) {
-    const r = await this.request({
+    return this.request({
       method: "POST",
       path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
         folderId
@@ -836,19 +836,15 @@ export class DustAPI {
         parents,
       },
     });
-
-    return r;
   }
 
   async deleteFolder(dataSourceId: string, folderId: string) {
-    const r = await this.request({
+    return this.request({
       method: "DELETE",
       path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
         folderId
       )}`,
     });
-
-    return r;
   }
 
   async uploadFile({
