@@ -102,6 +102,10 @@ export async function retrieveNewTranscriptsActivity(
       transcriptsIdsToProcess.push(...gongTranscriptsIds);
       break;
 
+    case "modjo":
+      console.log("MODJO TBD");
+      break;
+
     default:
       assertNever(transcriptsConfiguration.provider);
   }
@@ -225,6 +229,10 @@ export async function processTranscriptActivity(
       transcriptTitle = gongResult.transcriptTitle || "";
       transcriptContent = gongResult.transcriptContent || "";
       userParticipated = gongResult.userParticipated;
+      break;
+
+    case "modjo":
+      console.log("MODJO TBD");
       break;
 
     default:
