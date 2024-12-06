@@ -15,5 +15,9 @@ export const validateUrl = (
     return { valid: false, standardized: null };
   }
 
+  if (url.pathname.includes("//")) {
+    return { valid: false, standardized: null };
+  }
+
   return { valid: true, standardized: url.href };
 };
