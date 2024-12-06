@@ -124,7 +124,7 @@ async fn create_nodes(
         .prepare(
             "INSERT INTO data_sources_nodes \
        (id, created, data_source, timestamp, node_id, title, mime_type, parents, document, \"table\") \
-       VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9)",
+       VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT DO NOTHING",
         )
         .await?;
 
