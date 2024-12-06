@@ -669,11 +669,11 @@ pub const SQL_INDEXES: [&'static str; 33] = [
         idx_data_sources_nodes_data_source_node_id ON data_sources_nodes(data_source, node_id);",
     "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_parents_array ON data_sources_nodes USING GIN (parents);",
-    "CREATE INDEX CONCURRENTLY IF NOT EXISTS
+    "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_document ON data_sources_nodes(document);",
-    "CREATE INDEX CONCURRENTLY IF NOT EXISTS
+    "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_table ON data_sources_nodes(\"table\");",
-    "CREATE INDEX CONCURRENTLY IF NOT EXISTS
+    "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_folder ON data_sources_nodes(folder);",
 ];
 
