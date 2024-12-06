@@ -11,7 +11,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import { acceptableTranscriptProvidersCodec } from "@app/pages/api/w/[wId]/labs/transcripts";
 
-const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"];
+const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong", "modjo"];
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
