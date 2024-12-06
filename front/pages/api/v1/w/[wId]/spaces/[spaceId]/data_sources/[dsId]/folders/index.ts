@@ -5,9 +5,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -18,55 +18,9 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetFoldersResponseType>>,
-  auth: Authenticator
+  auth: Authenticator,
+  dataSource: DataSourceResource
 ): Promise<void> {
-  // Sanitize query params
-  const { dsId } = req.query;
-  const { wId } = req.query;
-  if (typeof dsId !== "string" || typeof wId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-
-  let { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    if (auth.isSystemKey()) {
-      // We also handle the legacy usage of connectors that taps into connected data sources which
-      // are not in the global space. If this is a system key we trust it and set the `spaceId` to the
-      // dataSource.space.sId.
-      spaceId = dataSource?.space.sId;
-    } else {
-      spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
-    }
-  }
-
-  if (!dataSource || dataSource.space.sId !== spaceId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   switch (req.method) {
@@ -113,4 +67,6 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withPublicAPIAuthentication(
+  withResourceFetchingFromRoute(handler, "dataSource")
+);
