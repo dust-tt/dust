@@ -1,6 +1,7 @@
 import type {
   ConversationPublicType,
   PublicPostContentFragmentRequestBody,
+  UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type {
@@ -9,7 +10,6 @@ import type {
   LightAgentConfigurationType,
   ModelId,
   Result,
-  UserMessageType,
 } from "@dust-tt/types";
 import { Err, Ok, sectionFullText } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
