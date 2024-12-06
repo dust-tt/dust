@@ -51,7 +51,11 @@ services:
     ports:
       - "9998:9998"
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ES_LOCAL_VERSION}
+    build:
+      context: .
+      dockerfile: elasticsearch.Dockerfile
+      args:
+        ES_VERSION: ${ES_LOCAL_VERSION}
     container_name: ${ES_LOCAL_CONTAINER_NAME}
     volumes:
       - dev-elasticsearch:/usr/share/elasticsearch/data
