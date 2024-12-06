@@ -20,7 +20,7 @@ struct Args {
     data_source: Option<i64>,
 
     #[arg(long)]
-    offset: Option<i64>,
+    next_id: Option<i64>,
 
     #[arg(long, default_value = "document")]
     node_type: NodeType,
@@ -176,8 +176,6 @@ async fn process_batch(
     pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>>,
     node_type: NodeType,
 ) -> Result<bool> {
-    println!("Creating {} nodes", data.len());
-
     if !execute {
         data.into_iter().for_each(
             |(id, data_source, node_id, timestamp, title, mime_type, _parents)| {
@@ -221,7 +219,7 @@ async fn main() -> Result<()> {
     let node_type = args.node_type;
     let batch_size = args.batch_size;
     let data_source = args.data_source;
-    let mut offset = args.offset.unwrap_or(0);
+    let mut next_id = args.next_id.unwrap_or(0);
 
     let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
         Ok(db_uri) => {
@@ -236,7 +234,7 @@ async fn main() -> Result<()> {
         NodeType::Document => loop {
             println!(
                 "Getting data_sources_documents batch : {} / {}",
-                offset, batch_size
+                next_id, batch_size
             );
 
             let pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>> =
@@ -245,23 +243,23 @@ async fn main() -> Result<()> {
             let c = pool.get().await?;
 
             let dsdocs_rows = match data_source {
-            Some(data_source) =>
-                c.query(
-                    "SELECT dsd.id,dsd.data_source,dsd.document_id,dsd.timestamp,dsd.tags_array,dsd.parents \
-                    FROM data_sources_documents dsd \
-                    WHERE dsd.data_source=$1 AND dsd.status='latest' ORDER BY dsd.id LIMIT $2 OFFSET $3",
-                    &[&data_source,&batch_size,&offset],
-                )
-                .await?,
-            None =>
-                c.query(
-                    "SELECT dsd.id,dsd.data_source,dsd.document_id,dsd.timestamp,dsd.tags_array,dsd.parents \
-                    FROM data_sources_documents dsd \
-                    WHERE dsd.status='latest' ORDER BY dsd.id LIMIT $1 OFFSET $2",
-                    &[&batch_size, &offset],
-                )
-                .await?
-        };
+                Some(data_source) =>
+                    c.query(
+                        "SELECT dsd.id,dsd.data_source,dsd.document_id,dsd.timestamp,dsd.tags_array,dsd.parents \
+                        FROM data_sources_documents dsd \
+                        WHERE dsd.data_source=$1 AND dsd.status='latest' AND dsd.id>$2 ORDER BY dsd.id LIMIT $3",
+                        &[&data_source, &next_id, &batch_size],
+                    )
+                    .await?,
+                None =>
+                    c.query(
+                        "SELECT dsd.id,dsd.data_source,dsd.document_id,dsd.timestamp,dsd.tags_array,dsd.parents \
+                        FROM data_sources_documents dsd \
+                        WHERE dsd.status='latest' AND dsd.id>$1 ORDER BY dsd.id LIMIT $2",
+                        &[&next_id, &batch_size],
+                    )
+                    .await?
+            };
 
             if dsdocs_rows.len() == 0 {
                 break;
@@ -291,6 +289,8 @@ async fn main() -> Result<()> {
                 })
                 .collect();
 
+            next_id = data.last().unwrap().0;
+
             let existing_documents_rows = c
                 .query(
                     "SELECT document FROM data_sources_nodes \
@@ -304,19 +304,23 @@ async fn main() -> Result<()> {
                 .map(|row| row.get::<_, i64>(0))
                 .collect();
 
-            let data = data
+            let data: Vec<(i64, i64, String, i64, String, String, Vec<String>)> = data
                 .into_iter()
                 .filter(|d| !existing_documents.contains(&d.0))
                 .collect();
 
+            println!(
+                "Already existing : {}, creating {} nodes",
+                existing_documents.len(),
+                data.len()
+            );
+
             if !process_batch(data, execute, &pool, NodeType::Document).await? {
                 break;
             }
-
-            offset += batch_size;
         },
         NodeType::Table => loop {
-            println!("Getting tables batch : {} / {}", offset, batch_size);
+            println!("Getting tables batch : {} / {}", next_id, batch_size);
 
             let pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>> =
                 store.raw_pool();
@@ -328,8 +332,8 @@ async fn main() -> Result<()> {
                     c.query(
                         "SELECT t.id,t.data_source,t.table_id,t.timestamp,t.name,t.parents \
                         FROM tables t \
-                        WHERE t.data_source=$1 LIMIT $2 OFFSET $3",
-                        &[&data_source, &batch_size, &offset],
+                        WHERE t.data_source=$1 AND t.id>$2 ORDER BY t.id LIMIT $3",
+                        &[&data_source, &next_id, &batch_size],
                     )
                     .await?
                 }
@@ -337,8 +341,8 @@ async fn main() -> Result<()> {
                     c.query(
                         "SELECT t.id,t.data_source,t.table_id,t.timestamp,t.name,t.parents \
                         FROM tables t \
-                        LIMIT $1 OFFSET $2",
-                        &[&batch_size, &offset],
+                        WHERE t.id>$1 ORDER BY t.id LIMIT $2",
+                        &[&next_id, &batch_size],
                     )
                     .await?
                 }
@@ -370,6 +374,8 @@ async fn main() -> Result<()> {
                 })
                 .collect();
 
+            next_id = data.last().unwrap().0;
+
             let existing_tables_rows = c
                 .query(
                     "SELECT \"table\" FROM data_sources_nodes \
@@ -383,16 +389,20 @@ async fn main() -> Result<()> {
                 .map(|row| row.get::<_, i64>(0))
                 .collect();
 
-            let data = data
+            let data: Vec<(i64, i64, String, i64, String, String, Vec<String>)> = data
                 .into_iter()
                 .filter(|d| !existing_tables.contains(&d.0))
                 .collect();
 
+            println!(
+                "Already existing : {}, creating {} nodes",
+                existing_tables.len(),
+                data.len()
+            );
+
             if !process_batch(data, execute, &pool, NodeType::Table).await? {
                 break;
             }
-
-            offset += batch_size;
         },
     }
 
