@@ -331,6 +331,7 @@
  *           example: "This is my message"
  *         mentions:
  *           type: array
+ *           description: Empty array is accepted but won't trigger any agent.
  *           items:
  *             $ref: '#/components/schemas/Mention'
  *         context:
