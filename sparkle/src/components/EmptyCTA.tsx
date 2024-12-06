@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Button, ButtonProps, RegularButtonProps } from "@sparkle/components/";
+import { Button, RegularButtonProps } from "@sparkle/components/";
 import { cn } from "@sparkle/lib/utils";
 
 interface EmptyCTAProps extends React.HTMLAttributes<HTMLDivElement> {
