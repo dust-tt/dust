@@ -112,6 +112,17 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     return tracker ?? null;
   }
 
+  static async listBySpace(
+    auth: Authenticator,
+    space: SpaceResource
+  ): Promise<TrackerConfigurationResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        vaultId: space.id,
+      },
+    });
+  }
+
   // Deletion.
 
   protected async hardDelete(
