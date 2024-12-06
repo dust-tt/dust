@@ -368,7 +368,7 @@ export async function rowsFromCsv({
   const { header, rowIndex } = headerRes.value;
 
   let i = 0;
-  const parser = parse(csv, { delimiter });
+  const parser = parse(csv, { delimiter, relaxColumnCount: true }); // we allow rows with != col count https://csv.js.org/parse/options/relax_column_count/
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
   for await (const anyRecord of parser) {
