@@ -309,7 +309,7 @@ export async function triggerFromEmail({
   // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
 
   if (restOfThread.length > 0) {
-    const contentFragmentRes = await toFileContentFragment(auth, {
+    const cfRes = await toFileContentFragment(auth, {
       contentFragment: {
         title: `Email thread: ${email.subject}`,
         content: restOfThread,
@@ -317,6 +317,21 @@ export async function triggerFromEmail({
         url: null,
       },
       fileName: `email-${email.subject}.txt`,
+    });
+    if (cfRes.isErr()) {
+      return new Err({
+        type: "message_creation_error",
+        message:
+          `Error creating file for content fragment: ` +
+          cfRes.error.message,
+      });
+    }
+
+    const contentFragmentRes = await postNewContentFragment(auth, conversation, cfRes.value, {
+      username: user.username,
+      fullName: user.fullName,
+      email: user.email,
+      profilePictureUrl: user.image,
     });
     if (contentFragmentRes.isErr()) {
       return new Err({
@@ -326,13 +341,6 @@ export async function triggerFromEmail({
           contentFragmentRes.error.message,
       });
     }
-
-    await postNewContentFragment(auth, conversation, contentFragmentRes.value, {
-      username: user.username,
-      fullName: user.fullName,
-      email: user.email,
-      profilePictureUrl: user.image,
-    });
 
     const updatedConversationRes = await getConversation(
       auth,
