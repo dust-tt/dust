@@ -17,7 +17,7 @@ export interface TextareaProps
 }
 
 const textAreaVariants = cva(
-  "s-flex s-w-full s-px-3 s-py-2 s-text-sm s-text-foreground s-bg-muted-background s-ring-offset-background s-border s-border-border-dark/50 s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none focus-visible:s-border-border-dark focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
+  "s-flex s-w-full s-px-3 s-py-2 s-text-sm s-text-foreground s-bg-muted-background s-ring-offset-background s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none focus-visible:s-border-border-dark focus-visible:s-ring",
   {
     variants: {
       resize: {
@@ -27,9 +27,9 @@ const textAreaVariants = cva(
         both: "s-resize",
       },
       error: {
-        true: "focus:s-ring-warning-200 focus:s-ring-warning-300 dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark",
+        true: "s-border-border-warning/30 focus:s-ring-warning/10 focus-visible:s-border-border-warning dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark",
         false:
-          "focus:s-ring-highlight-200 dark:s-ring-structure-300-dark dark:focus:s-ring-highlight-200-dark",
+          "s-border-border-dark/50 focus:s-ring-border-focus/10 focus-visible:s-border-border-focus dark:s-ring-structure-300-dark dark:focus:s-ring-highlight-200-dark",
       },
       disabled: {
         true: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",
@@ -81,7 +81,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {error && showErrorLabel && (
-          <div className="s-ml-2 s-text-sm s-text-warning-500">{error}</div>
+          <div className="s-ml-2 s-text-xs s-text-warning-500">{error}</div>
         )}
       </div>
     );
