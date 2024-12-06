@@ -1,3 +1,4 @@
+import { ConfluenceClientError } from "@dust-tt/types/src";
 import { makeScript } from "scripts/helpers";
 
 import {
@@ -101,7 +102,8 @@ makeScript(
       } catch (e) {
         if (
           e instanceof ProviderWorkflowError ||
-          e instanceof ExternalOAuthTokenError
+          e instanceof ExternalOAuthTokenError ||
+          e instanceof ConfluenceClientError
         ) {
           console.error(
             `Error while checking connector ${connector.id}: ${e.message}`
