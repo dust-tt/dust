@@ -201,6 +201,8 @@ export default function LabsTranscriptsIndex({
           ...prev,
           provider: transcriptsConfiguration.provider || "",
           isGongConnected: transcriptsConfiguration.provider == "gong" || false,
+          isModjoConnected:
+            transcriptsConfiguration.provider == "modjo" || false,
           isGDriveConnected:
             transcriptsConfiguration.provider == "google_drive" || false,
           assistantSelected:
@@ -387,6 +389,21 @@ export default function LabsTranscriptsIndex({
     await mutateTranscriptsConfiguration();
   };
 
+  const saveApiConnection = async (apiKey: string, provider: string) => {
+    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        apiKey,
+        provider,
+      }),
+    });
+
+    return response;
+  };
+
   const saveOAuthConnection = async (
     connectionId: string,
     provider: string
@@ -474,7 +491,10 @@ export default function LabsTranscriptsIndex({
         const defaultConfiguration: LabsTranscriptsConfigurationResource =
           defaultConfigurationRes.configuration;
 
-        if (defaultConfiguration.provider !== "gong") {
+        if (
+          defaultConfiguration.provider !== "gong" ||
+          !defaultConfiguration.connectionId
+        ) {
           sendNotification({
             type: "error",
             title: "Failed to connect Gong",
@@ -541,45 +561,37 @@ export default function LabsTranscriptsIndex({
         const defaultConfiguration: LabsTranscriptsConfigurationResource =
           defaultConfigurationRes.configuration;
 
-        if (defaultConfiguration.provider !== "modjo") {
+        if (
+          defaultConfiguration.provider !== "modjo" ||
+          !defaultConfiguration.apiKey
+        ) {
           sendNotification({
             type: "error",
             title: "Failed to connect Modjo",
             description:
-              "Your workspace is already connected to another provider",
+              "Your workspace is already connected to another provider by default.",
           });
           return;
         }
 
-        await saveOAuthConnection(
-          defaultConfiguration.connectionId,
-          transcriptsConfigurationState.provider
+        await saveApiConnection(
+          defaultConfiguration.apiKey,
+          defaultConfiguration.provider
         );
 
         return;
       } else {
-        const cRes = await setupOAuthConnection({
-          dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
-          owner,
-          provider: "gong",
-          useCase: "connection",
-          extraConfig: {},
-        });
-        if (!cRes.isOk()) {
-          return cRes;
-        }
-        const connectionId = cRes.value.connection_id;
-
-        await saveOAuthConnection(
-          connectionId,
+        await saveApiConnection(
+          transcriptsConfigurationState.apiKey,
           transcriptsConfigurationState.provider
         );
       }
+      await mutateTranscriptsConfiguration();
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to connect Gong",
-        description: "Could not connect to Gong. Please try again.",
+        title: "Failed to connect Modjo",
+        description: "Could not connect to Modjo. Please try again.",
       });
     }
   };
@@ -767,10 +779,10 @@ export default function LabsTranscriptsIndex({
           )}
           {transcriptsConfigurationState.provider === "modjo" && (
             <Page.Layout direction="vertical">
-              {transcriptsConfigurationState.isGongConnected ? (
+              {transcriptsConfigurationState.isModjoConnected ? (
                 <Page.Layout direction="horizontal">
                   <Button
-                    label="Gong connected"
+                    label="Modjo connected"
                     size="sm"
                     icon={CloudArrowLeftRightIcon}
                     disabled={true}
