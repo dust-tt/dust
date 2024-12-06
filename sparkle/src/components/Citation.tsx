@@ -1,11 +1,13 @@
 import React, { ReactNode } from "react";
 
-import { Avatar } from "@sparkle/components/Avatar";
-import { CardButton } from "@sparkle/components/Card";
-import { Icon } from "@sparkle/components/Icon";
-import { IconButton } from "@sparkle/components/IconButton";
-import Spinner from "@sparkle/components/Spinner";
-import { Tooltip } from "@sparkle/components/Tooltip";
+import {
+  Avatar,
+  Card,
+  Icon,
+  IconButton,
+  Spinner,
+  Tooltip,
+} from "@sparkle/components";
 import { XCircleIcon } from "@sparkle/icons";
 import { DocumentTextStrokeIcon, ImageStrokeIcon } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
@@ -156,7 +158,7 @@ export function Citation({
     : {};
 
   const cardButton = (
-    <CardButton
+    <Card
       variant="secondary"
       size="sm"
       className={classNames(
@@ -174,7 +176,7 @@ export function Citation({
         </div>
       )}
       <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
-    </CardButton>
+    </Card>
   );
   return href ? <Tooltip trigger={cardButton} label={title} /> : cardButton;
 }
