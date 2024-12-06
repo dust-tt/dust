@@ -33,7 +33,7 @@ lazy_static! {
         // Github
         ((|s: &str| s.starts_with("github-issue-")), "application/vnd.dust.github.issue"),
         ((|s: &str| s.starts_with("github-discussion-")), "application/vnd.dust.github.discussion"),
-        ((|s: &str| s.starts_with("github-code-")), "application/vnd.dust.github.codefile"),
+        ((|s: &str| s.starts_with("github-code-")), "application/vnd.dust.github.code.file"),
         // Intercom
         ((|s: &str| s.starts_with("intercom-conversation-")), "application/vnd.dust.intercom.conversation"),
         ((|s: &str| s.starts_with("intercom-article-")), "application/vnd.dust.intercom.article"),

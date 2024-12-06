@@ -1098,7 +1098,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: "application/vnd.dust.github.codefile",
+            mimeType: "application/vnd.dust.github.code.file",
             async: true,
           });
 
