@@ -21,7 +21,6 @@ import type {
   MentionType,
   PlanType,
   Result,
-  SupportedContentFragmentType,
   UserMessageContext,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -2022,26 +2021,6 @@ async function isMessagesLimitReached({
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
-}
-
-export function normalizeContentFragmentType({
-  contentType,
-  url,
-}: {
-  contentType: SupportedContentFragmentType;
-  url?: string;
-}): SupportedContentFragmentType {
-  // hack: for users creating content_fragments through our public API
-  if ((contentType as string) === "file_attachment") {
-    logger.info(
-      {
-        url,
-      },
-      "ContentFragment of type 'file_attachment' being created"
-    );
-    return "text/plain";
-  }
-  return contentType;
 }
 
 /**

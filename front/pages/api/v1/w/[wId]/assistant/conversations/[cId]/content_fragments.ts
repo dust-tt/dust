@@ -6,7 +6,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getConversation,
-  normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -99,7 +98,7 @@ async function handler(
       }
 
       if (r.data.content) {
-        const { content, contentType } = r.data;
+        const { content } = r.data;
         if (content.length === 0 || content.length > 128 * 1024) {
           return apiError(req, res, {
             status_code: 400,
@@ -110,11 +109,6 @@ async function handler(
             },
           });
         }
-        const normalizedContentType = normalizeContentFragmentType({
-          contentType,
-          url: req.url,
-        });
-        r.data.contentType = normalizedContentType;
       }
       const { context, ...contentFragment } = r.data;
 

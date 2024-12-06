@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 
-import { getSupportedContentFragmentTypeCodec } from "../../content_fragment";
+import { getSupportedInlinedContentTypeCodec } from "../../content_fragment";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
@@ -25,7 +25,7 @@ const ContentFragmentInputWithContentSchema = t.intersection([
   ContentFragmentBaseSchema,
   t.type({
     content: t.string,
-    contentType: getSupportedContentFragmentTypeCodec(),
+    contentType: getSupportedInlinedContentTypeCodec(),
   }),
 ]);
 

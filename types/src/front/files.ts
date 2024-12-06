@@ -72,10 +72,18 @@ const supportedDelimitedText = {
   "text/tsv": [".tsv"],
 } as const;
 
-// Supported content types for plain text.
+// Supported content types that are plain text and can be sent as file-less content fragment.
+const supportedRawText = {
+  "text/markdown": [".md", ".markdown"],
+  "text/plain": [".txt"],
+  "text/vnd.dust.attachment.slack.thread": [".txt"],
+};
+
+// Supported content types for plain text (after processing).
 const supportedPlainText = {
   // We support all tabular content types as plain text.
   ...supportedDelimitedText,
+  ...supportedRawText,
 
   "application/msword": [".doc", ".docx"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
@@ -83,10 +91,6 @@ const supportedPlainText = {
     ".docx",
   ],
   "application/pdf": [".pdf"],
-  "text/markdown": [".md", ".markdown"],
-  "text/plain": [".txt"],
-
-  "text/vnd.dust.attachment.slack.thread": [".txt"],
 } as const;
 
 // Supported content types for images.
@@ -123,16 +127,24 @@ export const supportedImageContentTypes = Object.keys(
 export const supportedDelimitedTextContentTypes = Object.keys(
   supportedDelimitedText
 ) as (keyof typeof supportedDelimitedText)[];
+export const supportedRawTextContentTypes = Object.keys(
+  supportedRawText
+) as (keyof typeof supportedRawText)[];
 
 export const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
   ...supportedImageContentTypes,
+];
+export const supportedInlinedContentType = [
+  ...supportedDelimitedTextContentTypes,
+  ...supportedRawTextContentTypes,
 ];
 
 // Infer types from the arrays.
 export type PlainTextContentType = keyof typeof supportedPlainText;
 export type ImageContentType = keyof typeof supportedImage;
 export type DelimitedTextContentType = keyof typeof supportedDelimitedText;
+export type RawTextContentType = keyof typeof supportedRawText;
 
 // Union type for all supported content types.
 export type SupportedFileContentType = PlainTextContentType | ImageContentType;
@@ -142,6 +154,18 @@ export function isSupportedFileContentType(
 ): contentType is SupportedFileContentType {
   return supportedUploadableContentType.includes(
     contentType as SupportedFileContentType
+  );
+}
+
+export type SupportedInlinedContentType =
+  | DelimitedTextContentType
+  | RawTextContentType;
+
+export function isSupportedInlinedContentType(
+  contentType: string
+): contentType is SupportedInlinedContentType {
+  return supportedInlinedContentType.includes(
+    contentType as SupportedInlinedContentType
   );
 }
 
