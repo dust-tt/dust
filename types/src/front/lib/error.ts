@@ -107,7 +107,6 @@ export type APIErrorType =
 export type APIError = {
   type: APIErrorType;
   message: string;
-  request_format_errors?: object;
   data_source_error?: CoreAPIError;
   run_error?: CoreAPIError;
   app_error?: CoreAPIError;

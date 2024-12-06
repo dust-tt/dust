@@ -3,6 +3,7 @@ import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isContentFragmentInputWithContentType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import {
   getConversation,
@@ -87,12 +88,14 @@ async function handler(
       const r = PublicPostContentFragmentRequestBodySchema.safeParse(req.body);
 
       if (r.error) {
+        const ve = fromError(r.error);
+        console.log(ve.toString());
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body.",
-            request_format_errors: r.error.flatten(),
+            message: fromError(r.error).toString(),
           },
         });
       }

@@ -6,6 +6,7 @@ import { UpsertDatabaseTableRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -246,8 +247,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body.",
-            request_format_errors: r.error.flatten(),
+            message: fromError(r.error).toString(),
           },
         });
       }
