@@ -14,8 +14,7 @@ import { parse } from "csv-parse";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
-import { Readable } from "stream";
-import { PassThrough, Transform } from "stream";
+import { PassThrough, Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
 import config from "@app/lib/api/config";
@@ -381,7 +380,8 @@ export async function processAndStoreFile(
         | "internal_server_error"
         | "invalid_request_error"
         | "file_too_large"
-        | "file_type_not_supported";
+        | "file_type_not_supported"
+        | "file_is_empty";
     }
   >
 > {
