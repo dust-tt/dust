@@ -22,6 +22,7 @@ import {
   getUserConversations,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -169,26 +170,30 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       for (const resolvedFragment of resolvedFragments) {
-        const { context, ...cf } = resolvedFragment;
+        const { context, ...rest } = resolvedFragment;
+        let contentFragment = rest;
 
-        if (isContentFragmentInputWithContentType(cf)) {
-          logger.warn(
-            {
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              conversationId: conversation.sId,
-              endpoint: "conversation",
-              contentType: cf.contentType,
-            },
-            "Public API: ContentFragmentInputWithContentType"
-          );
+        if (isContentFragmentInputWithContentType(contentFragment)) {
+          const contentFragmentRes = await toFileContentFragment(auth, {
+            contentFragment,
+          });
+          if (contentFragmentRes.isErr()) {
+            throw new Error(contentFragmentRes.error.message);
+          }
+          contentFragment = contentFragmentRes.value;
         }
 
-        const cfRes = await postNewContentFragment(auth, conversation, cf, {
-          username: context?.username ?? null,
-          fullName: context?.fullName ?? null,
-          email: context?.email ?? null,
-          profilePictureUrl: context?.profilePictureUrl ?? null,
-        });
+        const cfRes = await postNewContentFragment(
+          auth,
+          conversation,
+          contentFragment,
+          {
+            username: context?.username ?? null,
+            fullName: context?.fullName ?? null,
+            email: context?.email ?? null,
+            profilePictureUrl: context?.profilePictureUrl ?? null,
+          }
+        );
         if (cfRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,

@@ -19,15 +19,15 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { sendEmail } from "@app/lib/api/email";
-import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+
+import { toFileContentFragment } from "./conversation/content_fragment";
 
 const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
 
@@ -309,45 +309,30 @@ export async function triggerFromEmail({
   // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
 
   if (restOfThread.length > 0) {
-    const file = await FileResource.makeNew({
-      contentType: "text/plain",
+    const contentFragmentRes = await toFileContentFragment(auth, {
+      contentFragment: {
+        title: `Email thread: ${email.subject}`,
+        content: restOfThread,
+        contentType: "text/plain",
+        url: null,
+      },
       fileName: `email-${email.subject}.txt`,
-      fileSize: restOfThread.length,
-      userId: user.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-      useCase: "conversation",
-      useCaseMetadata: null,
     });
-
-    const processRes = await processAndStoreFile(auth, {
-      file,
-      reqOrString: restOfThread,
-    });
-
-    if (processRes.isErr()) {
+    if (contentFragmentRes.isErr()) {
       return new Err({
         type: "message_creation_error",
         message:
           `Error creating file for content fragment: ` +
-          processRes.error.message,
+          contentFragmentRes.error.message,
       });
     }
 
-    await postNewContentFragment(
-      auth,
-      conversation,
-      {
-        title: `Email thread: ${email.subject}`,
-        url: null,
-        fileId: file.sId,
-      },
-      {
-        username: user.username,
-        fullName: user.fullName,
-        email: user.email,
-        profilePictureUrl: user.image,
-      }
-    );
+    await postNewContentFragment(auth, conversation, contentFragmentRes.value, {
+      username: user.username,
+      fullName: user.fullName,
+      email: user.email,
+      profilePictureUrl: user.image,
+    });
 
     const updatedConversationRes = await getConversation(
       auth,
