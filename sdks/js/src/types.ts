@@ -2138,6 +2138,9 @@ export const UpsertDataSourceFolderRequestSchema = z.object({
   parents: z.array(z.string()).nullable().optional(),
   title: z.string(),
 });
+export type UpsertDataSourceFolderRequestType = z.infer<
+  typeof UpsertDataSourceFolderRequestSchema
+>;
 
 const DateSchema = z
   .string()

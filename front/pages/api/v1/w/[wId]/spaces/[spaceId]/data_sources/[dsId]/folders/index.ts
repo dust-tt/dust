@@ -7,6 +7,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -21,13 +22,8 @@ async function handler(
 ): Promise<void> {
   // Sanitize query params
   const { dsId } = req.query;
-  const { spaceId } = req.query;
   const { wId } = req.query;
-  if (
-    typeof dsId !== "string" ||
-    typeof spaceId !== "string" ||
-    typeof wId !== "string"
-  ) {
+  if (typeof dsId !== "string" || typeof wId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -38,6 +34,18 @@ async function handler(
   }
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
+
+  let { spaceId } = req.query;
+  if (typeof spaceId !== "string") {
+    if (auth.isSystemKey()) {
+      // We also handle the legacy usage of connectors that taps into connected data sources which
+      // are not in the global space. If this is a system key we trust it and set the `spaceId` to the
+      // dataSource.space.sId.
+      spaceId = dataSource?.space.sId;
+    } else {
+      spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
+    }
+  }
 
   if (!dataSource || dataSource.space.sId !== spaceId) {
     return apiError(req, res, {

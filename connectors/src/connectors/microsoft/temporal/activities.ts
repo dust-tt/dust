@@ -40,7 +40,10 @@ import {
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import {
+  updateDocumentParentsField,
+  upsertFolderNode,
+} from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -178,6 +181,21 @@ export async function getRootNodesToSyncFromResources(
   const nodeResources = await MicrosoftNodeResource.batchUpdateOrCreate(
     connectorId,
     nodesToSync
+  );
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await concurrentExecutor(
+    nodeResources,
+    async (createdOrUpdatedResource) =>
+      upsertFolderNode({
+        dataSourceConfig,
+        folderId: createdOrUpdatedResource.internalId,
+        parents: [createdOrUpdatedResource.internalId],
+        loggerArgs: {},
+        title: createdOrUpdatedResource.name ?? "",
+      }),
+    { concurrency: 5 }
   );
 
   return nodeResources.map((r) => r.internalId);
@@ -412,6 +430,7 @@ export async function syncFiles({
   });
 
   const alreadySeenResources = Object.values(alreadySeenResourcesById);
+
   const createdOrUpdatedResources =
     await MicrosoftNodeResource.batchUpdateOrCreate(
       connectorId,
@@ -430,6 +449,25 @@ export async function syncFiles({
           })
         )
     );
+
+  const parents = await getParents({
+    connectorId: parent.connectorId,
+    internalId: parent.internalId,
+    startSyncTs,
+  });
+
+  await concurrentExecutor(
+    createdOrUpdatedResources,
+    async (createdOrUpdatedResource) =>
+      upsertFolderNode({
+        dataSourceConfig,
+        folderId: createdOrUpdatedResource.internalId,
+        parents: [createdOrUpdatedResource.internalId, ...parents],
+        loggerArgs: {},
+        title: createdOrUpdatedResource.name ?? "",
+      }),
+    { concurrency: 5 }
+  );
 
   return {
     count,
@@ -565,7 +603,7 @@ export async function syncDeltaForRootNodesInDrive({
       if (driveItem.deleted) {
         // no need to delete children here since they will all be listed
         // in the delta with the 'deleted' field set
-        await deleteFolder({ connectorId, internalId });
+        await deleteFolder({ connectorId, dataSourceConfig, internalId });
       } else {
         const isMoved = await isFolderMovedInSameRoot({
           connectorId,
@@ -593,6 +631,14 @@ export async function syncDeltaForRootNodesInDrive({
           connectorId,
           blob
         );
+
+        await upsertFolderNode({
+          dataSourceConfig,
+          folderId: blob.internalId,
+          parents: [blob.internalId],
+          loggerArgs: {},
+          title: blob.name ?? "",
+        });
 
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
@@ -926,7 +972,11 @@ export async function microsoftGarbageCollectionActivity({
         switch (node.nodeType) {
           case "drive":
             if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
-              await deleteFolder({ connectorId, internalId: node.internalId });
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+              });
             }
             break;
           case "folder": {
@@ -942,7 +992,11 @@ export async function microsoftGarbageCollectionActivity({
                 startGarbageCollectionTs,
               }))
             ) {
-              await deleteFolder({ connectorId, internalId: node.internalId });
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+              });
             }
             break;
           }
