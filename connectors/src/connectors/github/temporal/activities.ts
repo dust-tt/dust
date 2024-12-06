@@ -1027,7 +1027,19 @@ export async function githubCodeSyncActivity({
       fq.add(async () => {
         Context.current().heartbeat();
         // Read file (files are 1MB at most).
-        const content = await fs.readFile(f.localFilePath);
+        let content;
+        try {
+          content = await fs.readFile(f.localFilePath);
+        } catch (e) {
+          logger.warn(
+            { repoId, fileName: f.fileName, documentId: f.documentId, err: e },
+            "[Github] Error reading file"
+          );
+          if (e instanceof Error && "code" in e && e.code === "ENOENT") {
+            return;
+          }
+          throw e;
+        }
         const contentHash = blake3(content).toString("hex");
         const parentInternalId = f.parentInternalId || rootInternalId;
 
