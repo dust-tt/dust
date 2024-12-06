@@ -7,7 +7,6 @@ import type {
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 interface SnowflakeError extends Error {
-  code: number;
   name: string;
   data: {
     nextAction: string;
@@ -31,10 +30,7 @@ interface SnowflakeAccountLockedError extends SnowflakeError {
 function isSnowflakeError(err: unknown): err is SnowflakeError {
   return (
     err instanceof Error &&
-    "code" in err &&
-    typeof err.code === "number" &&
     "name" in err &&
-    typeof err.name === "string" &&
     "data" in err &&
     typeof err.data === "object" &&
     err.data !== null &&
