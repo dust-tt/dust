@@ -14,9 +14,9 @@ export const CARD_BUTTON_VARIANTS = [
   "tertiary",
 ] as const;
 
-export type CardButtonVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
+export type CardVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
 
-const variantClasses: Record<CardButtonVariantType, string> = {
+const variantClasses: Record<CardVariantType, string> = {
   primary: "s-bg-primary-50 s-border-border-dark/0",
   secondary: "s-bg-background s-border-border-dark",
   tertiary: "s-bg-background s-border-border-dark/0",
@@ -24,15 +24,15 @@ const variantClasses: Record<CardButtonVariantType, string> = {
 
 const CARD_BUTTON_SIZES = ["sm", "md", "lg"] as const;
 
-type CardButtonSizeType = (typeof CARD_BUTTON_SIZES)[number];
+type CardSizeType = (typeof CARD_BUTTON_SIZES)[number];
 
-const sizeVariants: Record<CardButtonSizeType, string> = {
+const sizeVariants: Record<CardSizeType, string> = {
   sm: "s-p-3 s-rounded-2xl",
   md: "s-p-4 s-rounded-3xl",
   lg: "s-p-5 s-rounded-[32px]",
 };
 
-const cardButtonVariants = cva(
+const cardVariants = cva(
   "s-flex s-text-left s-group s-border s-overflow-hidden s-text-foreground",
   {
     variants: {
@@ -47,8 +47,8 @@ const cardButtonVariants = cva(
 );
 
 interface CommonProps {
-  variant?: CardButtonVariantType;
-  size?: CardButtonSizeType;
+  variant?: CardVariantType;
+  size?: CardSizeType;
   className?: string;
 }
 
@@ -74,9 +74,9 @@ interface ButtonProps
   shallow?: never;
 }
 
-export type CardButtonProps = LinkProps | ButtonProps;
+export type CardProps = LinkProps | ButtonProps;
 
-export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   (
     {
       children,
@@ -97,7 +97,7 @@ export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
     const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
     const cardButtonClassNames = cn(
-      cardButtonVariants({ variant, size }),
+      cardVariants({ variant, size }),
       onClick &&
         "s-cursor-pointer disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200 hover:s-bg-primary-100 active:s-bg-primary-200",
       className
@@ -131,4 +131,4 @@ export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
   }
 );
 
-CardButton.displayName = "CardButton";
+Card.displayName = "Card";

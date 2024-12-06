@@ -2,9 +2,9 @@ import React, { useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
-import { CardButton } from "@sparkle/components/CardButton";
+import { Card } from "@sparkle/components/Card";
 import { MoreIcon } from "@sparkle/icons/solid";
-import { cn } from "@sparkle/lib/utils";
+import { classNames } from "@sparkle/lib/utils";
 
 type AssistantPreviewVariant = "list" | "minimal";
 
@@ -100,13 +100,18 @@ const ListVariantContent = ({
       <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
         <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
           <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">
-            <div className={cn(titleClassNames["base"], titleClassNames.list)}>
+            <div
+              className={classNames(
+                titleClassNames["base"],
+                titleClassNames.list
+              )}
+            >
               @{title}
             </div>
 
             {subtitle && (
               <div
-                className={cn(
+                className={classNames(
                   subtitleClassNames["base"],
                   subtitleClassNames.list
                 )}
@@ -117,7 +122,7 @@ const ListVariantContent = ({
           </div>
         </div>
         <div
-          className={cn(
+          className={classNames(
             descriptionClassNames["base"],
             descriptionClassNames.list
           )}
@@ -142,8 +147,8 @@ const MinimalVariantContent = ({
   const actionButton = actionElement ?? (
     <Button
       icon={MoreIcon}
-      variant="outline"
-      size="xs"
+      variant="ghost"
+      size="sm"
       onClick={(e) => {
         e.stopPropagation();
         onActionClick?.();
@@ -152,49 +157,58 @@ const MinimalVariantContent = ({
   );
 
   return (
-    <div
-      id="assistant-container"
-      className="s-flex s-grow s-flex-col s-justify-start s-gap-2 s-overflow-hidden"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick?.();
-      }}
-    >
-      <div className="s-flex s-flex-row s-justify-between s-gap-2 s-overflow-hidden">
-        <div
-          id="preview"
-          className="s-flex s-w-full s-min-w-0 s-flex-row s-items-center s-gap-2"
-        >
-          <div id="avatar-column" className="s-w-fit">
-            <Avatar name={`Avatar of ${title}`} visual={pictureUrl} size="md" />
-          </div>
+    <>
+      <div
+        id="assistant-container"
+        className="s-flex s-grow s-flex-col s-justify-start s-gap-2 s-overflow-hidden"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick?.();
+        }}
+      >
+        <div className="s-flex s-flex-row s-justify-between s-gap-2 s-overflow-hidden">
           <div
-            id="details-column"
-            className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0 s-overflow-hidden"
+            id="preview"
+            className="s-flex s-w-full s-min-w-0 s-flex-row s-items-center s-gap-2"
           >
-            <div
-              className={cn(titleClassNames["base"], titleClassNames.minimal)}
-            >
-              @{title}
+            <div id="avatar-column" className="s-w-fit">
+              <Avatar
+                name={`Avatar of ${title}`}
+                visual={pictureUrl}
+                size="md"
+              />
             </div>
             <div
-              className={cn(
-                subtitleClassNames["base"],
-                subtitleClassNames.minimal
-              )}
+              id="details-column"
+              className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0 s-overflow-hidden"
             >
-              By: {subtitle}
+              <div
+                className={classNames(
+                  titleClassNames["base"],
+                  titleClassNames.minimal
+                )}
+              >
+                @{title}
+              </div>
+              <div
+                className={classNames(
+                  subtitleClassNames["base"],
+                  subtitleClassNames.minimal
+                )}
+              >
+                By: {subtitle}
+              </div>
             </div>
           </div>
+          <div id="actions-column" className="s-flex s-w-fit s-shrink-0">
+            {hasAction && actionButton}
+          </div>
         </div>
-        <div id="actions-column" className="s-flex s-w-fit s-shrink-0">
-          {hasAction && actionButton}
+        <div className="s-line-clamp-2 s-text-sm s-text-element-700">
+          {description}
         </div>
       </div>
-      <div className="s-line-clamp-2 s-text-sm s-text-element-700">
-        {description}
-      </div>
-    </div>
+    </>
   );
 };
 
@@ -204,17 +218,15 @@ export function AssistantPreview(props: AssistantPreviewProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="">
-      <CardButton
-        variant={variant === "minimal" ? "secondary" : "tertiary"}
-        className={cn("s-flex s-flex-col s-gap-2 s-border")}
-        size={variant === "minimal" ? "sm" : "lg"}
-        onClick={onClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {renderVariantContent({ ...props, isHovered })}
-      </CardButton>
-    </div>
+    <Card
+      variant={variant === "minimal" ? "secondary" : "tertiary"}
+      className={classNames("s-flex s-flex-col s-gap-2 s-border")}
+      size={variant === "minimal" ? "sm" : "lg"}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {renderVariantContent({ ...props, isHovered })}
+    </Card>
   );
 }

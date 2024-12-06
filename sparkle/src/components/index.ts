@@ -1,14 +1,18 @@
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
+export {
+  AssistantCard,
+  AssistantCardMore,
+  LargeAssistantCard,
+} from "./AssistantCard";
 export { AssistantPreview } from "./AssistantPreview";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type { ButtonProps, RegularButtonProps } from "./Button";
 export { Button } from "./Button";
-export { Card, ComposableCard } from "./Card";
-export type { CardButtonProps } from "./CardButton";
-export { CardButton } from "./CardButton";
+export type { CardProps } from "./Card";
+export { Card } from "./Card";
 export type { CheckboxProps } from "./Checkbox";
 export {
   Checkbox,

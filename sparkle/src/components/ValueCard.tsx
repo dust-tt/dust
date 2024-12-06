@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { CardButton, Spinner } from "@sparkle/components";
+import { Card, Spinner } from "@sparkle/components";
 import { cn } from "@sparkle/lib/utils";
 
 interface CardRootProps {
@@ -8,9 +8,9 @@ interface CardRootProps {
   className?: string;
 }
 const Root = ({ className, children }: CardRootProps) => (
-  <CardButton size="md" className={cn("s-flex s-flex-col s-gap-2", className)}>
+  <Card size="md" className={cn("s-flex s-flex-col s-gap-2", className)}>
     {children}
-  </CardButton>
+  </Card>
 );
 
 interface CardHeaderProps {
