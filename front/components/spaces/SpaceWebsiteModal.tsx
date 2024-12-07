@@ -39,6 +39,7 @@ import {
   WEBCRAWLER_MAX_PAGES,
   WebCrawlerHeaderRedactedValue,
 } from "@dust-tt/types";
+import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -46,7 +47,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
-import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
+import { urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 
 const WEBSITE_CAT = "website";
@@ -184,7 +185,8 @@ export default function SpaceWebsiteModal({
 
   const updateUrl = (url: string) => {
     setDataSourceUrl(url);
-    if (isUrlValid(dataSourceUrl) && !dataSourceView) {
+    const validatedUrl = validateUrl(dataSourceUrl);
+    if (validatedUrl.valid && !dataSourceView) {
       setDataSourceName(urlToDataSourceName(dataSourceUrl));
     }
   };
@@ -194,7 +196,8 @@ export default function SpaceWebsiteModal({
     let nameError = null;
 
     // Validate URL
-    if (!isUrlValid(dataSourceUrl)) {
+    const validatedUrl = validateUrl(dataSourceUrl);
+    if (!validatedUrl.valid) {
       urlError =
         "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)).";
     }
