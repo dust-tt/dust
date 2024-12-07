@@ -1,25 +1,35 @@
 use std::collections::HashMap;
 
+use clap::Parser;
 use elasticsearch::auth::Credentials;
 use elasticsearch::http::transport::{SingleNodeConnectionPool, TransportBuilder};
 use elasticsearch::indices::{IndicesCreateParts, IndicesExistsParts};
 use elasticsearch::Elasticsearch;
 use url::Url;
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(help = "The index name (without the version)")]
+    index_name: String,
+
+    #[arg(help = "The version of the index")]
+    version: String,
+}
 /*
  * Create an index in Elasticsearch
  *
  * Usage:
- * cargo run --bin create_index -- <index_alias> <version>
+ * cargo run --bin create_index -- --index_name <index_name> --version <version>
  *
- * Will look for index settings and mappings in migrations/elasticsearch/indices/[index_alias]_[version].settings.[region].json
+ * Look for index settings and mappings in migrations/elasticsearch/indices/[index_name]_[version].settings.[region].json
+ * Create the index with the given settings and mappings at [index_name]_[version], and set the alias to [index_name]
  */
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // get args
-    let args = std::env::args().collect::<Vec<String>>();
-    let index_alias = args[1].clone();
-    let version = args[2].clone();
+    let args = Args::parse();
+    let index_alias = args.index_name;
+    let version = args.version;
 
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
 
@@ -63,13 +73,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }*/
     });
 
-    let index_name = format!("{}_{}", index_alias.clone(), version);
+    let index_fullname = format!("{}_{}", index_alias.clone(), version);
     println!("{:?}", serde_json::to_string(&body)?);
 
     // check if index exists
     let response = client
         .indices()
-        .exists(IndicesExistsParts::Index(&[index_name.as_str()]))
+        .exists(IndicesExistsParts::Index(&[index_fullname.as_str()]))
         .send()
         .await?;
 
@@ -81,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // create index with settings, mappings and alias
     let response = client
         .indices()
-        .create(IndicesCreateParts::Index(index_name.as_str()))
+        .create(IndicesCreateParts::Index(index_fullname.as_str()))
         .body(body)
         .send()
         .await?;
