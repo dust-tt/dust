@@ -83,12 +83,12 @@ services:
       timeout: 5s
       retries: 10
 
-  kibana_settongs:
+  kibana_settings:
     depends_on:
       elasticsearch:
         condition: service_healthy
     image: docker.elastic.co/elasticsearch/elasticsearch:${ES_LOCAL_VERSION}
-    container_name: kibana_settongs
+    container_name: kibana_settings
     restart: "no"
     command: >
       bash -c '
@@ -98,7 +98,7 @@ services:
 
   kibana:
     depends_on:
-      kibana_settongs:
+      kibana_settings:
         condition: service_completed_successfully
     image: docker.elastic.co/kibana/kibana:${ES_LOCAL_VERSION}
     container_name: ${KIBANA_LOCAL_CONTAINER_NAME}
