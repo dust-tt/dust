@@ -6,13 +6,13 @@ import {
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
+import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import {
-  getActiveChildPageIds,
+  getActiveChildPageRefs,
   pageHasReadRestrictions,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
-import { isConfluencePageSkipped } from "@connectors/connectors/confluence/lib/confluence_page";
 import {
   getConfluencePageParentIds,
   getSpaceHierarchy,
@@ -191,6 +191,31 @@ export async function confluenceGetSpaceNameActivity({
   }
 }
 
+export async function markPageHasVisited({
+  connectorId,
+  pageId,
+  spaceId,
+  visitedAtMs,
+}: {
+  connectorId: ModelId;
+  pageId: string;
+  spaceId: string;
+  visitedAtMs: number;
+}) {
+  await ConfluencePage.update(
+    {
+      lastVisitedAt: new Date(visitedAtMs),
+    },
+    {
+      where: {
+        connectorId,
+        pageId,
+        spaceId,
+      },
+    }
+  );
+}
+
 async function upsertConfluencePageInDb(
   connectorId: ModelId,
   page: ConfluencePageWithBodyType,
@@ -211,7 +236,7 @@ async function upsertConfluencePageInDb(
 interface ConfluenceCheckAndUpsertPageActivityInput {
   connectorId: ModelId;
   isBatchSync: boolean;
-  pageId: string;
+  pageRef: ConfluencePageRef;
   spaceId: string;
   spaceName: string;
   forceUpsert: boolean;
@@ -221,7 +246,7 @@ interface ConfluenceCheckAndUpsertPageActivityInput {
 export async function confluenceCheckAndUpsertPageActivity({
   connectorId,
   isBatchSync,
-  pageId,
+  pageRef,
   spaceId,
   spaceName,
   forceUpsert,
@@ -229,6 +254,8 @@ export async function confluenceCheckAndUpsertPageActivity({
 }: ConfluenceCheckAndUpsertPageActivityInput) {
   const connector = await fetchConfluenceConnector(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const { id: pageId } = pageRef;
 
   const loggerArgs = {
     connectorId,
@@ -239,7 +266,16 @@ export async function confluenceCheckAndUpsertPageActivity({
   };
   const localLogger = logger.child(loggerArgs);
 
-  const isPageSkipped = await isConfluencePageSkipped(connectorId, pageId);
+  const pageAlreadyInDb = await ConfluencePage.findOne({
+    attributes: ["parentId", "skipReason", "version"],
+    where: {
+      connectorId,
+      pageId,
+    },
+  });
+
+  const isPageSkipped =
+    !!pageAlreadyInDb && pageAlreadyInDb.skipReason !== null;
   if (isPageSkipped) {
     logger.info("Confluence page skipped.");
     return true;
@@ -255,7 +291,33 @@ export async function confluenceCheckAndUpsertPageActivity({
     connector
   );
 
-  localLogger.info("Upserting Confluence page.");
+  // Check restrictions.
+  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
+  if (hasReadRestrictions) {
+    localLogger.info("Skipping restricted Confluence page.");
+    return false;
+  }
+
+  // Check version.
+  const isSameVersion =
+    pageAlreadyInDb && pageAlreadyInDb.version === pageRef.version;
+
+  // Check if page was moved. Version is not bumped when a page is moved.
+  const pageWasMoved =
+    pageAlreadyInDb && pageAlreadyInDb.parentId !== pageRef.parentId;
+
+  // Only index in DB if the page does not exis, has been moved or  we want to upsert.
+  if (isSameVersion && !forceUpsert && !pageWasMoved) {
+    // Simply record that we visited the page.
+    await markPageHasVisited({
+      connectorId,
+      pageId,
+      spaceId,
+      visitedAtMs,
+    });
+
+    return true;
+  }
 
   // There is a small delta between the page being listed and the page being imported.
   // If the page has been deleted in the meantime, we should ignore it.
@@ -266,27 +328,7 @@ export async function confluenceCheckAndUpsertPageActivity({
     return false;
   }
 
-  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
-  if (hasReadRestrictions) {
-    localLogger.info("Skipping restricted Confluence page.");
-    return false;
-  }
-
-  const pageAlreadyInDb = await ConfluencePage.findOne({
-    attributes: ["version"],
-    where: {
-      connectorId,
-      pageId,
-    },
-  });
-  const isSameVersion =
-    pageAlreadyInDb && pageAlreadyInDb.version === page.version.number;
-  // Only index in DB if the page does not exist or we want to upsert.
-  if (isSameVersion && !forceUpsert) {
-    // Simply record that we visited the page.
-    await upsertConfluencePageInDb(connectorId, page, visitedAtMs);
-    return true;
-  }
+  localLogger.info("Upserting Confluence page.");
 
   const markdown = turndownService.turndown(page.body.storage.value);
   const pageCreatedAt = new Date(page.createdAt);
@@ -359,7 +401,7 @@ export async function confluenceCheckAndUpsertPageActivity({
   return true;
 }
 
-export async function confluenceGetActiveChildPageIdsActivity({
+export async function confluenceGetActiveChildPageRefsActivity({
   connectorId,
   parentPageId,
   confluenceCloudId,
@@ -386,7 +428,11 @@ export async function confluenceGetActiveChildPageIdsActivity({
 
   localLogger.info("Fetching Confluence child pages in space.");
 
-  return getActiveChildPageIds(client, parentPageId, pageCursor);
+  return getActiveChildPageRefs(client, {
+    pageCursor,
+    parentPageId,
+    spaceId,
+  });
 }
 
 // Confluence has a single main landing page.
@@ -415,6 +461,7 @@ export async function confluenceGetRootPageIdsActivity({
 
   try {
     const { pages: rootPages } = await client.getPagesInSpace(spaceId, "root");
+
     return rootPages.map((rp) => rp.id);
   } catch (err) {
     if (err instanceof ConfluenceClientError && err.status === 404) {
@@ -453,20 +500,26 @@ export async function confluenceGetTopLevelPageIdsActivity({
 
   localLogger.info("Fetching Confluence top-level page in space.");
 
-  const { childPageIds, nextPageCursor } = await getActiveChildPageIds(
+  const { childPageRefs, nextPageCursor } = await getActiveChildPageRefs(
     client,
-    rootPageId,
-    pageCursor
+    {
+      pageCursor,
+      parentPageId: rootPageId,
+      spaceId,
+    }
   );
 
   localLogger.info(
     {
-      topLevelPagesCount: childPageIds.length,
+      topLevelPagesCount: childPageRefs.length,
     },
     "Found Confluence top-level pages in space."
   );
 
-  return { topLevelPageIds: childPageIds, nextPageCursor };
+  return {
+    topLevelPageIds: childPageRefs.map((cpr) => cpr.id),
+    nextPageCursor,
+  };
 }
 
 export async function confluenceUpdatePagesParentIdsActivity(

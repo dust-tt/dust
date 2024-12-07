@@ -110,19 +110,61 @@ export async function pageHasReadRestrictions(
   return hasGroupReadPermissions || hasUserReadPermissions;
 }
 
-export async function getActiveChildPageIds(
-  client: ConfluenceClient,
-  parentPageId: string,
-  pageCursor: string | null
-) {
-  const { pages: childPages, nextPageCursor } = await client.getChildPages(
-    parentPageId,
-    pageCursor
-  );
+export interface ConfluencePageRef {
+  id: string;
+  version: number;
+  parentId?: string;
+}
 
-  const childPageIds = childPages
-    .filter((p) => p.status === "current")
+const PAGE_FETCH_LIMIT = 100;
+
+export async function getActiveChildPageRefs(
+  client: ConfluenceClient,
+  {
+    pageCursor,
+    parentPageId,
+    spaceId,
+  }: {
+    pageCursor: string | null;
+    parentPageId: string;
+    spaceId: string;
+  }
+) {
+  const { pages: childPages, nextPageCursor } = await client.getChildPages({
+    parentPageId,
+    pageCursor,
+    limit: PAGE_FETCH_LIMIT,
+  });
+
+  const activeChildPageIds = childPages
+    .filter((p) => p.status === "current" && p.spaceId === spaceId)
     .map((p) => p.id);
 
-  return { childPageIds, nextPageCursor };
+  if (activeChildPageIds.length === 0) {
+    return { childPageRefs: [], nextPageCursor };
+  }
+
+  console.log(
+    ">> activeChildPageIds:",
+    JSON.stringify(activeChildPageIds, null, 2)
+  );
+
+  const pagesWithDetails = await client.getPagesByIdsInSpace({
+    spaceId,
+    sort: "id",
+    pageIds: activeChildPageIds,
+    limit: PAGE_FETCH_LIMIT,
+  });
+
+  const childPageRefs: ConfluencePageRef[] = pagesWithDetails.pages.map(
+    (p) => ({
+      id: p.id,
+      version: p.version.number,
+      parentId: p.parentId ?? undefined,
+    })
+  );
+
+  console.log(">> childPageRefs", JSON.stringify(childPageRefs, null, 2));
+
+  return { childPageRefs, nextPageCursor };
 }
