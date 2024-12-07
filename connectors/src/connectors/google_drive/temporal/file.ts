@@ -472,8 +472,8 @@ async function upsertGdriveDocument(
   if (documentLen > 0 && documentLen <= maxDocumentLen) {
     const parents = (
       await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
-    ).map((f) => f.id);
-    parents.push(file.id);
+    ).map((f) => getDocumentId(f.id));
+    parents.push(documentId);
     parents.reverse();
 
     await upsertToDatasource({

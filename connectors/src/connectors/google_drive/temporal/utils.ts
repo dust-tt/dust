@@ -1,3 +1,5 @@
+import assert from "node:assert";
+
 import { cacheWithRedis } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
@@ -11,6 +13,12 @@ import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 export function getDocumentId(driveFileId: string): string {
   return `gdrive-${driveFileId}`;
+}
+
+export function documentIdToDriveFileId(documentId: string): string {
+  const prefix = "gdrive-";
+  assert(documentId.startsWith(prefix), "Invalid documentId");
+  return documentId.replace(prefix, "");
 }
 
 async function _getMyDriveId(auth_credentials: OAuth2Client) {
