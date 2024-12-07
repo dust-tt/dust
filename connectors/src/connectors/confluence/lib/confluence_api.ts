@@ -144,11 +144,6 @@ export async function getActiveChildPageRefs(
     return { childPageRefs: [], nextPageCursor };
   }
 
-  console.log(
-    ">> activeChildPageIds:",
-    JSON.stringify(activeChildPageIds, null, 2)
-  );
-
   const pagesWithDetails = await client.getPagesByIdsInSpace({
     spaceId,
     sort: "id",
@@ -163,8 +158,6 @@ export async function getActiveChildPageRefs(
       parentId: p.parentId ?? undefined,
     })
   );
-
-  console.log(">> childPageRefs", JSON.stringify(childPageRefs, null, 2));
 
   return { childPageRefs, nextPageCursor };
 }
