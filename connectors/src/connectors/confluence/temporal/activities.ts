@@ -8,6 +8,7 @@ import TurndownService from "turndown";
 
 import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import {
+  bulkFetchConfluencePageRefs,
   getActiveChildPageRefs,
   pageHasReadRestrictions,
 } from "@connectors/connectors/confluence/lib/confluence_api";
@@ -439,7 +440,7 @@ export async function confluenceGetActiveChildPageRefsActivity({
 // Confluence has a single main landing page.
 // However, users have the ability to create "orphaned" root pages that don't link from the main landing.
 // It's important to ensure these pages are also imported.
-export async function confluenceGetRootPageIdsActivity({
+export async function confluenceGetRootPageRefsActivity({
   connectorId,
   confluenceCloudId,
   spaceId,
@@ -447,7 +448,7 @@ export async function confluenceGetRootPageIdsActivity({
   connectorId: ModelId;
   confluenceCloudId: string;
   spaceId: string;
-}): Promise<string[]> {
+}) {
   const localLogger = logger.child({
     connectorId,
     spaceId,
@@ -463,7 +464,11 @@ export async function confluenceGetRootPageIdsActivity({
   try {
     const { pages: rootPages } = await client.getPagesInSpace(spaceId, "root");
 
-    return rootPages.map((rp) => rp.id);
+    return await bulkFetchConfluencePageRefs(client, {
+      limit: rootPages.length,
+      pageIds: rootPages.map((rp) => rp.id),
+      spaceId,
+    });
   } catch (err) {
     if (err instanceof ConfluenceClientError && err.status === 404) {
       localLogger.info(

@@ -146,20 +146,40 @@ export async function getActiveChildPageRefs(
   }
 
   // Fetch the details of the child pages (version and parentId).
+  const childPageRefs = await bulkFetchConfluencePageRefs(client, {
+    limit: PAGE_FETCH_LIMIT,
+    pageIds: activeChildPageIds,
+    spaceId,
+  });
+
+  return { childPageRefs, nextPageCursor };
+}
+
+export async function bulkFetchConfluencePageRefs(
+  client: ConfluenceClient,
+  {
+    limit,
+    pageIds,
+    spaceId,
+  }: {
+    limit: number;
+    pageIds: string[];
+    spaceId: string;
+  }
+) {
+  // Fetch the details of the pages (version and parentId).
   const pagesWithDetails = await client.getPagesByIdsInSpace({
     spaceId,
     sort: "id",
-    pageIds: activeChildPageIds,
-    limit: PAGE_FETCH_LIMIT,
+    pageIds,
+    limit,
   });
 
-  const childPageRefs: ConfluencePageRef[] = pagesWithDetails.pages.map(
-    (p) => ({
-      id: p.id,
-      version: p.version.number,
-      parentId: p.parentId,
-    })
-  );
+  const pageRefs: ConfluencePageRef[] = pagesWithDetails.pages.map((p) => ({
+    id: p.id,
+    version: p.version.number,
+    parentId: p.parentId,
+  }));
 
-  return { childPageRefs, nextPageCursor };
+  return pageRefs;
 }
