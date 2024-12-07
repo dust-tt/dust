@@ -8,36 +8,27 @@ import { CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import type { DocumentsPostProcessHookType } from "@app/lib/documents_post_process_hooks/hooks";
-import { DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE } from "@app/lib/documents_post_process_hooks/hooks";
+import { documentTrackerSuggestChanges } from "@app/lib/document_upsert_hooks/hooks/document_tracker/lib";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 
-export async function runPostUpsertHookActivity(
+export async function runDocumentTrackerActivity(
   workspaceId: string,
   dataSourceId: string,
   documentId: string,
   documentHash: string,
-  dataSourceConnectorProvider: ConnectorProvider | null,
-  hookType: DocumentsPostProcessHookType
+  dataSourceConnectorProvider: ConnectorProvider | null
 ) {
   const localLogger = logger.child({
     workspaceId,
     dataSourceId,
     documentId,
     dataSourceConnectorProvider,
-    hookType,
   });
 
-  const hook = DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE[hookType];
-  if (!hook) {
-    localLogger.error("Unknown documents post process hook type");
-    throw new Error(`Unknown documents post process hook type ${hookType}`);
-  }
-
-  localLogger.info("Running documents post process hook onUpsert function.");
+  localLogger.info("Running document tracker activity.");
 
   const dataSourceDocumentRes = await withRetries(getDataSourceDocument)({
     workspaceId,
@@ -61,58 +52,34 @@ export async function runPostUpsertHookActivity(
   const documentText = dataSourceDocument.document.text || "";
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
 
-  if (!hook.onUpsert) {
-    localLogger.warn("No onUpsert function for documents post process hook");
+  if (!documentText) {
+    localLogger.warn(
+      {
+        documentText,
+      },
+      "Document text is empty. Skipping document tracker."
+    );
     return;
   }
 
-  await hook.onUpsert({
+  if (!documentSourceUrl) {
+    localLogger.warn(
+      {
+        documentSourceUrl,
+      },
+      "Document source URL is empty. Skipping document tracker."
+    );
+    return;
+  }
+
+  await documentTrackerSuggestChanges({
     auth: await Authenticator.internalAdminForWorkspace(workspaceId),
     dataSourceId,
     documentId,
-    documentText,
     documentSourceUrl,
     documentHash,
-    dataSourceConnectorProvider,
   });
   localLogger.info("Ran documents post process hook onUpsert function.");
-}
-
-export async function runPostDeleteHookActivity(
-  workspaceId: string,
-  dataSourceId: string,
-  documentId: string,
-  dataSourceConnectorProvider: ConnectorProvider | null,
-  hookType: DocumentsPostProcessHookType
-) {
-  const localLogger = logger.child({
-    workspaceId,
-    dataSourceId,
-    documentId,
-    dataSourceConnectorProvider,
-    hookType,
-  });
-
-  const hook = DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE[hookType];
-  if (!hook) {
-    localLogger.error("Unknown documents post process hook type");
-    throw new Error(`Unknown documents post process hook type ${hookType}`);
-  }
-
-  localLogger.info("Running documents post process hook onDelete function.");
-
-  if (!hook.onDelete) {
-    localLogger.warn("No onDelete function for documents post process hook");
-    return;
-  }
-
-  await hook.onDelete({
-    auth: await Authenticator.internalAdminForWorkspace(workspaceId),
-    dataSourceId,
-    documentId,
-    dataSourceConnectorProvider,
-  });
-  localLogger.info("Ran documents post process hook ondelete function.");
 }
 
 async function getDataSourceDocument({
