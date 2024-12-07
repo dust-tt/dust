@@ -130,7 +130,7 @@ export async function confluenceSpaceSyncWorkflow(
 ) {
   const { connectorId, spaceId } = params;
 
-  const uniqueTopLevelPageIds = new Set<string>();
+  const uniqueTopLevelPageRefs = new Map<string, ConfluencePageRef>();
   const visitedAtMs = new Date().getTime();
 
   const wInfo = workflowInfo();
@@ -166,7 +166,8 @@ export async function confluenceSpaceSyncWorkflow(
     const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
       ...params,
       spaceName,
-      pageRef: { id: rootPageId, version: 0 },
+      // We always upsert the root page with version -1 to ensure it is always the latest.
+      pageRef: { id: rootPageId, version: -1, parentId: null },
       visitedAtMs,
     });
 
@@ -182,7 +183,7 @@ export async function confluenceSpaceSyncWorkflow(
   for (const allowedRootPageId of allowedRootPageIds) {
     let nextPageCursor: string | null = "";
     do {
-      const { topLevelPageIds, nextPageCursor: nextCursor } =
+      const { topLevelPageRefs, nextPageCursor: nextCursor } =
         await confluenceGetTopLevelPageIdsActivity({
           confluenceCloudId,
           connectorId,
@@ -193,17 +194,17 @@ export async function confluenceSpaceSyncWorkflow(
 
       nextPageCursor = nextCursor; // Prepare for the next iteration.
 
-      topLevelPageIds.forEach((id) => uniqueTopLevelPageIds.add(id));
+      topLevelPageRefs.forEach((r) => uniqueTopLevelPageRefs.set(r.id, r));
     } while (nextPageCursor !== null);
   }
 
   const { workflowId, searchAttributes: parentSearchAttributes, memo } = wInfo;
-  for (const pageId of uniqueTopLevelPageIds) {
+  for (const pageRef of uniqueTopLevelPageRefs.values()) {
     // Start a new workflow to import the child pages.
     await executeChild(confluenceSyncTopLevelChildPagesWorkflow, {
       workflowId: makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId(
         workflowId,
-        pageId
+        pageRef.id
       ),
       searchAttributes: parentSearchAttributes,
       args: [
@@ -212,7 +213,7 @@ export async function confluenceSpaceSyncWorkflow(
           spaceName,
           confluenceCloudId,
           visitedAtMs,
-          topLevelPageRefs: [{ id: pageId, version: 0 }],
+          topLevelPageRefs: [pageRef],
         },
       ],
       memo,

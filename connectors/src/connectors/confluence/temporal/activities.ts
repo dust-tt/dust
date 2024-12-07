@@ -274,8 +274,9 @@ export async function confluenceCheckAndUpsertPageActivity({
     },
   });
 
-  const isPageSkipped =
-    !!pageAlreadyInDb && pageAlreadyInDb.skipReason !== null;
+  const isPageSkipped = Boolean(
+    pageAlreadyInDb && pageAlreadyInDb.skipReason !== null
+  );
   if (isPageSkipped) {
     logger.info("Confluence page skipped.");
     return true;
@@ -517,7 +518,7 @@ export async function confluenceGetTopLevelPageIdsActivity({
   );
 
   return {
-    topLevelPageIds: childPageRefs.map((cpr) => cpr.id),
+    topLevelPageRefs: childPageRefs,
     nextPageCursor,
   };
 }

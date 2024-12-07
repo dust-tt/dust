@@ -113,7 +113,7 @@ export async function pageHasReadRestrictions(
 export interface ConfluencePageRef {
   id: string;
   version: number;
-  parentId?: string;
+  parentId: string | null;
 }
 
 const PAGE_FETCH_LIMIT = 100;
@@ -130,6 +130,7 @@ export async function getActiveChildPageRefs(
     spaceId: string;
   }
 ) {
+  // Fetch the child pages of the parent page.
   const { pages: childPages, nextPageCursor } = await client.getChildPages({
     parentPageId,
     pageCursor,
@@ -144,6 +145,7 @@ export async function getActiveChildPageRefs(
     return { childPageRefs: [], nextPageCursor };
   }
 
+  // Fetch the details of the child pages (version and parentId).
   const pagesWithDetails = await client.getPagesByIdsInSpace({
     spaceId,
     sort: "id",
@@ -155,7 +157,7 @@ export async function getActiveChildPageRefs(
     (p) => ({
       id: p.id,
       version: p.version.number,
-      parentId: p.parentId ?? undefined,
+      parentId: p.parentId,
     })
   );
 
