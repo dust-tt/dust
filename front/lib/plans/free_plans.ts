@@ -73,7 +73,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesDocumentsCount: 10,
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 0,
-    canUseProduct: true,
+    canUseProduct: false,
   },
   {
     code: FREE_UPGRADED_PLAN_CODE,
