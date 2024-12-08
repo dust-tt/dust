@@ -282,7 +282,7 @@ export function AssistantInputBar({
               "bg-primary-50",
               "transition-all",
               isFloating
-                ? "rounded-3xl border border-border-dark focus-within:ring-1 focus-within:ring-highlight-300 sm:border-border-dark/50 sm:focus-within:border-border-dark sm:focus-within:ring-2 sm:focus-within:ring-offset-2"
+                ? "rounded-3xl border border-border-dark focus-within:ring-1 focus-within:ring-highlight/30 sm:border-border-dark/50 sm:focus-within:border-border-dark sm:focus-within:ring-2"
                 : "border-t",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
