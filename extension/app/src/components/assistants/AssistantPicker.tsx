@@ -78,7 +78,7 @@ export function AssistantPicker({
           }}
         />
         <DropdownMenuSeparator className="mt-2" />
-        <ScrollArea className="mt-1 h-[300px]">
+        <ScrollArea className="flex flex-col mt-1 max-h-[300px] overflow-y-auto">
           {searchedAssistants.map((c) => (
             <DropdownMenuItem
               key={`assistant-picker-${c.sId}`}

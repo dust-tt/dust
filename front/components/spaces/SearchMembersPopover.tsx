@@ -97,7 +97,7 @@ export function SearchMembersPopover({
               setSearchTerm(e);
             }}
           />
-          <ScrollArea className="mt-2 h-[300px]">
+          <ScrollArea className="mt-2 flex max-h-[300px] flex-col">
             <div className="space-y-1">
               {filteredMembers.map((member) => (
                 <div

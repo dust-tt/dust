@@ -120,7 +120,7 @@ export default function TablePicker({
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e)}
                 />
-                <ScrollArea className="mt-2 h-[300px]">
+                <ScrollArea className="flex max-h-[300px] flex-col">
                   {(filteredTables || []).map((t) => (
                     <div
                       key={t.dustDocumentId}
