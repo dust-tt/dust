@@ -8,6 +8,7 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
@@ -27,8 +28,8 @@ const {
   confluenceSaveSuccessSyncActivity,
   confluenceUpdatePagesParentIdsActivity,
   confluenceCheckAndUpsertPageActivity,
-  confluenceGetActiveChildPageIdsActivity,
-  confluenceGetRootPageIdsActivity,
+  confluenceGetActiveChildPageRefsActivity,
+  confluenceGetRootPageRefsActivity,
   fetchConfluenceSpaceIdsForConnectorActivity,
 
   confluenceGetReportPersonalActionActivity,
@@ -129,7 +130,7 @@ export async function confluenceSpaceSyncWorkflow(
 ) {
   const { connectorId, spaceId } = params;
 
-  const uniqueTopLevelPageIds = new Set<string>();
+  const uniqueTopLevelPageRefs = new Map<string, ConfluencePageRef>();
   const visitedAtMs = new Date().getTime();
 
   const wInfo = workflowInfo();
@@ -149,39 +150,41 @@ export async function confluenceSpaceSyncWorkflow(
   }
 
   // Get the root level pages for the space.
-  const rootPageIds = await confluenceGetRootPageIdsActivity({
+  const rootPageRefs = await confluenceGetRootPageRefsActivity({
     connectorId,
     confluenceCloudId,
     spaceId,
   });
-  if (rootPageIds.length === 0) {
+  if (rootPageRefs.length === 0) {
     return;
   }
 
-  const allowedRootPageIds = new Set(rootPageIds);
+  const allowedRootPageRefs = new Map<string, ConfluencePageRef>(
+    rootPageRefs.map((r) => [r.id, r])
+  );
 
   // Upsert the root pages.
-  for (const rootPageId of rootPageIds) {
+  for (const rootPageRef of allowedRootPageRefs.values()) {
     const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
       ...params,
       spaceName,
-      pageId: rootPageId,
+      pageRef: rootPageRef,
       visitedAtMs,
     });
 
     // If the page fails the upsert operation, it indicates the page is restricted.
     // Such pages should be excluded from the list of allowed pages.
     if (!successfullyUpsert) {
-      allowedRootPageIds.delete(rootPageId);
+      allowedRootPageRefs.delete(rootPageRef.id);
     }
   }
 
   // Fetch all top-level pages within a specified space. Top-level pages
   // refer to those directly nested under the space's root pages.
-  for (const allowedRootPageId of allowedRootPageIds) {
+  for (const allowedRootPageId of allowedRootPageRefs.keys()) {
     let nextPageCursor: string | null = "";
     do {
-      const { topLevelPageIds, nextPageCursor: nextCursor } =
+      const { topLevelPageRefs, nextPageCursor: nextCursor } =
         await confluenceGetTopLevelPageIdsActivity({
           confluenceCloudId,
           connectorId,
@@ -192,17 +195,17 @@ export async function confluenceSpaceSyncWorkflow(
 
       nextPageCursor = nextCursor; // Prepare for the next iteration.
 
-      topLevelPageIds.forEach((id) => uniqueTopLevelPageIds.add(id));
+      topLevelPageRefs.forEach((r) => uniqueTopLevelPageRefs.set(r.id, r));
     } while (nextPageCursor !== null);
   }
 
   const { workflowId, searchAttributes: parentSearchAttributes, memo } = wInfo;
-  for (const pageId of uniqueTopLevelPageIds) {
+  for (const pageRef of uniqueTopLevelPageRefs.values()) {
     // Start a new workflow to import the child pages.
     await executeChild(confluenceSyncTopLevelChildPagesWorkflow, {
       workflowId: makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId(
         workflowId,
-        pageId
+        pageRef.id
       ),
       searchAttributes: parentSearchAttributes,
       args: [
@@ -211,7 +214,7 @@ export async function confluenceSpaceSyncWorkflow(
           spaceName,
           confluenceCloudId,
           visitedAtMs,
-          topLevelPageIds: [pageId],
+          topLevelPageRefs: [pageRef],
         },
       ],
       memo,
@@ -238,7 +241,7 @@ interface confluenceSyncTopLevelChildPagesWorkflowInput {
   isBatchSync: boolean;
   spaceId: string;
   spaceName: string;
-  topLevelPageIds: string[];
+  topLevelPageRefs: ConfluencePageRef[];
   visitedAtMs: number;
 }
 
@@ -251,19 +254,19 @@ interface confluenceSyncTopLevelChildPagesWorkflowInput {
 export async function confluenceSyncTopLevelChildPagesWorkflow(
   params: confluenceSyncTopLevelChildPagesWorkflowInput
 ) {
-  const { spaceName, topLevelPageIds, visitedAtMs } = params;
-  const stack = [...topLevelPageIds];
+  const { spaceName, topLevelPageRefs, visitedAtMs } = params;
+  const stack = [...topLevelPageRefs];
 
   while (stack.length > 0) {
-    const currentPageId = stack.pop();
-    if (!currentPageId) {
+    const currentPageRef = stack.pop();
+    if (!currentPageRef) {
       throw new Error("No more pages to parse.");
     }
 
     const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
       ...params,
       spaceName,
-      pageId: currentPageId,
+      pageRef: currentPageRef,
       visitedAtMs,
     });
     if (!successfullyUpsert) {
@@ -273,16 +276,16 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
     // Fetch child pages of the current top level page.
     let nextPageCursor: string | null = "";
     do {
-      const { childPageIds, nextPageCursor: nextCursor } =
-        await confluenceGetActiveChildPageIdsActivity({
+      const { childPageRefs, nextPageCursor: nextCursor } =
+        await confluenceGetActiveChildPageRefsActivity({
           ...params,
-          parentPageId: currentPageId,
+          parentPageId: currentPageRef.id,
           pageCursor: nextPageCursor,
         });
 
       nextPageCursor = nextCursor; // Prepare for the next iteration.
 
-      stack.push(...childPageIds);
+      stack.push(...childPageRefs);
     } while (nextPageCursor !== null);
 
     // If additional pages are pending and workflow limits are reached, continue in a new workflow.
@@ -292,7 +295,7 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
     ) {
       await continueAsNew<typeof confluenceSyncTopLevelChildPagesWorkflow>({
         ...params,
-        topLevelPageIds: stack,
+        topLevelPageRefs: stack,
       });
     }
   }

@@ -110,19 +110,76 @@ export async function pageHasReadRestrictions(
   return hasGroupReadPermissions || hasUserReadPermissions;
 }
 
-export async function getActiveChildPageIds(
-  client: ConfluenceClient,
-  parentPageId: string,
-  pageCursor: string | null
-) {
-  const { pages: childPages, nextPageCursor } = await client.getChildPages(
-    parentPageId,
-    pageCursor
-  );
+export interface ConfluencePageRef {
+  id: string;
+  version: number;
+  parentId: string | null;
+}
 
-  const childPageIds = childPages
-    .filter((p) => p.status === "current")
+const PAGE_FETCH_LIMIT = 100;
+
+export async function getActiveChildPageRefs(
+  client: ConfluenceClient,
+  {
+    pageCursor,
+    parentPageId,
+    spaceId,
+  }: {
+    pageCursor: string | null;
+    parentPageId: string;
+    spaceId: string;
+  }
+) {
+  // Fetch the child pages of the parent page.
+  const { pages: childPages, nextPageCursor } = await client.getChildPages({
+    parentPageId,
+    pageCursor,
+    limit: PAGE_FETCH_LIMIT,
+  });
+
+  const activeChildPageIds = childPages
+    .filter((p) => p.status === "current" && p.spaceId === spaceId)
     .map((p) => p.id);
 
-  return { childPageIds, nextPageCursor };
+  if (activeChildPageIds.length === 0) {
+    return { childPageRefs: [], nextPageCursor };
+  }
+
+  // Fetch the details of the child pages (version and parentId).
+  const childPageRefs = await bulkFetchConfluencePageRefs(client, {
+    limit: PAGE_FETCH_LIMIT,
+    pageIds: activeChildPageIds,
+    spaceId,
+  });
+
+  return { childPageRefs, nextPageCursor };
+}
+
+export async function bulkFetchConfluencePageRefs(
+  client: ConfluenceClient,
+  {
+    limit,
+    pageIds,
+    spaceId,
+  }: {
+    limit: number;
+    pageIds: string[];
+    spaceId: string;
+  }
+) {
+  // Fetch the details of the pages (version and parentId).
+  const pagesWithDetails = await client.getPagesByIdsInSpace({
+    spaceId,
+    sort: "id",
+    pageIds,
+    limit,
+  });
+
+  const pageRefs: ConfluencePageRef[] = pagesWithDetails.pages.map((p) => ({
+    id: p.id,
+    version: p.version.number,
+    parentId: p.parentId,
+  }));
+
+  return pageRefs;
 }
