@@ -1,140 +1,153 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
+import { cva } from "class-variance-authority";
+import React, { ReactNode } from "react";
 
-import { Spinner } from "@sparkle/components";
+import {
+  noHrefLink,
+  SparkleContext,
+  SparkleContextLinkType,
+} from "@sparkle/context";
 import { cn } from "@sparkle/lib/utils";
 
-const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
-export type CardSizeType = (typeof CARD_SIZES)[number];
+export const CARD_BUTTON_VARIANTS = [
+  "primary",
+  "secondary",
+  "tertiary",
+] as const;
 
-const cardVariants = cva(
-  "s-flex s-flex-col s-gap-2 s-rounded-2xl s-bg-structure-50 s-p-4 s-min-h-[128px]",
-  {
-    variants: {
-      size: {
-        xs: "s-w-[180px]",
-        sm: "s-w-[240px]",
-        md: "s-w-[300px]",
-        lg: "s-w-[360px]",
-      },
-    },
-    defaultVariants: {
-      size: "sm",
-    },
-  }
-);
+export type CardVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
 
-interface CardRootProps extends VariantProps<typeof cardVariants> {
-  children: React.ReactNode;
-  className?: string;
-}
-const Root = ({ size, className, children }: CardRootProps) => (
-  <div className={cn(cardVariants({ size }), className)}>{children}</div>
-);
-
-interface CardHeaderProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-const Header = ({ className, children }: CardHeaderProps) => (
-  <div className={cn("s-space-y-0.5", className)}>{children}</div>
-);
-
-interface CardTitleProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-const Title = ({ className, children }: CardTitleProps) => (
-  <div
-    className={cn("s-text-sm s-font-semibold s-text-element-800", className)}
-  >
-    {children}
-  </div>
-);
-
-interface CardSubtitleProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-const Subtitle = ({ className, children }: CardSubtitleProps) => (
-  <div className={cn("s-text-sm s-text-element-700", className)}>
-    {children}
-  </div>
-);
-
-interface CardContentProps {
-  children?: React.ReactNode;
-  className?: string;
-  isLoading?: boolean;
-}
-
-const Content = ({
-  className,
-  children,
-  isLoading = false,
-}: CardContentProps) => {
-  if (isLoading) {
-    return (
-      <div className="s-flex s-items-center s-justify-start">
-        <Spinner size="sm" />
-      </div>
-    );
-  }
-  return (
-    <div className={cn("s-flex s-flex-col s-gap-3", className)}>{children}</div>
-  );
+const variantClasses: Record<CardVariantType, string> = {
+  primary: "s-bg-primary-50 s-border-border-dark/0",
+  secondary: "s-bg-background s-border-border-dark",
+  tertiary: "s-bg-background s-border-border-dark/0",
 };
 
-interface CardFooterProps {
-  children: React.ReactNode;
-  className?: string;
-}
+const CARD_BUTTON_SIZES = ["sm", "md", "lg"] as const;
 
-const Footer = ({ className, children }: CardFooterProps) => (
-  <div className={cn("s-flex s-items-center s-gap-2", className)}>
-    {children}
-  </div>
+type CardSizeType = (typeof CARD_BUTTON_SIZES)[number];
+
+const sizeVariants: Record<CardSizeType, string> = {
+  sm: "s-p-3 s-rounded-2xl",
+  md: "s-p-4 s-rounded-3xl",
+  lg: "s-p-5 s-rounded-[32px]",
+};
+
+const cardVariants = cva(
+  "s-flex s-text-left s-group s-border s-overflow-hidden s-text-foreground",
+  {
+    variants: {
+      variant: variantClasses,
+      size: sizeVariants,
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  }
 );
 
-interface CardProps {
-  title: string;
-  subtitle?: string;
-  content: React.ReactNode;
-  footer?: React.ReactNode;
-  isLoading?: boolean;
+interface CommonProps {
+  variant?: CardVariantType;
   size?: CardSizeType;
   className?: string;
 }
 
-export const Card = ({
-  title,
-  subtitle,
-  content,
-  footer,
-  isLoading = false,
-  size = "sm",
-  className,
-}: CardProps) => {
-  return (
-    <Root size={size} className={className}>
-      <Header>
-        <Title>{title}</Title>
-        {subtitle && <Subtitle>{subtitle}</Subtitle>}
-      </Header>
-      <Content isLoading={isLoading}>{content}</Content>
-      {footer && <Footer>{footer}</Footer>}
-    </Root>
-  );
-};
+interface LinkProps extends CommonProps {
+  children?: ReactNode;
+  href: string;
+  target?: string;
+  rel?: string;
+  replace?: boolean;
+  shallow?: boolean;
+  onClick?: never;
+  onMouseEnter?: never;
+  onMouseLeave?: never;
+}
 
-export const ComposableCard = {
-  Root,
-  Header,
-  Title,
-  Subtitle,
-  Content,
-  Footer,
-};
+interface ButtonProps
+  extends CommonProps,
+    React.ButtonHTMLAttributes<HTMLDivElement> {
+  href?: never;
+  target?: never;
+  rel?: never;
+  replace?: never;
+  shallow?: never;
+}
+
+export type CardProps = LinkProps | ButtonProps;
+
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  (
+    {
+      children,
+      variant,
+      size,
+      className,
+      onClick,
+      href,
+      target = "_blank",
+      rel = "",
+      replace,
+      shallow,
+      ...props
+    },
+    ref
+  ) => {
+    const { components } = React.useContext(SparkleContext);
+    const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
+
+    const cardButtonClassNames = cn(
+      cardVariants({ variant, size }),
+      onClick &&
+        "s-cursor-pointer disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200 hover:s-bg-primary-100 active:s-bg-primary-200",
+      className
+    );
+
+    if (href) {
+      return (
+        <Link
+          href={href}
+          className={cardButtonClassNames}
+          replace={replace}
+          shallow={shallow}
+          target={target}
+          rel={rel}
+        >
+          {children}
+        </Link>
+      );
+    }
+
+    return (
+      <div
+        ref={ref}
+        className={cardButtonClassNames}
+        onClick={onClick}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+Card.displayName = "Card";
+
+export const CardGrid = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ children, className, ...props }, ref) => {
+  return (
+    <div ref={ref} className={cn("s-@container", className)} {...props}>
+      <div
+        className={cn(
+          "s-grid s-grid-cols-1 s-gap-2",
+          "@xs:s-grid-cols-2 @sm:s-grid-cols-3 @lg:s-grid-cols-4 @xl:s-grid-cols-5"
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+});
+CardGrid.displayName = "CardGrid";

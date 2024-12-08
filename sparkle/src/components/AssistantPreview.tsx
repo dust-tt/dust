@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
-import { CardButton } from "@sparkle/components/CardButton";
+import { Card } from "@sparkle/components/Card";
 import { MoreIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -218,7 +218,7 @@ export function AssistantPreview(props: AssistantPreviewProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <CardButton
+    <Card
       variant={variant === "minimal" ? "secondary" : "tertiary"}
       className={classNames("s-flex s-flex-col s-gap-2 s-border")}
       size={variant === "minimal" ? "sm" : "lg"}
@@ -227,6 +227,6 @@ export function AssistantPreview(props: AssistantPreviewProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       {renderVariantContent({ ...props, isHovered })}
-    </CardButton>
+    </Card>
   );
 }
