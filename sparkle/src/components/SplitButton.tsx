@@ -7,19 +7,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  RegularButtonProps,
 } from "@sparkle/components/";
 import {
   Button,
   ButtonSizeType,
   ButtonVariantType,
-  MetaButtonProps,
 } from "@sparkle/components/Button";
 import { Separator } from "@sparkle/components/Separator";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib";
 
-const separatorSizeVariants: Record<ButtonSizeType, string> = {
-  mini: "s-h-3",
+const separatorSizeVariants: Record<Exclude<ButtonSizeType, "mini">, string> = {
   xs: "s-h-3",
   sm: "s-h-5",
   md: "s-h-7",
@@ -41,7 +40,7 @@ interface SplitButtonActionProps {
 }
 
 export interface SplitButtonProps
-  extends Omit<MetaButtonProps, "children" | "onClick"> {
+  extends Omit<RegularButtonProps, "children" | "onClick"> {
   /**
    * List of possible actions, will be displayed in dropdown
    */

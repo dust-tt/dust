@@ -46,10 +46,10 @@ const styleVariants: Record<ButtonVariantType, string> = {
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {
+  mini: "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5",
   xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
   sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
   md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
-  mini: "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5",
 };
 
 const buttonVariants = cva(
@@ -104,17 +104,27 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 );
 MetaButton.displayName = "MetaButton";
 
-export interface ButtonProps
-  extends Omit<MetaButtonProps, "children">,
-    Omit<LinkWrapperProps, "children" | "className"> {
-  label?: string;
+type CommonButtonProps = Omit<MetaButtonProps, "children"> &
+  Omit<LinkWrapperProps, "children"> & {
+    isSelect?: boolean;
+    isLoading?: boolean;
+    isPulsing?: boolean;
+    tooltip?: string;
+  };
+
+type MiniButtonProps = CommonButtonProps & {
+  size: "mini";
+  icon: React.ComponentType;
+  label?: never;
+};
+
+export type RegularButtonProps = CommonButtonProps & {
+  size?: Exclude<ButtonSizeType, "mini">;
   icon?: React.ComponentType;
-  isSelect?: boolean;
-  isLoading?: boolean;
-  isPulsing?: boolean;
-  tooltip?: string;
-  size?: ButtonSizeType;
-}
+  label?: string;
+};
+
+export type ButtonProps = MiniButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
