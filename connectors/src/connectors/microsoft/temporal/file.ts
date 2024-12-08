@@ -417,7 +417,10 @@ export async function deleteFolder({
   );
 
   if (root) {
-    await root.delete();
+    // Roots represent the user selection for synchronization As such, they
+    // should be deleted first, explicitly by users, before deleting the
+    // underlying folder
+    throw new Error("Unexpected: attempt to delete folder with root node");
   }
 
   if (folder) {
