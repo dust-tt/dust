@@ -11,6 +11,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import {
   fetcher,
   getErrorFromResponse,
@@ -239,6 +240,32 @@ export function useAgentConfiguration({
     isAgentConfigurationLoading: !error && !data,
     isAgentConfigurationError: error,
     mutateAgentConfiguration: mutate,
+  };
+}
+
+export function useAgentConfigurationFeedbacks({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+}) {
+  const agentConfigurationFeedbacksFetcher: Fetcher<{
+    feedbacks: AgentMessageFeedbackType[];
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    agentConfigurationId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks`
+      : null,
+    agentConfigurationFeedbacksFetcher
+  );
+
+  return {
+    agentConfigurationFeedbacks: data ? data.feedbacks : null,
+    isAgentConfigurationFeedbacksLoading: !error && !data,
+    isAgentConfigurationFeedbacksError: error,
+    mutateAgentConfigurationFeedbacks: mutate,
   };
 }
 

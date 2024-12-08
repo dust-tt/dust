@@ -26,7 +26,33 @@ export type AgentMessageFeedbackType = {
   userId: number;
   thumbDirection: AgentMessageFeedbackDirection;
   content: string | null;
+  agentConfigurationVersion: number;
+  agentConfigurationId: string;
+  createdAt: Date;
 };
+
+export async function getAgentConfigurationFeedbacks(
+  agentConfigurationId: string
+): Promise<Result<AgentMessageFeedbackType[], ConversationError>> {
+  const feedbacksRes =
+    await AgentMessageFeedbackResource.fetchByAgentConfigurationId(
+      agentConfigurationId
+    );
+
+  const feedbacks = feedbacksRes.map(
+    (feedback) =>
+      ({
+        id: feedback.id,
+        userId: feedback.userId,
+        thumbDirection: feedback.thumbDirection,
+        content: feedback.content,
+        agentConfigurationVersion: feedback.agentConfigurationVersion,
+        agentConfigurationId: feedback.agentConfigurationId,
+        createdAt: feedback.createdAt,
+      }) as AgentMessageFeedbackType
+  );
+  return new Ok(feedbacks);
+}
 
 export async function getConversationFeedbacksForUser(
   auth: Authenticator,
