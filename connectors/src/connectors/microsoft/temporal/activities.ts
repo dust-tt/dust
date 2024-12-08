@@ -1094,6 +1094,14 @@ async function scrubRemovedFolders({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  logger.info(
+    {
+      connectorId: connector.id,
+      nodes: nodes.map((n) => n.toJSON()),
+    },
+    "Scrubbing removed folders"
+  );
+
   for (const node of nodes) {
     if (node.nodeType === "file") {
       await deleteFile({
