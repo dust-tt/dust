@@ -13,6 +13,7 @@ import {
   Page,
   PlusIcon,
   ScrollArea,
+  ScrollBar,
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -185,7 +186,7 @@ export function APIKeys({
           onChange={(e) => setNewApiKeyName(e.target.value)}
         />
         <div className="align-center flex flex-row items-center gap-2 p-2">
-          <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
+          <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-gray-700">
             Assign permissions to space:{" "}
           </span>
           <DropdownMenu>
@@ -197,7 +198,7 @@ export function APIKeys({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <ScrollArea className="h-[300px]">
+              <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
                 {groups
                   .sort((a, b) => {
                     // Put global groups first
@@ -220,6 +221,7 @@ export function APIKeys({
                       onClick={() => setNewApiKeyGroup(group)}
                     />
                   ))}
+                <ScrollBar className="py-0" />
               </ScrollArea>
             </DropdownMenuContent>
           </DropdownMenu>

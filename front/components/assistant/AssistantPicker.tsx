@@ -82,10 +82,7 @@ export function AssistantPicker({
           }}
         />
         <DropdownMenuSeparator />
-        <ScrollArea
-          className="flex max-h-[300px] flex-col overflow-y-auto"
-          hideScrollBar
-        >
+        <ScrollArea className="flex max-h-[300px] flex-col" hideScrollBar>
           {searchedAssistants.map((c) => (
             <DropdownMenuItem
               key={`assistant-picker-${c.sId}`}
