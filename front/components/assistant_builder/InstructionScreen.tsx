@@ -418,7 +418,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
   );
 }
 
-function AdvancedSettings({
+export function AdvancedSettings({
   owner,
   plan,
   generationSettings,
