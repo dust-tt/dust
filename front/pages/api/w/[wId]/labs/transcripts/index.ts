@@ -24,7 +24,6 @@ const TranscriptProvider = t.union([
 
 const BaseConfiguration = t.type({
   provider: TranscriptProvider,
-  apiKeyIsEncrypted: t.union([t.boolean, t.undefined]),
 });
 
 const ConnectionConfig = t.intersection([
@@ -34,7 +33,10 @@ const ConnectionConfig = t.intersection([
 
 const ApiKeyConfig = t.intersection([
   BaseConfiguration,
-  t.type({ apiKey: t.string }),
+  t.type({
+    apiKey: t.string,
+    apiKeyIsEncrypted: t.union([t.boolean, t.undefined]),
+  }),
 ]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.union([
