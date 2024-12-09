@@ -1,118 +1,153 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import * as React from "react";
+import type { Meta } from "@storybook/react";
+import React, { ComponentType } from "react";
 
-import { Avatar } from "@sparkle/components";
-import { HandThumbUpIcon } from "@sparkle/icons/solid";
+import { Button, Card, Icon } from "@sparkle/components";
+import {
+  BookOpenStrokeIcon,
+  BracesStrokeIcon,
+  CommandLineStrokeIcon,
+  MagnifyingGlassStrokeIcon,
+  PlanetStrokeIcon,
+  ScanStrokeIcon,
+  TableStrokeIcon,
+  XMarkIcon,
+} from "@sparkle/icons";
 
-import { Card, ComposableCard } from "../components/Card";
-
-const meta: Meta<typeof Card> = {
-  title: "Components/Card",
+const meta = {
+  title: "Primitives/Card",
   component: Card,
-  parameters: {
-    layout: "padded",
-  },
-  argTypes: {
-    size: {
-      control: "select",
-      options: ["xs", "sm", "md", "lg"],
-    },
-    className: {
-      control: "text",
-    },
-  },
-  args: {
-    size: "sm",
-  },
-  tags: ["autodocs"],
-};
+} satisfies Meta<typeof Card>;
 
 export default meta;
-type Story = StoryObj<typeof Card>;
 
-export const Basic: Story = {
-  args: {
-    title: "Messages",
-    subtitle: "Monthly activity",
-    content: (
-      <div className="s-flex s-items-center s-gap-2">
-        <div className="s-text-lg s-font-semibold s-text-element-900">847</div>
-      </div>
-    ),
-  },
-};
+export const Demo = () => {
+  const variants: Array<"primary" | "secondary" | "tertiary"> = [
+    "primary",
+    "secondary",
+    "tertiary",
+  ];
+  const sizes: Array<"sm" | "md" | "lg"> = ["sm", "md", "lg"];
 
-export const Loading: Story = {
-  args: {
-    ...Basic.args,
-    isLoading: true,
-  },
-};
-
-export const WithIcons: Story = {
-  args: {
-    title: "Reactions",
-    content: (
-      <div className="s-flex s-items-center s-gap-2">
-        <HandThumbUpIcon className="s-h-4 s-w-4 s-text-element-600" />
-        <div className="s-text-lg s-font-semibold s-text-element-900">12</div>
-      </div>
-    ),
-  },
-};
-
-export const Sizes: Story = {
-  render: (args) => (
-    <div className="s-flex s-flex-wrap s-gap-4">
-      {(["xs", "sm", "md"] as const).map((size) => (
-        <Card
-          key={size}
-          {...args}
-          size={size}
-          title={`Size: ${size}`}
-          content={
-            <div className="s-text-lg s-font-semibold s-text-element-900">
-              847
-            </div>
-          }
-        />
+  return (
+    <div className="s-flex s-flex-col s-gap-8">
+      {variants.map((variant) => (
+        <div key={variant} className="s-flex s-flex-col s-gap-4">
+          <h3 className="s-text-lg s-font-semibold">
+            {variant.charAt(0).toUpperCase() + variant.slice(1)} Variant
+          </h3>
+          <div className="s-flex s-gap-4">
+            {sizes.map((size) => (
+              <div>
+                <Card
+                  key={size}
+                  variant={variant}
+                  size={size}
+                  onClick={() => {
+                    console.log(
+                      `Button clicked - Size: ${size}, Variant: ${variant}`
+                    );
+                  }}
+                >
+                  Hello World
+                </Card>
+              </div>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
-  ),
+  );
 };
 
-export const Composable: Story = {
-  render: () => (
-    <ComposableCard.Root size="sm">
-      <ComposableCard.Header>
-        <ComposableCard.Title>Messages</ComposableCard.Title>
-        <ComposableCard.Subtitle>Monthly activity</ComposableCard.Subtitle>
-      </ComposableCard.Header>
-      <ComposableCard.Content>
-        <div className="s-flex s-items-center s-gap-2">
-          <HandThumbUpIcon className="s-h-4 s-w-4 s-text-element-600" />
-          <div className="s-text-lg s-font-semibold">847</div>
+export const InteractiveStates = () => (
+  <div className="s-flex s-gap-4">
+    <Card
+      variant="primary"
+      onClick={() => alert("Primary Clicked")}
+      className="s-hover:bg-primary-200"
+    >
+      Hover/Active
+    </Card>
+    <Card variant="secondary" disabled>
+      Disabled
+    </Card>
+  </div>
+);
+
+interface CardData {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}
+
+const cardData: CardData[] = [
+  {
+    icon: MagnifyingGlassStrokeIcon,
+    title: "Search",
+    description: "Architecture Projects Descriptions",
+  },
+  {
+    icon: TableStrokeIcon,
+    title: "Table Query",
+    description: "Find product references",
+  },
+  {
+    icon: PlanetStrokeIcon,
+    title: "Web",
+    description: "Search & browse the web",
+  },
+  {
+    icon: BracesStrokeIcon,
+    title: "Code Interpreter",
+    description: "Write a description for it",
+  },
+  {
+    icon: CommandLineStrokeIcon,
+    title: "Dust App",
+    description: "Dust App Name",
+  },
+  {
+    icon: BookOpenStrokeIcon,
+    title: "Include",
+    description: "Description of the Data",
+  },
+  {
+    icon: ScanStrokeIcon,
+    title: "Extract Data",
+    description: "Description of the Data",
+  },
+];
+
+export const ActionCardDemo: React.FC = () => (
+  <div className="s-grid s-grid-cols-3 s-gap-3">
+    {cardData.map((card, index) => (
+      <Card
+        key={index}
+        variant="primary"
+        onClick={() => {
+          alert(`You clicked on ${card.title}`);
+        }}
+      >
+        <div className="s-flex s-w-full s-flex-col s-text-sm">
+          <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-element-900">
+            <Icon visual={card.icon} size="sm" className="s-text-element-900" />
+            <div className="s-w-full">{card.title}</div>
+            <Button
+              icon={XMarkIcon}
+              className="-s-mr-2 -s-mt-2"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                alert(`You clicked on close button of ${card.title}`);
+                e.stopPropagation();
+              }}
+            />
+          </div>
+          <div className="s-w-full s-truncate s-text-sm s-text-muted-foreground">
+            {card.description}
+          </div>
         </div>
-      </ComposableCard.Content>
-      <ComposableCard.Footer>
-        <div className="s-flex -s-space-x-2">
-          <Avatar
-            size="sm"
-            name="John Doe"
-            visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-          />
-          <Avatar
-            size="sm"
-            name="Jane Smith"
-            visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-          />
-          <Avatar
-            size="sm"
-            name="Bob Johnson"
-            visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
-          />
-        </div>
-      </ComposableCard.Footer>
-    </ComposableCard.Root>
-  ),
-};
+      </Card>
+    ))}
+  </div>
+);
