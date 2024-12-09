@@ -18,6 +18,7 @@ import type {
 import type { CellContext } from "@tanstack/react-table";
 import { capitalize } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -28,7 +29,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useTrackers } from "@app/lib/swr/trackers";
 
 type RowData = TrackerConfigurationType & {
-  onClick: () => void;
+  onClick: () => undefined;
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -67,7 +68,7 @@ export default function TrackerConfigurations({
   subscription,
   globalSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  // const router = useRouter();
+  const router = useRouter();
 
   const [filter, setFilter] = React.useState<string>("");
 
@@ -81,9 +82,12 @@ export default function TrackerConfigurations({
     () =>
       trackers.map((trackerConfiguration) => ({
         ...trackerConfiguration,
-        onClick: () => alert("Not implemented yet"),
+        onClick: () =>
+          void router.push(
+            `/w/${owner.sId}/assistant/labs/trackers/${trackerConfiguration.sId}`
+          ),
       })),
-    [trackers]
+    [trackers, owner, router]
   );
 
   const columns = [
@@ -159,9 +163,8 @@ export default function TrackerConfigurations({
             <Button
               label="New tracker"
               icon={PlusIcon}
-              onClick={
-                () => alert("Not implemented yet")
-                // router.push(`/w/${owner.sId}/assistant/labs/trackers/new`)
+              onClick={() =>
+                router.push(`/w/${owner.sId}/assistant/labs/trackers/new`)
               }
             />
           </div>

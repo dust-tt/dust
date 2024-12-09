@@ -1,5 +1,6 @@
 import type { ModelId, Result, TrackerConfigurationType } from "@dust-tt/types";
-import { Ok, removeNulls } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -36,7 +37,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<TrackerConfigurationModel>, "spaceId">,
+    blob: CreationAttributes<TrackerConfigurationModel>,
     space: SpaceResource,
     transaction?: Transaction
   ) {
@@ -44,8 +45,9 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     const tracker = await TrackerConfigurationModel.create(
       {
         ...blob,
-        userId: auth.user()?.id ?? null,
+        workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: space.id,
+        userId: auth.user()?.id ?? null,
       },
       { transaction }
     );
@@ -73,6 +75,25 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       id,
       workspaceId,
     });
+  }
+
+  // Update.
+
+  async updateConfig(
+    auth: Authenticator,
+    blob: Partial<CreationAttributes<TrackerConfigurationModel>>
+  ): Promise<Result<TrackerConfigurationResource, Error>> {
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+
+    await this.update(blob);
+    const updatedTracker = await TrackerConfigurationResource.fetchById(
+      auth,
+      this.sId
+    );
+    if (updatedTracker) {
+      return new Ok(updatedTracker);
+    }
+    return new Err(new Error("Failed to update tracker."));
   }
 
   // Fetching.
@@ -176,6 +197,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       temperature: this.temperature,
       prompt: this.prompt,
       frequency: this.frequency,
+      recipients: this.recipients ?? [],
       space: this.space.toJSON(),
     };
   }
