@@ -32,7 +32,8 @@ async function handler(
       }
 
       // Make sure that user is one of the authors
-      const feedback = await AgentMessageFeedbackResource.fetchById(feedbackId);
+      const feedback =
+        await AgentMessageFeedbackResource.fetchByModelId(feedbackId);
       if (!feedback) {
         return apiError(req, res, {
           status_code: 404,
