@@ -145,21 +145,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return feedbacks;
   }
 
-  static async fetchById(
-    id: string
-  ): Promise<AgentMessageFeedbackResource | null> {
-    const agentMessageFeedback = await AgentMessageFeedback.findByPk(id);
-
-    if (!agentMessageFeedback) {
-      return null;
-    }
-
-    return new AgentMessageFeedbackResource(
-      AgentMessageFeedback,
-      agentMessageFeedback.get()
-    );
-  }
-
   static async fetchConversationId(
     agentMessageFeedbackId: string
   ): Promise<string | null> {
