@@ -1,13 +1,10 @@
 name: Revert Front Edge
 
-on:
-  workflow_dispatch:
-
 env:
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
 
 jobs:
-  rollback-deployment:
+  revert-deployment:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,17 +19,63 @@ jobs:
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"
 
-      - name: Install gke-gcloud-auth-plugin
+      - name: Get previous image tags
+        id: get_tags
         run: |
-          gcloud components install gke-gcloud-auth-plugin
+          # List the last 10 image tags, sorting by timestamp
+          TAGS=$(gcloud container images list-tags us-central1-docker.pkg.dev/${{ env.GCLOUD_PROJECT_ID }}/dust-images/front-edge \
+            --limit=10 \
+            --sort-by=~timestamp \
+            --format="value(tags[0])")
+          echo "Available tags:"
+          echo "$TAGS"
+          echo "tags=$(echo $TAGS | tr '\n' ',')" >> $GITHUB_OUTPUT
 
-      - name: Setup kubectl
-        run: |
-          gcloud container clusters get-credentials dust-kube --region us-central1
 
-      - name: Rollback the deployment
-        run: |
-          kubectl rollout undo deployment/front-edge-deployment
+      - name: Choose image tag
+        uses: actions/github-script@v6
+        id: choose_tag
+        with:
+          result-encoding: string
+          script: |
+            const choices = ${{ steps.get_tags.outputs.choices }}
+            return await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'revert-front-edge.yml',
+              ref: 'main',
+              inputs: {
+                image_tag: {
+                  description: 'Choose image tag to revert to',
+                  type: 'choice',
+                  options: choices
+                }
+              }
+            })
 
-      - name: Wait for rollback to complete
-        run: kubectl rollout status deployment/front-edge-deployment --timeout=10m
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            dust-infra
+
+      - name: Trigger dust-infra workflow
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: 'dust-infra',
+              event_type: 'trigger-component-deploy',
+              client_payload: {
+                regions: 'us-central1',
+                component: 'front-edge',
+                image_tag: '${{ fromJSON(steps.get_tags.outputs.choices)[0] }}',
+                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}'
+              }
+            });
