@@ -74,16 +74,10 @@ async function generateSnippet(
   }
 
   if (isSupportedDelimitedTextContentType(file.contentType)) {
-    const format =
-      file.contentType === "text/csv" ||
-      file.contentType === "text/comma-separated-values"
-        ? "csv"
-        : "tsv";
-
     // Parse only the headers from the CSV file
     const headers = content.split("\n")[0];
 
-    let snippet = `${format.toUpperCase()} file with headers: ${headers}`;
+    let snippet = `${file.contentType} file with headers: ${headers}`;
     if (snippet.length > 256) {
       snippet = snippet.slice(0, 242) + "... (truncated)";
     }
