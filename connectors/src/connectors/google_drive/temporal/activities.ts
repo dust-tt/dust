@@ -1,8 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-import type { OAuth2Client } from "googleapis-common";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import StatsD from "hot-shots";
 import PQueue from "p-queue";
@@ -10,7 +9,10 @@ import { Op } from "sequelize";
 
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
+import {
+  getFileParentsForUpsert,
+  getFileParentsMemoized,
+} from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
 import {
   getMimeTypesToSync,
@@ -25,7 +27,11 @@ import {
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import {
+  deleteFolderNode,
+  deleteFromDataSource,
+  upsertFolderNode,
+} from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -238,9 +244,9 @@ export async function syncFiles(
         return driveObjectToDustType(file, authCredentials);
       })
   );
-  const subfolders = filesToSync
-    .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
-    .map((f) => f.id);
+  const subfolders = filesToSync.filter(
+    (file) => file.mimeType === "application/vnd.google-apps.folder"
+  );
 
   logger.info(
     {
@@ -251,6 +257,20 @@ export async function syncFiles(
     },
     `[SyncFiles] Call syncOneFile.`
   );
+
+  const parents = await getFileParentsForUpsert(
+    connectorId,
+    authCredentials,
+    driveFolder,
+    startSyncTs
+  );
+
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: getDocumentId(driveFolder.id),
+    parents,
+    title: driveFolder.name ?? "",
+  });
 
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   const results = await Promise.all(
@@ -287,7 +307,7 @@ export async function syncFiles(
   return {
     nextPageToken: res.data.nextPageToken ? res.data.nextPageToken : null,
     count,
-    subfolders: subfolders,
+    subfolders: subfolders.map((f) => f.id),
   };
 }
 
@@ -468,6 +488,20 @@ export async function incrementalSync(
         authCredentials
       );
       if (driveFile.mimeType === "application/vnd.google-apps.folder") {
+        const parents = await getFileParentsForUpsert(
+          connectorId,
+          authCredentials,
+          driveFile,
+          startSyncTs
+        );
+
+        await upsertFolderNode({
+          dataSourceConfig,
+          folderId: getDocumentId(driveFile.id),
+          parents,
+          title: driveFile.name ?? "",
+        });
+
         await GoogleDriveFiles.upsert({
           connectorId: connectorId,
           dustFileId: getDocumentId(driveFile.id),
@@ -761,6 +795,12 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
       await folder.destroy({ transaction: t });
     }
     await googleDriveFile.destroy({ transaction: t });
+  });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  await deleteFolderNode({
+    dataSourceConfig,
+    folderId: googleDriveFile.dustFileId,
   });
 }
 
