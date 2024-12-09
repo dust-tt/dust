@@ -1,9 +1,92 @@
 import { decrypt } from "@dust-tt/types";
+import { either } from "fp-ts";
+import { pipe } from "fp-ts/function";
+import * as t from "io-ts";
 
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
+
+const ModjoSpeaker = t.type({
+  contactId: t.union([t.number, t.undefined]),
+  userId: t.union([t.number, t.undefined]),
+  email: t.union([t.string, t.null]),
+  name: t.string,
+  phoneNumber: t.union([t.string, t.null, t.undefined]),
+  speakerId: t.number,
+  type: t.string,
+});
+
+const ModjoTopic = t.type({
+  topicId: t.number,
+  name: t.string,
+});
+
+const ModjoTranscriptEntry = t.type({
+  startTime: t.number,
+  endTime: t.number,
+  speakerId: t.number,
+  content: t.string,
+  topics: t.array(ModjoTopic),
+});
+
+const ModjoTag = t.type({
+  name: t.string,
+});
+
+const ModjoRecording = t.type({
+  url: t.string,
+});
+
+const ModjoHighlight = t.union([
+  t.type({
+    content: t.string,
+  }),
+  t.null,
+]);
+
+const ModjoRelations = t.type({
+  recording: ModjoRecording,
+  highlights: ModjoHighlight,
+  speakers: t.array(ModjoSpeaker),
+  transcript: t.array(ModjoTranscriptEntry),
+  tags: t.array(ModjoTag),
+});
+
+const ModjoCall = t.type({
+  callId: t.number,
+  title: t.string,
+  startDate: t.string,
+  duration: t.number,
+  provider: t.string,
+  language: t.string,
+  callCrmId: t.union([t.string, t.null]),
+  relations: ModjoRelations,
+});
+
+const ModjoPagination = t.type({
+  totalValues: t.number,
+  lastPage: t.number,
+});
+
+const ModjoApiResponse = t.type({
+  pagination: ModjoPagination,
+  values: t.array(ModjoCall),
+});
+
+type ModjoApiResponseType = t.TypeOf<typeof ModjoApiResponse>;
+
+function validateModjoResponse(
+  data: unknown
+): either.Either<Error, ModjoApiResponseType> {
+  return pipe(
+    ModjoApiResponse.decode(data),
+    either.mapLeft(
+      (errors) => new Error(`Invalid API response: ${JSON.stringify(errors)}`)
+    )
+  );
+}
 
 export async function retrieveModjoTranscripts(
   auth: Authenticator,
@@ -29,63 +112,68 @@ export async function retrieveModjoTranscripts(
   const workspace = auth.getNonNullableWorkspace();
   const modjoApiKey = decrypt(transcriptsConfiguration.apiKey, workspace.sId);
 
-  // TEMP: Get the last 2 weeks if labs_transcripts_modjo_full_storage FF is enabled.
   const flags = await getFeatureFlags(workspace);
-  const daysOfHistory = flags.includes("labs_transcripts_modjo_full_storage")
-    ? 14
+  const daysOfHistory = flags.includes("labs_transcripts_gong_full_storage")
+    ? 140
     : 1;
 
   const fromDateTime = new Date(
     Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
   ).toISOString();
 
-  const fileIdsToProcess = [];
+  const fileIdsToProcess: string[] = [];
   let page = 1;
   const perPage = 50;
 
-  do {
+  let hasMorePages = true;
+  while (hasMorePages) {
     try {
-      const newTranscripts = await fetch(
-        "https://api.modjo.ai/v1/calls/exports",
-        {
-          method: "POST",
-          headers: {
-            "X-API-KEY": modjoApiKey,
-            "Content-Type": "application/json",
+      const response = await fetch("https://api.modjo.ai/v1/calls/exports", {
+        method: "POST",
+        headers: {
+          "X-API-KEY": modjoApiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          pagination: { page, perPage },
+          filters: {
+            callStartDateRange: {
+              start: fromDateTime,
+              end: new Date().toISOString(),
+            },
           },
-          body: JSON.stringify({
-            pagination: { page, perPage },
-            filters: {
-              callStartDateRange: {
-                start: fromDateTime,
-                end: new Date().toISOString(),
-              },
-            },
-            relations: {
-              recording: true,
-              highlights: true,
-              transcript: true,
-              speakers: true,
-              tags: true,
-            },
-          }),
-        }
-      );
+          relations: {
+            recording: true,
+            highlights: true,
+            transcript: true,
+            speakers: true,
+            tags: true,
+          },
+        }),
+      });
 
-      if (!newTranscripts.ok) {
+      if (!response.ok) {
         localLogger.error(
-          { status: newTranscripts.status },
+          { status: response.status },
           "[retrieveNewTranscripts] Error fetching new transcripts from Modjo. Stopping."
         );
         return fileIdsToProcess;
       }
 
-      const newTranscriptsData = await newTranscripts.json();
+      const rawData = await response.json();
+      const validatedDataResult = validateModjoResponse(rawData);
 
-      if (
-        !newTranscriptsData?.values ||
-        newTranscriptsData.values.length === 0
-      ) {
+      if (either.isLeft(validatedDataResult)) {
+        localLogger.error(
+          { error: validatedDataResult.left },
+          "[retrieveNewTranscripts] Invalid response data from Modjo"
+        );
+        return fileIdsToProcess;
+      }
+
+      const validatedData = validatedDataResult.right;
+
+      if (!validatedData.values || validatedData.values.length === 0) {
         localLogger.info(
           {},
           "[retrieveNewTranscripts] No new transcripts found from Modjo."
@@ -94,18 +182,11 @@ export async function retrieveModjoTranscripts(
       }
 
       // Process current page
-      for (const call of newTranscriptsData.values) {
+      for (const call of validatedData.values) {
         const fileId = call.callId.toString();
-        if (!fileId) {
-          localLogger.warn(
-            {},
-            "[retrieveNewTranscripts] Modjo call does not have an id. Skipping."
-          );
-          continue;
-        }
-
         const history =
           await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+
         if (history) {
           localLogger.info(
             { fileId },
@@ -122,11 +203,11 @@ export async function retrieveModjoTranscripts(
         "[retrieveNewTranscripts] Processed page of Modjo transcripts"
       );
 
-      // Check if we've reached the last page
-      if (page >= newTranscriptsData.pagination.lastPage) {
-        break;
+      if (page >= validatedData.pagination.lastPage) {
+        hasMorePages = false;
+      } else {
+        page++;
       }
-      page++;
     } catch (error) {
       localLogger.error(
         { error },
@@ -134,7 +215,7 @@ export async function retrieveModjoTranscripts(
       );
       break;
     }
-  } while (true);
+  }
 
   return fileIdsToProcess;
 }
@@ -175,7 +256,7 @@ export async function retrieveModjoTranscriptContent(
     return user;
   };
 
-  const call = await fetch("https://api.modjo.ai/v1/calls/exports", {
+  const response = await fetch("https://api.modjo.ai/v1/calls/exports", {
     method: "POST",
     headers: {
       "X-API-KEY": modjoApiKey,
@@ -196,7 +277,7 @@ export async function retrieveModjoTranscriptContent(
     }),
   });
 
-  if (!call.ok) {
+  if (!response.ok) {
     localLogger.error(
       {
         fileId,
@@ -207,7 +288,18 @@ export async function retrieveModjoTranscriptContent(
     throw new Error("Error fetching call from Modjo. Skipping.");
   }
 
-  const callData = (await call.json()).values[0];
+  const rawData = await response.json();
+  const validatedDataResult = validateModjoResponse(rawData);
+
+  if (either.isLeft(validatedDataResult)) {
+    localLogger.error(
+      { error: validatedDataResult.left },
+      "[processTranscriptActivity] Invalid response data from Modjo"
+    );
+    return null;
+  }
+
+  const callData = validatedDataResult.right.values[0];
 
   if (!callData) {
     localLogger.error(
@@ -238,21 +330,19 @@ export async function retrieveModjoTranscriptContent(
 
   // Add speakers section
   transcriptContent += "Speakers:\n";
-  callData.relations.speakers.forEach((speaker: { name: any; type: any }) => {
+  callData.relations.speakers.forEach((speaker) => {
     transcriptContent += `${speaker.name} (${speaker.type})\n`;
   });
   transcriptContent += "\n";
 
   // Add transcript content
-  callData.relations.transcript.forEach(
-    (entry: { speakerId: any; content: any }) => {
-      const speaker = callData.relations.speakers.find(
-        (s: { speakerId: any }) => s.speakerId === entry.speakerId
-      );
-      const speakerName = speaker ? speaker.name : `Speaker ${entry.speakerId}`;
-      transcriptContent += `${speakerName}: ${entry.content}\n`;
-    }
-  );
+  callData.relations.transcript.forEach((entry) => {
+    const speaker = callData.relations.speakers.find(
+      (s) => s.speakerId === entry.speakerId
+    );
+    const speakerName = speaker ? speaker.name : `Speaker ${entry.speakerId}`;
+    transcriptContent += `${speakerName}: ${entry.content}\n`;
+  });
 
   return { transcriptTitle, transcriptContent, userParticipated };
 }
