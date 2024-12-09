@@ -6,6 +6,8 @@ import type {
 import {
   assertNever,
   Err,
+  isSupportedDelimitedTextContentType,
+  isSupportedImageContentType,
   isTextExtractionSupportedContentType,
   Ok,
   TextExtraction,
@@ -287,16 +289,26 @@ const getProcessingFunction = ({
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
-  switch (contentType) {
-    case "image/jpeg":
-    case "image/png":
-      if (useCase === "conversation") {
-        return resizeAndUploadToFileStorage;
-      } else if (useCase === "avatar") {
-        return uploadToPublicBucket;
-      }
-      break;
+  if (isSupportedImageContentType(contentType)) {
+    if (useCase === "conversation") {
+      return resizeAndUploadToFileStorage;
+    } else if (useCase === "avatar") {
+      return uploadToPublicBucket;
+    }
+    return undefined;
+  }
 
+  if (isSupportedDelimitedTextContentType(contentType)) {
+    if (useCase === "conversation" || useCase === "folder_table") {
+      // TODO(JIT): after JIT enablement, store raw text here too, the snippet is useless
+      return extractContentAndSchemaFromDelimitedTextFiles;
+    } else if (useCase === "folder_document" || useCase === "tool_output") {
+      return storeRawText;
+    }
+    return undefined;
+  }
+
+  switch (contentType) {
     case "application/msword":
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     case "application/pdf":
@@ -306,6 +318,14 @@ const getProcessingFunction = ({
       break;
     case "text/plain":
     case "text/markdown":
+    case "text/html":
+    case "text/xml":
+    case "text/calendar":
+    case "text/css":
+    case "text/javascript":
+    case "application/json":
+    case "application/xml":
+    case "application/x-sh":
       if (
         useCase === "conversation" ||
         useCase === "folder_document" ||
@@ -316,17 +336,6 @@ const getProcessingFunction = ({
       break;
     case "text/vnd.dust.attachment.slack.thread":
       if (useCase === "conversation") {
-        return storeRawText;
-      }
-      break;
-    case "text/comma-separated-values":
-    case "text/csv":
-    case "text/tab-separated-values":
-    case "text/tsv":
-      if (useCase === "conversation" || useCase === "folder_table") {
-        // TODO(JIT): after JIT enablement, store raw text here too, the snippet is useless
-        return extractContentAndSchemaFromDelimitedTextFiles;
-      } else if (useCase === "folder_document" || useCase === "tool_output") {
         return storeRawText;
       }
       break;
