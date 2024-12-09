@@ -5,12 +5,10 @@ import * as reporter from "io-ts-reporters";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
-import {
-  EnqueueUpsertDocument,
-  runPostUpsertHooks,
-} from "@app/lib/upsert_queue";
+import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 
@@ -143,13 +141,12 @@ export async function upsertDocumentActivity(
     []
   );
 
-  await runPostUpsertHooks({
-    workspaceId: upsertQueueItem.workspaceId,
-    dataSource,
+  runDocumentUpsertHooks({
+    auth,
+    dataSourceId: dataSource.sId,
     documentId: upsertQueueItem.documentId,
-    section: upsertQueueItem.section,
-    document: upsertRes.value.document,
-    sourceUrl: upsertQueueItem.sourceUrl,
+    documentHash: upsertRes.value.document.hash,
+    dataSourceConnectorProvider: dataSource.connectorProvider || null,
     upsertContext: upsertQueueItem.upsertContext || undefined,
   });
 }

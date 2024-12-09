@@ -17,17 +17,13 @@ import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
-import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
+import type { Authenticator } from "@app/lib/auth";
+import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  enqueueUpsertDocument,
-  runPostUpsertHooks,
-} from "@app/lib/upsert_queue";
+import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
 import { apiError, statsDClient } from "@app/logger/withlogging";
-import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
 
 export const config = {
   api: {
@@ -566,13 +562,12 @@ async function handler(
           data_source: dataSource.toJSON(),
         });
 
-        await runPostUpsertHooks({
-          workspaceId: owner.sId,
-          dataSource,
+        runDocumentUpsertHooks({
+          auth,
+          dataSourceId: dataSource.sId,
           documentId: req.query.documentId as string,
-          section,
-          document: upsertRes.value.document,
-          sourceUrl,
+          documentHash: upsertRes.value.document.hash,
+          dataSourceConnectorProvider: dataSource.connectorProvider || null,
           upsertContext: r.data.upsert_context || undefined,
         });
         return;
@@ -611,24 +606,6 @@ async function handler(
           document_id: req.query.documentId as string,
         },
       });
-
-      const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
-        auth: await Authenticator.internalAdminForWorkspace(owner.sId),
-        dataSourceId: dataSource.sId,
-        documentId: req.query.documentId as string,
-        dataSourceConnectorProvider: dataSource.connectorProvider || null,
-      });
-
-      // TODO: parallel.
-      for (const { type: hookType } of postDeleteHooksToRun) {
-        await launchRunPostDeleteHooksWorkflow(
-          owner.sId,
-          dataSource.sId,
-          req.query.documentId as string,
-          dataSource.connectorProvider || null,
-          hookType
-        );
-      }
 
       return;
 

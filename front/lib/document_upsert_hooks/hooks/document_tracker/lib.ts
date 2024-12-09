@@ -1,28 +1,28 @@
+import type { ConnectorProvider, UpsertContext } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 import showdown from "showdown";
 
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type {
-  DocumentsPostProcessHookFilterParams,
-  DocumentsPostProcessHookOnUpsertParams,
-} from "@app/lib/documents_post_process_hooks/hooks";
 import {
   getDatasource,
   getDocumentDiff,
-} from "@app/lib/documents_post_process_hooks/hooks/data_source_helpers";
+} from "@app/lib/document_upsert_hooks/hooks/data_source_helpers";
+import { callDocTrackerRetrievalAction } from "@app/lib/document_upsert_hooks/hooks/document_tracker/actions/doc_tracker_retrieval";
+import { callDocTrackerSuggestChangesAction } from "@app/lib/document_upsert_hooks/hooks/document_tracker/actions/doc_tracker_suggest_changes";
+import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/document_tracker/consts";
 import {
   DocumentTrackerChangeSuggestion,
   TrackedDocument,
 } from "@app/lib/models/doc_tracker";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import mainLogger from "@app/logger/logger";
-
-import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
-import { callDocTrackerSuggestChangesAction } from "./actions/doc_tracker_suggest_changes";
 
 const { SENDGRID_API_KEY } = process.env;
 
@@ -42,33 +42,30 @@ const TOTAL_TARGET_TOKENS = 8192;
 const MAX_TRACKED_DOCUMENTS = 1;
 
 const logger = mainLogger.child({
-  postProcessHook: "document_tracker_suggest_changes",
+  hookType: "document_tracker",
 });
 
 export async function shouldDocumentTrackerSuggestChangesRun(
-  params: DocumentsPostProcessHookFilterParams
-): Promise<boolean> {
-  const auth = params.auth;
-  const owner = auth.getNonNullableWorkspace();
-  const flags = await getFeatureFlags(owner);
-
-  if (!flags.includes("document_tracker")) {
-    return false;
-  }
-
-  if (params.verb !== "upsert") {
-    logger.info(
-      "document_tracker_suggest_changes post process hook should only run for upsert."
-    );
-    return false;
-  }
-
-  const {
-    upsertContext,
+  auth: Authenticator,
+  {
     dataSourceId,
     documentId,
     dataSourceConnectorProvider,
-  } = params;
+    upsertContext,
+  }: {
+    dataSourceId: string;
+    documentId: string;
+    dataSourceConnectorProvider: ConnectorProvider;
+    upsertContext: UpsertContext;
+  }
+): Promise<boolean> {
+  const owner = auth.getNonNullableWorkspace();
+  const flags = await getFeatureFlags(owner);
+
+  if (!flags.includes("labs_trackers")) {
+    return false;
+  }
+
   const isBatchSync = upsertContext?.sync_type === "batch";
 
   const localLogger = logger.child({
@@ -144,13 +141,19 @@ export async function shouldDocumentTrackerSuggestChangesRun(
   return false;
 }
 
-export async function documentTrackerSuggestChangesOnUpsert({
+export async function documentTrackerSuggestChanges({
   auth,
   dataSourceId,
   documentId,
   documentHash,
   documentSourceUrl,
-}: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
+}: {
+  auth: Authenticator;
+  dataSourceId: string;
+  documentId: string;
+  documentHash: string;
+  documentSourceUrl: string;
+}): Promise<void> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Workspace not found.");
@@ -261,10 +264,12 @@ export async function documentTrackerSuggestChangesOnUpsert({
     },
     "Calling doc tracker retrieval action."
   );
+  const dataSourceViews = await getTrackableDataSourceViews(auth);
   const retrievalResult = await callDocTrackerRetrievalAction(auth, {
     inputText: diffString,
     targetDocumentTokens: targetTrackedDocumentTokens,
     topK: MAX_TRACKED_DOCUMENTS,
+    dataSourceViews,
   });
 
   if (!retrievalResult.length) {
@@ -509,4 +514,21 @@ function getDocumentTitle(tags: string[]): string | null {
     return null;
   }
   return maybeTitleTag.split("title:")[1];
+}
+
+export async function getTrackableDataSourceViews(
+  auth: Authenticator
+): Promise<DataSourceViewResource[]> {
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+  // TODO(DOC_TRACKER):
+  const views = await DataSourceViewResource.listBySpace(auth, globalSpace);
+
+  // Filter data sources to only include trackable ones
+  const trackableViews = views.filter(
+    (view) =>
+      view.dataSource.connectorProvider &&
+      isConnectorTypeTrackable(view.dataSource.connectorProvider)
+  );
+
+  return trackableViews;
 }
