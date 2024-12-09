@@ -1,7 +1,5 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
-  FileUploadedRequestResponseBody,
-  FileUploadRequestResponseBody,
   FileUseCase,
   FileUseCaseMetadata,
   LightWorkspaceType,
@@ -19,6 +17,8 @@ import {
 import { useState } from "react";
 
 import { getMimeTypeFromFile } from "@app/lib/file";
+import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
+import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
 
 export interface FileBlob {
   contentType: SupportedFileContentType;

@@ -380,10 +380,18 @@ export class ConfluenceClient {
     };
   }
 
-  async getChildPages(parentPageId: string, pageCursor: string | null) {
+  async getChildPages({
+    parentPageId,
+    pageCursor,
+    limit,
+  }: {
+    parentPageId: string;
+    pageCursor: string | null;
+    limit?: number;
+  }) {
     const params = new URLSearchParams({
       sort: "id",
-      limit: "100",
+      limit: limit?.toString() ?? "100",
     });
 
     if (pageCursor) {
@@ -454,12 +462,13 @@ export class ConfluenceClient {
   async getPagesInSpace(
     spaceId: string,
     depth: "all" | "root" = "all",
-    pageCursor?: string
+    sort: "id" | "-modified-date" = "id",
+    pageCursor?: string | null
   ) {
     const params = new URLSearchParams({
       depth,
+      sort,
       limit: "25",
-      sort: "id",
       status: "current",
     });
 
@@ -469,6 +478,46 @@ export class ConfluenceClient {
 
     const pages = await this.request(
       `${this.restApiBaseUrl}/spaces/${spaceId}/pages?${params.toString()}`,
+      ConfluencePaginatedResults(ConfluencePageCodec)
+    );
+    const nextPageCursor = extractCursorFromLinks(pages._links);
+
+    return {
+      pages: pages.results,
+      nextPageCursor,
+    };
+  }
+
+  async getPagesByIdsInSpace({
+    spaceId,
+    sort,
+    pageCursor,
+    pageIds,
+    limit,
+  }: {
+    spaceId: string;
+    sort?: "id" | "-modified-date";
+    pageCursor?: string | null;
+    pageIds?: string[];
+    limit?: number;
+  }) {
+    const params = new URLSearchParams({
+      sort: sort ?? "id",
+      limit: limit?.toString() ?? "25",
+      status: "current",
+      "space-id": spaceId,
+    });
+
+    if (pageCursor) {
+      params.append("cursor", pageCursor);
+    }
+
+    if (pageIds && pageIds.length > 0) {
+      params.append("id", pageIds.join(","));
+    }
+
+    const pages = await this.request(
+      `${this.restApiBaseUrl}/pages?${params.toString()}`,
       ConfluencePaginatedResults(ConfluencePageCodec)
     );
     const nextPageCursor = extractCursorFromLinks(pages._links);

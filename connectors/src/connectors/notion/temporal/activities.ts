@@ -1813,7 +1813,7 @@ export async function renderAndUpsertPageFromCache({
               truncate: false,
               parents,
               title: parentDb.title ?? "Untitled Notion Database",
-              mimeType: "application/vnd.notion.database",
+              mimeType: "application/vnd.dust.notion.database",
             }),
           localLogger
         );
@@ -2033,7 +2033,7 @@ export async function renderAndUpsertPageFromCache({
         sync_type: isFullSync ? "batch" : "incremental",
       },
       title: title ?? "",
-      mimeType: "application/vnd.notion.page",
+      mimeType: "application/vnd.dust.notion.page",
       async: true,
     });
   }
@@ -2527,7 +2527,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         truncate: true,
         parents,
         title: dbModel.title ?? "Untitled Notion Database",
-        mimeType: "application/vnd.notion.database",
+        mimeType: "application/vnd.dust.notion.database",
       }),
     localLogger
   );
@@ -2582,7 +2582,7 @@ export async function upsertDatabaseStructuredDataFromCache({
           sync_type: "batch",
         },
         title: databaseName,
-        mimeType: "application/vnd.notion.database",
+        mimeType: "application/vnd.dust.notion.database",
         async: true,
       });
     } else {

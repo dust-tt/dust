@@ -20,7 +20,7 @@
   "dependencies": {
     "@auth0/nextjs-auth0": "^3.5.0",
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/sparkle": "^0.2.332",
+    "@dust-tt/sparkle": "^0.2.336",
     "@dust-tt/types": "file:../types",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
@@ -136,7 +136,8 @@
     "three": "^0.163.0",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "uuid": "^9.0.0",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
     "@google-cloud/storage": "^7.11.2",

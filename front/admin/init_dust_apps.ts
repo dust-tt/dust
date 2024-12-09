@@ -1,11 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
@@ -51,11 +50,11 @@ async function main() {
     planCode: "FREE_UPGRADED_PLAN",
   });
 
-  const users = await User.findAll();
+  const users = await UserModel.findAll();
   await Promise.all(
     users.map(async (user) =>
       MembershipResource.createMembership({
-        user: new UserResource(User, user.get()),
+        user: new UserResource(UserModel, user.get()),
         workspace: lightWorkspace,
         role: "admin",
       })

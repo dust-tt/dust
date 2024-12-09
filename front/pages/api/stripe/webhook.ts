@@ -732,7 +732,7 @@ async function unpauseAllConnectorsAndCancelScrub(auth: Authenticator) {
     const r = await connectorsApi.unpauseConnector(connectorId);
     if (r.isErr()) {
       logger.error(
-        { stripeError: true, error: r.error },
+        { connectorId, stripeError: true, error: r.error },
         "Error unpausing connector after subscription reactivation."
       );
     }

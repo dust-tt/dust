@@ -1,7 +1,6 @@
 // @ts-expect-error old migration code kept for reference
 
 import { personalWorkspace } from "@app/lib/auth";
-import { User } from "@app/lib/models/user";
 import {
   AppModel,
   Dataset,
@@ -10,6 +9,7 @@ import {
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { RunModel } from "@app/lib/resources/storage/models/runs";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 async function addWorkspaceToObject(
   object: AppModel | Dataset | Provider | KeyModel | DataSourceModel | RunModel
@@ -20,7 +20,7 @@ async function addWorkspaceToObject(
     return;
   }
 
-  const user = await User.findOne({
+  const user = await UserModel.findOne({
     where: {
       // @ts-expect-error old migration code kept for reference
       id: object.userId,

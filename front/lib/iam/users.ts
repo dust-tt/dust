@@ -3,7 +3,7 @@ import type { UserProviderType } from "@dust-tt/types";
 import { sanitizeString } from "@dust-tt/types";
 
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
-import { User } from "@app/lib/models/user";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -74,7 +74,7 @@ export async function maybeUpdateFromExternalUser(
   externalUser: ExternalUser
 ) {
   if (externalUser.picture && externalUser.picture !== user.imageUrl) {
-    void User.update(
+    void UserModel.update(
       {
         imageUrl: externalUser.picture,
       },

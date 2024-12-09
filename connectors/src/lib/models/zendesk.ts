@@ -1,13 +1,9 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
 function throwOnUnsafeInteger(value: number | null) {
   if (value !== null && !Number.isSafeInteger(value)) {
@@ -15,11 +11,7 @@ function throwOnUnsafeInteger(value: number | null) {
   }
 }
 
-export class ZendeskTimestampCursor extends Model<
-  InferAttributes<ZendeskTimestampCursor>,
-  InferCreationAttributes<ZendeskTimestampCursor>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskTimestampCursor extends BaseModel<ZendeskTimestampCursor> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -31,11 +23,6 @@ export class ZendeskTimestampCursor extends Model<
 
 ZendeskTimestampCursor.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -63,11 +50,7 @@ ConnectorModel.hasMany(ZendeskTimestampCursor, {
 });
 ZendeskTimestampCursor.belongsTo(ConnectorModel);
 
-export class ZendeskConfiguration extends Model<
-  InferAttributes<ZendeskConfiguration>,
-  InferCreationAttributes<ZendeskConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskConfiguration extends BaseModel<ZendeskConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -79,11 +62,6 @@ export class ZendeskConfiguration extends Model<
 
 ZendeskConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -116,11 +94,7 @@ ConnectorModel.hasMany(ZendeskConfiguration, {
 });
 ZendeskConfiguration.belongsTo(ConnectorModel);
 
-export class ZendeskBrand extends Model<
-  InferAttributes<ZendeskBrand>,
-  InferCreationAttributes<ZendeskBrand>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskBrand extends BaseModel<ZendeskBrand> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -140,11 +114,6 @@ export class ZendeskBrand extends Model<
 
 ZendeskBrand.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -208,11 +177,7 @@ ConnectorModel.hasMany(ZendeskBrand, {
   onDelete: "RESTRICT",
 });
 
-export class ZendeskCategory extends Model<
-  InferAttributes<ZendeskCategory>,
-  InferCreationAttributes<ZendeskCategory>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskCategory extends BaseModel<ZendeskCategory> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -231,11 +196,6 @@ export class ZendeskCategory extends Model<
 
 ZendeskCategory.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -296,11 +256,7 @@ ConnectorModel.hasMany(ZendeskCategory, {
   onDelete: "RESTRICT",
 });
 
-export class ZendeskArticle extends Model<
-  InferAttributes<ZendeskArticle>,
-  InferCreationAttributes<ZendeskArticle>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskArticle extends BaseModel<ZendeskArticle> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -319,11 +275,6 @@ export class ZendeskArticle extends Model<
 
 ZendeskArticle.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -385,11 +336,7 @@ ConnectorModel.hasMany(ZendeskArticle, {
   onDelete: "RESTRICT",
 });
 
-export class ZendeskTicket extends Model<
-  InferAttributes<ZendeskTicket>,
-  InferCreationAttributes<ZendeskTicket>
-> {
-  declare id: CreationOptional<number>;
+export class ZendeskTicket extends BaseModel<ZendeskTicket> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -408,11 +355,6 @@ export class ZendeskTicket extends Model<
 
 ZendeskTicket.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

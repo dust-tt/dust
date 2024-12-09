@@ -68,14 +68,8 @@ export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
 
-// Supported content types for plain text.
-export const supportedPlainText = {
-  "application/msword": [".doc", ".docx"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-    ".doc",
-    ".docx",
-  ],
-  "application/pdf": [".pdf"],
+// Supported content types that are plain text and can be sent as file-less content fragment.
+export const supportedRawText = {
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
@@ -85,12 +79,24 @@ export const supportedPlainText = {
   "text/vnd.dust.attachment.slack.thread": [".txt"],
 } as const;
 
+// Supported content types for plain text (after processing).
+export const supportedPlainText = {
+  "application/msword": [".doc", ".docx"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".doc",
+    ".docx",
+  ],
+  "application/pdf": [".pdf"],
+  ...supportedRawText,
+} as const;
+
 // Supported content types for images.
 export const supportedImage = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
 } as const;
 
+// Legacy content types still retuned by the API when rendering old messages.
 export const supportedLegacy = {
   "dust-application/slack": [],
 } as const;
@@ -109,20 +115,24 @@ export const supportedLegacyContentTypes = Object.keys(
   supportedImage
 ) as ImageContentType[];
 
-export type SupportedFileContentType =
-  | PlainTextContentType
-  | ImageContentType
-  | LegacyContentType;
+export type SupportedFileContentType = PlainTextContentType | ImageContentType;
 const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
   ...supportedImageContentTypes,
-  ...supportedLegacyContentTypes,
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
   ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
   ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
   ...(Object.keys(supportedLegacy) as [keyof typeof supportedLegacy]),
+]);
+
+const SupportedInlinedContentFragmentTypeSchema = FlexibleEnumSchema([
+  ...(Object.keys(supportedRawText) as [keyof typeof supportedRawText]),
+]);
+const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema([
+  ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
+  ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
 ]);
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
@@ -646,6 +656,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema([
   "okta_enterprise_connection",
   "labs_transcripts",
   "labs_transcripts_gong_full_storage",
+  "labs_trackers",
   "document_tracker",
   "use_app_for_header_detection",
   "openai_o1_feature",
@@ -812,10 +823,10 @@ export type LightAgentConfigurationType = z.infer<
 >;
 
 const ContentFragmentContextSchema = z.object({
-  username: z.string().nullable(),
-  fullName: z.string().nullable(),
-  email: z.string().nullable(),
-  profilePictureUrl: z.string().nullable(),
+  username: z.string().optional().nullable(),
+  fullName: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  profilePictureUrl: z.string().optional().nullable(),
 });
 
 const ContentFragmentSchema = z.object({
@@ -855,9 +866,9 @@ export type AgentMentionType = z.infer<typeof AgentMentionSchema>;
 const UserMessageContextSchema = z.object({
   username: z.string(),
   timezone: Timezone,
-  fullName: z.string().nullable(),
-  email: z.string().nullable(),
-  profilePictureUrl: z.string().nullable(),
+  fullName: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
 });
 
@@ -1622,11 +1633,11 @@ export type PublicPostEditMessagesRequestBody = z.infer<
 
 export const PublicContentFragmentWithContentSchema = z.object({
   title: z.string(),
-  url: z.string().nullable(),
+  url: z.string().optional().nullable(),
   content: z.string(),
-  contentType: SupportedContentFragmentTypeSchema,
+  contentType: SupportedInlinedContentFragmentTypeSchema,
   fileId: z.undefined().nullable(),
-  context: ContentFragmentContextSchema.nullable(),
+  context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
 });
@@ -1637,11 +1648,11 @@ export type PublicContentFragmentWithContent = z.infer<
 
 export const PublicContentFragmentWithFileIdSchema = z.object({
   title: z.string(),
-  url: z.string().nullable(),
+  url: z.string().optional().nullable(),
   content: z.undefined().nullable(),
   contentType: z.undefined().nullable(),
   fileId: z.string(),
-  context: ContentFragmentContextSchema.nullable(),
+  context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
 });
@@ -2155,9 +2166,7 @@ export type GetWorkspaceUsageRequestType = z.infer<
 >;
 
 export const FileUploadUrlRequestSchema = z.object({
-  contentType: z
-    .string()
-    .max(256, "Content type must be less than 256 characters"),
+  contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(256, "File name must be less than 256 characters"),
   fileSize: z.number(),
   useCase: z.union([z.literal("conversation"), z.literal("avatar")]),

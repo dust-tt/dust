@@ -91,6 +91,7 @@ export type APIErrorType =
   | "file_not_found"
   | "file_too_large"
   | "file_type_not_supported"
+  | "file_is_empty"
   // Runs:
   | "run_not_found"
   // Spaces:
@@ -107,7 +108,6 @@ export type APIErrorType =
 export type APIError = {
   type: APIErrorType;
   message: string;
-  request_format_errors?: object;
   data_source_error?: CoreAPIError;
   run_error?: CoreAPIError;
   app_error?: CoreAPIError;

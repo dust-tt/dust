@@ -8,8 +8,8 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { UserMetadata } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
@@ -57,7 +57,7 @@ export async function getUserMetadata(
   user: UserType,
   key: string
 ): Promise<UserMetadataType | null> {
-  const metadata = await UserMetadata.findOne({
+  const metadata = await UserMetadataModel.findOne({
     where: {
       userId: user.id,
       key,
@@ -84,7 +84,7 @@ export async function setUserMetadata(
   user: UserType,
   update: UserMetadataType
 ): Promise<void> {
-  const metadata = await UserMetadata.findOne({
+  const metadata = await UserMetadataModel.findOne({
     where: {
       userId: user.id,
       key: update.key,
@@ -92,7 +92,7 @@ export async function setUserMetadata(
   });
 
   if (!metadata) {
-    await UserMetadata.create({
+    await UserMetadataModel.create({
       userId: user.id,
       key: update.key,
       value: update.value,

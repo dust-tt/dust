@@ -349,7 +349,7 @@ export const DocumentUploadOrEditModal = ({
               <div>
                 <Page.SectionHeader
                   title="Text content"
-                  description={`Copy paste content or upload a file (text or PDF). Up to ${
+                  description={`Copy paste content or upload a file (${supportedPlainTextExtensions.join(", ")}). \n Up to ${
                     plan.limits.dataSources.documents.sizeMb === -1
                       ? "2"
                       : plan.limits.dataSources.documents.sizeMb

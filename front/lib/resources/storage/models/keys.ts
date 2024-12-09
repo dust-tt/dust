@@ -1,22 +1,13 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class KeyModel extends Model<
-  InferAttributes<KeyModel>,
-  InferCreationAttributes<KeyModel>
-> {
-  declare id: CreationOptional<number>;
+export class KeyModel extends BaseModel<KeyModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastUsedAt: CreationOptional<Date>;
@@ -25,20 +16,15 @@ export class KeyModel extends Model<
   declare status: "active" | "disabled";
   declare isSystem: boolean;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare name: string | null;
-  declare user: NonAttribute<User>;
+  declare user: NonAttribute<UserModel>;
 }
 KeyModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -86,7 +72,7 @@ Workspace.hasMany(KeyModel, {
   onDelete: "CASCADE",
 });
 // We don't want to delete keys when a user gets deleted.
-User.hasMany(KeyModel, {
+UserModel.hasMany(KeyModel, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
@@ -95,4 +81,4 @@ GroupModel.hasMany(KeyModel, {
   onDelete: "RESTRICT",
 });
 
-KeyModel.belongsTo(User);
+KeyModel.belongsTo(UserModel);

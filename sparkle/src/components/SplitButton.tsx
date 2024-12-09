@@ -2,21 +2,23 @@ import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
 import {
-  Button,
-  ButtonSizeType,
-  MetaButtonProps,
-} from "@sparkle/components/Button";
-import {
+  ButtonProps,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@sparkle/components/Dropdown";
+  RegularButtonProps,
+} from "@sparkle/components/";
+import {
+  Button,
+  ButtonSizeType,
+  ButtonVariantType,
+} from "@sparkle/components/Button";
 import { Separator } from "@sparkle/components/Separator";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib";
 
-const separatorSizeVariants: Record<ButtonSizeType, string> = {
+const separatorSizeVariants: Record<Exclude<ButtonSizeType, "mini">, string> = {
   xs: "s-h-3",
   sm: "s-h-5",
   md: "s-h-7",
@@ -38,7 +40,7 @@ interface SplitButtonActionProps {
 }
 
 export interface SplitButtonProps
-  extends Omit<MetaButtonProps, "children" | "onClick"> {
+  extends Omit<RegularButtonProps, "children" | "onClick"> {
   /**
    * List of possible actions, will be displayed in dropdown
    */
@@ -60,10 +62,7 @@ export interface SplitButtonProps
   onActionChange?: (action: SplitButtonActionProps) => void;
 }
 
-export const SplitButton = React.forwardRef<
-  HTMLButtonElement,
-  SplitButtonProps
->(
+const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
   (
     {
       actions,
@@ -93,7 +92,7 @@ export const SplitButton = React.forwardRef<
       <div className="s-flex s-items-center">
         <Button
           {...props}
-          size={size}
+          size={size || undefined}
           variant={variant}
           label={actionToUse.label}
           icon={actionToUse.icon}
@@ -109,7 +108,7 @@ export const SplitButton = React.forwardRef<
           <DropdownMenuTrigger asChild>
             <Button
               {...props}
-              size={size}
+              size={size || undefined}
               variant={variant}
               icon={ChevronDownIcon}
               disabled={disabled}
@@ -138,3 +137,50 @@ export const SplitButton = React.forwardRef<
     );
   }
 );
+
+const flexSeparatorVariants: Record<ButtonVariantType, string> = {
+  primary: "s-bg-white/50",
+  highlight: "s-bg-white/50",
+  warning: "s-bg-white/50",
+  outline: "s-bg-separator",
+  ghost: "s-bg-separator",
+  "ghost-secondary": "s-bg-separator",
+};
+
+export interface FlexSplitButtonProps extends Omit<ButtonProps, "size"> {
+  containerClassName?: string;
+  splitAction: React.ReactElement<React.ComponentProps<typeof Button>>;
+}
+
+const FlexSplitButton = React.forwardRef<
+  HTMLButtonElement,
+  FlexSplitButtonProps
+>(
+  (
+    { splitAction, containerClassName, variant, className, ...buttonProps },
+    ref
+  ) => {
+    const separatorStyle = variant
+      ? flexSeparatorVariants[variant]
+      : flexSeparatorVariants.primary;
+    return (
+      <div className={cn("s-relative s-inline-block", containerClassName)}>
+        <Button
+          ref={ref}
+          variant={variant}
+          size="sm"
+          className={cn(className, "s-pr-12")}
+          {...buttonProps}
+        />
+        <span className="s-absolute s-right-1 s-top-1 s-flex s-items-center s-gap-1">
+          <div className={cn("s-h-4 s-w-px", separatorStyle)} />
+          {splitAction}
+        </span>
+      </div>
+    );
+  }
+);
+
+FlexSplitButton.displayName = "FlexSplitButton";
+
+export { FlexSplitButton, SplitButton };

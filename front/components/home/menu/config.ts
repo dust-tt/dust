@@ -40,13 +40,13 @@ const AboutMenuConfig: MenuConfig = {
       isExternal: true,
     },
     {
-      title: "Contact",
+      title: "Contact Support",
       href: "mailto:support@dust.tt",
       isExternal: true,
     },
     {
       title: "Community Support",
-      href: "https://community.dust.tt",
+      href: "https://bit.ly/dust-slack",
       isExternal: true,
     },
     {
@@ -157,7 +157,7 @@ const DevelopersMenuConfig: MenuConfig = {
       href: "/home/solutions/dust-platform",
     },
     {
-      title: "Dust for engineers",
+      title: "Dust for Engineers",
       href: "/home/solutions/engineering",
     },
     {

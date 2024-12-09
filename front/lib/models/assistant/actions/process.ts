@@ -3,23 +3,15 @@ import type {
   ProcessSchemaPropertyType,
   TimeframeUnit,
 } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class AgentProcessConfiguration extends Model<
-  InferAttributes<AgentProcessConfiguration>,
-  InferCreationAttributes<AgentProcessConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentProcessConfiguration extends BaseModel<AgentProcessConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -41,11 +33,6 @@ export class AgentProcessConfiguration extends Model<
 
 AgentProcessConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -129,11 +116,7 @@ AgentProcessConfiguration.belongsTo(AgentConfiguration, {
 /**
  * Process Action
  */
-export class AgentProcessAction extends Model<
-  InferAttributes<AgentProcessAction>,
-  InferCreationAttributes<AgentProcessAction>
-> {
-  declare id: CreationOptional<number>;
+export class AgentProcessAction extends BaseModel<AgentProcessAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -154,11 +137,6 @@ export class AgentProcessAction extends Model<
 }
 AgentProcessAction.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

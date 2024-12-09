@@ -18,10 +18,10 @@ import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { User } from "@app/lib/models/user";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -64,13 +64,13 @@ export interface DataSourceResource
 export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static model: ModelStatic<DataSourceModel> = DataSourceModel;
 
-  readonly editedByUser?: Attributes<User>;
+  readonly editedByUser?: Attributes<UserModel>;
 
   constructor(
     model: ModelStatic<DataSourceModel>,
     blob: Attributes<DataSourceModel>,
     space: SpaceResource,
-    { editedByUser }: { editedByUser?: Attributes<User> } = {}
+    { editedByUser }: { editedByUser?: Attributes<UserModel> } = {}
   ) {
     super(DataSourceResource.model, blob, space);
 
@@ -109,7 +109,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     if (options?.includeEditedBy) {
       result.includes = [
         {
-          model: User,
+          model: UserModel,
           as: "editedByUser",
           required: false,
         },
@@ -468,7 +468,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   }
 
   private makeEditedBy(
-    editedByUser: Attributes<User> | undefined,
+    editedByUser: Attributes<UserModel> | undefined,
     editedAt: Date | undefined
   ) {
     if (!editedByUser || !editedAt) {

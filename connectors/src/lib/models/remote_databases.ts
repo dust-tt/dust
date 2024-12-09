@@ -1,21 +1,13 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
 type RemoteTablePermission = "selected" | "inherited"; // todo Daph move in next PR
 
-export class RemoteDatabaseModel extends Model<
-  InferAttributes<RemoteDatabaseModel>,
-  InferCreationAttributes<RemoteDatabaseModel>
-> {
-  declare id: CreationOptional<number>;
+export class RemoteDatabaseModel extends BaseModel<RemoteDatabaseModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -26,11 +18,6 @@ export class RemoteDatabaseModel extends Model<
 }
 RemoteDatabaseModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     internalId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -62,11 +49,7 @@ ConnectorModel.hasMany(RemoteDatabaseModel, {
 });
 RemoteDatabaseModel.belongsTo(ConnectorModel);
 
-export class RemoteSchemaModel extends Model<
-  InferAttributes<RemoteSchemaModel>,
-  InferCreationAttributes<RemoteSchemaModel>
-> {
-  declare id: CreationOptional<number>;
+export class RemoteSchemaModel extends BaseModel<RemoteSchemaModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -79,11 +62,6 @@ export class RemoteSchemaModel extends Model<
 }
 RemoteSchemaModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     internalId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -119,11 +97,7 @@ ConnectorModel.hasMany(RemoteSchemaModel, {
 });
 RemoteSchemaModel.belongsTo(ConnectorModel);
 
-export class RemoteTableModel extends Model<
-  InferAttributes<RemoteTableModel>,
-  InferCreationAttributes<RemoteTableModel>
-> {
-  declare id: CreationOptional<number>;
+export class RemoteTableModel extends BaseModel<RemoteTableModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastUpsertedAt: CreationOptional<Date> | null;
@@ -139,11 +113,6 @@ export class RemoteTableModel extends Model<
 }
 RemoteTableModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     internalId: {
       type: DataTypes.STRING,
       allowNull: false,

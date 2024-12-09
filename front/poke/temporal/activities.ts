@@ -43,7 +43,6 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { Subscription } from "@app/lib/models/plan";
-import { UserMetadata } from "@app/lib/models/user";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -60,6 +59,7 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
+import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -533,7 +533,7 @@ export async function deleteMembersActivity({
 
         // If the user we're removing the membership of only has one membership, we delete the user.
         if (membershipsOfUser.length === 1) {
-          await UserMetadata.destroy({
+          await UserMetadataModel.destroy({
             where: {
               userId: user.id,
             },

@@ -9,6 +9,7 @@ import {
   Page,
   Popover,
   ScrollArea,
+  ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -282,6 +283,45 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
+        {configsWithUniqueInstructions &&
+          configsWithUniqueInstructions.length > 1 &&
+          currentConfig && (
+            <div className="mr-2 mt-2 self-end">
+              <PromptHistory
+                history={configsWithUniqueInstructions}
+                onConfigChange={(config) => {
+                  // Remember the instructions of the version we're leaving, if overriden
+                  if (
+                    currentConfig &&
+                    currentConfig.instructions !== builderState.instructions
+                  ) {
+                    setOverridenConfigInstructions((prev) => ({
+                      ...prev,
+                      [currentConfig.version]: builderState.instructions,
+                    }));
+                  }
+
+                  // Bring new version's instructions to the editor, fetch overriden instructions if any
+                  setCurrentConfig(config);
+                  editorService.resetContent(
+                    tipTapContentFromPlainText(
+                      overridenConfigInstructions[config.version] ||
+                        config.instructions ||
+                        ""
+                    )
+                  );
+                  setBuilderState((state) => ({
+                    ...state,
+                    instructions:
+                      overridenConfigInstructions[config.version] ||
+                      config.instructions ||
+                      "",
+                  }));
+                }}
+                currentConfig={currentConfig}
+              />
+            </div>
+          )}
         <div className="mt-2 self-end">
           <AdvancedSettings
             owner={owner}
@@ -299,45 +339,6 @@ export function InstructionScreen({
       </div>
       <div className="flex h-full flex-col gap-1">
         <div className="relative h-full min-h-[240px] grow gap-1 p-px">
-          {configsWithUniqueInstructions &&
-            configsWithUniqueInstructions.length > 1 &&
-            currentConfig && (
-              <div className="absolute right-2 top-2 z-10">
-                <PromptHistory
-                  history={configsWithUniqueInstructions}
-                  onConfigChange={(config) => {
-                    // Remember the instructions of the version we're leaving, if overriden
-                    if (
-                      currentConfig &&
-                      currentConfig.instructions !== builderState.instructions
-                    ) {
-                      setOverridenConfigInstructions((prev) => ({
-                        ...prev,
-                        [currentConfig.version]: builderState.instructions,
-                      }));
-                    }
-
-                    // Bring new version's instructions to the editor, fetch overriden instructions if any
-                    setCurrentConfig(config);
-                    editorService.resetContent(
-                      tipTapContentFromPlainText(
-                        overridenConfigInstructions[config.version] ||
-                          config.instructions ||
-                          ""
-                      )
-                    );
-                    setBuilderState((state) => ({
-                      ...state,
-                      instructions:
-                        overridenConfigInstructions[config.version] ||
-                        config.instructions ||
-                        "",
-                    }));
-                  }}
-                  currentConfig={currentConfig}
-                />
-              </div>
-            )}
           <EditorContent
             editor={editor}
             className="absolute bottom-0 left-0 right-0 top-0"
@@ -485,7 +486,10 @@ function AdvancedSettings({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea className="h-[300px]">
+                <ScrollArea
+                  className="flex max-h-[300px] flex-col"
+                  hideScrollBar
+                >
                   <ModelList
                     modelConfigs={bestPerformingModelConfigs}
                     onClick={(modelSettings) => {
@@ -505,6 +509,7 @@ function AdvancedSettings({
                       });
                     }}
                   />
+                  <ScrollBar className="py-0" />
                 </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>
