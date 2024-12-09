@@ -1535,7 +1535,7 @@ impl Store for PostgresStore {
         let current_tags_result = tx
             .query(
                 "SELECT tags_array FROM data_sources_documents WHERE data_source = $1 \
-            AND document_id = $2 AND status = 'latest' FOR UPDATE",
+                   AND document_id = $2 AND status = 'latest' FOR UPDATE",
                 &[&data_source_row_id, &document_id],
             )
             .await?;
@@ -1660,7 +1660,8 @@ impl Store for PostgresStore {
 
         let sql = format!(
             "SELECT dsd.hash, dsd.created, dsd.status \
-               FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+               FROM data_sources_documents dsd \
+               INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                WHERE {} ORDER BY created DESC",
             where_clauses.join(" AND ")
         );
@@ -1705,7 +1706,9 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         format!(
-                            "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
+                            "SELECT COUNT(*) FROM data_sources_documents dsd \
+                               INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+                               WHERE {}",
                             where_clauses.join(" AND ")
                         )
                         .as_str(),
@@ -1774,14 +1777,17 @@ impl Store for PostgresStore {
         // compute the total count
         let count_query = format!(
             "SELECT COUNT(*) \
-               FROM data_sources_documents dsd INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+               FROM data_sources_documents dsd \
+               INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                WHERE {}",
             where_clauses.join(" AND ")
         );
         let count: i64 = c.query_one(&count_query, &params).await?.get(0);
 
         let mut query = format!(
-            "SELECT document_id FROM data_sources_documents WHERE {} ORDER BY timestamp DESC",
+            "SELECT document_id FROM data_sources_documents dsd \
+              INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
+              WHERE {} ORDER BY dsd.timestamp DESC",
             where_clauses.join(" AND ")
         );
 
@@ -2057,6 +2063,7 @@ impl Store for PostgresStore {
                     .prepare(
                         format!(
                             "SELECT COUNT(*) FROM data_sources_documents dsd \
+                               INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
                                WHERE {}",
                             where_clauses.join(" AND ")
                         )
@@ -3080,7 +3087,8 @@ impl Store for PostgresStore {
                     .prepare(
                         format!(
                             "SELECT COUNT(*) FROM tables t \
-                                   WHERE {}",
+                               INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
+                               WHERE {}",
                             where_clauses.join(" AND ")
                         )
                         .as_str(),
