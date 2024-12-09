@@ -118,6 +118,16 @@ export class RunResource extends BaseResource<RunModel> {
     });
   }
 
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    return this.model.destroy({
+      where: { workspaceId: workspace.id },
+      transaction,
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
