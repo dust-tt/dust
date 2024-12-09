@@ -1482,6 +1482,9 @@ pub async fn chat_completion(
 
     let req = req.json(&body);
 
+    println!("\n\nREQBODY: {:?}\n\n", body);
+    println!("\n\nURI: {:?}\n\n", uri);
+
     let res = match timeout(Duration::new(180, 0), req.send()).await {
         Ok(Ok(res)) => res,
         Ok(Err(e)) => Err(e)?,
@@ -1489,6 +1492,7 @@ pub async fn chat_completion(
     };
 
     let res_headers = res.headers();
+    println!("\n\nRESHEADERS: {:?}\n\n", res_headers);
     let request_id = match res_headers.get("x-request-id") {
         Some(request_id) => Some(request_id.to_str()?.to_string()),
         None => None,
@@ -1499,6 +1503,8 @@ pub async fn chat_completion(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 180s"))?,
     };
+
+    println!("RESBODY: {:?}", body);
 
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
