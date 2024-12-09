@@ -15,31 +15,31 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
 
-export const acceptableTranscriptProvidersCodec = t.union([
+// Define provider type separately for better reuse
+const TranscriptProvider = t.union([
   t.literal("google_drive"),
   t.literal("gong"),
   t.literal("modjo"),
 ]);
 
+const BaseConfiguration = t.type({
+  provider: TranscriptProvider,
+  apiKeyIsEncrypted: t.union([t.boolean, t.undefined]),
+});
+
+const ConnectionConfig = t.intersection([
+  BaseConfiguration,
+  t.type({ connectionId: t.string }),
+]);
+
+const ApiKeyConfig = t.intersection([
+  BaseConfiguration,
+  t.type({ apiKey: t.string }),
+]);
+
 export const PostLabsTranscriptsConfigurationBodySchema = t.union([
-  t.intersection([
-    t.type({
-      connectionId: t.string,
-      provider: acceptableTranscriptProvidersCodec,
-    }),
-    t.partial({
-      apiKeyIsEncrypted: t.boolean,
-    }),
-  ]),
-  t.intersection([
-    t.type({
-      apiKey: t.string,
-      provider: acceptableTranscriptProvidersCodec,
-    }),
-    t.partial({
-      apiKeyIsEncrypted: t.boolean,
-    }),
-  ]),
+  ConnectionConfig,
+  ApiKeyConfig,
 ]);
 
 async function handler(
