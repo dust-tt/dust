@@ -71,12 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Elasticsearch::new(transport);
 
-    let index_fullname = format!(
-        "{}.core.{}_{}",
-        region.to_string().to_lowercase(),
-        index_alias,
-        index_version
-    );
+    let index_fullname = format!("core.{}_{}", index_alias, index_version);
 
     // do not create index if it already exists
     let response = client
