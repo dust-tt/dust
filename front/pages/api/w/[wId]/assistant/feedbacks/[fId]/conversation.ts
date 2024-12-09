@@ -1,8 +1,9 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -19,7 +20,8 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      if (typeof req.query.fId !== "string" || req.query.fId === "") {
+      const feedbackId = req.query.fId;
+      if (typeof feedbackId !== "string" || feedbackId === "") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -29,15 +31,55 @@ async function handler(
         });
       }
 
+      // Make sure that user is one of the authors
+      const feedback = await AgentMessageFeedbackResource.fetchById(feedbackId);
+      if (!feedback) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "feedback_not_found",
+            message: `Feedback not found for id ${feedbackId}`,
+          },
+        });
+      }
+      const agent = await getAgentConfiguration(
+        auth,
+        feedback.agentConfigurationId
+      );
+      if (!agent) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: `Agent configuration not found for id ${feedback.agentConfigurationId}`,
+          },
+        });
+      }
+      if (
+        !auth.canRead(
+          Authenticator.createResourcePermissionsFromGroupIds(
+            agent.requestedGroupIds
+          )
+        )
+      ) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "feedback_not_found",
+            message: "Feedback not found.",
+          },
+        });
+      }
+
       const conversationId =
-        await AgentMessageFeedbackResource.fetchConversationId(req.query.fId);
+        await AgentMessageFeedbackResource.fetchConversationId(feedbackId);
 
       if (!conversationId) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "conversation_not_found",
-            message: `Conversation not found for feedback ${req.query.fId}`,
+            message: `Conversation not found for feedback ${feedbackId}`,
           },
         });
       }
