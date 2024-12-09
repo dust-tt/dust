@@ -2,7 +2,7 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 
-export function useFeedbackConversation({
+export function useFeedbackConversationContext({
   workspaceId,
   feedbackId,
 }: {
@@ -11,15 +11,16 @@ export function useFeedbackConversation({
 }) {
   const feedbackFetcher: Fetcher<{
     conversationId: string;
+    messageId: string;
   }> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/feedbacks/${feedbackId}/conversation`,
+    `/api/w/${workspaceId}/assistant/feedbacks/${feedbackId}/conversation-context`,
     feedbackFetcher
   );
 
   return {
-    conversationId: data ? data.conversationId : null,
+    conversationContext: data ? data : null,
     isLoading: !error && !data,
     isError: error,
   };
