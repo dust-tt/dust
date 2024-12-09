@@ -123,7 +123,11 @@ async function handler(
         });
       }
 
-      const encryptedApiKey = apiKey ? encrypt(apiKey, owner.sId) : null;
+      let apiKeyToUse = apiKey ?? null;
+      if (apiKey && !apiKeyIsEncrypted) {
+        // If the API key is not already encrypted, we need to encrypt it.
+        apiKeyToUse = encrypt(apiKey, owner.sId);
+      }
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
@@ -131,7 +135,7 @@ async function handler(
           workspaceId: owner.id,
           provider,
           connectionId: connectionId ?? null,
-          apiKey: apiKeyIsEncrypted ? apiKey : encryptedApiKey ?? null,
+          apiKey: apiKeyToUse,
         });
 
       return res
