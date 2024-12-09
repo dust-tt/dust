@@ -11,7 +11,7 @@ const SvgClipboard = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M16 16v5H3V7.992L8 8V3h13l-.003 13H16Zm-2 0H8v-6H5v9h9v-3Zm4.997-2L19 5h-9v9h8.997Z"
+      d="M7 4V2h10v2h2.007a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H4.993a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2H7Zm0 2H5v15h14V6h-2v2H7V6Zm2-2v2h6V4H9Z"
     />
   </svg>
 );
