@@ -206,11 +206,12 @@ export default function LabsTranscriptsIndex({
         return {
           ...prev,
           provider: transcriptsConfiguration.provider || "",
-          isGongConnected: transcriptsConfiguration.provider == "gong" || false,
+          isGongConnected:
+            transcriptsConfiguration.provider === "gong" || false,
           isModjoConnected:
-            transcriptsConfiguration.provider == "modjo" || false,
+            transcriptsConfiguration.provider === "modjo" || false,
           isGDriveConnected:
-            transcriptsConfiguration.provider == "google_drive" || false,
+            transcriptsConfiguration.provider === "google_drive" || false,
           assistantSelected:
             agentConfigurations.find(
               (a) => a.sId === transcriptsConfiguration.agentConfigurationId
