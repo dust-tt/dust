@@ -102,7 +102,9 @@ export type APIErrorType =
   | ConversationErrorType
   // Plugins:
   | "plugin_not_found"
-  | "plugin_execution_failed";
+  | "plugin_execution_failed"
+  // feedbacks
+  | "feedback_not_found";
 
 export type APIError = {
   type: APIErrorType;
