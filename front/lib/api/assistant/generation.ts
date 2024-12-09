@@ -193,7 +193,7 @@ export async function renderConversationForModel(
     Error
   >
 > {
-  if (!(await isJITActionsEnabled(auth))) {
+  if (!isJITActionsEnabled()) {
     return renderConversationForModelMultiActions({
       conversation,
       model,

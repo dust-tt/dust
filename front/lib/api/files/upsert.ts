@@ -435,7 +435,7 @@ export async function processAndUpsertToDataSource(
     }
   >
 > {
-  const jitEnabled = await isJITActionsEnabled(auth);
+  const jitEnabled = isJITActionsEnabled();
 
   if (!jitEnabled || !isUpsertSupported(file)) {
     return new Ok(file);
