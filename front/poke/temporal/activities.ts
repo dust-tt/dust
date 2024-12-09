@@ -599,6 +599,7 @@ export async function deleteWorkspaceActivity({
       transaction: t,
     });
     await FileResource.deleteAllForWorkspace(workspace, t);
+    await RunResource.deleteAllForWorkspace(workspace, t);
 
     hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
