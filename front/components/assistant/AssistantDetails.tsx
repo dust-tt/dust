@@ -34,7 +34,7 @@ import {
   useAgentConfigurationHistory,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import { useFeedbackConversation } from "@app/lib/swr/feedbacks";
+import { useFeedbackConversationContext } from "@app/lib/swr/feedbacks";
 import { useUserDetails } from "@app/lib/swr/user";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -50,6 +50,7 @@ export function AssistantDetails({
   owner,
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
+  const [activeTab, setActiveTab] = useState("info");
 
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -105,7 +106,7 @@ export function AssistantDetails({
   );
 
   const TabsSection = () => (
-    <Tabs defaultValue="info">
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
         <TabsTrigger value="info" label="Info" icon={InformationCircleIcon} />
         <TabsTrigger
@@ -292,11 +293,13 @@ function FeedbackCard({
   feedback: AgentMessageFeedbackType;
 }) {
   const { userDetails } = useUserDetails(feedback.userId);
-  const { conversationId } = useFeedbackConversation({
+  const { conversationContext } = useFeedbackConversationContext({
     workspaceId: owner.sId,
     feedbackId: feedback.id.toString(),
   });
-  const conversationUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${conversationId}`;
+  const conversationUrl = conversationContext
+    ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${conversationContext.conversationId}#${conversationContext.messageId}`
+    : null;
 
   return (
     <ContentMessage variant="slate" className="my-2">
@@ -339,7 +342,7 @@ function FeedbackCard({
           )}
         </div>
       </div>
-      {conversationId && (
+      {conversationContext && conversationUrl && (
         <div className="mt-2">
           <Button
             variant="outline"

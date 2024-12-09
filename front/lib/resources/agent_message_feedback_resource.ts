@@ -145,9 +145,9 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     return feedbacks;
   }
 
-  static async fetchConversationId(
+  static async fetchMessageAndConversationId(
     agentMessageFeedbackId: string
-  ): Promise<string | null> {
+  ): Promise<{ conversationId: string; messageId: string } | null> {
     const agentMessageFeedback = await AgentMessageFeedback.findByPk(
       agentMessageFeedbackId,
       {
@@ -160,7 +160,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
               {
                 model: Message,
                 as: "agentMessage",
-                attributes: ["id"],
+                attributes: ["id", "sId"],
                 include: [
                   {
                     model: Conversation,
@@ -179,8 +179,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       return null;
     }
 
-    // @ts-expect-error: sequelize cannot handle include easily
-    return agentMessageFeedback.agent_message.agentMessage.conversation.sId;
+    return {
+      // @ts-expect-error: sequelize cannot handle include easily
+      messageId: agentMessageFeedback.agent_message.agentMessage.sId,
+      conversationId:
+        // @ts-expect-error: sequelize cannot handle include easily
+        agentMessageFeedback.agent_message.agentMessage.conversation.sId,
+    };
   }
 
   async fetchUser(): Promise<UserResource | null> {
