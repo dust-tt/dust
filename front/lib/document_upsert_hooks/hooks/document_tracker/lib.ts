@@ -62,7 +62,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
   const owner = auth.getNonNullableWorkspace();
   const flags = await getFeatureFlags(owner);
 
-  if (!flags.includes("document_tracker")) {
+  if (!flags.includes("labs_trackers")) {
     return false;
   }
 
