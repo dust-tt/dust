@@ -105,15 +105,19 @@ export function AssistantDetails({
   );
 
   const TabsSection = () => (
-    <Tabs defaultValue="feedback">
+    <Tabs defaultValue="info">
       <TabsList>
         <TabsTrigger value="info" label="Info" icon={InformationCircleIcon} />
-        <TabsTrigger value="feedback" label="Feedback" icon={HandThumbUpIcon} />
+        <TabsTrigger
+          value="performance"
+          label="Performance"
+          icon={HandThumbUpIcon}
+        />
       </TabsList>
       <TabsContent value="info">
         <InfoSection />
       </TabsContent>
-      <TabsContent value="feedback">
+      <TabsContent value="performance">
         <FeedbacksSection />
       </TabsContent>
     </Tabs>
@@ -200,7 +204,7 @@ export function AssistantDetails({
           <div className="mt-3 text-sm text-element-900">No feedbacks.</div>
         ) : (
           <div className="mt-3">
-            <ConfigVersionHeader
+            <AgentConfigurationVersionHeader
               agentConfiguration={agentConfiguration}
               agentConfigurationVersion={agentConfiguration.version}
               isLatestVersion={true}
@@ -210,7 +214,7 @@ export function AssistantDetails({
                 {index > 0 &&
                   feedback.agentConfigurationVersion !==
                     sortedFeedbacks[index - 1].agentConfigurationVersion && (
-                    <ConfigVersionHeader
+                    <AgentConfigurationVersionHeader
                       agentConfiguration={agentConfigurationHistory?.find(
                         (c) => c.version === feedback.agentConfigurationVersion
                       )}
@@ -245,7 +249,7 @@ export function AssistantDetails({
   );
 }
 
-function ConfigVersionHeader({
+function AgentConfigurationVersionHeader({
   agentConfigurationVersion,
   agentConfiguration,
   isLatestVersion,
@@ -254,20 +258,17 @@ function ConfigVersionHeader({
   agentConfiguration: LightAgentConfigurationType | undefined;
   isLatestVersion: boolean;
 }) {
-  const getStringRepresentation = useCallback(
+  const getAgentConfigurationVersionString = useCallback(
     (config: LightAgentConfigurationType) => {
-      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-      });
       return isLatestVersion
         ? "Latest Version"
-        : config.versionCreatedAt
-          ? dateFormatter.format(new Date(config.versionCreatedAt))
-          : `v${config.version}`;
+        : !config.versionCreatedAt
+          ? `v${config.version}`
+          : new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
     },
     [isLatestVersion]
   );
@@ -276,7 +277,7 @@ function ConfigVersionHeader({
     <div className="flex items-center gap-2">
       <Page.H variant="h6">
         {agentConfiguration
-          ? getStringRepresentation(agentConfiguration)
+          ? getAgentConfigurationVersionString(agentConfiguration)
           : `v${agentConfigurationVersion}`}
       </Page.H>
     </div>
@@ -295,12 +296,7 @@ function FeedbackCard({
     workspaceId: owner.sId,
     feedbackId: feedback.id.toString(),
   });
-
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : "https://dust.tt";
-  const conversationUrl = `${baseUrl}/w/${owner.sId}/assistant/${conversationId}`;
+  const conversationUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${conversationId}`;
 
   return (
     <ContentMessage variant="slate" className="my-2">
@@ -308,7 +304,7 @@ function FeedbackCard({
         <div className="flex w-full items-center gap-2">
           <Avatar
             size="xs"
-            visual={userDetails?.image}
+            visual={userDetails?.image || undefined}
             name={userDetails?.firstName || "?"}
           />
           {userDetails?.firstName} {userDetails?.lastName}
