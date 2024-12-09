@@ -1,4 +1,4 @@
-name: Deploy Front Edge
+name: Deploy Front Edge TMP
 
 on:
   workflow_dispatch:
