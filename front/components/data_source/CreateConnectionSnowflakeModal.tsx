@@ -18,29 +18,31 @@ import { useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
-type CreateConnectionSnowflakeModalProps = {
+type CreateOrUpdateConnectionSnowflakeModalProps = {
   owner: WorkspaceType;
   connectorProviderConfiguration: ConnectorProviderConfiguration;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: ({
+  createDatasource?: ({
     connectionId,
     provider,
   }: {
     connectionId: string;
     provider: ConnectorProvider;
   }) => Promise<Response>;
-  onCreated: (dataSource: DataSourceType) => void;
+  onCreated?: (dataSource: DataSourceType) => void;
+  dataSourceToUpdate: DataSourceType;
 };
 
-export function CreateConnectionSnowflakeModal({
+export function CreateOrUpdateConnectionSnowflakeModal({
   owner,
   connectorProviderConfiguration,
   isOpen,
   onClose,
-  onSubmit,
+  createDatasource,
   onCreated,
-}: CreateConnectionSnowflakeModalProps) {
+  dataSourceToUpdate,
+}: CreateOrUpdateConnectionSnowflakeModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<SnowflakeCredentials>({
@@ -61,6 +63,11 @@ export function CreateConnectionSnowflakeModal({
   };
 
   const createSnowflakeConnection = async () => {
+    if (!onCreated || !createDatasource) {
+      // Should never happen.
+      throw new Error("onCreated and createDatasource are required");
+    }
+
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
@@ -83,7 +90,8 @@ export function CreateConnectionSnowflakeModal({
 
     // Then we can try to create the connector.
     const data = await getCredentialsRes.json();
-    const createDataSourceRes = await onSubmit({
+
+    const createDataSourceRes = await createDatasource({
       provider: "snowflake",
       connectionId: data.credentials.id,
     });
@@ -111,7 +119,70 @@ export function CreateConnectionSnowflakeModal({
       dataSource: DataSourceType;
       connector: ConnectorType;
     } = await createDataSourceRes.json();
+
     onCreated(createdManagedDataSource.dataSource);
+    setIsLoading(false);
+  };
+
+  const updateSnowflakeConnection = async () => {
+    if (!dataSourceToUpdate) {
+      // Should never happen.
+      throw new Error("dataSourceToUpdate is required");
+    }
+
+    setIsLoading(true);
+
+    // First we post the credentials to OAuth service.
+    const credentialsRes = await fetch(`/api/w/${owner.sId}/credentials`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provider: "snowflake",
+        credentials,
+      }),
+    });
+
+    if (!credentialsRes.ok) {
+      setError("Failed to update connection: cannot verify those credentials.");
+      setIsLoading(false);
+      return;
+    }
+
+    const data = await credentialsRes.json;
+    void data;
+
+    // const createDataSourceRes = await createDatasource({
+    //   provider: "snowflake",
+    //   connectionId: data.credentials.id,
+    // });
+
+    // if (!createDataSourceRes.ok) {
+    //   const err = await createDataSourceRes.json();
+    //   const maybeConnectorsError = "error" in err && err.error.connectors_error;
+
+    //   if (
+    //     isConnectorsAPIError(maybeConnectorsError) &&
+    //     maybeConnectorsError.type === "invalid_request_error"
+    //   ) {
+    //     setError(
+    //       `Failed to create Snowflake connection: ${maybeConnectorsError.message}`
+    //     );
+    //   } else {
+    //     setError(`Failed to create Snowflake connection: ${err.error.message}`);
+    //   }
+
+    //   setIsLoading(false);
+    //   return;
+    // }
+
+    // const createdManagedDataSource: {
+    //   dataSource: DataSourceType;
+    //   connector: ConnectorType;
+    // } = await createDataSourceRes.json();
+
+    // onCreated(createdManagedDataSource.dataSource);
     setIsLoading(false);
   };
 
@@ -222,11 +293,19 @@ export function CreateConnectionSnowflakeModal({
                   icon={CloudArrowLeftRightIcon}
                   onClick={() => {
                     setIsLoading(true);
-                    void createSnowflakeConnection();
+                    if (dataSourceToUpdate) {
+                      void updateSnowflakeConnection();
+                    } else {
+                      void createSnowflakeConnection();
+                    }
                   }}
                   disabled={isLoading || !areCredentialsValid()}
                   label={
-                    isLoading ? "Connecting..." : "Connect and select tables"
+                    isLoading
+                      ? "Connecting..."
+                      : dataSourceToUpdate
+                        ? "Update connection"
+                        : "Connect and select tables"
                   }
                 />
               </div>

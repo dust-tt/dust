@@ -260,6 +260,14 @@ function DataSourceEditionModal({
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
 
+  if (dataSource.connectorProvider === "snowflake") {
+    return (
+      <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
+        Edit Snowflake
+      </DataSourceManagementModal>
+    );
+  }
+
   return (
     <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
       <>
@@ -747,21 +755,24 @@ export function ConnectorPermissionsModal({
         variant="side-md"
       >
         <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4">
-          <div className="flex">
-            {isOAuthProvider(connector.type) && (
-              <Button
-                className="ml-auto justify-self-end"
-                label="Edit permissions"
-                variant="outline"
-                icon={LockIcon}
-                onClick={() => {
-                  setModalToShow("edition");
-                }}
-              />
-            )}
+          <div className="flex flex-row justify-end gap-2">
+            {isOAuthProvider(connector.type) ||
+              (connector.type === "snowflake" && (
+                <Button
+                  label={
+                    connector.type !== "snowflake"
+                      ? "Edit permissions"
+                      : "Edit connection"
+                  }
+                  variant="outline"
+                  icon={LockIcon}
+                  onClick={() => {
+                    setModalToShow("edition");
+                  }}
+                />
+              ))}
             {MANAGED_DS_DELETABLE.includes(connector.type) && (
               <Button
-                className="ml-auto justify-self-end"
                 label="Delete connection"
                 variant="warning"
                 icon={TrashIcon}
