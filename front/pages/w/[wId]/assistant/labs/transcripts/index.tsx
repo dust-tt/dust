@@ -35,7 +35,10 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
+import {
+  useLabsTranscriptsConfiguration,
+  useLabsTranscriptsConfigurationSaveApiConnection,
+} from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
@@ -121,6 +124,9 @@ export default function LabsTranscriptsIndex({
     workspaceId: owner.sId,
     agentsGetView: "list",
     sort: "priority",
+  });
+  const saveApiConnection = useLabsTranscriptsConfigurationSaveApiConnection({
+    owner,
   });
 
   const handleSetStoreInFolder: Dispatch<SetStateAction<boolean>> = async (
@@ -396,26 +402,6 @@ export default function LabsTranscriptsIndex({
     }
 
     return null;
-  };
-
-  const saveApiConnection = async (
-    apiKey: string,
-    provider: string,
-    apiKeyIsEncrypted: boolean = false
-  ) => {
-    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        apiKey,
-        provider,
-        apiKeyIsEncrypted,
-      }),
-    });
-
-    return response;
   };
 
   const saveOAuthConnection = async (
