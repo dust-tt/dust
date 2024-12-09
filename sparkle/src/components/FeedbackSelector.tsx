@@ -84,7 +84,11 @@ export function FeedbackSelector({
                   disabled={isSubmittingThumb}
                   onClick={() => selectThumb("up")}
                   icon={HandThumbUpIcon}
-                  className={feedback?.thumb === "up" ? "" : "[&_svg]:s-text-muted-foreground"}
+                  className={
+                    feedback?.thumb === "up"
+                      ? ""
+                      : "[&_svg]:s-text-muted-foreground"
+                  }
                 />
               }
             />
@@ -97,7 +101,11 @@ export function FeedbackSelector({
                   disabled={isSubmittingThumb}
                   onClick={() => selectThumb("down")}
                   icon={HandThumbDownIcon}
-                  className={feedback?.thumb === "down" ? "" : "[&_svg]:s-text-muted-foreground"}
+                  className={
+                    feedback?.thumb === "down"
+                      ? ""
+                      : "[&_svg]:s-text-muted-foreground"
+                  }
                 />
               }
             />
@@ -115,7 +123,6 @@ export function FeedbackSelector({
                   ? "🎉 Glad you liked it! Tell us more?"
                   : "🫠 Help make the answers better!"}
               </Page.H>
-              {popOverInfo}
               <TextArea
                 placeholder={
                   feedback?.thumb === "up"
@@ -127,6 +134,12 @@ export function FeedbackSelector({
                 value={localFeedbackContent ?? ""}
                 onChange={(e) => setLocalFeedbackContent(e.target.value)}
               />
+              {popOverInfo}
+              <div className="s-mt-4">
+                <Page.P variant="secondary">
+                  Your full conversation with the assistant will be shared.
+                </Page.P>
+              </div>
               <div className="s-mt-4 s-flex s-justify-between s-gap-2">
                 <Button
                   variant="primary"
