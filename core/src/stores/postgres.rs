@@ -93,8 +93,8 @@ impl PostgresStore {
     fn where_clauses_and_params_for_filter<'a>(
         filter: &'a Option<SearchFilter>,
         tags_column: Option<&str>,
-        parents_column: Option<&str>,
-        timestamp_column: Option<&str>,
+        parents_column: &str,
+        timestamp_column: &str,
         from_idx: usize,
     ) -> (Vec<String>, Vec<&'a (dyn ToSql + Sync)>, usize) {
         let mut where_clauses: Vec<String> = vec![];
@@ -117,33 +117,29 @@ impl PostgresStore {
                 }
             }
 
-            if let Some(parents_column) = parents_column {
-                if let Some(parents_filter) = &filter.parents {
-                    if let Some(parents) = &parents_filter.is_in {
-                        where_clauses.push(format!("{} && ${}", parents_column, p_idx));
-                        params.push(parents as &(dyn ToSql + Sync));
-                        p_idx += 1;
-                    }
-                    if let Some(parents) = &parents_filter.is_not {
-                        where_clauses.push(format!("NOT {} && ${}", parents_column, p_idx));
-                        params.push(parents as &(dyn ToSql + Sync));
-                        p_idx += 1;
-                    }
+            if let Some(parents_filter) = &filter.parents {
+                if let Some(parents) = &parents_filter.is_in {
+                    where_clauses.push(format!("{} && ${}", parents_column, p_idx));
+                    params.push(parents as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+                if let Some(parents) = &parents_filter.is_not {
+                    where_clauses.push(format!("NOT {} && ${}", parents_column, p_idx));
+                    params.push(parents as &(dyn ToSql + Sync));
+                    p_idx += 1;
                 }
             }
 
-            if let Some(timestamp_column) = timestamp_column {
-                if let Some(ts_filter) = &filter.timestamp {
-                    if let Some(ts) = ts_filter.gt.as_ref() {
-                        where_clauses.push(format!("{} > ${}", timestamp_column, p_idx));
-                        params.push(ts as &(dyn ToSql + Sync));
-                        p_idx += 1;
-                    }
-                    if let Some(ts) = ts_filter.lt.as_ref() {
-                        where_clauses.push(format!("{} < ${}", timestamp_column, p_idx));
-                        params.push(ts as &(dyn ToSql + Sync));
-                        p_idx += 1;
-                    }
+            if let Some(ts_filter) = &filter.timestamp {
+                if let Some(ts) = ts_filter.gt.as_ref() {
+                    where_clauses.push(format!("{} > ${}", timestamp_column, p_idx));
+                    params.push(ts as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+                if let Some(ts) = ts_filter.lt.as_ref() {
+                    where_clauses.push(format!("{} < ${}", timestamp_column, p_idx));
+                    params.push(ts as &(dyn ToSql + Sync));
+                    p_idx += 1;
                 }
             }
         }
@@ -1650,8 +1646,8 @@ impl Store for PostgresStore {
         let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
             view_filter,
             Some("dsd.tags_array"),
-            Some("dsn.parents"),
-            Some("dsd.timestamp"),
+            "dsn.parents",
+            "dsd.timestamp",
             params.len() + 1,
         );
 
@@ -1754,8 +1750,8 @@ impl Store for PostgresStore {
         let (filter_clauses, filter_params, p_idx) = Self::where_clauses_and_params_for_filter(
             filter,
             Some("dsd.tags_array"),
-            Some("dsn.parents"),
-            Some("dsd.timestamp"),
+            "dsn.parents",
+            "dsd.timestamp",
             params.len() + 1,
         );
 
@@ -1766,8 +1762,8 @@ impl Store for PostgresStore {
             Self::where_clauses_and_params_for_filter(
                 view_filter,
                 Some("dsd.tags_array"),
-                Some("dsn.parents"),
-                Some("dsd.timestamp"),
+                "dsn.parents",
+                "dsd.timestamp",
                 p_idx,
             );
 
@@ -1956,8 +1952,8 @@ impl Store for PostgresStore {
         let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
             view_filter,
             Some("dsd.tags_array"),
-            Some("dsn.parents"),
-            Some("dsd.timestamp"),
+            "dsn.parents",
+            "dsd.timestamp",
             params.len() + 1,
         );
 
@@ -2977,8 +2973,8 @@ impl Store for PostgresStore {
         let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
             view_filter,
             Some("t.tags_array"),
-            Some("dsn.parents"),
-            Some("t.timestamp"),
+            "dsn.parents",
+            "t.timestamp",
             params.len() + 1,
         );
 
@@ -3299,8 +3295,8 @@ impl Store for PostgresStore {
         let (filter_clauses, filter_params, mut p_idx) = Self::where_clauses_and_params_for_filter(
             &view_filter,
             None,
-            Some("dsn.parents"),
-            Some("dsn.timestamp"),
+            "dsn.parents",
+            "dsn.timestamp",
             params.len() + 1,
         );
 
