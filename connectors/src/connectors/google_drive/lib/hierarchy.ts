@@ -54,3 +54,22 @@ export const getFileParentsMemoized = cacheWithRedis(
   },
   60 * 10 * 1000
 );
+
+export const getFileParentsForUpsert = async (
+  connectorId: ModelId,
+  authCredentials: OAuth2Client,
+  driveFile: GoogleDriveObjectType,
+  startSyncTs: number
+) => {
+  const parents = (
+    await getFileParentsMemoized(
+      connectorId,
+      authCredentials,
+      driveFile,
+      startSyncTs
+    )
+  ).map((f) => f.id);
+  parents.push(driveFile.id);
+  parents.reverse();
+  return parents;
+};
