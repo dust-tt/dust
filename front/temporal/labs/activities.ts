@@ -37,7 +37,10 @@ import {
   retrieveGoogleTranscriptContent,
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/utils/google";
-import { retrieveModjoTranscriptContent } from "@app/temporal/labs/utils/modjo";
+import {
+  retrieveModjoTranscriptContent,
+  retrieveModjoTranscripts,
+} from "@app/temporal/labs/utils/modjo";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -105,7 +108,13 @@ export async function retrieveNewTranscriptsActivity(
       break;
 
     case "modjo":
-      console.log("MODJO TBD");
+      const modjoTranscriptsIds = await retrieveModjoTranscripts(
+        auth,
+        transcriptsConfiguration,
+        localLogger
+      );
+      transcriptsIdsToProcess.push(...modjoTranscriptsIds);
+      break;
       break;
 
     default:

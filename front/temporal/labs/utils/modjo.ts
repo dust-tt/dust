@@ -114,7 +114,7 @@ export async function retrieveModjoTranscripts(
 
   const flags = await getFeatureFlags(workspace);
   const daysOfHistory = flags.includes("labs_transcripts_gong_full_storage")
-    ? 140
+    ? 14
     : 1;
 
   const fromDateTime = new Date(
