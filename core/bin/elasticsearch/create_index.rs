@@ -33,15 +33,15 @@ struct Args {
     #[arg(long, help = "The version of the index")]
     index_version: u32,
 
-    #[arg(long, help = "The region of the index (local or us-central-1)")]
-    #[arg(value_enum)]
-    region: Region,
+    #[arg(long, help = "Skip confirmation")]
+    skip_confirmation: bool,
 }
+
 /*
  * Create an index in Elasticsearch for core
  *
  * Usage:
- * cargo run --bin create_index -- --index-name <index_name> --index-version <version> --region <region>
+ * cargo run --bin create_index -- --index-name <index_name> --index-version <version> [--skip-confirmation]
  *
  * Look for index settings and mappings in src/search_stores/indices/[index_name]_[version].settings.[region].json
  * Create the index with the given settings and mappings at [index_name]_[version], and set the alias to [index_name]
@@ -52,13 +52,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let index_alias = args.index_name;
     let index_version = args.index_version;
-    let region = args.region;
-    let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
 
+    let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
     let username =
         std::env::var("ELASTICSEARCH_USERNAME").expect("ELASTICSEARCH_USERNAME must be set");
     let password =
         std::env::var("ELASTICSEARCH_PASSWORD").expect("ELASTICSEARCH_PASSWORD must be set");
+
+    let region = std::env::var("DUST_REGION").expect("DUST_REGION must be set");
 
     // create ES client
     let credentials = Credentials::Basic(username, password);
@@ -129,6 +130,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             index_alias.clone(): {}
         }
     });
+
+    // confirm creation
+    if !args.skip_confirmation {
+        println!(
+            "CHECK: Create index '{}' with alias '{}' in region '{}'? (y to confirm)",
+            index_fullname, index_alias, region
+        );
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+        if input.trim() != "y" {
+            return Err(anyhow::anyhow!("Aborted").into());
+        }
+    }
 
     // create index with settings, mappings and alias
     let response = client
