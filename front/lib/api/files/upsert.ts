@@ -9,6 +9,7 @@ import {
   Err,
   getSmallWhitelistedModel,
   isSupportedDelimitedTextContentType,
+  isSupportedImageContentType,
   Ok,
   removeNulls,
   slugify,
@@ -66,37 +67,39 @@ async function generateSnippet(
   const startTime = Date.now();
   const owner = auth.getNonNullableWorkspace();
 
+  if (isSupportedImageContentType(file.contentType)) {
+    return new Err(
+      new Error("Image files are not supported for file snippets.")
+    );
+  }
+
+  if (isSupportedDelimitedTextContentType(file.contentType)) {
+    // Parse only the headers from the CSV file
+    const headers = content.split("\n")[0];
+
+    let snippet = `${file.contentType} file with headers: ${headers}`;
+    if (snippet.length > 256) {
+      snippet = snippet.slice(0, 242) + "... (truncated)";
+    }
+
+    return new Ok(snippet);
+  }
+
   switch (file.contentType) {
-    case "image/jpeg":
-    case "image/png":
-      return new Err(
-        new Error("Image files are not supported for file snippets.")
-      );
-    case "text/csv":
-    case "text/comma-separated-values":
-    case "text/tsv":
-    case "text/tab-separated-values":
-      const format =
-        file.contentType === "text/csv" ||
-        file.contentType === "text/comma-separated-values"
-          ? "csv"
-          : "tsv";
-
-      // Parse only the headers from the CSV file
-      const headers = content.split("\n")[0];
-
-      let snippet = `${format.toUpperCase()} file with headers: ${headers}`;
-      if (snippet.length > 256) {
-        snippet = snippet.slice(0, 242) + "... (truncated)";
-      }
-
-      return new Ok(snippet);
-    case "text/markdown":
-    case "text/plain":
-    case "text/vnd.dust.attachment.slack.thread":
     case "application/msword":
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     case "application/pdf":
+    case "text/plain":
+    case "text/markdown":
+    case "text/html":
+    case "text/xml":
+    case "text/calendar":
+    case "text/css":
+    case "text/javascript":
+    case "application/json":
+    case "application/xml":
+    case "application/x-sh":
+    case "text/vnd.dust.attachment.slack.thread":
       if (!ENABLE_LLM_SNIPPETS) {
         // Take the first 256 characters
         if (content.length > 256) {
@@ -214,6 +217,7 @@ async function generateSnippet(
           assertNever(run);
       }
       break;
+
     default:
       assertNever(file.contentType);
   }
@@ -311,6 +315,10 @@ const getProcessingFunction = ({
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
+  if (isSupportedImageContentType(contentType)) {
+    return undefined;
+  }
+
   // Use isSupportedDelimitedTextContentType() everywhere to have a common source of truth
   if (isSupportedDelimitedTextContentType(contentType)) {
     if (
@@ -333,14 +341,17 @@ const getProcessingFunction = ({
     case "text/markdown":
     case "text/plain":
     case "text/vnd.dust.attachment.slack.thread":
+    case "text/html":
+    case "text/xml":
+    case "text/calendar":
+    case "text/css":
+    case "text/javascript":
+    case "application/json":
+    case "application/xml":
+    case "application/x-sh":
       if (useCase === "conversation" || useCase === "tool_output") {
         return upsertDocumentToDatasource;
       }
-      break;
-
-    case "image/jpeg":
-    case "image/png":
-      // We do nothing for images.
       break;
 
     default:

@@ -4,7 +4,6 @@ import type {
   SupportedContentFragmentType,
 } from "@dust-tt/types";
 import {
-  assertNever,
   isAgentMessageType,
   isContentFragmentType,
   isSupportedDelimitedTextContentType,
@@ -14,52 +13,21 @@ import {
 function isConversationIncludableFileContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
+  // We allow including everything except images.
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
-  // We allow including everything except images.
-  switch (contentType) {
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/pdf":
-    case "text/markdown":
-    case "text/plain":
-    case "dust-application/slack":
-    case "text/vnd.dust.attachment.slack.thread":
-    case "text/comma-separated-values":
-    case "text/csv":
-    case "text/tab-separated-values":
-    case "text/tsv":
-      return true;
-
-    default:
-      assertNever(contentType);
-  }
+  return true;
 }
 
 function isQueryableContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
-  if (isSupportedImageContentType(contentType)) {
-    return false;
-  }
+  // For now we only allow querying tabular files.
   if (isSupportedDelimitedTextContentType(contentType)) {
     return true;
   }
-  // For now we only allow querying tabular files.
-  switch (contentType) {
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/pdf":
-    case "text/markdown":
-    case "text/plain":
-    case "dust-application/slack":
-    case "text/vnd.dust.attachment.slack.thread":
-      return false;
-
-    default:
-      assertNever(contentType);
-  }
+  return false;
 }
 
 function isSearchableContentType(
@@ -71,20 +39,8 @@ function isSearchableContentType(
   if (isSupportedDelimitedTextContentType(contentType)) {
     return false;
   }
-  // For now we only allow searching text files.
-  switch (contentType) {
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/pdf":
-    case "text/markdown":
-    case "text/plain":
-    case "dust-application/slack":
-    case "text/vnd.dust.attachment.slack.thread":
-      return true;
-
-    default:
-      assertNever(contentType);
-  }
+  // For now we allow searching everything else.
+  return true;
 }
 
 function isListableContentType(

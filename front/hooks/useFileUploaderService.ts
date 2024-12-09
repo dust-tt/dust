@@ -140,7 +140,7 @@ export function useFileUploaderService({
               new FileBlobUploadError(
                 "file_type_not_supported",
                 file,
-                `File "${file.name}" is not supported.`
+                `File "${file.name}" is not supported (${contentType}).`
               )
             )
           );

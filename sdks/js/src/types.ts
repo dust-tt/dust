@@ -77,6 +77,14 @@ export const supportedRawText = {
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
+  "text/html": [".html", ".htm", ".xhtml", ".xhtml+xml"],
+  "text/xml": [".xml"],
+  "text/calendar": [".ics"],
+  "text/css": [".css"],
+  "text/javascript": [".js", ".mjs"],
+  "application/json": [".json"],
+  "application/xml": [".xml"],
+  "application/x-sh": [".sh"],
 } as const;
 
 // Supported content types for plain text (after processing).

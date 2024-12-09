@@ -80,6 +80,14 @@ const supportedRawText = {
   "text/markdown": [".md", ".markdown"],
   "text/plain": [".txt"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
+  "text/html": [".html", ".htm", ".xhtml", ".xhtml+xml"],
+  "text/xml": [".xml"],
+  "text/calendar": [".ics"],
+  "text/css": [".css"],
+  "text/javascript": [".js", ".mjs"],
+  "application/json": [".json"],
+  "application/xml": [".xml"],
+  "application/x-sh": [".sh"],
 };
 
 // Supported content types for plain text (after processing).
