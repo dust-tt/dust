@@ -16,14 +16,14 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 };
 
 // Define provider type separately for better reuse
-const TranscriptProvider = t.union([
+export const acceptableTranscriptProvidersCodec = t.union([
   t.literal("google_drive"),
   t.literal("gong"),
   t.literal("modjo"),
 ]);
 
 const BaseConfiguration = t.type({
-  provider: TranscriptProvider,
+  provider: acceptableTranscriptProvidersCodec,
 });
 
 const ConnectionConfig = t.intersection([
@@ -101,13 +101,17 @@ async function handler(
       }
 
       const validatedBody = bodyValidation.right;
+      const { provider } = validatedBody;
       const connectionId =
         "connectionId" in validatedBody
           ? validatedBody.connectionId
           : undefined;
       const apiKey =
         "apiKey" in validatedBody ? validatedBody.apiKey : undefined;
-      const { provider, apiKeyIsEncrypted } = validatedBody;
+      const apiKeyIsEncrypted =
+        "apiKeyIsEncrypted" in validatedBody
+          ? validatedBody.apiKeyIsEncrypted
+          : undefined;
 
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
