@@ -9,6 +9,7 @@ import { apiError } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
   conversationId: string;
+  messageId: string;
 };
 
 async function handler(
@@ -72,10 +73,12 @@ async function handler(
         });
       }
 
-      const conversationId =
-        await AgentMessageFeedbackResource.fetchConversationId(feedbackId);
+      const messageAndConversation =
+        await AgentMessageFeedbackResource.fetchMessageAndConversationId(
+          feedbackId
+        );
 
-      if (!conversationId) {
+      if (!messageAndConversation) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -85,8 +88,11 @@ async function handler(
         });
       }
 
+      const { conversationId, messageId } = messageAndConversation;
+
       return res.status(200).json({
         conversationId,
+        messageId,
       });
     default:
       return apiError(req, res, {
