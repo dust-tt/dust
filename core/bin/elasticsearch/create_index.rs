@@ -66,7 +66,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let u = Url::parse(&url)?;
     let conn_pool = SingleNodeConnectionPool::new(u);
     let mut transport_builder = TransportBuilder::new(conn_pool);
-    transport_builder = transport_builder.auth(credentials);
+    transport_builder = transport_builder
+        .auth(credentials)
+        .disable_proxy()
+        .cert_validation(elasticsearch::cert::CertificateValidation::None);
     let transport = transport_builder.build()?;
 
     let client = Elasticsearch::new(transport);
