@@ -302,11 +302,15 @@ function FeedbackCard({
     <ContentMessage variant="slate" className="my-2">
       <div className="justify-content-around mb-3 flex items-center gap-2">
         <div className="flex w-full items-center gap-2">
-          <Avatar
-            size="xs"
-            visual={userDetails?.image || undefined}
-            name={userDetails?.firstName || "?"}
-          />
+          {userDetails?.image ? (
+            <Avatar
+              size="xs"
+              visual={userDetails?.image}
+              name={userDetails?.firstName || "?"}
+            />
+          ) : (
+            <Spinner size="xs" />
+          )}
           {userDetails?.firstName} {userDetails?.lastName}
         </div>
         <div className="flex-shrink-0 text-xs text-muted-foreground">
