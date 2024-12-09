@@ -14,6 +14,7 @@ import MistralAISetup from "@app/components/providers/MistralAISetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
+import TogetherAISetup from "@app/components/providers/TogetherAISetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -56,6 +57,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const [serpapiOpen, setSerpapiOpen] = useState(false);
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
+  const [togetherAiOpen, setTogetherAiOpen] = useState(false);
 
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
     owner,
@@ -129,6 +131,13 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         setOpen={setGoogleAiStudioOpen}
         enabled={!!configs["google_ai_studio"]}
         config={configs["google_ai_studio"] ?? null}
+      />
+      <TogetherAISetup
+        owner={owner}
+        open={togetherAiOpen}
+        setOpen={setTogetherAiOpen}
+        enabled={!!configs["togetherai"]}
+        config={configs["togetherai"] ?? null}
       />
       <SerpAPISetup
         owner={owner}
@@ -213,6 +222,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                           break;
                         case "google_ai_studio":
                           setGoogleAiStudioOpen(true);
+                          break;
+                        case "togetherai":
+                          setTogetherAiOpen(true);
                           break;
                       }
                     }}
