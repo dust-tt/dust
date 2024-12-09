@@ -23,6 +23,7 @@ import {
   handleTextFile,
 } from "@connectors/connectors/shared/file";
 import {
+  deleteFolderNode,
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -393,9 +394,11 @@ const getParentId = cacheWithRedis(
 
 export async function deleteFolder({
   connectorId,
+  dataSourceConfig,
   internalId,
 }: {
   connectorId: number;
+  dataSourceConfig: DataSourceConfig;
   internalId: string;
 }) {
   const folder = await MicrosoftNodeResource.fetchByInternalId(
@@ -422,6 +425,8 @@ export async function deleteFolder({
     // underlying folder
     throw new Error("Unexpected: attempt to delete folder with root node");
   }
+
+  await deleteFolderNode({ dataSourceConfig, folderId: internalId });
 
   if (folder) {
     await folder.delete();
@@ -520,6 +525,7 @@ export async function recursiveNodeDeletion(
     }
     await deleteFolder({
       connectorId,
+      dataSourceConfig,
       internalId: node.internalId,
     });
     deletedFiles.push(node.internalId);
