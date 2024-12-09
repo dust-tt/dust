@@ -1,10 +1,15 @@
 import { isDevelopment } from "@dust-tt/types";
 import assert from "assert";
-import types, { builtins } from "pg-types";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@app/lib/resources/storage/config";
 import logger from "@app/logger/logger";
+
+// Directly require 'pg' here to make sure we are using the same version of the
+// package as the one used by pg package.
+// The doc recommends doing this : https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const types = require("pg").types;
 
 const acquireAttempts = new WeakMap();
 
@@ -19,7 +24,7 @@ function sequelizeLogger(message: string) {
 // prevents silent precision loss when handling large integers from the database.
 // Throws an assertion error if a BIGINT value exceeds JavaScript's safe integer
 // limits.
-types.setTypeParser(builtins.INT8, function (val) {
+types.setTypeParser(types.builtins.INT8, function (val: any) {
   assert(
     Number.isSafeInteger(Number(val)),
     `Found a value stored as a BIGINT that is not a safe integer: ${val}`
