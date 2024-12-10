@@ -1488,7 +1488,7 @@ async fn data_sources_documents_update_parents(
             },
             node_type = "document",
             operation = "update_parents",
-            "[KWSEARCH] invariant: first parent must be the node itself"
+            "[KWSEARCH] invariant_first_parent_self"
         );
     }
 
@@ -1649,7 +1649,7 @@ async fn data_sources_documents_upsert(
             },
             node_type = "document",
             operation = "upsert",
-            "[KWSEARCH] invariant: first parent must be the node itself"
+            "[KWSEARCH] invariant_first_parent_self"
         );
     }
 
@@ -2106,7 +2106,7 @@ async fn tables_upsert(
             },
             node_type = "table",
             operation = "upsert",
-            "[KWSEARCH] invariant: first parent must be the node itself"
+            "[KWSEARCH] invariant_first_parent_self"
         );
     }
 
@@ -2357,7 +2357,7 @@ async fn tables_update_parents(
             },
             node_type = "table",
             operation = "update_parents",
-            "[KWSEARCH] invariant: first parent must be the node itself"
+            "[KWSEARCH] invariant_first_parent_self"
         );
     }
 
@@ -2756,7 +2756,7 @@ async fn folders_upsert(
             },
             node_type = "folder",
             operation = "upsert",
-            "[KWSEARCH] invariant: first parent must be the node itself"
+            "[KWSEARCH] invariant_first_parent_self"
         );
     }
 
