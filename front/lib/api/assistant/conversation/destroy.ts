@@ -8,6 +8,7 @@ import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
@@ -155,6 +156,9 @@ export async function destroyConversation(
 
     await UserMessage.destroy({
       where: { id: userMessageIds },
+    });
+    await AgentMessageContent.destroy({
+      where: { agentMessageId: agentMessageIds },
     });
     await AgentMessageFeedback.destroy({
       where: { agentMessageId: agentMessageIds },

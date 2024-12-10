@@ -63,6 +63,7 @@ import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -236,6 +237,11 @@ export async function deleteConversationsActivity({
                       transaction: t,
                     });
                   }
+
+                  await AgentMessageContent.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
 
                   await AgentMessageFeedback.destroy({
                     where: { agentMessageId: agentMessage.id },
