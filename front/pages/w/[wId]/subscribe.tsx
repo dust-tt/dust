@@ -57,9 +57,9 @@ export default function Subscribe({
   // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
   // Current plan is either FREE_NO_PLAN or FREE_TEST_PLAN if you're on this paywall.
   // FREE_NO_PLAN is not on the database, checking it comes down to having at least 1 subscription.
-  const hasPreviousSubscription =
-    subscriptions?.length > 0 &&
-    (subscriptions.length >= 2 || !isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
+  const noPreviousSubscription =
+    subscriptions.length === 0 ||
+    (subscriptions.length === 1 && isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
@@ -133,7 +133,7 @@ export default function Subscribe({
                   icon={CreditCardIcon}
                   title="Setting up your subscription"
                 />
-                {hasPreviousSubscription ? (
+                {!noPreviousSubscription ? (
                   <>
                     <Page.P>
                       <span className="font-bold">
@@ -192,7 +192,7 @@ export default function Subscribe({
                 <Button
                   variant="primary"
                   label={
-                    hasPreviousSubscription
+                    !noPreviousSubscription
                       ? billingPeriod === "monthly"
                         ? "Resume with monthly billing"
                         : "Resume with yearly billing"
