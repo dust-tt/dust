@@ -1,4 +1,3 @@
-import { Avatar } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 
 import {
@@ -8,7 +7,6 @@ import {
 } from "@app/components/home/Carousel";
 import {
   BlogBlock,
-  ImgBlock,
   MetricComponent,
   Quote,
 } from "@app/components/home/ContentBlocks";
@@ -20,6 +18,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
@@ -156,6 +155,7 @@ export default function CustomerSupport() {
           from="from-amber-200"
           to="to-amber-500"
         />
+
         <SolutionSection
           title="Top customer support use-cases."
           blocks={[
@@ -172,7 +172,7 @@ export default function CustomerSupport() {
                   ],
                 },
                 {
-                  title: <>Boost Team Productivity.</>,
+                  title: <>Boost team productivity.</>,
                   content: [
                     <>
                       Keep teams synchronized with real-time access to
@@ -192,10 +192,10 @@ export default function CustomerSupport() {
                 },
               ],
               assistantBlocks: [
+                assistantExamples[0],
                 assistantExamples[1],
                 assistantExamples[2],
                 assistantExamples[3],
-                assistantExamples[4],
               ],
             },
           ]}
@@ -271,44 +271,40 @@ export default function CustomerSupport() {
 const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
-    name: "@TicketResolution",
+    name: "Ticket Resolution",
     backgroundColor: "bg-sky-300",
     description: (
-      <>
-        Generates personalized and&nbsp;effective cold emails or&nbsp;follow-up
-        emails with the&nbsp;context of&nbsp;the relationship
-      </>
+      <>Smart answer suggestions and contextual knowledge at your fingertips.</>
     ),
   },
   {
     emoji: "🔎",
-    name: "@AgentCoaching",
+    name: "Agent Coaching",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Creates a&nbsp;snapshot by&nbsp;retrieving data from&nbsp;your CRM,
-        Slack, Notion, including health and&nbsp;sentiment to&nbsp;understand
-        where to&nbsp;focus attention
+        Helps new support agents learn bst practices and company knowledge
+        faster.
       </>
     ),
   },
   {
     emoji: "📞",
-    name: "@DocumentationBuilder",
+    name: "Documentation Builder",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Points to&nbsp;battle cards, competitive intelligence,
-        and&nbsp;objection handling documentation to&nbsp;increase conversion
+        Converts resolved support tickets into searchable knowledge base
+        articles and FAQ.
       </>
     ),
   },
   {
     emoji: "📊",
-    name: "@CustomerVoice",
+    name: "Customer Voice",
     backgroundColor: "bg-sky-300",
     description: (
-      <>Answers any question on&nbsp;revenue metrics directly from&nbsp;Slack</>
+      <>Turn customer feedback from every channel into actionable insights.</>
     ),
   },
 ];

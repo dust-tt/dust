@@ -115,6 +115,7 @@ const renderSolutionSectionBlock = ({
     </div>
   );
 };
+
 interface SolutionSectionContentBlockProps {
   title: ReactNode;
   content: ReactNode | ReactNode[];
