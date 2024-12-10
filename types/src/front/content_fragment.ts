@@ -1,11 +1,6 @@
-import * as t from "io-ts";
-
 import { ModelId } from "../shared/model_id";
 import { MessageType, MessageVisibility } from "./assistant/conversation";
-import {
-  supportedInlinedContentType,
-  supportedUploadableContentType,
-} from "./files";
+import { SupportedFileContentType } from "./files";
 
 export type ContentFragmentContextType = {
   username: string | null;
@@ -14,24 +9,11 @@ export type ContentFragmentContextType = {
   profilePictureUrl: string | null;
 };
 
-export const supportedContentFragmentType = [
-  ...supportedUploadableContentType,
-  "dust-application/slack",
-] as const;
+export type ContentFragmentVersion = "superseded" | "latest";
 
 export type SupportedContentFragmentType =
-  (typeof supportedContentFragmentType)[number];
-
-export function getSupportedInlinedContentTypeCodec() {
-  const [first, second, ...rest] = supportedInlinedContentType;
-  return t.union([
-    t.literal(first),
-    t.literal(second),
-    ...rest.map((value) => t.literal(value)),
-  ]);
-}
-
-export type ContentFragmentVersion = "superseded" | "latest";
+  | SupportedFileContentType
+  | "dust-application/slack"; // Legacy
 
 export type ContentFragmentType = {
   id: ModelId;

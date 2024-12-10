@@ -1,4 +1,7 @@
 // Types.
+import { removeNulls } from "../shared/utils/general";
+
+const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
 export type FileStatus = "created" | "failed" | "ready";
 
@@ -27,9 +30,13 @@ export interface FileType {
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
 
+export type FileFormatCategory = "image" | "data" | "code" | "delimited";
+
 // Define max sizes for each category.
-export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
-  plainText: 30 * 1024 * 1024, // 30MB.
+export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
+  data: 30 * 1024 * 1024, // 30MB.
+  code: 30 * 1024 * 1024, // 30MB.
+  delimited: 30 * 1024 * 1024, // 30MB.
   image: 5 * 1024 * 1024, // 5 MB
 };
 
@@ -56,144 +63,181 @@ export function ensureFileSize(
   contentType: SupportedFileContentType,
   fileSize: number
 ): boolean {
-  if (isSupportedPlainTextContentType(contentType)) {
-    return fileSize <= MAX_FILE_SIZES.plainText;
-  }
+  const format = getFileFormat(contentType);
 
-  if (isSupportedImageContentType(contentType)) {
-    return fileSize <= MAX_FILE_SIZES.image;
+  if (format) {
+    return fileSize <= MAX_FILE_SIZES[format.cat];
   }
 
   return false;
 }
 
-// NOTE: if we add more content types, we need to update the public api package.
-const supportedDelimitedText = {
-  "text/comma-separated-values": [".csv"],
-  "text/csv": [".csv"],
-  "text/tab-separated-values": [".tsv"],
-  "text/tsv": [".tsv"],
-} as const;
-
-// Supported content types that are plain text and can be sent as file-less content fragment.
-const supportedRawText = {
-  "text/markdown": [".md", ".markdown"],
-  "text/plain": [".txt"],
-  "text/vnd.dust.attachment.slack.thread": [".txt"],
-  "text/html": [".html", ".htm", ".xhtml", ".xhtml+xml"],
-  "text/xml": [".xml"],
-  "text/calendar": [".ics"],
-  "text/css": [".css"],
-  "text/javascript": [".js", ".mjs"],
-  "application/json": [".json"],
-  "application/xml": [".xml"],
-  "application/x-sh": [".sh"],
+type FileFormat = {
+  cat: FileFormatCategory;
+  exts: string[];
 };
 
-// Supported content types for plain text (after processing).
-const supportedPlainText = {
-  // We support all tabular content types as plain text.
-  ...supportedDelimitedText,
-  ...supportedRawText,
+// NOTE: if we add more content types, we need to update the public api package. (but the typechecker should catch it)
+const FILE_FORMATS = {
+  // Images
+  "image/jpeg": { cat: "image", exts: [".jpg", ".jpeg"] },
+  "image/png": { cat: "image", exts: [".png"] },
+  "image/gif": { cat: "image", exts: [".gif"] },
+  "image/webp": { cat: "image", exts: [".webp"] },
 
-  "application/msword": [".doc", ".docx"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-    ".doc",
-    ".docx",
-  ],
-  "application/pdf": [".pdf"],
-} as const;
+  // Structured
+  "text/csv": { cat: "delimited", exts: [".csv"] },
+  "text/comma-separated-values": { cat: "delimited", exts: [".csv"] },
+  "text/tsv": { cat: "delimited", exts: [".tsv"] },
+  "text/tab-separated-values": { cat: "delimited", exts: [".tsv"] },
 
-// Supported content types for images.
-const supportedImage = {
-  "image/jpeg": [".jpg", ".jpeg"],
-  "image/png": [".png"],
-} as const;
+  // Data
+  "text/plain": { cat: "data", exts: [".txt"] },
+  "text/markdown": { cat: "data", exts: [".md", ".markdown"] },
+  "text/vnd.dust.attachment.slack.thread": { cat: "data", exts: [".txt"] },
+  "text/calendar": { cat: "data", exts: [".ics"] },
+  "application/json": { cat: "data", exts: [".json"] },
+  "application/msword": { cat: "data", exts: [".doc", ".docx"] },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    cat: "data",
+    exts: [".doc", ".docx"],
+  },
+  "application/pdf": { cat: "data", exts: [".pdf"] },
 
-const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
+  // Code
+  "text/xml": { cat: "data", exts: [".xml"] },
+  "application/xml": { cat: "data", exts: [".xml"] },
+  "text/html": { cat: "data", exts: [".html", ".htm", ".xhtml", ".xhtml+xml"] },
+  "text/css": { cat: "code", exts: [".css"] },
+  "text/javascript": { cat: "code", exts: [".js", ".mjs"] },
+  "application/x-sh": { cat: "code", exts: [".sh"] },
+  // declare type here using satisfies to allow flexible typing for keys, FileFormat type for values and yet infer the keys of FILE_FORMATS correctly below
+} as const satisfies Record<string, FileFormat>;
 
-export const supportedPlainTextExtensions = uniq(
-  Object.values(supportedPlainText).flat()
-);
+// Define a type that is the list of all keys from FILE_FORMATS.
+export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
-const supportedImageExtensions = uniq(Object.values(supportedImage).flat());
+export type SupportedImageContentType = {
+  [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
+    cat: "image";
+  }
+    ? K
+    : never;
+}[keyof typeof FILE_FORMATS];
 
-export const supportedFileExtensions = uniq([
-  ...supportedPlainTextExtensions,
-  ...supportedImageExtensions,
-]);
+export type SupportedDelimitedTextContentType = {
+  [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
+    cat: "delimited";
+  }
+    ? K
+    : never;
+}[keyof typeof FILE_FORMATS];
 
-const supportedPlainTextContentTypes = Object.keys(
-  supportedPlainText
-) as (keyof typeof supportedPlainText)[];
-const supportedImageContentTypes = Object.keys(
-  supportedImage
-) as (keyof typeof supportedImage)[];
-const supportedDelimitedTextContentTypes = Object.keys(
-  supportedDelimitedText
-) as (keyof typeof supportedDelimitedText)[];
-const supportedRawTextContentTypes = Object.keys(
-  supportedRawText
-) as (keyof typeof supportedRawText)[];
+export type SupportedNonImageContentType = {
+  [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
+    cat: "image";
+  }
+    ? never
+    : K;
+}[keyof typeof FILE_FORMATS];
 
 // All the ones listed above
-export const supportedUploadableContentType = [
-  ...supportedPlainTextContentTypes,
-  ...supportedImageContentTypes,
-];
-export const supportedInlinedContentType = [
-  ...supportedDelimitedTextContentTypes,
-  ...supportedRawTextContentTypes,
-];
-
-// Infer types from the arrays.
-type PlainTextContentType = keyof typeof supportedPlainText;
-type ImageContentType = keyof typeof supportedImage;
-type DelimitedTextContentType = keyof typeof supportedDelimitedText;
-
-// Union type for all supported content types.
-export type SupportedFileContentType = PlainTextContentType | ImageContentType;
+export const supportedUploadableContentType = Object.keys(FILE_FORMATS);
 
 export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {
-  return supportedUploadableContentType.includes(
-    contentType as SupportedFileContentType
-  );
-}
-
-function isSupportedPlainTextContentType(
-  contentType: string
-): contentType is PlainTextContentType {
-  return supportedPlainTextContentTypes.includes(
-    contentType as PlainTextContentType
-  );
+  return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
 export function isSupportedImageContentType(
   contentType: string
-): contentType is ImageContentType {
-  return supportedImageContentTypes.includes(contentType as ImageContentType);
+): contentType is SupportedImageContentType {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.cat === "image";
+  }
+
+  return false;
 }
 
 export function isSupportedDelimitedTextContentType(
   contentType: string
-): contentType is DelimitedTextContentType {
-  return supportedDelimitedTextContentTypes.includes(
-    contentType as DelimitedTextContentType
-  );
+): contentType is SupportedDelimitedTextContentType {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.cat === "delimited";
+  }
+
+  return false;
+}
+
+export function getFileFormatCategory(
+  contentType: string
+): FileFormatCategory | null {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.cat;
+  }
+
+  return null;
+}
+
+function getFileFormat(contentType: string): FileFormat | null {
+  if (isSupportedFileContentType(contentType)) {
+    const format = FILE_FORMATS[contentType];
+
+    if (format) {
+      return format;
+    }
+  }
+
+  return null;
 }
 
 export function extensionsForContentType(
   contentType: SupportedFileContentType
 ): string[] {
-  if (isSupportedPlainTextContentType(contentType)) {
-    return [...supportedPlainText[contentType]];
-  }
+  const format = getFileFormat(contentType);
 
-  if (isSupportedImageContentType(contentType)) {
-    return [...supportedImage[contentType]];
+  if (format) {
+    return format.exts;
   }
 
   return [];
+}
+
+export function getSupportedFileExtensions(
+  cat: FileFormatCategory | undefined = undefined
+) {
+  return uniq(
+    removeNulls(
+      Object.values(FILE_FORMATS).flatMap((format) =>
+        !cat || format.cat === cat ? format.exts : []
+      )
+    )
+  );
+}
+
+export function getSupportedNonImageFileExtensions() {
+  return uniq(
+    removeNulls(
+      Object.values(FILE_FORMATS).flatMap((format) =>
+        format.cat !== "image" ? format.exts : []
+      )
+    )
+  );
+}
+
+export function getSupportedNonImageMimeTypes() {
+  return uniq(
+    removeNulls(
+      Object.entries(FILE_FORMATS).map(([key, value]) =>
+        value.cat !== "image" ? (key as SupportedNonImageContentType) : null
+      )
+    )
+  );
 }
