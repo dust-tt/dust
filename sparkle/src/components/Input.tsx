@@ -32,9 +32,11 @@ const messageVariantStyles: Record<MessageStatus, string> = {
 };
 
 const stateVariantStyles: Record<InputStateType, string> = {
-  default: "",
+  default:
+    "s-border-border-dark/50 s-ring-highlight/0 focus-visible:s-border-border-focus focus-visible:s-outline-none focus-visible:s-ring-highlight/10",
   disabled: "disabled:s-cursor-not-allowed disabled:s-text-muted-foreground",
-  error: "focus:s-ring-ring-warning",
+  error:
+    "s-border-border-warning/30 s-ring-warning/0 focus-visible:s-border-border-warning focus-visible:s-outline-none focus-visible:s-ring-warning/10",
 };
 
 const messageVariant = cva("", {
@@ -48,10 +50,10 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark/50 s-bg-muted-background s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "s-text-sm s-bg-background s-rounded-xl s-bg-muted-background s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "s-border focus-visible:s-ring",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-    "placeholder:s-text-muted-foreground",
-    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-border-border-dark"
+    "placeholder:s-text-muted-foreground"
   ),
   {
     variants: {
