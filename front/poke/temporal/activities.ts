@@ -523,10 +523,9 @@ export async function deleteMembersActivity({
       transaction: t,
     });
 
-    const { memberships } = await MembershipResource.getLatestMemberships({
-      workspace,
-      transaction: t,
-    });
+    const { memberships } = await MembershipResource.getMembershipsForWorkspace(
+      { workspace, transaction: t }
+    );
 
     for (const membership of memberships) {
       const user = await UserResource.fetchByModelId(membership.userId, t);
