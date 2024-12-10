@@ -78,22 +78,18 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
   },
 });
 
-export function Chip({
-  size,
-  color,
-  label,
-  children,
-  className,
-  isBusy,
-  icon,
-}: ChipProps) {
-  return (
+const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
+  (
+    { size, color, label, children, className, isBusy, icon }: ChipProps,
+    ref
+  ) => (
     <div
       className={cn(
         chipVariants({ size, background: color, text: color }),
         className
       )}
       aria-label={label}
+      ref={ref}
     >
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {label && (
@@ -107,26 +103,9 @@ export function Chip({
       )}
       {children}
     </div>
-  );
-}
+  )
+);
 
-interface ListChipProps {
-  children: ReactNode;
-  className?: string;
-  isWrapping?: boolean;
-}
+Chip.displayName = "Chip";
 
-Chip.List = function ({ children, className, isWrapping }: ListChipProps) {
-  return (
-    <div className={cn("s-flex", className)}>
-      <div
-        className={cn(
-          "s-flex s-flex-row s-gap-2",
-          isWrapping ? "s-flex-wrap" : ""
-        )}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
+export { Chip };

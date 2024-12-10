@@ -36,23 +36,23 @@ interface TooltipProps extends TooltipContentProps {
   triggerAsChild?: boolean;
 }
 
-function Tooltip({
-  trigger,
-  tooltipTriggerAsChild = false,
-  label,
-  ...props
-}: TooltipProps) {
-  return (
+const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
+  (
+    { trigger, tooltipTriggerAsChild = false, label, ...props }: TooltipProps,
+    ref
+  ) => (
     <TooltipProvider>
       <TooltipRoot>
         <TooltipTrigger asChild={tooltipTriggerAsChild}>
           {trigger}
         </TooltipTrigger>
-        <TooltipContent {...props}>{label}</TooltipContent>
+        <TooltipContent {...props} ref={ref}>
+          {label}
+        </TooltipContent>
       </TooltipRoot>
     </TooltipProvider>
-  );
-}
+  )
+);
 
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
