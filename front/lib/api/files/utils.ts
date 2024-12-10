@@ -63,7 +63,8 @@ export const parseUploadRequest = async (
         return new Err({
           name: "dust_error",
           code: "file_too_large",
-          message: "File is too large.",
+          message:
+            "File is too large or the size passed to the File instance in the DB does not match the size of the uploaded file.",
         });
       }
       // entire message: options.allowEmptyFiles is false, file size should be greater than 0

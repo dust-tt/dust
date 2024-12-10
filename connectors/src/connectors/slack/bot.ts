@@ -801,13 +801,16 @@ async function makeContentFragment(
   const contentType = "text/vnd.dust.attachment.slack.thread";
   const fileName = `slack_thread-${channel.channel.name}-${threadTs}.txt`;
 
+  const blob = new Blob([section]);
+  const fileSize = blob.size;
+
   const fileRes = await dustAPI.uploadFile({
     contentType,
     fileName,
-    fileSize: section.length,
+    fileSize: fileSize,
     useCase: "conversation",
     useCaseMetadata: conversationId ? { conversationId } : undefined,
-    fileObject: new File([section], fileName, { type: contentType }),
+    fileObject: new File([blob], fileName, { type: contentType }),
   });
 
   if (fileRes.isErr()) {
