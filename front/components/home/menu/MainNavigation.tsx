@@ -4,8 +4,6 @@ import * as React from "react";
 
 import { H4, Strong } from "@app/components/home/ContentComponents";
 import { menuConfig } from "@app/components/home/menu/config";
-import { classNames } from "@app/lib/utils";
-
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -14,7 +12,8 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-} from "./NavigationMenu";
+} from "@app/components/home/menu/NavigationMenu";
+import { classNames } from "@app/lib/utils";
 
 export function MainNavigation() {
   return (
