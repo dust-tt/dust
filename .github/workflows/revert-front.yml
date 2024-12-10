@@ -2,6 +2,11 @@ name: Revert Front
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "The image tag/SHA to deploy"
+        type: string
+        required: true
 
 env:
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
@@ -14,25 +19,57 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Notify Build And Deploy Start
+        id: build_message
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "start"
+          component: "Revert front"
+          image_tag: ${{ inputs.image_tag }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
           credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
 
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            dust-infra
 
-      - name: Install gke-gcloud-auth-plugin
-        run: |
-          gcloud components install gke-gcloud-auth-plugin
+      - name: Trigger dust-infra workflow
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: 'dust-infra',
+              event_type: 'trigger-component-deploy',
+              client_payload: {
+                regions: 'us-central1',
+                component: 'front',
+                image_tag: '${{ inputs.image_tag }}',
+                slack_thread_ts: "${{ steps.build_message.outputs.thread_ts }}",
+                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}'
+              }
+            });
 
-      - name: Setup kubectl
-        run: |
-          gcloud container clusters get-credentials dust-kube --region us-central1
-
-      - name: Rollback the deployment
-        run: |
-          kubectl rollout undo deployment/front-deployment
-
-      - name: Wait for rollback to complete
-        run: kubectl rollout status deployment/front-deployment --timeout=10m
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          blocked: ${{ steps.check_deployment_blocked.outputs.blocked }}
+          component: "Revert front"
+          image_tag: ${{ inputs.image_tag }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ steps.build_message.outputs.thread_ts }}"

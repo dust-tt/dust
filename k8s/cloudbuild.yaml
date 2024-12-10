@@ -1,25 +1,19 @@
 steps:
-  - name: ghcr.io/depot/cli:latest
-    args:
-      - build
-      - --project
-      - 3vz0lnf16v
-      - -t
-      - gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA
-      - -t
-      - gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest
-      - --push
-      - -f
-      - ${_DOCKERFILE_PATH}
-      - --build-arg
-      - COMMIT_HASH=$SHORT_SHA
-      - --build-arg
-      - NEXT_PUBLIC_VIZ_URL=https://viz.dust.tt
-      - --build-arg
-      - NEXT_PUBLIC_GA_TRACKING_ID=G-K9HQ2LE04G
-      - --build-arg
-      - NEXT_PUBLIC_DUST_CLIENT_FACING_URL=${_DUST_CLIENT_FACING_URL}
-      - .
+  - id: 'Build Container Image'
+    name: 'ghcr.io/depot/cli:latest'
+    script: |
+      depot build \
+        --project 3vz0lnf16v \
+        --provenance=false \
+        -t us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA} \
+        -t us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
+        -f ${_DOCKERFILE_PATH} \
+        --build-arg COMMIT_HASH=${SHORT_SHA} \
+        --build-arg NEXT_PUBLIC_VIZ_URL=https://viz.dust.tt \
+        --build-arg NEXT_PUBLIC_GA_TRACKING_ID=G-K9HQ2LE04G \
+        --build-arg NEXT_PUBLIC_DUST_CLIENT_FACING_URL=${_DUST_CLIENT_FACING_URL} \
+        --push \
+        .
     secretEnv:
       - "DEPOT_TOKEN"
 
@@ -31,4 +25,5 @@ availableSecrets:
       env: DEPOT_TOKEN
 
 options:
+  automapSubstitutions: true
   logging: CLOUD_LOGGING_ONLY
