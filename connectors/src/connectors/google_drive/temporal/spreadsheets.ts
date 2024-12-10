@@ -11,10 +11,7 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
-import {
-  getFileParentsForUpsert,
-  getFileParentsMemoized,
-} from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getFileParentsForUpsert } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {

@@ -4,10 +4,7 @@ import type { OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import type { CreationAttributes } from "sequelize";
 
-import {
-  getFileParentsForUpsert,
-  getFileParentsMemoized,
-} from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getFileParentsForUpsert } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getMimeTypesToDownload,
   isGoogleDriveSpreadSheetFile,
