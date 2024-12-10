@@ -287,12 +287,9 @@ pub enum OpenAIContentBlock {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OpenAIContentBlockVec(pub Vec<OpenAIContentBlock>);
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum OpenAIChatMessageContent {
-    Structured(OpenAIContentBlockVec),
+    Structured(Vec<OpenAIContentBlock>),
     String(String),
 }
 
@@ -391,12 +388,12 @@ impl TryFrom<&ContentBlock> for OpenAIChatMessageContent {
 
     fn try_from(cm: &ContentBlock) -> Result<Self, Self::Error> {
         match cm {
-            ContentBlock::Text(t) => Ok(OpenAIChatMessageContent::Structured(
-                OpenAIContentBlockVec(vec![OpenAIContentBlock::TextContent(OpenAITextContent {
+            ContentBlock::Text(t) => Ok(OpenAIChatMessageContent::Structured(vec![
+                OpenAIContentBlock::TextContent(OpenAITextContent {
                     r#type: OpenAITextContentType::Text,
                     text: t.clone(),
-                })]),
-            )),
+                }),
+            ])),
             ContentBlock::Mixed(m) => {
                 let content: Vec<OpenAIContentBlock> = m
                     .into_iter()
@@ -418,9 +415,7 @@ impl TryFrom<&ContentBlock> for OpenAIChatMessageContent {
                     })
                     .collect::<Result<Vec<OpenAIContentBlock>>>()?;
 
-                Ok(OpenAIChatMessageContent::Structured(OpenAIContentBlockVec(
-                    content,
-                )))
+                Ok(OpenAIChatMessageContent::Structured(content))
             }
         }
     }
@@ -430,12 +425,12 @@ impl TryFrom<&String> for OpenAIChatMessageContent {
     type Error = anyhow::Error;
 
     fn try_from(t: &String) -> Result<Self, Self::Error> {
-        Ok(OpenAIChatMessageContent::Structured(OpenAIContentBlockVec(
-            vec![OpenAIContentBlock::TextContent(OpenAITextContent {
+        Ok(OpenAIChatMessageContent::Structured(vec![
+            OpenAIContentBlock::TextContent(OpenAITextContent {
                 r#type: OpenAITextContentType::Text,
                 text: t.clone(),
-            })],
-        )))
+            }),
+        ]))
     }
 }
 

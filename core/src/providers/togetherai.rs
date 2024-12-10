@@ -146,7 +146,7 @@ impl LLM for TogetherAILLM {
                 Some(OpenAIChatMessageContent::String(_)) => Some(m),
                 Some(OpenAIChatMessageContent::Structured(contents)) => {
                     // Find the first text content, and use it to make a string content.
-                    let content = contents.0.into_iter().find_map(|c| match c {
+                    let content = contents.into_iter().find_map(|c| match c {
                         OpenAIContentBlock::TextContent(OpenAITextContent {
                             r#type: OpenAITextContentType::Text,
                             text,
