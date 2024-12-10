@@ -37,6 +37,7 @@ import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
+import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
@@ -259,6 +260,14 @@ function DataSourceEditionModal({
   const isDataSourceOwner = editedByUser?.userId === user.sId;
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
+
+  if (dataSource.connectorProvider === "snowflake") {
+    return (
+      <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
+        Edit Snowflake
+      </DataSourceManagementModal>
+    );
+  }
 
   return (
     <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
@@ -747,21 +756,24 @@ export function ConnectorPermissionsModal({
         variant="side-md"
       >
         <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4">
-          <div className="flex">
-            {isOAuthProvider(connector.type) && (
-              <Button
-                className="ml-auto justify-self-end"
-                label="Edit permissions"
-                variant="outline"
-                icon={LockIcon}
-                onClick={() => {
-                  setModalToShow("edition");
-                }}
-              />
-            )}
+          <div className="flex flex-row justify-end gap-2">
+            {isOAuthProvider(connector.type) ||
+              (connector.type === "snowflake" && (
+                <Button
+                  label={
+                    connector.type !== "snowflake"
+                      ? "Edit permissions"
+                      : "Edit connection"
+                  }
+                  variant="outline"
+                  icon={LockIcon}
+                  onClick={() => {
+                    setModalToShow("edition");
+                  }}
+                />
+              ))}
             {MANAGED_DS_DELETABLE.includes(connector.type) && (
               <Button
-                className="ml-auto justify-self-end"
                 label="Delete connection"
                 variant="warning"
                 icon={TrashIcon}
@@ -805,22 +817,41 @@ export function ConnectorPermissionsModal({
           />
         </div>
       </Modal>
-      <DataSourceEditionModal
-        isOpen={modalToShow === "edition"}
-        onClose={() => closeModal(false)}
-        dataSource={dataSource}
-        owner={owner}
-        onEditPermissionsClick={async (extraConfig: Record<string, string>) => {
-          await handleUpdatePermissions(
-            connector,
-            dataSource,
-            owner,
-            extraConfig,
-            sendNotification
-          );
-          closeModal(false);
-        }}
-      />
+      {/* Snowflake is not oauth-based and has its own config form */}
+      {connector.type === "snowflake" ? (
+        <CreateOrUpdateConnectionSnowflakeModal
+          owner={owner}
+          connectorProviderConfiguration={
+            CONNECTOR_CONFIGURATIONS[connector.type]
+          }
+          isOpen={modalToShow === "edition"}
+          onClose={() => closeModal(false)}
+          dataSourceToUpdate={dataSource}
+          onSuccess={() => {
+            setModalToShow("selection");
+          }}
+        />
+      ) : (
+        <DataSourceEditionModal
+          isOpen={modalToShow === "edition"}
+          onClose={() => closeModal(false)}
+          dataSource={dataSource}
+          owner={owner}
+          onEditPermissionsClick={async (
+            extraConfig: Record<string, string>
+          ) => {
+            await handleUpdatePermissions(
+              connector,
+              dataSource,
+              owner,
+              extraConfig,
+              sendNotification
+            );
+            closeModal(false);
+          }}
+        />
+      )}
+
       <DataSourceDeletionModal
         isOpen={modalToShow === "deletion"}
         onClose={() => closeModal(false)}

@@ -24,7 +24,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
-import { CreateConnectionSnowflakeModal } from "@app/components/data_source/CreateConnectionSnowflakeModal";
+import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
@@ -288,7 +288,7 @@ export const AddConnectionMenu = ({
         </Dialog>
 
         {connectorProvider === "snowflake" ? (
-          <CreateConnectionSnowflakeModal
+          <CreateOrUpdateConnectionSnowflakeModal
             owner={owner}
             connectorProviderConfiguration={
               CONNECTOR_CONFIGURATIONS[connectorProvider]
@@ -300,7 +300,7 @@ export const AddConnectionMenu = ({
                 integration: prev.integration,
               }))
             }
-            onSubmit={(
+            createDatasource={(
               args: Omit<
                 Parameters<typeof handleCredentialProviderManagedDataSource>[0],
                 "suffix"
@@ -311,7 +311,7 @@ export const AddConnectionMenu = ({
                 suffix: integration?.setupWithSuffix ?? null,
               })
             }
-            onCreated={onCreated}
+            onSuccess={onCreated}
           />
         ) : (
           connectorProvider && (

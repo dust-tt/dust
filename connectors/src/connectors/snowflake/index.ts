@@ -1,12 +1,15 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
@@ -17,6 +20,7 @@ import {
   getContentNodeParents,
   saveNodesFromPermissions,
 } from "@connectors/connectors/snowflake/lib/permissions";
+import type { TestConnectionError } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { testConnection } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import {
   getConnector,
@@ -37,6 +41,21 @@ const logger = mainLogger.child({
   connector: "snowflake",
 });
 
+function handleTestConnectionError(
+  e: TestConnectionError
+): "INVALID_CONFIGURATION" {
+  switch (e.code) {
+    case "INVALID_CREDENTIALS":
+    case "NOT_READONLY":
+    case "NO_TABLES":
+      return "INVALID_CONFIGURATION";
+    case "UNKNOWN":
+      throw e;
+    default:
+      assertNever(e.code);
+  }
+}
+
 export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,
@@ -44,7 +63,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const credentialsRes = await getCredentials({
       credentialsId: connectionId,
       logger,
@@ -57,21 +76,12 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     // Then we test the connection is successful.
     const connectionRes = await testConnection({ credentials });
     if (connectionRes.isErr()) {
-      switch (connectionRes.error.code) {
-        case "INVALID_CREDENTIALS":
-        case "NOT_READONLY":
-        case "NO_TABLES":
-          return new Err(
-            new ConnectorManagerError(
-              "INVALID_CONFIGURATION",
-              connectionRes.error.message
-            )
-          );
-        case "UNKNOWN":
-          throw connectionRes.error;
-        default:
-          assertNever(connectionRes.error.code);
-      }
+      return new Err(
+        new ConnectorManagerError(
+          handleTestConnectionError(connectionRes.error),
+          connectionRes.error.message
+        )
+      );
     }
 
     // We can create the connector.
@@ -99,9 +109,41 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
-    logger.info({ connectionId }, "To be implemented");
-    throw new Error("Method update not implemented.");
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
+    const c = await ConnectorResource.fetchById(this.connectorId);
+    if (!c) {
+      logger.error({ connectorId: this.connectorId }, "Connector not found");
+      throw new Error(`Connector ${this.connectorId} not found`);
+    }
+
+    if (!connectionId) {
+      return new Ok(c.id.toString());
+    }
+
+    const newCredentialsRes = await getCredentials({
+      credentialsId: connectionId,
+      logger,
+    });
+    if (newCredentialsRes.isErr()) {
+      throw newCredentialsRes.error;
+    }
+
+    const newCredentials = newCredentialsRes.value.credentials;
+
+    const connectionRes = await testConnection({ credentials: newCredentials });
+    if (connectionRes.isErr()) {
+      return new Err(
+        new ConnectorManagerError(
+          handleTestConnectionError(connectionRes.error),
+          connectionRes.error.message
+        )
+      );
+    }
+
+    await c.update({ connectionId });
+    await launchSnowflakeSyncWorkflow(c.id);
+
+    return new Ok(c.id.toString());
   }
 
   async clean(): Promise<Result<undefined, Error>> {

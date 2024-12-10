@@ -1,5 +1,5 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
-import { UpdateConnectorRequestBodySchema } from "@dust-tt/types";
+import { assertNever, UpdateConnectorRequestBodySchema } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -63,19 +63,25 @@ const _postConnectorUpdateAPIHandler = async (
   });
 
   if (updateRes.isErr()) {
-    if (updateRes.error.type === "connector_oauth_target_mismatch") {
-      return apiError(req, res, {
-        api_error: updateRes.error,
-        status_code: 401,
-      });
-    } else {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Could not update the connector: ${updateRes.error.message}`,
-        },
-      });
+    switch (updateRes.error.code) {
+      case "CONNECTOR_OAUTH_TARGET_MISMATCH":
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "connector_oauth_target_mismatch",
+            message: updateRes.error.message,
+          },
+        });
+      case "INVALID_CONFIGURATION":
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: updateRes.error.message,
+          },
+        });
+      default:
+        assertNever(updateRes.error.code);
     }
   }
 

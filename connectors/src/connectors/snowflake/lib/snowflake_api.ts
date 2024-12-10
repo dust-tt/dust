@@ -48,7 +48,7 @@ type TestConnectionErrorCode =
   | "NO_TABLES"
   | "UNKNOWN";
 
-class TestConnectionError extends Error {
+export class TestConnectionError extends Error {
   code: TestConnectionErrorCode;
 
   constructor(code: TestConnectionErrorCode, message: string) {

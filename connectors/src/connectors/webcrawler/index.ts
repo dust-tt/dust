@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
@@ -15,6 +14,12 @@ import {
   WebCrawlerHeaderRedactedValue,
 } from "@dust-tt/types";
 
+import type {
+  ConnectorManagerError,
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   getDisplayNameForFolder,
   getDisplayNameForPage,
@@ -30,8 +35,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
-import type { ConnectorManagerError } from "../interface";
-import { BaseConnectorManager } from "../interface";
 import {
   launchCrawlWebsiteWorkflow,
   stopCrawlWebsiteWorkflow,
@@ -45,7 +48,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: WebCrawlerConfigurationType;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     if (!configuration) {
       throw new Error("Configuration is required");
     }
@@ -464,7 +467,9 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     return new Ok(undefined);
   }
 
-  async update(): Promise<Result<string, ConnectorsAPIError>> {
+  async update(): Promise<
+    Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>
+  > {
     throw new Error("Method not implemented.");
   }
 

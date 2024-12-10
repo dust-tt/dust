@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
@@ -39,7 +38,11 @@ import {
   getAuthObject,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
@@ -69,7 +72,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const driveClient = await getDriveClient(connectionId);
 
     // Sanity checks to confirm we have sufficient permissions.
@@ -138,14 +141,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     // Ideally we want to check that the Google Project ID is the same as the one from the connector
@@ -170,17 +170,18 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         const newDriveUserDomain = newDriveUserEmail.split("@")[1];
 
         if (!currentDriveUserDomain || !newDriveUserDomain) {
-          return new Err({
-            type: "connector_update_error",
-            message: "Error retrieving google drive info to update connector",
-          });
+          throw new Error(
+            "Error retrieving google drive info to update connector"
+          );
         }
 
         if (currentDriveUserDomain !== newDriveUserDomain) {
-          return new Err({
-            type: "connector_oauth_target_mismatch",
-            message: "Cannot change domain of a Google Drive connector",
-          });
+          return new Err(
+            new ConnectorManagerError(
+              "CONNECTOR_OAUTH_TARGET_MISMATCH",
+              "Cannot change domain of a Google Drive connector"
+            )
+          );
         }
       } catch (e) {
         logger.error(
