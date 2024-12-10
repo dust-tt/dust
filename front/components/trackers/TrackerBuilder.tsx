@@ -69,11 +69,9 @@ export const TrackerBuilder = ({
 
   void dataSourceViews; // todo: use this
 
-  const extractEmails = (text: string) =>
-    text
-      .split(/[\n,]+/)
-      .map((e) => e.trim())
-      .filter((e, i, self) => self.indexOf(e) === i);
+  const extractEmails = (text: string): string[] => [
+    ...new Set(text.split(/[\n,]+/).map((e) => e.trim())),
+  ];
 
   const onSubmit = async () => {
     // Validate the form
