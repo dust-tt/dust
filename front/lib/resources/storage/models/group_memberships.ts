@@ -1,21 +1,13 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class GroupMembershipModel extends Model<
-  InferAttributes<GroupMembershipModel>,
-  InferCreationAttributes<GroupMembershipModel>
-> {
-  declare id: CreationOptional<number>;
+export class GroupMembershipModel extends BaseModel<GroupMembershipModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -23,16 +15,11 @@ export class GroupMembershipModel extends Model<
   declare endAt: Date | null;
 
   declare groupId: ForeignKey<GroupModel["id"]>;
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 GroupMembershipModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -58,7 +45,7 @@ GroupMembershipModel.init(
     indexes: [{ fields: ["userId", "groupId"] }],
   }
 );
-User.hasMany(GroupMembershipModel, {
+UserModel.hasMany(GroupMembershipModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
@@ -70,6 +57,6 @@ Workspace.hasMany(GroupMembershipModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-GroupMembershipModel.belongsTo(User);
+GroupMembershipModel.belongsTo(UserModel);
 GroupMembershipModel.belongsTo(GroupModel);
 GroupMembershipModel.belongsTo(Workspace);

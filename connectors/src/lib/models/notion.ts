@@ -1,20 +1,12 @@
 import type { NotionBlockType, PageObjectProperties } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
-export class NotionConnectorState extends Model<
-  InferAttributes<NotionConnectorState>,
-  InferCreationAttributes<NotionConnectorState>
-> {
-  declare id: CreationOptional<number>;
+export class NotionConnectorState extends BaseModel<NotionConnectorState> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -27,11 +19,6 @@ export class NotionConnectorState extends Model<
 }
 NotionConnectorState.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -63,11 +50,7 @@ NotionConnectorState.init(
 );
 ConnectorModel.hasOne(NotionConnectorState);
 
-export class NotionPage extends Model<
-  InferAttributes<NotionPage>,
-  InferCreationAttributes<NotionPage>
-> {
-  declare id: CreationOptional<number>;
+export class NotionPage extends BaseModel<NotionPage> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -88,11 +71,6 @@ export class NotionPage extends Model<
 }
 NotionPage.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -162,11 +140,7 @@ NotionPage.init(
 );
 ConnectorModel.hasMany(NotionPage);
 
-export class NotionDatabase extends Model<
-  InferAttributes<NotionDatabase>,
-  InferCreationAttributes<NotionDatabase>
-> {
-  declare id: CreationOptional<number>;
+export class NotionDatabase extends BaseModel<NotionDatabase> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -191,11 +165,6 @@ export class NotionDatabase extends Model<
 
 NotionDatabase.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -281,11 +250,7 @@ ConnectorModel.hasMany(NotionDatabase);
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorPageCacheEntry extends Model<
-  InferAttributes<NotionConnectorPageCacheEntry>,
-  InferCreationAttributes<NotionConnectorPageCacheEntry>
-> {
-  declare id: CreationOptional<number>;
+export class NotionConnectorPageCacheEntry extends BaseModel<NotionConnectorPageCacheEntry> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -306,11 +271,6 @@ export class NotionConnectorPageCacheEntry extends Model<
 }
 NotionConnectorPageCacheEntry.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -388,11 +348,7 @@ ConnectorModel.hasMany(NotionConnectorPageCacheEntry);
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorBlockCacheEntry extends Model<
-  InferAttributes<NotionConnectorBlockCacheEntry>,
-  InferCreationAttributes<NotionConnectorBlockCacheEntry>
-> {
-  declare id: CreationOptional<number>;
+export class NotionConnectorBlockCacheEntry extends BaseModel<NotionConnectorBlockCacheEntry> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -412,11 +368,6 @@ export class NotionConnectorBlockCacheEntry extends Model<
 }
 NotionConnectorBlockCacheEntry.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -482,11 +433,7 @@ ConnectorModel.hasMany(NotionConnectorBlockCacheEntry);
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorResourcesToCheckCacheEntry extends Model<
-  InferAttributes<NotionConnectorResourcesToCheckCacheEntry>,
-  InferCreationAttributes<NotionConnectorResourcesToCheckCacheEntry>
-> {
-  declare id: CreationOptional<number>;
+export class NotionConnectorResourcesToCheckCacheEntry extends BaseModel<NotionConnectorResourcesToCheckCacheEntry> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -499,11 +446,6 @@ export class NotionConnectorResourcesToCheckCacheEntry extends Model<
 }
 NotionConnectorResourcesToCheckCacheEntry.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

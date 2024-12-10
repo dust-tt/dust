@@ -4,10 +4,8 @@ export { AssistantPreview } from "./AssistantPreview";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
-export type { ButtonProps } from "./Button";
-export type { MetaButtonProps } from "./Button";
+export type { ButtonProps, RegularButtonProps } from "./Button";
 export { Button } from "./Button";
-export { MetaButton } from "./Button";
 export { Card, ComposableCard } from "./Card";
 export type { CardButtonProps } from "./CardButton";
 export { CardButton } from "./CardButton";
@@ -71,11 +69,7 @@ export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export * from "./markdown";
 export { Modal } from "./Modal";
-export {
-  NavigationList,
-  NavigationListItem,
-  NavigationListLabel,
-} from "./NavigationList";
+export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
@@ -109,7 +103,7 @@ export {
 } from "./Sheet";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
-export { SplitButton } from "./SplitButton";
+export { FlexSplitButton, SplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { TextArea } from "./TextArea";
 export {

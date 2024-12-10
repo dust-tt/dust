@@ -370,6 +370,15 @@ export class ConnectorsAPI {
       permission: ConnectorPermission;
     }[];
   }): Promise<ConnectorsAPIResponse<void>> {
+    // Connector permission changes are logged so user actions can be traced
+    this._logger.info(
+      {
+        connectorId,
+        resources,
+      },
+      "Setting connector permissions"
+    );
+
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(connectorId)}/permissions`,
       {

@@ -1,8 +1,9 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon } from "@sparkle/components/Icon";
-import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import { Icon, LinkWrapper, LinkWrapperProps } from "@sparkle/components/";
+import { Button } from "@sparkle/components/Button";
+import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 const listStyles = cva("s-flex", {
@@ -81,7 +82,13 @@ const NavigationListItem = React.forwardRef<
     };
 
     return (
-      <div className={className} ref={ref} {...props}>
+      <div
+        className={cn("s-group/menu-item s-relative", className)}
+        ref={ref}
+        data-nav="menu-button"
+        data-selected={selected}
+        {...props}
+      >
         <LinkWrapper
           href={href}
           target={target}
@@ -90,14 +97,17 @@ const NavigationListItem = React.forwardRef<
           shallow={shallow}
         >
           <div
-            className={listStyles({
-              layout: "item",
-              state: selected
-                ? "selected"
-                : isPressed
-                  ? "active"
-                  : "unselected",
-            })}
+            className={cn(
+              "s-peer/menu-button",
+              listStyles({
+                layout: "item",
+                state: selected
+                  ? "selected"
+                  : isPressed
+                    ? "active"
+                    : "unselected",
+              })
+            )}
             onMouseLeave={() => {
               setIsPressed(false);
             }}
@@ -106,22 +116,44 @@ const NavigationListItem = React.forwardRef<
           >
             {icon && <Icon visual={icon} size="sm" />}
             {label && (
-              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
+              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
                 {label}
               </span>
             )}
-            {selected && moreMenu && (
-              <div className="-s-mr-2 s-flex s-h-4 s-items-center">
-                {moreMenu}
-              </div>
-            )}
           </div>
         </LinkWrapper>
+        {moreMenu && <>{moreMenu}</>}
       </div>
     );
   }
 );
 NavigationListItem.displayName = "NavigationListItem";
+
+interface NavigationListItemActionProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  showOnHover?: boolean;
+}
+
+const NavigationListItemAction = React.forwardRef<
+  HTMLDivElement,
+  NavigationListItemActionProps
+>(({ className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      data-sidebar="menu-action"
+      className={cn(
+        "s-absolute s-right-1.5 s-top-1 s-opacity-0 s-transition-opacity",
+        "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100 group-data-[selected=true]/menu-item:s-opacity-100",
+        className
+      )}
+      {...props}
+    >
+      <Button size="mini" icon={MoreIcon} variant="ghost" />
+    </div>
+  );
+});
+NavigationListItemAction.displayName = "NavigationListItemAction";
 
 const variantStyles = cva("", {
   variants: {
@@ -156,4 +188,9 @@ const NavigationListLabel = React.forwardRef<
 
 NavigationListLabel.displayName = "NavigationListLabel";
 
-export { NavigationList, NavigationListItem, NavigationListLabel };
+export {
+  NavigationList,
+  NavigationListItem,
+  NavigationListItemAction,
+  NavigationListLabel,
+};

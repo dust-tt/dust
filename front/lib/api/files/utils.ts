@@ -22,7 +22,8 @@ export const parseUploadRequest = async (
       code:
         | "internal_server_error"
         | "file_too_large"
-        | "file_type_not_supported";
+        | "file_type_not_supported"
+        | "file_is_empty";
     }
   >
 > => {
@@ -63,6 +64,14 @@ export const parseUploadRequest = async (
           name: "dust_error",
           code: "file_too_large",
           message: "File is too large.",
+        });
+      }
+      // entire message: options.allowEmptyFiles is false, file size should be greater than 0
+      if (error.message.startsWith("options.allowEmptyFiles")) {
+        return new Err({
+          name: "dust_error",
+          code: "file_is_empty",
+          message: "File is empty.",
         });
       }
     }

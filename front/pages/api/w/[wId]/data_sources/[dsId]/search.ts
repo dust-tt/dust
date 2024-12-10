@@ -3,6 +3,7 @@ import { DataSourceSearchQuerySchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
@@ -47,15 +48,14 @@ async function handler(
         req.query.tags_not = [req.query.tags_not];
       }
 
-      const r = await DataSourceSearchQuerySchema.safeParse(req.query);
+      const r = DataSourceSearchQuerySchema.safeParse(req.query);
 
       if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body.",
-            request_format_errors: r.error.flatten(),
+            message: fromError(r.error).toString(),
           },
         });
       }

@@ -872,6 +872,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "message"
+                ],
                 "properties": {
                   "message": {
                     "$ref": "#/components/schemas/Message"
@@ -891,7 +894,6 @@
                   "title": {
                     "type": "string",
                     "description": "The title of the conversation",
-                    "nullable": true,
                     "example": "My conversation"
                   },
                   "visibility": {
@@ -3859,6 +3861,10 @@
       },
       "Message": {
         "type": "object",
+        "required": [
+          "content",
+          "mentions"
+        ],
         "properties": {
           "content": {
             "type": "string",
@@ -3867,6 +3873,7 @@
           },
           "mentions": {
             "type": "array",
+            "description": "Empty array is accepted but won't trigger any agent.",
             "items": {
               "$ref": "#/components/schemas/Mention"
             }
@@ -3878,6 +3885,9 @@
       },
       "ContentFragment": {
         "type": "object",
+        "required": [
+          "title"
+        ],
         "properties": {
           "title": {
             "type": "string",
@@ -3886,22 +3896,22 @@
           },
           "content": {
             "type": "string",
-            "description": "The content of the content fragment",
+            "description": "The content of the content fragment (optional if `fileId` is set)",
             "example": "This is my content fragment extracted text"
+          },
+          "contentType": {
+            "type": "string",
+            "description": "The content type of the content fragment (optional if `fileId` is set)",
+            "example": "text/plain"
           },
           "url": {
             "type": "string",
             "description": "The URL of the content fragment",
             "example": "https://example.com/content"
           },
-          "contentType": {
-            "type": "string",
-            "description": "The content type of the content fragment",
-            "example": "text/plain"
-          },
           "fileId": {
             "type": "string",
-            "description": "The id of the previously uploaded file",
+            "description": "The id of the previously uploaded file (optional if `content` and `contentType` are set)",
             "example": "fil_123456"
           },
           "context": {

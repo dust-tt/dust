@@ -166,7 +166,7 @@ export async function syncArticle({
       loggerArgs: { ...loggerArgs, articleId: article.id },
       upsertContext: { sync_type: "batch" },
       title: article.title,
-      mimeType: "application/vnd.dust.zendesk-article",
+      mimeType: "application/vnd.dust.zendesk.article",
       async: true,
     });
     await articleInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });

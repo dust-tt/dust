@@ -10,11 +10,11 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
@@ -362,7 +362,7 @@ export async function getBuildersUsageData(
     },
     include: [
       {
-        model: User,
+        model: UserModel,
         as: "user",
         attributes: [],
         required: true,

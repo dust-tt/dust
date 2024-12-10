@@ -9,6 +9,7 @@ import {
   Page,
   Popover,
   ScrollArea,
+  ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -417,7 +418,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
   );
 }
 
-function AdvancedSettings({
+export function AdvancedSettings({
   owner,
   plan,
   generationSettings,
@@ -485,7 +486,10 @@ function AdvancedSettings({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea className="h-[300px]">
+                <ScrollArea
+                  className="flex max-h-[300px] flex-col"
+                  hideScrollBar
+                >
                   <ModelList
                     modelConfigs={bestPerformingModelConfigs}
                     onClick={(modelSettings) => {
@@ -505,6 +509,7 @@ function AdvancedSettings({
                       });
                     }}
                   />
+                  <ScrollBar className="py-0" />
                 </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>

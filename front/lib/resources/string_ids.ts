@@ -25,6 +25,7 @@ const RESOURCES_PREFIX = {
   space: "vlt",
   data_source: "dts",
   data_source_view: "dsv",
+  tracker: "trk",
 };
 
 const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);

@@ -5,6 +5,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ScrollArea,
+  ScrollBar,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -153,14 +155,20 @@ export const AddToSpaceDialog = ({
               variant="outline"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {availableSpaces.map((currentSpace) => (
-              <DropdownMenuItem
-                key={currentSpace.sId}
-                label={currentSpace.name}
-                onClick={() => setSpace(currentSpace)}
-              />
-            ))}
+          <DropdownMenuContent className="min-w-48 p-2">
+            <ScrollArea
+              className="flex max-h-72 flex-col overflow-y-auto"
+              hideScrollBar
+            >
+              {availableSpaces.map((currentSpace) => (
+                <DropdownMenuItem
+                  key={currentSpace.sId}
+                  label={currentSpace.name}
+                  onClick={() => setSpace(currentSpace)}
+                />
+              ))}
+              <ScrollBar className="py-0" />
+            </ScrollArea>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

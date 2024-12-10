@@ -73,6 +73,18 @@ type UpsertToDataSourceParams = {
   async: boolean;
 };
 
+function getDustAPI(dataSourceConfig: DataSourceConfig) {
+  return new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    {
+      apiKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+    },
+    logger,
+    { useLocalInDev: true }
+  );
+}
+
 export const upsertToDatasource = withRetries(_upsertToDatasource);
 
 async function _upsertToDatasource({
@@ -414,16 +426,7 @@ export async function renderPrefixSection({
 }
 
 async function tokenize(text: string, ds: DataSourceConfig) {
-  const dustAPI = new DustAPI(
-    apiConfig.getDustAPIConfig(),
-    {
-      apiKey: ds.workspaceAPIKey,
-      workspaceId: ds.workspaceId,
-    },
-    logger,
-    { useLocalInDev: true }
-  );
-  const tokensRes = await dustAPI.tokenize(text, ds.dataSourceId);
+  const tokensRes = await getDustAPI(ds).tokenize(text, ds.dataSourceId);
   if (tokensRes.isErr()) {
     logger.error(
       { error: tokensRes.error },
@@ -1122,5 +1125,51 @@ export async function deleteTable({
       "Error deleting table from Dust."
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
+  }
+}
+
+export async function upsertFolderNode({
+  dataSourceConfig,
+  folderId,
+  timestampMs,
+  parents,
+  title,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  folderId: string;
+  timestampMs?: number;
+  parents: string[];
+  title: string;
+}) {
+  const now = new Date();
+
+  const r = await getDustAPI(dataSourceConfig).upsertFolder(
+    dataSourceConfig.dataSourceId,
+    folderId,
+    timestampMs ? timestampMs : now.getTime(),
+    title,
+    parents
+  );
+
+  if (r.isErr()) {
+    throw r.error;
+  }
+}
+
+export async function deleteFolderNode({
+  dataSourceConfig,
+  folderId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  folderId: string;
+  loggerArgs?: Record<string, string | number>;
+}) {
+  const r = await getDustAPI(dataSourceConfig).deleteFolder(
+    dataSourceConfig.dataSourceId,
+    folderId
+  );
+
+  if (r.isErr()) {
+    throw r.error;
   }
 }

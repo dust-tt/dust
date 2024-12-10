@@ -321,7 +321,7 @@ export async function syncConversation({
       sync_type: syncType,
     },
     title: convoTitle,
-    mimeType: "application/vnd.dust.intercom-conversation",
+    mimeType: "application/vnd.dust.intercom.conversation",
     async: true,
   });
 }

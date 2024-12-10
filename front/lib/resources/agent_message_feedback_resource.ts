@@ -135,7 +135,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where: {
         workspaceId: workspace.id,
         createdAt: {
-          [Op.between]: [startDate, endDate],
+          [Op.and]: [{ [Op.gte]: startDate }, { [Op.lte]: endDate }],
         },
       },
     }).then((feedbacks) =>

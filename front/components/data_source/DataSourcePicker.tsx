@@ -157,7 +157,7 @@ export default function DataSourcePicker({
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e)}
                 />
-                <ScrollArea className="mt-2 h-[300px]">
+                <ScrollArea className="flex max-h-[300px] flex-col">
                   {(filteredDataSourceViews || []).map((dsv) => (
                     <div
                       key={dsv.sId}

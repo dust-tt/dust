@@ -2,6 +2,7 @@ import type { CancelMessageGenerationResponseType } from "@dust-tt/client";
 import { CancelMessageGenerationRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -97,8 +98,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body.",
-            request_format_errors: r.error.flatten(),
+            message: fromError(r.error).toString(),
           },
         });
       }

@@ -2,15 +2,17 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon } from "@sparkle/components/Icon";
-import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
-import Spinner, { SpinnerProps } from "@sparkle/components/Spinner";
 import {
+  Icon,
+  LinkWrapper,
+  LinkWrapperProps,
+  Spinner,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-} from "@sparkle/components/Tooltip";
+} from "@sparkle/components/";
+import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -25,8 +27,7 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
-
+export const BUTTON_SIZES = ["mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 const styleVariants: Record<ButtonVariantType, string> = {
@@ -45,6 +46,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {
+  mini: "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5",
   xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
   sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
   md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
@@ -90,18 +92,11 @@ export interface MetaButtonProps
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
-  (
-    { className, variant, size = "sm", asChild = false, children, ...props },
-    ref
-  ) => {
+  ({ className, asChild = false, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
 
     return (
-      <Comp
-        className={cn(variant && buttonVariants({ variant, size }), className)}
-        ref={ref}
-        {...props}
-      >
+      <Comp className={className} ref={ref} {...props}>
         {children}
       </Comp>
     );
@@ -109,28 +104,40 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 );
 MetaButton.displayName = "MetaButton";
 
-export interface ButtonProps
-  extends Omit<MetaButtonProps, "children">,
-    Omit<LinkWrapperProps, "children" | "className"> {
-  label?: string;
+type CommonButtonProps = Omit<MetaButtonProps, "children"> &
+  Omit<LinkWrapperProps, "children"> & {
+    isSelect?: boolean;
+    isLoading?: boolean;
+    isPulsing?: boolean;
+    tooltip?: string;
+  };
+
+type MiniButtonProps = CommonButtonProps & {
+  size: "mini";
+  icon: React.ComponentType;
+  label?: never;
+};
+
+export type RegularButtonProps = CommonButtonProps & {
+  size?: Exclude<ButtonSizeType, "mini">;
   icon?: React.ComponentType;
-  isSelect?: boolean;
-  isLoading?: boolean;
-  isPulsing?: boolean;
-  tooltip?: string;
-}
+  label?: string;
+};
+
+export type ButtonProps = MiniButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       label,
       icon,
+      className,
       isLoading = false,
       variant = "primary",
       tooltip,
       isSelect = false,
       isPulsing = false,
-      size,
+      size = "sm",
       href,
       target,
       rel,
@@ -141,20 +148,21 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const buttonSize = size || "sm";
+    const iconsSize = size === "mini" ? "sm" : size;
+
     const spinnerVariant = isLoading
       ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
       : (variant && spinnerVariantsMap[variant]) || "slate400";
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon visual={visual} size={buttonSize} className={extraClass} />
+      <Icon visual={visual} size={iconsSize} className={extraClass} />
     );
 
     const content = (
       <>
         {isLoading ? (
           <div className="-s-mx-0.5">
-            <Spinner size={buttonSize} variant={spinnerVariant} />
+            <Spinner size={iconsSize} variant={spinnerVariant} />
           </div>
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
@@ -167,10 +175,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const innerButton = (
       <MetaButton
         ref={ref}
-        size={buttonSize}
-        variant={variant}
+        size={size}
         disabled={isLoading || props.disabled}
-        className={isPulsing ? "s-animate-pulse" : ""}
+        className={cn(
+          buttonVariants({ variant, size }),
+          isPulsing && "s-animate-pulse",
+          className
+        )}
         aria-label={ariaLabel || tooltip || label}
         style={
           {
@@ -210,5 +221,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
   }
 );
+
+Button.displayName = "Button";
 
 export { Button, buttonVariants, MetaButton };

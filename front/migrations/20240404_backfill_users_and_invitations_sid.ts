@@ -1,18 +1,18 @@
-import { User } from "@app/lib/models/user";
 import { MembershipInvitation } from "@app/lib/models/workspace";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const backfillUsers = async (execute: boolean) => {
-  const users = await User.findAll({
+  const users = await UserModel.findAll({
     // @ts-expect-error sId is marked as required in the model, but we are looking for null values
     where: {
       sId: null,
     },
   });
 
-  const chunks: User[][] = [];
+  const chunks: UserModel[][] = [];
   for (let i = 0; i < users.length; i += 16) {
     chunks.push(users.slice(i, i + 16));
   }

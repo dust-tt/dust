@@ -1,26 +1,17 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
 /**
  * Configuration of Datasources used for Retrieval Action.
  */
-export class AgentDataSourceConfiguration extends Model<
-  InferAttributes<AgentDataSourceConfiguration>,
-  InferCreationAttributes<AgentDataSourceConfiguration>
-> {
-  declare id: CreationOptional<number>;
+export class AgentDataSourceConfiguration extends BaseModel<AgentDataSourceConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -44,11 +35,6 @@ export class AgentDataSourceConfiguration extends Model<
 }
 AgentDataSourceConfiguration.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

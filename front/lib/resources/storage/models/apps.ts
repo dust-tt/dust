@@ -1,21 +1,17 @@
 import type { AppVisibility, DatasetSchema } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
+import {
+  BaseModel,
+  SoftDeletableModel,
+} from "@app/lib/resources/storage/wrappers";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
 export class AppModel extends SoftDeletableModel<AppModel> {
-  declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -108,11 +104,7 @@ AppModel.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
 });
 
-export class Provider extends Model<
-  InferAttributes<Provider>,
-  InferCreationAttributes<Provider>
-> {
-  declare id: CreationOptional<number>;
+export class Provider extends BaseModel<Provider> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -123,11 +115,6 @@ export class Provider extends Model<
 }
 Provider.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -158,10 +145,7 @@ Workspace.hasMany(Provider, {
   onDelete: "CASCADE",
 });
 
-export class Dataset extends Model<
-  InferAttributes<Dataset>,
-  InferCreationAttributes<Dataset>
-> {
+export class Dataset extends BaseModel<Dataset> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -220,11 +204,7 @@ Workspace.hasMany(Dataset, {
   onDelete: "CASCADE",
 });
 
-export class Clone extends Model<
-  InferAttributes<Clone>,
-  InferCreationAttributes<Clone>
-> {
-  declare id: CreationOptional<number>;
+export class Clone extends BaseModel<Clone> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -233,11 +213,6 @@ export class Clone extends Model<
 }
 Clone.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

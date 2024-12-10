@@ -1,7 +1,9 @@
-import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
-import type { ModelId } from "@dust-tt/types";
-import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
-import { stripNullBytes } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import {
+  stripNullBytes,
+  WEBCRAWLER_MAX_DEPTH,
+  WEBCRAWLER_MAX_PAGES,
+} from "@dust-tt/types";
 import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
@@ -318,27 +320,26 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             extracted.length > 0 &&
             extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
           ) {
-            const formattedDocumentContent = formatDocumentContent({
-              title: pageTitle,
-              content: extracted,
-              url: request.url,
-            });
-            if (!formattedDocumentContent) {
+            const validatedUrl = validateUrl(url);
+            if (!validatedUrl.valid || !validatedUrl.standardized) {
               childLogger.info(
-                {
-                  documentId,
-                  configId: webCrawlerConfig.id,
-                  url,
-                },
+                { documentId, configId: webCrawlerConfig.id, url },
                 `Invalid document or URL. Skipping`
               );
               return;
             }
+
+            const formattedDocumentContent = formatDocumentContent({
+              title: pageTitle,
+              content: extracted,
+              url: validatedUrl.standardized,
+            });
+
             await upsertToDatasource({
               dataSourceConfig,
               documentId: documentId,
               documentContent: formattedDocumentContent,
-              documentUrl: request.url,
+              documentUrl: validatedUrl.standardized,
               timestampMs: new Date().getTime(),
               tags: [`title:${stripNullBytes(pageTitle)}`],
               parents: getParentsForPage(request.url, false),
@@ -479,16 +480,11 @@ function formatDocumentContent({
   title: string;
   content: string;
   url: string;
-}): CoreAPIDataSourceDocumentSection | null {
+}): CoreAPIDataSourceDocumentSection {
   const URL_MAX_LENGTH = 128;
   const TITLE_MAX_LENGTH = 300;
 
-  const validatedUrl = validateUrl(url);
-  if (!validatedUrl.valid || !validatedUrl.standardized) {
-    return null;
-  }
-
-  const parsedUrl = new URL(validatedUrl.standardized);
+  const parsedUrl = new URL(url);
   const urlWithoutQuery = `${parsedUrl.origin}/${parsedUrl.pathname}`;
 
   const sanitizedContent = stripNullBytes(content);

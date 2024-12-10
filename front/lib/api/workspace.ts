@@ -360,3 +360,23 @@ export async function changeWorkspaceName(
 
   return new Ok(undefined);
 }
+
+export async function disableSSOEnforcement(
+  owner: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  const [affectedCount] = await Workspace.update(
+    { ssoEnforced: false },
+    {
+      where: {
+        id: owner.id,
+        ssoEnforced: true,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("SSO enforcement is already disabled."));
+  }
+
+  return new Ok(undefined);
+}

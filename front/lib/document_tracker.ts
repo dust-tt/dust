@@ -3,10 +3,10 @@ import { literal, Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { TrackedDocument } from "@app/lib/models/doc_tracker";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import logger from "@app/logger/logger";
 
 import config from "./api/config";
@@ -91,7 +91,7 @@ export async function updateTrackedDocuments(
   // find users with matching emails
   const emails = Array.from(allEmails);
   let users = emails.length
-    ? await User.findAll({
+    ? await UserModel.findAll({
         where: literal(`lower(email) IN (:emails)`),
         replacements: {
           emails,
@@ -108,7 +108,7 @@ export async function updateTrackedDocuments(
   );
   users = users.filter((user) => userIdsInWorkspace.has(user.id));
 
-  const userByEmail: Map<string, User> = new Map();
+  const userByEmail: Map<string, UserModel> = new Map();
   for (const user of users) {
     userByEmail.set(user.email.toLowerCase(), user);
   }

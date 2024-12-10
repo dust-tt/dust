@@ -24,6 +24,10 @@ name = "init_db"
 path = "bin/init_db.rs"
 
 [[bin]]
+name = "elasticsearch_create_index"
+path = "bin/elasticsearch/create_index.rs"
+
+[[bin]]
 name = "qdrant_create_collection"
 path = "bin/qdrant/create_collection.rs"
 
@@ -45,6 +49,10 @@ path = "bin/qdrant/delete_orphaned_points.rs"
 # path = "bin/oauth_generate_key.rs"
 
 # MIGRATIONS
+
+[[bin]]
+name = "create_nodes"
+path = "bin/migrations/20241204_create_nodes.rs"
 
 [[bin]]
 name = "fix_created_dsdocs"
@@ -116,3 +124,4 @@ snowflake-connector-rs = { git = "https://github.com/dust-tt/snowflake-connector
 axum-test = "16.0.0"
 csv = "1.3.0"
 tikv-jemallocator = "0.6"
+elasticsearch = "8.15.0-alpha.1"

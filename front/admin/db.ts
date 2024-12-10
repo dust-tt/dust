@@ -49,10 +49,12 @@ import { ConversationClassification } from "@app/lib/models/conversation_classif
 import {
   DocumentTrackerChangeSuggestion,
   TrackedDocument,
+  TrackerConfigurationModel,
+  TrackerDataSouceConfigurationModel,
+  TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { User, UserMetadata } from "@app/lib/models/user";
 import {
   DustAppSecret,
   MembershipInvitation,
@@ -85,6 +87,10 @@ import {
 } from "@app/lib/resources/storage/models/runs";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
 import logger from "@app/logger/logger";
 
 async function main() {
@@ -92,8 +98,8 @@ async function main() {
     service: "front",
     logger: logger,
   });
-  await User.sync({ alter: true });
-  await UserMetadata.sync({ alter: true });
+  await UserModel.sync({ alter: true });
+  await UserMetadataModel.sync({ alter: true });
   await Workspace.sync({ alter: true });
   await WorkspaceHasDomain.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
@@ -121,6 +127,10 @@ async function main() {
   await RunUsageModel.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
+
+  await TrackerConfigurationModel.sync({ alter: true });
+  await TrackerDataSouceConfigurationModel.sync({ alter: true });
+  await TrackerGenerationModel.sync({ alter: true });
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });

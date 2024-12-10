@@ -1,24 +1,15 @@
 import type { LabsTranscriptsProviderType } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { BaseModel } from "@app/lib/resources/storage/wrappers";
 
-export class LabsTranscriptsConfigurationModel extends Model<
-  InferAttributes<LabsTranscriptsConfigurationModel>,
-  InferCreationAttributes<LabsTranscriptsConfigurationModel>
-> {
-  declare id: CreationOptional<number>;
+export class LabsTranscriptsConfigurationModel extends BaseModel<LabsTranscriptsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -28,18 +19,13 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare isActive: boolean;
   declare isDefaultFullStorage: boolean;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -83,10 +69,10 @@ LabsTranscriptsConfigurationModel.init(
   }
 );
 
-User.hasMany(LabsTranscriptsConfigurationModel, {
+UserModel.hasMany(LabsTranscriptsConfigurationModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
-LabsTranscriptsConfigurationModel.belongsTo(User, {
+LabsTranscriptsConfigurationModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
@@ -106,11 +92,7 @@ LabsTranscriptsConfigurationModel.belongsTo(DataSourceViewModel, {
   foreignKey: { name: "dataSourceViewId", allowNull: true },
 });
 
-export class LabsTranscriptsHistoryModel extends Model<
-  InferAttributes<LabsTranscriptsHistoryModel>,
-  InferCreationAttributes<LabsTranscriptsHistoryModel>
-> {
-  declare id: CreationOptional<number>;
+export class LabsTranscriptsHistoryModel extends BaseModel<LabsTranscriptsHistoryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -126,11 +108,6 @@ export class LabsTranscriptsHistoryModel extends Model<
 
 LabsTranscriptsHistoryModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

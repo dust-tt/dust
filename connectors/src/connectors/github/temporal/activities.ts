@@ -297,7 +297,7 @@ export async function githubUpsertIssueActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: issue.title,
-    mimeType: "application/vnd.dust.github-issue",
+    mimeType: "application/vnd.dust.github.issue",
     async: true,
   });
 
@@ -483,7 +483,7 @@ export async function githubUpsertDiscussionActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: discussion.title,
-    mimeType: "application/vnd.dust.github-discussion",
+    mimeType: "application/vnd.dust.github.discussion",
     async: true,
   });
 
@@ -1027,7 +1027,19 @@ export async function githubCodeSyncActivity({
       fq.add(async () => {
         Context.current().heartbeat();
         // Read file (files are 1MB at most).
-        const content = await fs.readFile(f.localFilePath);
+        let content;
+        try {
+          content = await fs.readFile(f.localFilePath);
+        } catch (e) {
+          logger.warn(
+            { repoId, fileName: f.fileName, documentId: f.documentId, err: e },
+            "[Github] Error reading file"
+          );
+          if (e instanceof Error && "code" in e && e.code === "ENOENT") {
+            return;
+          }
+          throw e;
+        }
         const contentHash = blake3(content).toString("hex");
         const parentInternalId = f.parentInternalId || rootInternalId;
 
@@ -1098,7 +1110,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: "application/vnd.dust.github-code-file",
+            mimeType: "application/vnd.dust.github.code.file",
             async: true,
           });
 

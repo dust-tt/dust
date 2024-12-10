@@ -1,19 +1,11 @@
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { BaseModel } from "@connectors/resources/storage/wrappers";
 
-export class SnowflakeConfigurationModel extends Model<
-  InferAttributes<SnowflakeConfigurationModel>,
-  InferCreationAttributes<SnowflakeConfigurationModel>
-> {
-  declare id: CreationOptional<number>;
+export class SnowflakeConfigurationModel extends BaseModel<SnowflakeConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -21,11 +13,6 @@ export class SnowflakeConfigurationModel extends Model<
 }
 SnowflakeConfigurationModel.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
