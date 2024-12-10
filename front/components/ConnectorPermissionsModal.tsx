@@ -757,21 +757,21 @@ export function ConnectorPermissionsModal({
       >
         <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4">
           <div className="flex flex-row justify-end gap-2">
-            {isOAuthProvider(connector.type) ||
-              (connector.type === "snowflake" && (
-                <Button
-                  label={
-                    connector.type !== "snowflake"
-                      ? "Edit permissions"
-                      : "Edit connection"
-                  }
-                  variant="outline"
-                  icon={LockIcon}
-                  onClick={() => {
-                    setModalToShow("edition");
-                  }}
-                />
-              ))}
+            {(isOAuthProvider(connector.type) ||
+              connector.type === "snowflake") && (
+              <Button
+                label={
+                  connector.type !== "snowflake"
+                    ? "Edit permissions"
+                    : "Edit connection"
+                }
+                variant="outline"
+                icon={LockIcon}
+                onClick={() => {
+                  setModalToShow("edition");
+                }}
+              />
+            )}
             {MANAGED_DS_DELETABLE.includes(connector.type) && (
               <Button
                 label="Delete connection"
