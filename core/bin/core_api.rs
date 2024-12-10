@@ -1482,10 +1482,7 @@ async fn data_sources_documents_update_parents(
         info!(
             data_source_id = data_source_id,
             node_id = document_id,
-            parents_0 = match payload.parents.get(0) {
-                None => "None",
-                Some(p) => p,
-            },
+            parents = ?payload.parents,
             node_type = "document",
             operation = "update_parents",
             "[KWSEARCH] invariant_first_parent_self"
@@ -1643,10 +1640,7 @@ async fn data_sources_documents_upsert(
         info!(
             data_source_id = data_source_id,
             node_id = payload.document_id,
-            parents_0 = match payload.parents.get(0) {
-                None => "None",
-                Some(p) => p,
-            },
+            parents = ?payload.parents,
             node_type = "document",
             operation = "upsert",
             "[KWSEARCH] invariant_first_parent_self"
@@ -2100,10 +2094,7 @@ async fn tables_upsert(
         info!(
             data_source_id = data_source_id,
             node_id = payload.table_id,
-            parents_0 = match payload.parents.get(0) {
-                None => "None",
-                Some(p) => p,
-            },
+            parents = ?payload.parents,
             node_type = "table",
             operation = "upsert",
             "[KWSEARCH] invariant_first_parent_self"
@@ -2351,10 +2342,7 @@ async fn tables_update_parents(
         info!(
             data_source_id = data_source_id,
             node_id = table_id,
-            parents_0 = match payload.parents.get(0) {
-                None => "None",
-                Some(p) => p,
-            },
+            parents = ?payload.parents,
             node_type = "table",
             operation = "update_parents",
             "[KWSEARCH] invariant_first_parent_self"
@@ -2750,10 +2738,7 @@ async fn folders_upsert(
         info!(
             data_source_id = data_source_id,
             node_id = payload.folder_id,
-            parents_0 = match payload.parents.get(0) {
-                None => "None",
-                Some(p) => p,
-            },
+            parents = ?payload.parents,
             node_type = "folder",
             operation = "upsert",
             "[KWSEARCH] invariant_first_parent_self"
