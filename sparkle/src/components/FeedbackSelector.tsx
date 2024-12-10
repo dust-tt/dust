@@ -123,7 +123,6 @@ export function FeedbackSelector({
                   ? "🎉 Glad you liked it! Tell us more?"
                   : "🫠 Help make the answers better!"}
               </Page.H>
-              {popOverInfo}
               <TextArea
                 placeholder={
                   feedback?.thumb === "up"
@@ -135,7 +134,18 @@ export function FeedbackSelector({
                 value={localFeedbackContent ?? ""}
                 onChange={(e) => setLocalFeedbackContent(e.target.value)}
               />
+              {popOverInfo}
+              <div className="s-mt-4">
+                <Page.P variant="secondary">
+                  Your full conversation with the assistant will be shared.
+                </Page.P>
+              </div>
               <div className="s-mt-4 s-flex s-justify-between s-gap-2">
+                <Button
+                  variant="ghost"
+                  label="Skip"
+                  onClick={() => setIsPopoverOpen(false)}
+                />
                 <Button
                   variant="primary"
                   label="Submit feedback"
@@ -147,11 +157,6 @@ export function FeedbackSelector({
                     });
                     setIsPopoverOpen(false);
                   }}
-                />
-                <Button
-                  variant="ghost"
-                  label="Skip"
-                  onClick={() => setIsPopoverOpen(false)}
                 />
               </div>
             </div>
