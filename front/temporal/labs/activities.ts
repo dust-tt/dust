@@ -114,7 +114,6 @@ export async function retrieveNewTranscriptsActivity(
       );
       transcriptsIdsToProcess.push(...modjoTranscriptsIds);
       break;
-      break;
 
     default:
       assertNever(transcriptsConfiguration.provider);
