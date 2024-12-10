@@ -59,7 +59,7 @@ export default function Subscribe({
   // FREE_NO_PLAN is not on the database, checking it comes down to having at least 1 subscription.
   const hasPreviousSubscription =
     subscriptions?.length > 0 &&
-    (subscriptions.length > 1 || !isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
+    (subscriptions.length >= 2 || !isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
