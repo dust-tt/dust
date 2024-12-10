@@ -1,9 +1,11 @@
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import { logout, refreshToken } from "@extension/lib/auth";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const useAuthErrorCheck = (error: any, mutate: () => any) => {
-  const { setAuthError } = useAuth();
+  const { setAuthError, handleLogout } = useAuth();
+  const navigate = useNavigate();
   useEffect(() => {
     const handleError = async () => {
       if (error) {
@@ -14,8 +16,13 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
             void logout();
             break;
           case "expired_oauth_token_error":
-            await refreshToken();
-            mutate();
+            const res = await refreshToken();
+            if (res.isOk()) {
+              mutate();
+            } else {
+              handleLogout();
+              navigate("/login");
+            }
             break;
           case "user_not_found":
             setAuthError(error);
