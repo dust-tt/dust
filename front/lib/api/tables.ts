@@ -129,6 +129,7 @@ export async function upsertTableFromCsv({
   tableId,
   tableTimestamp,
   tableTags,
+  tableParentId,
   tableParents,
   csv,
   truncate,
@@ -144,6 +145,7 @@ export async function upsertTableFromCsv({
   tableId: string;
   tableTimestamp: number | null;
   tableTags: string[];
+  tableParentId: string | null;
   tableParents: string[];
   csv: string | null;
   truncate: boolean;
@@ -236,6 +238,7 @@ export async function upsertTableFromCsv({
     description: tableDescription,
     timestamp: tableTimestamp,
     tags: tableTags,
+    parentId: tableParentId,
     parents: tableParents,
     title,
     mimeType,

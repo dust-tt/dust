@@ -1132,12 +1132,14 @@ export async function upsertFolderNode({
   dataSourceConfig,
   folderId,
   timestampMs,
+  parentId,
   parents,
   title,
 }: {
   dataSourceConfig: DataSourceConfig;
   folderId: string;
   timestampMs?: number;
+  parentId?: string;
   parents: string[];
   title: string;
 }) {
@@ -1148,6 +1150,7 @@ export async function upsertFolderNode({
     folderId,
     timestampMs ? timestampMs : now.getTime(),
     title,
+    parentId,
     parents
   );
 

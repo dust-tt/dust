@@ -53,6 +53,9 @@ import { apiError } from "@app/logger/withlogging";
  *           schema:
  *             type: object
  *             properties:
+ *               parentId:
+ *                 type: string
+ *                 description: Direct parent document IDs
  *               parents:
  *                 type: array
  *                 items:
@@ -151,6 +154,7 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: req.query.documentId as string,
+        parentId: req.body.parentId ?? null,
         parents: req.body.parents,
       });
 

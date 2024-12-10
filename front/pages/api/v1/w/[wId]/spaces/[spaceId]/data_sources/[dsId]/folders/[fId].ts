@@ -131,6 +131,7 @@ async function handler(
         dataSourceId: dataSource.dustAPIDataSourceId,
         folderId: fId,
         timestamp: r.data.timestamp || null,
+        parentId: r.data.parentId || null,
         parents: r.data.parents || [fId],
         title: r.data.title,
       });

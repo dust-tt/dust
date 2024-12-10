@@ -140,6 +140,7 @@ export const DocumentUploadOrEditModal = ({
         title: initialId ?? document.name,
         mime_type: document.mimeType ?? undefined,
         timestamp: null,
+        parentId: null,
         parents: [initialId ?? document.name],
         section: { prefix: null, content: document.text, sections: [] },
         text: null,

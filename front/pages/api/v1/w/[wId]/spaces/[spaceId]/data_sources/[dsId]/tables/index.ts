@@ -115,6 +115,9 @@ import { apiError } from "@app/logger/withlogging";
  *                 items:
  *                   type: string
  *                 description: Parent tables of this table
+ *               parentId:
+ *                 type: string
+ *                 description: Direct parent id of this table
  *               mime_type:
  *                 type: string
  *                 description: Mime type of the table
@@ -259,6 +262,7 @@ async function handler(
         timestamp,
         tags,
         parents,
+        parentId,
         remote_database_table_id: remoteDatabaseTableId,
         remote_database_secret_id: remoteDatabaseSecretId,
       } = r.data;
@@ -365,6 +369,7 @@ async function handler(
         tags: tags || [],
         // Table is a parent of itself by default.
         parents: parents || [tableId],
+        parentId: parentId ?? null,
         remoteDatabaseTableId: remoteDatabaseTableId ?? null,
         remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
         title,

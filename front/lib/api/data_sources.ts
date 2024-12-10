@@ -228,6 +228,7 @@ export async function upsertDocument({
   text,
   section,
   tags,
+  parentId,
   parents,
   timestamp,
   light_document_output,
@@ -241,6 +242,7 @@ export async function upsertDocument({
   text?: string | null;
   section?: FrontDataSourceDocumentSectionType | null;
   tags?: string[] | null;
+  parentId?: string | null;
   parents?: string[] | null;
   timestamp?: number | null;
   light_document_output?: boolean;
@@ -385,6 +387,7 @@ export async function upsertDocument({
     dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: documentId,
     tags: nonNullTags,
+    parentId: parentId ?? null,
     parents: documentParents,
     sourceUrl,
     // TEMPORARY -- need to unstuck a specific entry
@@ -416,6 +419,7 @@ export async function upsertTable({
   truncate,
   csv,
   tags,
+  parentId,
   parents,
   timestamp,
   async,
@@ -431,6 +435,7 @@ export async function upsertTable({
   truncate: boolean;
   csv?: string | null;
   tags?: string[] | null;
+  parentId?: string | null;
   parents?: string[] | null;
   timestamp?: number | null;
   async: boolean;
@@ -481,6 +486,7 @@ export async function upsertTable({
         tableDescription: description,
         tableTimestamp: timestamp ?? null,
         tableTags: tags ?? [],
+        tableParentId: parentId ?? null,
         tableParents,
         csv: csv ?? null,
         truncate,
@@ -505,6 +511,7 @@ export async function upsertTable({
     tableDescription: description,
     tableTimestamp: timestamp ?? null,
     tableTags: tags || [],
+    tableParentId: parentId ?? null,
     tableParents,
     csv: csv ?? null,
     truncate,
@@ -653,6 +660,7 @@ export async function handleDataSourceTableCSVUpsert({
         tableDescription: description,
         tableTimestamp: params.timestamp ?? null,
         tableTags: params.tags ?? [],
+        tableParentId: params.parentId ?? null,
         tableParents,
         csv: csv ?? null,
         truncate,
@@ -685,6 +693,7 @@ export async function handleDataSourceTableCSVUpsert({
     tableDescription: description,
     tableTimestamp: params.timestamp ?? null,
     tableTags: params.tags || [],
+    tableParentId: params.parentId ?? null,
     tableParents,
     csv: csv ?? null,
     truncate,

@@ -68,6 +68,7 @@ makeScript({}, async ({ execute }, logger) => {
                 projectId: ds.dustAPIProjectId,
                 dataSourceId: ds.dustAPIDataSourceId,
                 documentId: row.document_id,
+                parentId: null,
                 parents: row.parents
                   ? [row.document_id, ...row.parents]
                   : [row.document_id],

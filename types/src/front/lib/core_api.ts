@@ -126,6 +126,7 @@ export type CoreAPITable = {
   schema: CoreAPITableSchema | null;
   timestamp: number;
   tags: string[];
+  parent_id: string | null;
   parents: string[];
   created: number;
   data_source_id: string;
@@ -827,6 +828,7 @@ export class CoreAPI {
     documentId,
     timestamp,
     tags,
+    parentId,
     parents,
     sourceUrl,
     section,
@@ -840,6 +842,7 @@ export class CoreAPI {
     documentId: string;
     timestamp?: number | null;
     tags: string[];
+    parentId: string | null;
     parents: string[];
     sourceUrl?: string | null;
     section: CoreAPIDataSourceDocumentSection;
@@ -871,6 +874,7 @@ export class CoreAPI {
           timestamp,
           section,
           tags,
+          parent_id: parentId,
           parents,
           source_url: sourceUrl,
           credentials,
@@ -926,11 +930,13 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     documentId,
+    parentId,
     parents,
   }: {
     projectId: string;
     dataSourceId: string;
     documentId: string;
+    parentId: string | null;
     parents: string[];
   }): Promise<
     CoreAPIResponse<{
@@ -950,6 +956,7 @@ export class CoreAPI {
         },
         body: JSON.stringify({
           parents: parents,
+          parent_id: parentId,
         }),
       }
     );
@@ -1093,6 +1100,7 @@ export class CoreAPI {
     description,
     timestamp,
     tags,
+    parentId,
     parents,
     remoteDatabaseTableId,
     remoteDatabaseSecretId,
@@ -1106,6 +1114,7 @@ export class CoreAPI {
     description: string;
     timestamp: number | null;
     tags: string[];
+    parentId: string | null;
     parents: string[];
     remoteDatabaseTableId?: string | null;
     remoteDatabaseSecretId?: string | null;
@@ -1127,6 +1136,7 @@ export class CoreAPI {
           description: description,
           timestamp,
           tags,
+          parent_id: parentId,
           parents,
           remote_database_table_id: remoteDatabaseTableId ?? null,
           remote_database_secret_id: remoteDatabaseSecretId ?? null,
@@ -1247,11 +1257,13 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     tableId,
+    parentId,
     parents,
   }: {
     projectId: string;
     dataSourceId: string;
     tableId: string;
+    parentId: string | null;
     parents: string[];
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await this._fetchWithError(
@@ -1266,6 +1278,7 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          parent_id: parentId,
           parents: parents,
         }),
       }
@@ -1519,6 +1532,7 @@ export class CoreAPI {
     dataSourceId,
     folderId,
     timestamp,
+    parentId,
     parents,
     title,
   }: {
@@ -1526,6 +1540,7 @@ export class CoreAPI {
     dataSourceId: string;
     folderId: string;
     timestamp: number | null;
+    parentId: string | null;
     parents: string[];
     title: string;
   }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
@@ -1542,6 +1557,7 @@ export class CoreAPI {
           folder_id: folderId,
           timestamp,
           title,
+          parent_id: parentId,
           parents,
         }),
       }

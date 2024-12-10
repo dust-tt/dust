@@ -100,13 +100,14 @@ async function handler(
         });
       }
 
-      const { parents } = r.data;
+      const { parents, parentId } = r.data;
 
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const updateRes = await coreAPI.updateTableParents({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         tableId: tId,
+        parentId: parentId ?? null,
         parents,
       });
 
