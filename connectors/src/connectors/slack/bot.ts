@@ -559,7 +559,19 @@ async function answerMessage(
     },
   });
 
-  const buildSlackMessageError = (errRes: Err<Error | APIError>) => {
+  const buildSlackMessageError = (
+    errRes: Err<Error | APIError>,
+    errorType: string
+  ) => {
+    logger.error(
+      {
+        error: errRes.error,
+        errorType,
+        connectorId: connector.id,
+        slackTeamId,
+      },
+      "slackBot response error"
+    );
     return new Err(
       new SlackMessageError(
         errRes.error.message,
@@ -589,7 +601,10 @@ async function answerMessage(
   };
 
   if (buildContentFragmentRes.isErr()) {
-    return buildSlackMessageError(buildContentFragmentRes);
+    return buildSlackMessageError(
+      buildContentFragmentRes,
+      "buildContentFragment"
+    );
   }
 
   let conversation: ConversationPublicType | undefined = undefined;
@@ -609,7 +624,10 @@ async function answerMessage(
           contentFragment: buildContentFragmentRes.value,
         });
         if (contentFragmentRes.isErr()) {
-          return buildSlackMessageError(contentFragmentRes);
+          return buildSlackMessageError(
+            contentFragmentRes,
+            "postContentFragment"
+          );
         }
       }
 
@@ -618,7 +636,7 @@ async function answerMessage(
         message: messageReqBody,
       });
       if (messageRes.isErr()) {
-        return buildSlackMessageError(messageRes);
+        return buildSlackMessageError(messageRes, "postUserMessage");
       }
       userMessage = messageRes.value;
 
@@ -626,7 +644,7 @@ async function answerMessage(
         conversationId: lastSlackChatBotMessage.conversationId,
       });
       if (conversationRes.isErr()) {
-        return buildSlackMessageError(conversationRes);
+        return buildSlackMessageError(conversationRes, "getConversation");
       }
       conversation = conversationRes.value;
     }
@@ -640,7 +658,7 @@ async function answerMessage(
       contentFragment: buildContentFragmentRes.value || undefined,
     });
     if (convRes.isErr()) {
-      return buildSlackMessageError(convRes);
+      return buildSlackMessageError(convRes, "createConversation");
     }
 
     conversation = convRes.value.conversation;
@@ -668,7 +686,7 @@ async function answerMessage(
   });
 
   if (streamRes.isErr()) {
-    return buildSlackMessageError(streamRes);
+    return buildSlackMessageError(streamRes, "streamConversationToSlack");
   }
 
   return streamRes;
