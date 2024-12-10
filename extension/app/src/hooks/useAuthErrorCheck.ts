@@ -1,11 +1,9 @@
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import { logout, refreshToken } from "@extension/lib/auth";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 
 export const useAuthErrorCheck = (error: any, mutate: () => any) => {
-  const { setAuthError, handleLogout } = useAuth();
-  const navigate = useNavigate();
+  const { setAuthError } = useAuth();
   useEffect(() => {
     const handleError = async () => {
       if (error) {
@@ -20,8 +18,7 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
             if (res.isOk()) {
               mutate();
             } else {
-              handleLogout();
-              navigate("/login");
+              void logout();
             }
             break;
           case "user_not_found":
