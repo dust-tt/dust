@@ -135,11 +135,6 @@ export function FeedbackSelector({
                 onChange={(e) => setLocalFeedbackContent(e.target.value)}
               />
               {popOverInfo}
-              <div className="s-mt-4">
-                <Page.P variant="secondary">
-                  Your full conversation with the assistant will be shared.
-                </Page.P>
-              </div>
               <div className="s-mt-4 s-flex s-justify-between s-gap-2">
                 <Button
                   variant="ghost"
