@@ -44,6 +44,12 @@ export const PostLabsTranscriptsConfigurationBodySchema = t.union([
   ApiKeyConfig,
 ]);
 
+export function isApiKeyConfig(
+  config: t.TypeOf<typeof PostLabsTranscriptsConfigurationBodySchema>
+): config is t.TypeOf<typeof ApiKeyConfig> {
+  return "apiKey" in config;
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -102,16 +108,16 @@ async function handler(
 
       const validatedBody = bodyValidation.right;
       const { provider } = validatedBody;
-      const connectionId =
-        "connectionId" in validatedBody
-          ? validatedBody.connectionId
-          : undefined;
-      const apiKey =
-        "apiKey" in validatedBody ? validatedBody.apiKey : undefined;
-      const apiKeyIsEncrypted =
-        "apiKeyIsEncrypted" in validatedBody
-          ? validatedBody.apiKeyIsEncrypted
-          : undefined;
+
+      const connectionId = isApiKeyConfig(validatedBody)
+        ? undefined
+        : validatedBody.connectionId;
+      const apiKey = isApiKeyConfig(validatedBody)
+        ? validatedBody.apiKey
+        : undefined;
+      const apiKeyIsEncrypted = isApiKeyConfig(validatedBody)
+        ? validatedBody.apiKeyIsEncrypted
+        : undefined;
 
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
