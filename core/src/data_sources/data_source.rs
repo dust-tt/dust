@@ -627,22 +627,6 @@ impl DataSource {
             ))?;
         }
 
-        if parents.is_empty() {
-            warn!(
-                document_id = document_id,
-                timestamp = ?timestamp,
-                parents = ?parents,
-                "Upserting a document without any parent"
-            );
-        } else if parents[0] != document_id {
-            warn!(
-                document_id = document_id,
-                timestamp = ?timestamp,
-                parents = ?parents,
-                "Upserting a document that is not self-referenced as its parent"
-            );
-        }
-
         let store = store.clone();
 
         let current_system_tags = if preserve_system_tags {
