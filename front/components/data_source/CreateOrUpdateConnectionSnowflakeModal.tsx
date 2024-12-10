@@ -30,8 +30,8 @@ type CreateOrUpdateConnectionSnowflakeModalProps = {
     connectionId: string;
     provider: ConnectorProvider;
   }) => Promise<Response>;
-  onCreated?: (dataSource: DataSourceType) => void;
-  dataSourceToUpdate: DataSourceType;
+  onSuccess: (dataSource: DataSourceType) => void;
+  dataSourceToUpdate?: DataSourceType;
 };
 
 export function CreateOrUpdateConnectionSnowflakeModal({
@@ -40,7 +40,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   isOpen,
   onClose,
   createDatasource,
-  onCreated,
+  onSuccess: _onSuccess,
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionSnowflakeModalProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -62,8 +62,19 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     return Object.values(credentials).every((value) => value.length > 0);
   };
 
+  function onSuccess(ds: DataSourceType) {
+    setCredentials({
+      username: "",
+      password: "",
+      account: "",
+      role: "",
+      warehouse: "",
+    });
+    _onSuccess(ds);
+  }
+
   const createSnowflakeConnection = async () => {
-    if (!onCreated || !createDatasource) {
+    if (!onSuccess || !createDatasource) {
       // Should never happen.
       throw new Error("onCreated and createDatasource are required");
     }
@@ -120,7 +131,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       connector: ConnectorType;
     } = await createDataSourceRes.json();
 
-    onCreated(createdManagedDataSource.dataSource);
+    onSuccess(createdManagedDataSource.dataSource);
     setIsLoading(false);
   };
 
@@ -150,40 +161,42 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       return;
     }
 
-    const data = await credentialsRes.json;
-    void data;
+    const data = await credentialsRes.json();
 
-    // const createDataSourceRes = await createDatasource({
-    //   provider: "snowflake",
-    //   connectionId: data.credentials.id,
-    // });
+    const updateConnectorRes = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSourceToUpdate.sId}/managed/update`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId: data.credentials.id,
+        }),
+      }
+    );
 
-    // if (!createDataSourceRes.ok) {
-    //   const err = await createDataSourceRes.json();
-    //   const maybeConnectorsError = "error" in err && err.error.connectors_error;
-
-    //   if (
-    //     isConnectorsAPIError(maybeConnectorsError) &&
-    //     maybeConnectorsError.type === "invalid_request_error"
-    //   ) {
-    //     setError(
-    //       `Failed to create Snowflake connection: ${maybeConnectorsError.message}`
-    //     );
-    //   } else {
-    //     setError(`Failed to create Snowflake connection: ${err.error.message}`);
-    //   }
-
-    //   setIsLoading(false);
-    //   return;
-    // }
-
-    // const createdManagedDataSource: {
-    //   dataSource: DataSourceType;
-    //   connector: ConnectorType;
-    // } = await createDataSourceRes.json();
-
-    // onCreated(createdManagedDataSource.dataSource);
     setIsLoading(false);
+
+    if (!updateConnectorRes.ok) {
+      const err = await updateConnectorRes.json();
+      const maybeConnectorsError = "error" in err && err.error.connectors_error;
+
+      if (
+        isConnectorsAPIError(maybeConnectorsError) &&
+        maybeConnectorsError.type === "invalid_request_error"
+      ) {
+        setError(
+          `Failed to update Snowflake connection: ${maybeConnectorsError.message}`
+        );
+      } else {
+        setError(`Failed to update Snowflake connection: ${err.error.message}`);
+      }
+
+      return;
+    }
+
+    onSuccess(dataSourceToUpdate);
   };
 
   return (

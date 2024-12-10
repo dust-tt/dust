@@ -37,6 +37,7 @@ import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
+import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
@@ -816,22 +817,41 @@ export function ConnectorPermissionsModal({
           />
         </div>
       </Modal>
-      <DataSourceEditionModal
-        isOpen={modalToShow === "edition"}
-        onClose={() => closeModal(false)}
-        dataSource={dataSource}
-        owner={owner}
-        onEditPermissionsClick={async (extraConfig: Record<string, string>) => {
-          await handleUpdatePermissions(
-            connector,
-            dataSource,
-            owner,
-            extraConfig,
-            sendNotification
-          );
-          closeModal(false);
-        }}
-      />
+      {/* Snowflake is not oauth-based and has its own config form */}
+      {connector.type === "snowflake" ? (
+        <CreateOrUpdateConnectionSnowflakeModal
+          owner={owner}
+          connectorProviderConfiguration={
+            CONNECTOR_CONFIGURATIONS[connector.type]
+          }
+          isOpen={modalToShow === "edition"}
+          onClose={() => closeModal(false)}
+          dataSourceToUpdate={dataSource}
+          onSuccess={() => {
+            setModalToShow("selection");
+          }}
+        />
+      ) : (
+        <DataSourceEditionModal
+          isOpen={modalToShow === "edition"}
+          onClose={() => closeModal(false)}
+          dataSource={dataSource}
+          owner={owner}
+          onEditPermissionsClick={async (
+            extraConfig: Record<string, string>
+          ) => {
+            await handleUpdatePermissions(
+              connector,
+              dataSource,
+              owner,
+              extraConfig,
+              sendNotification
+            );
+            closeModal(false);
+          }}
+        />
+      )}
+
       <DataSourceDeletionModal
         isOpen={modalToShow === "deletion"}
         onClose={() => closeModal(false)}
