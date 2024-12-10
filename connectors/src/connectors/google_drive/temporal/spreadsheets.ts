@@ -478,17 +478,12 @@ export async function syncSpreadSheet(
         },
       });
 
-      const parents = [
-        file.id,
-        ...(
-          await getFileParentsMemoized(
-            connectorId,
-            oauth2client,
-            file,
-            startSyncTs
-          )
-        ).map((f) => f.id),
-      ];
+      const parents = await getFileParentsMemoized(
+        connectorId,
+        oauth2client,
+        file,
+        startSyncTs
+      );
 
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {

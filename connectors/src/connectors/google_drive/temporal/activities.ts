@@ -1,8 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
-import type { OAuth2Client } from "googleapis-common";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import StatsD from "hot-shots";
 import PQueue from "p-queue";
@@ -25,7 +24,11 @@ import {
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import {
+  deleteFolderNode,
+  deleteFromDataSource,
+  upsertFolderNode,
+} from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -238,9 +241,9 @@ export async function syncFiles(
         return driveObjectToDustType(file, authCredentials);
       })
   );
-  const subfolders = filesToSync
-    .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
-    .map((f) => f.id);
+  const subfolders = filesToSync.filter(
+    (file) => file.mimeType === "application/vnd.google-apps.folder"
+  );
 
   logger.info(
     {
@@ -287,7 +290,7 @@ export async function syncFiles(
   return {
     nextPageToken: res.data.nextPageToken ? res.data.nextPageToken : null,
     count,
-    subfolders: subfolders,
+    subfolders: subfolders.map((f) => f.id),
   };
 }
 
@@ -310,7 +313,7 @@ export async function objectIsInFolderSelection(
   );
 
   for (const parent of parents) {
-    if (foldersIds.includes(parent.id)) {
+    if (foldersIds.includes(parent)) {
       return true;
     }
   }
@@ -468,6 +471,20 @@ export async function incrementalSync(
         authCredentials
       );
       if (driveFile.mimeType === "application/vnd.google-apps.folder") {
+        const parents = await getFileParentsMemoized(
+          connectorId,
+          authCredentials,
+          driveFile,
+          startSyncTs
+        );
+
+        await upsertFolderNode({
+          dataSourceConfig,
+          folderId: getDocumentId(driveFile.id),
+          parents,
+          title: driveFile.name ?? "",
+        });
+
         await GoogleDriveFiles.upsert({
           connectorId: connectorId,
           dustFileId: getDocumentId(driveFile.id),
@@ -762,11 +779,18 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     }
     await googleDriveFile.destroy({ transaction: t });
   });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  await deleteFolderNode({
+    dataSourceConfig,
+    folderId: googleDriveFile.dustFileId,
+  });
 }
 
 export async function markFolderAsVisited(
   connectorId: ModelId,
-  driveFileId: string
+  driveFileId: string,
+  startSyncTs: number = 0
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -783,6 +807,21 @@ export async function markFolderAsVisited(
     // We got a 404 on this folder, we skip it.
     return;
   }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const parents = await getFileParentsMemoized(
+    connectorId,
+    authCredentials,
+    file,
+    startSyncTs
+  );
+
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: getDocumentId(file.id),
+    parents,
+    title: file.name ?? "",
+  });
 
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
