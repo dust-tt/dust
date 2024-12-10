@@ -561,12 +561,18 @@ async function answerMessage(
 
   const buildSlackMessageError = (
     errRes: Err<Error | APIError>,
-    errorType: string
+    errorKind:
+      | "buildContentFragment"
+      | "postContentFragment"
+      | "getConversation"
+      | "createConversation"
+      | "postUserMessage"
+      | "streamConversationToSlack"
   ) => {
     logger.error(
       {
         error: errRes.error,
-        errorType,
+        errorKind,
         connectorId: connector.id,
         slackTeamId,
       },
