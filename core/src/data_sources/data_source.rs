@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
 use tokio_stream::{self as stream};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use uuid::Uuid;
 
 /// Section is used to represent the structure of document to be taken into account during chunking.
