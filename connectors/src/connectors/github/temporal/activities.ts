@@ -36,9 +36,11 @@ import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/ut
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceDocument,
+  deleteFolderNode,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertDataSourceDocument,
+  upsertFolderNode,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -672,6 +674,12 @@ export async function githubRepoGarbageCollectActivity(
       repoId: repoId.toString(),
     },
   });
+
+  await deleteFolderNode({
+    dataSourceConfig,
+    folderId: repoId,
+    loggerArgs: logger.bindings(),
+  });
 }
 
 async function deleteIssue(
@@ -844,6 +852,19 @@ async function garbageCollectCodeSync(
         },
       },
     });
+
+    // Also delete data source folders
+    const fq = new PQueue({ concurrency: 8 });
+    directoriesToDelete.forEach((d) =>
+      fq.add(async () => {
+        Context.current().heartbeat();
+        await deleteFolderNode({
+          dataSourceConfig,
+          folderId: d.internalId,
+          loggerArgs: logger.bindings(),
+        });
+      })
+    );
   }
 }
 
@@ -908,6 +929,12 @@ export async function githubCodeSyncActivity({
       },
     });
 
+    await deleteFolderNode({
+      dataSourceConfig,
+      folderId: repoId.toString(),
+      loggerArgs: logger.bindings(),
+    });
+
     return;
   }
 
@@ -938,6 +965,14 @@ export async function githubCodeSyncActivity({
   githubCodeRepository.sourceUrl = `https://github.com/${repoLogin}/${repoName}`;
   githubCodeRepository.lastSeenAt = codeSyncStartedAt;
   await githubCodeRepository.save();
+
+  // Add as dataSource folder
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: githubCodeRepository.repoId,
+    title: githubCodeRepository.repoName,
+    parents: [githubCodeRepository.repoId],
+  });
 
   logger.info(
     {
@@ -987,6 +1022,12 @@ export async function githubCodeSyncActivity({
           connectorId: connector.id,
           repoId: repoId.toString(),
         },
+      });
+
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: repoId.toString(),
+        loggerArgs: logger.bindings(),
       });
 
       return;
@@ -1168,6 +1209,13 @@ export async function githubCodeSyncActivity({
             codeUpdatedAt: codeSyncStartedAt,
           });
         }
+
+        await upsertFolderNode({
+          dataSourceConfig,
+          folderId: d.internalId,
+          parents: [d.internalId, ...d.parents, repoId.toString()],
+          title: d.dirName,
+        });
 
         // If the parents have updated then the internalId gets updated as well so we should never
         // have an udpate to parentInternalId. We check that this is always the case. If the
