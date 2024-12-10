@@ -354,16 +354,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
-    return this.model.destroy({
-      where: { workspaceId: workspace.id },
-      transaction,
-    });
-  }
-
   /**
    * Caller of this method should call `ServerSideTracking.trackCreateMembership`.
    */

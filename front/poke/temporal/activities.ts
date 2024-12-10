@@ -599,7 +599,6 @@ export async function deleteWorkspaceActivity({
     });
     await FileResource.deleteAllForWorkspace(workspace, t);
     await RunResource.deleteAllForWorkspace(workspace, t);
-    await MembershipResource.deleteAllForWorkspace(workspace, t);
     await AgentUserRelation.destroy({
       where: { workspaceId: workspace.id },
       transaction: t,
