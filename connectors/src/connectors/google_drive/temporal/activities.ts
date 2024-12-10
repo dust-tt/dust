@@ -9,10 +9,7 @@ import { Op } from "sequelize";
 
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import {
-  getFileParentsForUpsert,
-  getFileParentsMemoized,
-} from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
 import {
   getMimeTypesToSync,
@@ -316,7 +313,7 @@ export async function objectIsInFolderSelection(
   );
 
   for (const parent of parents) {
-    if (foldersIds.includes(parent.id)) {
+    if (foldersIds.includes(parent)) {
       return true;
     }
   }
@@ -474,7 +471,7 @@ export async function incrementalSync(
         authCredentials
       );
       if (driveFile.mimeType === "application/vnd.google-apps.folder") {
-        const parents = await getFileParentsForUpsert(
+        const parents = await getFileParentsMemoized(
           connectorId,
           authCredentials,
           driveFile,
@@ -812,7 +809,7 @@ export async function markFolderAsVisited(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const parents = await getFileParentsForUpsert(
+  const parents = await getFileParentsMemoized(
     connectorId,
     authCredentials,
     file,

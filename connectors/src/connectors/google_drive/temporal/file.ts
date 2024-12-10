@@ -4,7 +4,7 @@ import type { OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import type { CreationAttributes } from "sequelize";
 
-import { getFileParentsForUpsert } from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getMimeTypesToDownload,
   isGoogleDriveSpreadSheetFile,
@@ -182,7 +182,7 @@ async function handleFileExport(
   if (file.mimeType === "text/plain") {
     result = handleTextFile(res.data, maxDocumentLen);
   } else if (file.mimeType === "text/csv") {
-    const parents = await getFileParentsForUpsert(
+    const parents = await getFileParentsMemoized(
       connectorId,
       oauth2client,
       file,
@@ -473,7 +473,7 @@ async function upsertGdriveDocument(
   const documentLen = documentContent ? sectionLength(documentContent) : 0;
 
   if (documentLen > 0 && documentLen <= maxDocumentLen) {
-    const parents = await getFileParentsForUpsert(
+    const parents = await getFileParentsMemoized(
       connectorId,
       oauth2client,
       file,

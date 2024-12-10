@@ -11,7 +11,7 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
-import { getFileParentsForUpsert } from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -478,7 +478,7 @@ export async function syncSpreadSheet(
         },
       });
 
-      const parents = await getFileParentsForUpsert(
+      const parents = await getFileParentsMemoized(
         connectorId,
         oauth2client,
         file,

@@ -123,7 +123,7 @@ export async function googleDriveFullSync({
         `Synced ${totalCount} files`
       );
     } while (nextPageToken);
-    await markFolderAsVisited(connectorId, folder);
+    await markFolderAsVisited(connectorId, folder, startSyncTs);
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof googleDriveFullSync>({
         connectorId,
