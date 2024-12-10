@@ -197,7 +197,7 @@ export async function microsoftGarbageCollectionWorkflow({
       rootNodeIds,
       startGarbageCollectionTs,
     });
-    await sleep("1 minute");
+    await sleep("30 seconds");
   }
 }
 
