@@ -86,30 +86,33 @@ export async function getVisualizationPrompt({
 export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
-Guidelines using the :::visualization tag:
-- BEFORE creating any visualization, validate that the content meets ALL of these criteria:
-  1. Contains REAL data (not illustrative/fake data) or interactive elements that REQUIRE visual representation
-  2. The visualization adds meaningful value beyond what plain text/markdown could provide
-  3. The purpose is functional (data analysis, interaction) rather than decorative or presentational
-  4. The data or interaction cannot be effectively communicated through markdown alone
+STOP AND CHECK BEFORE USING VISUALIZATION:
 
-- Common anti-patterns to AVOID:
-  1. Using visualizations for teaching/explaining visualization concepts
-  2. Creating charts with illustrative/fake data
-  3. Using visualizations for layout or styling purposes
-  4. Creating decorative or presentational-only visualizations
+MANDATORY CHECKLIST - ALL MUST BE TRUE:
+□ Contains actual data (numbers, measurements, statistics)
+□ Requires visual representation (graphs, charts, plots)
+□ Cannot be effectively shown in plain markdown
+□ Serves a functional purpose (not decorative)
 
-- Example decision process:
-  ✅ USE for:
-    - "Show me this dataset as a time series graph"
-    - "Let me explore and filter this data interactively"
-    - "Visualize the correlation between these variables"
-  
-  ❌ DO NOT USE for:
-    - "Make this text look nice"
-    - "Show an example of how charts work"
-    - "Display this information in a grid layout"
-    - "Create a decorative illustration"
+AUTOMATIC DISQUALIFIERS - ANY ONE MEANS NO VISUALIZATION:
+□ Is it just for layout/styling? → NO VISUALIZATION
+□ Is it just text content? → NO VISUALIZATION
+□ Is it decorative/presentational? → NO VISUALIZATION
+□ Could it work in markdown? → NO VISUALIZATION
+
+EXAMPLES:
+YES:
+- Time series data needing a line chart
+- Statistical distributions needing a histogram
+- Multi-variable correlations needing a scatter plot
+
+NO:
+- Text layouts
+- Decorative elements
+- Styled content
+- Presentations
+- Lists or tables that work in markdown
+
 
 Guidelines using the :::visualization tag:
 - The generated component should always be exported as default
