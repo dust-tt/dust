@@ -1,9 +1,4 @@
-import type {
-  ConnectorPermission,
-  ConnectorsAPIError,
-  ContentNode,
-  Result,
-} from "@dust-tt/types";
+import type { ConnectorPermission, ContentNode, Result } from "@dust-tt/types";
 import type { ContentNodesViewType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
@@ -39,7 +34,11 @@ import {
   launchIntercomSyncWorkflow,
   stopIntercomSyncWorkflow,
 } from "@connectors/connectors/intercom/temporal/client";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -60,7 +59,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const intercomAccessToken = await getIntercomAccessToken(connectionId);
 
     let connector = null;
@@ -117,17 +116,14 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
         { connectorId: this.connectorId },
         "[Intercom] Connector not found."
       );
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     const intercomWorkspace = await IntercomWorkspace.findOne({
@@ -135,10 +131,9 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     });
 
     if (!intercomWorkspace) {
-      return new Err({
-        type: "connector_update_error",
-        message: "Error retrieving intercom workspace to update connector",
-      });
+      throw new Error(
+        "Error retrieving intercom workspace to update connector"
+      );
     }
 
     if (connectionId) {
@@ -149,16 +144,15 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       });
 
       if (!newIntercomWorkspace) {
-        return new Err({
-          type: "connector_update_error",
-          message: "Error retrieving connection info to update connector",
-        });
+        throw new Error("Error retrieving connection info to update connector");
       }
       if (intercomWorkspace.intercomWorkspaceId !== newIntercomWorkspace.id) {
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change workspace of a Intercom connector",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change workspace of a Intercom connector"
+          )
+        );
       }
 
       await connector.update({ connectionId: newConnectionId });

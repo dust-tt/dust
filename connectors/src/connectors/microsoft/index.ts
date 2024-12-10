@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
@@ -8,7 +7,11 @@ import type {
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   getChannelAsContentNode,
@@ -62,7 +65,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const client = await getClient(connectionId);
 
     try {
@@ -109,14 +112,10 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     // Check that we don't switch tenants
@@ -134,16 +133,18 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           currentOrg.value.length === 0 ||
           newOrg.value.length === 0
         ) {
-          return new Err({
-            type: "connector_update_error",
-            message: "Error retrieving organization info to update connector",
-          });
+          throw new Error(
+            "Error retrieving organization info to update connector"
+          );
         }
+
         if (currentOrg.value[0].id !== newOrg.value[0].id) {
-          return new Err({
-            type: "connector_oauth_target_mismatch",
-            message: "Cannot change domain of a Microsoft connector",
-          });
+          return new Err(
+            new ConnectorManagerError(
+              "CONNECTOR_OAUTH_TARGET_MISMATCH",
+              "Cannot change domain of a Microsoft connector"
+            )
+          );
         }
       } catch (e) {
         logger.error(

@@ -1,9 +1,4 @@
-import type {
-  ConnectorsAPIError,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
+import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import {
   Err,
   getNotionDatabaseTableId,
@@ -12,6 +7,12 @@ import {
 } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
+import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -28,8 +29,6 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-import type { ConnectorManagerError } from "../interface";
-import { BaseConnectorManager } from "../interface";
 import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
@@ -57,7 +56,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const tokRes = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
       logger,
@@ -106,14 +105,11 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     if (connectionId) {
@@ -146,24 +142,22 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
             "Error retrieving workspace Id from new connection"
           );
         }
-        return new Err({
-          type: "connector_update_error",
-          message:
-            "Error retrieving workspace Ids from connections while checking update validity",
-        });
+
+        throw new Error(
+          "Error retrieving workspace Ids from connections while checking update validity"
+        );
       }
 
       if (!workspaceIdRes.value || !newWorkspaceIdRes.value) {
-        return new Err({
-          type: "connector_update_error",
-          message: "Error retrieving connection info to update connector",
-        });
+        throw new Error("Error retrieving connection info to update connector");
       }
       if (workspaceIdRes.value !== newWorkspaceIdRes.value) {
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change workspace of a Notion connector",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change workspace of a Notion connector"
+          )
+        );
       }
 
       await c.update({ connectionId });
@@ -185,10 +179,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           },
           "Error launching notion sync workflow post update."
         );
-        return new Err({
-          type: "connector_update_error",
-          message: "Error restarting sync workflow after updating connector",
-        });
+        throw new Error(
+          "Error restarting sync workflow after updating connector"
+        );
       }
     }
 

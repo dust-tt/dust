@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ModelId,
   Result,
@@ -11,7 +10,11 @@ import { Err, Ok } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
@@ -43,7 +46,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: SlackConfigurationType;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const slackAccessToken = await getSlackAccessToken(connectionId);
 
     const client = new WebClient(slackAccessToken);
@@ -86,14 +89,11 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     const currentSlackConfig =
@@ -103,10 +103,9 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         { connectorId: this.connectorId },
         "Slack configuration not found"
       );
-      return new Err({
-        message: "Slack configuration not found",
-        type: "connector_not_found",
-      });
+      throw new Error(
+        `Slack configuration not found for connector ${this.connectorId}`
+      );
     }
 
     const updateParams: Parameters<typeof c.update>[0] = {};
@@ -116,10 +115,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       const slackClient = await getSlackClient(accessToken);
       const teamInfoRes = await slackClient.team.info();
       if (!teamInfoRes.ok || !teamInfoRes.team?.id) {
-        return new Err({
-          type: "internal_server_error",
-          message: "Can't get the Slack team information.",
-        });
+        throw new Error("Can't get the Slack team information.");
       }
 
       const newTeamId = teamInfoRes.team.id;
@@ -140,10 +136,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           const uninstallRes = await uninstallSlack(connectionId);
 
           if (uninstallRes.isErr()) {
-            return new Err({
-              type: "internal_server_error",
-              message: "Failed to deactivate the mismatching Slack app",
-            });
+            throw new Error("Failed to deactivate the mismatching Slack app");
           }
           logger.info(
             {
@@ -163,10 +156,12 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           );
         }
 
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change the Slack Team of a Data Source",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change the Slack Team of a Data Source"
+          )
+        );
       }
 
       updateParams.connectionId = connectionId;

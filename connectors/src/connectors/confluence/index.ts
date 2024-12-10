@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
@@ -37,7 +36,11 @@ import {
   launchConfluenceSyncWorkflow,
   stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -60,7 +63,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const confluenceAccessTokenRes =
       await getConfluenceAccessToken(connectionId);
     if (confluenceAccessTokenRes.isErr()) {
@@ -116,14 +119,11 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found.");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     if (connectionId) {
@@ -137,10 +137,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       const confluenceAccessTokenRes =
         await getConfluenceAccessToken(connectionId);
       if (confluenceAccessTokenRes.isErr()) {
-        return new Err({
-          type: "connector_oauth_error",
-          message: confluenceAccessTokenRes.error.message,
-        });
+        throw new Error(confluenceAccessTokenRes.error.message);
       }
 
       const newConfluenceCloudInformation = await getConfluenceCloudInformation(
@@ -169,10 +166,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           "Cannot change the workspace of a Confluence connector"
         );
 
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change the workspace of a Confluence connector",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change the workspace of a Confluence connector"
+          )
+        );
       }
     }
 

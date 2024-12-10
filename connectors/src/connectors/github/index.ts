@@ -1,4 +1,4 @@
-import type { ConnectorsAPIError, ContentNode, Result } from "@dust-tt/types";
+import type { ContentNode, Result } from "@dust-tt/types";
 import type { ConnectorPermission, ContentNodesViewType } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 
@@ -11,7 +11,11 @@ import {
 import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
 import { matchGithubInternalIdType } from "@connectors/connectors/github/lib/utils";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -36,7 +40,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const installationId = await installationIdFromConnectionId(connectionId);
     if (!installationId) {
       throw new Error("Github: received connectionId is invalid");
@@ -70,14 +74,11 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err({
-        message: "Connector not found",
-        type: "connector_not_found",
-      });
+      throw new Error("Connector not found");
     }
 
     if (connectionId) {
@@ -88,10 +89,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         ]);
 
       if (oldGithubInstallationId !== newGithubInstallationId) {
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change the Installation Id of a Github Data Source",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change the Installation Id of a Github Data Source"
+          )
+        );
       }
 
       await c.update({ connectionId });

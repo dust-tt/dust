@@ -11,7 +11,10 @@ import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
 import { IntercomConnectorManager } from "@connectors/connectors/intercom";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  ConnectorManagerError,
+  CreateConnectorErrorCode,
+} from "@connectors/connectors/interface";
 import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
@@ -91,7 +94,9 @@ export function createConnector({
         connectionId: string;
         configuration: SlackConfiguration;
       };
-    }): Promise<Result<string, ConnectorManagerError>> {
+    }): Promise<
+  Result<string, ConnectorManagerError<CreateConnectorErrorCode>>
+> {
   switch (connectorProvider) {
     case "confluence":
       return ConfluenceConnectorManager.create(params);

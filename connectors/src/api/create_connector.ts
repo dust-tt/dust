@@ -16,6 +16,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import { createConnector } from "@connectors/connectors";
+import type { CreateConnectorErrorCode } from "@connectors/connectors/interface";
 import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
@@ -60,7 +61,10 @@ const _createConnectorAPIHandler = async (
       configuration,
     } = bodyValidation.right;
 
-    let connectorRes: Result<string, ConnectorManagerError> | null = null;
+    let connectorRes: Result<
+      string,
+      ConnectorManagerError<CreateConnectorErrorCode>
+    > | null = null;
 
     switch (req.params.connector_provider) {
       case "webcrawler": {
@@ -157,14 +161,6 @@ const _createConnectorAPIHandler = async (
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: connectorRes.error.message,
-            },
-          });
-        case "PERMISSION_REVOKED":
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "authorization_error",
               message: connectorRes.error.message,
             },
           });

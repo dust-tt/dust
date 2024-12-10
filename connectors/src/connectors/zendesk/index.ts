@@ -1,14 +1,19 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import type {
+  CreateConnectorErrorCode,
+  UpdateConnectorErrorCode,
+} from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import {
   allowSyncZendeskBrand,
   forbidSyncZendeskBrand,
@@ -60,7 +65,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const { subdomain, accessToken } =
       await getZendeskSubdomainAndAccessToken(connectionId);
     const zendeskUser = await fetchZendeskCurrentUser({
@@ -115,25 +120,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>> {
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const { connectorId } = this;
 
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      return new Err({
-        type: "connector_not_found",
-        message: "Connector not found",
-      });
+      throw new Error(`Connector ${connectorId} not found`);
     }
 
     const configuration =
       await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
     if (!configuration) {
-      return new Err({
-        type: "connector_update_error",
-        message: "Error retrieving Zendesk configuration to update connector",
-      });
+      throw new Error(
+        "Error retrieving Zendesk configuration to update connector"
+      );
     }
 
     if (connectionId) {
@@ -143,10 +144,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         await getZendeskSubdomainAndAccessToken(newConnectionId);
 
       if (configuration.subdomain !== newSubdomain) {
-        return new Err({
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change the subdomain of a Zendesk connector",
-        });
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change the subdomain of a Zendesk connector"
+          )
+        );
       }
 
       await connector.update({ connectionId: newConnectionId });

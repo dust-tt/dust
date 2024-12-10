@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
   ModelId,
@@ -10,12 +9,16 @@ import type { ConnectorConfiguration } from "@dust-tt/types";
 
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-type ConnectorManagerErrorCode = "INVALID_CONFIGURATION" | "PERMISSION_REVOKED";
+export type CreateConnectorErrorCode = "INVALID_CONFIGURATION";
 
-export class ConnectorManagerError extends Error {
-  code: ConnectorManagerErrorCode;
+export type UpdateConnectorErrorCode =
+  | "INVALID_CONFIGURATION"
+  | "CONNECTOR_OAUTH_TARGET_MISMATCH";
 
-  constructor(code: ConnectorManagerErrorCode, message: string) {
+export class ConnectorManagerError<T extends string> extends Error {
+  code: T;
+
+  constructor(code: T, message: string) {
     super(message);
     this.name = "ConnectorManagerError";
     this.code = code;
@@ -34,13 +37,13 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: ConnectorConfiguration;
-  }): Promise<Result<string, ConnectorManagerError>> {
+  }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     throw new Error("Method not implemented.");
   }
 
   abstract update(params: {
     connectionId?: string | null;
-  }): Promise<Result<string, ConnectorsAPIError>>;
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>>;
 
   abstract clean(params: { force: boolean }): Promise<Result<undefined, Error>>;
 
