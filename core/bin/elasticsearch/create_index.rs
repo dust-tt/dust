@@ -50,7 +50,7 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // parse args and env vars
     let args = Args::parse();
-    let index_alias = args.index_name;
+    let index_name = args.index_name;
     let index_version = args.index_version;
 
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
@@ -74,7 +74,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Elasticsearch::new(transport);
 
-    let index_fullname = format!("core.{}_{}", index_alias, index_version);
+    let index_fullname = format!("core.{}_{}", index_name, index_version);
+    let index_alias = format!("core.{}", index_name);
 
     // do not create index if it already exists
     let response = client
@@ -90,13 +91,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // get index settings and mappings, parse them as json
     let settings_path = format!(
         "src/search_stores/indices/{}_{}.settings.{}.json",
-        index_alias,
+        index_name,
         index_version,
         region.to_string().to_lowercase()
     );
     let mappings_path = format!(
         "src/search_stores/indices/{}_{}.mappings.json",
-        index_alias, index_version
+        index_name, index_version
     );
 
     // catch errors, provide the error message
