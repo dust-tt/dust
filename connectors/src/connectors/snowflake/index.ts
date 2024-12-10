@@ -141,6 +141,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     await c.update({ connectionId });
+    await launchSnowflakeSyncWorkflow(c.id);
 
     return new Ok(c.id.toString());
   }
