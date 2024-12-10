@@ -1649,7 +1649,7 @@ async fn data_sources_documents_upsert(
             },
             node_type = "document",
             operation = "upsert",
-            "[KWSEARCH] invariant: first parent must be the document itself"
+            "[KWSEARCH] invariant: first parent must be the node itself"
         );
     }
 
