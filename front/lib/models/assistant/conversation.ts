@@ -366,7 +366,7 @@ AgentMessage.hasMany(AgentMessageFeedback, {
 UserModel.hasMany(AgentMessageFeedback, {
   onDelete: "SET NULL",
 });
-AgentMessageFeedback.belongsTo(User);
+AgentMessageFeedback.belongsTo(UserModel);
 AgentMessageFeedback.belongsTo(AgentMessage);
 
 export class Message extends BaseModel<Message> {
