@@ -4,6 +4,7 @@ steps:
     script: |
       depot build \
         --project 3vz0lnf16v \
+        --provenance=false \
         -t us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA} \
         -t us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
         -f ${_DOCKERFILE_PATH} \
@@ -17,6 +18,7 @@ steps:
       - "DEPOT_TOKEN"
 
 timeout: 600s
+
 options:
   automapSubstitutions: true
   logging: CLOUD_LOGGING_ONLY
@@ -25,7 +27,3 @@ availableSecrets:
   secretManager:
     - versionName: projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest
       env: DEPOT_TOKEN
-
-images:
-  - us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA}
-  - us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest
