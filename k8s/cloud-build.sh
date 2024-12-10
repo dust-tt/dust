@@ -60,7 +60,7 @@ if [ -n "$DUST_CLIENT_FACING_URL" ]; then
 fi
 
 # prepare the gcloud command
-GCLOUD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild_tmp.yaml")
+GCLOUD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml")
 
 # add ignore file argument if specified
 if [ -n "$GCLOUD_IGNORE_FILE" ]; then
