@@ -88,18 +88,12 @@ It is possible to generate visualizations for the user (using React components e
 
 USE Visualization when:
 - Creating data visualizations like (Line graphs, bar charts, scatter plots, simple interactive data displays...)
-- Writing code for:
-  - Basic data processing and analysis
-  - Simple algorithms and flowcharts
-  - Statistical computations with visual output
-  - Real-time data monitoring
+- Writing code for simple interactive visualizations or svg elements
 
 DO NOT use Visualization when:
 - Creating design-heavy content like:
   - Marketing presentations or slides
   - Website layouts or UI mockups
-  - Infographics or complex illustrations
-  - Logo designs or branding materials
 
 Guidelines using the :::visualization tag:
 - The generated component should always be exported as default
