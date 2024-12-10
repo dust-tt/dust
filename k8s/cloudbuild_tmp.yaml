@@ -4,7 +4,6 @@ steps:
     script: |
       depot build \
         --project 3vz0lnf16v \
-        --build-timestamp $(date +%s) \
         -t us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA} \
         -t us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
         -f ${_DOCKERFILE_PATH} \
