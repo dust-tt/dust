@@ -25,7 +25,7 @@ use tokio::{
 };
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, Level};
+use tracing::{error, info, warn, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
@@ -1624,6 +1624,17 @@ async fn data_sources_documents_upsert(
         Some(v) => v,
         None => false,
     };
+
+    if payload.parents.get(0) != Some(&payload.document_id) {
+        info!(
+            document_id = payload.document_id,
+            parents_0 = match payload.parents.get(0) {
+                None => "None",
+                Some(p) => p,
+            },
+            "[KWSEARCH] invariant: first parent must be the document itself"
+        );
+    }
 
     match state
         .store
