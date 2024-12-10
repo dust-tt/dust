@@ -76,6 +76,18 @@ export function BlogSection() {
                 />
               </BlogBlock>
             </CarouselItem>
+            <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
+              <BlogBlock
+                title="Qonto partners with Dust to upgrade its customer experience"
+                content="Qonto streamlines operations with Dust's AI assistants, saving 50,000 hours yearly."
+                href="https://blog.dust.tt/qonto-dust-ai-partnership/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/11/qonto_dust.jpg"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
+            </CarouselItem>
           </CarouselContent>
         </Carousel>
       </div>

@@ -70,66 +70,6 @@ export default function CustomerSupport() {
       />
 
       <Grid>
-        {/* <div
-          className={classNames(
-            "col-span-12 py-8",
-            "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16",
-            "2xl:col-span-10 2xl:col-start-2"
-          )}
-        >
-          <ImgBlock
-            title={
-              <>
-                Resolve
-                <br />
-                faster.
-              </>
-            }
-            content={
-              <>
-                Surface relevant information from all connected knowledge bases
-                instantly and understand messages in 50+ languages.
-              </>
-            }
-          >
-            <Avatar size="xl" emoji={"💡"} backgroundColor={"bg-sky-300"} />
-          </ImgBlock>
-          <ImgBlock
-            title={
-              <>
-                Boost
-                <br />
-                Team Productivity.
-              </>
-            }
-            content={
-              <>
-                Keep teams synchronized with real-time access to information
-                across all communication channels and reduce onboarding times.
-              </>
-            }
-          >
-            <Avatar size="xl" emoji={"🪄"} backgroundColor={"bg-sky-300"} />
-          </ImgBlock>
-          <ImgBlock
-            title={
-              <>
-                Understand <br />
-                customer needs.
-              </>
-            }
-            content={
-              <>
-                Gain insights from coss-tool interactions to undertstand and act
-                on customer needs, improve documentation.
-              </>
-            }
-          >
-            <Avatar size="xl" emoji={"🚀"} backgroundColor={"bg-sky-300"} />
-          </ImgBlock>
-        </div> */}
-
         <TrustedBy />
 
         <MetricComponent
@@ -163,7 +103,7 @@ export default function CustomerSupport() {
               color: "sky",
               contentBlocks: [
                 {
-                  title: <>Resolve faster.</>,
+                  title: <>Resolve faster</>,
                   content: [
                     <>
                       Surface relevant information from all connected knowledge
@@ -172,7 +112,7 @@ export default function CustomerSupport() {
                   ],
                 },
                 {
-                  title: <>Boost team productivity.</>,
+                  title: <>Boost team productivity</>,
                   content: [
                     <>
                       Keep teams synchronized with real-time access to
@@ -182,7 +122,7 @@ export default function CustomerSupport() {
                   ],
                 },
                 {
-                  title: <>Understand customer needs.</>,
+                  title: <>Understand customer needs</>,
                   content: [
                     <>
                       Gain insights from coss-tool interactions to undertstand
@@ -202,10 +142,10 @@ export default function CustomerSupport() {
         />
 
         <Quote
-          quote="We're managing a&nbsp;higher volume of&nbsp;tickets and have
-              cut&nbsp;processing time from an&nbsp;average of 6&nbsp;minutes
-              per&nbsp;ticket to&nbsp;just a&nbsp;few&nbsp;seconds…
-            "
+          quote="we’re managing a&nbsp;higher volume of&nbsp;tickets and have cut processing time—from an&nbsp;average of 5&nbsp;minutes per ticket to&nbsp;just a&nbsp;few seconds. This allows the&nbsp;team to&nbsp;focus on more complex requests, ultimately improving the&nbsp;overall quality and speed of&nbsp;customer support."
+          name="Anaïs Ghelfi"
+          title="Head of Data Platform at Malt"
+          logo="/static/landing/logos/malt.png"
         />
 
         <div
@@ -226,7 +166,7 @@ export default function CustomerSupport() {
             <CarouselContent>
               <CarouselItem className="basis-full md:basis-1/2 md:px-6 lg:basis-1/3">
                 <BlogBlock
-                  title="Navigating Growth and Innovation with November Five’s Dario Prskalo"
+                  title="How Eléonore, Care Team Lead at Pennylane, Uses Dust"
                   content="Discover how November Five leverages AI with Dust to enhance efficiency and maintain a human touch in their digital solutions."
                   href="https://blog.dust.tt/november-five-ai-transformation-dust/"
                 >
@@ -250,12 +190,12 @@ export default function CustomerSupport() {
               </CarouselItem>
               <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
                 <BlogBlock
-                  title="Integrating AI for Enhanced Workflows at Alan"
-                  content="Discover how Alan revolutionizes healthcare and enhances workflows using AI. See how @code-help and Dust streamline developer tasks."
-                  href="https://blog.dust.tt/integrating-ai-workflows-alan/"
+                  title="Qonto partners with Dust to upgrade its customer experience"
+                  content="Qonto streamlines operations with Dust's AI assistants, saving 50,000 hours yearly."
+                  href="https://blog.dust.tt/qonto-dust-ai-partnership/"
                 >
                   <img
-                    src="https://blog.dust.tt/content/images/size/w2000/2024/03/cover-vincent.png"
+                    src="https://blog.dust.tt/content/images/size/w2000/2024/11/qonto_dust.jpg"
                     alt="Blog Image"
                   />
                 </BlogBlock>
@@ -270,7 +210,7 @@ export default function CustomerSupport() {
 
 const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "🖋️",
+    emoji: "🔍",
     name: "Ticket Resolution",
     backgroundColor: "bg-sky-300",
     description: (
@@ -278,7 +218,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
     ),
   },
   {
-    emoji: "🔎",
+    emoji: "🎓",
     name: "Agent Coaching",
     backgroundColor: "bg-sky-300",
     description: (
@@ -289,7 +229,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
     ),
   },
   {
-    emoji: "📞",
+    emoji: "📝",
     name: "Documentation Builder",
     backgroundColor: "bg-sky-300",
     description: (
@@ -300,7 +240,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
     ),
   },
   {
-    emoji: "📊",
+    emoji: "📢",
     name: "Customer Voice",
     backgroundColor: "bg-sky-300",
     description: (
