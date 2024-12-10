@@ -366,8 +366,6 @@ AgentMessage.hasMany(AgentMessageFeedback, {
 UserModel.hasMany(AgentMessageFeedback, {
   onDelete: "SET NULL",
 });
-AgentMessageFeedback.belongsTo(UserModel);
-AgentMessageFeedback.belongsTo(AgentMessage);
 
 export class Message extends BaseModel<Message> {
   declare createdAt: CreationOptional<Date>;
