@@ -185,9 +185,12 @@ async function handleFileExport(
   if (file.mimeType === "text/plain") {
     result = handleTextFile(res.data, maxDocumentLen);
   } else if (file.mimeType === "text/csv") {
-    const parents = (
-      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
-    ).map((f) => f.id);
+    const parents = await getFileParentsForUpsert(
+      connectorId,
+      oauth2client,
+      file,
+      startSyncTs
+    );
 
     result = await handleCsvFile({
       data: res.data,
@@ -198,7 +201,7 @@ async function handleFileExport(
       dataSourceConfig,
       provider: "google_drive",
       connectorId,
-      parents: [file.id, ...parents],
+      parents,
     });
   } else {
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);

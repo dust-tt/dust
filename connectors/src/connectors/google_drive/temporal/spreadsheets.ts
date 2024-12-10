@@ -11,7 +11,10 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
-import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
+import {
+  getFileParentsForUpsert,
+  getFileParentsMemoized,
+} from "@connectors/connectors/google_drive/lib/hierarchy";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -478,17 +481,12 @@ export async function syncSpreadSheet(
         },
       });
 
-      const parents = [
-        file.id,
-        ...(
-          await getFileParentsMemoized(
-            connectorId,
-            oauth2client,
-            file,
-            startSyncTs
-          )
-        ).map((f) => f.id),
-      ];
+      const parents = await getFileParentsForUpsert(
+        connectorId,
+        oauth2client,
+        file,
+        startSyncTs
+      );
 
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {
