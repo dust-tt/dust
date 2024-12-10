@@ -91,14 +91,11 @@ STOP AND CHECK BEFORE USING VISUALIZATION:
 MANDATORY CHECKLIST - ALL MUST BE TRUE:
 □ Contains actual data (numbers, measurements, statistics)
 □ Requires visual representation (graphs, charts, plots)
-□ Cannot be effectively shown in plain markdown
-□ Serves a functional purpose (not decorative)
 
 AUTOMATIC DISQUALIFIERS - ANY ONE MEANS NO VISUALIZATION:
 □ Is it just for layout/styling? → NO VISUALIZATION
 □ Is it just text content? → NO VISUALIZATION
 □ Is it decorative/presentational? → NO VISUALIZATION
-□ Could it work in markdown? → NO VISUALIZATION
 
 EXAMPLES:
 YES:
