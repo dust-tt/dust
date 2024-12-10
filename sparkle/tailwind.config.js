@@ -205,17 +205,17 @@ module.exports = {
           dark: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
           darker: { DEFAULT: colors.slate[400], dark: colors.slate[6800] },
           focus: {
-            DEFAULT: colors.slate[400],
+            DEFAULT: colors.blue[400],
             dark: colors.slate[600],
           },
           warning: {
-            DEFAULT: colors.slate[200],
+            DEFAULT: colors.red[300],
             dark: colors.slate[800],
           },
         },
         separator: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
         ring: {
-          DEFAULT: colors.blue[300],
+          DEFAULT: colors.blue[200],
           dark: colors.slate[700],
           warning: {
             DEFAULT: colors.red[300],

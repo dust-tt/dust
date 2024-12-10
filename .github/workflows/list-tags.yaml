@@ -1,0 +1,51 @@
+name: List Image Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "Comma-separated list of regions to deploy"
+        type: choice
+        options:
+          - "us-central1"
+        default: "us-central1"
+        required: true
+      component:
+        description: "Component to deploy"
+        type: choice
+        options:
+          - alerting-temporal
+          - connectors
+          - core
+          - front
+          - front-edge
+          - front-qa
+          - metabase
+          - oauth
+          - prodbox
+          - viz
+        required: true
+
+env:
+  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+
+jobs:
+  list-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Authenticate with Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: List available tags
+        run: |
+          echo "Latest tags for ${{ inputs.component }} in ${{ inputs.regions }}:"
+          echo "-------------------------------------------"
+          gcloud container images list-tags ${{ inputs.regions }}-docker.pkg.dev/${{ env.GCLOUD_PROJECT_ID }}/dust-images/${{ inputs.component }} \
+            --limit=10 \
+            --sort-by=~timestamp \
+            --format="table(timestamp.date('%Y-%m-%d %H:%M:%S'),tags[0])"
