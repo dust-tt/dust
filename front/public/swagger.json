@@ -2004,6 +2004,10 @@
                     },
                     "description": "Tags to associate with the document."
                   },
+                  "parentId": {
+                    "type": "string",
+                    "description": "Direct parent document ID to associate with the document."
+                  },
                   "parents": {
                     "type": "array",
                     "items": {
@@ -2219,6 +2223,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "parentId": {
+                    "type": "string",
+                    "description": "Direct parent document IDs"
+                  },
                   "parents": {
                     "type": "array",
                     "items": {
@@ -3181,6 +3189,10 @@
                       "type": "string"
                     },
                     "description": "Parent tables of this table"
+                  },
+                  "parentId": {
+                    "type": "string",
+                    "description": "Direct parent id of this table"
                   },
                   "mime_type": {
                     "type": "string",
