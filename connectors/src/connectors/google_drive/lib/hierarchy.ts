@@ -41,6 +41,13 @@ async function getFileParents(
   return parents;
 }
 
+/**
+ * This returns the list of parentIds in expected format for upsert,
+ * starting with the id of the "driveFile" itself up to the root drive id.
+ * [ driveFileId, directParentId, .... , rootDriveId ]
+ *
+ * Result is cached in redis for the current sync workflow, for one hour.
+ */
 export const getFileParentsMemoized = cacheWithRedis(
   getFileParents,
   (
