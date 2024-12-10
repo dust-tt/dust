@@ -25,7 +25,7 @@ use tokio::{
 };
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, warn, Level};
+use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
