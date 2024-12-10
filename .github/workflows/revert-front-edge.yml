@@ -1,4 +1,4 @@
-name: Deploy Front Edge
+name: Revert Front Edge
 
 on:
   workflow_dispatch:
