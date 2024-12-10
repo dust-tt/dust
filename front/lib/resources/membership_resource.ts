@@ -75,7 +75,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     };
 
     const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
-      where: { workspaceId: workspace.id },
+      where: whereClause,
       transaction,
     };
 
