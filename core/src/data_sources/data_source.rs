@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
 use tokio_stream::{self as stream};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use uuid::Uuid;
 
 /// Section is used to represent the structure of document to be taken into account during chunking.
@@ -625,22 +625,6 @@ impl DataSource {
                  `tags` contains a string starting with \"{}\"",
                 DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX
             ))?;
-        }
-
-        if parents.is_empty() {
-            warn!(
-                document_id = document_id,
-                timestamp = ?timestamp,
-                parents = ?parents,
-                "Upserting a document without any parent"
-            );
-        } else if parents[0] != document_id {
-            warn!(
-                document_id = document_id,
-                timestamp = ?timestamp,
-                parents = ?parents,
-                "Upserting a document that is not self-referenced as its parent"
-            );
         }
 
         let store = store.clone();

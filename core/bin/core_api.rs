@@ -1478,6 +1478,17 @@ async fn data_sources_documents_update_parents(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
+    if payload.parents.get(0) != Some(&document_id) {
+        info!(
+            data_source_id = data_source_id,
+            node_id = document_id,
+            parents = ?payload.parents,
+            node_type = "document",
+            operation = "update_parents",
+            "[KWSEARCH] invariant_first_parent_self"
+        );
+    }
+
     match state
         .store
         .load_data_source(&project, &data_source_id)
@@ -1624,6 +1635,17 @@ async fn data_sources_documents_upsert(
         Some(v) => v,
         None => false,
     };
+
+    if payload.parents.get(0) != Some(&payload.document_id) {
+        info!(
+            data_source_id = data_source_id,
+            node_id = payload.document_id,
+            parents = ?payload.parents,
+            node_type = "document",
+            operation = "upsert",
+            "[KWSEARCH] invariant_first_parent_self"
+        );
+    }
 
     match state
         .store
@@ -2068,6 +2090,17 @@ async fn tables_upsert(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
+    if payload.parents.get(0) != Some(&payload.table_id) {
+        info!(
+            data_source_id = data_source_id,
+            node_id = payload.table_id,
+            parents = ?payload.parents,
+            node_type = "table",
+            operation = "upsert",
+            "[KWSEARCH] invariant_first_parent_self"
+        );
+    }
+
     match state
         .store
         .upsert_data_source_table(
@@ -2304,6 +2337,17 @@ async fn tables_update_parents(
     Json(payload): Json<DataSourcesDocumentsUpdateParentsPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+
+    if payload.parents.get(0) != Some(&table_id) {
+        info!(
+            data_source_id = data_source_id,
+            node_id = table_id,
+            parents = ?payload.parents,
+            node_type = "table",
+            operation = "update_parents",
+            "[KWSEARCH] invariant_first_parent_self"
+        );
+    }
 
     match state
         .store
@@ -2689,6 +2733,17 @@ async fn folders_upsert(
     Json(payload): Json<FoldersUpsertPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+
+    if payload.parents.get(0) != Some(&payload.folder_id) {
+        info!(
+            data_source_id = data_source_id,
+            node_id = payload.folder_id,
+            parents = ?payload.parents,
+            node_type = "folder",
+            operation = "upsert",
+            "[KWSEARCH] invariant_first_parent_self"
+        );
+    }
 
     match state
         .store
