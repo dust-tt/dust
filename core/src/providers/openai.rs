@@ -287,12 +287,19 @@ pub enum OpenAIContentBlock {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OpenAIContentBlockVec(Vec<OpenAIContentBlock>);
+pub struct OpenAIContentBlockVec(pub Vec<OpenAIContentBlock>);
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum OpenAIChatMessageContent {
+    Structured(OpenAIContentBlockVec),
+    String(String),
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
     pub role: OpenAIChatMessageRole,
-    pub content: Option<OpenAIContentBlockVec>,
+    pub content: Option<OpenAIChatMessageContent>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -379,17 +386,17 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
     }
 }
 
-impl TryFrom<&ContentBlock> for OpenAIContentBlockVec {
+impl TryFrom<&ContentBlock> for OpenAIChatMessageContent {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ContentBlock) -> Result<Self, Self::Error> {
         match cm {
-            ContentBlock::Text(t) => Ok(OpenAIContentBlockVec(vec![
-                OpenAIContentBlock::TextContent(OpenAITextContent {
+            ContentBlock::Text(t) => Ok(OpenAIChatMessageContent::Structured(
+                OpenAIContentBlockVec(vec![OpenAIContentBlock::TextContent(OpenAITextContent {
                     r#type: OpenAITextContentType::Text,
                     text: t.clone(),
-                }),
-            ])),
+                })]),
+            )),
             ContentBlock::Mixed(m) => {
                 let content: Vec<OpenAIContentBlock> = m
                     .into_iter()
@@ -411,22 +418,24 @@ impl TryFrom<&ContentBlock> for OpenAIContentBlockVec {
                     })
                     .collect::<Result<Vec<OpenAIContentBlock>>>()?;
 
-                Ok(OpenAIContentBlockVec(content))
+                Ok(OpenAIChatMessageContent::Structured(OpenAIContentBlockVec(
+                    content,
+                )))
             }
         }
     }
 }
 
-impl TryFrom<&String> for OpenAIContentBlockVec {
+impl TryFrom<&String> for OpenAIChatMessageContent {
     type Error = anyhow::Error;
 
     fn try_from(t: &String) -> Result<Self, Self::Error> {
-        Ok(OpenAIContentBlockVec(vec![
-            OpenAIContentBlock::TextContent(OpenAITextContent {
+        Ok(OpenAIChatMessageContent::Structured(OpenAIContentBlockVec(
+            vec![OpenAIContentBlock::TextContent(OpenAITextContent {
                 r#type: OpenAITextContentType::Text,
                 text: t.clone(),
-            }),
-        ]))
+            })],
+        )))
     }
 }
 
@@ -437,7 +446,7 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
         match cm {
             ChatMessage::Assistant(assistant_msg) => Ok(OpenAIChatMessage {
                 content: match &assistant_msg.content {
-                    Some(c) => Some(OpenAIContentBlockVec::try_from(c)?),
+                    Some(c) => Some(OpenAIChatMessageContent::try_from(c)?),
                     None => None,
                 },
                 name: assistant_msg.name.clone(),
@@ -453,21 +462,21 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                 tool_call_id: None,
             }),
             ChatMessage::Function(function_msg) => Ok(OpenAIChatMessage {
-                content: Some(OpenAIContentBlockVec::try_from(&function_msg.content)?),
+                content: Some(OpenAIChatMessageContent::try_from(&function_msg.content)?),
                 name: None,
                 role: OpenAIChatMessageRole::Tool,
                 tool_calls: None,
                 tool_call_id: Some(function_msg.function_call_id.clone()),
             }),
             ChatMessage::System(system_msg) => Ok(OpenAIChatMessage {
-                content: Some(OpenAIContentBlockVec::try_from(&system_msg.content)?),
+                content: Some(OpenAIChatMessageContent::try_from(&system_msg.content)?),
                 name: None,
                 role: OpenAIChatMessageRole::from(&system_msg.role),
                 tool_calls: None,
                 tool_call_id: None,
             }),
             ChatMessage::User(user_msg) => Ok(OpenAIChatMessage {
-                content: Some(OpenAIContentBlockVec::try_from(&user_msg.content)?),
+                content: Some(OpenAIChatMessageContent::try_from(&user_msg.content)?),
                 name: user_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&user_msg.role),
                 tool_calls: None,

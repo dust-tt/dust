@@ -51,6 +51,7 @@ pub mod providers {
     }
     pub mod anthropic;
     pub mod google_ai_studio;
+    pub mod togetherai;
 }
 pub mod http {
     pub mod request;
