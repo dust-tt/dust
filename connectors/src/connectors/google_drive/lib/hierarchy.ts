@@ -18,26 +18,29 @@ async function getFileParents(
     provider: "google_drive",
     connectorId: connectorId,
   });
-  const parents: GoogleDriveObjectType[] = [];
-  let currentObject = driveFile;
-  while (currentObject.parent) {
-    const parent = await getGoogleDriveObject(
-      authCredentials,
-      currentObject.parent
-    );
-    if (!parent) {
-      // If we got a 404 error we stop the iteration as the parent disappeared.
-      logger.info("Parent not found in `getFileParents`", {
-        parentId: currentObject.parent,
-        fileId: driveFile.id,
-      });
-      break;
-    }
-    parents.push(parent);
-    currentObject = parent;
+
+  if (!driveFile.parent) {
+    return [];
   }
 
-  return parents.reverse();
+  const parent = await getGoogleDriveObject(authCredentials, driveFile.parent);
+  if (!parent) {
+    // If we got a 404 error we stop the iteration as the parent disappeared.
+    logger.info("Parent not found in `getFileParents`", {
+      parentId: driveFile.parent,
+      fileId: driveFile.id,
+    });
+    return [];
+  }
+
+  const parents = await getFileParentsMemoized(
+    connectorId,
+    authCredentials,
+    parent,
+    startSyncTs
+  );
+
+  return [parent, ...parents];
 }
 
 export const getFileParentsMemoized = cacheWithRedis(
@@ -48,7 +51,7 @@ export const getFileParentsMemoized = cacheWithRedis(
     driveFile: GoogleDriveObjectType,
     startSyncTs: number
   ) => {
-    const cacheKey = `${connectorId}-${startSyncTs}-${driveFile.id}`;
+    const cacheKey = `gdrive-parents-${connectorId}-${startSyncTs}-${driveFile.id}`;
 
     return cacheKey;
   },
@@ -69,7 +72,5 @@ export const getFileParentsForUpsert = async (
       startSyncTs
     )
   ).map((f) => f.id);
-  parents.push(driveFile.id);
-  parents.reverse();
-  return parents;
+  return [driveFile.id, ...parents];
 };

@@ -258,20 +258,6 @@ export async function syncFiles(
     `[SyncFiles] Call syncOneFile.`
   );
 
-  const parents = await getFileParentsForUpsert(
-    connectorId,
-    authCredentials,
-    driveFolder,
-    startSyncTs
-  );
-
-  await upsertFolderNode({
-    dataSourceConfig,
-    folderId: getDocumentId(driveFolder.id),
-    parents,
-    title: driveFolder.name ?? "",
-  });
-
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   const results = await Promise.all(
     filesToSync.map((file) => {
@@ -806,7 +792,8 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
 
 export async function markFolderAsVisited(
   connectorId: ModelId,
-  driveFileId: string
+  driveFileId: string,
+  startSyncTs: number = 0
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -823,6 +810,21 @@ export async function markFolderAsVisited(
     // We got a 404 on this folder, we skip it.
     return;
   }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const parents = await getFileParentsForUpsert(
+    connectorId,
+    authCredentials,
+    file,
+    startSyncTs
+  );
+
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: getDocumentId(file.id),
+    parents,
+    title: file.name ?? "",
+  });
 
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
