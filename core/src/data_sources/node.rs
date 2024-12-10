@@ -17,6 +17,7 @@ pub struct Node {
     timestamp: u64,
     title: String,
     mime_type: String,
+    parent_id: Option<String>,
     parents: Vec<String>,
 }
 
@@ -28,6 +29,7 @@ impl Node {
         timestamp: u64,
         title: &str,
         mime_type: &str,
+        parent_id: Option<String>,
         parents: Vec<String>,
     ) -> Self {
         Node {
@@ -37,6 +39,7 @@ impl Node {
             timestamp,
             title: title.to_string(),
             mime_type: mime_type.to_string(),
+            parent_id: parent_id.clone(),
             parents,
         }
     }
@@ -70,6 +73,7 @@ impl Node {
             self.node_id,
             self.timestamp,
             self.title,
+            self.parent_id,
             self.parents,
         )
     }

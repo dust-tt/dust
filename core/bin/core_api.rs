@@ -1468,6 +1468,7 @@ async fn data_sources_documents_update_tags(
 
 #[derive(serde::Deserialize)]
 struct DataSourcesDocumentsUpdateParentsPayload {
+    parent_id: Option<String>,
     parents: Vec<String>,
 }
 
@@ -1487,6 +1488,20 @@ async fn data_sources_documents_update_parents(
             operation = "update_parents",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            info!(
+                data_source_id = data_source_id,
+                node_id = document_id,
+                parent_id = payload.parent_id,
+                parents = ?payload.parents,
+                node_type = "document",
+                operation = "update_parents",
+                "[KWSEARCH] invariant_second_parent_parentid"
+            );
+        }
     }
 
     match state
@@ -1616,6 +1631,7 @@ struct DataSourcesDocumentsUpsertPayload {
     document_id: String,
     timestamp: Option<u64>,
     tags: Vec<String>,
+    parent_id: Option<String>,
     parents: Vec<String>,
     source_url: Option<String>,
     section: Section,
@@ -1647,6 +1663,20 @@ async fn data_sources_documents_upsert(
         );
     }
 
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            info!(
+                data_source_id = data_source_id,
+                node_id = payload.document_id,
+                parent_id = payload.parent_id,
+                parents = ?payload.parents,
+                node_type = "document",
+                operation = "upsert",
+                "[KWSEARCH] invariant_second_parent_parentid"
+            );
+        }
+    }
+
     match state
         .store
         .load_data_source(&project, &data_source_id)
@@ -1676,6 +1706,9 @@ async fn data_sources_documents_upsert(
                         payload.mime_type,
                         payload.timestamp,
                         &payload.tags,
+                        payload
+                            .parent_id
+                            .or_else(|| payload.parents.get(1).cloned()),
                         &payload.parents,
                         &payload.source_url,
                         payload.section,
@@ -2072,6 +2105,7 @@ struct DatabasesTablesUpsertPayload {
     description: String,
     timestamp: Option<u64>,
     tags: Vec<String>,
+    parent_id: Option<String>,
     parents: Vec<String>,
 
     // Remote DB specifics
@@ -2099,6 +2133,20 @@ async fn tables_upsert(
             operation = "upsert",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            info!(
+                data_source_id = data_source_id,
+                node_id = payload.table_id,
+                parent_id = payload.parent_id,
+                parents = ?payload.parents,
+                node_type = "table",
+                operation = "upsert",
+                "[KWSEARCH] invariant_second_parent_parentid"
+            );
+        }
     }
 
     match state
@@ -2347,6 +2395,20 @@ async fn tables_update_parents(
             operation = "update_parents",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            info!(
+                data_source_id = data_source_id,
+                node_id = table_id,
+                parent_id = payload.parent_id,
+                parents = ?payload.parents,
+                node_type = "table",
+                operation = "update_parents",
+                "[KWSEARCH] invariant_second_parent_parentid"
+            );
+        }
     }
 
     match state
@@ -2723,6 +2785,7 @@ async fn tables_rows_list(
 struct FoldersUpsertPayload {
     folder_id: String,
     timestamp: Option<u64>,
+    parent_id: Option<String>,
     parents: Vec<String>,
     title: String,
 }
@@ -2743,6 +2806,20 @@ async fn folders_upsert(
             operation = "upsert",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            info!(
+                data_source_id = data_source_id,
+                node_id = payload.folder_id,
+                parent_id = payload.folder_id,
+                parents = ?payload.parents,
+                node_type = "folder",
+                operation = "upsert",
+                "[KWSEARCH] invariant_second_parent_parentid"
+            );
+        }
     }
 
     match state

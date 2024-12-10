@@ -1400,6 +1400,7 @@ impl Store for PostgresStore {
                 document_id,
                 tags,
                 mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
+                parent_id: parents.get(1).cloned(),
                 parents,
                 source_url,
                 hash,
@@ -1885,6 +1886,7 @@ impl Store for PostgresStore {
             document_id: create_params.document_id,
             timestamp: create_params.timestamp,
             tags: create_params.tags,
+            parent_id: create_params.parents.get(1).cloned(),
             parents: create_params.parents,
             source_url: create_params.source_url,
             hash: create_params.hash,
@@ -2041,6 +2043,7 @@ impl Store for PostgresStore {
                     mime_type: node_mime_type.unwrap_or("application/octet-stream".to_string()),
                     document_id,
                     tags,
+                    parent_id: parents.get(1).cloned(),
                     parents,
                     source_url,
                     hash,
@@ -2654,6 +2657,7 @@ impl Store for PostgresStore {
             title,
             upsert_params.mime_type.unwrap_or("text/csv".to_string()),
             upsert_params.tags,
+            upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
             parsed_schema,
             table_schema_stale_at.map(|t| t as u64),
@@ -2927,6 +2931,7 @@ impl Store for PostgresStore {
                     title,
                     "text/csv".to_string(), // TODO(KW_SEARCH_INFRA) use mimetype
                     tags,
+                    parents.get(1).cloned(),
                     parents,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
@@ -3068,6 +3073,7 @@ impl Store for PostgresStore {
                     title,
                     "text/csv".to_string(), // TODO(KW_SEARCH_INFRA)use mimetype
                     tags,
+                    parents.get(1).cloned(),
                     parents,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
@@ -3200,6 +3206,7 @@ impl Store for PostgresStore {
             upsert_params.folder_id,
             created as u64,
             upsert_params.title,
+            upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
         );
 
@@ -3374,6 +3381,7 @@ impl Store for PostgresStore {
                     node_id,
                     timestamp as u64,
                     title,
+                    parents.get(1).cloned(),
                     parents,
                 ))
             })
@@ -3479,6 +3487,7 @@ impl Store for PostgresStore {
                         timestamp as u64,
                         &title,
                         &mime_type,
+                        parents.get(1).cloned(),
                         parents,
                     ),
                     row_id,

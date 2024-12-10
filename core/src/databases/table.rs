@@ -60,6 +60,7 @@ pub struct Table {
     tags: Vec<String>,
     title: String,
     mime_type: String,
+    parent_id: Option<String>,
     parents: Vec<String>,
 
     schema: Option<TableSchema>,
@@ -81,6 +82,7 @@ impl Table {
         title: String,
         mime_type: String,
         tags: Vec<String>,
+        parent_id: Option<String>,
         parents: Vec<String>,
         schema: Option<TableSchema>,
         schema_stale_at: Option<u64>,
@@ -88,18 +90,19 @@ impl Table {
         remote_database_secret_id: Option<String>,
     ) -> Self {
         Table {
-            project: project,
-            data_source_id: data_source_id,
+            project,
+            data_source_id,
             created,
-            table_id: table_id,
-            name: name,
-            description: description,
+            table_id,
+            name,
+            description,
             timestamp,
             tags,
-            title: title,
-            mime_type: mime_type,
+            title,
+            mime_type,
+            parent_id,
             parents,
-            schema: schema,
+            schema,
             schema_stale_at,
             remote_database_table_id,
             remote_database_secret_id,
@@ -123,6 +126,9 @@ impl Table {
     }
     pub fn mime_type(&self) -> &str {
         &self.mime_type
+    }
+    pub fn parent_id(&self) -> &Option<String> {
+        &self.parent_id
     }
     pub fn parents(&self) -> &Vec<String> {
         &self.parents
@@ -228,7 +234,8 @@ impl From<Table> for Node {
             table.timestamp,
             &table.title,
             &table.mime_type,
-            table.parents.clone(),
+            table.parents.get(1).cloned(),
+            table.parents,
         )
     }
 }
@@ -574,6 +581,7 @@ mod tests {
             "test_dbml".to_string(),
             "text/plain".to_string(),
             vec![],
+            None,
             vec![],
             Some(schema),
             None,
