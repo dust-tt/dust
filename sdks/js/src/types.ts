@@ -1865,7 +1865,7 @@ const FrontDataSourceDocumentSectionSchema: z.ZodSchema<FrontDataSourceDocumentS
 export const PostDataSourceDocumentRequestSchema = z.object({
   timestamp: z.number().nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
-  parentId: z.string().nullable().optional(),
+  parent_id: z.string().nullable().optional(),
   parents: z.array(z.string()).nullable().optional(),
   source_url: z.string().nullable().optional(),
   upsert_context: z
@@ -2075,7 +2075,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   description: z.string(),
   timestamp: z.number().nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
-  parentId: z.string().nullable().optional(),
+  parent_id: z.string().nullable().optional(),
   parents: z.array(z.string()).nullable().optional(),
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
