@@ -1,8 +1,8 @@
 import { Err, Ok } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Workspace } from "@app/lib/models/workspace";
-import { Op } from "sequelize";
 import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscription";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
@@ -10,6 +10,8 @@ export const batchDowngradePlugin = createPlugin(
   {
     id: "batch-downgrade",
     name: "Batch Downgrade Workspaces",
+    warning:
+      "Downgrading workspaces will block access, make sure all workspaces from your list should really be downgraded.",
     description:
       "Downgrade a list of workspaces to NO_PLAN, used to block access to fraudulent users",
     resourceTypes: ["global"],
