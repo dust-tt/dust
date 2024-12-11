@@ -44,7 +44,8 @@ jobs:
             --image-name=alerting-temporal \
             --dockerfile-path=./Dockerfile \
             --working-dir=./alerting/temporal/ \
-            --dust-client-facing-url=https://dust.tt
+            --dust-client-facing-url=https://dust.tt \ 
+            --region=us-central1
 
       - name: Generate a token
         id: generate-token
