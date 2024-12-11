@@ -602,7 +602,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 33] = [
+pub const SQL_INDEXES: [&'static str; 35] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -675,6 +675,10 @@ pub const SQL_INDEXES: [&'static str; 33] = [
         idx_data_sources_nodes_table ON data_sources_nodes(\"table\");",
     "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_folder ON data_sources_nodes(folder);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_parents_second ON data_sources_nodes (data_source, (parents[2]));",
+    "CREATE INDEX IF NOT EXISTS
+        idx_parents_single ON data_sources_nodes (data_source, (array_length(parents, 1) = 1));",
 ];
 
 pub const SQL_FUNCTIONS: [&'static str; 2] = [
