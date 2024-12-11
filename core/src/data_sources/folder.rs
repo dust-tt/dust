@@ -27,7 +27,7 @@ impl Folder {
             folder_id,
             timestamp,
             title,
-            parent_id: parent_id,
+            parent_id,
             parents,
         }
     }
