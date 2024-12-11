@@ -20,8 +20,8 @@ const isMigratorAction = (action: string): action is MigratorAction => {
 };
 
 type ProviderMigrator = {
-  transformer: (parents: string[]) => string[];
-  cleaner: (parents: string[]) => string[];
+  transformer: (nodeId: string, parents: string[]) => string[];
+  cleaner: (nodeId: string, parents: string[]) => string[];
 };
 
 const QUERY_BATCH_SIZE = 128;
@@ -30,11 +30,56 @@ const TABLE_CONCURRENCY = 16;
 
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: {
-    transformer: (parents) => {
-      return parents;
+    transformer: (nodeId, parents) => {
+      switch (parents.length) {
+        case 0:
+          throw new Error("No parents");
+        case 1: {
+          // Check that parents[1] does not have the prefix
+          assert(!parents[0].startsWith("slack-"));
+
+          const channelId = parents[0];
+          return [nodeId, channelId, `slack-channel-${channelId}`];
+        }
+        case 2: {
+          // Check parents[0] (the nodeId)
+          assert(parents[0] === nodeId, "parents[0] !== nodeId");
+          // Check that parents[1] does not have a prefix
+          assert(!parents[1].startsWith("slack-"));
+
+          const channelId = parents[1];
+          return [nodeId, channelId, `slack-channel-${channelId}`];
+        }
+        case 3: {
+          // Check parents[0] (the nodeId)
+          assert(parents[0] === nodeId, "parents[0] !== nodeId");
+          // Check parents[2] vs parents[1]
+          assert(
+            parents[2] === `slack-channel-${parents[1]}`,
+            "parents[2] !== `slack-channel-${parents[1]}`"
+          );
+
+          // Nothing to do
+          return parents;
+        }
+        default:
+          throw new Error("Too many parents");
+      }
     },
-    cleaner: (parents) => {
-      return parents;
+    cleaner: (nodeId, parents) => {
+      if (parents.length !== 3) {
+        throw new Error("Parents len != 3");
+      }
+      // Check parents[0] (the nodeId)
+      assert(parents[0] === nodeId, "parents[0] !== nodeId");
+      // Check parents[2] vs parents[1]
+      assert(
+        parents[2] === `slack-channel-${parents[1]}`,
+        "parents[2] !== `slack-channel-${parents[1]}`"
+      );
+      const channelId = parents[1];
+
+      return [nodeId, `slack-channel-${channelId}`];
     },
   },
   google_drive: null,
@@ -67,10 +112,18 @@ async function migrateDocument({
   };
   execute: boolean;
 }) {
-  const newParents =
-    action === "transform"
-      ? migrator.transformer(coreDocument.parents)
-      : migrator.cleaner(coreDocument.parents);
+  let newParents = coreDocument.parents;
+  try {
+    newParents =
+      action === "transform"
+        ? migrator.transformer(coreDocument.document_id, coreDocument.parents)
+        : migrator.cleaner(coreDocument.document_id, coreDocument.parents);
+  } catch (e) {
+    logger.error(
+      `TRANSFORM_ERROR: document_id=${coreDocument.document_id} parents=${coreDocument.parents}`
+    );
+    throw e;
+  }
 
   if (execute) {
     const updateRes = await coreAPI.updateDataSourceDocumentParents({
@@ -113,10 +166,18 @@ async function migrateTable({
   };
   execute: boolean;
 }) {
-  const newParents =
-    action === "transform"
-      ? migrator.transformer(coreTable.parents)
-      : migrator.cleaner(coreTable.parents);
+  let newParents = coreTable.parents;
+  try {
+    newParents =
+      action === "transform"
+        ? migrator.transformer(coreTable.table_id, coreTable.parents)
+        : migrator.cleaner(coreTable.table_id, coreTable.parents);
+  } catch (e) {
+    logger.error(
+      `TRANSFORM_ERROR: table_id=${coreTable.table_id} parents=${coreTable.parents}`
+    );
+    throw e;
+  }
 
   if (execute) {
     const updateRes = await coreAPI.updateTableParents({
