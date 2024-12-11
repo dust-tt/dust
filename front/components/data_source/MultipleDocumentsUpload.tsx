@@ -144,7 +144,7 @@ export const MultipleDocumentsUpload = ({
           title: blob.filename,
           mime_type: blob.contentType ?? undefined,
           timestamp: null,
-          parentId: null,
+          parent_id: null,
           parents: [blob.filename],
           section: {
             prefix: null,

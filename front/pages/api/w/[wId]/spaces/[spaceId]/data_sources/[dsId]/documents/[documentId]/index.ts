@@ -105,9 +105,31 @@ async function handler(
         });
       }
 
+      const {
+        source_url,
+        text,
+        section,
+        tags,
+        parent_id,
+        parents,
+        timestamp,
+        light_document_output,
+        mime_type,
+        title,
+      } = bodyValidation.right;
+
       const upsertResult = await upsertDocument({
         name: documentId,
-        ...bodyValidation.right,
+        source_url,
+        text,
+        section,
+        tags,
+        parent_id,
+        parents,
+        timestamp,
+        light_document_output,
+        mime_type,
+        title,
         dataSource,
         auth,
       });

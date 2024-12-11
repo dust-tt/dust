@@ -153,7 +153,7 @@ async function _upsertToDatasource({
         title,
         mime_type: mimeType,
         tags: tags?.map((tag) => tag.substring(0, 512)),
-        parentId: null,
+        parent_id: null,
         parents,
         light_document_output: true,
         upsert_context: upsertContext,

@@ -228,7 +228,7 @@ export async function upsertDocument({
   text,
   section,
   tags,
-  parentId,
+  parent_id,
   parents,
   timestamp,
   light_document_output,
@@ -242,7 +242,7 @@ export async function upsertDocument({
   text?: string | null;
   section?: FrontDataSourceDocumentSectionType | null;
   tags?: string[] | null;
-  parentId?: string | null;
+  parent_id?: string | null;
   parents?: string[] | null;
   timestamp?: number | null;
   light_document_output?: boolean;
@@ -387,7 +387,7 @@ export async function upsertDocument({
     dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: documentId,
     tags: nonNullTags,
-    parentId: parentId ?? null,
+    parentId: parent_id ?? null,
     parents: documentParents,
     sourceUrl,
     // TEMPORARY -- need to unstuck a specific entry
