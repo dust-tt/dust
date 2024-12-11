@@ -79,11 +79,11 @@ export const logout = async (): Promise<boolean> => {
 // Refresh token sends a message to the background script to call the auth0 refresh token endpoint.
 // It updates the stored tokens with the new access token.
 // If the refresh token is invalid, it will call handleLogout.
-export const refreshToken = async (): Promise<
-  Result<StoredTokens, AuthError>
-> => {
+export const refreshToken = async (
+  tokens?: StoredTokens | null
+): Promise<Result<StoredTokens, AuthError>> => {
   try {
-    const tokens = await getStoredTokens();
+    tokens = tokens ?? (await getStoredTokens());
     if (!tokens) {
       return new Err(new AuthError("not_authenticated", "No tokens found."));
     }
@@ -103,7 +103,7 @@ export const refreshToken = async (): Promise<
 export const getAccessToken = async (): Promise<string | null> => {
   let tokens = await getStoredTokens();
   if (!tokens || !tokens.accessToken || tokens.expiresAt < Date.now()) {
-    const refreshRes = await refreshToken();
+    const refreshRes = await refreshToken(tokens);
     if (refreshRes.isOk()) {
       tokens = refreshRes.value;
     }

@@ -10,6 +10,7 @@ GCLOUD_IGNORE_FILE=""
 IMAGE_NAME=""
 DOCKERFILE_PATH=""
 DUST_CLIENT_FACING_URL=""
+REGION=""
 
 # parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
       DUST_CLIENT_FACING_URL="${1#*=}"
       shift
       ;;
+    --region=*)
+      REGION="${1#*=}"
+      shift
+      ;;
     *)
       echo "unknown argument: $1"
       exit 1
@@ -42,8 +47,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # check required arguments
-if [ -z "$WORKING_DIR" ] || [ -z "$IMAGE_NAME" ] || [ -z "$DOCKERFILE_PATH" ]; then
-  echo "error: --working-dir, --image-name, and --dockerfile-path are required"
+if [ -z "$WORKING_DIR" ] || [ -z "$IMAGE_NAME" ] || [ -z "$DOCKERFILE_PATH" ] || [ -z "$REGION" ]; then
+  echo "error: --working-dir, --image-name, --region and --dockerfile-path are required"
   exit 1
 fi
 
@@ -54,13 +59,13 @@ cd "$WORKING_DIR"
 echo "current working directory is $(pwd)"
 
 # prepare substitutions
-SUBSTITUTIONS="SHORT_SHA=$(git rev-parse --short HEAD),_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH"
+SUBSTITUTIONS="SHORT_SHA=$(git rev-parse --short HEAD),_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH,_REGION=$REGION"
 if [ -n "$DUST_CLIENT_FACING_URL" ]; then
     SUBSTITUTIONS="$SUBSTITUTIONS,_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL"
 fi
 
 # prepare the gcloud command
-GCLOUD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml")
+GCLOUD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --region="$REGION")
 
 # add ignore file argument if specified
 if [ -n "$GCLOUD_IGNORE_FILE" ]; then

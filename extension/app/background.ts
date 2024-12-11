@@ -23,9 +23,13 @@ const log = console.error;
 
 const state: {
   refreshingToken: boolean;
+  refreshRequests: ((
+    auth: Auth0AuthorizeResponse | AuthBackgroundResponse
+  ) => void)[];
   lastHandler: (() => void) | undefined;
 } = {
   refreshingToken: false,
+  refreshRequests: [],
   lastHandler: undefined,
 };
 
@@ -385,9 +389,8 @@ const refreshToken = async (
   refreshToken: string,
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
-  if (state.refreshingToken) {
-    return false;
-  } else {
+  state.refreshRequests.push(sendResponse);
+  if (!state.refreshingToken) {
     state.refreshingToken = true;
     try {
       const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
@@ -409,15 +412,23 @@ const refreshToken = async (
       }
 
       const data = await response.json();
-      sendResponse({
-        idToken: data.id_token,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token || refreshToken,
-        expiresIn: data.expires_in,
+      const handlers = state.refreshRequests;
+      state.refreshRequests = [];
+      handlers.forEach((sendResponse) => {
+        sendResponse({
+          idToken: data.id_token,
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token || refreshToken,
+          expiresIn: data.expires_in,
+        });
       });
     } catch (error) {
       log("Token refresh failed: unknown error", error);
-      sendResponse({ success: false });
+      const handlers = state.refreshRequests;
+      state.refreshRequests = [];
+      handlers.forEach((sendResponse) => {
+        sendResponse({ success: false });
+      });
     } finally {
       state.refreshingToken = false;
     }

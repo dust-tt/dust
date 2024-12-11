@@ -925,7 +925,7 @@ export async function microsoftGarbageCollectionActivity({
 
   const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
     connectorId,
-    pageSize: 300,
+    pageSize: 500,
     idCursor,
   });
 

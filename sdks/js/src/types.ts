@@ -1,6 +1,8 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
+// IMPORTANT: using an array of FlexibleEnumSchema (such as z.array(FlexibleEnumSchema) or FlexibleEnumSchema.array()) break the ability to receive any value
+// In that case, use z.array(z.string()) or z.string().array()
 const FlexibleEnumSchema = <U extends string>(values: readonly [U, ...U[]]) =>
   z.enum(values).transform((val) => val); // Transform bypass for the enum validation when parsing but doesn't affect the inferred type
 
@@ -9,6 +11,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema([
   "anthropic",
   "mistral",
   "google_ai_studio",
+  "togetherai",
 ]);
 
 const ModelLLMIdSchema = FlexibleEnumSchema([
@@ -32,6 +35,10 @@ const ModelLLMIdSchema = FlexibleEnumSchema([
   "codestral-latest",
   "gemini-1.5-pro-latest",
   "gemini-1.5-flash-latest",
+  "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  "Qwen/Qwen2.5-Coder-32B-Instruct",
+  "Qwen/QwQ-32B-Preview",
+  "Qwen/Qwen2-72B-Instruct",
 ]);
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema(["openai", "mistral"]);
@@ -677,7 +684,7 @@ const LightWorkspaceSchema = z.object({
   name: z.string(),
   role: RoleSchema,
   segmentation: WorkspaceSegmentationSchema,
-  whiteListedProviders: ModelProviderIdSchema.array().nullable(),
+  whiteListedProviders: z.string().array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
 });
 

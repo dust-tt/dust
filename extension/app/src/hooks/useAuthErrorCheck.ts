@@ -14,8 +14,12 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
             void logout();
             break;
           case "expired_oauth_token_error":
-            await refreshToken();
-            mutate();
+            const res = await refreshToken();
+            if (res.isOk()) {
+              mutate();
+            } else {
+              void logout();
+            }
             break;
           case "user_not_found":
             setAuthError(error);

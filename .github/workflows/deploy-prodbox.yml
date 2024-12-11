@@ -69,7 +69,8 @@ jobs:
             --dockerfile-path=./prodbox.Dockerfile \
             --working-dir=./ \
             --gcloud-ignore-file=.gcloudignore-prodbox \
-            --dust-client-facing-url=https://dust.tt
+            --dust-client-facing-url=https://dust.tt \ 
+            --region=us-central1
 
       - name: Generate a token
         id: generate-token
