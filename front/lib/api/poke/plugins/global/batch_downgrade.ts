@@ -26,7 +26,10 @@ export const batchDowngradePlugin = createPlugin(
   async (_1, _2, args) => {
     const { sIds } = args;
 
-    const sIdsArray = sIds.split(",").map((sId) => sId.trim());
+    const sIdsArray = sIds
+      .split(",")
+      .map((sId) => sId.trim())
+      .filter((sId) => sId.length > 0);
 
     const workspaces = await Workspace.findAll({
       where: {
