@@ -35,23 +35,23 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         case 0:
           throw new Error("No parents");
         case 1: {
-          // Check that parents[1] does not have the prefix
+          // Check that parents[0] does not have the prefix (it's the channelId)
           assert(!parents[0].startsWith("slack-"));
 
           const channelId = parents[0];
           return [nodeId, channelId, `slack-channel-${channelId}`];
         }
         case 2: {
-          // Check parents[0] (the nodeId)
+          // Check parents[0] is the nodeId
           assert(parents[0] === nodeId, "parents[0] !== nodeId");
-          // Check that parents[1] does not have a prefix
+          // Check that parents[1] does not have a prefix (it's the channelId)
           assert(!parents[1].startsWith("slack-"));
 
           const channelId = parents[1];
           return [nodeId, channelId, `slack-channel-${channelId}`];
         }
         case 3: {
-          // Check parents[0] (the nodeId)
+          // Check parents[0] is the nodeId
           assert(parents[0] === nodeId, "parents[0] !== nodeId");
           // Check parents[2] vs parents[1]
           assert(
@@ -70,7 +70,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       if (parents.length !== 3) {
         throw new Error("Parents len != 3");
       }
-      // Check parents[0] (the nodeId)
+      // Check parents[0] is the nodeId
       assert(parents[0] === nodeId, "parents[0] !== nodeId");
       // Check parents[2] vs parents[1]
       assert(
