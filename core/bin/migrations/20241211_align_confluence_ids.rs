@@ -74,6 +74,7 @@ async fn migrate_data_source(
         ));
 
         let docs = store
+            .as_ref()
             .list_data_source_documents(
                 &project,
                 &data_source_id,
