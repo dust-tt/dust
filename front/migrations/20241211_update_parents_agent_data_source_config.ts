@@ -55,55 +55,61 @@ makeScript({}, async ({ execute }, logger) => {
     }
     lastSeenId = configurations[configurations.length - 1].id;
 
-    await concurrentExecutor(
-      configurations,
-      async (configuration) => {
-        assert(
-          configuration.dataSource.connectorProvider,
-          "connectorProvider is required"
-        );
-        const migrator = migrators[configuration.dataSource.connectorProvider];
-        if (!migrator) {
-          return; // no migration needed
-        }
-
-        const { parentsIn, parentsNotIn } = configuration;
-        const newParentsIn = parentsIn && migrator(parentsIn);
-        const newParentsNotIn = parentsNotIn && migrator(parentsNotIn);
-
-        if (execute) {
-          await configuration.update({
-            parentsIn: newParentsIn,
-            parentsNotIn: newParentsNotIn,
-          });
-          logger.info(
-            {
-              configurationId: configuration.id,
-              connectorProvider: configuration.dataSource.connectorProvider,
-              fromParentsIn: parentsIn,
-              toParentsIn: newParentsIn,
-              fromParentsNotIn: parentsNotIn,
-              toParentsNotIn: newParentsNotIn,
-            },
-            `LIVE`
+    try {
+      await concurrentExecutor(
+        configurations,
+        async (configuration) => {
+          assert(
+            configuration.dataSource.connectorProvider,
+            "connectorProvider is required"
           );
-        } else {
-          logger.info(
-            {
-              configurationId: configuration.id,
-              connectorProvider: configuration.dataSource.connectorProvider,
-              fromParentsIn: parentsIn,
-              toParentsIn: newParentsIn,
-              fromParentsNotIn: parentsNotIn,
-              toParentsNotIn: newParentsNotIn,
-            },
-            `DRY`
-          );
-        }
-      },
-      { concurrency: UPDATE_CONCURRENCY }
-    );
-    logger.info(`Data processed up to id ${lastSeenId}`);
+          const migrator =
+            migrators[configuration.dataSource.connectorProvider];
+          if (!migrator) {
+            return; // no migration needed
+          }
+
+          const { parentsIn, parentsNotIn } = configuration;
+          const newParentsIn = parentsIn && migrator(parentsIn);
+          const newParentsNotIn = parentsNotIn && migrator(parentsNotIn);
+
+          if (execute) {
+            await configuration.update({
+              parentsIn: newParentsIn,
+              parentsNotIn: newParentsNotIn,
+            });
+            logger.info(
+              {
+                configurationId: configuration.id,
+                connectorProvider: configuration.dataSource.connectorProvider,
+                fromParentsIn: parentsIn,
+                toParentsIn: newParentsIn,
+                fromParentsNotIn: parentsNotIn,
+                toParentsNotIn: newParentsNotIn,
+              },
+              `LIVE`
+            );
+          } else {
+            logger.info(
+              {
+                configurationId: configuration.id,
+                connectorProvider: configuration.dataSource.connectorProvider,
+                fromParentsIn: parentsIn,
+                toParentsIn: newParentsIn,
+                fromParentsNotIn: parentsNotIn,
+                toParentsNotIn: newParentsNotIn,
+              },
+              `DRY`
+            );
+          }
+        },
+        { concurrency: UPDATE_CONCURRENCY }
+      );
+      logger.info(`Data processed up to id ${lastSeenId}`);
+    } catch (e) {
+      logger.error({ error: e, lastSeenId }, `ERROR`);
+      throw e;
+    }
   }
 
   logger.info(
