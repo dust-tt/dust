@@ -120,7 +120,11 @@ async function migrateDocument({
         : migrator.cleaner(coreDocument.document_id, coreDocument.parents);
   } catch (e) {
     logger.error(
-      `TRANSFORM_ERROR: document_id=${coreDocument.document_id} parents=${coreDocument.parents}`
+      {
+        documentId: coreDocument.document_id,
+        parents: coreDocument.parents,
+      },
+      `TRANSFORM_ERROR`
     );
     throw e;
   }
@@ -138,13 +142,21 @@ async function migrateDocument({
     }
 
     logger.info(
-      `LIVE: document_id=${coreDocument.document_id}` +
-        `\nfrom_parents=${coreDocument.parents.join(", ")}\n  to_parents=${newParents.join(", ")}`
+      {
+        documentId: coreDocument.document_id,
+        fromParents: coreDocument.parents,
+        toParents: newParents,
+      },
+      `LIVE`
     );
   } else {
     logger.info(
-      `DRY: document_id=${coreDocument.document_id}` +
-        `\nfrom_parents=${coreDocument.parents.join(", ")}\n  to_parents=${newParents.join(", ")}`
+      {
+        documentId: coreDocument.document_id,
+        fromParents: coreDocument.parents,
+        toParents: newParents,
+      },
+      `DRY`
     );
   }
 
@@ -176,7 +188,11 @@ async function migrateTable({
         : migrator.cleaner(coreTable.table_id, coreTable.parents);
   } catch (e) {
     logger.error(
-      `TRANSFORM_ERROR: table_id=${coreTable.table_id} parents=${coreTable.parents}`
+      {
+        tableId: coreTable.table_id,
+        parents: coreTable.parents,
+      },
+      `TRANSFORM_ERROR`
     );
     throw e;
   }
@@ -194,13 +210,21 @@ async function migrateTable({
     }
 
     logger.info(
-      `LIVE: table_id=${coreTable.table_id}` +
-        `\nfrom_parents=${coreTable.parents.join(", ")}\n  to_parents=${newParents.join(", ")}`
+      {
+        tableId: coreTable.table_id,
+        fromParents: coreTable.parents,
+        toParents: newParents,
+      },
+      `LIVE`
     );
   } else {
     logger.info(
-      `DRY: table_id=${coreTable.table_id}` +
-        `\nfrom_parents=${coreTable.parents.join(", ")}\n  to_parents=${newParents.join(", ")}`
+      {
+        tableId: coreTable.table_id,
+        fromParents: coreTable.parents,
+        toParents: newParents,
+      },
+      `DRY`
     );
   }
 
@@ -274,7 +298,12 @@ async function migrateDataSource({
       );
     } catch (e) {
       logger.error(
-        `ERROR: error=${e} nextDataSourceId=${dataSource.id} nextDocumentId=${nextDocumentId}`
+        {
+          error: e,
+          nextDataSourceId: dataSource.id,
+          nextDocumentId,
+        },
+        `ERROR`
       );
       throw e;
     }
@@ -318,7 +347,12 @@ async function migrateDataSource({
       );
     } catch (e) {
       logger.error(
-        `ERROR: error=${e} nextDataSourceId=${dataSource.id} nextTableId=${nextTableId}`
+        {
+          error: e,
+          nextDataSourceId: dataSource.id,
+          nextTableId,
+        },
+        `ERROR`
       );
       throw e;
     }
@@ -357,7 +391,7 @@ async function migrateAll({
         execute,
       });
     } else {
-      logger.info("SKIP: dataSourceId=" + dataSource.id);
+      logger.info({ dataSourceId: dataSource.id }, "SKIP");
     }
   }
 }
