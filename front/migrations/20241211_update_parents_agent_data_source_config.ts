@@ -123,16 +123,20 @@ makeScript(
             }
 
             const { parentsIn, parentsNotIn } = configuration;
-            const newParentsIn =
-              parentsIn &&
-              (action === "transform"
-                ? migrator.transformer
-                : migrator.cleaner)(parentsIn);
-            const newParentsNotIn =
-              parentsNotIn &&
-              (action === "clean" ? migrator.transformer : migrator.cleaner)(
-                parentsNotIn
-              );
+            let newParentsIn = parentsIn;
+            let newParentsNotIn = parentsNotIn;
+
+            try {
+              newParentsIn &&= (
+                action === "transform" ? migrator.transformer : migrator.cleaner
+              )(newParentsIn);
+              newParentsNotIn &&= (
+                action === "clean" ? migrator.transformer : migrator.cleaner
+              )(newParentsNotIn);
+            } catch (e) {
+              logger.error({ configuration, e, lastSeenId }, `TRANSFORM_ERROR`);
+              throw e;
+            }
 
             if (execute) {
               await configuration.update({
