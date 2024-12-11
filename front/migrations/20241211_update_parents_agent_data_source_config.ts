@@ -68,21 +68,36 @@ makeScript({}, async ({ execute }, logger) => {
         }
 
         const { parentsIn, parentsNotIn } = configuration;
+        const newParentsIn = parentsIn && migrator(parentsIn);
+        const newParentsNotIn = parentsNotIn && migrator(parentsNotIn);
 
         if (execute) {
           await configuration.update({
-            parentsIn: parentsIn && migrator(parentsIn),
-            parentsNotIn: parentsNotIn && migrator(parentsNotIn),
+            parentsIn: newParentsIn,
+            parentsNotIn: newParentsNotIn,
           });
+          logger.info(
+            {
+              configurationId: configuration.id,
+              connectorProvider: configuration.dataSource.connectorProvider,
+              fromParentsIn: parentsIn,
+              toParentsIn: newParentsIn,
+              fromParentsNotIn: parentsNotIn,
+              toParentsNotIn: newParentsNotIn,
+            },
+            `LIVE`
+          );
         } else {
           logger.info(
             {
-              parentsIn,
-              newParentsIn: parentsIn && migrator(parentsIn),
-              parentsNotIn,
-              newParentsNotIn: parentsNotIn && migrator(parentsNotIn),
+              configurationId: configuration.id,
+              connectorProvider: configuration.dataSource.connectorProvider,
+              fromParentsIn: parentsIn,
+              toParentsIn: newParentsIn,
+              fromParentsNotIn: parentsNotIn,
+              toParentsNotIn: newParentsNotIn,
             },
-            "Would update agent data source configuration"
+            `DRY`
           );
         }
       },
