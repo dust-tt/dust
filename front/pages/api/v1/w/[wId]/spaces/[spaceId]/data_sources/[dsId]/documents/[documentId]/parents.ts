@@ -55,12 +55,12 @@ import { apiError } from "@app/logger/withlogging";
  *             properties:
  *               parentId:
  *                 type: string
- *                 description: Direct parent document IDs
+ *                 description: Direct parent ID of the document
  *               parents:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Array of parent document IDs
+ *                 description: Array of parent IDs for this document
  *     responses:
  *       200:
  *         description: The parents were updated
