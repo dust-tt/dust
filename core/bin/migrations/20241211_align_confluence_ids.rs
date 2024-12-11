@@ -96,7 +96,7 @@ async fn migrate_data_source(
             new_parents.append(&mut converted_parents);
 
             let document_id_hash = make_document_id_hash(&doc.document_id);
-            ds.update_parents(store, qdrant_clients, document_id_hash, new_parents)
+            ds.update_parents(store, qdrant_clients.clone(), document_id_hash, new_parents)
                 .await?;
         }
     }
