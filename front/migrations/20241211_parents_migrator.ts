@@ -150,10 +150,10 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         [nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)
       );
       return [
-        // legacy parents
-        ...uniqueIds,
         // new parents
         ...uniqueIds.map((id) => `notion-${id}`),
+        // legacy parents
+        ...uniqueIds,
       ];
     },
     cleaner: (nodeId, parents) =>
