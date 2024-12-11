@@ -28,6 +28,31 @@ const QUERY_BATCH_SIZE = 128;
 const DOCUMENT_CONCURRENCY = 8;
 const TABLE_CONCURRENCY = 16;
 
+enum ConfluenceOldIdPrefix {
+  Space = "cspace_",
+  Page = "cpage_",
+}
+
+enum ConfluenceNewIdPrefix {
+  Space = "confluence-space-",
+  Page = "confluence-page-",
+}
+
+function getIdFromConfluenceInternalId(internalId: string) {
+  const prefixPattern = `^(${ConfluenceOldIdPrefix.Space}|${ConfluenceOldIdPrefix.Page})`;
+  return internalId.replace(new RegExp(prefixPattern), "");
+}
+
+function convertConfluenceOldIdToNewId(internalId: string): string {
+  if (internalId.startsWith(ConfluenceOldIdPrefix.Page)) {
+    return `${ConfluenceNewIdPrefix.Page}${getIdFromConfluenceInternalId(internalId)}`;
+  }
+  if (internalId.startsWith(ConfluenceOldIdPrefix.Space)) {
+    return `${ConfluenceNewIdPrefix.Space}${getIdFromConfluenceInternalId(internalId)}`;
+  }
+  throw new Error(`Invalid internal ID: ${internalId}`);
+}
+
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: {
     transformer: (nodeId, parents) => {
@@ -89,7 +114,45 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   snowflake: null,
   webcrawler: null,
   zendesk: null,
-  confluence: null,
+  confluence: {
+    transformer: (nodeId, parents) => {
+      // case where we got old IDs exclusively: we add the new IDs to them
+      if (
+        parents.every(
+          (parent) =>
+            parent.startsWith(ConfluenceOldIdPrefix.Page) ||
+            parent.startsWith(ConfluenceOldIdPrefix.Space)
+        )
+      ) {
+        return [...parents, ...parents.map(convertConfluenceOldIdToNewId)];
+      }
+      // checking that we got a mix of old and new IDs, with the old ones matching the new ones
+      for (const parent of parents) {
+        if (
+          parent.startsWith(ConfluenceOldIdPrefix.Page) ||
+          parent.startsWith(ConfluenceOldIdPrefix.Space)
+        ) {
+          assert(parents.includes(convertConfluenceOldIdToNewId(parent)));
+        } else {
+          assert(
+            parent.startsWith(ConfluenceNewIdPrefix.Page) ||
+              parent.startsWith(ConfluenceNewIdPrefix.Space)
+          );
+        }
+      }
+      return parents;
+    },
+    cleaner: (nodeId, parents) => {
+      // we just remove the old IDs
+      return parents.filter(
+        (parent) =>
+          !(
+            parent.startsWith(ConfluenceOldIdPrefix.Page) ||
+            parent.startsWith(ConfluenceOldIdPrefix.Space)
+          )
+      );
+    },
+  },
   intercom: null,
 };
 
