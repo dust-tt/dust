@@ -611,6 +611,7 @@ export async function handleDataSourceTableCSVUpsert({
         | "data_source_error"
         | "invalid_rows"
         | "resource_not_found"
+        | "invalid_parent_id"
         | "internal_error";
     }
   >
@@ -734,6 +735,12 @@ export async function handleDataSourceTableCSVUpsert({
           code: "internal_error",
           message:
             "Invalid request body: " + tableRes.error.inputValidationError,
+        });
+      } else if ("message" in tableRes.error) {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_parent_id",
+          message: "Invalid request body: " + tableRes.error.message,
         });
       } else {
         assertNever(tableRes.error);

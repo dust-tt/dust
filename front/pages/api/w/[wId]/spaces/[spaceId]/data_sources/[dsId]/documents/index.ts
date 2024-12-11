@@ -145,6 +145,14 @@ async function handler(
                 message: upsertResult.error.message,
               },
             });
+          case "invalid_parent_id":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: upsertResult.error.message,
+              },
+            });
           default:
             return apiError(req, res, {
               status_code: 500,

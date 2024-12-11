@@ -108,6 +108,14 @@ async function handler(
                 message: r.error.message,
               },
             });
+          case "invalid_parent_id":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: r.error.message,
+              },
+            });
           case "invalid_rows":
             return apiError(req, res, {
               status_code: 400,

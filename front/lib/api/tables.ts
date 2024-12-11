@@ -68,12 +68,12 @@ export type TableOperationError =
       inputValidationError: InputValidationError;
     }
   | {
-      type: "not_found_error";
-      notFoundError: NotFoundError;
+      type: "invalid_request_error";
+      message: string;
     }
   | {
-      type: "invalid_parent_id";
-      message: string;
+      type: "not_found_error";
+      notFoundError: NotFoundError;
     };
 
 export async function deleteTable({
@@ -189,7 +189,7 @@ export async function upsertTableFromCsv({
 
   if (tableParentId && tableParents && tableParents[1] !== tableParentId) {
     return new Err({
-      type: "invalid_parent_id",
+      type: "invalid_request_error",
       message: "Invalid request body, parents[1] and parent_id should be equal",
     });
   }
