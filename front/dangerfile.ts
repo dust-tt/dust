@@ -2,6 +2,7 @@ import { danger, fail, warn } from "danger";
 
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
+const auth0UpdateLabelAck = "auth0-update-ack";
 
 const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
@@ -46,6 +47,29 @@ function checkDeployPlanSection() {
       "Please include a detailed Deploy Plan section in your PR description."
     );
   }
+}
+
+function checkAuth0UpdateLabel() {
+  if (!hasLabel(auth0UpdateLabelAck)) {
+    failAuth0UpdateLabel();
+  } else {
+    warnAuth0UpdateLabel(auth0UpdateLabelAck);
+  }
+}
+
+function failAuth0UpdateLabel() {
+  fail(
+    "`**/lib/utils/blacklisted_email_domains.ts` has been modified. " +
+      `Please add the \`${auth0UpdateLabelAck}\` label to acknowledge that the Auth0 blacklist has been updated.`
+  );
+}
+
+function warnAuth0UpdateLabel(auth0UpdateLabelAck: string) {
+  warn(
+    "`**/lib/utils/blacklisted_email_domains.ts` has been modified and the PR has the `" +
+      auth0UpdateLabelAck +
+      "` label. Don't forget to update the Auth0 blacklist."
+  );
 }
 
 function checkDocumentationLabel() {
@@ -95,6 +119,14 @@ function checkModifiedFiles() {
 
   if (modifiedPublicApiFiles.length > 0) {
     checkDocumentationLabel();
+  }
+
+  const modifiedAuth0Files = danger.git.modified_files.filter((path) => {
+    return path.startsWith("front/lib/utils/blacklisted_email_domains.ts");
+  });
+
+  if (modifiedAuth0Files.length > 0) {
+    checkAuth0UpdateLabel();
   }
 }
 

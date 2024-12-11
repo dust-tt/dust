@@ -1,3 +1,6 @@
+// WARNING: only changing this list will have no effect
+// The blacklist should be updated in auth0 too (actions -> triggers -> pre-user-registration)
+// This list is commited here for reference & traceability
 const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "0-mail.com",
   "027168.com",
