@@ -50,7 +50,7 @@ function convertConfluenceOldIdToNewId(internalId: string): string {
   if (internalId.startsWith(ConfluenceOldIdPrefix.Space)) {
     return `${ConfluenceNewIdPrefix.Space}${getIdFromConfluenceInternalId(internalId)}`;
   }
-  throw new Error(`Invalid internal ID: ${internalId}`);
+  return internalId;
 }
 
 function slackNodeIdToChannelId(nodeId: string) {
@@ -174,31 +174,9 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   zendesk: null,
   confluence: {
     transformer: (nodeId, parents) => {
-      // case where we got old IDs exclusively: we add the new IDs to them
-      if (
-        parents.every(
-          (parent) =>
-            parent.startsWith(ConfluenceOldIdPrefix.Page) ||
-            parent.startsWith(ConfluenceOldIdPrefix.Space)
-        )
-      ) {
-        return [...parents, ...parents.map(convertConfluenceOldIdToNewId)];
-      }
-      // checking that we got a mix of old and new IDs, with the old ones matching the new ones
-      for (const parent of parents) {
-        if (
-          parent.startsWith(ConfluenceOldIdPrefix.Page) ||
-          parent.startsWith(ConfluenceOldIdPrefix.Space)
-        ) {
-          assert(parents.includes(convertConfluenceOldIdToNewId(parent)));
-        } else {
-          assert(
-            parent.startsWith(ConfluenceNewIdPrefix.Page) ||
-              parent.startsWith(ConfluenceNewIdPrefix.Space)
-          );
-        }
-      }
-      return parents;
+      return [
+        ...new Set([...parents, ...parents.map(convertConfluenceOldIdToNewId)]),
+      ];
     },
     cleaner: (nodeId, parents) => {
       // we just remove the old IDs
