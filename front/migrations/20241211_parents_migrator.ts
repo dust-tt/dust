@@ -175,7 +175,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   confluence: {
     transformer: (nodeId, parents) => {
       return [
-        ...new Set([...parents, ...parents.map(convertConfluenceOldIdToNewId)]),
+        ...new Set([...parents.map(convertConfluenceOldIdToNewId), ...parents]),
       ];
     },
     cleaner: (nodeId, parents) => {
