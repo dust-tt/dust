@@ -81,11 +81,10 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
 
 makeScript(
   {
-    action: {
-      type: "string",
-    },
+    action: { type: "string" },
+    nextId: { type: "number", default: 0 },
   },
-  async ({ execute, action }, logger) => {
+  async ({ execute, action, nextId }, logger) => {
     if (!isMigratorAction(action)) {
       console.error(
         `Invalid action ${action}, supported actions are "transform" and "clean"`
@@ -93,22 +92,15 @@ makeScript(
       return;
     }
 
-    let lastSeenId = 0;
+    let lastSeenId = nextId;
 
     for (;;) {
       const configurations = await AgentDataSourceConfiguration.findAll({
         limit: AGENT_CONFIGURATION_BATCH_SIZE,
         where: { id: { [Op.gt]: lastSeenId } },
         order: [["id", "ASC"]],
-        raw: true,
-        include: [
-          {
-            model: DataSourceModel,
-            as: "dataSource",
-            attributes: [],
-            required: true,
-          },
-        ],
+        nest: true,
+        include: [{ model: DataSourceModel, as: "dataSource", required: true }],
       });
 
       if (configurations.length === 0) {
@@ -131,16 +123,20 @@ makeScript(
             }
 
             const { parentsIn, parentsNotIn } = configuration;
-            const newParentsIn =
-              parentsIn &&
-              (action === "transform"
-                ? migrator.transformer
-                : migrator.cleaner)(parentsIn);
-            const newParentsNotIn =
-              parentsNotIn &&
-              (action === "clean" ? migrator.transformer : migrator.cleaner)(
-                parentsNotIn
-              );
+            let newParentsIn = parentsIn;
+            let newParentsNotIn = parentsNotIn;
+
+            try {
+              newParentsIn &&= (
+                action === "transform" ? migrator.transformer : migrator.cleaner
+              )(newParentsIn);
+              newParentsNotIn &&= (
+                action === "clean" ? migrator.transformer : migrator.cleaner
+              )(newParentsNotIn);
+            } catch (e) {
+              logger.error({ configuration, e, lastSeenId }, `TRANSFORM_ERROR`);
+              throw e;
+            }
 
             if (execute) {
               await configuration.update({
