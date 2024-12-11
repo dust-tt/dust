@@ -242,6 +242,22 @@ async function handler(
           await rGoogleAIStudio.json();
           return res.status(200).json({ ok: true });
 
+        case "togetherai":
+          const tModelsRes = await fetch("https://api.together.xyz/v1/models", {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${config.api_key}`,
+            },
+          });
+          if (!tModelsRes.ok) {
+            const err = await tModelsRes.json();
+            res.status(400).json({ ok: false, error: err.error.message });
+          } else {
+            await tModelsRes.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
+
         default:
           return apiError(req, res, {
             status_code: 404,

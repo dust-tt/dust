@@ -242,6 +242,22 @@ async function handler(
             ],
           });
 
+        case "togetherai":
+          if (embed) {
+            res.status(200).json({ models: [] });
+            return;
+          }
+          return res.status(200).json({
+            models: [
+              // llama
+              { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
+              // qwen
+              { id: "Qwen/Qwen2.5-Coder-32B-Instruct" },
+              { id: "Qwen/QwQ-32B-Preview" },
+              { id: "Qwen/Qwen2-72B-Instruct" },
+            ],
+          });
+
         default:
           return apiError(req, res, {
             status_code: 404,

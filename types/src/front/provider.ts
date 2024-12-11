@@ -16,4 +16,5 @@ export type CredentialsType = {
   SERPER_API_KEY?: string;
   BROWSERLESS_API_KEY?: string;
   GOOGLE_AI_STUDIO_API_KEY?: string;
+  TOGETHERAI_API_KEY?: string;
 };
