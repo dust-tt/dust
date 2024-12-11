@@ -22,7 +22,7 @@ export const EnqueueUpsertDocument = t.intersection([
     dataSourceId: t.string,
     documentId: t.string,
     tags: t.union([t.array(t.string), t.null]),
-    parentId: t.union([t.string, t.null]),
+    parentId: t.union([t.string, t.null, t.undefined]),
     parents: t.union([t.array(t.string), t.null]),
     sourceUrl: t.union([t.string, t.null]),
     timestamp: t.union([t.number, t.null]),
