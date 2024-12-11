@@ -100,15 +100,8 @@ makeScript(
         limit: AGENT_CONFIGURATION_BATCH_SIZE,
         where: { id: { [Op.gt]: lastSeenId } },
         order: [["id", "ASC"]],
-        raw: true,
-        include: [
-          {
-            model: DataSourceModel,
-            as: "dataSource",
-            attributes: [],
-            required: true,
-          },
-        ],
+        nest: true,
+        include: [{ model: DataSourceModel, as: "dataSource", required: true }],
       });
 
       if (configurations.length === 0) {
