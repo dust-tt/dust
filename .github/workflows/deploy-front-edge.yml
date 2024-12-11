@@ -11,7 +11,7 @@ on:
         options:
           - "us-central1"
           - "europe-west1"
-          - "us-central1,europe-west1"
+          - "all"
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -59,12 +59,25 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
+  create-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [ "${{ github.event.inputs.regions }}" = "all" ]; then
+            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=[\"${{ github.event.inputs.regions }}\"]" >> $GITHUB_OUTPUT
+          fi
+
   build:
-    needs: notify-start
+    needs: [notify-start, create-matrix]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        region: ${{ fromJson(format('[{0}]', join(split(github.event.inputs.regions, ','), ','))) }}
+        region: ${{ fromJson(needs.create-matrix.outputs.matrix) }}
       fail-fast: true
 
     steps:
