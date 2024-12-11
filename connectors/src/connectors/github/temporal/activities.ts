@@ -322,7 +322,7 @@ export async function githubUpsertIssueActivity(
     dataSourceConfig,
     folderId: `${repoId}-issues`,
     title: "Issues",
-    parents: [`github-code-${repoId}`, repoId.toString()],
+    parents: [`${repoId}-issues`, repoId.toString()],
   });
 }
 
@@ -514,7 +514,7 @@ export async function githubUpsertDiscussionActivity(
     dataSourceConfig,
     folderId: `${repoId}-discussions`,
     title: "Discussions",
-    parents: [`github-code-${repoId}`, repoId.toString()],
+    parents: [`${repoId}-discussions`, repoId.toString()],
   });
 }
 
