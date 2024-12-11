@@ -1815,7 +1815,7 @@ export async function renderAndUpsertPageFromCache({
               loggerArgs,
               // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
               truncate: false,
-              parents: [...legacyParents, ...parents],
+              parents: [...parents, ...legacyParents],
               title: parentDb.title ?? "Untitled Notion Database",
               mimeType: "application/vnd.dust.notion.database",
             }),
@@ -2037,7 +2037,7 @@ export async function renderAndUpsertPageFromCache({
         parsedProperties,
       }),
       // TODO(kw_search) remove legacy
-      parents: [...legacyParentIds, ...parentIds],
+      parents: [...parentIds, ...legacyParentIds],
       loggerArgs,
       upsertContext: {
         sync_type: isFullSync ? "batch" : "incremental",
@@ -2540,7 +2540,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         // We overwrite the whole table since we just fetched all child pages.
         truncate: true,
         // TODO(kw_search) remove legacy
-        parents: [...legacyParentIds, ...parentIds],
+        parents: [...parentIds, ...legacyParentIds],
         title: dbModel.title ?? "Untitled Notion Database",
         mimeType: "application/vnd.dust.notion.database",
       }),
@@ -2592,7 +2592,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         timestampMs: upsertAt.getTime(),
         tags: [`title:${databaseName}`, "is_database:true"],
         // TODO(kw_search) remove legacy
-        parents: [...legacyParentIds, ...parentIds],
+        parents: [...parentIds, ...legacyParentIds],
         loggerArgs,
         upsertContext: {
           sync_type: "batch",
