@@ -1,21 +1,17 @@
 import type { ConnectorProvider } from "@dust-tt/types";
-import { isConnectorProvider } from "@dust-tt/types";
-import { Sequelize } from "sequelize";
-
-// import { QdrantClient } from "@qdrant/js-client-rest";
-import { Authenticator } from "@app/lib/auth";
-import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
+import {
+  concurrentExecutor,
+  CoreAPI,
+  isConnectorProvider,
+  Ok,
+} from "@dust-tt/types";
 import assert from "assert";
 
-const { QDRANT_CLUSTER_0_URL, QDRANT_CLUSTER_0_API_KEY } = process.env;
-
-const client = new QdrantClient({
-  url: QDRANT_URL,
-  apiKey: QDRANT_API_KEY,
-});
+import apiConfig from "@app/lib/api/config";
+import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import logger from "@app/logger/logger";
+import { makeScript } from "@app/scripts/helpers";
 
 type MigratorAction = "transform" | "clean";
 
@@ -31,12 +27,83 @@ type ProviderMigrator = {
 const DOCUMENT_QUERY_BATCH_SIZE = 128;
 const DOCUMENT_CONCURRENCY = 8;
 
+const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
+  slack: {
+    transformer: (parents) => {
+      return parents;
+    },
+    cleaner: (parents) => {
+      return parents;
+    },
+  },
+  google_drive: null,
+  microsoft: null,
+  github: null,
+  notion: null,
+  snowflake: null,
+  webcrawler: null,
+  zendesk: null,
+  confluence: null,
+  intercom: null,
+};
+
+const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
+
+async function migrateDocument({
+  action,
+  migrator,
+  dataSource,
+  coreDocument,
+  execute,
+}: {
+  action: MigratorAction;
+  migrator: ProviderMigrator;
+  dataSource: DataSourceModel;
+  coreDocument: {
+    id: number;
+    parents: string[];
+    document_id: string;
+    hash: string;
+  };
+  execute: boolean;
+}) {
+  const newParents =
+    action === "transform"
+      ? migrator.transformer(coreDocument.parents)
+      : migrator.cleaner(coreDocument.parents);
+
+  if (execute) {
+    const updateRes = await coreAPI.updateDataSourceDocumentParents({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      documentId: coreDocument.document_id,
+      parents: newParents,
+    });
+
+    if (updateRes.isErr()) {
+      throw new Error(updateRes.error.message);
+    }
+
+    logger.info(
+      `LIVE: document_id=${coreDocument.document_id} parents=${newParents}`
+    );
+  } else {
+    logger.info(
+      `DRY: document_id=${coreDocument.document_id} parents=${newParents}`
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 async function migrateDataSource({
-  provider,
+  action,
+  migrator,
   dataSource,
   execute,
 }: {
-  provider: ConnectorProvider;
+  action: MigratorAction;
+  migrator: ProviderMigrator;
   dataSource: DataSourceModel;
   execute: boolean;
 }) {
@@ -58,11 +125,10 @@ async function migrateDataSource({
       coreDataSourceRows[0].data_source_id === dataSource.dustAPIDataSourceId,
     "Core data source mismatch"
   );
-
   const coreDataSourceId = coreDataSourceRows[0].id;
 
-  // for all documents in the data source (can be big)
-  let nextId = 0;
+  // For all documents in the data source (can be big).
+  let nextDocumentId = 0;
 
   for (;;) {
     const [coreDocumentRows] = (await corePrimary.query(
@@ -70,8 +136,8 @@ async function migrateDataSource({
         "WHERE data_source = ? AND id > ? ORDER BY id ASC LIMIT ?",
       {
         replacements: [
-          coreDataSourceRows[0].id,
-          nextId,
+          coreDataSourceId,
+          nextDocumentId,
           DOCUMENT_QUERY_BATCH_SIZE,
         ],
       }
@@ -82,23 +148,46 @@ async function migrateDataSource({
       hash: string;
     }[][];
 
-    nextId = coreDocumentRows[coreDocumentRows.length - 1].id;
-
     if (coreDocumentRows.length === 0) {
       break;
     }
 
     // concurrentExecutor on documents
+    try {
+      await concurrentExecutor(
+        coreDocumentRows,
+        (coreDocument) =>
+          migrateDocument({
+            action,
+            migrator,
+            dataSource,
+            coreDocument,
+            execute,
+          }),
+        { concurrency: DOCUMENT_CONCURRENCY }
+      );
+    } catch (e) {
+      logger.error(
+        `ERROR: message=${e} nextDataSourceId=${dataSource.id} nextDocumentId=${nextDocumentId}`
+      );
+      break;
+    }
+
+    nextDocumentId = coreDocumentRows[coreDocumentRows.length - 1].id;
   }
 
-  // for all the tables in the data source (can be big)
+  // For all the tables in the data source (can be big).
 }
 
 async function migrateAll({
   provider,
+  action,
+  migrator,
   execute,
 }: {
   provider: ConnectorProvider;
+  action: MigratorAction;
+  migrator: ProviderMigrator;
   execute: boolean;
 }) {
   // retrieve all data sources for the provider
@@ -106,32 +195,18 @@ async function migrateAll({
     where: {
       connectorProvider: provider,
     },
+    order: [["id", "ASC"]],
   });
 
   for (const dataSource of dataSources) {
-    await migrateDataSource({ provider, dataSource, execute });
+    await migrateDataSource({
+      migrator,
+      action,
+      dataSource,
+      execute,
+    });
   }
 }
-
-const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
-  slack: {
-    transformer: (parents) => {
-      return parents;
-    },
-    cleaner: (parents) => {
-      return parents;
-    },
-  },
-  google_drive: null,
-  microsoft: null,
-  github: null,
-  notion: null,
-  snowflake: null,
-  webcrawler: null,
-  zendesk: null,
-  confluence: null,
-  intercom: null,
-};
 
 makeScript(
   {
@@ -160,6 +235,11 @@ makeScript(
       return;
     }
 
-    await migrateAll({ provider, execute });
+    await migrateAll({
+      provider,
+      action,
+      migrator: migrators[provider],
+      execute,
+    });
   }
 );
