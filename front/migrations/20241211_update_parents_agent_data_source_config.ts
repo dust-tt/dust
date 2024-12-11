@@ -28,7 +28,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         .replace("cspace_", "confluence-space")
         .replace("cpace_", "confluence-page")
     ),
-  intercom: null,
+  intercom: null, // no migration needed!
 };
 
 makeScript({}, async ({ execute }, logger) => {
