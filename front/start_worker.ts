@@ -4,7 +4,7 @@ import { hideBin } from "yargs/helpers";
 
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
-import { runDocumentTrackerWorker } from "@app/temporal/document_tracker/worker";
+// import { runDocumentTrackerWorker } from "@app/temporal/document_tracker/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsWorker } from "@app/temporal/labs/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
@@ -23,7 +23,7 @@ type WorkerName =
   | "mentions_count"
   | "permissions_queue"
   | "poke"
-  | "document_tracker"
+  // | "document_tracker"
   | "production_checks"
   | "scrub_workspace_queue"
   | "update_workspace_usage"
@@ -36,7 +36,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   mentions_count: runMentionsCountWorker,
   permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
-  document_tracker: runDocumentTrackerWorker,
+  // document_tracker: runDocumentTrackerWorker,
   production_checks: runProductionChecksWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
