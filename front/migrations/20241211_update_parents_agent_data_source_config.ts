@@ -21,7 +21,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   notion: null,
   snowflake: null,
   webcrawler: null,
-  zendesk: null,
+  zendesk: null, // no migration needed!
   confluence: (parents) =>
     parents.map((parent) =>
       parent
