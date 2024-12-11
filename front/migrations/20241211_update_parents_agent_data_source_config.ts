@@ -27,7 +27,7 @@ export function getIdFromConfluenceInternalId(internalId: string) {
   return internalId.replace(new RegExp(prefixPattern), "");
 }
 
-export function convertInternalIdToDocumentId(internalId: string): string {
+export function getUpdatedConfluenceId(internalId: string): string {
   // case where we already got new IDs
   if (
     internalId.startsWith(ConfluenceNewIdPrefix.Page) ||
@@ -56,7 +56,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   snowflake: null,
   webcrawler: null,
   zendesk: null, // no migration needed!
-  confluence: (parents) => parents.map(convertInternalIdToDocumentId),
+  confluence: (parents) => parents.map(getUpdatedConfluenceId),
   intercom: null, // no migration needed!
 };
 
