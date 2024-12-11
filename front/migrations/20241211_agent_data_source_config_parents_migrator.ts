@@ -7,9 +7,15 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 
+type MigratorAction = "transform" | "clean";
+
+const isMigratorAction = (action: string): action is MigratorAction => {
+  return ["transform", "clean"].includes(action);
+};
+
 type ProviderMigrator = {
-  up: (parents: string[]) => string[];
-  down: (parents: string[]) => string[];
+  transformer: (parents: string[]) => string[];
+  cleaner: (parents: string[]) => string[];
 };
 
 const AGENT_CONFIGURATION_BATCH_SIZE = 100;
@@ -60,8 +66,8 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   webcrawler: null,
   zendesk: null, // no migration needed!
   confluence: {
-    up: (parents) => parents.map(getUpdatedConfluenceId),
-    down: (parents) =>
+    transformer: (parents) => parents.map(getUpdatedConfluenceId),
+    cleaner: (parents) =>
       parents.filter(
         (parent) =>
           !parent.startsWith(ConfluenceOldIdPrefix.Page) &&
@@ -78,6 +84,13 @@ makeScript(
     },
   },
   async ({ execute, action }, logger) => {
+    if (!isMigratorAction(action)) {
+      console.error(
+        `Invalid action ${action}, supported actions are "transform" and "clean"`
+      );
+      return;
+    }
+
     let lastSeenId = 0;
 
     for (;;) {
@@ -118,10 +131,14 @@ makeScript(
             const { parentsIn, parentsNotIn } = configuration;
             const newParentsIn =
               parentsIn &&
-              (action === "up" ? migrator.up : migrator.down)(parentsIn);
+              (action === "transform"
+                ? migrator.transformer
+                : migrator.cleaner)(parentsIn);
             const newParentsNotIn =
               parentsNotIn &&
-              (action === "up" ? migrator.up : migrator.down)(parentsNotIn);
+              (action === "clean" ? migrator.transformer : migrator.cleaner)(
+                parentsNotIn
+              );
 
             if (execute) {
               await configuration.update({
