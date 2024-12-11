@@ -6,6 +6,7 @@ pub struct Folder {
     folder_id: String,
     timestamp: u64,
     title: String,
+    parent_id: Option<String>,
     parents: Vec<String>,
 }
 
@@ -18,13 +19,15 @@ impl Folder {
         folder_id: String,
         timestamp: u64,
         title: String,
+        parent_id: Option<String>,
         parents: Vec<String>,
     ) -> Self {
         Folder {
-            data_source_id: data_source_id,
-            folder_id: folder_id,
+            data_source_id,
+            folder_id,
             timestamp,
-            title: title,
+            title,
+            parent_id,
             parents,
         }
     }
@@ -40,6 +43,9 @@ impl Folder {
     }
     pub fn title(&self) -> &str {
         &self.title
+    }
+    pub fn parent_id(&self) -> &Option<String> {
+        &self.parent_id
     }
     pub fn parents(&self) -> &Vec<String> {
         &self.parents

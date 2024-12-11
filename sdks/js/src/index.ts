@@ -823,6 +823,7 @@ export class DustAPI {
     folderId: string,
     timestamp: number,
     title: string,
+    parentId: string | null,
     parents: string[]
   ) {
     return this.request({
@@ -833,6 +834,7 @@ export class DustAPI {
       body: {
         timestamp: Math.floor(timestamp),
         title,
+        parent_id: parentId,
         parents,
       },
     });

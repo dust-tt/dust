@@ -153,6 +153,7 @@ async function _upsertToDatasource({
         title,
         mime_type: mimeType,
         tags: tags?.map((tag) => tag.substring(0, 512)),
+        parent_id: parents[1] ?? null,
         parents,
         light_document_output: true,
         upsert_context: upsertContext,
@@ -770,6 +771,7 @@ export async function upsertTableFromCsv({
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
   const dustRequestPayload: UpsertTableFromCsvRequestType = {
     name: tableName,
+    parentId: parents[1] ?? null,
     parents,
     description: tableDescription,
     csv: tableCsv,
@@ -1148,6 +1150,7 @@ export async function upsertFolderNode({
     folderId,
     timestampMs ? timestampMs : now.getTime(),
     title,
+    parents[1] ?? null,
     parents
   );
 

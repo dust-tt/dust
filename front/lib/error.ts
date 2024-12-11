@@ -10,6 +10,7 @@ export type DustErrorCode =
   | "data_source_quota_error"
   | "text_or_section_required"
   | "invalid_url"
+  | "invalid_parent_id"
   // Table
   | "missing_csv"
   | "invalid_rows"

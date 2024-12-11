@@ -87,6 +87,7 @@ export async function upsertDocumentActivity(
     dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: upsertQueueItem.documentId,
     tags: upsertQueueItem.tags || [],
+    parentId: upsertQueueItem.parentId || null,
     parents: upsertQueueItem.parents || [],
     sourceUrl: upsertQueueItem.sourceUrl,
     timestamp: upsertQueueItem.timestamp,

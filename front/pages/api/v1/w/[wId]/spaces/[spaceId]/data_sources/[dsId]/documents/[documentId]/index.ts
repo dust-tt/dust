@@ -147,11 +147,14 @@ export const config = {
  *                 items:
  *                   type: string
  *                 description: Tags to associate with the document.
+ *               parent_id:
+ *                 type: string
+ *                 description: Direct parent document ID to associate with the document.
  *               parents:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Parent document IDs to associate with the document.
+ *                 description: 'Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order'
  *               timestamp:
  *                 type: number
  *                 description: Unix timestamp (in seconds) for the document (e.g. 1698225000). Can be null or omitted.
@@ -497,6 +500,7 @@ async function handler(
             dataSourceId: dataSource.sId,
             documentId: req.query.documentId as string,
             tags: r.data.tags || [],
+            parentId: r.data.parent_id || null,
             parents: r.data.parents || [],
             timestamp: r.data.timestamp || null,
             sourceUrl,
@@ -536,6 +540,7 @@ async function handler(
           dataSourceId: dataSource.dustAPIDataSourceId,
           documentId: req.query.documentId as string,
           tags: r.data.tags || [],
+          parentId: r.data.parent_id || null,
           parents: r.data.parents || [],
           sourceUrl,
           timestamp: r.data.timestamp || null,

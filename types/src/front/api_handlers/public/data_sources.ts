@@ -31,6 +31,7 @@ export const PostDataSourceDocumentRequestBodySchema = t.intersection([
   t.type({
     timestamp: t.union([t.Int, t.undefined, t.null]),
     tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parent_id: t.union([t.string, t.undefined, t.null]),
     parents: t.union([t.array(t.string), t.undefined, t.null]),
     source_url: t.union([t.string, t.undefined, t.null]),
     upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
@@ -71,6 +72,7 @@ export const PatchDataSourceTableRequestBodySchema = t.intersection([
     description: t.string,
     timestamp: t.union([t.number, t.undefined, t.null]),
     tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parentId: t.union([t.string, t.undefined, t.null]),
     parents: t.union([t.array(t.string), t.undefined, t.null]),
     truncate: t.boolean,
     async: t.union([t.boolean, t.undefined]),
@@ -105,6 +107,7 @@ export const UpsertTableFromCsvRequestSchema = t.intersection([
     description: t.string,
     timestamp: t.union([t.number, t.undefined, t.null]),
     tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parentId: t.union([t.string, t.undefined, t.null]),
     parents: t.union([t.array(t.string), t.undefined, t.null]),
     truncate: t.boolean,
     useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),

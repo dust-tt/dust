@@ -1468,6 +1468,7 @@ async fn data_sources_documents_update_tags(
 
 #[derive(serde::Deserialize)]
 struct DataSourcesDocumentsUpdateParentsPayload {
+    parent_id: Option<String>,
     parents: Vec<String>,
 }
 
@@ -1487,6 +1488,17 @@ async fn data_sources_documents_update_parents(
             operation = "update_parents",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_parent_id",
+                "Failed to update document parents - parents[1] and parent_id should be equal",
+                None,
+            );
+        }
     }
 
     match state
@@ -1617,6 +1629,7 @@ struct DataSourcesDocumentsUpsertPayload {
     document_id: String,
     timestamp: Option<u64>,
     tags: Vec<String>,
+    parent_id: Option<String>,
     parents: Vec<String>,
     source_url: Option<String>,
     section: Section,
@@ -1646,6 +1659,17 @@ async fn data_sources_documents_upsert(
             operation = "upsert",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_parent_id",
+                "Failed to upsert document - parents[1] and parent_id should be equal",
+                None,
+            );
+        }
     }
 
     match state
@@ -2074,6 +2098,7 @@ struct DatabasesTablesUpsertPayload {
     description: String,
     timestamp: Option<u64>,
     tags: Vec<String>,
+    parent_id: Option<String>,
     parents: Vec<String>,
 
     // Remote DB specifics
@@ -2101,6 +2126,17 @@ async fn tables_upsert(
             operation = "upsert",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_parent_id",
+                "Failed to upsert table - parents[1] and parent_id should be equal",
+                None,
+            );
+        }
     }
 
     match state
@@ -2349,6 +2385,17 @@ async fn tables_update_parents(
             operation = "update_parents",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_parent_id",
+                "Failed to update table parents - parents[1] and parent_id should be equal",
+                None,
+            );
+        }
     }
 
     match state
@@ -2725,6 +2772,7 @@ async fn tables_rows_list(
 struct FoldersUpsertPayload {
     folder_id: String,
     timestamp: Option<u64>,
+    parent_id: Option<String>,
     parents: Vec<String>,
     title: String,
 }
@@ -2745,6 +2793,17 @@ async fn folders_upsert(
             operation = "upsert",
             "[KWSEARCH] invariant_first_parent_self"
         );
+    }
+
+    if let Some(parent_id) = &payload.parent_id {
+        if payload.parents.get(1) != Some(parent_id) {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_parent_id",
+                "Failed to upsert folder - parents[1] and parent_id should be equal",
+                None,
+            );
+        }
     }
 
     match state

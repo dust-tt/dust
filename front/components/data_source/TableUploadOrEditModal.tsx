@@ -141,6 +141,7 @@ export const TableUploadOrEditModal = ({
           tableId: initialId,
           timestamp: null,
           tags: [],
+          parentId: null,
           parents: [],
           truncate: true,
           async: false,

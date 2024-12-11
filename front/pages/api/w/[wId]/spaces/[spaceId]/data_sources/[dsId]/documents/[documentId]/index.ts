@@ -105,9 +105,31 @@ async function handler(
         });
       }
 
+      const {
+        source_url,
+        text,
+        section,
+        tags,
+        parent_id,
+        parents,
+        timestamp,
+        light_document_output,
+        mime_type,
+        title,
+      } = bodyValidation.right;
+
       const upsertResult = await upsertDocument({
         name: documentId,
-        ...bodyValidation.right,
+        source_url,
+        text,
+        section,
+        tags,
+        parent_id,
+        parents,
+        timestamp,
+        light_document_output,
+        mime_type,
+        title,
         dataSource,
         auth,
       });
@@ -124,6 +146,14 @@ async function handler(
             });
           case "invalid_url":
           case "text_or_section_required":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: upsertResult.error.message,
+              },
+            });
+          case "invalid_parent_id":
             return apiError(req, res, {
               status_code: 400,
               api_error: {

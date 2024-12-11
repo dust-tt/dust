@@ -275,6 +275,7 @@ const CoreAPIDocumentSchema = z.object({
   created: z.number(),
   document_id: z.string(),
   timestamp: z.number(),
+  parent_id: z.string().nullable().optional(),
   tags: z.array(z.string()),
   source_url: z.string().nullable().optional(),
   hash: z.string(),
@@ -325,6 +326,7 @@ const CoreAPITablePublicSchema = z.object({
   timestamp: z.number(),
   tags: z.array(z.string()),
   parents: z.array(z.string()),
+  parent_id: z.string().nullable().optional(),
   mime_type: z.string().optional(),
   title: z.string().optional(),
 });
@@ -1858,6 +1860,7 @@ const FrontDataSourceDocumentSectionSchema: z.ZodSchema<FrontDataSourceDocumentS
 export const PostDataSourceDocumentRequestSchema = z.object({
   timestamp: z.number().nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
+  parent_id: z.string().nullable().optional(),
   parents: z.array(z.string()).nullable().optional(),
   source_url: z.string().nullable().optional(),
   upsert_context: z
@@ -1980,6 +1983,7 @@ const GetTableResponseSchema = z.object({
 export type GetTableResponseType = z.infer<typeof GetTableResponseSchema>;
 
 export const PostTableParentsRequestSchema = z.object({
+  parent_id: z.string().nullable().optional(),
   parents: z.array(z.string()),
 });
 
@@ -1997,6 +2001,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       description: z.string(),
       timestamp: z.number().nullable().optional(),
       tags: z.array(z.string()).nullable().optional(),
+      parentId: z.string().nullable().optional(),
       parents: z.array(z.string()).nullable().optional(),
       truncate: z.boolean(),
       useAppForHeaderDetection: z.boolean().nullable().optional(),
@@ -2009,6 +2014,7 @@ export const UpsertTableFromCsvRequestSchema = z.intersection(
       description: o.description,
       timestamp: o.timestamp,
       tags: o.tags,
+      parentId: o.parentId,
       parents: o.parents,
       truncate: o.truncate,
       useAppForHeaderDetection: o.useAppForHeaderDetection,
@@ -2064,6 +2070,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   description: z.string(),
   timestamp: z.number().nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
+  parent_id: z.string().nullable().optional(),
   parents: z.array(z.string()).nullable().optional(),
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
@@ -2137,6 +2144,7 @@ export type UpsertFolderResponseType = z.infer<
 export const UpsertDataSourceFolderRequestSchema = z.object({
   timestamp: z.number(),
   parents: z.array(z.string()).nullable().optional(),
+  parent_id: z.string().nullable().optional(),
   title: z.string(),
 });
 export type UpsertDataSourceFolderRequestType = z.infer<

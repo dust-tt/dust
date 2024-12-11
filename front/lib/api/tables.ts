@@ -68,6 +68,10 @@ export type TableOperationError =
       inputValidationError: InputValidationError;
     }
   | {
+      type: "invalid_request_error";
+      message: string;
+    }
+  | {
       type: "not_found_error";
       notFoundError: NotFoundError;
     };
@@ -129,6 +133,7 @@ export async function upsertTableFromCsv({
   tableId,
   tableTimestamp,
   tableTags,
+  tableParentId,
   tableParents,
   csv,
   truncate,
@@ -144,6 +149,7 @@ export async function upsertTableFromCsv({
   tableId: string;
   tableTimestamp: number | null;
   tableTags: string[];
+  tableParentId: string | null;
   tableParents: string[];
   csv: string | null;
   truncate: boolean;
@@ -178,6 +184,13 @@ export async function upsertTableFromCsv({
         message: "Failed to get workspace.",
       },
       message: "Failed to get workspace.",
+    });
+  }
+
+  if (tableParentId && tableParents && tableParents[1] !== tableParentId) {
+    return new Err({
+      type: "invalid_request_error",
+      message: "Invalid request body, parents[1] and parent_id should be equal",
     });
   }
 
@@ -236,6 +249,7 @@ export async function upsertTableFromCsv({
     description: tableDescription,
     timestamp: tableTimestamp,
     tags: tableTags,
+    parentId: tableParentId,
     parents: tableParents,
     title,
     mimeType,

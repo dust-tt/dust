@@ -228,6 +228,7 @@ export async function upsertDocument({
   text,
   section,
   tags,
+  parent_id,
   parents,
   timestamp,
   light_document_output,
@@ -241,6 +242,7 @@ export async function upsertDocument({
   text?: string | null;
   section?: FrontDataSourceDocumentSectionType | null;
   tags?: string[] | null;
+  parent_id?: string | null;
   parents?: string[] | null;
   timestamp?: number | null;
   light_document_output?: boolean;
@@ -306,6 +308,15 @@ export async function upsertDocument({
       new DustError(
         "text_or_section_required",
         "Invalid request body, `text` or `section` must be provided."
+      )
+    );
+  }
+
+  if (parent_id && parents && parents[1] !== parent_id) {
+    return new Err(
+      new DustError(
+        "invalid_parent_id",
+        "Invalid request body, parents[1] and parent_id should be equal"
       )
     );
   }
@@ -385,6 +396,7 @@ export async function upsertDocument({
     dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: documentId,
     tags: nonNullTags,
+    parentId: parent_id ?? null,
     parents: documentParents,
     sourceUrl,
     // TEMPORARY -- need to unstuck a specific entry
@@ -416,6 +428,7 @@ export async function upsertTable({
   truncate,
   csv,
   tags,
+  parentId,
   parents,
   timestamp,
   async,
@@ -431,6 +444,7 @@ export async function upsertTable({
   truncate: boolean;
   csv?: string | null;
   tags?: string[] | null;
+  parentId?: string | null;
   parents?: string[] | null;
   timestamp?: number | null;
   async: boolean;
@@ -481,6 +495,7 @@ export async function upsertTable({
         tableDescription: description,
         tableTimestamp: timestamp ?? null,
         tableTags: tags ?? [],
+        tableParentId: parentId ?? null,
         tableParents,
         csv: csv ?? null,
         truncate,
@@ -505,6 +520,7 @@ export async function upsertTable({
     tableDescription: description,
     tableTimestamp: timestamp ?? null,
     tableTags: tags || [],
+    tableParentId: parentId ?? null,
     tableParents,
     csv: csv ?? null,
     truncate,
@@ -595,6 +611,7 @@ export async function handleDataSourceTableCSVUpsert({
         | "data_source_error"
         | "invalid_rows"
         | "resource_not_found"
+        | "invalid_parent_id"
         | "internal_error";
     }
   >
@@ -653,6 +670,7 @@ export async function handleDataSourceTableCSVUpsert({
         tableDescription: description,
         tableTimestamp: params.timestamp ?? null,
         tableTags: params.tags ?? [],
+        tableParentId: params.parentId ?? null,
         tableParents,
         csv: csv ?? null,
         truncate,
@@ -685,6 +703,7 @@ export async function handleDataSourceTableCSVUpsert({
     tableDescription: description,
     tableTimestamp: params.timestamp ?? null,
     tableTags: params.tags || [],
+    tableParentId: params.parentId ?? null,
     tableParents,
     csv: csv ?? null,
     truncate,
@@ -716,6 +735,12 @@ export async function handleDataSourceTableCSVUpsert({
           code: "internal_error",
           message:
             "Invalid request body: " + tableRes.error.inputValidationError,
+        });
+      } else if ("message" in tableRes.error) {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_parent_id",
+          message: "Invalid request body: " + tableRes.error.message,
         });
       } else {
         assertNever(tableRes.error);
