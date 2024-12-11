@@ -2013,7 +2013,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Parent document IDs to associate with the document."
+                    "description": "Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order"
                   },
                   "timestamp": {
                     "type": "number",
@@ -2223,7 +2223,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "parentId": {
+                  "parent_id": {
                     "type": "string",
                     "description": "Direct parent ID of the document"
                   },
@@ -2232,7 +2232,7 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "Array of parent IDs for this document"
+                    "description": "Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parentId, and then ancestors ids in order"
                   }
                 }
               }
@@ -3186,9 +3186,9 @@
                   "parents": {
                     "type": "array",
                     "items": {
-                      "type": "string"
-                    },
-                    "description": "Parent tables of this table"
+                      "type": "string",
+                      "description": "Table and ancestor ids, with the following convention: parents[0] === table_id, parents[1] === parent_id, and then ancestors ids in order"
+                    }
                   },
                   "parent_id": {
                     "type": "string",

@@ -154,7 +154,7 @@ export const config = {
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order"
+ *                 description: 'Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order'
  *               timestamp:
  *                 type: number
  *                 description: Unix timestamp (in seconds) for the document (e.g. 1698225000). Can be null or omitted.

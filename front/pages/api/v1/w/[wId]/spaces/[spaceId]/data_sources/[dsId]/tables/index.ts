@@ -114,7 +114,7 @@ import { apiError } from "@app/logger/withlogging";
  *                 type: array
  *                 items:
  *                   type: string
- *                   description: Table and ancestor ids, with the following convention: parents[0] === table_id, parents[1] === parent_id, and then ancestors ids in order"
+ *                   description: 'Table and ancestor ids, with the following convention: parents[0] === table_id, parents[1] === parent_id, and then ancestors ids in order'
  *               parent_id:
  *                 type: string
  *                 description: Direct parent id of this table

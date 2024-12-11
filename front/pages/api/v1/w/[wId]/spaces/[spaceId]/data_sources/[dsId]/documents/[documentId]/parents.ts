@@ -60,7 +60,7 @@ import { apiError } from "@app/logger/withlogging";
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parentId, and then ancestors ids in order
+ *                 description: 'Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parentId, and then ancestors ids in order'
  *     responses:
  *       200:
  *         description: The parents were updated
