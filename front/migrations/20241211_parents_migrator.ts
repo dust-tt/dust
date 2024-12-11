@@ -47,12 +47,6 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     transformer: (nodeId, parents) => {
       const channelId = slackNodeIdToChannelId(nodeId);
       switch (parents.length) {
-        case 0:
-          logger.warn(
-            { nodeId, parents, problem: "no parents" },
-            "Invalid slack parents"
-          );
-          break;
         case 1: {
           // Check that parents[0] does not have the prefix (it's the channelId)
           if (parents[0] !== channelId) {
@@ -115,7 +109,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         }
         default:
           logger.warn(
-            { nodeId, parents, problem: "too many parents" },
+            { nodeId, parents, problem: "invalid parents len" },
             "Invalid slack parents"
           );
           break;
