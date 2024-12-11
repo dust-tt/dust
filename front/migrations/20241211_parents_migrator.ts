@@ -323,19 +323,26 @@ async function migrateDataSource({
   const coreDataSourceId = coreDataSourceRows[0].id;
 
   // For all documents in the data source (can be big).
-  let nextDocumentId = 0;
+  let nextTimestamp = 0;
 
   for (;;) {
     const [coreDocumentRows] = (await corePrimary.query(
-      "SELECT id, parents, document_id FROM data_sources_documents " +
-        "WHERE data_source = ? AND id > ? ORDER BY id ASC LIMIT ?",
+      "SELECT id, parents, document_id, timestamp FROM data_sources_documents " +
+        "WHERE data_source = ? AND STATUS = ? AND timestamp > ? " +
+        "ORDER BY timestamp ASC LIMIT ?",
       {
-        replacements: [coreDataSourceId, nextDocumentId, QUERY_BATCH_SIZE],
+        replacements: [
+          coreDataSourceId,
+          "latest",
+          nextTimestamp,
+          QUERY_BATCH_SIZE,
+        ],
       }
     )) as {
       id: number;
       parents: string[];
       document_id: string;
+      timestamp: number;
     }[][];
 
     if (coreDocumentRows.length === 0) {
@@ -361,14 +368,14 @@ async function migrateDataSource({
         {
           error: e,
           nextDataSourceId: dataSource.id,
-          nextDocumentId,
+          nextTimestamp,
         },
         `ERROR`
       );
       throw e;
     }
 
-    nextDocumentId = coreDocumentRows[coreDocumentRows.length - 1].id;
+    nextTimestamp = coreDocumentRows[coreDocumentRows.length - 1].timestamp;
   }
 
   // For all the tables in the data source (can be big).
