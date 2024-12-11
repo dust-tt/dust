@@ -51,7 +51,7 @@ jobs:
             --dockerfile-path=./nginx.Dockerfile \
             --working-dir=./ \
             --gcloud-ignore-file=../.gcloudignore-nginx \
-            --dust-client-facing-url=https://dust.tt \ 
+            --dust-client-facing-url=https://dust.tt \
             --region=us-central1
           cd ..
 
