@@ -1790,7 +1790,7 @@ export async function renderAndUpsertPageFromCache({
           rowBoundary: "",
         });
 
-        const parents = await getParents(
+        const parentPageOrDbIds = await getParents(
           connector.id,
           parentDb.notionDatabaseId,
           [],
@@ -1799,6 +1799,10 @@ export async function renderAndUpsertPageFromCache({
             await heartbeat();
           }
         );
+
+        // TODO(kw_search) remove legacy
+        const legacyParents = parentPageOrDbIds;
+        const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
 
         await ignoreTablesError(
           () =>
@@ -1811,7 +1815,7 @@ export async function renderAndUpsertPageFromCache({
               loggerArgs,
               // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
               truncate: false,
-              parents,
+              parents: [...legacyParents, ...parents],
               title: parentDb.title ?? "Untitled Notion Database",
               mimeType: "application/vnd.dust.notion.database",
             }),
