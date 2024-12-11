@@ -10,7 +10,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { supportedFileExtensions } from "@dust-tt/types";
+import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
@@ -125,7 +125,7 @@ const InputBarContainer = ({
           {actions.includes("attachment") && (
             <>
               <input
-                accept={supportedFileExtensions.join(",")}
+                accept={getSupportedFileExtensions().join(",")}
                 onChange={async (e) => {
                   await fileUploaderService.handleFileChange(e);
                   if (fileInputRef.current) {
@@ -142,7 +142,7 @@ const InputBarContainer = ({
                 variant="ghost-secondary"
                 icon={AttachmentIcon}
                 size="xs"
-                tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
+                tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
                 onClick={() => {
                   fileInputRef.current?.click();
                 }}

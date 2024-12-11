@@ -4,7 +4,7 @@ import type {
   LightWorkspaceType,
   PlanType,
 } from "@dust-tt/types";
-import { Err, supportedPlainTextExtensions } from "@dust-tt/types";
+import { Err, getSupportedNonImageFileExtensions } from "@dust-tt/types";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -230,7 +230,7 @@ export const MultipleDocumentsUpload = ({
       <input
         className="hidden"
         type="file"
-        accept={supportedPlainTextExtensions.join(", ")}
+        accept={getSupportedNonImageFileExtensions().join(", ")}
         ref={fileInputRef}
         multiple={true}
         onChange={handleFileChange}

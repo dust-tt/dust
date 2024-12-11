@@ -1,4 +1,3 @@
-import { supportedPlainTextExtensions } from "@dust-tt/client";
 import {
   Button,
   DocumentPlusIcon,
@@ -21,7 +20,7 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
+import { Err, getSupportedNonImageFileExtensions } from "@dust-tt/types";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -350,7 +349,7 @@ export const DocumentUploadOrEditModal = ({
               <div>
                 <Page.SectionHeader
                   title="Text content"
-                  description={`Copy paste content or upload a file (${supportedPlainTextExtensions.join(", ")}). \n Up to ${
+                  description={`Copy paste content or upload a file (${getSupportedNonImageFileExtensions().join(", ")}). \n Up to ${
                     plan.limits.dataSources.documents.sizeMb === -1
                       ? "2"
                       : plan.limits.dataSources.documents.sizeMb
@@ -371,7 +370,7 @@ export const DocumentUploadOrEditModal = ({
                   type="file"
                   ref={fileInputRef}
                   style={{ display: "none" }}
-                  accept={supportedPlainTextExtensions.join(", ")}
+                  accept={getSupportedNonImageFileExtensions().join(", ")}
                   onChange={handleFileChange}
                 />
                 <TextArea

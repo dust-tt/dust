@@ -47,10 +47,6 @@ if [ -z "$WORKING_DIR" ] || [ -z "$IMAGE_NAME" ] || [ -z "$DOCKERFILE_PATH" ]; t
   exit 1
 fi
 
-if [ -n "$GCLOUD_IGNORE_FILE" ]; then
-    GCLOUD_IGNORE_FILE_ARG="--ignore-file=$GCLOUD_IGNORE_FILE"
-fi
-
 # change the current working directory to the directory in which to build the image
 cd "$WORKING_DIR"
 
@@ -63,6 +59,16 @@ if [ -n "$DUST_CLIENT_FACING_URL" ]; then
     SUBSTITUTIONS="$SUBSTITUTIONS,_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL"
 fi
 
-# start the build and get its id
-echo "starting build..."
-BUILD_ID=$(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" ${GCLOUD_IGNORE_FILE_ARG} --substitutions=$SUBSTITUTIONS --format='value(id)' .)
+# prepare the gcloud command
+GCLOUD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml")
+
+# add ignore file argument if specified
+if [ -n "$GCLOUD_IGNORE_FILE" ]; then
+    GCLOUD_CMD+=(--ignore-file="$GCLOUD_IGNORE_FILE")
+fi
+
+# add substitutions and current directory
+GCLOUD_CMD+=(--substitutions="$SUBSTITUTIONS" .)
+
+# execute the command
+"${GCLOUD_CMD[@]}"

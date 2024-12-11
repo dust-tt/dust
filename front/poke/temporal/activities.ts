@@ -32,6 +32,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
   AgentMessageFeedback,
@@ -43,7 +44,11 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { Subscription } from "@app/lib/models/plan";
-import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
+import {
+  MembershipInvitation,
+  Workspace,
+  WorkspaceHasDomain,
+} from "@app/lib/models/workspace";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -63,7 +68,6 @@ import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -523,10 +527,9 @@ export async function deleteMembersActivity({
       transaction: t,
     });
 
-    const { memberships } = await MembershipResource.getLatestMemberships({
-      workspace,
-      transaction: t,
-    });
+    const { memberships } = await MembershipResource.getMembershipsForWorkspace(
+      { workspace, transaction: t }
+    );
 
     for (const membership of memberships) {
       const user = await UserResource.fetchByModelId(membership.userId, t);
@@ -606,6 +609,11 @@ export async function deleteWorkspaceActivity({
     });
     await FileResource.deleteAllForWorkspace(workspace, t);
     await RunResource.deleteAllForWorkspace(workspace, t);
+    await MembershipResource.deleteAllForWorkspace(workspace, t);
+    await WorkspaceHasDomain.destroy({
+      where: { workspaceId: workspace.id },
+      transaction: t,
+    });
     await AgentUserRelation.destroy({
       where: { workspaceId: workspace.id },
       transaction: t,

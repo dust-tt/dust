@@ -54,6 +54,51 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     super(MembershipModel, blob);
   }
 
+  static async getMembershipsForWorkspace({
+    workspace,
+    transaction,
+    paginationParams,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+    paginationParams?: PaginationParams;
+  }): Promise<MembershipsWithTotal> {
+    const orderedResourcesFromModels = (resources: MembershipModel[]) =>
+      resources
+        .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
+        .map(
+          (resource) => new MembershipResource(MembershipModel, resource.get())
+        );
+
+    const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
+      workspaceId: workspace.id,
+    };
+
+    const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
+      where: whereClause,
+      transaction,
+    };
+
+    if (paginationParams) {
+      const { limit, orderColumn, orderDirection, lastValue } =
+        paginationParams;
+
+      if (lastValue) {
+        const op = orderDirection === "desc" ? Op.lt : Op.gt;
+        whereClause[orderColumn as any] = { [op]: lastValue };
+      }
+
+      findOptions.order = [
+        [orderColumn, orderDirection === "desc" ? "DESC" : "ASC"],
+      ];
+      findOptions.limit = limit;
+    }
+
+    const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
+
+    return { memberships: orderedResourcesFromModels(rows), total: count };
+  }
+
   static async getActiveMemberships({
     users,
     workspace,
@@ -305,6 +350,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where,
       distinct: true,
       col: "userId",
+      transaction,
+    });
+  }
+
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    return this.model.destroy({
+      where: { workspaceId: workspace.id },
       transaction,
     });
   }

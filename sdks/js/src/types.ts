@@ -69,7 +69,13 @@ export type ConnectorsAPIErrorType = z.infer<
 >;
 
 // Supported content types that are plain text and can be sent as file-less content fragment.
-export const supportedRawText = {
+const supportedOtherFileFormats = {
+  "application/msword": [".doc", ".docx"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".doc",
+    ".docx",
+  ],
+  "application/pdf": [".pdf"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
@@ -87,75 +93,57 @@ export const supportedRawText = {
   "application/x-sh": [".sh"],
 } as const;
 
-// Supported content types for plain text (after processing).
-export const supportedPlainText = {
-  "application/msword": [".doc", ".docx"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-    ".doc",
-    ".docx",
-  ],
-  "application/pdf": [".pdf"],
-  ...supportedRawText,
-} as const;
-
 // Supported content types for images.
-export const supportedImage = {
+const supportedImageFileFormats = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
+  "image/gif": [".gif"],
+  "image/webp": [".webp"],
 } as const;
 
 // Legacy content types still retuned by the API when rendering old messages.
-export const supportedLegacy = {
+const supportedLegacy = {
   "dust-application/slack": [],
 } as const;
 
-export type PlainTextContentType = keyof typeof supportedPlainText;
-export type ImageContentType = keyof typeof supportedImage;
-export type LegacyContentType = keyof typeof supportedLegacy;
+type OtherContentType = keyof typeof supportedOtherFileFormats;
+type ImageContentType = keyof typeof supportedImageFileFormats;
 
-export const supportedPlainTextContentTypes = Object.keys(
-  supportedPlainText
-) as PlainTextContentType[];
-export const supportedImageContentTypes = Object.keys(
-  supportedImage
-) as ImageContentType[];
-export const supportedLegacyContentTypes = Object.keys(
-  supportedImage
+const supportedOtherContentTypes = Object.keys(
+  supportedOtherFileFormats
+) as OtherContentType[];
+const supportedImageContentTypes = Object.keys(
+  supportedImageFileFormats
 ) as ImageContentType[];
 
-export type SupportedFileContentType = PlainTextContentType | ImageContentType;
+export type SupportedFileContentType = OtherContentType | ImageContentType;
 const supportedUploadableContentType = [
-  ...supportedPlainTextContentTypes,
+  ...supportedOtherContentTypes,
   ...supportedImageContentTypes,
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
-  ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
-  ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
+  ...(Object.keys(supportedOtherFileFormats) as [
+    keyof typeof supportedOtherFileFormats
+  ]),
+  ...(Object.keys(supportedImageFileFormats) as [
+    keyof typeof supportedImageFileFormats
+  ]),
   ...(Object.keys(supportedLegacy) as [keyof typeof supportedLegacy]),
 ]);
 
 const SupportedInlinedContentFragmentTypeSchema = FlexibleEnumSchema([
-  ...(Object.keys(supportedRawText) as [keyof typeof supportedRawText]),
+  ...(Object.keys(supportedOtherFileFormats) as [
+    keyof typeof supportedOtherFileFormats
+  ]),
 ]);
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema([
-  ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
-  ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
-]);
-
-const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
-
-export const supportedPlainTextExtensions = uniq(
-  Object.values(supportedPlainText).flat()
-);
-
-export const supportedImageExtensions = uniq(
-  Object.values(supportedImage).flat()
-);
-
-export const supportedFileExtensions = uniq([
-  ...supportedPlainTextExtensions,
-  ...supportedImageExtensions,
+  ...(Object.keys(supportedOtherFileFormats) as [
+    keyof typeof supportedOtherFileFormats
+  ]),
+  ...(Object.keys(supportedImageFileFormats) as [
+    keyof typeof supportedImageFileFormats
+  ]),
 ]);
 
 export function isSupportedFileContentType(
@@ -168,10 +156,8 @@ export function isSupportedFileContentType(
 
 export function isSupportedPlainTextContentType(
   contentType: string
-): contentType is PlainTextContentType {
-  return supportedPlainTextContentTypes.includes(
-    contentType as PlainTextContentType
-  );
+): contentType is OtherContentType {
+  return supportedOtherContentTypes.includes(contentType as OtherContentType);
 }
 
 export function isSupportedImageContentType(
