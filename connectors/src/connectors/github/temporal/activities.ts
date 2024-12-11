@@ -41,6 +41,7 @@ import {
   renderMarkdownSection,
   upsertDataSourceDocument,
   upsertFolderNode,
+  upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
