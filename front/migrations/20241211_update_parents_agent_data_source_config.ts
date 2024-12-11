@@ -22,7 +22,12 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   snowflake: null,
   webcrawler: null,
   zendesk: null,
-  confluence: null,
+  confluence: (parents) =>
+    parents.map((parent) =>
+      parent
+        .replace("cspace_", "confluence-space")
+        .replace("cpace_", "confluence-page")
+    ),
   intercom: null,
 };
 
