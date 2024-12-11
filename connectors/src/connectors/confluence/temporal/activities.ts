@@ -388,7 +388,7 @@ export async function confluenceCheckAndUpsertPageActivity({
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
       // TODO(2024-12-11 aubin): we upsert parents x2 (old and new), this is the first step of the backfill plan
-      parents: [documentId, makeConfluenceInternalPageId(documentId)],
+      parents: [documentId, makeConfluenceInternalPageId(pageId)],
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {
