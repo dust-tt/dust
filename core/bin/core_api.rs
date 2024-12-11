@@ -1495,7 +1495,7 @@ async fn data_sources_documents_update_parents(
             return error_response(
                 StatusCode::BAD_REQUEST,
                 "invalid_parent_id",
-                "Failed to update document parents - parent_id is not the second parent",
+                "Failed to update document parents - parents[1] and parent_id should be equal",
                 None,
             );
         }
@@ -1665,7 +1665,7 @@ async fn data_sources_documents_upsert(
             return error_response(
                 StatusCode::BAD_REQUEST,
                 "invalid_parent_id",
-                "Failed to upsert document - parent_id is not the second parent",
+                "Failed to upsert document - parents[1] and parent_id should be equal",
                 None,
             );
         }
@@ -2131,7 +2131,7 @@ async fn tables_upsert(
             return error_response(
                 StatusCode::BAD_REQUEST,
                 "invalid_parent_id",
-                "Failed to upsert table - parent_id is not the second parent",
+                "Failed to upsert table - parents[1] and parent_id should be equal",
                 None,
             );
         }
@@ -2390,7 +2390,7 @@ async fn tables_update_parents(
             return error_response(
                 StatusCode::BAD_REQUEST,
                 "invalid_parent_id",
-                "Failed to update table parents - parent_id is not the second parent",
+                "Failed to update table parents - parents[1] and parent_id should be equal",
                 None,
             );
         }
@@ -2798,7 +2798,7 @@ async fn folders_upsert(
             return error_response(
                 StatusCode::BAD_REQUEST,
                 "invalid_parent_id",
-                "Failed to upsert folder - parent_id is not the second parent",
+                "Failed to upsert folder - parents[1] and parent_id should be equal",
                 None,
             );
         }
