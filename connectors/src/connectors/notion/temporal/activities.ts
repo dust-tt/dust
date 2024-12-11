@@ -2576,9 +2576,10 @@ export async function upsertDatabaseStructuredDataFromCache({
       maxPrefixChars: MAX_PREFIX_CHARS * 2,
     });
     if (!prefixSection.content) {
+      const databaseDocId = `notion-database-${databaseId}`;
       await upsertToDatasource({
         dataSourceConfig,
-        documentId: `notion-database-${databaseId}`,
+        documentId: databaseDocId,
         documentContent: {
           prefix: prefixSection.prefix,
           content: csvRows,
@@ -2592,7 +2593,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         timestampMs: upsertAt.getTime(),
         tags: [`title:${databaseName}`, "is_database:true"],
         // TODO(kw_search) remove legacy
-        parents: [...parentIds, ...legacyParentIds],
+        parents: [databaseDocId, ...parentIds, ...legacyParentIds],
         loggerArgs,
         upsertContext: {
           sync_type: "batch",
