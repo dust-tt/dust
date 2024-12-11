@@ -13,7 +13,6 @@ use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
-use std::str::FromStr;
 use tokio_stream::{self as stream};
 
 #[derive(Debug, Subcommand)]
@@ -51,7 +50,11 @@ async fn migrate_data_source(
     data_source_id: String,
 ) -> Result<()> {
     let project = Project::new_from_id(project_id);
-    let ds = match store.load_data_source(&project, &data_source_id).await? {
+    let ds = match store
+        .as_ref()
+        .load_data_source(&project, &data_source_id)
+        .await?
+    {
         Some(ds) => ds,
         None => Err(anyhow!("Data source not found"))?,
     };
