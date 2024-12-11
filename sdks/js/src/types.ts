@@ -1,6 +1,8 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
+// IMPORTANT: using an array of FlexibleEnumSchema (such as z.array(FlexibleEnumSchema) or FlexibleEnumSchema.array()) break the ability to receive any value
+// In that case, use z.array(z.string()) or z.string().array()
 const FlexibleEnumSchema = <U extends string>(values: readonly [U, ...U[]]) =>
   z.enum(values).transform((val) => val); // Transform bypass for the enum validation when parsing but doesn't affect the inferred type
 
@@ -680,7 +682,7 @@ const LightWorkspaceSchema = z.object({
   name: z.string(),
   role: RoleSchema,
   segmentation: WorkspaceSegmentationSchema,
-  whiteListedProviders: ModelProviderIdSchema.array().nullable(),
+  whiteListedProviders: z.string().array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
 });
 
