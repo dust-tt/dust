@@ -6,6 +6,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 import assert from "assert";
+import _ from "lodash";
 
 import apiConfig from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
@@ -143,7 +144,24 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   google_drive: null,
   microsoft: null,
   github: null,
-  notion: null,
+  notion: {
+    transformer: (nodeId, parents) => {
+      const uniqueIds = _.uniq(
+        [nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)
+      );
+      return [
+        // legacy parents
+        ...uniqueIds,
+        // new parents
+        ...uniqueIds.map((id) => `notion-${id}`),
+      ];
+    },
+    cleaner: (nodeId, parents) =>
+      // Only keep the new parents
+      _.uniq([nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)).map(
+        (id) => `notion-${id}`
+      ),
+  },
   snowflake: null,
   webcrawler: null,
   zendesk: null,
