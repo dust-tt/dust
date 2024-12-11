@@ -31,53 +31,118 @@ const TABLE_CONCURRENCY = 16;
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: {
     transformer: (nodeId, parents) => {
+      const parts = nodeId.split("-");
+      if (parts.length < 3) {
+        throw new Error("Invalid nodeId 1");
+      }
+      if (parts[0] !== "slack") {
+        throw new Error("Invalid nodeId 2");
+      }
+      if (!["messages", "thread"].includes(parts[2])) {
+        throw new Error("Invalid nodeId 3");
+      }
+      const channelId = parts[1];
+
       switch (parents.length) {
         case 0:
-          throw new Error("No parents");
+          logger.warn(
+            { nodeId, parents, problem: "no parents" },
+            "Invalid slack parents"
+          );
+          break;
         case 1: {
           // Check that parents[0] does not have the prefix (it's the channelId)
-          assert(!parents[0].startsWith("slack-"));
-
-          const channelId = parents[0];
-          return [nodeId, channelId, `slack-channel-${channelId}`];
+          if (parents[0] !== channelId) {
+            logger.warn(
+              { nodeId, parents, problem: "parents[0] not channelId" },
+              "Invalid slack parents"
+            );
+            break;
+          }
+          break;
         }
         case 2: {
           // Check parents[0] is the nodeId
-          assert(parents[0] === nodeId, "parents[0] !== nodeId");
-          // Check that parents[1] does not have a prefix (it's the channelId)
-          assert(!parents[1].startsWith("slack-"));
-
-          const channelId = parents[1];
-          return [nodeId, channelId, `slack-channel-${channelId}`];
+          if (parents[0] !== nodeId) {
+            logger.warn(
+              { nodeId, parents, problem: "parents[0] not nodeid" },
+              "Invalid slack parents"
+            );
+            break;
+          }
+          // Check that parents[1] is the channelId
+          if (parents[1] !== channelId) {
+            logger.warn(
+              { nodeId, parents, problem: "parents[1] not channelId" },
+              "Invalid slack parents"
+            );
+            break;
+          }
+          break;
         }
         case 3: {
           // Check parents[0] is the nodeId
-          assert(parents[0] === nodeId, "parents[0] !== nodeId");
-          // Check parents[2] vs parents[1]
-          assert(
-            parents[2] === `slack-channel-${parents[1]}`,
-            "parents[2] !== `slack-channel-${parents[1]}`"
-          );
-
-          // Nothing to do
-          return parents;
+          if (parents[0] !== nodeId) {
+            logger.warn(
+              { nodeId, parents, problem: "parents[0] not nodeid" },
+              "Invalid slack parents"
+            );
+            break;
+          }
+          // Check that parents[1] is the channelId
+          if (parents[1] !== channelId) {
+            logger.warn(
+              { nodeId, parents, problem: "parents[1] not channelId" },
+              "Invalid slack parents"
+            );
+            break;
+          }
+          if (parents[2] !== `slack-channel-${channelId}`) {
+            logger.warn(
+              {
+                nodeId,
+                parents,
+                problem: "parents[2] not prefixed channelId",
+              },
+              "Invalid slack parents"
+            );
+            break;
+          }
+          break;
         }
         default:
-          throw new Error("Too many parents");
+          logger.warn(
+            { nodeId, parents, problem: "too many parents" },
+            "Invalid slack parents"
+          );
+          break;
       }
+
+      return [nodeId, channelId, `slack-channel-${channelId}`];
     },
     cleaner: (nodeId, parents) => {
+      const parts = nodeId.split("-");
+      if (parts.length < 3) {
+        throw new Error("Invalid nodeId 1");
+      }
+      if (parts[0] !== "slack") {
+        throw new Error("Invalid nodeId 2");
+      }
+      if (!["messages", "thread"].includes(parts[2])) {
+        throw new Error("Invalid nodeId 3");
+      }
+      const channelId = parts[1];
+
       if (parents.length !== 3) {
         throw new Error("Parents len != 3");
       }
-      // Check parents[0] is the nodeId
+
       assert(parents[0] === nodeId, "parents[0] !== nodeId");
-      // Check parents[2] vs parents[1]
+      assert(parents[1] === channelId, "parents[1] !== channelId");
       assert(
-        parents[2] === `slack-channel-${parents[1]}`,
-        "parents[2] !== `slack-channel-${parents[1]}`"
+        parents[2] === `slack-channel-${channelId}`,
+        "parents[2] !== slack-channel-channelId"
       );
-      const channelId = parents[1];
 
       return [nodeId, `slack-channel-${channelId}`];
     },
