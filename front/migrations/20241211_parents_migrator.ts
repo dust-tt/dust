@@ -39,8 +39,11 @@ enum ConfluenceNewIdPrefix {
 }
 
 function getIdFromConfluenceInternalId(internalId: string) {
-  const prefixPattern = `^(${ConfluenceOldIdPrefix.Space}|${ConfluenceOldIdPrefix.Page})`;
-  return internalId.replace(new RegExp(prefixPattern), "");
+  const oldPrefixPattern = `^(${ConfluenceOldIdPrefix.Space}|${ConfluenceOldIdPrefix.Page})`;
+  const newPrefixPattern = `^(${ConfluenceNewIdPrefix.Space}|${ConfluenceNewIdPrefix.Page})`;
+  return internalId
+    .replace(new RegExp(oldPrefixPattern), "")
+    .replace(new RegExp(newPrefixPattern), ""); // we can have chained old-new prefixes on the initial upsert (huge regression introduced a month ago)
 }
 
 function convertConfluenceOldIdToNewId(internalId: string): string {
