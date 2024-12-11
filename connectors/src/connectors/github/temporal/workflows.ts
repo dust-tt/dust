@@ -10,10 +10,6 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/github/temporal/activities";
-import {
-  deleteFolderNode,
-  upsertFolderNode,
-} from "@connectors/lib/data_sources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { newWebhookSignal } from "./signals";
@@ -191,23 +187,6 @@ export async function githubRepoIssuesSyncWorkflow({
     { repoId }
   );
 
-  // Create/Delete data source folder based on whether there are issues or not.
-  if (pageNumber === 1) {
-    if (!resultsPage.length) {
-      await deleteFolderNode({
-        dataSourceConfig,
-        folderId: `${repoId}-issues`,
-      });
-    } else {
-      await upsertFolderNode({
-        dataSourceConfig,
-        folderId: `${repoId}-issues`,
-        parents: [`${repoId}-issues`, `${repoId}`],
-        title: "Issues",
-      });
-    }
-  }
-
   if (!resultsPage.length) {
     return false;
   }
@@ -262,23 +241,6 @@ export async function githubRepoDiscussionsSyncWorkflow({
       nextCursor,
       { repoId }
     );
-
-  // Create/Delete data source folder based on whether there are discussions or not.
-  if (!nextCursor) {
-    if (!discussionNumbers.length) {
-      await deleteFolderNode({
-        dataSourceConfig,
-        folderId: `${repoId}-discussions`,
-      });
-    } else {
-      await upsertFolderNode({
-        dataSourceConfig,
-        folderId: `${repoId}-discussions`,
-        parents: [`${repoId}-discussions`, `${repoId}`],
-        title: "Discussions",
-      });
-    }
-  }
 
   for (const discussionNumber of discussionNumbers) {
     promises.push(
