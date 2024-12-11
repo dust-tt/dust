@@ -423,7 +423,8 @@ makeScript(
       console.error(`Invalid provider ${provider}`);
       return;
     }
-    if (!migrators[provider]) {
+    const migrator = migrators[provider];
+    if (!migrator) {
       console.error(`No migrator found for provider ${provider}`);
       return;
     }
@@ -431,7 +432,7 @@ makeScript(
     await migrateAll({
       provider,
       action,
-      migrator: migrators[provider],
+      migrator,
       nextDataSourceId,
       execute,
     });
