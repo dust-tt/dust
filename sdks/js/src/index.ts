@@ -834,7 +834,7 @@ export class DustAPI {
       body: {
         timestamp: Math.floor(timestamp),
         title,
-        parentId,
+        parent_id: parentId,
         parents,
       },
     });
