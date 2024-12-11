@@ -9,6 +9,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema([
   "anthropic",
   "mistral",
   "google_ai_studio",
+  "togetherai",
 ]);
 
 const ModelLLMIdSchema = FlexibleEnumSchema([
@@ -32,6 +33,10 @@ const ModelLLMIdSchema = FlexibleEnumSchema([
   "codestral-latest",
   "gemini-1.5-pro-latest",
   "gemini-1.5-flash-latest",
+  "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  "Qwen/Qwen2.5-Coder-32B-Instruct",
+  "Qwen/QwQ-32B-Preview",
+  "Qwen/Qwen2-72B-Instruct",
 ]);
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema(["openai", "mistral"]);

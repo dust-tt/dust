@@ -3,6 +3,7 @@ import {
   GoogleLogo,
   MistralLogo,
   OpenaiLogo,
+  PlanetIcon,
 } from "@dust-tt/sparkle";
 import type { ModelConfig, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import {
@@ -16,6 +17,10 @@ import {
   MISTRAL_CODESTRAL_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
+  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,
+  TOGETHERAI_QWEN_32B_PREVIEW_MODEL_CONFIG,
+  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG,
 } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
@@ -26,6 +31,7 @@ export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
   anthropic: AnthropicLogo,
   mistral: MistralLogo,
   google_ai_studio: GoogleLogo,
+  togetherai: PlanetIcon,
 };
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
@@ -39,4 +45,8 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   MISTRAL_CODESTRAL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GEMINI_FLASH_DEFAULT_MODEL_CONFIG,
+  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
+  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,
+  TOGETHERAI_QWEN_32B_PREVIEW_MODEL_CONFIG,
+  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG,
 ] as const;

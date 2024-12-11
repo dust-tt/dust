@@ -13,6 +13,7 @@ export const MODEL_PROVIDER_IDS = [
   "anthropic",
   "mistral",
   "google_ai_studio",
+  "togetherai",
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
@@ -108,6 +109,14 @@ export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
+export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
+  "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
+export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
+  "Qwen/Qwen2.5-Coder-32B-Instruct" as const;
+export const TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID =
+  "Qwen/QwQ-32B-Preview" as const;
+export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID =
+  "Qwen/Qwen2-72B-Instruct" as const;
 
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
@@ -130,6 +139,10 @@ export const MODEL_IDS = [
   MISTRAL_CODESTRAL_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
+  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
+  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
+  TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID,
+  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -522,6 +535,66 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
 };
 
+export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "togetherai",
+    modelId: TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
+    displayName: "Llama 3.3 70B Instruct Turbo",
+    contextSize: 128_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 128, // 65_536
+    largeModel: true,
+    description: "Meta's fast, powerful and open source model (128k context).",
+    shortDescription: "Meta's open source model.",
+    isLegacy: false,
+    supportsVision: false,
+  };
+
+export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "togetherai",
+    modelId: TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
+    displayName: "Qwen 2.5 Coder 32B Instruct",
+    contextSize: 32_000,
+    recommendedTopK: 16,
+    recommendedExhaustiveTopK: 56, // 28_672
+    largeModel: false,
+    description: "Alibaba's fast model for coding (32k context).",
+    shortDescription: "Alibaba's fast coding model.",
+    isLegacy: false,
+    supportsVision: false,
+  };
+
+export const TOGETHERAI_QWEN_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "togetherai",
+    modelId: TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID,
+    displayName: "Qwen 32B Preview",
+    contextSize: 32_000,
+    recommendedTopK: 16,
+    recommendedExhaustiveTopK: 56, // 28_672
+    largeModel: false,
+    description: "Alibaba's fast model (32k context).",
+    shortDescription: "Alibaba's fast model.",
+    isLegacy: false,
+    supportsVision: false,
+  };
+
+export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "togetherai",
+    modelId: TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
+    displayName: "Qwen 72B Instruct",
+    contextSize: 32_000,
+    recommendedTopK: 16,
+    recommendedExhaustiveTopK: 56, // 28_672
+    largeModel: false,
+    description: "Alibaba's powerful model (32k context).",
+    shortDescription: "Alibaba's powerful model.",
+    isLegacy: false,
+    supportsVision: false,
+  };
+
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -543,6 +616,10 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_CODESTRAL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GEMINI_FLASH_DEFAULT_MODEL_CONFIG,
+  TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
+  TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,
+  TOGETHERAI_QWEN_32B_PREVIEW_MODEL_CONFIG,
+  TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
