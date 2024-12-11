@@ -107,6 +107,12 @@ export function RunPluginDialog({
               manifest={manifest}
               onSubmit={onSubmit}
             />
+            {manifest.warning && (
+              <PokeAlert variant="destructive">
+                <PokeAlertTitle>Warning</PokeAlertTitle>
+                <PokeAlertDescription>{manifest.warning}</PokeAlertDescription>
+              </PokeAlert>
+            )}
           </>
         )}
       </PokeDialogContent>
