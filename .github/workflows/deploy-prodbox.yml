@@ -3,15 +3,6 @@ name: Deploy Prodbox
 on:
   workflow_dispatch:
     inputs:
-      regions:
-        description: "Regions to deploy to"
-        required: true
-        default: "us-central1"
-        type: choice
-        options:
-          - "us-central1"
-          - "europe-west1"
-          - "us-central1,europe-west1"
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -29,24 +20,15 @@ env:
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
 
 jobs:
-  notify-start:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    outputs:
-      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
           ssh-key: "${{ secrets.PRODBOX_PRIVATE_DEPLOY_KEY }}"
-
-      - name: Set regions
-        id: set-regions
-        run: |
-          if [ "${{ github.event.inputs.regions }}" = "all" ]; then
-            echo "regions=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
-          else
-            echo "regions=[\"${{ github.event.inputs.regions }}\"]" >> $GITHUB_OUTPUT
-          fi
 
       - name: Get short sha
         id: short_sha
@@ -71,24 +53,6 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
-  build:
-    needs: notify-start
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        region: ${{ fromJson(format('[{0}]', join(split(github.event.inputs.regions, ','), ','))) }}
-      fail-fast: true
-
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          ssh-key: "${{ secrets.PRODBOX_PRIVATE_DEPLOY_KEY }}"
-
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
@@ -97,7 +61,7 @@ jobs:
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"
 
-      - name: Build image for ${{ matrix.region }}
+      - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
@@ -105,17 +69,8 @@ jobs:
             --dockerfile-path=./prodbox.Dockerfile \
             --working-dir=./ \
             --gcloud-ignore-file=.gcloudignore-prodbox \
-            --dust-client-facing-url=https://dust.tt \
-            --region=${{ matrix.region }}
-
-  deploy:
-    needs: [notify-start, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+            --dust-client-facing-url=https://dust.tt \ 
+            --region=us-central1
 
       - name: Generate a token
         id: generate-token
@@ -137,10 +92,10 @@ jobs:
               repo: 'dust-infra',
               event_type: 'trigger-component-deploy',
               client_payload: {
-                regions: '${{ github.event.inputs.regions }}',
+                regions: 'us-central1',
                 component: 'prodbox',
                 image_tag: '${{ steps.short_sha.outputs.short_sha }}',
-                slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
+                slack_thread_ts: "${{ steps.build_message.outputs.thread_ts }}",
                 slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}'
               }
             });
@@ -150,8 +105,9 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           step: "failure"
+          blocked: ${{ steps.check_deployment_blocked.outputs.blocked }}
           component: "prodbox"
           image_tag: ${{ steps.short_sha.outputs.short_sha }}
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+          thread_ts: "${{ steps.build_message.outputs.thread_ts }}"
