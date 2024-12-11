@@ -153,7 +153,7 @@ async function _upsertToDatasource({
         title,
         mime_type: mimeType,
         tags: tags?.map((tag) => tag.substring(0, 512)),
-        parent_id: parents[1] ?? null,
+        parent_id: null, // TODO: parents[1] ?? null when we are sure parents[0] == documentId in all cases
         parents,
         light_document_output: true,
         upsert_context: upsertContext,
