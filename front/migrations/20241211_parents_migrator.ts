@@ -28,6 +28,34 @@ const QUERY_BATCH_SIZE = 128;
 const DOCUMENT_CONCURRENCY = 8;
 const TABLE_CONCURRENCY = 16;
 
+enum ConfluenceOldIdPrefix {
+  Space = "cspace_",
+  Page = "cpage_",
+}
+
+enum ConfluenceNewIdPrefix {
+  Space = "confluence-space-",
+  Page = "confluence-page-",
+}
+
+function getIdFromConfluenceInternalId(internalId: string) {
+  const oldPrefixPattern = `^(${ConfluenceOldIdPrefix.Space}|${ConfluenceOldIdPrefix.Page})`;
+  const newPrefixPattern = `^(${ConfluenceNewIdPrefix.Space}|${ConfluenceNewIdPrefix.Page})`;
+  return internalId
+    .replace(new RegExp(oldPrefixPattern), "")
+    .replace(new RegExp(newPrefixPattern), ""); // we can have chained old-new prefixes on the initial upsert (huge regression introduced a month ago)
+}
+
+function convertConfluenceOldIdToNewId(internalId: string): string {
+  if (internalId.startsWith(ConfluenceOldIdPrefix.Page)) {
+    return `${ConfluenceNewIdPrefix.Page}${getIdFromConfluenceInternalId(internalId)}`;
+  }
+  if (internalId.startsWith(ConfluenceOldIdPrefix.Space)) {
+    return `${ConfluenceNewIdPrefix.Space}${getIdFromConfluenceInternalId(internalId)}`;
+  }
+  return internalId;
+}
+
 function slackNodeIdToChannelId(nodeId: string) {
   const parts = nodeId.split("-");
   if (parts.length < 3) {
@@ -147,7 +175,23 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   snowflake: null,
   webcrawler: null,
   zendesk: null,
-  confluence: null,
+  confluence: {
+    transformer: (nodeId, parents) => {
+      return [
+        ...new Set([...parents.map(convertConfluenceOldIdToNewId), ...parents]),
+      ];
+    },
+    cleaner: (nodeId, parents) => {
+      // we just remove the old IDs
+      return parents.filter(
+        (parent) =>
+          !(
+            parent.startsWith(ConfluenceOldIdPrefix.Page) ||
+            parent.startsWith(ConfluenceOldIdPrefix.Space)
+          )
+      );
+    },
+  },
   intercom: null,
 };
 
