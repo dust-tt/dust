@@ -1,4 +1,4 @@
-import { ArrowRightIcon, Avatar, Button, RocketIcon } from "@dust-tt/sparkle";
+import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -221,7 +221,7 @@ interface QuoteProps {
 
 export const Quote = ({ quote, logo, name, title }: QuoteProps) => (
   <div className="col-span-12 flex flex-col py-8 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
-    <div className="flex flex-col items-center text-center font-objektiv text-3xl italic text-white">
+    <div className="flex flex-col items-center text-center font-objektiv text-xl italic text-white sm:text-2xl lg:text-3xl">
       &ldquo; {quote} &rdquo;
     </div>
     <div className="flex justify-center pt-8">

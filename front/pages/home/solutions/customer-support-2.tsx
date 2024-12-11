@@ -4,6 +4,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@app/components/home/Carousel";
 import {
   BlogBlock,
@@ -163,8 +165,12 @@ export default function CustomerSupport() {
         </div>
         <div className="col-span-12 flex flex-col items-center gap-4">
           <Carousel className="w-full">
+            <div className="flex w-full flex-row justify-center gap-4">
+              <CarouselPrevious />
+              <CarouselNext />
+            </div>
             <CarouselContent>
-              <CarouselItem className="basis-full md:basis-1/2 md:px-6 lg:basis-1/3">
+              <CarouselItem className="basis-full px-12 md:basis-1/2 md:px-6 lg:basis-1/3">
                 <BlogBlock
                   title="How Eléonore, Care Team Lead at Pennylane, Uses Dust"
                   content="Discover how November Five leverages AI with Dust to enhance efficiency and maintain a human touch in their digital solutions."
