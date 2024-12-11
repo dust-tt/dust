@@ -92,7 +92,8 @@ async fn migrate_data_source(
 
         for doc in docs.0 {
             let mut new_parents = doc.parents.clone();
-            new_parents.append(&mut get_new_parent_ids(new_parents));
+            let mut converted_parents = get_new_parent_ids(doc.parents.clone());
+            new_parents.append(&mut converted_parents);
 
             let document_id_hash = make_document_id_hash(&doc.document_id);
             ds.update_parents(store, qdrant_clients, document_id_hash, new_parents)
