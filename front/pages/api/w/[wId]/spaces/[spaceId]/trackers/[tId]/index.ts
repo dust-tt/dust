@@ -1,72 +1,33 @@
-import type {
-  TrackerConfigurationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  FrequencyCodec,
-  ModelIdCodec,
-  ModelProviderIdCodec,
-} from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { apiError } from "@app/logger/withlogging";
-
-export type GetTrackersResponseBody = {
-  trackers: TrackerConfigurationType[];
-};
-
-const TrackerDataSourcesConfigurationBodySchema = t.array(
-  t.type({
-    dataSourceViewId: t.string,
-    workspaceId: t.string,
-    filter: t.type({
-      parents: t.union([
-        t.type({
-          in: t.array(t.string),
-          not: t.array(t.string),
-        }),
-        t.null,
-      ]),
-    }),
-  })
-);
-
-export const PostTrackersRequestBodySchema = t.type({
-  name: t.string,
-  description: t.union([t.string, t.null]),
-  prompt: t.union([t.string, t.null]),
-  modelId: ModelIdCodec,
-  providerId: ModelProviderIdCodec,
-  frequency: FrequencyCodec,
-  temperature: t.number,
-  recipients: t.array(t.string),
-  maintainedDataSources: TrackerDataSourcesConfigurationBodySchema,
-  watchedDataSources: TrackerDataSourcesConfigurationBodySchema,
-});
+import type { GetTrackersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
+import { PostTrackersRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetTrackersResponseBody>>,
-  auth: Authenticator,
-  space: SpaceResource
+  auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
-    case "GET":
-      return res.status(200).json({
-        trackers: (
-          await TrackerConfigurationResource.listBySpace(auth, space)
-        ).map((tracker) => tracker.toJSON()),
-      });
-
-    case "POST":
+    case "PATCH":
+      if (typeof req.query.tId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid tracker id provided.",
+          },
+        });
+      }
+      const trackerId = req.query.tId;
       const bodyValidation = PostTrackersRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
@@ -80,8 +41,34 @@ async function handler(
         });
       }
 
+      const tracker = await TrackerConfigurationResource.fetchById(
+        auth,
+        trackerId
+      );
+
+      if (!tracker) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Tracker not found.",
+          },
+        });
+      }
+
+      if (!tracker.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "You are not authorized to update this tracker.",
+          },
+        });
+      }
+
       const body = bodyValidation.right;
-      const tracker = await TrackerConfigurationResource.makeNew(
+
+      const updatedTrackerRes = await tracker.updateConfig(
         auth,
         {
           name: body.name,
@@ -95,11 +82,20 @@ async function handler(
           recipients: body.recipients,
         },
         body.maintainedDataSources,
-        body.watchedDataSources,
-        space
+        body.watchedDataSources
       );
-      return res.status(201).json({
-        trackers: [tracker.toJSON()],
+
+      if (updatedTrackerRes.isOk()) {
+        return res.status(201).json({
+          trackers: [updatedTrackerRes.value.toJSON()],
+        });
+      }
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to update tracker.",
+        },
       });
 
     default:
@@ -107,8 +103,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET or POST is expected.",
+          message: "The method passed is not supported, PATCH is expected.",
         },
       });
   }

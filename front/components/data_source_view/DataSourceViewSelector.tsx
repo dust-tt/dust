@@ -90,7 +90,8 @@ interface DataSourceViewsSelectorProps {
   useCase:
     | "spaceDatasourceManagement"
     | "assistantBuilder"
-    | "transcriptsProcessing";
+    | "transcriptsProcessing"
+    | "trackerBuilder";
   dataSourceViews: DataSourceViewType[];
   allowedSpaces?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
