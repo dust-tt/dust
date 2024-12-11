@@ -12,6 +12,40 @@ type ProviderMigrator = (parents: string[]) => string[];
 const AGENT_CONFIGURATION_BATCH_SIZE = 100;
 const UPDATE_CONCURRENCY = 10;
 
+enum ConfluenceOldIdPrefix {
+  Space = "cspace_",
+  Page = "cpage_",
+}
+
+enum ConfluenceNewIdPrefix {
+  Space = "confluence-space-",
+  Page = "confluence-page-",
+}
+
+export function getIdFromConfluenceInternalId(internalId: string) {
+  const prefixPattern = `^(${ConfluenceOldIdPrefix.Space}|${ConfluenceOldIdPrefix.Page})`;
+  return internalId.replace(new RegExp(prefixPattern), "");
+}
+
+export function convertInternalIdToDocumentId(internalId: string): string {
+  // case where we already got new IDs
+  if (
+    internalId.startsWith(ConfluenceNewIdPrefix.Page) ||
+    internalId.startsWith(ConfluenceNewIdPrefix.Space)
+  ) {
+    return internalId;
+  }
+  // old page id
+  if (internalId.startsWith(ConfluenceOldIdPrefix.Page)) {
+    return `${ConfluenceNewIdPrefix.Page}${getIdFromConfluenceInternalId(internalId)}`;
+  }
+  // old space id
+  if (internalId.startsWith(ConfluenceOldIdPrefix.Space)) {
+    return `${ConfluenceNewIdPrefix.Space}${getIdFromConfluenceInternalId(internalId)}`;
+  }
+  throw new Error(`Invalid internal ID: ${internalId}`);
+}
+
 // we put null values if no migration is needed
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: null,
@@ -22,12 +56,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   snowflake: null,
   webcrawler: null,
   zendesk: null, // no migration needed!
-  confluence: (parents) =>
-    parents.map((parent) =>
-      parent
-        .replace("cspace_", "confluence-space")
-        .replace("cpace_", "confluence-page")
-    ),
+  confluence: (parents) => parents.map(convertInternalIdToDocumentId),
   intercom: null, // no migration needed!
 };
 
