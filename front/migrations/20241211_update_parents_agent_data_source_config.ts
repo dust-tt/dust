@@ -12,6 +12,7 @@ type ProviderMigrator = (parents: string[]) => string[];
 const AGENT_CONFIGURATION_BATCH_SIZE = 100;
 const UPDATE_CONCURRENCY = 10;
 
+// we put null values if no migration is needed
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: null,
   google_drive: null,
@@ -57,7 +58,9 @@ makeScript({}, async ({ execute }, logger) => {
           "connectorProvider is required"
         );
         const migrator = migrators[configuration.dataSource.connectorProvider];
-        assert(migrator, "No migrator found for the connector provider");
+        if (!migrator) {
+          return; // no migration needed
+        }
 
         const { parentsIn, parentsNotIn } = configuration;
 
