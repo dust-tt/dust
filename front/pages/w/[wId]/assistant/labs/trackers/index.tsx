@@ -7,6 +7,7 @@ import {
   PencilSquareIcon,
   PlusIcon,
   SearchInput,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   PlanType,
@@ -72,7 +73,7 @@ export default function TrackerConfigurations({
 
   const [filter, setFilter] = React.useState<string>("");
 
-  const { trackers } = useTrackers({
+  const { trackers, isTrackersLoading } = useTrackers({
     disabled: !owner,
     owner,
     space: globalSpace,
@@ -95,6 +96,9 @@ export default function TrackerConfigurations({
       id: "name",
       header: "Name",
       accessorKey: "name",
+      meta: {
+        width: "14rem",
+      },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <span>{info.row.original.name}</span>
@@ -102,9 +106,22 @@ export default function TrackerConfigurations({
       ),
     },
     {
+      id: "description",
+      header: "Description",
+      accessorKey: "description",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.CellContent>
+          <span>{info.row.original.description}</span>
+        </DataTable.CellContent>
+      ),
+    },
+    {
       id: "status",
       header: "Status",
       accessorKey: "status",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <Chip
@@ -119,8 +136,11 @@ export default function TrackerConfigurations({
     },
     {
       id: "edit",
-      header: "",
+      header: "Edit",
       accessorKey: "id",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: CellContext<RowData, string>) => (
         <Button
           size="sm"
@@ -153,31 +173,52 @@ export default function TrackerConfigurations({
         </Page.P>
         <Page.SectionHeader title="Your Trackers" />
         <div className="w-full max-w-4xl overflow-x-auto">
-          <div className="flex flex-row gap-2">
-            <SearchInput
-              name="filter"
-              placeholder="Filter"
-              value={filter}
-              onChange={(e) => setFilter(e)}
-            />
-            <Button
-              label="New tracker"
-              icon={PlusIcon}
-              onClick={() =>
-                router.push(`/w/${owner.sId}/assistant/labs/trackers/new`)
-              }
-            />
-          </div>
+          {isTrackersLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Spinner />
+            </div>
+          ) : (
+            <>
+              {rows.length === 0 ? (
+                <div className="flex h-full items-center justify-center">
+                  <Button
+                    label="New tracker"
+                    icon={PlusIcon}
+                    onClick={() =>
+                      router.push(`/w/${owner.sId}/assistant/labs/trackers/new`)
+                    }
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-row gap-2">
+                    <SearchInput
+                      name="filter"
+                      placeholder="Filter"
+                      value={filter}
+                      onChange={(e) => setFilter(e)}
+                    />
+                    <Button
+                      label="New tracker"
+                      icon={PlusIcon}
+                      onClick={() =>
+                        router.push(
+                          `/w/${owner.sId}/assistant/labs/trackers/new`
+                        )
+                      }
+                    />
+                  </div>
 
-          <div className="h-8" />
-
-          {rows.length > 0 && (
-            <DataTable
-              data={rows}
-              filter={filter}
-              filterColumn="name"
-              columns={columns}
-            />
+                  <div className="h-8" />
+                  <DataTable
+                    data={rows}
+                    filter={filter}
+                    filterColumn="name"
+                    columns={columns}
+                  />
+                </>
+              )}
+            </>
           )}
         </div>
       </Page.Vertical>
