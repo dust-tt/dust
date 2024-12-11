@@ -1,12 +1,16 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import { concurrentExecutor } from "@dust-tt/types";
 import assert from "assert";
+import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 
 type ProviderMigrator = (parents: string[]) => string[];
+
+const AGENT_CONFIGURATION_BATCH_SIZE = 100;
+const UPDATE_CONCURRENCY = 10;
 
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: null,
@@ -22,9 +26,13 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
 };
 
 makeScript({}, async ({ execute }, logger) => {
-  // pagination + concurrency
-  const agentDataSourceConfigurations =
-    await AgentDataSourceConfiguration.findAll({
+  let lastSeenId = 0;
+
+  for (;;) {
+    const configurations = await AgentDataSourceConfiguration.findAll({
+      limit: AGENT_CONFIGURATION_BATCH_SIZE,
+      where: { id: { [Op.gt]: lastSeenId } },
+      order: [["id", "ASC"]],
       raw: true,
       include: [
         {
@@ -36,38 +44,44 @@ makeScript({}, async ({ execute }, logger) => {
       ],
     });
 
-  await concurrentExecutor(
-    agentDataSourceConfigurations,
-    async (agentDataSourceConfiguration) => {
-      assert(
-        agentDataSourceConfiguration.dataSource.connectorProvider,
-        "connectorProvider is required"
-      );
-      const migrator =
-        migrators[agentDataSourceConfiguration.dataSource.connectorProvider];
-      assert(migrator, "No migrator found for the connector provider");
+    if (configurations.length === 0) {
+      break;
+    }
+    lastSeenId = configurations[configurations.length - 1].id;
 
-      const { parentsIn, parentsNotIn } = agentDataSourceConfiguration;
-
-      if (execute) {
-        await agentDataSourceConfiguration.update({
-          parentsIn: parentsIn && migrator(parentsIn),
-          parentsNotIn: parentsNotIn && migrator(parentsNotIn),
-        });
-      } else {
-        logger.info(
-          {
-            parentsIn,
-            newParentsIn: parentsIn && migrator(parentsIn),
-            parentsNotIn,
-            newParentsNotIn: parentsNotIn && migrator(parentsNotIn),
-          },
-          "Would update agent data source configuration"
+    await concurrentExecutor(
+      configurations,
+      async (configuration) => {
+        assert(
+          configuration.dataSource.connectorProvider,
+          "connectorProvider is required"
         );
-      }
-    },
-    { concurrency: 10 }
-  );
+        const migrator = migrators[configuration.dataSource.connectorProvider];
+        assert(migrator, "No migrator found for the connector provider");
+
+        const { parentsIn, parentsNotIn } = configuration;
+
+        if (execute) {
+          await configuration.update({
+            parentsIn: parentsIn && migrator(parentsIn),
+            parentsNotIn: parentsNotIn && migrator(parentsNotIn),
+          });
+        } else {
+          logger.info(
+            {
+              parentsIn,
+              newParentsIn: parentsIn && migrator(parentsIn),
+              parentsNotIn,
+              newParentsNotIn: parentsNotIn && migrator(parentsNotIn),
+            },
+            "Would update agent data source configuration"
+          );
+        }
+      },
+      { concurrency: UPDATE_CONCURRENCY }
+    );
+    logger.info(`Data processed up to id ${lastSeenId}`);
+  }
 
   logger.info(
     `Finished migrating parents for agent data source configurations.`
