@@ -63,7 +63,8 @@ jobs:
             --image-name=$IMAGE_NAME \
             --dockerfile-path=./front/Dockerfile \
             --working-dir=./ \
-            --dust-client-facing-url=https://front-edge.dust.tt
+            --dust-client-facing-url=https://front-edge.dust.tt \
+            --region=us-central1
 
       - name: Generate a token
         id: generate-token
