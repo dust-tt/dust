@@ -66,7 +66,10 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   webcrawler: null,
   zendesk: null, // no migration needed!
   confluence: {
-    transformer: (parents) => parents.map(getUpdatedConfluenceId),
+    transformer: (parents) => [
+      ...parents,
+      ...parents.map(getUpdatedConfluenceId),
+    ],
     cleaner: (parents) =>
       parents.filter(
         (parent) =>
