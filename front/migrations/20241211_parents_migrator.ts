@@ -193,6 +193,7 @@ async function migrateDocument({
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: coreDocument.document_id,
       parents: newParents,
+      parentId: null,
     });
 
     if (updateRes.isErr()) {
@@ -261,6 +262,7 @@ async function migrateTable({
       dataSourceId: dataSource.dustAPIDataSourceId,
       tableId: coreTable.table_id,
       parents: newParents,
+      parentId: null,
     });
 
     if (updateRes.isErr()) {
