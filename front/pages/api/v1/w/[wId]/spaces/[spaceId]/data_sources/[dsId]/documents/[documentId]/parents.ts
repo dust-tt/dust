@@ -53,14 +53,14 @@ import { apiError } from "@app/logger/withlogging";
  *           schema:
  *             type: object
  *             properties:
- *               parentId:
+ *               parent_id:
  *                 type: string
  *                 description: Direct parent ID of the document
  *               parents:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Array of parent IDs for this document
+ *                 description: Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parentId, and then ancestors ids in order
  *     responses:
  *       200:
  *         description: The parents were updated
@@ -154,7 +154,7 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: req.query.documentId as string,
-        parentId: req.body.parentId ?? null,
+        parentId: req.body.parent_id ?? null,
         parents: req.body.parents,
       });
 

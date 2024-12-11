@@ -312,6 +312,15 @@ export async function upsertDocument({
     );
   }
 
+  if (parent_id && parents && parents[1] !== parent_id) {
+    return new Err(
+      new DustError(
+        "invalid_parent_id",
+        "Invalid request body, parents[1] and parent_id should be equal"
+      )
+    );
+  }
+
   const fullText = sectionFullText(generatedSection);
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);

@@ -70,6 +70,10 @@ export type TableOperationError =
   | {
       type: "not_found_error";
       notFoundError: NotFoundError;
+    }
+  | {
+      type: "invalid_parent_id";
+      message: string;
     };
 
 export async function deleteTable({
@@ -180,6 +184,13 @@ export async function upsertTableFromCsv({
         message: "Failed to get workspace.",
       },
       message: "Failed to get workspace.",
+    });
+  }
+
+  if (tableParentId && tableParents && tableParents[1] !== tableParentId) {
+    return new Err({
+      type: "invalid_parent_id",
+      message: "Invalid request body, parents[1] and parent_id should be equal",
     });
   }
 
