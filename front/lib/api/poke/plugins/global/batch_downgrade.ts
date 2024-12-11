@@ -12,8 +12,7 @@ export const batchDowngradePlugin = createPlugin(
     name: "Batch Downgrade Workspaces",
     warning:
       "Downgrading workspaces will block access, make sure all workspaces from your list should really be downgraded.",
-    description:
-      "Downgrade a list of workspaces to NO_PLAN, used to block access to fraudulent users",
+    description: "NO_PLAN for fraudsters",
     resourceTypes: ["global"],
     args: {
       sIds: {
