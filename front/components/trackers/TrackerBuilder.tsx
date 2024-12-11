@@ -217,15 +217,15 @@ export const TrackerBuilder = ({
         !edited ? (
           <AppLayoutSimpleCloseTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
-            onClose={async () => {
-              await router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+            onClose={() => {
+              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
             }}
           />
         ) : (
           <AppLayoutSimpleSaveCancelTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
-            onCancel={async () => {
-              await router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+            onCancel={() => {
+              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
             }}
             onSave={onSubmit}
             isSaving={isSubmitting}
