@@ -1262,7 +1262,6 @@ export async function deleteDataSourceFolder({
 }: {
   dataSourceConfig: DataSourceConfig;
   folderId: string;
-  loggerArgs?: Record<string, string | number>;
 }) {
   const r = await getDustAPI(dataSourceConfig).deleteFolder(
     dataSourceConfig.dataSourceId,
