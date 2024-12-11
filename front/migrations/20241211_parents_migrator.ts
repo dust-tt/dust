@@ -28,21 +28,24 @@ const QUERY_BATCH_SIZE = 128;
 const DOCUMENT_CONCURRENCY = 8;
 const TABLE_CONCURRENCY = 16;
 
+function slackNodeIdToChannelId(nodeId: string) {
+  const parts = nodeId.split("-");
+  if (parts.length < 3) {
+    throw new Error("Invalid nodeId 1");
+  }
+  if (parts[0] !== "slack") {
+    throw new Error("Invalid nodeId 2");
+  }
+  if (!["messages", "thread"].includes(parts[2])) {
+    throw new Error("Invalid nodeId 3");
+  }
+  return parts[1];
+}
+
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: {
     transformer: (nodeId, parents) => {
-      const parts = nodeId.split("-");
-      if (parts.length < 3) {
-        throw new Error("Invalid nodeId 1");
-      }
-      if (parts[0] !== "slack") {
-        throw new Error("Invalid nodeId 2");
-      }
-      if (!["messages", "thread"].includes(parts[2])) {
-        throw new Error("Invalid nodeId 3");
-      }
-      const channelId = parts[1];
-
+      const channelId = slackNodeIdToChannelId(nodeId);
       switch (parents.length) {
         case 0:
           logger.warn(
@@ -121,17 +124,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       return [nodeId, channelId, `slack-channel-${channelId}`];
     },
     cleaner: (nodeId, parents) => {
-      const parts = nodeId.split("-");
-      if (parts.length < 3) {
-        throw new Error("Invalid nodeId 1");
-      }
-      if (parts[0] !== "slack") {
-        throw new Error("Invalid nodeId 2");
-      }
-      if (!["messages", "thread"].includes(parts[2])) {
-        throw new Error("Invalid nodeId 3");
-      }
-      const channelId = parts[1];
+      const channelId = slackNodeIdToChannelId(nodeId);
 
       if (parents.length === 2) {
         assert(parents[0] === nodeId, "parents[0] !== nodeId");
