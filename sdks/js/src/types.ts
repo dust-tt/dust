@@ -1,68 +1,71 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
-// IMPORTANT: using an array of FlexibleEnumSchema (such as z.array(FlexibleEnumSchema) or FlexibleEnumSchema.array()) break the ability to receive any value
-// In that case, use z.array(z.string()) or z.string().array()
-const FlexibleEnumSchema = <U extends string>(values: readonly [U, ...U[]]) =>
-  z.enum(values).transform((val) => val); // Transform bypass for the enum validation when parsing but doesn't affect the inferred type
+type StringLiteral<T> = T extends string
+  ? string extends T
+    ? never
+    : T
+  : never;
 
-const ModelProviderIdSchema = FlexibleEnumSchema([
-  "openai",
-  "anthropic",
-  "mistral",
-  "google_ai_studio",
-  "togetherai",
-]);
+// Custom schema to get a string literal type and yet allow any string when parsing
+const FlexibleEnumSchema = <T extends string>() =>
+  z.custom<StringLiteral<T>>((val) => {
+    return typeof val === "string";
+  });
 
-const ModelLLMIdSchema = FlexibleEnumSchema([
-  "gpt-3.5-turbo",
-  "gpt-4-turbo",
-  "gpt-4o-2024-08-06",
-  "gpt-4o",
-  "gpt-4o-mini",
-  "o1-preview",
-  "o1-mini",
-  "claude-3-opus-20240229",
-  "claude-3-5-sonnet-20240620",
-  "claude-3-5-sonnet-20241022",
-  "claude-3-5-haiku-20241022",
-  "claude-3-haiku-20240307",
-  "claude-2.1",
-  "claude-instant-1.2",
-  "mistral-large-latest",
-  "mistral-medium",
-  "mistral-small-latest",
-  "codestral-latest",
-  "gemini-1.5-pro-latest",
-  "gemini-1.5-flash-latest",
-  "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-  "Qwen/Qwen2.5-Coder-32B-Instruct",
-  "Qwen/QwQ-32B-Preview",
-  "Qwen/Qwen2-72B-Instruct",
-]);
+const ModelProviderIdSchema = FlexibleEnumSchema<
+  "openai" | "anthropic" | "mistral" | "google_ai_studio" | "togetherai"
+>();
 
-const EmbeddingProviderIdSchema = FlexibleEnumSchema(["openai", "mistral"]);
+const ModelLLMIdSchema = FlexibleEnumSchema<
+  | "gpt-3.5-turbo"
+  | "gpt-4-turbo"
+  | "gpt-4o-2024-08-06"
+  | "gpt-4o"
+  | "gpt-4o-mini"
+  | "o1-preview"
+  | "o1-mini"
+  | "claude-3-opus-20240229"
+  | "claude-3-5-sonnet-20240620"
+  | "claude-3-5-sonnet-20241022"
+  | "claude-3-5-haiku-20241022"
+  | "claude-3-haiku-20240307"
+  | "claude-2.1"
+  | "claude-instant-1.2"
+  | "mistral-large-latest"
+  | "mistral-medium"
+  | "mistral-small-latest"
+  | "codestral-latest"
+  | "gemini-1.5-pro-latest"
+  | "gemini-1.5-flash-latest"
+  | "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+  | "Qwen/Qwen2.5-Coder-32B-Instruct"
+  | "Qwen/QwQ-32B-Preview"
+  | "Qwen/Qwen2-72B-Instruct"
+>();
 
-const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema([
-  "authorization_error",
-  "not_found",
-  "internal_server_error",
-  "unexpected_error_format",
-  "unexpected_response_format",
-  "unexpected_network_error",
-  "unknown_connector_provider",
-  "invalid_request_error",
-  "connector_not_found",
-  "connector_configuration_not_found",
-  "connector_update_error",
-  "connector_update_unauthorized",
-  "connector_oauth_target_mismatch",
-  "connector_oauth_error",
-  "slack_channel_not_found",
-  "connector_rate_limit_error",
-  "slack_configuration_not_found",
-  "google_drive_webhook_not_found",
-]);
+const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
+
+const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
+  | "authorization_error"
+  | "not_found"
+  | "internal_server_error"
+  | "unexpected_error_format"
+  | "unexpected_response_format"
+  | "unexpected_network_error"
+  | "unknown_connector_provider"
+  | "invalid_request_error"
+  | "connector_not_found"
+  | "connector_configuration_not_found"
+  | "connector_update_error"
+  | "connector_update_unauthorized"
+  | "connector_oauth_target_mismatch"
+  | "connector_oauth_error"
+  | "slack_channel_not_found"
+  | "connector_rate_limit_error"
+  | "slack_configuration_not_found"
+  | "google_drive_webhook_not_found"
+>();
 
 const ConnectorsAPIErrorSchema = z.object({
   type: ConnectorsAPIErrorTypeSchema,
@@ -108,11 +111,6 @@ const supportedImageFileFormats = {
   "image/webp": [".webp"],
 } as const;
 
-// Legacy content types still retuned by the API when rendering old messages.
-const supportedLegacy = {
-  "dust-application/slack": [],
-} as const;
-
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 
@@ -129,29 +127,20 @@ const supportedUploadableContentType = [
   ...supportedImageContentTypes,
 ] as SupportedFileContentType[];
 
-const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
-  ...(Object.keys(supportedOtherFileFormats) as [
-    keyof typeof supportedOtherFileFormats
-  ]),
-  ...(Object.keys(supportedImageFileFormats) as [
-    keyof typeof supportedImageFileFormats
-  ]),
-  ...(Object.keys(supportedLegacy) as [keyof typeof supportedLegacy]),
-]);
+const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
+  | keyof typeof supportedOtherFileFormats
+  | keyof typeof supportedImageFileFormats
+  // Legacy content types still retuned by the API when rendering old messages.
+  | "dust-application/slack"
+>();
 
-const SupportedInlinedContentFragmentTypeSchema = FlexibleEnumSchema([
-  ...(Object.keys(supportedOtherFileFormats) as [
-    keyof typeof supportedOtherFileFormats
-  ]),
-]);
-const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema([
-  ...(Object.keys(supportedOtherFileFormats) as [
-    keyof typeof supportedOtherFileFormats
-  ]),
-  ...(Object.keys(supportedImageFileFormats) as [
-    keyof typeof supportedImageFileFormats
-  ]),
-]);
+const SupportedInlinedContentFragmentTypeSchema =
+  FlexibleEnumSchema<keyof typeof supportedOtherFileFormats>();
+
+const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
+  | keyof typeof supportedOtherFileFormats
+  | keyof typeof supportedImageFileFormats
+>();
 
 export function isSupportedFileContentType(
   contentType: string
@@ -173,23 +162,23 @@ export function isSupportedImageContentType(
   return supportedImageContentTypes.includes(contentType as ImageContentType);
 }
 
-const UserMessageOriginSchema = FlexibleEnumSchema([
-  "slack",
-  "web",
-  "api",
-  "gsheet",
-  "zapier",
-  "make",
-  "zendesk",
-  "raycast",
-  "github-copilot-chat",
-  "extension",
-  "email",
-])
+const UserMessageOriginSchema = FlexibleEnumSchema<
+  | "slack"
+  | "web"
+  | "api"
+  | "gsheet"
+  | "zapier"
+  | "make"
+  | "zendesk"
+  | "raycast"
+  | "github-copilot-chat"
+  | "extension"
+  | "email"
+>()
   .or(z.null())
   .or(z.undefined());
 
-const VisibilitySchema = FlexibleEnumSchema(["visible", "deleted"]);
+const VisibilitySchema = FlexibleEnumSchema<"visible" | "deleted">();
 
 const RankSchema = z.object({
   rank: z.number(),
@@ -226,18 +215,18 @@ const Timezone = z.string().refine((s) => moment.tz.names().includes(s), {
   message: "Invalid timezone",
 });
 
-const ConnectorProvidersSchema = FlexibleEnumSchema([
-  "confluence",
-  "github",
-  "google_drive",
-  "intercom",
-  "notion",
-  "slack",
-  "microsoft",
-  "webcrawler",
-  "snowflake",
-  "zendesk",
-]);
+const ConnectorProvidersSchema = FlexibleEnumSchema<
+  | "confluence"
+  | "github"
+  | "google_drive"
+  | "intercom"
+  | "notion"
+  | "slack"
+  | "microsoft"
+  | "webcrawler"
+  | "snowflake"
+  | "zendesk"
+>();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
 const EditedByUserSchema = z.object({
@@ -340,30 +329,27 @@ export interface LoggerInterface {
   warn: (args: Record<string, unknown>, message: string) => void;
 }
 
-const DataSourceViewCategoriesSchema = FlexibleEnumSchema([
-  "managed",
-  "folder",
-  "website",
-  "apps",
-]);
+const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
+  "managed" | "folder" | "website" | "apps"
+>();
 
-const BlockTypeSchema = FlexibleEnumSchema([
-  "input",
-  "data",
-  "data_source",
-  "code",
-  "llm",
-  "chat",
-  "map",
-  "reduce",
-  "while",
-  "end",
-  "search",
-  "curl",
-  "browser",
-  "database_schema",
-  "database",
-]);
+const BlockTypeSchema = FlexibleEnumSchema<
+  | "input"
+  | "data"
+  | "data_source"
+  | "code"
+  | "llm"
+  | "chat"
+  | "map"
+  | "reduce"
+  | "while"
+  | "end"
+  | "search"
+  | "curl"
+  | "browser"
+  | "database_schema"
+  | "database"
+>();
 
 const StatusSchema = z.enum(["running", "succeeded", "errored"]);
 
@@ -419,10 +405,9 @@ const RunTypeSchema = z.object({
     .optional(),
 });
 
-const TokensClassificationSchema = FlexibleEnumSchema([
-  "tokens",
-  "chain_of_thought",
-]);
+const TokensClassificationSchema = FlexibleEnumSchema<
+  "tokens" | "chain_of_thought"
+>();
 
 export const GenerationTokensEventSchema = z.object({
   type: z.literal("generation_tokens"),
@@ -438,15 +423,15 @@ export const GenerationTokensEventSchema = z.object({
 });
 export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
-const BaseActionTypeSchema = FlexibleEnumSchema([
-  "dust_app_run_action",
-  "tables_query_action",
-  "retrieval_action",
-  "process_action",
-  "websearch_action",
-  "browse_action",
-  "visualization_action",
-]);
+const BaseActionTypeSchema = FlexibleEnumSchema<
+  | "dust_app_run_action"
+  | "tables_query_action"
+  | "retrieval_action"
+  | "process_action"
+  | "websearch_action"
+  | "browse_action"
+  | "visualization_action"
+>();
 
 const BaseActionSchema = z.object({
   id: ModelIdSchema,
@@ -532,7 +517,7 @@ const DustAppRunActionTypeSchema = BaseActionSchema.extend({
 }));
 type DustAppRunActionPublicType = z.infer<typeof DustAppRunActionTypeSchema>;
 
-const DataSourceViewKindSchema = FlexibleEnumSchema(["default", "custom"]);
+const DataSourceViewKindSchema = FlexibleEnumSchema<"default" | "custom">();
 
 const DataSourceViewSchema = z.object({
   category: DataSourceViewCategoriesSchema,
@@ -654,27 +639,26 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
-const WhitelistableFeaturesSchema = FlexibleEnumSchema([
-  "usage_data_api",
-  "okta_enterprise_connection",
-  "labs_transcripts",
-  "labs_transcripts_gong_full_storage",
-  "labs_trackers",
-  "document_tracker",
-  "use_app_for_header_detection",
-  "openai_o1_feature",
-  "openai_o1_mini_feature",
-  "snowflake_connector_feature",
-  "zendesk_connector_feature",
-  "index_private_slack_channel",
-  "conversations_jit_actions",
-]);
+const WhitelistableFeaturesSchema = FlexibleEnumSchema<
+  | "usage_data_api"
+  | "okta_enterprise_connection"
+  | "labs_transcripts"
+  | "labs_transcripts_gong_full_storage"
+  | "labs_trackers"
+  | "document_tracker"
+  | "use_app_for_header_detection"
+  | "openai_o1_feature"
+  | "openai_o1_mini_feature"
+  | "snowflake_connector_feature"
+  | "zendesk_connector_feature"
+  | "index_private_slack_channel"
+  | "conversations_jit_actions"
+>();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 
-const WorkspaceSegmentationSchema = FlexibleEnumSchema([
-  "interesting",
-]).nullable();
+const WorkspaceSegmentationSchema =
+  FlexibleEnumSchema<"interesting">().nullable();
 
 const RoleSchema = z.enum(["admin", "builder", "user", "none"]);
 
@@ -684,7 +668,7 @@ const LightWorkspaceSchema = z.object({
   name: z.string(),
   role: RoleSchema,
   segmentation: WorkspaceSegmentationSchema,
-  whiteListedProviders: z.string().array().nullable(),
+  whiteListedProviders: ModelProviderIdSchema.array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
 });
 
@@ -694,14 +678,9 @@ const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });
 
-const UserProviderSchema = FlexibleEnumSchema([
-  "auth0",
-  "github",
-  "google",
-  "okta",
-  "samlp",
-  "waad",
-]).nullable();
+const UserProviderSchema = FlexibleEnumSchema<
+  "auth0" | "github" | "google" | "okta" | "samlp" | "waad"
+>().nullable();
 
 const UserSchema = z.object({
   sId: z.string(),
@@ -751,35 +730,27 @@ export type WebsearchActionPublicType = z.infer<
   typeof WebsearchActionTypeSchema
 >;
 
-const GlobalAgentStatusSchema = FlexibleEnumSchema([
-  "active",
-  "disabled_by_admin",
-  "disabled_missing_datasource",
-  "disabled_free_workspace",
-]);
+const GlobalAgentStatusSchema = FlexibleEnumSchema<
+  | "active"
+  | "disabled_by_admin"
+  | "disabled_missing_datasource"
+  | "disabled_free_workspace"
+>();
 
-const AgentStatusSchema = FlexibleEnumSchema(["active", "archived", "draft"]);
+const AgentStatusSchema = FlexibleEnumSchema<"active" | "archived" | "draft">();
 
 const AgentConfigurationStatusSchema = z.union([
   AgentStatusSchema,
   GlobalAgentStatusSchema,
 ]);
 
-const AgentConfigurationScopeSchema = FlexibleEnumSchema([
-  "global",
-  "workspace",
-  "published",
-  "private",
-]);
+const AgentConfigurationScopeSchema = FlexibleEnumSchema<
+  "global" | "workspace" | "published" | "private"
+>();
 
-export const AgentConfigurationViewSchema = FlexibleEnumSchema([
-  "all",
-  "list",
-  "workspace",
-  "published",
-  "global",
-  "favorites",
-]);
+export const AgentConfigurationViewSchema = FlexibleEnumSchema<
+  "all" | "list" | "workspace" | "published" | "global" | "favorites"
+>();
 
 export type AgentConfigurationViewType = z.infer<
   typeof AgentConfigurationViewSchema
@@ -907,12 +878,9 @@ const AgentActionTypeSchema = z.union([
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
-const AgentMessageStatusSchema = FlexibleEnumSchema([
-  "created",
-  "succeeded",
-  "failed",
-  "cancelled",
-]);
+const AgentMessageStatusSchema = FlexibleEnumSchema<
+  "created" | "succeeded" | "failed" | "cancelled"
+>();
 
 const AgentMessageTypeSchema = z.object({
   id: ModelIdSchema,
@@ -943,12 +911,9 @@ const AgentMessageTypeSchema = z.object({
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
-const ConversationVisibilitySchema = FlexibleEnumSchema([
-  "unlisted",
-  "workspace",
-  "deleted",
-  "test",
-]);
+const ConversationVisibilitySchema = FlexibleEnumSchema<
+  "unlisted" | "workspace" | "deleted" | "test"
+>();
 
 export type ConversationVisibility = z.infer<
   typeof ConversationVisibilitySchema
@@ -1217,89 +1182,89 @@ export const CoreAPIErrorSchema = z.object({
 export const CoreAPITokenTypeSchema = z.tuple([z.number(), z.string()]);
 export type CoreAPITokenType = z.infer<typeof CoreAPITokenTypeSchema>;
 
-const APIErrorTypeSchema = FlexibleEnumSchema([
-  "action_api_error",
-  "action_failed",
-  "action_unknown_error",
-  "agent_configuration_not_found",
-  "agent_message_error",
-  "app_auth_error",
-  "app_not_found",
-  "assistant_saving_error",
-  "chat_message_not_found",
-  "connector_credentials_error",
-  "connector_not_found_error",
-  "connector_oauth_target_mismatch",
-  "connector_provider_not_supported",
-  "connector_update_error",
-  "connector_update_unauthorized",
-  "content_too_large",
-  "conversation_access_restricted",
-  "conversation_not_found",
-  "data_source_auth_error",
-  "data_source_document_not_found",
-  "data_source_error",
-  "data_source_not_found",
-  "data_source_not_managed",
-  "data_source_quota_error",
-  "data_source_view_not_found",
-  "dataset_not_found",
-  "dust_app_secret_not_found",
-  "expired_oauth_token_error",
-  "feature_flag_already_exists",
-  "feature_flag_not_found",
-  "file_not_found",
-  "file_too_large",
-  "file_type_not_supported",
-  "global_agent_error",
-  "group_not_found",
-  "internal_server_error",
-  "invalid_api_key_error",
-  "invalid_oauth_token_error",
-  "invalid_pagination_parameters",
-  "invalid_request_error",
-  "invalid_rows_request_error",
-  "invitation_already_sent_recently",
-  "invitation_not_found",
-  "key_not_found",
-  "malformed_authorization_header_error",
-  "membership_not_found",
-  "message_not_found",
-  "method_not_supported_error",
-  "missing_authorization_header_error",
-  "not_authenticated",
-  "personal_workspace_not_found",
-  "plan_limit_error",
-  "plan_message_limit_exceeded",
-  "plugin_execution_failed",
-  "plugin_not_found",
-  "provider_auth_error",
-  "provider_not_found",
-  "rate_limit_error",
-  "run_error",
-  "run_not_found",
-  "space_already_exists",
-  "space_not_found",
-  "stripe_invalid_product_id_error",
-  "subscription_not_found",
-  "subscription_payment_failed",
-  "subscription_state_invalid",
-  "table_not_found",
-  "template_not_found",
-  "template_not_found",
-  "transcripts_configuration_already_exists",
-  "transcripts_configuration_default_not_allowed",
-  "transcripts_configuration_not_found",
-  "unexpected_action_response",
-  "unexpected_error_format",
-  "unexpected_network_error",
-  "unexpected_response_format",
-  "user_not_found",
-  "workspace_auth_error",
-  "workspace_not_found",
-  "workspace_not_found",
-  "workspace_user_not_found",
-]);
+const APIErrorTypeSchema = FlexibleEnumSchema<
+  | "action_api_error"
+  | "action_failed"
+  | "action_unknown_error"
+  | "agent_configuration_not_found"
+  | "agent_message_error"
+  | "app_auth_error"
+  | "app_not_found"
+  | "assistant_saving_error"
+  | "chat_message_not_found"
+  | "connector_credentials_error"
+  | "connector_not_found_error"
+  | "connector_oauth_target_mismatch"
+  | "connector_provider_not_supported"
+  | "connector_update_error"
+  | "connector_update_unauthorized"
+  | "content_too_large"
+  | "conversation_access_restricted"
+  | "conversation_not_found"
+  | "data_source_auth_error"
+  | "data_source_document_not_found"
+  | "data_source_error"
+  | "data_source_not_found"
+  | "data_source_not_managed"
+  | "data_source_quota_error"
+  | "data_source_view_not_found"
+  | "dataset_not_found"
+  | "dust_app_secret_not_found"
+  | "expired_oauth_token_error"
+  | "feature_flag_already_exists"
+  | "feature_flag_not_found"
+  | "file_not_found"
+  | "file_too_large"
+  | "file_type_not_supported"
+  | "global_agent_error"
+  | "group_not_found"
+  | "internal_server_error"
+  | "invalid_api_key_error"
+  | "invalid_oauth_token_error"
+  | "invalid_pagination_parameters"
+  | "invalid_request_error"
+  | "invalid_rows_request_error"
+  | "invitation_already_sent_recently"
+  | "invitation_not_found"
+  | "key_not_found"
+  | "malformed_authorization_header_error"
+  | "membership_not_found"
+  | "message_not_found"
+  | "method_not_supported_error"
+  | "missing_authorization_header_error"
+  | "not_authenticated"
+  | "personal_workspace_not_found"
+  | "plan_limit_error"
+  | "plan_message_limit_exceeded"
+  | "plugin_execution_failed"
+  | "plugin_not_found"
+  | "provider_auth_error"
+  | "provider_not_found"
+  | "rate_limit_error"
+  | "run_error"
+  | "run_not_found"
+  | "space_already_exists"
+  | "space_not_found"
+  | "stripe_invalid_product_id_error"
+  | "subscription_not_found"
+  | "subscription_payment_failed"
+  | "subscription_state_invalid"
+  | "table_not_found"
+  | "template_not_found"
+  | "template_not_found"
+  | "transcripts_configuration_already_exists"
+  | "transcripts_configuration_default_not_allowed"
+  | "transcripts_configuration_not_found"
+  | "unexpected_action_response"
+  | "unexpected_error_format"
+  | "unexpected_network_error"
+  | "unexpected_response_format"
+  | "user_not_found"
+  | "workspace_auth_error"
+  | "workspace_not_found"
+  | "workspace_not_found"
+  | "workspace_user_not_found"
+>();
 
 export const APIErrorSchema = z.object({
   type: APIErrorTypeSchema,
@@ -1457,13 +1422,9 @@ export type DustAPICredentials = {
   userEmail?: string;
 };
 
-const SpaceKindSchema = FlexibleEnumSchema([
-  "regular",
-  "global",
-  "system",
-  "public",
-  "conversations",
-]);
+const SpaceKindSchema = FlexibleEnumSchema<
+  "regular" | "global" | "system" | "public" | "conversations"
+>();
 
 const SpaceTypeSchema = z.object({
   createdAt: z.number(),
@@ -2087,16 +2048,14 @@ const UpsertTableResponseSchema = z.object({
 });
 export type UpsertTableResponseType = z.infer<typeof UpsertTableResponseSchema>;
 
-const usageTables = [
-  "users",
-  "assistant_messages",
-  "builders",
-  "assistants",
-  "feedbacks",
-  "all",
-] as const;
-
-const SupportedUsageTablesSchema = FlexibleEnumSchema(usageTables);
+const SupportedUsageTablesSchema = FlexibleEnumSchema<
+  | "users"
+  | "assistant_messages"
+  | "builders"
+  | "assistants"
+  | "feedbacks"
+  | "all"
+>();
 
 export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
 
@@ -2192,14 +2151,13 @@ export type FileUploadUrlRequestType = z.infer<
   typeof FileUploadUrlRequestSchema
 >;
 
-const FileTypeStatusSchema = FlexibleEnumSchema(["created", "failed", "ready"]);
-const FileTypeUseCaseSchema = FlexibleEnumSchema([
-  "conversation",
-  "avatar",
-  "tool_output",
-  "folder_document",
-  "folder_table",
-]);
+const FileTypeStatusSchema = FlexibleEnumSchema<
+  "created" | "failed" | "ready"
+>();
+
+const FileTypeUseCaseSchema = FlexibleEnumSchema<
+  "conversation" | "avatar" | "tool_output" | "folder_document" | "folder_table"
+>();
 
 export const FileTypeSchema = z.object({
   contentType: z.string(),
