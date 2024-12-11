@@ -7,7 +7,10 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 
-type ProviderMigrator = (parents: string[]) => string[];
+type ProviderMigrator = {
+  up: (parents: string[]) => string[];
+  down: (parents: string[]) => string[];
+};
 
 const AGENT_CONFIGURATION_BATCH_SIZE = 100;
 const UPDATE_CONCURRENCY = 10;
@@ -56,92 +59,111 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   snowflake: null,
   webcrawler: null,
   zendesk: null, // no migration needed!
-  confluence: (parents) => parents.map(getUpdatedConfluenceId),
+  confluence: {
+    up: (parents) => parents.map(getUpdatedConfluenceId),
+    down: (parents) =>
+      parents.filter(
+        (parent) =>
+          !parent.startsWith(ConfluenceOldIdPrefix.Page) &&
+          !parent.startsWith(ConfluenceOldIdPrefix.Space)
+      ),
+  },
   intercom: null, // no migration needed!
 };
 
-makeScript({}, async ({ execute }, logger) => {
-  let lastSeenId = 0;
+makeScript(
+  {
+    action: {
+      type: "string",
+    },
+  },
+  async ({ execute, action }, logger) => {
+    let lastSeenId = 0;
 
-  for (;;) {
-    const configurations = await AgentDataSourceConfiguration.findAll({
-      limit: AGENT_CONFIGURATION_BATCH_SIZE,
-      where: { id: { [Op.gt]: lastSeenId } },
-      order: [["id", "ASC"]],
-      raw: true,
-      include: [
-        {
-          model: DataSourceModel,
-          as: "dataSource",
-          attributes: [],
-          required: true,
-        },
-      ],
-    });
+    for (;;) {
+      const configurations = await AgentDataSourceConfiguration.findAll({
+        limit: AGENT_CONFIGURATION_BATCH_SIZE,
+        where: { id: { [Op.gt]: lastSeenId } },
+        order: [["id", "ASC"]],
+        raw: true,
+        include: [
+          {
+            model: DataSourceModel,
+            as: "dataSource",
+            attributes: [],
+            required: true,
+          },
+        ],
+      });
 
-    if (configurations.length === 0) {
-      break;
-    }
-    lastSeenId = configurations[configurations.length - 1].id;
+      if (configurations.length === 0) {
+        break;
+      }
+      lastSeenId = configurations[configurations.length - 1].id;
 
-    try {
-      await concurrentExecutor(
-        configurations,
-        async (configuration) => {
-          assert(
-            configuration.dataSource.connectorProvider,
-            "connectorProvider is required"
-          );
-          const migrator =
-            migrators[configuration.dataSource.connectorProvider];
-          if (!migrator) {
-            return; // no migration needed
-          }
-
-          const { parentsIn, parentsNotIn } = configuration;
-          const newParentsIn = parentsIn && migrator(parentsIn);
-          const newParentsNotIn = parentsNotIn && migrator(parentsNotIn);
-
-          if (execute) {
-            await configuration.update({
-              parentsIn: newParentsIn,
-              parentsNotIn: newParentsNotIn,
-            });
-            logger.info(
-              {
-                configurationId: configuration.id,
-                connectorProvider: configuration.dataSource.connectorProvider,
-                fromParentsIn: parentsIn,
-                toParentsIn: newParentsIn,
-                fromParentsNotIn: parentsNotIn,
-                toParentsNotIn: newParentsNotIn,
-              },
-              `LIVE`
+      try {
+        await concurrentExecutor(
+          configurations,
+          async (configuration) => {
+            assert(
+              configuration.dataSource.connectorProvider,
+              "connectorProvider is required"
             );
-          } else {
-            logger.info(
-              {
-                configurationId: configuration.id,
-                connectorProvider: configuration.dataSource.connectorProvider,
-                fromParentsIn: parentsIn,
-                toParentsIn: newParentsIn,
-                fromParentsNotIn: parentsNotIn,
-                toParentsNotIn: newParentsNotIn,
-              },
-              `DRY`
-            );
-          }
-        },
-        { concurrency: UPDATE_CONCURRENCY }
-      );
-      logger.info(`Data processed up to id ${lastSeenId}`);
-    } catch (e) {
-      logger.error({ error: e, lastSeenId }, `ERROR`);
-      throw e;
+            const migrator =
+              migrators[configuration.dataSource.connectorProvider];
+            if (!migrator) {
+              return; // no migration needed
+            }
+
+            const { parentsIn, parentsNotIn } = configuration;
+            const newParentsIn =
+              parentsIn &&
+              (action === "up" ? migrator.up : migrator.down)(parentsIn);
+            const newParentsNotIn =
+              parentsNotIn &&
+              (action === "up" ? migrator.up : migrator.down)(parentsNotIn);
+
+            if (execute) {
+              await configuration.update({
+                parentsIn: newParentsIn,
+                parentsNotIn: newParentsNotIn,
+              });
+              logger.info(
+                {
+                  configurationId: configuration.id,
+                  connectorProvider: configuration.dataSource.connectorProvider,
+                  fromParentsIn: parentsIn,
+                  toParentsIn: newParentsIn,
+                  fromParentsNotIn: parentsNotIn,
+                  toParentsNotIn: newParentsNotIn,
+                },
+                `LIVE`
+              );
+            } else {
+              logger.info(
+                {
+                  configurationId: configuration.id,
+                  connectorProvider: configuration.dataSource.connectorProvider,
+                  fromParentsIn: parentsIn,
+                  toParentsIn: newParentsIn,
+                  fromParentsNotIn: parentsNotIn,
+                  toParentsNotIn: newParentsNotIn,
+                },
+                `DRY`
+              );
+            }
+          },
+          { concurrency: UPDATE_CONCURRENCY }
+        );
+        logger.info(`Data processed up to id ${lastSeenId}`);
+      } catch (e) {
+        logger.error({ error: e, lastSeenId }, `ERROR`);
+        throw e;
+      }
     }
+
+    logger.info(
+      `Finished migrating parents for agent data source configurations.`
+    );
   }
-
-  logger.info(
-    `Finished migrating parents for agent data source configurations.`
-  );
-});
+);
