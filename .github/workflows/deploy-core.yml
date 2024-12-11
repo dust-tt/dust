@@ -67,7 +67,7 @@ jobs:
             --image-name=core \
             --dockerfile-path=./Dockerfile \
             --working-dir=./core/ \
-            --dust-client-facing-url=https://dust.tt \ 
+            --dust-client-facing-url=https://dust.tt \
             --region=us-central1
 
       - name: Generate a token

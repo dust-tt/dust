@@ -45,7 +45,7 @@ jobs:
             --image-name=front-qa \
             --dockerfile-path=./front/Dockerfile \
             --working-dir=./ \
-            --dust-client-facing-url=https://front-qa.dust.tt \ 
+            --dust-client-facing-url=https://front-qa.dust.tt \
             --region=us-central1
 
       - name: Generate a token
