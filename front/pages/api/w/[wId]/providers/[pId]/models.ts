@@ -248,7 +248,14 @@ async function handler(
             return;
           }
           return res.status(200).json({
-            models: [{ id: "meta-llama/Llama-3.3-70B-Instruct-Turbo" }],
+            models: [
+              // llama
+              { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
+              // qwen
+              { id: "Qwen/Qwen2.5-Coder-32B-Instruct" },
+              { id: "Qwen/QwQ-32B-Preview" },
+              { id: "Qwen/Qwen2-72B-Instruct" },
+            ],
           });
 
         default:
