@@ -33,6 +33,7 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
+import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
 import { isEmailValid } from "@app/lib/utils";
 
 export const TrackerBuilder = ({
@@ -182,6 +183,7 @@ export const TrackerBuilder = ({
     // Handle errors.
     if (!res.ok) {
       const resJson = await res.json();
+      setIsSubmitting(false);
       sendNotification({
         title: initialTrackerId
           ? "Failed to update tracker"
@@ -189,10 +191,10 @@ export const TrackerBuilder = ({
         description: resJson.error.message,
         type: "error",
       });
-      setIsSubmitting(false);
       return;
     }
-
+    setIsSubmitting(false);
+    await router.push(`/w/${owner.sId}/assistant/labs/trackers`);
     sendNotification({
       title: initialTrackerId ? "Tracker updated" : "Tracker Created",
       description: initialTrackerId
@@ -200,8 +202,6 @@ export const TrackerBuilder = ({
         : "Tracker created successfully.",
       type: "success",
     });
-    setIsSubmitting(false);
-    await router.push(`/w/${owner.sId}/assistant/labs/trackers`);
   };
 
   return (
@@ -295,7 +295,7 @@ export const TrackerBuilder = ({
           </div>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Naming" />
             <div className="text-sm font-normal text-element-700">
@@ -339,7 +339,7 @@ export const TrackerBuilder = ({
           </div>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Notification Settings" />
             <div className="text-sm font-normal text-element-700">
@@ -395,7 +395,7 @@ export const TrackerBuilder = ({
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Tracker Settings" />
             <div className="text-sm font-normal text-element-700">
@@ -433,7 +433,21 @@ export const TrackerBuilder = ({
                 />
               </div>
             </div>
-            <div className="flex items-end md:col-span-2" />
+            <div className="flex md:col-span-2">
+              <div className="flex flex-col space-y-2">
+                <Label className="mb-1">Maintained Documents</Label>
+                {Object.keys(tracker.maintainedDataSources).length === 0 ? (
+                  <div className="text-sm font-normal text-element-700">
+                    No documents selected.
+                  </div>
+                ) : (
+                  <TrackerDataSourceSelectedTree
+                    owner={owner}
+                    dataSourceConfigurations={tracker.maintainedDataSources}
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -449,7 +463,21 @@ export const TrackerBuilder = ({
                 />
               </div>
             </div>
-            <div className="flex items-end md:col-span-2" />
+            <div className="flex md:col-span-2">
+              <div className="flex flex-col space-y-2">
+                <Label className="mb-1">Watched Documents</Label>
+                {Object.keys(tracker.watchedDataSources).length === 0 ? (
+                  <div className="text-sm font-normal text-element-700">
+                    No documents selected.
+                  </div>
+                ) : (
+                  <TrackerDataSourceSelectedTree
+                    owner={owner}
+                    dataSourceConfigurations={tracker.watchedDataSources}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
