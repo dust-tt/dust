@@ -73,6 +73,7 @@ export const zendesk = async ({
         brandSubdomain,
         accessToken,
         retentionPeriodDays,
+        query: args.query || null,
       });
       logger.info(
         { connectorId, brandId, ticketCount, retentionPeriodDays },
