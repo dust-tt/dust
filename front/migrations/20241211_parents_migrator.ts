@@ -96,6 +96,49 @@ async function migrateDocument({
   return new Ok(undefined);
 }
 
+async function migrateTable({
+  action,
+  migrator,
+  dataSource,
+  coreTable,
+  execute,
+}: {
+  action: MigratorAction;
+  migrator: ProviderMigrator;
+  dataSource: DataSourceModel;
+  coreTable: {
+    id: number;
+    parents: string[];
+    table_id: string;
+    hash: string;
+  };
+  execute: boolean;
+}) {
+  const newParents =
+    action === "transform"
+      ? migrator.transformer(coreTable.parents)
+      : migrator.cleaner(coreTable.parents);
+
+  if (execute) {
+    const updateRes = await coreAPI.updateTableParents({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      tableId: coreTable.table_id,
+      parents: newParents,
+    });
+
+    if (updateRes.isErr()) {
+      throw new Error(updateRes.error.message);
+    }
+
+    logger.info(`LIVE: table_id=${coreTable.table_id} parents=${newParents}`);
+  } else {
+    logger.info(`DRY: table_id=${coreTable.table_id} parents=${newParents}`);
+  }
+
+  return new Ok(undefined);
+}
+
 async function migrateDataSource({
   action,
   migrator,
@@ -168,9 +211,9 @@ async function migrateDataSource({
       );
     } catch (e) {
       logger.error(
-        `ERROR: message=${e} nextDataSourceId=${dataSource.id} nextDocumentId=${nextDocumentId}`
+        `ERROR: error=${e} nextDataSourceId=${dataSource.id} nextDocumentId=${nextDocumentId}`
       );
-      break;
+      throw e;
     }
 
     nextDocumentId = coreDocumentRows[coreDocumentRows.length - 1].id;
@@ -183,11 +226,13 @@ async function migrateAll({
   provider,
   action,
   migrator,
+  nextDataSourceId,
   execute,
 }: {
   provider: ConnectorProvider;
   action: MigratorAction;
   migrator: ProviderMigrator;
+  nextDataSourceId: number;
   execute: boolean;
 }) {
   // retrieve all data sources for the provider
@@ -199,12 +244,16 @@ async function migrateAll({
   });
 
   for (const dataSource of dataSources) {
-    await migrateDataSource({
-      migrator,
-      action,
-      dataSource,
-      execute,
-    });
+    if (dataSource.id >= nextDataSourceId) {
+      await migrateDataSource({
+        migrator,
+        action,
+        dataSource,
+        execute,
+      });
+    } else {
+      logger.info("SKIP: dataSourceId=" + dataSource.id);
+    }
   }
 }
 
@@ -218,8 +267,13 @@ makeScript(
       type: "string",
       required: true,
     },
+    nextDataSourceId: {
+      type: "number",
+      required: false,
+      default: 0,
+    },
   },
-  async ({ provider, action, execute }) => {
+  async ({ provider, action, nextDataSourceId, execute }) => {
     if (!isMigratorAction(action)) {
       console.error(
         `Invalid action ${action}, supported actions are "transform" and "clean"`
@@ -239,6 +293,7 @@ makeScript(
       provider,
       action,
       migrator: migrators[provider],
+      nextDataSourceId,
       execute,
     });
   }
