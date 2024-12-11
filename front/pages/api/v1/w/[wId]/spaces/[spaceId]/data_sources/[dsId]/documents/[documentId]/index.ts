@@ -147,7 +147,7 @@ export const config = {
  *                 items:
  *                   type: string
  *                 description: Tags to associate with the document.
- *               parentId:
+ *               parent_id:
  *                 type: string
  *                 description: Direct parent document ID to associate with the document.
  *               parents:
@@ -500,7 +500,7 @@ async function handler(
             dataSourceId: dataSource.sId,
             documentId: req.query.documentId as string,
             tags: r.data.tags || [],
-            parentId: r.data.parentId || null,
+            parentId: r.data.parent_id || null,
             parents: r.data.parents || [],
             timestamp: r.data.timestamp || null,
             sourceUrl,
@@ -540,7 +540,7 @@ async function handler(
           dataSourceId: dataSource.dustAPIDataSourceId,
           documentId: req.query.documentId as string,
           tags: r.data.tags || [],
-          parentId: r.data.parentId || null,
+          parentId: r.data.parent_id || null,
           parents: r.data.parents || [],
           sourceUrl,
           timestamp: r.data.timestamp || null,

@@ -1988,7 +1988,7 @@ const GetTableResponseSchema = z.object({
 export type GetTableResponseType = z.infer<typeof GetTableResponseSchema>;
 
 export const PostTableParentsRequestSchema = z.object({
-  parentId: z.string().nullable().optional(),
+  parent_id: z.string().nullable().optional(),
   parents: z.array(z.string()),
 });
 
@@ -2149,7 +2149,7 @@ export type UpsertFolderResponseType = z.infer<
 export const UpsertDataSourceFolderRequestSchema = z.object({
   timestamp: z.number(),
   parents: z.array(z.string()).nullable().optional(),
-  parentId: z.string().nullable().optional(),
+  parent_id: z.string().nullable().optional(),
   title: z.string(),
 });
 export type UpsertDataSourceFolderRequestType = z.infer<
