@@ -11,12 +11,12 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
+  DataSourceViewSelectionConfiguration,
   DataSourceViewType,
   SpaceType,
   SubscriptionType,
   SupportedModel,
   TrackerConfigurationStateType,
-  TrackerConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -28,7 +28,11 @@ import { useState } from "react";
 
 import { AdvancedSettings } from "@app/components/assistant_builder/InstructionScreen";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
+import {
+  AppLayoutSimpleCloseTitle,
+  AppLayoutSimpleSaveCancelTitle,
+} from "@app/components/sparkle/AppLayoutTitle";
+import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
 import { isEmailValid } from "@app/lib/utils";
 
 export const TrackerBuilder = ({
@@ -36,46 +40,49 @@ export const TrackerBuilder = ({
   subscription,
   globalSpace,
   dataSourceViews,
-  trackerToEdit,
+  initialTrackerState,
+  initialTrackerId,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   globalSpace: SpaceType;
   dataSourceViews: DataSourceViewType[];
-  trackerToEdit: TrackerConfigurationType | null;
+  initialTrackerState: TrackerConfigurationStateType | null;
+  initialTrackerId: string | null;
 }) => {
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const [edited, setEdited] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMaintainedDsModal, setShowMaintainedDsModal] = useState(false);
+  const [showWatchedDsModal, setShowWatchedDataSourcesModal] = useState(false);
 
-  const [tracker, setTracker] = useState<TrackerConfigurationStateType>({
-    name: trackerToEdit?.name ?? null,
-    nameError: null,
-    description: trackerToEdit?.description ?? null,
-    descriptionError: null,
-    prompt: trackerToEdit?.prompt ?? null,
-    promptError: null,
-    frequency: trackerToEdit?.frequency ?? "daily",
-    frequencyError: null,
-    recipients: trackerToEdit?.recipients?.join(", ") ?? null,
-    recipientsError: null,
-    modelId:
-      trackerToEdit?.modelId ?? CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-    providerId:
-      trackerToEdit?.providerId ??
-      CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-    temperature: trackerToEdit?.temperature ?? 0.5,
-  });
-
-  void dataSourceViews; // todo: use this
+  const [tracker, setTracker] = useState<TrackerConfigurationStateType>(
+    initialTrackerState ?? {
+      name: null,
+      nameError: null,
+      description: null,
+      descriptionError: null,
+      prompt: null,
+      promptError: null,
+      frequency: "daily",
+      frequencyError: null,
+      recipients: "",
+      recipientsError: null,
+      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      temperature: 0.5,
+      maintainedDataSources: {},
+      watchedDataSources: {},
+    }
+  );
 
   const extractEmails = (text: string): string[] => [
     ...new Set(text.split(/[\n,]+/).map((e) => e.trim())),
   ];
 
-  const onSubmit = async () => {
-    // Validate the form
-    setIsSubmitting(true);
+  const validateForm = () => {
     let hasValidationError = false;
     if (!tracker.name) {
       setTracker((t) => ({
@@ -109,6 +116,33 @@ export const TrackerBuilder = ({
       }));
       hasValidationError = true;
     }
+    return hasValidationError;
+  };
+
+  const dataSourceToPayload = (
+    {
+      dataSourceView,
+      selectedResources,
+      isSelectAll,
+    }: DataSourceViewSelectionConfiguration,
+    workspaceId: string
+  ) => ({
+    dataSourceViewId: dataSourceView.sId,
+    workspaceId,
+    filter: {
+      parents: !isSelectAll
+        ? {
+            in: selectedResources.map((r) => r.internalId),
+            not: [],
+          }
+        : null,
+    },
+  });
+
+  // todo use submit function.
+  const onSubmit = async () => {
+    setIsSubmitting(true);
+    const hasValidationError = validateForm();
     if (hasValidationError) {
       setIsSubmitting(false);
       return;
@@ -117,8 +151,8 @@ export const TrackerBuilder = ({
     let route = `/api/w/${owner.sId}/spaces/${globalSpace.sId}/trackers`;
     let method = "POST";
 
-    if (trackerToEdit) {
-      route += `/${trackerToEdit.sId}`;
+    if (initialTrackerId) {
+      route += `/${initialTrackerId}`;
       method = "PATCH";
     }
 
@@ -133,6 +167,12 @@ export const TrackerBuilder = ({
         temperature: tracker.temperature,
         frequency: tracker.frequency,
         recipients: tracker.recipients ? extractEmails(tracker.recipients) : [],
+        maintainedDataSources: Object.values(tracker.maintainedDataSources).map(
+          (ds) => dataSourceToPayload(ds, owner.sId)
+        ),
+        watchedDataSources: Object.values(tracker.watchedDataSources).map(
+          (ds) => dataSourceToPayload(ds, owner.sId)
+        ),
       }),
       headers: {
         "Content-Type": "application/json",
@@ -143,7 +183,7 @@ export const TrackerBuilder = ({
     if (!res.ok) {
       const resJson = await res.json();
       sendNotification({
-        title: trackerToEdit
+        title: initialTrackerId
           ? "Failed to update tracker"
           : "Failed to create tracker",
         description: resJson.error.message,
@@ -154,8 +194,8 @@ export const TrackerBuilder = ({
     }
 
     sendNotification({
-      title: trackerToEdit ? "Tracker updated" : "Tracker Created",
-      description: trackerToEdit
+      title: initialTrackerId ? "Tracker updated" : "Tracker Created",
+      description: initialTrackerId
         ? "Tracker updated successfully"
         : "Tracker created successfully.",
       type: "success",
@@ -170,18 +210,62 @@ export const TrackerBuilder = ({
       subscription={subscription}
       hideSidebar
       isWideMode
-      pageTitle={trackerToEdit ? "Dust - Edit Tracker" : "Dust - New Tracker"}
+      pageTitle={
+        initialTrackerId ? "Dust - Edit Tracker" : "Dust - New Tracker"
+      }
       titleChildren={
-        <AppLayoutSimpleSaveCancelTitle
-          title={trackerToEdit ? "Edit Tracker" : "New Tracker"}
-          onCancel={async () => {
-            await router.push(`/w/${owner.sId}/assistant/labs/trackers`);
-          }}
-          onSave={onSubmit}
-          isSaving={isSubmitting}
-        />
+        !edited ? (
+          <AppLayoutSimpleCloseTitle
+            title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
+            onClose={() => {
+              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+            }}
+          />
+        ) : (
+          <AppLayoutSimpleSaveCancelTitle
+            title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
+            onCancel={() => {
+              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+            }}
+            onSave={onSubmit}
+            isSaving={isSubmitting}
+          />
+        )
       }
     >
+      <TrackerBuilderDataSourceModal
+        isOpen={showMaintainedDsModal}
+        setOpen={(isOpen) => setShowMaintainedDsModal(isOpen)}
+        owner={owner}
+        onSave={async (dsConfigs) => {
+          setEdited(true);
+          setTracker((t) => ({
+            ...t,
+            maintainedDataSources: dsConfigs,
+          }));
+        }}
+        dataSourceViews={dataSourceViews}
+        initialDataSourceConfigurations={tracker.maintainedDataSources}
+        allowedSpaces={[globalSpace]}
+        viewType="documents"
+      />
+      <TrackerBuilderDataSourceModal
+        isOpen={showWatchedDsModal}
+        setOpen={(isOpen) => setShowWatchedDataSourcesModal(isOpen)}
+        owner={owner}
+        onSave={async (dsConfigs) => {
+          setEdited(true);
+          setTracker((t) => ({
+            ...t,
+            watchedDataSources: dsConfigs,
+          }));
+        }}
+        dataSourceViews={dataSourceViews}
+        initialDataSourceConfigurations={tracker.watchedDataSources}
+        allowedSpaces={[globalSpace]}
+        viewType="documents"
+      />
+
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 pb-12">
         <div className="flex">
           <div className="flex flex-grow" />
@@ -343,7 +427,7 @@ export const TrackerBuilder = ({
                 <Button
                   label="Select Documents"
                   onClick={() => {
-                    alert("Select Documents");
+                    setShowMaintainedDsModal(true);
                   }}
                   className="w-fit"
                 />
@@ -359,7 +443,7 @@ export const TrackerBuilder = ({
                 <Button
                   label="Select Documents"
                   onClick={() => {
-                    alert("Select Documents");
+                    setShowWatchedDataSourcesModal(true);
                   }}
                   className="w-fit"
                 />

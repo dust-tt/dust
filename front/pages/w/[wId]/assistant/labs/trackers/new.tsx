@@ -62,7 +62,8 @@ export default function DocumentTracker({
       subscription={subscription}
       globalSpace={globalSpace}
       dataSourceViews={dataSourceViews}
-      trackerToEdit={null}
+      initialTrackerState={null}
+      initialTrackerId={null}
     />
   );
 }

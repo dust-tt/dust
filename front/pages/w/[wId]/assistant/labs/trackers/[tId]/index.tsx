@@ -1,19 +1,24 @@
 import type {
+  DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   PlanType,
   SpaceType,
   SubscriptionType,
+  TrackerConfigurationStateType,
   TrackerConfigurationType,
+  TrackerDataSourceConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import { TrackerBuilder } from "@app/components/trackers/TrackerBuilder";
 import config from "@app/lib/api/config";
+import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
+import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   baseUrl: string;
@@ -23,7 +28,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   globalSpace: SpaceType;
   dataSourceViews: DataSourceViewType[];
-  trackerToEdit: TrackerConfigurationType;
+  initialTrackerState: TrackerConfigurationStateType;
+  initialTrackerId: string;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -55,6 +61,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     globalSpace,
   ]);
 
+  const initialTrackerState = await initializeTrackerBuilderState(
+    tracker.toJSON(),
+    dataSourceViews
+  );
+
   return {
     props: {
       baseUrl: config.getClientFacingUrl(),
@@ -64,7 +75,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       globalSpace: globalSpace.toJSON(),
-      trackerToEdit: tracker.toJSON(),
+      initialTrackerState: initialTrackerState,
+      initialTrackerId: trackerId,
     },
   };
 });
@@ -74,7 +86,8 @@ export default function DocumentTracker({
   subscription,
   globalSpace,
   dataSourceViews,
-  trackerToEdit,
+  initialTrackerState,
+  initialTrackerId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <TrackerBuilder
@@ -82,7 +95,121 @@ export default function DocumentTracker({
       subscription={subscription}
       globalSpace={globalSpace}
       dataSourceViews={dataSourceViews}
-      trackerToEdit={trackerToEdit}
+      initialTrackerState={initialTrackerState}
+      initialTrackerId={initialTrackerId}
     />
   );
 }
+
+const initializeTrackerBuilderState = async (
+  trackerToEdit: TrackerConfigurationType,
+  dataSourceViews: DataSourceViewResource[]
+): Promise<TrackerConfigurationStateType> => {
+  const maintainedDataSources = await renderDataSourcesConfigurations(
+    trackerToEdit.sId,
+    trackerToEdit.maintainedDataSources,
+    dataSourceViews
+  );
+
+  const watchedDataSources = await renderDataSourcesConfigurations(
+    trackerToEdit.sId,
+    trackerToEdit.watchedDataSources,
+    dataSourceViews
+  );
+
+  return {
+    name: trackerToEdit.name,
+    description: trackerToEdit.description,
+    prompt: trackerToEdit.prompt,
+    modelId: trackerToEdit.modelId,
+    providerId: trackerToEdit.providerId,
+    temperature: trackerToEdit.temperature,
+    frequency: trackerToEdit.frequency ?? "daily",
+    recipients: trackerToEdit.recipients?.join(",") || "",
+    maintainedDataSources,
+    watchedDataSources,
+    nameError: null,
+    descriptionError: null,
+    promptError: null,
+    frequencyError: null,
+    recipientsError: null,
+  };
+};
+
+const renderDataSourcesConfigurations = async (
+  trackerId: string,
+  dataSourceConfigs: TrackerDataSourceConfigurationType[],
+  dataSourceViews: DataSourceViewResource[]
+): Promise<DataSourceViewSelectionConfigurations> => {
+  const selectedResources = dataSourceConfigs.map((ds) => ({
+    dataSourceViewId: ds.dataSourceViewId,
+    resources: ds.filter.parents?.in ?? null,
+    isSelectAll: !ds.filter.parents,
+  }));
+
+  const dataSourceConfigurationsArray = await Promise.all(
+    selectedResources.map(async (sr) => {
+      const dataSourceView = dataSourceViews.find(
+        (dsv) => dsv.sId === sr.dataSourceViewId
+      );
+      if (!dataSourceView) {
+        throw new Error(
+          `Could not find DataSourceView with id ${sr.dataSourceViewId}`
+        );
+      }
+
+      const serializedDataSourceView = dataSourceView.toJSON();
+
+      if (!dataSourceView.dataSource.connectorId || !sr.resources) {
+        return {
+          dataSourceView: serializedDataSourceView,
+          selectedResources: [],
+          isSelectAll: sr.isSelectAll,
+        };
+      }
+
+      const contentNodesRes = await getContentNodesForDataSourceView(
+        dataSourceView,
+        {
+          internalIds: sr.resources,
+          viewType: "documents",
+        }
+      );
+
+      if (contentNodesRes.isErr()) {
+        logger.error(
+          {
+            trackerId: trackerId,
+            dataSourceView: dataSourceView.toTraceJSON(),
+            error: contentNodesRes.error,
+            internalIds: sr.resources,
+            workspace: {
+              id: dataSourceView.workspaceId,
+            },
+          },
+          "Tracker Builder: Error fetching content nodes for documents."
+        );
+
+        return {
+          dataSourceView: serializedDataSourceView,
+          selectedResources: [],
+          isSelectAll: sr.isSelectAll,
+        };
+      }
+
+      return {
+        dataSourceView: serializedDataSourceView,
+        selectedResources: contentNodesRes.value.nodes,
+        isSelectAll: sr.isSelectAll,
+      };
+    })
+  );
+
+  return dataSourceConfigurationsArray.reduce(
+    (acc, curr) => ({
+      ...acc,
+      [curr.dataSourceView.sId]: curr,
+    }),
+    {} as DataSourceViewSelectionConfigurations
+  );
+};

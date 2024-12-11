@@ -54,7 +54,7 @@ jobs:
             --dockerfile-path=./dante.Dockerfile \
             --working-dir=./ \
             --gcloud-ignore-file=../.gcloudignore-dante \
-            --dust-client-facing-url=https://dust.tt \ 
+            --dust-client-facing-url=https://dust.tt \
             --region=us-central1
           cd ..
 

@@ -1,5 +1,6 @@
 import { ModelId } from "../shared/model_id";
 import { ioTsEnum } from "../shared/utils/iots_utils";
+import { DataSourceViewSelectionConfigurations } from "./data_source_view";
 import { ModelIdType, ModelProviderIdType } from "./lib/assistant";
 import { SpaceType } from "./space";
 
@@ -13,9 +14,21 @@ export type TrackerConfigurationType = {
   providerId: ModelProviderIdType;
   temperature: number;
   prompt: string | null;
-  frequency: string | null;
+  frequency: string;
   recipients: string[];
   space: SpaceType;
+  maintainedDataSources: TrackerDataSourceConfigurationType[];
+  watchedDataSources: TrackerDataSourceConfigurationType[];
+};
+
+export type TrackerDataSourceConfigurationType = {
+  dataSourceViewId: string;
+  filter: {
+    parents: {
+      in: string[];
+      not: string[];
+    } | null;
+  };
 };
 
 export type TrackerConfigurationStateType = {
@@ -32,6 +45,8 @@ export type TrackerConfigurationStateType = {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
   temperature: number;
+  maintainedDataSources: DataSourceViewSelectionConfigurations;
+  watchedDataSources: DataSourceViewSelectionConfigurations;
 };
 
 export const TRACKER_FREQUENCY_TYPES: TrackerFrequencyType[] = [
