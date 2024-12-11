@@ -610,7 +610,6 @@ impl DataSource {
         mime_type: Option<String>,
         timestamp: Option<u64>,
         tags: &Vec<String>,
-        parent_id: Option<String>,
         parents: &Vec<String>,
         source_url: &Option<String>,
         text: Section,

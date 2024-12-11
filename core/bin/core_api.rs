@@ -1700,9 +1700,6 @@ async fn data_sources_documents_upsert(
                         payload.mime_type,
                         payload.timestamp,
                         &payload.tags,
-                        payload
-                            .parent_id
-                            .or_else(|| payload.parents.get(1).cloned()),
                         &payload.parents,
                         &payload.source_url,
                         payload.section,
