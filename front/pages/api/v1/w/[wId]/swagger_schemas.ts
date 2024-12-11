@@ -471,6 +471,12 @@
  *           description: Array of tags associated with the table
  *           items:
  *             type: string
+ *         parent_id:
+ *           type: string
+ *           description: ID of the table parent
+ *           items:
+ *             type: string
+ *           example: "1234f4567c"
  *         parents:
  *           type: array
  *           description: Array of parent table IDs
@@ -594,6 +600,12 @@
  *           items:
  *             type: string
  *           example: ["customer_support", "faq"]
+ *         parent_id:
+ *           type: string
+ *           description: ID of the document parent
+ *           items:
+ *             type: string
+ *           example: "1234f4567c"
  *         parents:
  *           type: array
  *           items:

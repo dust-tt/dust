@@ -236,6 +236,7 @@ async function handler(
             timestamp: table.timestamp,
             tags: table.tags,
             parents: table.parents,
+            parent_id: table.parent_id,
             mime_type: table.mime_type,
             title: table.title,
           };

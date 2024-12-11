@@ -268,6 +268,7 @@ const CoreAPIDocumentSchema = z.object({
   created: z.number(),
   document_id: z.string(),
   timestamp: z.number(),
+  parent_id: z.string().nullable().optional(),
   tags: z.array(z.string()),
   source_url: z.string().nullable().optional(),
   hash: z.string(),
@@ -318,6 +319,7 @@ const CoreAPITablePublicSchema = z.object({
   timestamp: z.number(),
   tags: z.array(z.string()),
   parents: z.array(z.string()),
+  parent_id: z.string().nullable().optional(),
   mime_type: z.string().optional(),
   title: z.string().optional(),
 });
