@@ -24,8 +24,9 @@ type ProviderMigrator = {
   cleaner: (parents: string[]) => string[];
 };
 
-const DOCUMENT_QUERY_BATCH_SIZE = 128;
+const QUERY_BATCH_SIZE = 128;
 const DOCUMENT_CONCURRENCY = 8;
+const TABLE_CONCURRENCY = 16;
 
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: {
@@ -63,7 +64,6 @@ async function migrateDocument({
     id: number;
     parents: string[];
     document_id: string;
-    hash: string;
   };
   execute: boolean;
 }) {
@@ -110,7 +110,6 @@ async function migrateTable({
     id: number;
     parents: string[];
     table_id: string;
-    hash: string;
   };
   execute: boolean;
 }) {
@@ -175,20 +174,15 @@ async function migrateDataSource({
 
   for (;;) {
     const [coreDocumentRows] = (await corePrimary.query(
-      "SELECT id, parents, document_id, hash FROM data_sources_documents " +
+      "SELECT id, parents, document_id FROM data_sources_documents " +
         "WHERE data_source = ? AND id > ? ORDER BY id ASC LIMIT ?",
       {
-        replacements: [
-          coreDataSourceId,
-          nextDocumentId,
-          DOCUMENT_QUERY_BATCH_SIZE,
-        ],
+        replacements: [coreDataSourceId, nextDocumentId, QUERY_BATCH_SIZE],
       }
     )) as {
       id: number;
       parents: string[];
       document_id: string;
-      hash: string;
     }[][];
 
     if (coreDocumentRows.length === 0) {
@@ -220,6 +214,48 @@ async function migrateDataSource({
   }
 
   // For all the tables in the data source (can be big).
+  let nextTableId = 0;
+
+  for (;;) {
+    const [coreTableRows] = (await corePrimary.query(
+      "SELECT id, parents, table_id FROM data_sources_documents " +
+        "WHERE data_source = ? AND id > ? ORDER BY id ASC LIMIT ?",
+      {
+        replacements: [coreDataSourceId, nextTableId, QUERY_BATCH_SIZE],
+      }
+    )) as {
+      id: number;
+      parents: string[];
+      table_id: string;
+    }[][];
+
+    if (coreTableRows.length === 0) {
+      break;
+    }
+
+    // concurrentExecutor on documents
+    try {
+      await concurrentExecutor(
+        coreTableRows,
+        (coreTable) =>
+          migrateTable({
+            action,
+            migrator,
+            dataSource,
+            coreTable,
+            execute,
+          }),
+        { concurrency: TABLE_CONCURRENCY }
+      );
+    } catch (e) {
+      logger.error(
+        `ERROR: error=${e} nextDataSourceId=${dataSource.id} nextTableId=${nextTableId}`
+      );
+      throw e;
+    }
+
+    nextTableId = coreTableRows[coreTableRows.length - 1].id;
+  }
 }
 
 async function migrateAll({
