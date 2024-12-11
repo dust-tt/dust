@@ -50,7 +50,7 @@ import {
   DocumentTrackerChangeSuggestion,
   TrackedDocument,
   TrackerConfigurationModel,
-  TrackerDataSouceConfigurationModel,
+  TrackerDataSourceConfigurationModel,
   TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -129,7 +129,7 @@ async function main() {
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
   await TrackerConfigurationModel.sync({ alter: true });
-  await TrackerDataSouceConfigurationModel.sync({ alter: true });
+  await TrackerDataSourceConfigurationModel.sync({ alter: true });
   await TrackerGenerationModel.sync({ alter: true });
 
   await Plan.sync({ alter: true });

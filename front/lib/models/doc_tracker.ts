@@ -126,7 +126,7 @@ TrackerConfigurationModel.belongsTo(UserModel, {
   foreignKey: { allowNull: true },
 });
 
-export class TrackerDataSouceConfigurationModel extends SoftDeletableModel<TrackerDataSouceConfigurationModel> {
+export class TrackerDataSourceConfigurationModel extends SoftDeletableModel<TrackerDataSourceConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -144,7 +144,7 @@ export class TrackerDataSouceConfigurationModel extends SoftDeletableModel<Track
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
-TrackerDataSouceConfigurationModel.init(
+TrackerDataSourceConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -179,27 +179,28 @@ TrackerDataSouceConfigurationModel.init(
   }
 );
 
-TrackerConfigurationModel.hasMany(TrackerDataSouceConfigurationModel, {
+TrackerConfigurationModel.hasMany(TrackerDataSourceConfigurationModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
+  as: "dataSourceConfigurations",
 });
-TrackerDataSouceConfigurationModel.belongsTo(TrackerConfigurationModel, {
+TrackerDataSourceConfigurationModel.belongsTo(TrackerConfigurationModel, {
   foreignKey: { allowNull: false },
 });
 
-DataSourceModel.hasMany(TrackerDataSouceConfigurationModel, {
+DataSourceModel.hasMany(TrackerDataSourceConfigurationModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-TrackerDataSouceConfigurationModel.belongsTo(DataSourceModel, {
+TrackerDataSourceConfigurationModel.belongsTo(DataSourceModel, {
   foreignKey: { allowNull: false },
 });
 
-DataSourceViewModel.hasMany(TrackerDataSouceConfigurationModel, {
+DataSourceViewModel.hasMany(TrackerDataSourceConfigurationModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-TrackerDataSouceConfigurationModel.belongsTo(DataSourceViewModel, {
+TrackerDataSourceConfigurationModel.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: false },
 });
 

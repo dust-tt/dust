@@ -1,15 +1,19 @@
-import type { ModelId, Result, TrackerConfigurationType } from "@dust-tt/types";
+import type {
+  ModelId,
+  Result,
+  TrackerConfigurationType,
+  TrackerDataSourceConfigurationType,
+} from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { TrackerConfigurationModel } from "@app/lib/models/doc_tracker";
+import {
+  TrackerConfigurationModel,
+  TrackerDataSourceConfigurationModel,
+} from "@app/lib/models/doc_tracker";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -27,32 +31,91 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   static model: ModelStatic<TrackerConfigurationModel> =
     TrackerConfigurationModel;
 
+  readonly dataSourceConfigurations: TrackerDataSourceConfigurationModel[];
+
   constructor(
     model: ModelStatic<TrackerConfigurationModel>,
-    blob: Attributes<TrackerConfigurationModel>,
+    blob: Attributes<TrackerConfigurationModel> & {
+      dataSourceConfigurations: TrackerDataSourceConfigurationModel[];
+    },
     space: SpaceResource
   ) {
     super(TrackerConfigurationResource.model, blob, space);
+    this.dataSourceConfigurations = blob.dataSourceConfigurations;
   }
 
   static async makeNew(
     auth: Authenticator,
     blob: CreationAttributes<TrackerConfigurationModel>,
-    space: SpaceResource,
-    transaction?: Transaction
+    maintainedDataSources: TrackerDataSourceConfigurationType[],
+    watchedDataSources: TrackerDataSourceConfigurationType[],
+    space: SpaceResource
   ) {
-    // TODO Daph: Create all related resources.
-    const tracker = await TrackerConfigurationModel.create(
-      {
-        ...blob,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: space.id,
-        userId: auth.user()?.id ?? null,
-      },
-      { transaction }
-    );
+    return frontSequelize.transaction(async (transaction) => {
+      const tracker = await TrackerConfigurationModel.create(
+        {
+          ...blob,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          vaultId: space.id,
+          userId: auth.user()?.id ?? null,
+        },
+        { transaction }
+      );
 
-    return new this(TrackerConfigurationResource.model, tracker.get(), space);
+      const createdMaintainedDs = await Promise.all(
+        maintainedDataSources.map(async (m) => {
+          const dataSourceView = await DataSourceViewResource.fetchById(
+            auth,
+            m.dataSourceViewId
+          );
+          return TrackerDataSourceConfigurationModel.create(
+            {
+              scope: "maintained",
+              parentsIn: m.filter.parents?.in ?? null,
+              parentsNotIn: m.filter.parents?.not ?? null,
+              trackerConfigurationId: tracker.id,
+              dataSourceViewId: dataSourceView.id,
+              dataSourceId: dataSourceView.dataSourceId,
+            },
+            { transaction }
+          );
+        })
+      );
+
+      const createdWatchedDs = await Promise.all(
+        watchedDataSources.map(async (w) => {
+          const dataSourceView = await DataSourceViewResource.fetchById(
+            auth,
+            w.dataSourceViewId
+          );
+          return TrackerDataSourceConfigurationModel.create(
+            {
+              scope: "watched",
+              parentsIn: w.filter.parents?.in ?? null,
+              parentsNotIn: w.filter.parents?.not ?? null,
+              trackerConfigurationId: tracker.id,
+              dataSourceViewId: dataSourceView.id,
+              dataSourceId: dataSourceView.dataSourceId,
+            },
+            { transaction }
+          );
+        })
+      );
+
+      const dataSourceConfigurations = [
+        ...createdMaintainedDs,
+        ...createdWatchedDs,
+      ];
+
+      return new this(
+        TrackerConfigurationResource.model,
+        {
+          ...tracker.get(),
+          dataSourceConfigurations,
+        },
+        space
+      );
+    });
   }
 
   // sId.
@@ -81,19 +144,68 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
   async updateConfig(
     auth: Authenticator,
-    blob: Partial<CreationAttributes<TrackerConfigurationModel>>
+    blob: Partial<CreationAttributes<TrackerConfigurationModel>>,
+    maintainedDataSources: TrackerDataSourceConfigurationType[],
+    watchedDataSources: TrackerDataSourceConfigurationType[]
   ): Promise<Result<TrackerConfigurationResource, Error>> {
     assert(this.canWrite(auth), "Unauthorized write attempt");
 
-    await this.update(blob);
-    const updatedTracker = await TrackerConfigurationResource.fetchById(
-      auth,
-      this.sId
-    );
-    if (updatedTracker) {
-      return new Ok(updatedTracker);
-    }
-    return new Err(new Error("Failed to update tracker."));
+    return frontSequelize.transaction(async (transaction) => {
+      await this.update(blob);
+
+      await TrackerDataSourceConfigurationModel.destroy({
+        where: {
+          trackerConfigurationId: this.id,
+        },
+        hardDelete: true,
+        transaction,
+      });
+
+      for (const m of maintainedDataSources) {
+        const dataSourceView = await DataSourceViewResource.fetchById(
+          auth,
+          m.dataSourceViewId
+        );
+        await TrackerDataSourceConfigurationModel.create(
+          {
+            scope: "maintained",
+            parentsIn: m.filter.parents?.in ?? null,
+            parentsNotIn: m.filter.parents?.not ?? null,
+            trackerConfigurationId: this.id,
+            dataSourceViewId: dataSourceView.id,
+            dataSourceId: dataSourceView.dataSourceId,
+          },
+          { transaction }
+        );
+      }
+
+      for (const w of watchedDataSources) {
+        const dataSourceView = await DataSourceViewResource.fetchById(
+          auth,
+          w.dataSourceViewId
+        );
+        await TrackerDataSourceConfigurationModel.create(
+          {
+            scope: "watched",
+            parentsIn: w.filter.parents?.in ?? null,
+            parentsNotIn: w.filter.parents?.not ?? null,
+            trackerConfigurationId: this.id,
+            dataSourceViewId: dataSourceView.id,
+            dataSourceId: dataSourceView.dataSourceId,
+          },
+          { transaction }
+        );
+      }
+
+      const updatedTracker = await TrackerConfigurationResource.fetchById(
+        auth,
+        this.sId
+      );
+      if (updatedTracker) {
+        return new Ok(updatedTracker);
+      }
+      return new Err(new Error("Failed to update tracker."));
+    });
   }
 
   // Fetching.
@@ -102,8 +214,16 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     auth: Authenticator,
     options?: ResourceFindOptions<TrackerConfigurationModel>
   ) {
+    // @todo(DOC_TRACKER) Fix to remove the ts-expect-error.
+    // @ts-expect-error Resource with space does not like my include but it works.
     const trackers = await this.baseFetchWithAuthorization(auth, {
       ...options,
+      includes: [
+        {
+          model: TrackerDataSourceConfigurationModel,
+          as: "dataSourceConfigurations",
+        },
+      ],
     });
 
     // This is what enforces the accessibility to an app.
@@ -117,6 +237,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     ids: string[]
   ): Promise<TrackerConfigurationResource[]> {
     const modelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
+
     return this.baseFetch(auth, {
       where: {
         id: modelIds,
@@ -129,7 +250,6 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     id: string
   ): Promise<TrackerConfigurationResource | null> {
     const [tracker] = await this.fetchByIds(auth, [id]);
-
     return tracker ?? null;
   }
 
@@ -186,6 +306,22 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   // Serialization.
 
   toJSON(): TrackerConfigurationType {
+    const dataSourceToJSON = (dsc: TrackerDataSourceConfigurationModel) => ({
+      dataSourceViewId: makeSId("data_source_view", {
+        id: dsc.dataSourceViewId,
+        workspaceId: this.workspaceId,
+      }),
+      filter: {
+        parents:
+          dsc.parentsIn === null && dsc.parentsNotIn === null
+            ? null
+            : {
+                in: dsc.parentsIn ?? [],
+                not: dsc.parentsNotIn ?? [],
+              },
+      },
+    });
+
     return {
       id: this.id,
       sId: this.sId,
@@ -196,9 +332,15 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       providerId: this.providerId,
       temperature: this.temperature,
       prompt: this.prompt,
-      frequency: this.frequency,
+      frequency: this.frequency ?? "daily",
       recipients: this.recipients ?? [],
       space: this.space.toJSON(),
+      maintainedDataSources: this.dataSourceConfigurations
+        .filter((dsc) => dsc.scope === "maintained")
+        .map(dataSourceToJSON),
+      watchedDataSources: this.dataSourceConfigurations
+        .filter((dsc) => dsc.scope === "watched")
+        .map(dataSourceToJSON),
     };
   }
 }
