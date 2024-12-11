@@ -384,6 +384,13 @@ async function migrateAll({
 
   for (const dataSource of dataSources) {
     if (dataSource.id >= nextDataSourceId) {
+      logger.info(
+        {
+          dataSourceId: dataSource.id,
+          connectorProvider: dataSource.connectorProvider,
+        },
+        "MIGRATING"
+      );
       await migrateDataSource({
         migrator,
         action,
