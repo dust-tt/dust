@@ -133,16 +133,22 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       }
       const channelId = parts[1];
 
-      if (parents.length !== 3) {
-        throw new Error("Parents len != 3");
+      if (parents.length === 2) {
+        assert(parents[0] === nodeId, "parents[0] !== nodeId");
+        assert(
+          parents[1] === `slack-channel-${channelId}`,
+          "parents[1] !== slack-channel-channelId"
+        );
+      } else if (parents.length === 3) {
+        assert(parents[0] === nodeId, "parents[0] !== nodeId");
+        assert(parents[1] === channelId, "parents[1] !== channelId");
+        assert(
+          parents[2] === `slack-channel-${channelId}`,
+          "parents[2] !== slack-channel-channelId"
+        );
+      } else {
+        throw new Error("Parents len != 2/3");
       }
-
-      assert(parents[0] === nodeId, "parents[0] !== nodeId");
-      assert(parents[1] === channelId, "parents[1] !== channelId");
-      assert(
-        parents[2] === `slack-channel-${channelId}`,
-        "parents[2] !== slack-channel-channelId"
-      );
 
       return [nodeId, `slack-channel-${channelId}`];
     },
