@@ -1585,6 +1585,7 @@ async fn data_sources_documents_versions_list(
                 None => None,
             },
             &query.latest_hash,
+            true,
         )
         .await
     {
@@ -1787,6 +1788,7 @@ async fn data_sources_documents_list(
             &document_ids,
             limit_offset,
             true, // remove system tags
+            true,
         )
         .await
     {
