@@ -113,6 +113,17 @@ async function handler(
         });
       }
 
+      const { timestamp, parent_id: parentId, parents, title } = r.data;
+      if (parentId && parents && parents[1] !== parentId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: parents[1] and parent_id should be equal`,
+          },
+        });
+      }
+
       const statsDTags = [
         `data_source_id:${dataSource.id}`,
         `workspace_id:${owner.sId}`,
@@ -130,10 +141,10 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         folderId: fId,
-        timestamp: r.data.timestamp || null,
-        parentId: r.data.parent_id || null,
-        parents: r.data.parents || [fId],
-        title: r.data.title,
+        timestamp: timestamp || null,
+        parentId: parentId || null,
+        parents: parents || [fId],
+        title: title,
       });
 
       if (upsertRes.isErr()) {
