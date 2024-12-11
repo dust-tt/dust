@@ -5,8 +5,8 @@ steps:
       depot build \
         --project 3vz0lnf16v \
         --provenance=false \
-        -t us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA} \
-        -t us-central1-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
+        -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA} \
+        -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
         -f ${_DOCKERFILE_PATH} \
         --build-arg COMMIT_HASH=${SHORT_SHA} \
         --build-arg NEXT_PUBLIC_VIZ_URL=https://viz.dust.tt \
