@@ -1990,7 +1990,8 @@ export async function renderAndUpsertPageFromCache({
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Fetching resource parents."
     );
-    const parents = await getParents(
+
+    const parentPageOrDbIds = await getParents(
       connectorId,
       pageId,
       [],
@@ -1999,6 +2000,10 @@ export async function renderAndUpsertPageFromCache({
         await heartbeat();
       }
     );
+
+    // TODO(kw_search) remove legacy
+    const legacyParentIds = parentPageOrDbIds;
+    const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
 
     const content = await renderDocumentTitleAndContent({
       dataSourceConfig: dsConfig,
@@ -2027,7 +2032,8 @@ export async function renderAndUpsertPageFromCache({
         updatedTime: updatedAt.getTime(),
         parsedProperties,
       }),
-      parents,
+      // TODO(kw_search) remove legacy
+      parents: [...legacyParentIds, ...parentIds],
       loggerArgs,
       upsertContext: {
         sync_type: isFullSync ? "batch" : "incremental",
@@ -2505,13 +2511,17 @@ export async function upsertDatabaseStructuredDataFromCache({
 
   const upsertAt = new Date();
 
-  const parents = await getParents(
+  const parentPageOrDbIds = await getParents(
     connector.id,
     databaseId,
     [],
     runTimestamp.toString(),
     async () => heartbeat()
   );
+
+  // TODO(kw_search) remove legacy
+  const legacyParentIds = parentPageOrDbIds;
+  const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
 
   localLogger.info("Upserting Notion Database as Table.");
   await ignoreTablesError(
@@ -2525,7 +2535,8 @@ export async function upsertDatabaseStructuredDataFromCache({
         loggerArgs,
         // We overwrite the whole table since we just fetched all child pages.
         truncate: true,
-        parents,
+        // TODO(kw_search) remove legacy
+        parents: [...legacyParentIds, ...parentIds],
         title: dbModel.title ?? "Untitled Notion Database",
         mimeType: "application/vnd.dust.notion.database",
       }),
@@ -2576,7 +2587,8 @@ export async function upsertDatabaseStructuredDataFromCache({
         // we currently don't have it because we don't fetch the DB object from notion.
         timestampMs: upsertAt.getTime(),
         tags: [`title:${databaseName}`, "is_database:true"],
-        parents: parents,
+        // TODO(kw_search) remove legacy
+        parents: [...legacyParentIds, ...parentIds],
         loggerArgs,
         upsertContext: {
           sync_type: "batch",
