@@ -1,4 +1,5 @@
 import {
+  ApiKeyCredentials,
   ConnectionCredentials,
   CredentialsProvider,
   OauthAPIGetCredentialsResponse,
@@ -152,7 +153,7 @@ export class OAuthAPI {
     provider: CredentialsProvider;
     userId: string;
     workspaceId: string;
-    credentials: ConnectionCredentials;
+    credentials: ConnectionCredentials | ApiKeyCredentials;
   }): Promise<OAuthAPIResponse<OauthAPIPostCredentialsResponse>> {
     const response = await this._fetchWithError(`${this._url}/credentials`, {
       method: "POST",

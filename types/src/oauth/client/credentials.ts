@@ -1,6 +1,7 @@
 import { LoggerInterface } from "../../shared/logger";
 import { Result } from "../../shared/result";
 import {
+  ApiKeyCredentials,
   ConnectionCredentials,
   CredentialsProvider,
   OauthAPIGetCredentialsResponse,
@@ -21,7 +22,7 @@ export async function postConnectionCredentials({
   provider: CredentialsProvider;
   workspaceId: string;
   userId: string;
-  credentials: ConnectionCredentials;
+  credentials: ConnectionCredentials | ApiKeyCredentials;
 }): Promise<Result<OauthAPIPostCredentialsResponse, OAuthAPIError>> {
   const res = await new OAuthAPI(config, logger).postCredentials({
     provider,

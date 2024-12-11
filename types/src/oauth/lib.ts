@@ -56,7 +56,7 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
 
 // Credentials Providers
 
-export const CREDENTIALS_PROVIDERS = ["snowflake"] as const;
+export const CREDENTIALS_PROVIDERS = ["snowflake", "modjo"] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
 export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
@@ -74,6 +74,11 @@ export const SnowflakeCredentialsSchema = t.type({
 });
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
 export type ConnectionCredentials = SnowflakeCredentials;
+
+export const ApiCredentialsSchema = t.type({
+  apiKey: t.string,
+});
+export type ApiKeyCredentials = t.TypeOf<typeof ApiCredentialsSchema>;
 
 // POST Credentials
 
@@ -101,6 +106,6 @@ export type OauthAPIGetCredentialsResponse = {
       workspace_id: string;
       user_id: string;
     };
-    content: ConnectionCredentials;
+    content: ConnectionCredentials | ApiKeyCredentials;
   };
 };
