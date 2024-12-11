@@ -2004,7 +2004,7 @@
                     },
                     "description": "Tags to associate with the document."
                   },
-                  "parentId": {
+                  "parent_id": {
                     "type": "string",
                     "description": "Direct parent document ID to associate with the document."
                   },
@@ -2225,14 +2225,14 @@
                 "properties": {
                   "parentId": {
                     "type": "string",
-                    "description": "Direct parent document IDs"
+                    "description": "Direct parent ID of the document"
                   },
                   "parents": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     },
-                    "description": "Array of parent document IDs"
+                    "description": "Array of parent IDs for this document"
                   }
                 }
               }
@@ -3190,7 +3190,7 @@
                     },
                     "description": "Parent tables of this table"
                   },
-                  "parentId": {
+                  "parent_id": {
                     "type": "string",
                     "description": "Direct parent id of this table"
                   },
