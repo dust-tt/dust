@@ -51,8 +51,19 @@ export const getCredentials = async ({
     logger.error({ credentialsId }, "Failed to retrieve credentials");
     return new Err(Error("Failed to retrieve credentials"));
   }
+  // Narrow the type of credentials to just the username/password variant
+  const credentials = credentialsRes.value.credential.content;
+  if ("apiKey" in credentials) {
+    logger.error(
+      { credentialsId },
+      "Invalid credentials type - expected username/password credentials"
+    );
+    return new Err(
+      Error("Invalid credentials type - expected username/password credentials")
+    );
+  }
   return new Ok({
-    credentials: credentialsRes.value.credential.content,
+    credentials,
   });
 };
 
@@ -86,8 +97,19 @@ export const getConnectorAndCredentials = async ({
     logger.error({ connectorId }, "Failed to retrieve credentials");
     return new Err(Error("Failed to retrieve credentials"));
   }
+  // Narrow the type of credentials to just the username/password variant
+  const credentials = credentialsRes.value.credential.content;
+  if ("apiKey" in credentials) {
+    logger.error(
+      { connectorId },
+      "Invalid credentials type - expected username/password credentials"
+    );
+    return new Err(
+      Error("Invalid credentials type - expected username/password credentials")
+    );
+  }
   return new Ok({
     connector,
-    credentials: credentialsRes.value.credential.content,
+    credentials,
   });
 };
