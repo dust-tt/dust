@@ -388,9 +388,10 @@ export async function fetchZendeskTicketCount({
 }: {
   brandSubdomain: string;
   accessToken: string;
-  retentionPeriodDays: number;
-  query?: string | null;
-}): Promise<number> {
+} & (
+  | { retentionPeriodDays?: number; query: string }
+  | { retentionPeriodDays: number; query?: null }
+)): Promise<number> {
   query ||= `type:ticket status:solved updated>${retentionPeriodDays}days`;
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(query)}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
