@@ -3,15 +3,6 @@ name: Deploy Front Edge
 on:
   workflow_dispatch:
     inputs:
-      regions:
-        description: "Regions to deploy to"
-        required: true
-        default: "us-central1"
-        type: choice
-        options:
-          - "us-central1"
-          - "europe-west1"
-          - "us-central1,europe-west1"
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -30,12 +21,13 @@ env:
   IMAGE_NAME: front-edge
 
 jobs:
-  notify-start:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    outputs:
-      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -59,42 +51,20 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
-  build:
-    needs: notify-start
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        region: ${{ fromJson(format('[{0}]', join(split(github.event.inputs.regions, ','), ','))) }}
-      fail-fast: true
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
           credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
 
-      - name: Build image for ${{ matrix.region }}
+      - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
             --image-name=$IMAGE_NAME \
             --dockerfile-path=./front/Dockerfile \
             --working-dir=./ \
-            --dust-client-facing-url=https://front-edge.dust.tt \
-            --region=${{ matrix.region }}
+            --dust-client-facing-url=https://front-edge.dust.tt
 
-  deploy:
-    needs: [notify-start, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Generate a token
         id: generate-token
         uses: actions/create-github-app-token@v1
@@ -104,6 +74,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: |
             dust-infra
+
       - name: Trigger dust-infra workflow
         uses: actions/github-script@v6
         with:
@@ -114,20 +85,22 @@ jobs:
               repo: 'dust-infra',
               event_type: 'trigger-component-deploy',
               client_payload: {
-                regions: '${{ github.event.inputs.regions }}',
+                regions: 'us-central1',
                 component: 'front-edge',
                 image_tag: '${{ steps.short_sha.outputs.short_sha }}',
-                slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
+                slack_thread_ts: "${{ steps.build_message.outputs.thread_ts }}",
                 slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}'
               }
             });
+
       - name: Notify Failure
         if: failure()
         uses: ./.github/actions/slack-notify
         with:
           step: "failure"
+          blocked: ${{ steps.check_deployment_blocked.outputs.blocked }}
           component: "front-edge"
           image_tag: ${{ steps.short_sha.outputs.short_sha }}
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
+          thread_ts: "${{ steps.build_message.outputs.thread_ts }}"
