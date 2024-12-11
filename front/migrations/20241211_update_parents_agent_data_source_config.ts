@@ -81,11 +81,10 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
 
 makeScript(
   {
-    action: {
-      type: "string",
-    },
+    action: { type: "string" },
+    nextId: { type: "number", default: 0 },
   },
-  async ({ execute, action }, logger) => {
+  async ({ execute, action, nextId }, logger) => {
     if (!isMigratorAction(action)) {
       console.error(
         `Invalid action ${action}, supported actions are "transform" and "clean"`
@@ -93,7 +92,7 @@ makeScript(
       return;
     }
 
-    let lastSeenId = 0;
+    let lastSeenId = nextId;
 
     for (;;) {
       const configurations = await AgentDataSourceConfiguration.findAll({
