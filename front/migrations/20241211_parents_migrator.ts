@@ -138,11 +138,13 @@ async function migrateDocument({
     }
 
     logger.info(
-      `LIVE: document_id=${coreDocument.document_id} parents=${newParents}`
+      `LIVE: document_id=${coreDocument.document_id}` +
+        `\nfrom_parents=${coreDocument.parents.join(", ")}\n  to_parents=${newParents.join(", ")}`
     );
   } else {
     logger.info(
-      `DRY: document_id=${coreDocument.document_id} parents=${newParents}`
+      `DRY: document_id=${coreDocument.document_id}` +
+        `\nfrom_parents=${coreDocument.parents.join(", ")}\n  to_parents=${newParents.join(", ")}`
     );
   }
 
@@ -191,9 +193,15 @@ async function migrateTable({
       throw new Error(updateRes.error.message);
     }
 
-    logger.info(`LIVE: table_id=${coreTable.table_id} parents=${newParents}`);
+    logger.info(
+      `LIVE: table_id=${coreTable.table_id}` +
+        `\nfrom_parents=${coreTable.parents.join(", ")}\n  to_parents=${newParents.join(", ")}`
+    );
   } else {
-    logger.info(`DRY: table_id=${coreTable.table_id} parents=${newParents}`);
+    logger.info(
+      `DRY: table_id=${coreTable.table_id}` +
+        `\nfrom_parents=${coreTable.parents.join(", ")}\n  to_parents=${newParents.join(", ")}`
+    );
   }
 
   return new Ok(undefined);
@@ -279,7 +287,7 @@ async function migrateDataSource({
 
   for (;;) {
     const [coreTableRows] = (await corePrimary.query(
-      "SELECT id, parents, table_id FROM data_sources_documents " +
+      "SELECT id, parents, table_id FROM tables " +
         "WHERE data_source = ? AND id > ? ORDER BY id ASC LIMIT ?",
       {
         replacements: [coreDataSourceId, nextTableId, QUERY_BATCH_SIZE],
