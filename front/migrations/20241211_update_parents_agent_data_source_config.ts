@@ -1,4 +1,5 @@
 import type { ConnectorProvider } from "@dust-tt/types";
+import { concurrentExecutor } from "@dust-tt/types";
 import assert from "assert";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -19,6 +20,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   confluence: null,
   intercom: null,
 };
+
 makeScript({}, async ({ execute }, logger) => {
   // pagination + concurrency
   const agentDataSourceConfigurations =
@@ -34,34 +36,38 @@ makeScript({}, async ({ execute }, logger) => {
       ],
     });
 
-  for (const agentDataSourceConfiguration of agentDataSourceConfigurations) {
-    assert(
-      agentDataSourceConfiguration.dataSource.connectorProvider,
-      "connectorProvider is required"
-    );
-    const migrator =
-      migrators[agentDataSourceConfiguration.dataSource.connectorProvider];
-    assert(migrator, "No migrator found for the connector provider");
-
-    const { parentsIn, parentsNotIn } = agentDataSourceConfiguration;
-
-    if (execute) {
-      await agentDataSourceConfiguration.update({
-        parentsIn: parentsIn && migrator(parentsIn),
-        parentsNotIn: parentsNotIn && migrator(parentsNotIn),
-      });
-    } else {
-      logger.info(
-        {
-          parentsIn,
-          newParentsIn: parentsIn && migrator(parentsIn),
-          parentsNotIn,
-          newParentsNotIn: parentsNotIn && migrator(parentsNotIn),
-        },
-        "Would update agent data source configuration"
+  await concurrentExecutor(
+    agentDataSourceConfigurations,
+    async (agentDataSourceConfiguration) => {
+      assert(
+        agentDataSourceConfiguration.dataSource.connectorProvider,
+        "connectorProvider is required"
       );
-    }
-  }
+      const migrator =
+        migrators[agentDataSourceConfiguration.dataSource.connectorProvider];
+      assert(migrator, "No migrator found for the connector provider");
+
+      const { parentsIn, parentsNotIn } = agentDataSourceConfiguration;
+
+      if (execute) {
+        await agentDataSourceConfiguration.update({
+          parentsIn: parentsIn && migrator(parentsIn),
+          parentsNotIn: parentsNotIn && migrator(parentsNotIn),
+        });
+      } else {
+        logger.info(
+          {
+            parentsIn,
+            newParentsIn: parentsIn && migrator(parentsIn),
+            parentsNotIn,
+            newParentsNotIn: parentsNotIn && migrator(parentsNotIn),
+          },
+          "Would update agent data source configuration"
+        );
+      }
+    },
+    { concurrency: 10 }
+  );
 
   logger.info(
     `Finished migrating parents for agent data source configurations.`
