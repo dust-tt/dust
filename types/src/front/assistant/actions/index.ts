@@ -4,13 +4,13 @@ import {
 } from "../../../front/assistant/generation";
 import { ModelConfigurationType } from "../../../front/lib/assistant";
 import { ModelId } from "../../../shared/model_id";
-import { SupportedContentFragmentType } from "../../content_fragment";
+import { SupportedFileContentType } from "../../files";
 import { ConversationType } from "../conversation";
 
 export type ActionGeneratedFileType = {
   fileId: string;
   title: string;
-  contentType: SupportedContentFragmentType;
+  contentType: SupportedFileContentType;
   snippet: string | null;
 };
 

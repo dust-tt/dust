@@ -1,5 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  FileFormatCategory,
   FileUseCase,
   FileUseCaseMetadata,
   LightWorkspaceType,
@@ -8,6 +9,7 @@ import type {
 } from "@dust-tt/types";
 import {
   Err,
+  getFileFormatCategory,
   isAPIErrorResponse,
   isSupportedFileContentType,
   isSupportedImageContentType,
@@ -46,9 +48,6 @@ class FileBlobUploadError extends Error {
   }
 }
 
-const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
-const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
-
 export function useFileUploaderService({
   owner,
   useCase,
@@ -66,30 +65,26 @@ export function useFileUploaderService({
   const handleFilesUpload = async (files: File[]) => {
     setIsProcessingFiles(true);
 
-    const { totalTextualSize, totalImageSize } = [
-      ...fileBlobs,
-      ...files,
-    ].reduce(
-      (acc, content) => {
-        const { size } = content;
-        if (
-          isSupportedImageContentType(
-            content instanceof File ? content.type : content.contentType
-          )
-        ) {
-          acc.totalImageSize += size;
-        } else {
-          acc.totalTextualSize += size;
-        }
-        return acc;
-      },
-      { totalTextualSize: 0, totalImageSize: 0 }
-    );
+    const categoryToSize: Map<FileFormatCategory, number> = new Map();
 
-    if (
-      totalTextualSize > COMBINED_MAX_TEXT_FILES_SIZE ||
-      totalImageSize > COMBINED_MAX_IMAGE_FILES_SIZE
-    ) {
+    for (const f of [...fileBlobs, ...files]) {
+      const contentType = f instanceof File ? f.type : f.contentType;
+
+      const category = getFileFormatCategory(contentType) || "data";
+      // The fallback should never happen but let's avoid a crash.
+
+      categoryToSize.set(
+        category,
+        (categoryToSize.get(category) || 0) + f.size
+      );
+    }
+
+    const isTooBig = [...categoryToSize].some(([cat, size]) => {
+      const multiplier = cat === "image" ? 5 : 2;
+      return size > MAX_FILE_SIZES[cat] * multiplier;
+    });
+
+    if (isTooBig) {
       sendNotification({
         type: "error",
         title: "Files too large.",

@@ -17,6 +17,7 @@ import type {
 } from "@dust-tt/types";
 import {
   Err,
+  getSupportedFileExtensions,
   isBigFileSize,
   isSlugified,
   MAX_FILE_SIZES,
@@ -353,7 +354,7 @@ export const TableUploadOrEditModal = ({
               <div>
                 <Page.SectionHeader
                   title="CSV File"
-                  description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`}
+                  description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
                   action={{
                     label:
                       fileUploaderService.isProcessingFiles || isContentLoading
@@ -372,7 +373,7 @@ export const TableUploadOrEditModal = ({
                   type="file"
                   ref={fileInputRef}
                   style={{ display: "none" }}
-                  accept=".csv, .tsv"
+                  accept={getSupportedFileExtensions("delimited").join(",")}
                   onChange={handleFileChange}
                 />
                 {isBigFile && (
