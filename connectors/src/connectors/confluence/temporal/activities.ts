@@ -18,7 +18,10 @@ import {
   getConfluencePageParentIds,
   getSpaceHierarchy,
 } from "@connectors/connectors/confluence/lib/hierarchy";
-import { makeConfluenceInternalPageId } from "@connectors/connectors/confluence/lib/internal_ids";
+import {
+  convertInternalIdToDocumentId,
+  makeConfluenceInternalPageId,
+} from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
@@ -384,7 +387,8 @@ export async function confluenceCheckAndUpsertPageActivity({
       documentUrl,
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [makeConfluenceInternalPageId(documentId)],
+      // TODO(2024-12-11 aubin): we upsert parents x2 (old and new), this is the first step of the backfill plan
+      parents: [documentId, makeConfluenceInternalPageId(documentId)],
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {
@@ -572,7 +576,11 @@ export async function confluenceUpdatePagesParentIdsActivity(
       await updateDocumentParentsField({
         dataSourceConfig: dataSourceConfigFromConnector(connector),
         documentId: makeConfluencePageId(page.pageId),
-        parents: parentIds,
+        // TODO(2024-12-11 aubin): we upsert parents x2 (old and new), this is the first step of the backfill plan
+        parents: [
+          ...parentIds,
+          ...parentIds.map(convertInternalIdToDocumentId),
+        ],
       });
     },
     { concurrency: 10 }
