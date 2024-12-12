@@ -4,7 +4,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, isSnowflakeCredentials, Ok } from "@dust-tt/types";
 
 import type {
   CreateConnectorErrorCode,
@@ -73,6 +73,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
     const credentials = credentialsRes.value.credentials;
 
+    if (!isSnowflakeCredentials(credentials)) {
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          "Invalid credentials type - expected snowflake credentials"
+        )
+      );
+    }
+
     // Then we test the connection is successful.
     const connectionRes = await testConnection({ credentials });
     if (connectionRes.isErr()) {
@@ -129,6 +138,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     const newCredentials = newCredentialsRes.value.credentials;
+
+    if (!isSnowflakeCredentials(newCredentials)) {
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          "Invalid credentials type - expected snowflake credentials"
+        )
+      );
+    }
 
     const connectionRes = await testConnection({ credentials: newCredentials });
     if (connectionRes.isErr()) {
@@ -260,6 +278,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
         connectorId: connector.id,
         parentInternalId: parentInternalId,
       });
+    }
+
+    if (!isSnowflakeCredentials(credentials)) {
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          "Invalid credentials type - expected snowflake credentials"
+        )
+      );
     }
 
     // We display all available nodes with our credentials.
