@@ -17,7 +17,7 @@ import {
   makeConfluenceRemoveSpaceWorkflowIdFromParentId,
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
   makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId,
-} from "@connectors/connectors/confluence/temporal/utils";
+} from "@connectors/connectors/confluence/temporal/workflow_ids";
 
 const {
   confluenceGetSpaceNameActivity,
