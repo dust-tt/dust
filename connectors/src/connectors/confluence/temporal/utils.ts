@@ -34,6 +34,10 @@ export function makeConfluencePageId(pageId: string) {
   return `confluence-page-${pageId}`;
 }
 
+export function makeConfluenceSpaceId(spaceId: string) {
+  return `confluence-space-${spaceId}`;
+}
+
 export function makeConfluenceDocumentUrl({
   baseUrl,
   suffix,
