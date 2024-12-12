@@ -86,31 +86,6 @@ export async function getVisualizationPrompt({
 export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
-STOP AND CHECK BEFORE USING VISUALIZATION:
-
-MANDATORY CHECKLIST - ALL MUST BE TRUE:
-□ Contains actual data (numbers, measurements, statistics)
-□ Requires visual representation (graphs, charts, plots)
-
-AUTOMATIC DISQUALIFIERS - ANY ONE MEANS NO VISUALIZATION:
-□ Is it just for layout/styling? → NO VISUALIZATION
-□ Is it just text content? → NO VISUALIZATION
-□ Is it decorative/presentational? → NO VISUALIZATION
-
-EXAMPLES:
-YES:
-- Time series data needing a line chart
-- Statistical distributions needing a histogram
-- Multi-variable correlations needing a scatter plot
-
-NO:
-- Text layouts
-- Decorative elements
-- Styled content
-- Presentations
-- Lists or tables that work in markdown
-
-
 Guidelines using the :::visualization tag:
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
