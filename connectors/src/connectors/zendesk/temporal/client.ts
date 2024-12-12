@@ -199,3 +199,24 @@ export async function launchZendeskGarbageCollectionWorkflow(
 
   return new Ok(undefined);
 }
+
+/**
+ * Launches a Zendesk workflow that will resync the tickets.
+ *
+ * It recreates the signals necessary to resync every brand whose tickets are selected by the user.
+ */
+export async function launchZendeskTicketReSyncWorkflow(
+  connector: ConnectorResource,
+  { forceResync = false }: { forceResync?: boolean } = {}
+): Promise<Result<string, Error>> {
+  const brandIds = await ZendeskBrandResource.fetchTicketsAllowedBrandIds(
+    connector.id
+  );
+
+  const result = await launchZendeskSyncWorkflow(connector, {
+    brandIds,
+    forceResync,
+  });
+
+  return result.isErr() ? result : new Ok(connector.id.toString());
+}

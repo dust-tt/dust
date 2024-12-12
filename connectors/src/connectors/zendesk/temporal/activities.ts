@@ -10,7 +10,7 @@ import {
   createZendeskClient,
   fetchZendeskArticlesInCategory,
   fetchZendeskCategoriesInBrand,
-  fetchZendeskTicketsInBrand,
+  fetchZendeskTickets,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
@@ -417,15 +417,12 @@ export async function syncZendeskTicketBatchActivity({
     brandId,
   });
 
-  const { tickets, hasMore, nextLink } = await fetchZendeskTicketsInBrand(
+  const startTime =
+    Math.floor(currentSyncDateMs / 1000) -
+    configuration.retentionPeriodDays * 24 * 60 * 60; // days to seconds
+  const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
     accessToken,
-    url
-      ? { url }
-      : {
-          brandSubdomain,
-          pageSize: ZENDESK_BATCH_SIZE,
-          retentionPeriodDays: configuration.retentionPeriodDays,
-        }
+    url ? { url } : { brandSubdomain, startTime }
   );
 
   if (tickets.length === 0) {
@@ -436,8 +433,12 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
+  const closedTickets = tickets.filter((t) =>
+    ["closed", "solved"].includes(t.status)
+  );
+
   const comments2d = await concurrentExecutor(
-    tickets,
+    closedTickets,
     async (ticket) => zendeskApiClient.tickets.getComments(ticket.id),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
@@ -447,7 +448,7 @@ export async function syncZendeskTicketBatchActivity({
   const { result: users } = await zendeskApiClient.users.showMany(userIds);
 
   const res = await concurrentExecutor(
-    _.zip(tickets, comments2d),
+    _.zip(closedTickets, comments2d),
     async ([ticket, comments]) => {
       if (!ticket || !comments) {
         throw new Error(
