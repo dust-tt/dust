@@ -19,7 +19,7 @@ export async function getGithubCodeOrDirectoryParentIds(
   return [];
 }
 
-async function getGithubCodeDirectoryParentIds(
+export async function getGithubCodeDirectoryParentIds(
   connectorId: ModelId,
   internalId: string,
   repoId: number

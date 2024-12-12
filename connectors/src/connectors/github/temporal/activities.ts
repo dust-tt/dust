@@ -27,9 +27,11 @@ import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals
 import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
+  deleteFolderNode,
   deleteFromDataSource,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
+  upsertFolderNode,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -307,6 +309,14 @@ export async function githubUpsertIssueActivity(
     issueNumber,
     connectorId: connector.id,
   });
+
+  // Also upsert the Issue folder node
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: `${repoId}-issues`,
+    title: "Issues",
+    parents: [`${repoId}-issues`, repoId.toString()],
+  });
 }
 
 async function renderDiscussion(
@@ -493,6 +503,14 @@ export async function githubUpsertDiscussionActivity(
     discussionNumber: discussionNumber,
     connectorId: connector.id,
   });
+
+  // Also upsert the Discussion folder node
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: `${repoId}-discussions`,
+    title: "Discussions",
+    parents: [`${repoId}-discussions`, repoId.toString()],
+  });
 }
 
 export async function githubGetRepoDiscussionsResultPageActivity(
@@ -630,6 +648,12 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
+  // Delete the Issues folder node
+  await deleteFolderNode({
+    dataSourceConfig,
+    folderId: `${repoId}-issues`,
+  });
+
   const discussionsInRepo = await GithubDiscussion.findAll({
     where: {
       repoId,
@@ -651,6 +675,12 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
+  // Delete the Discussion folder node
+  await deleteFolderNode({
+    dataSourceConfig,
+    folderId: `${repoId}-discussions`,
+  });
+
   await Promise.all(promises);
 
   await garbageCollectCodeSync(
@@ -667,6 +697,12 @@ export async function githubRepoGarbageCollectActivity(
       connectorId: connector.id,
       repoId: repoId.toString(),
     },
+  });
+
+  // Delete the Repository folder node
+  await deleteFolderNode({
+    dataSourceConfig,
+    folderId: repoId,
   });
 }
 
@@ -846,7 +882,24 @@ async function garbageCollectCodeSync(
         },
       },
     });
+    // Also delete folder nodes
+    const fq = new PQueue({ concurrency: 8 });
+    directoriesToDelete.forEach((d) =>
+      fq.add(async () => {
+        Context.current().heartbeat();
+        await deleteFolderNode({
+          dataSourceConfig,
+          folderId: d.internalId,
+        });
+      })
+    );
   }
+
+  // Delete the Code folder
+  await deleteFolderNode({
+    dataSourceConfig,
+    folderId: `github-code-${repoId}`,
+  });
 }
 
 export async function githubCodeSyncActivity({
@@ -910,6 +963,12 @@ export async function githubCodeSyncActivity({
       },
     });
 
+    // Delete the Repository folder too
+    await deleteFolderNode({
+      dataSourceConfig,
+      folderId: repoId.toString(),
+    });
+
     return;
   }
 
@@ -940,6 +999,14 @@ export async function githubCodeSyncActivity({
   githubCodeRepository.sourceUrl = `https://github.com/${repoLogin}/${repoName}`;
   githubCodeRepository.lastSeenAt = codeSyncStartedAt;
   await githubCodeRepository.save();
+
+  // Create the Repository folder node
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: githubCodeRepository.repoId,
+    title: githubCodeRepository.repoName,
+    parents: [githubCodeRepository.repoId],
+  });
 
   logger.info(
     {
@@ -989,6 +1056,12 @@ export async function githubCodeSyncActivity({
           connectorId: connector.id,
           repoId: repoId.toString(),
         },
+      });
+
+      // Delete the Repository folder too
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: repoId.toString(),
       });
 
       return;
@@ -1167,6 +1240,19 @@ export async function githubCodeSyncActivity({
           });
         }
 
+        // Create the folder node
+        await upsertFolderNode({
+          dataSourceConfig,
+          folderId: d.internalId,
+          parents: [
+            d.internalId,
+            ...d.parents,
+            `github-code-${repoId.toString()}`,
+            repoId.toString(),
+          ],
+          title: d.dirName,
+        });
+
         // If the parents have updated then the internalId gets updated as well so we should never
         // have an udpate to parentInternalId. We check that this is always the case. If the
         // directory is moved (the parents change) then it will trigger the creation of a new
@@ -1205,6 +1291,16 @@ export async function githubCodeSyncActivity({
       codeSyncStartedAt,
       logger.child({ task: "garbageCollectCodeSync" })
     );
+
+    // Create the Code folder node.
+    if (files.length > 0 || directories.length > 0) {
+      await upsertFolderNode({
+        dataSourceConfig,
+        folderId: `github-code-${repoId}`,
+        title: "Code",
+        parents: [`github-code-${repoId}`, repoId.toString()],
+      });
+    }
 
     // Finally we update the repository updatedAt value.
     if (repoUpdatedAt) {
