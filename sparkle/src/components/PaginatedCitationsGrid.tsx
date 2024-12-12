@@ -2,14 +2,20 @@ import { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
 import React from "react";
 
-import { Citation, CitationType } from "@sparkle/components/Citation";
+import {
+  Citation,
+  CitationDescription,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
+} from "@sparkle/components/Citation";
 import { Pagination } from "@sparkle/components/Pagination";
 import { classNames } from "@sparkle/lib/utils";
 
 interface CitationItem {
   description?: string;
   title: string;
-  type: CitationType;
+  icon: React.JSX.Element;
   href?: string;
 }
 
@@ -50,15 +56,14 @@ export function PaginatedCitationsGrid({
       >
         {paginatedItems.map((d, idx) => {
           return (
-            <Citation
-              size="xs"
-              sizing="fluid"
-              key={idx}
-              description={d.description}
-              href={d.href}
-              title={d.title}
-              type={d.type}
-            />
+            <Citation href={d.href}>
+              <CitationIcons>
+                <CitationIndex>{idx}</CitationIndex>
+                {d.icon}
+              </CitationIcons>
+              <CitationTitle>{d.title}</CitationTitle>
+              <CitationDescription>{d.description}</CitationDescription>
+            </Citation>
           );
         })}
       </div>

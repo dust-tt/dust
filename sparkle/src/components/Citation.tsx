@@ -159,8 +159,6 @@ const CitationIcons = React.forwardRef<
 });
 CitationIcons.displayName = "CitationIcons";
 
-CitationImage.displayName = "CitationImage";
-
 const CitationLoading = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
