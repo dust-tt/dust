@@ -1,5 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { Button, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -7,8 +8,9 @@ import type {
   SpecificationType,
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
-import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import _ from "lodash";
 import dynamic from "next/dynamic";
+import { useCallback, useEffect } from "react";
 
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import TablePicker from "@app/components/tables/TablePicker";
@@ -40,14 +42,14 @@ export function TablesManager({
   readOnly: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
 }>) {
-  const addNewTable = () => {
+  const addNewTable = useCallback(() => {
     const b = shallowBlockClone(block);
     if (!b.config.tables) {
       b.config.tables = [];
     }
     b.config.tables.push({});
     onBlockUpdate(b);
-  };
+  }, [block, onBlockUpdate]);
 
   const removeTable = (index: number) => {
     const b = shallowBlockClone(block);
@@ -79,42 +81,22 @@ export function TablesManager({
     );
   };
 
+  useEffect(() => {
+    if (!block.config.tables?.length) {
+      addNewTable();
+    }
+  }, [block.config.tables?.length, addNewTable]);
+
   return (
-    <div>
-      {(!block.config.tables || block.config.tables.length === 0) && (
-        <div className="flex justify-center pt-4">
-          <button
-            type="button"
-            onClick={addNewTable}
-            disabled={readOnly}
-            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-          >
-            <PlusIcon className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
-            Add Table
-          </button>
-        </div>
-      )}
-
+    <div className="pb-2">
+      <div className="mr-1 flex pt-1 text-sm font-medium text-gray-700">
+        Table:
+      </div>
       {block.config.tables?.map((table: TableConfig, index: number) => (
-        <div
-          key={index}
-          className="relative border-b border-gray-200 pb-4 pt-4 last:border-b-0"
-        >
-          {!readOnly && (
-            <button
-              onClick={() => removeTable(index)}
-              className="absolute right-0 top-4 text-gray-400 hover:text-gray-500"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          )}
-
-          <div className="flex flex-col gap-2 xl:flex-row">
+        <div key={index}>
+          <div className="flex flex-col items-center xl:flex-row">
             <div className="flex flex-col xl:flex-row xl:space-x-2">
-              <div className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
-                Table {index + 1}:
-              </div>
-              <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+              <div className="mr-2 flex flex-row">
                 <DataSourcePicker
                   owner={owner}
                   readOnly={readOnly}
@@ -147,7 +129,7 @@ export function TablesManager({
 
             {table?.data_source_id && (
               <div className="flex flex-col xl:flex-row xl:space-x-2">
-                <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex-rows flex">
                   <TablePicker
                     owner={owner}
                     space={app.space}
@@ -167,20 +149,35 @@ export function TablesManager({
                 </div>
               </div>
             )}
+            {!readOnly && block.config.tables?.length > 1 && (
+              <div>
+                <Button
+                  onClick={() => removeTable(index)}
+                  className="text-slate-400 hover:text-slate-500"
+                  icon={XMarkIcon}
+                  size="xs"
+                  variant="secondary"
+                />
+              </div>
+            )}
           </div>
-
-          {index === block.config.tables.length - 1 && !readOnly && (
-            <button
-              type="button"
-              onClick={addNewTable}
-              className="mt-4 inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-            >
-              <PlusIcon className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
-              Add Another Table
-            </button>
-          )}
         </div>
       ))}
+
+      <div>
+        <Button
+          type="button"
+          onClick={addNewTable}
+          className="mt-2"
+          icon={PlusIcon}
+          label="Add Table"
+          size="xs"
+          variant="outline"
+          disabled={
+            !_.last(block.config.tables as Partial<TableConfig>[])?.table_id
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -234,7 +231,7 @@ export default function Database({
       onBlockDown={onBlockDown}
       onBlockNew={onBlockNew}
     >
-      <div className="mx-4 flex w-full flex-col gap-2">
+      <div className="mx-4 flex w-full flex-col">
         <TablesManager
           owner={owner}
           app={app}
@@ -242,44 +239,43 @@ export default function Database({
           readOnly={readOnly}
           onBlockUpdate={onBlockUpdate}
         />
-        {block.config.tables?.some((t: Partial<TableConfig>) => t.table_id) && (
-          <div>
-            <div className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
-              query:
-            </div>
-            <div className="flex w-full font-normal">
-              <div className="w-full leading-5">
-                <div
-                  className={classNames("border border-slate-100 bg-slate-100")}
-                  style={{
-                    minHeight: "48px",
+
+        <div>
+          <div className="flex pb-2 text-sm font-medium text-gray-700">
+            query:
+          </div>
+          <div className="flex w-full font-normal">
+            <div className="w-full leading-5">
+              <div
+                className={classNames("border border-slate-100 bg-slate-100")}
+                style={{
+                  minHeight: "48px",
+                }}
+              >
+                <CodeEditor
+                  data-color-mode="light"
+                  readOnly={readOnly}
+                  value={block.spec.query}
+                  language="jinja2"
+                  placeholder=""
+                  onChange={(e) => {
+                    const b = shallowBlockClone(block);
+                    b.spec.query = e.target.value;
+                    onBlockUpdate(b);
                   }}
-                >
-                  <CodeEditor
-                    data-color-mode="light"
-                    readOnly={readOnly}
-                    value={block.spec.query}
-                    language="jinja2"
-                    placeholder=""
-                    onChange={(e) => {
-                      const b = shallowBlockClone(block);
-                      b.spec.query = e.target.value;
-                      onBlockUpdate(b);
-                    }}
-                    padding={3}
-                    style={{
-                      color: "rgb(55 65 81)",
-                      fontSize: 13,
-                      fontFamily:
-                        "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                      backgroundColor: "rgb(241 245 249)",
-                    }}
-                  />
-                </div>
+                  padding={3}
+                  style={{
+                    color: "rgb(55 65 81)",
+                    fontSize: 13,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    backgroundColor: "rgb(241 245 249)",
+                  }}
+                />
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </Block>
   );

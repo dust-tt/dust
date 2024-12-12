@@ -151,7 +151,12 @@ export default function DataSourcePicker({
                   <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                 </div>
               ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
-                <Button variant="outline" label="Select DataSource" isSelect />
+                <Button
+                  variant="outline"
+                  label="Select DataSource"
+                  isSelect
+                  size="xs"
+                />
               ) : (
                 <Link
                   href={`/w/${owner.sId}/spaces/${space.sId}`}
