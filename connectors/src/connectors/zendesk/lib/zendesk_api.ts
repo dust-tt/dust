@@ -303,7 +303,7 @@ export async function fetchZendeskArticlesInCategory(
 /**
  * Fetches a batch of the recently updated tickets from the Zendesk API using the incremental API endpoint.
  */
-export async function fetchRecentlyUpdatedTickets(
+export async function fetchZendeskTickets(
   accessToken: string,
   {
     brandSubdomain,
@@ -320,7 +320,7 @@ export async function fetchRecentlyUpdatedTickets(
   const response = await fetchFromZendeskWithRetries({
     url:
       url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor.json?start_time=${startTime}`,
+      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?start_time=${startTime}`,
     accessToken,
   });
   return {
@@ -330,49 +330,6 @@ export async function fetchRecentlyUpdatedTickets(
       response.after_url !== null &&
       response.tickets.length !== 0,
     nextLink: response.after_url,
-  };
-}
-
-/**
- * Fetches a batch of tickets from the Zendesk API.
- * Only fetches tickets that have been solved, and that were updated within the retention period.
- */
-export async function fetchZendeskTicketsInBrand(
-  accessToken: string,
-  {
-    brandSubdomain,
-    pageSize,
-    retentionPeriodDays,
-    url,
-  }:
-    | {
-        brandSubdomain: string;
-        pageSize: number;
-        retentionPeriodDays: number;
-        url?: never;
-      }
-    | {
-        brandSubdomain?: never;
-        pageSize?: never;
-        retentionPeriodDays?: never;
-        url: string;
-      }
-): Promise<{
-  tickets: ZendeskFetchedTicket[];
-  hasMore: boolean;
-  nextLink: string | null;
-}> {
-  const query = `status:solved updated>${retentionPeriodDays}days`;
-  const response = await fetchFromZendeskWithRetries({
-    url:
-      url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/search/export.json?filter[type]=ticket&page[size]=${pageSize}&query=${encodeURIComponent(query)}`,
-    accessToken,
-  });
-  return {
-    tickets: response.results,
-    hasMore: response.meta.has_more,
-    nextLink: response.links.next,
   };
 }
 
