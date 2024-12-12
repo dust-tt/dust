@@ -73,12 +73,13 @@ export const SnowflakeCredentialsSchema = t.type({
   warehouse: t.string,
 });
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
-export type ConnectionCredentials = SnowflakeCredentials;
 
-export const ApiCredentialsSchema = t.type({
+export const ApiKeyCredentialsSchema = t.type({
   apiKey: t.string,
 });
-export type ApiKeyCredentials = t.TypeOf<typeof ApiCredentialsSchema>;
+export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+
+export type ConnectionCredentials = SnowflakeCredentials | ModjoCredentials;
 
 // POST Credentials
 
@@ -106,6 +107,6 @@ export type OauthAPIGetCredentialsResponse = {
       workspace_id: string;
       user_id: string;
     };
-    content: ConnectionCredentials | ApiKeyCredentials;
+    content: ConnectionCredentials;
   };
 };
