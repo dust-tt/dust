@@ -126,6 +126,11 @@ const isRunnable = (
           return false;
         }
         break;
+      case "database":
+        if (!block.spec.query || block.spec.query.length == 0) {
+          return false;
+        }
+        break;
       default:
         if (
           !block.name ||
