@@ -10,6 +10,7 @@ import assert from "assert";
 import apiConfig from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -256,7 +257,10 @@ async function migrateDocument({
   }
 
   if (execute) {
-    const updateRes = await coreAPI.updateDataSourceDocumentParents({
+    const updateRes = await withRetries(
+      coreAPI.updateDataSourceDocumentParents,
+      { retries: 3 }
+    )({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: coreDocument.document_id,
@@ -328,7 +332,9 @@ async function migrateTable({
   }
 
   if (execute) {
-    const updateRes = await coreAPI.updateTableParents({
+    const updateRes = await withRetries(coreAPI.updateTableParents, {
+      retries: 3,
+    })({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       tableId: coreTable.table_id,
