@@ -22,9 +22,10 @@ makeScript({}, async ({ execute }) => {
     const duplicates = await sequelize.query<{
       min_id: string;
       documentId: string;
+      channelId: string;
       total: number;
     }>(
-      'SELECT min(id) as min_id, "documentId", count(*) as total FROM slack_messages WHERE "connectorId" = $1 GROUP BY "documentId" HAVING count(*) > 1',
+      'SELECT min(id) as min_id, "documentId", "channelId", count(*) as total FROM slack_messages WHERE "connectorId" = $1 GROUP BY "channelId", "documentId" HAVING count(*) > 1',
       {
         type: QueryTypes.SELECT,
         bind: [connectorId],
@@ -36,17 +37,17 @@ makeScript({}, async ({ execute }) => {
         `${duplicates.length} duplicates slack messages for connector ${connectorId}`
       );
 
-      for (const { min_id, documentId, total } of duplicates) {
-        const deleteQuery = `DELETE FROM slack_messages WHERE id > $1 AND "documentId" = $2`;
+      for (const { min_id, documentId, channelId, total } of duplicates) {
+        const deleteQuery = `DELETE FROM slack_messages WHERE "connectorId" = $1 AND "channelId" = $2 AND id > $3 AND "documentId" = $4`;
         if (execute) {
           await sequelize.query(deleteQuery, {
-            bind: [Number(min_id), documentId],
+            bind: [connectorId, channelId, Number(min_id), documentId],
             type: QueryTypes.DELETE,
           });
         } else {
-          const countQuery = `SELECT count(*) as count FROM slack_messages WHERE id > $1 AND "documentId" = $2`;
+          const countQuery = `SELECT count(*) as count FROM slack_messages WHERE "connectorId" = $1 AND "channelId" = $2 AND id > $3 AND "documentId" = $4`;
           const counts = await sequelize.query<{ count: number }>(countQuery, {
-            bind: [Number(min_id), documentId],
+            bind: [connectorId, channelId, Number(min_id), documentId],
             type: QueryTypes.SELECT,
           });
           if (!counts[0]) {
