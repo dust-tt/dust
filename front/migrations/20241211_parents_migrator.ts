@@ -20,12 +20,18 @@ const isMigratorAction = (action: string): action is MigratorAction => {
 };
 
 type ProviderMigrator = {
-  transformer: (nodeId: string, parents: string[]) => string[];
-  cleaner: (nodeId: string, parents: string[]) => string[];
+  transformer: (
+    nodeId: string,
+    parents: string[]
+  ) => { parents: string[]; parentId: string | null };
+  cleaner: (
+    nodeId: string,
+    parents: string[]
+  ) => { parents: string[]; parentId: string | null };
 };
 
-const QUERY_BATCH_SIZE = 128;
-const DOCUMENT_CONCURRENCY = 8;
+const QUERY_BATCH_SIZE = 256;
+const DOCUMENT_CONCURRENCY = 16;
 const TABLE_CONCURRENCY = 16;
 
 enum ConfluenceOldIdPrefix {
@@ -143,7 +149,10 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
           break;
       }
 
-      return [nodeId, channelId, `slack-channel-${channelId}`];
+      return {
+        parents: [nodeId, channelId, `slack-channel-${channelId}`],
+        parentId: channelId,
+      };
     },
     cleaner: (nodeId, parents) => {
       const channelId = slackNodeIdToChannelId(nodeId);
@@ -165,7 +174,10 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         throw new Error("Parents len != 2/3");
       }
 
-      return [nodeId, `slack-channel-${channelId}`];
+      return {
+        parents: [nodeId, `slack-channel-${channelId}`],
+        parentId: `slack-channel-${channelId}`,
+      };
     },
   },
   google_drive: null,
@@ -176,20 +188,29 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   webcrawler: null,
   zendesk: null,
   confluence: {
-    transformer: (nodeId, parents) => {
-      return [
-        ...new Set([...parents.map(convertConfluenceOldIdToNewId), ...parents]),
-      ];
+    transformer: (_, parents) => {
+      return {
+        parents: [
+          ...new Set([
+            ...parents.map(convertConfluenceOldIdToNewId),
+            ...parents,
+          ]),
+        ],
+        parentId: null,
+      };
     },
-    cleaner: (nodeId, parents) => {
+    cleaner: (_, parents) => {
       // we just remove the old IDs
-      return parents.filter(
-        (parent) =>
-          !(
-            parent.startsWith(ConfluenceOldIdPrefix.Page) ||
-            parent.startsWith(ConfluenceOldIdPrefix.Space)
-          )
-      );
+      return {
+        parents: parents.filter(
+          (parent) =>
+            !(
+              parent.startsWith(ConfluenceOldIdPrefix.Page) ||
+              parent.startsWith(ConfluenceOldIdPrefix.Space)
+            )
+        ),
+        parentId: null,
+      };
     },
   },
   intercom: null,
@@ -215,11 +236,14 @@ async function migrateDocument({
   execute: boolean;
 }) {
   let newParents = coreDocument.parents;
+  let newParentId: string | null = null;
   try {
-    newParents =
+    const { parents, parentId } =
       action === "transform"
         ? migrator.transformer(coreDocument.document_id, coreDocument.parents)
         : migrator.cleaner(coreDocument.document_id, coreDocument.parents);
+    newParents = parents;
+    newParentId = parentId;
   } catch (e) {
     logger.error(
       {
@@ -237,7 +261,7 @@ async function migrateDocument({
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: coreDocument.document_id,
       parents: newParents,
-      parentId: null,
+      parentId: newParentId,
     });
 
     if (updateRes.isErr()) {
@@ -284,11 +308,14 @@ async function migrateTable({
   execute: boolean;
 }) {
   let newParents = coreTable.parents;
+  let newParentId: string | null = null;
   try {
-    newParents =
+    const { parents, parentId } =
       action === "transform"
         ? migrator.transformer(coreTable.table_id, coreTable.parents)
         : migrator.cleaner(coreTable.table_id, coreTable.parents);
+    newParents = parents;
+    newParentId = parentId;
   } catch (e) {
     logger.error(
       {
@@ -306,7 +333,7 @@ async function migrateTable({
       dataSourceId: dataSource.dustAPIDataSourceId,
       tableId: coreTable.table_id,
       parents: newParents,
-      parentId: null,
+      parentId: newParentId,
     });
 
     if (updateRes.isErr()) {
