@@ -27,15 +27,13 @@ import { AssistantActionsSection } from "@app/components/assistant/details/Assis
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
   useAgentConfiguration,
   useAgentConfigurationFeedbacks,
   useAgentConfigurationHistory,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import { useFeedbackConversationContext } from "@app/lib/swr/feedbacks";
-import { useUserDetails } from "@app/lib/swr/user";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 type AssistantDetailsProps = {
@@ -177,6 +175,7 @@ export function AssistantDetails({
     } = useAgentConfigurationFeedbacks({
       workspaceId: owner.sId,
       agentConfigurationId: assistantId ?? "",
+      withMetadata: true,
     });
 
     const sortedFeedbacks = useMemo(() => {
@@ -225,7 +224,10 @@ export function AssistantDetails({
                       isLatestVersion={false}
                     />
                   )}
-                <FeedbackCard owner={owner} feedback={feedback} />
+                <FeedbackCard
+                  owner={owner}
+                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                />
               </div>
             ))}
           </div>
@@ -290,31 +292,29 @@ function FeedbackCard({
   feedback,
 }: {
   owner: LightWorkspaceType;
-  feedback: AgentMessageFeedbackType;
+  feedback: AgentMessageFeedbackWithMetadataType;
 }) {
-  const { userDetails } = useUserDetails(feedback.userId);
-  const { conversationContext } = useFeedbackConversationContext({
-    workspaceId: owner.sId,
-    feedbackId: feedback.id.toString(),
-  });
-  const conversationUrl = conversationContext
-    ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${conversationContext.conversationId}#${conversationContext.messageId}`
-    : null;
+  const conversationUrl =
+    feedback.conversationId && feedback.messageId
+      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#${feedback.messageId}`
+      : null;
 
   return (
     <ContentMessage variant="slate" className="my-2">
       <div className="justify-content-around mb-3 flex items-center gap-2">
         <div className="flex w-full items-center gap-2">
-          {userDetails?.image ? (
+          {feedback.userImageUrl ? (
             <Avatar
               size="xs"
-              visual={userDetails?.image}
-              name={userDetails?.firstName || "?"}
+              visual={feedback.userImageUrl}
+              name={feedback.userName}
             />
           ) : (
             <Spinner size="xs" />
           )}
-          {userDetails?.firstName} {userDetails?.lastName}
+          <div className="flex-grow text-sm font-bold text-element-900">
+            {feedback.userName}
+          </div>
         </div>
         <div className="flex-shrink-0 text-xs text-muted-foreground">
           {timeAgoFrom(
@@ -342,7 +342,7 @@ function FeedbackCard({
           )}
         </div>
       </div>
-      {conversationContext && conversationUrl && (
+      {conversationUrl && (
         <div className="mt-2">
           <Button
             variant="outline"

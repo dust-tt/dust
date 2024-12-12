@@ -11,7 +11,10 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import type {
+  AgentMessageFeedbackType,
+  AgentMessageFeedbackWithMetadataType,
+} from "@app/lib/api/assistant/feedback";
 import {
   fetcher,
   getErrorFromResponse,
@@ -243,6 +246,39 @@ export function useAgentConfiguration({
   };
 }
 
+export function useAgentConfigurationFeedbacks({
+  workspaceId,
+  agentConfigurationId,
+  withMetadata,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  withMetadata?: boolean;
+}) {
+  const agentConfigurationFeedbacksFetcher: Fetcher<{
+    feedbacks: (
+      | AgentMessageFeedbackType
+      | AgentMessageFeedbackWithMetadataType
+    )[];
+  }> = fetcher;
+
+  const queryParams = withMetadata ? "?withMetadata=true" : "";
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    agentConfigurationId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks${queryParams}`
+      : null,
+    agentConfigurationFeedbacksFetcher
+  );
+
+  return {
+    agentConfigurationFeedbacks: data ? data.feedbacks : null,
+    isAgentConfigurationFeedbacksLoading: !error && !data,
+    isAgentConfigurationFeedbacksError: error,
+    mutateAgentConfigurationFeedbacks: mutate,
+  };
+}
+
 export function useAgentConfigurationHistory({
   workspaceId,
   agentConfigurationId,
@@ -272,32 +308,6 @@ export function useAgentConfigurationHistory({
     isAgentConfigurationHistoryLoading: !error && !data,
     isAgentConfigurationHistoryError: error,
     mutateAgentConfigurationHistory: mutate,
-  };
-}
-
-export function useAgentConfigurationFeedbacks({
-  workspaceId,
-  agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string | null;
-}) {
-  const agentConfigurationFeedbacksFetcher: Fetcher<{
-    feedbacks: AgentMessageFeedbackType[];
-  }> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    agentConfigurationId
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks`
-      : null,
-    agentConfigurationFeedbacksFetcher
-  );
-
-  return {
-    agentConfigurationFeedbacks: data ? data.feedbacks : null,
-    isAgentConfigurationFeedbacksLoading: !error && !data,
-    isAgentConfigurationFeedbacksError: error,
-    mutateAgentConfigurationFeedbacks: mutate,
   };
 }
 

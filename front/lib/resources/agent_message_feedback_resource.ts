@@ -1,4 +1,4 @@
-import type { AgentConfigurationType, Result, UserType } from "@dust-tt/types";
+import type { Result, UserType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic } from "sequelize";
 import type { CreationAttributes, Transaction } from "sequelize";
@@ -48,27 +48,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static async listByAgentConfigurationId({
-    agentConfiguration,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-  }): Promise<AgentMessageFeedbackResource[] | null> {
-    const agentMessageFeedback = await AgentMessageFeedback.findAll({
-      where: {
-        agentConfigurationId: agentConfiguration.sId,
-      },
-      order: [["id", "DESC"]],
-    });
-
-    return agentMessageFeedback.map(
-      (feedback) => new this(this.model, feedback.get())
-    );
-  }
-
   static async fetchByUserAndAgentMessage({
+    auth,
     user,
     agentMessage,
   }: {
+    auth: Authenticator;
     user: UserType;
     agentMessage: AgentMessage;
   }): Promise<AgentMessageFeedbackResource | null> {
@@ -76,6 +61,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where: {
         userId: user.id,
         agentMessageId: agentMessage.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
@@ -89,39 +75,44 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static async fetchByUserAndAgentMessages(
-    user: UserType,
-    agentMessages: AgentMessage[]
-  ): Promise<AgentMessageFeedbackResource[]> {
-    const agentMessageFeedback = await AgentMessageFeedback.findAll({
-      where: {
-        userId: user.id,
-        agentMessageId: {
-          [Op.in]: agentMessages.map((m) => m.id),
-        },
-      },
-    });
-
-    return agentMessageFeedback.map(
-      (feedback) => new this(this.model, feedback.get())
-    );
-  }
-
   static async fetchByAgentConfigurationId(
+    auth: Authenticator,
     agentConfigurationId: string
-  ): Promise<AgentMessageFeedbackResource[]> {
+  ): Promise<AgentMessageFeedback[]> {
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
         agentConfigurationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
+      include: [
+        {
+          model: AgentMessageModel,
+          attributes: ["id"],
+          as: "agentMessage",
+          include: [
+            {
+              model: Message,
+              as: "message",
+              attributes: ["id", "sId"],
+              include: [
+                {
+                  model: Conversation,
+                  as: "conversation",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: UserResource.model,
+          attributes: ["name", "imageUrl"],
+        },
+      ],
       order: [["agentConfigurationVersion", "DESC"]],
     });
 
-    return agentMessageFeedback.map(
-      (feedback) => new this(this.model, feedback.get())
-    );
+    return agentMessageFeedback;
   }
-
   static async listByWorkspaceAndDateRange({
     workspace,
     startDate,
@@ -143,49 +134,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
 
     return feedbacks;
-  }
-
-  static async fetchMessageAndConversationId(
-    agentMessageFeedbackId: string
-  ): Promise<{ conversationId: string; messageId: string } | null> {
-    const agentMessageFeedback = await AgentMessageFeedback.findByPk(
-      agentMessageFeedbackId,
-      {
-        // Feedback -> AgentMessage -> Message -> Conversation
-        include: [
-          {
-            model: AgentMessageModel,
-            attributes: ["id"],
-            include: [
-              {
-                model: Message,
-                as: "agentMessage",
-                attributes: ["id", "sId"],
-                include: [
-                  {
-                    model: Conversation,
-                    as: "conversation",
-                    attributes: ["sId"],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      }
-    );
-
-    if (!agentMessageFeedback) {
-      return null;
-    }
-
-    return {
-      // @ts-expect-error: sequelize cannot handle include easily
-      messageId: agentMessageFeedback.agent_message.agentMessage.sId,
-      conversationId:
-        // @ts-expect-error: sequelize cannot handle include easily
-        agentMessageFeedback.agent_message.agentMessage.conversation.sId,
-    };
   }
 
   async fetchUser(): Promise<UserResource | null> {
@@ -224,6 +172,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().sId,
         },
         transaction,
       });
