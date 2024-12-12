@@ -202,7 +202,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 p-2 shadow-tale">
+              <div className="shadow-tale z-50 flex justify-between gap-2 p-2">
                 <Button
                   variant={
                     selectedConversations.length === 0 ? "outline" : "warning"
@@ -215,11 +215,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   variant="ghost"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
-                  className="mr-2"
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
+              <div className="shadow-tale z-50 flex justify-end gap-2 p-2">
                 <Button
                   href={`/w/${owner.sId}/assistant/new`}
                   label="New"
