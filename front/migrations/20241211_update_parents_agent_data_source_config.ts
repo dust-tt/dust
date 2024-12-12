@@ -1,6 +1,6 @@
 import type { ConnectorProvider } from "@dust-tt/types";
-import { concurrentExecutor } from "@dust-tt/types";
-import assert from "assert";
+import { concurrentExecutor, isConnectorProvider } from "@dust-tt/types";
+import _ from "lodash";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -57,7 +57,15 @@ export function getUpdatedConfluenceId(internalId: string): string {
 
 // we put null values if no migration is needed
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
-  slack: null,
+  slack: {
+    transformer: (parents) =>
+      _.uniq([
+        ...parents,
+        ...parents.map((parent) => _.last(parent.split(`slack-channel-`))!),
+      ]),
+    cleaner: (parents) =>
+      parents.filter((parent) => !parent.startsWith("slack-channel-")),
+  },
   google_drive: null,
   microsoft: null,
   github: null,
@@ -81,14 +89,19 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
 
 makeScript(
   {
-    action: { type: "string" },
+    provider: { type: "string", required: true },
+    action: { type: "string", required: true },
     nextId: { type: "number", default: 0 },
   },
-  async ({ execute, action, nextId }, logger) => {
+  async ({ execute, provider, action, nextId }, logger) => {
     if (!isMigratorAction(action)) {
       console.error(
         `Invalid action ${action}, supported actions are "transform" and "clean"`
       );
+      return;
+    }
+    if (!isConnectorProvider(provider)) {
+      console.error(`Invalid provider ${provider}`);
       return;
     }
 
@@ -112,10 +125,11 @@ makeScript(
         await concurrentExecutor(
           configurations,
           async (configuration) => {
-            assert(
-              configuration.dataSource.connectorProvider,
-              "connectorProvider is required"
-            );
+            if (configuration.dataSource.connectorProvider !== provider) {
+              // We focus only on the provider currently migrating.
+              return;
+            }
+
             const migrator =
               migrators[configuration.dataSource.connectorProvider];
             if (!migrator) {
