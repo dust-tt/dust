@@ -115,8 +115,7 @@ async function handler(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message:
-            "The message you're trying to give feedback to does not exist.",
+          message: "The feedback you're trying to delete does not exist.",
         },
       });
 
