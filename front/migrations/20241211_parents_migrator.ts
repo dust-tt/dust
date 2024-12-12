@@ -189,28 +189,28 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   zendesk: null,
   confluence: {
     transformer: (_, parents) => {
+      assert(parents.length > 1, "parents.length <= 1"); // the only documents are pages, they at least have the space as parent
       return {
         parents: [
           ...new Set([
-            ...parents.map(convertConfluenceOldIdToNewId),
             ...parents,
+            ...parents.map(convertConfluenceOldIdToNewId),
           ]),
         ],
-        parentId: null,
+        parentId: parents[1],
       };
     },
     cleaner: (_, parents) => {
       // we just remove the old IDs
-      return {
-        parents: parents.filter(
-          (parent) =>
-            !(
-              parent.startsWith(ConfluenceOldIdPrefix.Page) ||
-              parent.startsWith(ConfluenceOldIdPrefix.Space)
-            )
-        ),
-        parentId: null,
-      };
+      const newParents = parents.filter(
+        (parent) =>
+          !(
+            parent.startsWith(ConfluenceOldIdPrefix.Page) ||
+            parent.startsWith(ConfluenceOldIdPrefix.Space)
+          )
+      );
+      assert(parents.length > 1, "parents.length <= 1"); // the only documents are pages, they at least have the space as parent
+      return { parents: newParents, parentId: newParents[1] };
     },
   },
   intercom: null,
