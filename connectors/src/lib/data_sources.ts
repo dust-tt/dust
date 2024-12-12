@@ -66,6 +66,7 @@ type UpsertToDataSourceParams = {
   timestampMs?: number;
   tags?: string[];
   parents: string[];
+  parentId?: string | null;
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
   title: string;
@@ -100,6 +101,7 @@ async function _upsertToDatasource({
   title,
   mimeType,
   async,
+  parentId = null,
 }: UpsertToDataSourceParams) {
   return tracer.trace(
     `connectors`,
@@ -153,7 +155,7 @@ async function _upsertToDatasource({
         title,
         mime_type: mimeType,
         tags: tags?.map((tag) => tag.substring(0, 512)),
-        parent_id: parents[1] ?? null,
+        parent_id: parentId,
         parents,
         light_document_output: true,
         upsert_context: upsertContext,
@@ -728,6 +730,7 @@ export async function upsertTableFromCsv({
   loggerArgs,
   truncate,
   parents,
+  parentId = null,
   useAppForHeaderDetection,
   title,
   mimeType,
@@ -740,6 +743,7 @@ export async function upsertTableFromCsv({
   loggerArgs?: Record<string, string | number>;
   truncate: boolean;
   parents: string[];
+  parentId?: string | null;
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
@@ -771,7 +775,7 @@ export async function upsertTableFromCsv({
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
   const dustRequestPayload: UpsertTableFromCsvRequestType = {
     name: tableName,
-    parentId: parents[1] ?? null,
+    parentId,
     parents,
     description: tableDescription,
     csv: tableCsv,
@@ -1135,12 +1139,14 @@ export async function upsertFolderNode({
   folderId,
   timestampMs,
   parents,
+  parentId = parents[1] ?? null,
   title,
 }: {
   dataSourceConfig: DataSourceConfig;
   folderId: string;
   timestampMs?: number;
   parents: string[];
+  parentId?: string | null;
   title: string;
 }) {
   const now = new Date();
@@ -1150,7 +1156,7 @@ export async function upsertFolderNode({
     folderId,
     timestampMs ? timestampMs : now.getTime(),
     title,
-    parents[1] ?? null,
+    parentId,
     parents
   );
 
