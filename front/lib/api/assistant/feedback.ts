@@ -31,11 +31,37 @@ export type AgentMessageFeedbackType = {
   createdAt: Date;
 };
 
-export async function getAgentConfigurationFeedbacks(
-  agentConfigurationId: string
-): Promise<Result<AgentMessageFeedbackType[], ConversationError>> {
+export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType & {
+  conversationId: string;
+  userName: string;
+  userImageUrl?: string;
+};
+
+export async function getAgentConfigurationFeedbacks({
+  auth,
+  agentConfigurationId,
+  withMetadata,
+}: {
+  auth: Authenticator;
+  agentConfigurationId: string;
+  withMetadata?: boolean;
+}): Promise<
+  Result<
+    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
+    ConversationError
+  >
+> {
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
   const feedbacksRes =
     await AgentMessageFeedbackResource.fetchByAgentConfigurationId(
+      auth,
       agentConfigurationId
     );
 
@@ -49,7 +75,20 @@ export async function getAgentConfigurationFeedbacks(
         agentConfigurationVersion: feedback.agentConfigurationVersion,
         agentConfigurationId: feedback.agentConfigurationId,
         createdAt: feedback.createdAt,
-      }) as AgentMessageFeedbackType
+        userName: withMetadata ? feedback.user.name : undefined,
+        userImageUrl: withMetadata ? feedback.user.imageUrl : undefined,
+        messageId: feedback.agentMessage.message?.sId,
+        // Only return conversationId if the user has access to the conversation
+        conversationId:
+          withMetadata &&
+          feedback.agentMessage.message?.conversation &&
+          canAccessConversation(
+            auth,
+            feedback.agentMessage.message.conversation
+          )
+            ? feedback.agentMessage.message.conversation.sId
+            : undefined,
+      }) as AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType
   );
   return new Ok(feedbacks);
 }
@@ -67,47 +106,57 @@ export async function getConversationFeedbacksForUser(
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
-  const messages = await Message.findAll({
+  const feedbackForMessages = await Message.findAll({
     where: {
       conversationId: conversation.id,
       agentMessageId: {
         [Op.ne]: null,
       },
     },
-    attributes: ["sId", "agentMessageId"],
-  });
-
-  const agentMessages = await AgentMessage.findAll({
-    where: {
-      id: {
-        [Op.in]: messages
-          .map((m) => m.agentMessageId)
-          .filter((id): id is number => id !== null),
+    attributes: ["id", "sId", "agentMessageId"],
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        include: [
+          {
+            model: AgentMessageFeedbackResource.model,
+            as: "feedbacks",
+            where: {
+              userId: user.id,
+            },
+          },
+        ],
       },
-    },
+    ],
   });
 
-  const feedbacks =
-    await AgentMessageFeedbackResource.fetchByUserAndAgentMessages(
-      user,
-      agentMessages
-    );
-
-  const feedbacksByMessageId = feedbacks.map(
-    (feedback) =>
-      ({
+  const feedbacksWithMessageId = feedbackForMessages
+    // typeguard needed because of TypeScript limitations
+    .filter(
+      (
+        message
+      ): message is Message & {
+        agentMessage: { feedbacks: AgentMessageFeedbackResource[] };
+      } =>
+        !!message.agentMessage &&
+        !!message.agentMessage.feedbacks &&
+        message.agentMessage.feedbacks.length > 0
+    )
+    .map((message) => {
+      // Only one feedback can be associated with a message
+      const feedback = message.agentMessage.feedbacks[0];
+      return {
         id: feedback.id,
-        messageId: messages.find(
-          (m) => m.agentMessageId === feedback.agentMessageId
-        )!.sId,
+        messageId: message.sId,
         agentMessageId: feedback.agentMessageId,
         userId: feedback.userId,
         thumbDirection: feedback.thumbDirection,
         content: feedback.content,
-      }) as AgentMessageFeedbackType
-  );
+      } as AgentMessageFeedbackType;
+    });
 
-  return new Ok(feedbacksByMessageId);
+  return new Ok(feedbacksWithMessageId);
 }
 
 /**
@@ -181,6 +230,7 @@ export async function createOrUpdateMessageFeedback(
 
   const feedback =
     await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
+      auth,
       user,
       agentMessage,
     });
@@ -252,6 +302,7 @@ export async function deleteMessageFeedback(
 
   const feedback =
     await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
+      auth,
       user,
       agentMessage,
     });

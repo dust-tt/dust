@@ -5,13 +5,15 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getAgentConfigurationFeedbacks } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<{ feedbacks: AgentMessageFeedbackType[] }>
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
   if (!(typeof req.query.aId === "string")) {
     return apiError(req, res, {
@@ -25,7 +27,11 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const feedbacksRes = await getAgentConfigurationFeedbacks(req.query.aId);
+      const feedbacksRes = await getAgentConfigurationFeedbacks({
+        auth,
+        agentConfigurationId: req.query.aId,
+        withMetadata: req.query.withMetadata === "true",
+      });
 
       if (feedbacksRes.isErr()) {
         return apiErrorForConversation(req, res, feedbacksRes.error);
