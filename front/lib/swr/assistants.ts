@@ -11,7 +11,10 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import type {
+  AgentMessageFeedbackType,
+  AgentMessageFeedbackWithMetadataType,
+} from "@app/lib/api/assistant/feedback";
 import {
   fetcher,
   getErrorFromResponse,
@@ -246,17 +249,24 @@ export function useAgentConfiguration({
 export function useAgentConfigurationFeedbacks({
   workspaceId,
   agentConfigurationId,
+  withMetadata,
 }: {
   workspaceId: string;
   agentConfigurationId: string | null;
+  withMetadata?: boolean;
 }) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
-    feedbacks: AgentMessageFeedbackType[];
+    feedbacks: (
+      | AgentMessageFeedbackType
+      | AgentMessageFeedbackWithMetadataType
+    )[];
   }> = fetcher;
+
+  const queryParams = withMetadata ? "?withMetadata=true" : "";
 
   const { data, error, mutate } = useSWRWithDefaults(
     agentConfigurationId
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks`
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks${queryParams}`
       : null,
     agentConfigurationFeedbacksFetcher
   );
