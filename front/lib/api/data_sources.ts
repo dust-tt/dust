@@ -382,14 +382,6 @@ export async function upsertDocument({
   const documentId = name;
   const documentParents = parents || [];
 
-  // Ensure that the documentId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfDocumentId = documentParents.indexOf(documentId);
-  if (indexOfDocumentId !== -1) {
-    documentParents.splice(indexOfDocumentId, 1);
-  }
-  documentParents.unshift(documentId);
-
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
@@ -456,14 +448,6 @@ export async function upsertTable({
 }) {
   const nonNullTableId = tableId ?? generateRandomModelSId();
   const tableParents: string[] = parents ?? [];
-
-  // Ensure that the nonNullTableId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfTableId = tableParents.indexOf(nonNullTableId);
-  if (indexOfTableId !== -1) {
-    tableParents.splice(indexOfTableId, 1);
-  }
-  tableParents.unshift(nonNullTableId);
 
   const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
