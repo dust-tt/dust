@@ -11,7 +11,10 @@ import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  AgentMessageFeedback,
+} from "@app/lib/models/assistant/conversation";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 
@@ -282,35 +285,39 @@ export async function deleteMessageFeedback(
       sId: messageId,
       conversationId: conversation.id,
     },
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        include: [
+          {
+            model: AgentMessageFeedbackResource.model,
+            as: "feedbacks",
+            where: {
+              userId: user.id,
+            },
+          },
+        ],
+      },
+    ],
     attributes: ["agentMessageId"],
   });
 
-  if (!message || !message.agentMessageId) {
+  if (
+    !message ||
+    !message.agentMessage ||
+    !message.agentMessage.feedbacks ||
+    message.agentMessage.feedbacks.length === 0
+  ) {
     return null;
   }
 
-  const agentMessage = await AgentMessage.findOne({
-    where: {
-      id: message.agentMessageId,
-    },
-  });
-
-  if (!agentMessage) {
-    return null;
-  }
-
-  const feedback =
-    await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
-      auth,
-      user,
-      agentMessage,
-    });
-
-  if (!feedback) {
-    return null;
-  }
-
-  const deletedFeedback = await feedback.delete(auth);
+  const feedback = message.agentMessage.feedbacks[0];
+  const feedbackRessource = new AgentMessageFeedbackResource(
+    AgentMessageFeedback,
+    feedback.get()
+  );
+  const deletedFeedback = await feedbackRessource.delete(auth);
 
   return deletedFeedback.isOk();
 }
