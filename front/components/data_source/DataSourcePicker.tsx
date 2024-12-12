@@ -24,7 +24,6 @@ export default function DataSourcePicker({
   currentDataSources, // [{ workspace_id, data_source_id }]
   readOnly,
   onDataSourcesUpdate,
-  linksDisabled,
 }: {
   owner: WorkspaceType;
   space: SpaceType;
@@ -36,7 +35,6 @@ export default function DataSourcePicker({
   onDataSourcesUpdate: (
     dataSources: { workspace_id: string; data_source_id: string }[]
   ) => void;
-  linksDisabled?: boolean;
 }) {
   const hasDataSourceView =
     currentDataSources.length > 0 &&
@@ -95,19 +93,6 @@ export default function DataSourcePicker({
     return `/w/${owner.sId}/spaces/${dsv.spaceId}/categories/${dsv.category}/data_source_views/${dsv.sId}`;
   };
 
-  const MaybeLink = ({
-    children,
-    href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) => {
-    if (linksDisabled) {
-      return <div>{children}</div>;
-    }
-    return <Link href={href}>{children}</Link>;
-  };
-
   useEffect(() => {
     const newDataSources = searchFilter
       ? spaceDataSourceViews.filter((t) =>
@@ -124,11 +109,11 @@ export default function DataSourcePicker({
       <div className="flex items-center">
         {readOnly ? (
           selectedDataSourceView ? (
-            <MaybeLink href={getEditLink(selectedDataSourceView)}>
+            <Link href={getEditLink(selectedDataSourceView)}>
               <div className="max-w-20 mr-1 truncate text-sm font-bold text-action-500">
                 {selectedDataSourceView.dataSource.name}
               </div>
-            </MaybeLink>
+            </Link>
           ) : (
             "No DataSource"
           )
@@ -143,20 +128,15 @@ export default function DataSourcePicker({
                     "focus:outline-none focus:ring-0"
                   )}
                 >
-                  <MaybeLink href={getEditLink(selectedDataSourceView)}>
+                  <Link href={getEditLink(selectedDataSourceView)}>
                     <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
                       {selectedDataSourceView.dataSource.name}
                     </div>
-                  </MaybeLink>
+                  </Link>
                   <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                 </div>
               ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
-                <Button
-                  variant="outline"
-                  label="Select DataSource"
-                  isSelect
-                  size="xs"
-                />
+                <Button variant="outline" label="Select DataSource" isSelect />
               ) : (
                 <Link
                   href={`/w/${owner.sId}/spaces/${space.sId}`}
