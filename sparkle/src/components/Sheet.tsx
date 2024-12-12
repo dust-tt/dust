@@ -85,7 +85,7 @@ const SheetHeader = ({
 }: SheetHeaderProps) => (
   <div
     className={cn(
-      "s-shadow-tale-white s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left",
+      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-bg-background s-p-5 s-text-left s-shadow-tale-white",
       className
     )}
     {...props}
