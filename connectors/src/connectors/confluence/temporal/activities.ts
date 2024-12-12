@@ -18,14 +18,8 @@ import {
   getConfluencePageParentIds,
   getSpaceHierarchy,
 } from "@connectors/connectors/confluence/lib/hierarchy";
-import {
-  convertInternalIdToDocumentId,
-  makeConfluenceInternalPageId,
-} from "@connectors/connectors/confluence/lib/internal_ids";
-import {
-  makeConfluenceDocumentUrl,
-  makeConfluencePageId,
-} from "@connectors/connectors/confluence/temporal/utils";
+import { makePageInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
+import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -352,7 +346,7 @@ export async function confluenceCheckAndUpsertPageActivity({
       content: renderedMarkdown,
     });
 
-    const documentId = makeConfluencePageId(pageId);
+    const documentId = makePageInternalId(pageId);
     const documentUrl = makeConfluenceDocumentUrl({
       baseUrl: confluenceConfig.url,
       suffix: page._links.tinyui,
@@ -387,8 +381,7 @@ export async function confluenceCheckAndUpsertPageActivity({
       documentUrl,
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
-      // TODO(2024-12-11 aubin): we upsert parents x2 (old and new), this is the first step of the backfill plan
-      parents: [documentId, makeConfluenceInternalPageId(pageId)],
+      parents: [documentId],
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {
@@ -575,12 +568,8 @@ export async function confluenceUpdatePagesParentIdsActivity(
 
       await updateDocumentParentsField({
         dataSourceConfig: dataSourceConfigFromConnector(connector),
-        documentId: makeConfluencePageId(page.pageId),
-        // TODO(2024-12-11 aubin): we upsert parents x2 (old and new), this is the first step of the backfill plan
-        parents: [
-          ...parentIds,
-          ...parentIds.map(convertInternalIdToDocumentId),
-        ],
+        documentId: makePageInternalId(page.pageId),
+        parents: parentIds,
       });
     },
     { concurrency: 10 }
@@ -631,7 +620,7 @@ async function deletePage(
 
   const localLogger = logger.child(loggerArgs);
 
-  const documentId = makeConfluencePageId(pageId);
+  const documentId = makePageInternalId(pageId);
   localLogger.info(
     { documentId },
     "Deleting Confluence page from Dust data source."
