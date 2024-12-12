@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dust",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Get more done, faster, with the power of your assistants at your fingertips.",
   "icons": {
     "16": "images/dust16.png",
@@ -13,13 +13,13 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Open Dust side panel"
+    "default_title": "Dust ⇧⌘E"
   },
   "commands": {
     "_execute_action": {
       "suggested_key": {
-        "default": "Ctrl + Right",
-        "mac": "Command + Right"
+        "default": "Ctrl + Shift + E",
+        "mac": "Command + Shift + E"
       }
     }
   },
