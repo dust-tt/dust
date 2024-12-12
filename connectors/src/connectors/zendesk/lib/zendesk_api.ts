@@ -349,6 +349,9 @@ export async function fetchZendeskTicketCount({
   | { retentionPeriodDays?: number; query: string }
   | { retentionPeriodDays: number; query?: null }
 )): Promise<number> {
+  logger.warn(
+    "Ticket count relies on the Search API, which has proved unreliable."
+  );
   query ||= `type:ticket status:solved updated>${retentionPeriodDays}days`;
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(query)}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
