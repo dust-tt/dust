@@ -66,7 +66,7 @@ type UpsertToDataSourceParams = {
   timestampMs?: number;
   tags?: string[];
   parents: string[];
-  parentId: string | null;
+  parentId?: string | null;
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
   title: string;
@@ -743,7 +743,7 @@ export async function upsertTableFromCsv({
   loggerArgs?: Record<string, string | number>;
   truncate: boolean;
   parents: string[];
-  parentId: string | null;
+  parentId?: string | null;
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
@@ -1146,7 +1146,7 @@ export async function upsertFolderNode({
   folderId: string;
   timestampMs?: number;
   parents: string[];
-  parentId: string | null;
+  parentId?: string | null;
   title: string;
 }) {
   const now = new Date();
