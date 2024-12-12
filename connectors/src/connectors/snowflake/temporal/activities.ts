@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { isSnowflakeCredentials } from "@dust-tt/types";
 
 import {
   connectToSnowflake,
@@ -35,6 +36,12 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   await syncStarted(connectorId);
 
   const { credentials, connector } = getConnectorAndCredentialsRes.value;
+
+  if (!isSnowflakeCredentials(credentials)) {
+    throw new Error(
+      "Invalid credentials type - expected snowflake credentials"
+    );
+  }
 
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {

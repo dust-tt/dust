@@ -17,5 +17,8 @@ pub async fn get_remote_database(
             let db = SnowflakeRemoteDatabase::new(content)?;
             Ok(Box::new(db) as Box<dyn RemoteDatabase + Sync + Send>)
         }
+        _ => {
+            anyhow::bail!("{:?} is not a supported remote database provider", provider)
+        }
     }
 }

@@ -1,5 +1,10 @@
 import type { ConnectionCredentials, ModelId, Result } from "@dust-tt/types";
-import { Err, getConnectionCredentials, Ok } from "@dust-tt/types";
+import {
+  Err,
+  getConnectionCredentials,
+  isSnowflakeCredentials,
+  Ok,
+} from "@dust-tt/types";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
@@ -51,8 +56,19 @@ export const getCredentials = async ({
     logger.error({ credentialsId }, "Failed to retrieve credentials");
     return new Err(Error("Failed to retrieve credentials"));
   }
+  // Narrow the type of credentials to just the username/password variant
+  const credentials = credentialsRes.value.credential.content;
+  if (!isSnowflakeCredentials(credentials)) {
+    logger.error(
+      { credentialsId },
+      "Invalid credentials type - expected snowflake credentials"
+    );
+    return new Err(
+      Error("Invalid credentials type - expected snowflake credentials")
+    );
+  }
   return new Ok({
-    credentials: credentialsRes.value.credential.content,
+    credentials,
   });
 };
 
@@ -86,8 +102,19 @@ export const getConnectorAndCredentials = async ({
     logger.error({ connectorId }, "Failed to retrieve credentials");
     return new Err(Error("Failed to retrieve credentials"));
   }
+  // Narrow the type of credentials to just the username/password variant
+  const credentials = credentialsRes.value.credential.content;
+  if (!isSnowflakeCredentials(credentials)) {
+    logger.error(
+      { connectorId },
+      "Invalid credentials type - expected snowflake credentials"
+    );
+    return new Err(
+      Error("Invalid credentials type - expected snowflake credentials")
+    );
+  }
   return new Ok({
     connector,
-    credentials: credentialsRes.value.credential.content,
+    credentials,
   });
 };
