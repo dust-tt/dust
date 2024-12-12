@@ -75,7 +75,7 @@ export const SnowflakeCredentialsSchema = t.type({
 export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
 
 export const ApiKeyCredentialsSchema = t.type({
-  apiKey: t.string,
+  api_key: t.string,
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 

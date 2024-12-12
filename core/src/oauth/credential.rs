@@ -109,7 +109,7 @@ impl Credential {
                 vec!["account", "warehouse", "username", "password", "role"]
             }
             CredentialProvider::Modjo => {
-                vec!["apiKey"]
+                vec!["api_key"]
             }
         };
 
