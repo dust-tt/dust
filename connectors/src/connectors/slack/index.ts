@@ -23,6 +23,10 @@ import {
   getSlackAccessToken,
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  internalIdFromSlackChannelId,
+  slackChannelIdFromInternalId,
+} from "@connectors/connectors/slack/lib/utils";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import {
   ExternalOAuthTokenError,
@@ -377,7 +381,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
       const resources: ContentNode[] = slackChannels.map((ch) => ({
         provider: "slack",
-        internalId: ch.slackChannelId,
+        internalId: internalIdFromSlackChannelId(ch.slackChannelId),
         parentInternalId: null,
         type: "channel",
         title: `#${ch.slackChannelName}`,
@@ -440,7 +444,9 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       await SlackChannel.findAll({
         where: {
           connectorId: this.connectorId,
-          slackChannelId: Object.keys(permissions),
+          slackChannelId: Object.keys(permissions).map((k) =>
+            slackChannelIdFromInternalId(k)
+          ),
         },
       })
     ).reduce(
@@ -455,18 +461,19 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     const slackChannelsToSync: string[] = [];
     try {
-      for (const [id, permission] of Object.entries(permissions)) {
-        let channel = channels[id];
+      for (const [internalId, permission] of Object.entries(permissions)) {
+        const slackChannelId = slackChannelIdFromInternalId(internalId);
+        let channel = channels[slackChannelId];
         const slackClient = await getSlackClient(connector.id);
         if (!channel) {
           const remoteChannel = await slackClient.conversations.info({
-            channel: id,
+            channel: slackChannelId,
           });
           if (!remoteChannel.ok || !remoteChannel.channel?.name) {
             logger.error(
               {
                 connectorId: this.connectorId,
-                channelId: id,
+                channelId: slackChannelId,
                 error: remoteChannel.error,
               },
               "Could not get the Slack channel information"
@@ -475,12 +482,12 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
               new Error("Could not get the Slack channel information.")
             );
           }
-          const joinRes = await joinChannel(this.connectorId, id);
+          const joinRes = await joinChannel(this.connectorId, slackChannelId);
           if (joinRes.isErr()) {
             logger.error(
               {
                 connectorId: this.connectorId,
-                channelId: id,
+                channelId: slackChannelId,
                 error: joinRes.error,
               },
               "Could not join the Slack channel"
@@ -493,12 +500,12 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           }
           const slackChannel = await SlackChannel.create({
             connectorId: this.connectorId,
-            slackChannelId: id,
+            slackChannelId: slackChannelId,
             slackChannelName: remoteChannel.channel.name,
             permission: "none",
             private: !!remoteChannel.channel.is_private,
           });
-          channels[id] = slackChannel;
+          channels[slackChannelId] = slackChannel;
           channel = slackChannel;
         }
 
@@ -566,6 +573,9 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     internalIds: string[];
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
+    const slackChannelIds = internalIds.map((id) =>
+      slackChannelIdFromInternalId(id)
+    );
     const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
       this.connectorId
     );
@@ -580,13 +590,13 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     const channels = await SlackChannel.findAll({
       where: {
         connectorId: this.connectorId,
-        slackChannelId: internalIds,
+        slackChannelId: slackChannelIds,
       },
     });
 
     const contentNodes: ContentNode[] = channels.map((ch) => ({
       provider: "slack",
-      internalId: ch.slackChannelId,
+      internalId: internalIdFromSlackChannelId(ch.slackChannelId),
       parentInternalId: null,
       type: "channel",
       title: `#${ch.slackChannelName}`,
@@ -607,6 +617,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }: {
     internalId: string;
   }): Promise<Result<string[], Error>> {
+    // We only ever return permissions at the slack channel level so the parents are always the
+    // internalId itself.
     return new Ok([internalId]);
   }
 

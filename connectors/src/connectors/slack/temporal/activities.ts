@@ -42,7 +42,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-import { getWeekEnd, getWeekStart } from "../lib/utils";
+import { getWeekEnd, getWeekStart, internalIdFromSlackChannelId } from "../lib/utils";
 
 const logger = mainLogger.child({ provider: "slack" });
 
@@ -588,7 +588,7 @@ export async function syncNonThreaded(
     documentUrl: sourceUrl,
     timestampMs: updatedAt,
     tags,
-    parents: [documentId, channelId, `slack-channel-${channelId}`],
+    parents: [documentId, channelId, internalIdFromSlackChannelId(channelId)],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
@@ -782,7 +782,7 @@ export async function syncThread(
     documentUrl: sourceUrl,
     timestampMs: updatedAt,
     tags,
-    parents: [documentId, channelId, `slack-channel-${channelId}`],
+    parents: [documentId, channelId, internalIdFromSlackChannelId(channelId)],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },

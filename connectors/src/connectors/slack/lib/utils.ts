@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 export function getWeekStart(date: Date): Date {
   const dateCopy = new Date(date);
 
@@ -48,3 +50,11 @@ export const timeAgoFrom = (millisSinceEpoch: number) => {
   }
   return seconds + "s";
 };
+
+export function internalIdFromSlackChannelId(channel: string) {
+  return `slack-channel-${_.last(channel.split("slack-channel-"))!}`;
+}
+
+export function slackChannelIdFromInternalId(nodeId: string) {
+  return _.last(nodeId.split("slack-channel-"))!;
+}
