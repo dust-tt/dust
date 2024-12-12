@@ -114,4 +114,3 @@ export {
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
-export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";
