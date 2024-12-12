@@ -14,6 +14,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { TrackerBuilder } from "@app/components/trackers/TrackerBuilder";
 import config from "@app/lib/api/config";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -45,6 +46,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     !globalSpace ||
     !trackerId
   ) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const flags = await getFeatureFlags(owner);
+  if (!flags.includes("labs_trackers") && !auth.isAdmin()) {
     return {
       notFound: true,
     };
