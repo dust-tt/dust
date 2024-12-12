@@ -221,7 +221,9 @@ export function ProPriceTable({
             <Button
               variant="highlight"
               size={biggerButtonSize}
-              label="Start now, 15 days free"
+              label={
+                display === "landing" ? "Start now, 15 days free" : "Start now"
+              }
               icon={RocketIcon}
               disabled={isProcessing}
               onClick={onClick}
@@ -242,7 +244,9 @@ export function ProPriceTable({
             <Button
               variant="highlight"
               size={biggerButtonSize}
-              label="Start now, 15 days free"
+              label={
+                display === "landing" ? "Start now, 15 days free" : "Start now"
+              }
               icon={RocketIcon}
               disabled={isProcessing}
               onClick={onClick}
