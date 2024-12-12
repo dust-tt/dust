@@ -60,8 +60,10 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: {
     transformer: (parents) =>
       _.uniq([
-        ...parents,
         ...parents.map((parent) => _.last(parent.split(`slack-channel-`))!),
+        ...parents.map(
+          (parent) => `slack-channel-` + _.last(parent.split(`slack-channel-`))!
+        ),
       ]),
     cleaner: (parents) =>
       parents.filter((parent) => !parent.startsWith("slack-channel-")),
