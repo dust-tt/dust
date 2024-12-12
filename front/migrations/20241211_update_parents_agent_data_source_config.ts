@@ -69,7 +69,17 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   google_drive: null,
   microsoft: null,
   github: null,
-  notion: null,
+  notion: {
+    transformer: (parents) => {
+      const allNotionIds = _.uniq(
+        parents.map((p) => _.last(p.split("notion-"))!)
+      );
+      // Return both the new IDs (first) and then the legacy IDs
+      return [...allNotionIds.map((id) => `notion-${id}`), ...allNotionIds];
+    },
+    cleaner: (parents) =>
+      parents.filter((parent) => !parent.startsWith("notion-")),
+  },
   snowflake: null,
   webcrawler: null,
   zendesk: null, // no migration needed!
