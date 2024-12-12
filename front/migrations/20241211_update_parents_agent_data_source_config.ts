@@ -7,16 +7,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 
-type MigratorAction = "transform" | "clean";
-
-const isMigratorAction = (action: string): action is MigratorAction => {
-  return ["transform", "clean"].includes(action);
-};
-
-type ProviderMigrator = {
-  transformer: (parents: string[]) => string[];
-  cleaner: (parents: string[]) => string[];
-};
+type ProviderMigrator = (parents: string[]) => string[];
 
 const AGENT_CONFIGURATION_BATCH_SIZE = 100;
 const UPDATE_CONCURRENCY = 10;
@@ -55,19 +46,15 @@ export function getUpdatedConfluenceId(internalId: string): string {
   throw new Error(`Invalid internal ID: ${internalId}`);
 }
 
-// we put null values if no migration is needed
+/// Migrator: oldParents => newParents idempotently
+/// we put null values if no migration is needed
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
-  slack: {
-    transformer: (parents) =>
-      _.uniq([
-        ...parents.map((parent) => _.last(parent.split(`slack-channel-`))!),
-        ...parents.map(
-          (parent) => `slack-channel-` + _.last(parent.split(`slack-channel-`))!
-        ),
-      ]),
-    cleaner: (parents) =>
-      parents.filter((parent) => !parent.startsWith("slack-channel-")),
-  },
+  slack: (parents) =>
+    _.uniq([
+      ...parents.map(
+        (parent) => `slack-channel-` + _.last(parent.split(`slack-channel-`))!
+      ),
+    ]),
   google_drive: null,
   microsoft: null,
   github: null,
@@ -75,33 +62,16 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   snowflake: null,
   webcrawler: null,
   zendesk: null, // no migration needed!
-  confluence: {
-    transformer: (parents) => [
-      ...new Set([...parents, ...parents.map(getUpdatedConfluenceId)]),
-    ],
-    cleaner: (parents) =>
-      parents.filter(
-        (parent) =>
-          !parent.startsWith(ConfluenceOldIdPrefix.Page) &&
-          !parent.startsWith(ConfluenceOldIdPrefix.Space)
-      ),
-  },
+  confluence: (parents) => parents.map(getUpdatedConfluenceId),
   intercom: null, // no migration needed!
 };
 
 makeScript(
   {
     provider: { type: "string", required: true },
-    action: { type: "string", required: true },
     nextId: { type: "number", default: 0 },
   },
-  async ({ execute, provider, action, nextId }, logger) => {
-    if (!isMigratorAction(action)) {
-      console.error(
-        `Invalid action ${action}, supported actions are "transform" and "clean"`
-      );
-      return;
-    }
+  async ({ execute, provider, nextId }, logger) => {
     if (!isConnectorProvider(provider)) {
       console.error(`Invalid provider ${provider}`);
       return;
@@ -143,12 +113,8 @@ makeScript(
             let newParentsNotIn = parentsNotIn;
 
             try {
-              newParentsIn &&= (
-                action === "transform" ? migrator.transformer : migrator.cleaner
-              )(newParentsIn);
-              newParentsNotIn &&= (
-                action === "clean" ? migrator.transformer : migrator.cleaner
-              )(newParentsNotIn);
+              newParentsIn &&= migrator(newParentsIn);
+              newParentsNotIn &&= migrator(newParentsNotIn);
             } catch (e) {
               logger.error({ configuration, e, lastSeenId }, `TRANSFORM_ERROR`);
               throw e;
