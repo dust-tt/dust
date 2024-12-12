@@ -126,6 +126,7 @@ export const MultipleDocumentsUpload = ({
           total: fileBlobs.length,
           completed: i++,
         });
+        // TODO : use an upsert endpoint here that will handle the upsert of the file
 
         // get processed text
         const content = await getFileProcessedContent(blob.fileId);
