@@ -34,6 +34,11 @@ export function runDocumentUpsertHooks(
     return;
   }
 
+  if (params.upsertContext?.sync_type !== "incremental") {
+    // Skip hooks for batch syncs
+    return;
+  }
+
   for (const hook of DOCUMENT_UPSERT_HOOKS) {
     void wakeLock(async () => {
       try {
