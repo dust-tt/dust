@@ -1,15 +1,17 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import { concurrentExecutor, isConnectorProvider } from "@dust-tt/types";
 import _ from "lodash";
+import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { makeScript } from "@app/scripts/helpers";
 
 type ProviderMigrator = (parents: string[]) => string[];
 
-const AGENT_CONFIGURATION_BATCH_SIZE = 100;
+const BATCH_SIZE = 100;
 const UPDATE_CONCURRENCY = 10;
 
 enum ConfluenceOldIdPrefix {
@@ -64,101 +66,208 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   intercom: null, // no migration needed!
 };
 
+async function migrateAgentDataSourceConfigurations({
+  provider,
+  execute,
+  logger,
+}: {
+  provider: ConnectorProvider;
+  execute: boolean;
+  logger: Logger;
+}) {
+  let lastSeenId = 0;
+  for (;;) {
+    const configurations = await AgentDataSourceConfiguration.findAll({
+      limit: BATCH_SIZE,
+      where: { id: { [Op.gt]: lastSeenId } },
+      order: [["id", "ASC"]],
+      nest: true,
+      include: [{ model: DataSourceModel, as: "dataSource", required: true }],
+    });
+
+    if (configurations.length === 0) {
+      break;
+    }
+    lastSeenId = configurations[configurations.length - 1].id;
+
+    try {
+      await concurrentExecutor(
+        configurations,
+        async (configuration) => {
+          if (configuration.dataSource.connectorProvider !== provider) {
+            // We focus only on the provider currently migrating.
+            return;
+          }
+
+          const migrator =
+            migrators[configuration.dataSource.connectorProvider];
+          if (!migrator) {
+            return; // no migration needed
+          }
+
+          const { parentsIn, parentsNotIn } = configuration;
+          let newParentsIn = parentsIn;
+          let newParentsNotIn = parentsNotIn;
+
+          try {
+            newParentsIn &&= migrator(newParentsIn);
+            newParentsNotIn &&= migrator(newParentsNotIn);
+          } catch (e) {
+            logger.error({ configuration, e, lastSeenId }, `TRANSFORM_ERROR`);
+            throw e;
+          }
+
+          if (execute) {
+            await configuration.update({
+              parentsIn: newParentsIn,
+              parentsNotIn: newParentsNotIn,
+            });
+            logger.info(
+              {
+                configurationId: configuration.id,
+                provider,
+                fromParentsIn: parentsIn,
+                toParentsIn: newParentsIn,
+                fromParentsNotIn: parentsNotIn,
+                toParentsNotIn: newParentsNotIn,
+              },
+              `LIVE`
+            );
+          } else {
+            logger.info(
+              {
+                configurationId: configuration.id,
+                provider,
+                fromParentsIn: parentsIn,
+                toParentsIn: newParentsIn,
+                fromParentsNotIn: parentsNotIn,
+                toParentsNotIn: newParentsNotIn,
+              },
+              `DRY`
+            );
+          }
+        },
+        { concurrency: UPDATE_CONCURRENCY }
+      );
+      logger.info(`Data processed up to id ${lastSeenId}`);
+    } catch (e) {
+      logger.error({ error: e, lastSeenId }, `ERROR`);
+      throw e;
+    }
+  }
+  logger.info(`FINISHED AgentDataSourceConfiguration`);
+}
+
+async function migrateDataSourceViews({
+  provider,
+  execute,
+  logger,
+}: {
+  provider: ConnectorProvider;
+  execute: boolean;
+  logger: Logger;
+}) {
+  let lastSeenId = 0;
+  for (;;) {
+    const dataSourceViews = await DataSourceViewModel.findAll({
+      limit: BATCH_SIZE,
+      where: { id: { [Op.gt]: lastSeenId } },
+      order: [["id", "ASC"]],
+      nest: true,
+      include: [
+        { model: DataSourceModel, as: "dataSourceForView", required: true },
+      ],
+    });
+
+    if (dataSourceViews.length === 0) {
+      break;
+    }
+    lastSeenId = dataSourceViews[dataSourceViews.length - 1].id;
+
+    try {
+      await concurrentExecutor(
+        dataSourceViews,
+        async (dsView) => {
+          if (dsView.dataSourceForView.connectorProvider !== provider) {
+            // We focus only on the provider currently migrating.
+            return;
+          }
+
+          const migrator =
+            migrators[dsView.dataSourceForView.connectorProvider];
+          if (!migrator) {
+            return; // no migration needed
+          }
+
+          const { parentsIn } = dsView;
+          let newParentsIn = parentsIn;
+
+          try {
+            newParentsIn &&= migrator(newParentsIn);
+          } catch (e) {
+            logger.error(
+              { configuration: dsView, e, lastSeenId },
+              `TRANSFORM_ERROR`
+            );
+            throw e;
+          }
+
+          if (execute) {
+            await dsView.update({
+              parentsIn: newParentsIn,
+            });
+            logger.info(
+              {
+                dsViewId: dsView.id,
+                provider,
+                fromParentsIn: parentsIn,
+                toParentsIn: newParentsIn,
+              },
+              `LIVE`
+            );
+          } else {
+            logger.info(
+              {
+                dsViewId: dsView.id,
+                provider,
+                fromParentsIn: parentsIn,
+                toParentsIn: newParentsIn,
+              },
+              `DRY`
+            );
+          }
+        },
+        { concurrency: UPDATE_CONCURRENCY }
+      );
+      logger.info(`Data processed up to id ${lastSeenId}`);
+    } catch (e) {
+      logger.error({ error: e, lastSeenId }, `ERROR`);
+      throw e;
+    }
+  }
+  logger.info(`FINISHED DataSourceViewModel`);
+}
+
 makeScript(
   {
     provider: { type: "string", required: true },
-    nextId: { type: "number", default: 0 },
   },
-  async ({ execute, provider, nextId }, logger) => {
+  async ({ execute, provider }, logger) => {
     if (!isConnectorProvider(provider)) {
       console.error(`Invalid provider ${provider}`);
       return;
     }
 
-    let lastSeenId = nextId;
+    await migrateAgentDataSourceConfigurations({
+      provider,
+      execute,
+      logger,
+    });
 
-    for (;;) {
-      const configurations = await AgentDataSourceConfiguration.findAll({
-        limit: AGENT_CONFIGURATION_BATCH_SIZE,
-        where: { id: { [Op.gt]: lastSeenId } },
-        order: [["id", "ASC"]],
-        nest: true,
-        include: [{ model: DataSourceModel, as: "dataSource", required: true }],
-      });
-
-      if (configurations.length === 0) {
-        break;
-      }
-      lastSeenId = configurations[configurations.length - 1].id;
-
-      try {
-        await concurrentExecutor(
-          configurations,
-          async (configuration) => {
-            if (configuration.dataSource.connectorProvider !== provider) {
-              // We focus only on the provider currently migrating.
-              return;
-            }
-
-            const migrator =
-              migrators[configuration.dataSource.connectorProvider];
-            if (!migrator) {
-              return; // no migration needed
-            }
-
-            const { parentsIn, parentsNotIn } = configuration;
-            let newParentsIn = parentsIn;
-            let newParentsNotIn = parentsNotIn;
-
-            try {
-              newParentsIn &&= migrator(newParentsIn);
-              newParentsNotIn &&= migrator(newParentsNotIn);
-            } catch (e) {
-              logger.error({ configuration, e, lastSeenId }, `TRANSFORM_ERROR`);
-              throw e;
-            }
-
-            if (execute) {
-              await configuration.update({
-                parentsIn: newParentsIn,
-                parentsNotIn: newParentsNotIn,
-              });
-              logger.info(
-                {
-                  configurationId: configuration.id,
-                  connectorProvider: configuration.dataSource.connectorProvider,
-                  fromParentsIn: parentsIn,
-                  toParentsIn: newParentsIn,
-                  fromParentsNotIn: parentsNotIn,
-                  toParentsNotIn: newParentsNotIn,
-                },
-                `LIVE`
-              );
-            } else {
-              logger.info(
-                {
-                  configurationId: configuration.id,
-                  connectorProvider: configuration.dataSource.connectorProvider,
-                  fromParentsIn: parentsIn,
-                  toParentsIn: newParentsIn,
-                  fromParentsNotIn: parentsNotIn,
-                  toParentsNotIn: newParentsNotIn,
-                },
-                `DRY`
-              );
-            }
-          },
-          { concurrency: UPDATE_CONCURRENCY }
-        );
-        logger.info(`Data processed up to id ${lastSeenId}`);
-      } catch (e) {
-        logger.error({ error: e, lastSeenId }, `ERROR`);
-        throw e;
-      }
-    }
-
-    logger.info(
-      `Finished migrating parents for agent data source configurations.`
-    );
+    await migrateDataSourceViews({
+      provider,
+      execute,
+      logger,
+    });
   }
 );
