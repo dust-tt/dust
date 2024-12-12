@@ -3,7 +3,6 @@ import {
   ContentMessage,
   Hoverable,
   Icon,
-  InformationCircleIcon,
   Modal,
   Page,
   SparklesIcon,
@@ -28,14 +27,6 @@ export const ConnectorDataUpdatedModal = ({
   const isRemoteDbProvider =
     REMOTE_DATABASE_CONNECTOR_PROVIDERS.includes(connectorProvider);
 
-  const title = isRemoteDbProvider
-    ? "Metadata Sync in Progress"
-    : "Data Sync in Progress";
-
-  const contentMessage = isRemoteDbProvider
-    ? "Databases, schemas, and tables metadata are being synced (this process is usually quick)."
-    : "Data is not yet available to the workspace";
-
   return (
     <Modal
       isOpen={isOpen}
@@ -51,14 +42,11 @@ export const ConnectorDataUpdatedModal = ({
           <div className="flex flex-col gap-2">
             <div className="p-1 text-xl font-bold">
               <Icon visual={SparklesIcon} className="text-brand" size="lg" />
-              <div>{title}</div>
+              <div>Data sync in progress...</div>
             </div>
           </div>
-          <ContentMessage
-            title={contentMessage}
-            variant={isRemoteDbProvider ? "amber" : "warning"}
-            icon={InformationCircleIcon}
-          >
+
+          <ContentMessage variant="slate">
             <div className="flex flex-col gap-2">
               <p>
                 Once synchronized, {isRemoteDbProvider ? "tables" : "data"} will
@@ -72,8 +60,7 @@ export const ConnectorDataUpdatedModal = ({
                 >
                   <Hoverable onClick={() => {}}>Company Data</Hoverable>
                 </Link>{" "}
-                for team-wide access or to a specific space for restricted
-                access by some team members.
+                for team-wide access or to a specific space to manage access.
               </p>
             </div>
           </ContentMessage>
@@ -97,8 +84,8 @@ export const ConnectorDataUpdatedModal = ({
               }}
             >
               documentation
-            </Hoverable>
-            .
+            </Hoverable>{" "}
+            for more information.
           </p>
           <div className="flex w-full justify-end">
             <Button label="Ok" onClick={() => onClose()} />
