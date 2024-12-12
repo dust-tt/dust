@@ -24,6 +24,11 @@ import {
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
+import {
+  getWeekEnd,
+  getWeekStart,
+  internalIdFromSlackChannelId,
+} from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
@@ -41,8 +46,6 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-import { getWeekEnd, getWeekStart, internalIdFromSlackChannelId } from "../lib/utils";
 
 const logger = mainLogger.child({ provider: "slack" });
 
