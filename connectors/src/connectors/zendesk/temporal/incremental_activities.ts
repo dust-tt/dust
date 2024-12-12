@@ -222,7 +222,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
-      } else if (ticket.status === "solved") {
+      } else if (["solved", "closed"].includes(ticket.status)) {
         const comments = await zendeskApiClient.tickets.getComments(ticket.id);
         const { result: users } = await zendeskApiClient.users.showMany(
           comments.map((c) => c.author_id)

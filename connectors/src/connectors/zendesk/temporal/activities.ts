@@ -433,10 +433,12 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
-  const solvedTickets = tickets.filter((t) => t.status === "solved");
+  const closedTickets = tickets.filter((t) =>
+    ["closed", "solved"].includes(t.status)
+  );
 
   const comments2d = await concurrentExecutor(
-    solvedTickets,
+    closedTickets,
     async (ticket) => zendeskApiClient.tickets.getComments(ticket.id),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
@@ -446,7 +448,7 @@ export async function syncZendeskTicketBatchActivity({
   const { result: users } = await zendeskApiClient.users.showMany(userIds);
 
   const res = await concurrentExecutor(
-    _.zip(solvedTickets, comments2d),
+    _.zip(closedTickets, comments2d),
     async ([ticket, comments]) => {
       if (!ticket || !comments) {
         throw new Error(
