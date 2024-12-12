@@ -1,7 +1,7 @@
 export async function getServerSideProps() {
   return {
     redirect: {
-      destination: "https://dust.tt/jobs",
+      destination: "https://jobs.ashbyhq.com/dust",
       permanent: true,
     },
   };
