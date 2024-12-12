@@ -9,6 +9,7 @@ import {
   GithubIssue,
 } from "@connectors/lib/models/github";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 async function main() {
   const connectors = await ConnectorModel.findAll({
@@ -27,35 +28,20 @@ async function main() {
 
     for (const repository of repositories) {
       // upsert repository as folder
-      const repoFolderId = repository.repoId;
-      await upsertFolderNode({
-        dataSourceConfig,
-        folderId: repoFolderId,
-        parents: [repoFolderId],
-        title: repository.repoName,
-      });
+      // Throws if error
+      const repoFolderId = await upsertRepositoryFolderNode(
+        repository,
+        dataSourceConfig
+      );
 
       // Upsert Code folder if we have some (file or directory)
-      const hasCodeDirectory = await GithubCodeDirectory.findOne({
-        where: {
-          connectorId: connector.id,
-          repoId: repository.repoId,
-        },
-      });
-      const hasCodeFile = await GithubCodeFile.findOne({
-        where: {
-          connectorId: connector.id,
-          repoId: repository.repoId,
-        },
-      });
-      if (hasCodeDirectory || hasCodeFile) {
-        const codeFolderId = `github-code-${repository.repoId}`;
-        await upsertFolderNode({
-          dataSourceConfig,
-          folderId: codeFolderId,
-          parents: [codeFolderId, repoFolderId],
-          title: "Code",
-        });
+      const shouldCreateCodeFolder = await repositoryContainsCode(repository);
+      if (shouldCreateCodeFolder) {
+        await upsertCodeFolderNode(
+          repository.repoId,
+          repoFolderId,
+          dataSourceConfig
+        );
       }
 
       const directories = await GithubCodeDirectory.findAll({
@@ -68,47 +54,151 @@ async function main() {
         const chunk = directories.slice(i, i + 16);
         await Promise.all(
           chunk.map(async (directory) => {
-            // This already contains IDs for Code and Repository folders
-            const parents = await getGithubCodeDirectoryParentIds(
-              connector.id,
-              directory.internalId,
-              repository.id
+            await upsertDirectoryFolderNode(
+              directory,
+              repository.id,
+              dataSourceConfig
             );
-            await upsertFolderNode({
-              dataSourceConfig,
-              folderId: directory.internalId,
-              parents: [directory.internalId, ...parents],
-              title: directory.dirName,
-            });
           })
         );
       }
 
       // Upsert issue folder if we have issues
-      if (await GithubIssue.findOne({ where: { repoId: repository.repoId } })) {
-        const issuesFolderId = `${repository.repoId}-issues`;
-        await upsertFolderNode({
-          dataSourceConfig,
-          folderId: issuesFolderId,
-          parents: [issuesFolderId, repoFolderId],
-          title: "Issues",
-        });
+      const shouldCreateIssueFolder =
+        await repositoryContainsIssues(repository);
+      if (shouldCreateIssueFolder) {
+        await upsertIssueFolderNode(
+          repository.repoId,
+          repoFolderId,
+          dataSourceConfig
+        );
       }
 
       // Upsert discussion folder if we have discussions
-      if (
-        await GithubDiscussion.findOne({ where: { repoId: repository.repoId } })
-      ) {
-        const discussionsFolderId = `${repository.repoId}-discussions`;
-        await upsertFolderNode({
-          dataSourceConfig,
-          folderId: discussionsFolderId,
-          parents: [discussionsFolderId, repoFolderId],
-          title: "Discussions",
-        });
+      const shouldCreateDiscussionFolder =
+        await repositoryContainsDiscussions(repository);
+      if (shouldCreateDiscussionFolder) {
+        await upsertDiscussionFolderNode(
+          repository.repoId,
+          repoFolderId,
+          dataSourceConfig
+        );
       }
     }
   }
+}
+
+async function upsertRepositoryFolderNode(
+  repository: GithubCodeRepository,
+  dataSourceConfig: DataSourceConfig
+) {
+  const repoFolderId = repository.repoId;
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: repoFolderId,
+    parents: [repoFolderId],
+    title: repository.repoName,
+  });
+  return repoFolderId;
+}
+
+async function upsertCodeFolderNode(
+  repositoryId: string,
+  repositoryNodeId: string,
+  dataSourceConfig: DataSourceConfig
+) {
+  const codeFolderId = `github-code-${repositoryId}`;
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: codeFolderId,
+    parents: [codeFolderId, repositoryNodeId],
+    title: "Code",
+  });
+  return codeFolderId;
+}
+
+async function upsertDirectoryFolderNode(
+  directory: GithubCodeDirectory,
+  repositoryId: number,
+  dataSourceConfig: DataSourceConfig
+) {
+  // This already contains IDs for Code and Repository folders
+  const parents = await getGithubCodeDirectoryParentIds(
+    directory.connectorId,
+    directory.internalId,
+    repositoryId
+  );
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: directory.internalId,
+    parents: [directory.internalId, ...parents],
+    title: directory.dirName,
+  });
+}
+
+async function upsertIssueFolderNode(
+  repositoryId: string,
+  repositoryNodeId: string,
+  dataSourceConfig: DataSourceConfig
+) {
+  const issuesFolderId = `${repositoryId}-issues`;
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: issuesFolderId,
+    parents: [issuesFolderId, repositoryNodeId],
+    title: "Issues",
+  });
+}
+
+async function upsertDiscussionFolderNode(
+  repositoryId: string,
+  repositoryNodeId: string,
+  dataSourceConfig: DataSourceConfig
+) {
+  const discussionsFolderId = `${repositoryId}-discussions`;
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: discussionsFolderId,
+    parents: [discussionsFolderId, repositoryNodeId],
+    title: "Discussions",
+  });
+}
+
+async function repositoryContainsCode(repository: GithubCodeRepository) {
+  const directory = await GithubCodeDirectory.findOne({
+    where: {
+      connectorId: repository.connectorId,
+      repoId: repository.repoId,
+    },
+  });
+  if (directory) {
+    return true;
+  }
+  const file = await GithubCodeFile.findOne({
+    where: {
+      connectorId: repository.connectorId,
+      repoId: repository.repoId,
+    },
+  });
+  return !!file;
+}
+
+async function repositoryContainsIssues(repository: GithubCodeRepository) {
+  const issue = await GithubIssue.findOne({
+    where: {
+      repoId: repository.repoId,
+    },
+  });
+  return !!issue;
+}
+
+async function repositoryContainsDiscussions(repository: GithubCodeRepository) {
+  const discussion = await GithubDiscussion.findOne({
+    where: {
+      repoId: repository.repoId,
+    },
+  });
+  return !!discussion;
 }
 
 main()
