@@ -1,10 +1,10 @@
 import {
+  Button,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
   ScrollArea,
   SearchInput,
-  Separator,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewContentNode,
@@ -28,6 +28,7 @@ interface TablePickerProps {
   readOnly: boolean;
   space: SpaceType;
   onTableUpdate: (table: DataSourceViewContentNode) => void;
+  excludeTables?: Array<{ dataSourceId: string; tableId: string }>;
 }
 
 export default function TablePicker({
@@ -37,6 +38,7 @@ export default function TablePicker({
   readOnly,
   space,
   onTableUpdate,
+  excludeTables,
 }: TablePickerProps) {
   void dataSource;
 
@@ -65,6 +67,7 @@ export default function TablePicker({
 
   const [searchFilter, setSearchFilter] = useState("");
   const [filteredTables, setFilteredTables] = useState(tables);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const newTables = searchFilter
@@ -80,36 +83,45 @@ export default function TablePicker({
       <div className="flex items-center">
         {readOnly ? (
           currentTable ? (
-            <div className="text-sm font-bold text-action-500">
+            <div className="max-w-20 mr-1 truncate text-sm font-bold text-action-500">
               {currentTable.title}
             </div>
           ) : (
             "No Table"
           )
         ) : (
-          <PopoverRoot>
-            <PopoverTrigger asChild>
-              <div
-                className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                  currentTable ? "px-0" : "border px-3",
-                  readOnly ? "text-gray-300" : "text-gray-700",
-                  "focus:outline-none focus:ring-0"
-                )}
-              >
-                {currentTable ? (
-                  <>
-                    <div className="mr-1 text-sm font-bold text-action-500">
-                      {currentTable.title}
-                    </div>
-                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
-                  </>
-                ) : tables && tables.length > 0 ? (
-                  <span>Select Table</span>
-                ) : (
-                  <span>No Tables</span>
-                )}
-              </div>
+          <PopoverRoot open={open} onOpenChange={setOpen}>
+            <PopoverTrigger>
+              {currentTable ? (
+                <div
+                  className={classNames(
+                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                    readOnly ? "text-gray-300" : "text-gray-700",
+                    "focus:outline-none focus:ring-0"
+                  )}
+                >
+                  <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
+                    {currentTable.title}
+                  </div>
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                </div>
+              ) : tables && tables.length > 0 ? (
+                <Button
+                  variant="outline"
+                  label="Select Table"
+                  isSelect
+                  size="xs"
+                />
+              ) : (
+                <span
+                  className={classNames(
+                    "text-sm",
+                    readOnly ? "text-gray-300" : "text-gray-700"
+                  )}
+                >
+                  No Tables
+                </span>
+              )}
             </PopoverTrigger>
 
             {(tables || []).length > 0 && (
@@ -121,21 +133,30 @@ export default function TablePicker({
                   onChange={(e) => setSearchFilter(e)}
                 />
                 <ScrollArea className="flex max-h-[300px] flex-col">
-                  {(filteredTables || []).map((t) => (
-                    <div
-                      key={t.dustDocumentId}
-                      className="flex cursor-pointer flex-col items-start hover:opacity-80"
-                      onClick={() => {
-                        onTableUpdate(t);
-                        setSearchFilter("");
-                      }}
-                    >
-                      <div className="my-1">
-                        <div className="text-sm">{t.title}</div>
+                  {(filteredTables || [])
+                    .filter(
+                      (t) =>
+                        !excludeTables?.some(
+                          (et) =>
+                            et.dataSourceId === dataSource.data_source_id &&
+                            et.tableId === t.dustDocumentId
+                        )
+                    )
+                    .map((t) => (
+                      <div
+                        key={t.dustDocumentId}
+                        className="flex cursor-pointer flex-col items-start hover:opacity-80"
+                        onClick={() => {
+                          onTableUpdate(t);
+                          setSearchFilter("");
+                          setOpen(false);
+                        }}
+                      >
+                        <div className="my-1">
+                          <div className="text-sm">{t.title}</div>
+                        </div>
                       </div>
-                      <Separator />
-                    </div>
-                  ))}
+                    ))}
                   {filteredTables.length === 0 && (
                     <span className="block px-4 py-2 text-sm text-gray-700">
                       No tables found
