@@ -25,7 +25,7 @@ const CareersMenuConfig: MenuConfig = {
     },
     {
       title: "Jobs",
-      href: "https://jobs.ashbyhq.com/dust",
+      href: "https://dust.tt/jobs",
       isExternal: true,
     },
   ],
