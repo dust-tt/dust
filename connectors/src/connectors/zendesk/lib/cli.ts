@@ -90,7 +90,7 @@ export const zendesk = async ({
         throw new Error(`Connector ${connectorId} not found`);
       }
       const result = await launchZendeskTicketReSyncWorkflow(connector, {
-        forceResync: args.forceResync || false,
+        forceResync: args.forceResync === "true",
       });
       if (result.isErr()) {
         logger.error(

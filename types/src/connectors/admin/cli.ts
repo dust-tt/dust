@@ -228,7 +228,7 @@ export const ZendeskCommandSchema = t.type({
     connectorId: t.union([t.number, t.undefined]),
     brandId: t.union([t.number, t.undefined]),
     query: t.union([t.string, t.undefined]),
-    forceResync: t.boolean,
+    forceResync: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
