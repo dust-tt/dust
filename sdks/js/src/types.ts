@@ -79,7 +79,7 @@ export type ConnectorsAPIErrorType = z.infer<
 >;
 
 // Supported content types that are plain text and can be sent as file-less content fragment.
-const supportedOtherFileFormats = {
+export const supportedOtherFileFormats = {
   "application/msword": [".doc", ".docx"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
     ".doc",
@@ -104,7 +104,7 @@ const supportedOtherFileFormats = {
 } as const;
 
 // Supported content types for images.
-const supportedImageFileFormats = {
+export const supportedImageFileFormats = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
   "image/gif": [".gif"],
@@ -120,6 +120,11 @@ const supportedOtherContentTypes = Object.keys(
 const supportedImageContentTypes = Object.keys(
   supportedImageFileFormats
 ) as ImageContentType[];
+
+export const supportedFileExtensions = [
+  ...Object.keys(supportedOtherFileFormats),
+  ...Object.keys(supportedImageFileFormats),
+];
 
 export type SupportedFileContentType = OtherContentType | ImageContentType;
 const supportedUploadableContentType = [
