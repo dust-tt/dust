@@ -50,11 +50,9 @@ export function getUpdatedConfluenceId(internalId: string): string {
 /// we put null values if no migration is needed
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: (parents) =>
-    _.uniq([
-      ...parents.map(
-        (parent) => `slack-channel-` + _.last(parent.split(`slack-channel-`))!
-      ),
-    ]),
+    parents.map(
+      (parent) => `slack-channel-` + _.last(parent.split(`slack-channel-`))!
+    ),
   google_drive: null,
   microsoft: null,
   github: null,
