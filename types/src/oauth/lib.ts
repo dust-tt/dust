@@ -81,6 +81,12 @@ export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 
 export type ConnectionCredentials = SnowflakeCredentials | ModjoCredentials;
 
+export function isSnowflakeCredentials(
+  credentials: ConnectionCredentials
+): credentials is SnowflakeCredentials {
+  return "username" in credentials && "password" in credentials;
+}
+
 // POST Credentials
 
 export const PostSnowflakeCredentialsBodySchema = t.type({
