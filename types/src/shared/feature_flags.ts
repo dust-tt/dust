@@ -2,6 +2,7 @@ export const WHITELISTABLE_FEATURES = [
   "usage_data_api",
   "okta_enterprise_connection",
   "labs_transcripts",
+  "labs_transcripts_modjo",
   "labs_transcripts_gong_full_storage",
   "document_tracker",
   "use_app_for_header_detection",

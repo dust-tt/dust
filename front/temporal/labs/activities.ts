@@ -36,6 +36,10 @@ import {
   retrieveGoogleTranscriptContent,
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/utils/google";
+import {
+  retrieveModjoTranscriptContent,
+  retrieveModjoTranscripts,
+} from "@app/temporal/labs/utils/modjo";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -100,6 +104,15 @@ export async function retrieveNewTranscriptsActivity(
         localLogger
       );
       transcriptsIdsToProcess.push(...gongTranscriptsIds);
+      break;
+
+    case "modjo":
+      const modjoTranscriptsIds = await retrieveModjoTranscripts(
+        auth,
+        transcriptsConfiguration,
+        localLogger
+      );
+      transcriptsIdsToProcess.push(...modjoTranscriptsIds);
       break;
 
     default:
@@ -225,6 +238,27 @@ export async function processTranscriptActivity(
       transcriptTitle = gongResult.transcriptTitle || "";
       transcriptContent = gongResult.transcriptContent || "";
       userParticipated = gongResult.userParticipated;
+      break;
+
+    case "modjo":
+      const modjoResult = await retrieveModjoTranscriptContent(
+        auth,
+        transcriptsConfiguration,
+        fileId,
+        localLogger
+      );
+      if (!modjoResult) {
+        localLogger.info(
+          {
+            fileId,
+          },
+          "[processTranscriptActivity] No Gong result found. Stopping."
+        );
+        return;
+      }
+      transcriptTitle = modjoResult.transcriptTitle || "";
+      transcriptContent = modjoResult.transcriptContent || "";
+      userParticipated = modjoResult.userParticipated;
       break;
 
     default:

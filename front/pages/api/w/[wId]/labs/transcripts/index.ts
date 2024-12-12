@@ -1,4 +1,5 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { encrypt } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -14,15 +15,40 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
 
+// Define provider type separately for better reuse
 export const acceptableTranscriptProvidersCodec = t.union([
   t.literal("google_drive"),
   t.literal("gong"),
+  t.literal("modjo"),
 ]);
 
-export const PostLabsTranscriptsConfigurationBodySchema = t.type({
-  connectionId: t.string,
+const BaseConfiguration = t.type({
   provider: acceptableTranscriptProvidersCodec,
 });
+
+const ConnectionConfig = t.intersection([
+  BaseConfiguration,
+  t.type({ connectionId: t.string }),
+]);
+
+const ApiKeyConfig = t.intersection([
+  BaseConfiguration,
+  t.type({
+    apiKey: t.string,
+    apiKeyIsEncrypted: t.union([t.boolean, t.undefined]),
+  }),
+]);
+
+export const PostLabsTranscriptsConfigurationBodySchema = t.union([
+  ConnectionConfig,
+  ApiKeyConfig,
+]);
+
+export function isApiKeyConfig(
+  config: t.TypeOf<typeof PostLabsTranscriptsConfigurationBodySchema>
+): config is t.TypeOf<typeof ApiKeyConfig> {
+  return "apiKey" in config;
+}
 
 async function handler(
   req: NextApiRequest,
@@ -80,7 +106,18 @@ async function handler(
         });
       }
 
-      const { connectionId, provider } = bodyValidation.right;
+      const validatedBody = bodyValidation.right;
+      const { provider } = validatedBody;
+
+      const connectionId = isApiKeyConfig(validatedBody)
+        ? undefined
+        : validatedBody.connectionId;
+      const apiKey = isApiKeyConfig(validatedBody)
+        ? validatedBody.apiKey
+        : undefined;
+      const apiKeyIsEncrypted = isApiKeyConfig(validatedBody)
+        ? validatedBody.apiKeyIsEncrypted
+        : undefined;
 
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
@@ -98,12 +135,19 @@ async function handler(
         });
       }
 
+      let apiKeyToUse = apiKey ?? null;
+      if (apiKey && !apiKeyIsEncrypted) {
+        // If the API key is not already encrypted, we need to encrypt it.
+        apiKeyToUse = encrypt(apiKey, owner.sId);
+      }
+
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
           userId: user.id,
           workspaceId: owner.id,
           provider,
-          connectionId,
+          connectionId: connectionId ?? null,
+          apiKey: apiKeyToUse,
         });
 
       return res
