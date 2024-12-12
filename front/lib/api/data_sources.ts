@@ -9,7 +9,6 @@ import type {
   CoreAPIDocument,
   CoreAPIError,
   CoreAPILightDocument,
-  CoreAPISearchFilter,
   CoreAPITable,
   DataSourceType,
   DataSourceWithConnectorDetailsType,
