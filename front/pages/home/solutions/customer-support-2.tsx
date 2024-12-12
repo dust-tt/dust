@@ -1,3 +1,5 @@
+import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
 import type { ReactElement } from "react";
 
 import {
@@ -12,8 +14,7 @@ import {
   MetricComponent,
   Quote,
 } from "@app/components/home/ContentBlocks";
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/ContentComponents";
+import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
@@ -54,24 +55,91 @@ const pageSettings: pageSettingsProps = {
   to: "to-sky-500",
   description: (
     <>
-      Dust brings all your&nbsp;tools and&nbsp;company knowledge at
-      your&nbsp;fingertips for&nbsp;endless&nbsp;possibilities.
+      Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate issue
+      resolution and&nbsp;increase customer satisfaction.
     </>
   ),
 };
 
 export default function CustomerSupport() {
+  const MainVisualImage = () => (
+    <>
+      <Hover3D depth={-40} perspective={1000} className="relative">
+        <Div3D depth={-30}>
+          <img src="/static/landing/support/support1.png" alt="MainVisual1" />
+        </Div3D>
+        <Div3D depth={-10} className="absolute top-0">
+          <img src="/static/landing/support/support2.png" alt="MainVisual2" />
+        </Div3D>
+        <Div3D depth={20} className="absolute top-0">
+          <img src="/static/landing/support/support3.png" alt="MainVisual3" />
+        </Div3D>
+        <Div3D depth={30} className="absolute top-0">
+          <img src="/static/landing/support/support4.png" alt="MainVisual4" />
+        </Div3D>
+        {/* <Div3D
+          depth={150}
+          className="absolute top-0 flex h-full w-full items-center justify-center"
+        >
+          <Button
+            icon={PlayIcon}
+            variant="highlight"
+            size="md"
+            label="Watch Product Tour"
+            className="shadow-xl"
+            onClick={() => setIsVideoOpen(true)}
+          />
+        </Div3D> */}
+      </Hover3D>
+    </>
+  );
   return (
     <>
-      <HeaderContentBlock
+      {/* <HeaderContentBlock
         uptitle={"Dust for " + pageSettings.uptitle}
         title={pageSettings.title}
         from={pageSettings.from}
         to={pageSettings.to}
         subtitle={pageSettings.description}
-      />
+      /> */}
 
       <Grid>
+        <div
+          className={classNames(
+            "col-span-12 justify-center",
+            "flex flex-col gap-8 pt-24 lg:min-h-[70vh] lg:pt-0",
+            "lg:col-span-5 lg:py-20",
+            "2xl:col-span-5 2xl:col-start-2"
+          )}
+        >
+          <H1 from={pageSettings.from} to={pageSettings.to}>
+            {pageSettings.title}
+          </H1>
+          <P size="lg" className="text-slate-50">
+            {pageSettings.description}
+          </P>
+          <div>
+            <Link href="/home/pricing" shallow={true}>
+              <Button
+                variant="highlight"
+                size="md"
+                label="Get started"
+                icon={RocketIcon}
+              />
+            </Link>
+          </div>
+        </div>
+        <div
+          className={classNames(
+            "col-span-12 mx-auto px-8 py-6 sm:max-w-[100%] md:max-w-[90%]",
+            "lg:col-span-7 lg:col-start-6 lg:h-[100%] lg:max-w-[100%]",
+            "2xl:col-span-6"
+          )}
+        >
+          <div className="flex h-full w-full items-center justify-center">
+            {MainVisualImage()}
+          </div>
+        </div>
         <TrustedBy />
 
         <MetricComponent
@@ -217,7 +285,7 @@ export default function CustomerSupport() {
 const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🔍",
-    name: "Ticket Resolution",
+    name: "@ticketResolution",
     backgroundColor: "bg-sky-300",
     description: (
       <>Smart answer suggestions and contextual knowledge at your fingertips.</>
@@ -225,7 +293,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   },
   {
     emoji: "🎓",
-    name: "Agent Coaching",
+    name: "@agentCoaching",
     backgroundColor: "bg-sky-300",
     description: (
       <>
@@ -236,7 +304,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   },
   {
     emoji: "📝",
-    name: "Documentation Builder",
+    name: "@documentationBuilder",
     backgroundColor: "bg-sky-300",
     description: (
       <>
@@ -247,7 +315,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   },
   {
     emoji: "📢",
-    name: "Customer Voice",
+    name: "@customerVoice",
     backgroundColor: "bg-sky-300",
     description: (
       <>Turn customer feedback from every channel into actionable insights.</>

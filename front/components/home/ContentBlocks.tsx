@@ -228,7 +228,9 @@ export const Quote = ({ quote, logo, name, title }: QuoteProps) => (
       <div className="flex items-center justify-center">
         <Image src={logo} width={200} height={48} alt="Malt Logo" />
         <P size="md" className="text-primary-400">
-          <Strong>{name}</Strong>
+          <Strong>
+            <span className="text-pink-300">{name}</span>
+          </Strong>
           <br />
           {title}
         </P>
@@ -278,7 +280,7 @@ export const CarousselContentBlock = ({
         <Link href={href} shallow={true} className="block w-full">
           <Button
             label={"Discover Dust for " + title}
-            variant="ghost"
+            variant="outline"
             size="md"
             icon={ArrowRightIcon}
             className="max-w-full"
