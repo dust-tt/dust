@@ -58,7 +58,7 @@ export function QuickStartGuide() {
               <h5 className="text-xl font-semibold">
                 👩‍🎨🦸‍♀️🥷🧑‍🚀 Multiple Assistants
               </h5>
-              <p className="font-bold">
+              <p className="font-medium">
                 Specialized assistants can help answer questions, really well.
               </p>
               <p>
@@ -72,14 +72,14 @@ export function QuickStartGuide() {
               <p>
                 Raw model assistants, without any particular instructions or
                 access to your company knowledge are also available, like{" "}
-                <span className="font-bold text-success-500">@gpt4</span>.
+                <span className="font-medium text-success-500">@gpt4</span>.
               </p>
             </div>
             <div className="col-span-3 flex flex-col gap-4">
               <h5 className="text-xl font-semibold">
                 🛠️ Build your own Assistants
               </h5>
-              <p className="font-bold">
+              <p className="font-medium">
                 Assistants start with an "instruction": a text telling what you
                 want them to do.
               </p>
@@ -92,7 +92,7 @@ export function QuickStartGuide() {
               <p>
                 And you can give them access to knowledge.
                 <br />
-                We call them <span className="font-bold">Data sources.</span>
+                We call them <span className="font-medium">Data sources.</span>
               </p>
               <p>
                 With the right Data source, assistants can answer questions like{" "}
