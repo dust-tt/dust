@@ -630,14 +630,6 @@ export async function handleDataSourceTableCSVUpsert({
   const tableId = params.tableId ?? generateRandomModelSId();
   const tableParents: string[] = params.parents ?? [];
 
-  // Ensure that the tableId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfTableId = tableParents.indexOf(tableId);
-  if (indexOfTableId !== -1) {
-    tableParents.splice(indexOfTableId, 1);
-  }
-  tableParents.unshift(tableId);
-
   const flags = await getFeatureFlags(owner);
 
   const useAppForHeaderDetection =
