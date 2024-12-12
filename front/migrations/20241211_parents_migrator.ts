@@ -25,7 +25,7 @@ type ProviderMigrator = {
   transformer: (
     nodeId: string,
     parents: string[]
-  ) => { parents: string[]; parentId: string | null } | null; // null here means we skip the document
+  ) => { parents: string[]; parentId: string | null };
   /// returns [nodeId, ...newParents] idempotently
   cleaner: (
     nodeId: string,
@@ -198,7 +198,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
           { nodeId, parents, problem: "Not enough parents" },
           "Invalid Confluence parents"
         );
-        return null;
+        return { parents: [nodeId], parentId: null };
       }
       return {
         parents: [
@@ -248,15 +248,12 @@ async function migrateDocument({
   let newParents = coreDocument.parents;
   let newParentId: string | null = null;
   try {
-    const newData =
+    const { parents, parentId } =
       action === "transform"
         ? migrator.transformer(coreDocument.document_id, coreDocument.parents)
         : migrator.cleaner(coreDocument.document_id, coreDocument.parents);
-    if (newData === null) {
-      return new Ok(undefined);
-    }
-    newParents = newData.parents;
-    newParentId = newData.parentId;
+    newParents = parents;
+    newParentId = parentId;
   } catch (e) {
     logger.error(
       {
@@ -328,15 +325,12 @@ async function migrateTable({
   let newParents = coreTable.parents;
   let newParentId: string | null = null;
   try {
-    const newData =
+    const { parents, parentId } =
       action === "transform"
         ? migrator.transformer(coreTable.table_id, coreTable.parents)
         : migrator.cleaner(coreTable.table_id, coreTable.parents);
-    if (newData === null) {
-      return new Ok(undefined);
-    }
-    newParents = newData.parents;
-    newParentId = newData.parentId;
+    newParents = parents;
+    newParentId = parentId;
   } catch (e) {
     logger.error(
       {
