@@ -155,13 +155,18 @@ export async function updateAllParentsFields(
   for (const pageId of pageIdsToUpdate) {
     promises.push(
       q.add(async () => {
-        const parents = await getParents(
+        const pageOrDbIds = await getParents(
           connectorId,
           pageId,
           [],
           memoizationKey,
           onProgress
         );
+
+        // TODO(kw_search) remove legacy
+        const legacyParents = pageOrDbIds;
+        const parents = pageOrDbIds.map((id) => `notion-${id}`);
+
         logger.info(
           {
             connectorId,
@@ -172,7 +177,7 @@ export async function updateAllParentsFields(
         await updateDocumentParentsField({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: `notion-${pageId}`,
-          parents,
+          parents: [...parents, ...legacyParents],
         });
         if (onProgress) {
           await onProgress();

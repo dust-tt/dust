@@ -1790,7 +1790,7 @@ export async function renderAndUpsertPageFromCache({
           rowBoundary: "",
         });
 
-        const parents = await getParents(
+        const parentPageOrDbIds = await getParents(
           connector.id,
           parentDb.notionDatabaseId,
           [],
@@ -1799,6 +1799,10 @@ export async function renderAndUpsertPageFromCache({
             await heartbeat();
           }
         );
+
+        // TODO(kw_search) remove legacy
+        const legacyParents = parentPageOrDbIds;
+        const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
 
         await ignoreTablesError(
           () =>
@@ -1811,7 +1815,7 @@ export async function renderAndUpsertPageFromCache({
               loggerArgs,
               // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
               truncate: false,
-              parents,
+              parents: [...parents, ...legacyParents],
               title: parentDb.title ?? "Untitled Notion Database",
               mimeType: "application/vnd.dust.notion.database",
             }),
@@ -1990,7 +1994,8 @@ export async function renderAndUpsertPageFromCache({
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Fetching resource parents."
     );
-    const parents = await getParents(
+
+    const parentPageOrDbIds = await getParents(
       connectorId,
       pageId,
       [],
@@ -1999,6 +2004,10 @@ export async function renderAndUpsertPageFromCache({
         await heartbeat();
       }
     );
+
+    // TODO(kw_search) remove legacy
+    const legacyParentIds = parentPageOrDbIds;
+    const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
 
     const content = await renderDocumentTitleAndContent({
       dataSourceConfig: dsConfig,
@@ -2027,7 +2036,8 @@ export async function renderAndUpsertPageFromCache({
         updatedTime: updatedAt.getTime(),
         parsedProperties,
       }),
-      parents,
+      // TODO(kw_search) remove legacy
+      parents: [...parentIds, ...legacyParentIds],
       loggerArgs,
       upsertContext: {
         sync_type: isFullSync ? "batch" : "incremental",
@@ -2505,13 +2515,17 @@ export async function upsertDatabaseStructuredDataFromCache({
 
   const upsertAt = new Date();
 
-  const parents = await getParents(
+  const parentPageOrDbIds = await getParents(
     connector.id,
     databaseId,
     [],
     runTimestamp.toString(),
     async () => heartbeat()
   );
+
+  // TODO(kw_search) remove legacy
+  const legacyParentIds = parentPageOrDbIds;
+  const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
 
   localLogger.info("Upserting Notion Database as Table.");
   await ignoreTablesError(
@@ -2525,7 +2539,8 @@ export async function upsertDatabaseStructuredDataFromCache({
         loggerArgs,
         // We overwrite the whole table since we just fetched all child pages.
         truncate: true,
-        parents,
+        // TODO(kw_search) remove legacy
+        parents: [...parentIds, ...legacyParentIds],
         title: dbModel.title ?? "Untitled Notion Database",
         mimeType: "application/vnd.dust.notion.database",
       }),
@@ -2561,9 +2576,10 @@ export async function upsertDatabaseStructuredDataFromCache({
       maxPrefixChars: MAX_PREFIX_CHARS * 2,
     });
     if (!prefixSection.content) {
+      const databaseDocId = `notion-database-${databaseId}`;
       await upsertToDatasource({
         dataSourceConfig,
-        documentId: `notion-database-${databaseId}`,
+        documentId: databaseDocId,
         documentContent: {
           prefix: prefixSection.prefix,
           content: csvRows,
@@ -2576,7 +2592,8 @@ export async function upsertDatabaseStructuredDataFromCache({
         // we currently don't have it because we don't fetch the DB object from notion.
         timestampMs: upsertAt.getTime(),
         tags: [`title:${databaseName}`, "is_database:true"],
-        parents: parents,
+        // TODO(kw_search) remove legacy
+        parents: [databaseDocId, ...parentIds, ...legacyParentIds],
         loggerArgs,
         upsertContext: {
           sync_type: "batch",
