@@ -1,4 +1,5 @@
-import { ArrowRightIcon, Avatar, Button, RocketIcon } from "@dust-tt/sparkle";
+import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
@@ -17,6 +18,7 @@ import {
   H3,
   H5,
   P,
+  Strong,
 } from "@app/components/home/ContentComponents";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSectionAssistantBlock } from "@app/components/home/SolutionSection";
@@ -212,20 +214,25 @@ export const MetricComponent = ({
 
 interface QuoteProps {
   quote: string;
+  name: string;
+  title: string;
+  logo: string;
 }
 
-export const Quote = ({ quote }: QuoteProps) => (
+export const Quote = ({ quote, logo, name, title }: QuoteProps) => (
   <div className="col-span-12 flex flex-col py-8 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
-    <div className="flex flex-col items-center text-center font-objektiv text-3xl italic text-white">
+    <div className="flex flex-col items-center text-center font-objektiv text-xl italic text-white sm:text-2xl lg:text-3xl">
       &ldquo; {quote} &rdquo;
     </div>
     <div className="flex justify-center pt-8">
-      <div className="flex items-center justify-center gap-3">
-        <Avatar size="lg" />
+      <div className="flex items-center justify-center">
+        <Image src={logo} width={200} height={48} alt="Malt Logo" />
         <P size="md" className="text-primary-400">
-          Walter Moniot,
+          <Strong>
+            <span className="text-pink-300">{name}</span>
+          </Strong>
           <br />
-          CPO at Malt
+          {title}
         </P>
       </div>
     </div>
@@ -273,7 +280,7 @@ export const CarousselContentBlock = ({
         <Link href={href} shallow={true} className="block w-full">
           <Button
             label={"Discover Dust for " + title}
-            variant="ghost"
+            variant="outline"
             size="md"
             icon={ArrowRightIcon}
             className="max-w-full"

@@ -14,7 +14,7 @@ export default function TrustedBy() {
         )}
       >
         <H3 className="w-full text-center text-white">
-          Trusted by 500+ organizations, including:
+          Trusted by 500+ organizations
         </H3>
         <div
           className={classNames(
