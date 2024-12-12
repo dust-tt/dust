@@ -28,6 +28,7 @@ interface TablePickerProps {
   readOnly: boolean;
   space: SpaceType;
   onTableUpdate: (table: DataSourceViewContentNode) => void;
+  excludeTables?: Array<{ dataSourceId: string; tableId: string }>;
 }
 
 export default function TablePicker({
@@ -37,6 +38,7 @@ export default function TablePicker({
   readOnly,
   space,
   onTableUpdate,
+  excludeTables,
 }: TablePickerProps) {
   void dataSource;
 
@@ -99,10 +101,11 @@ export default function TablePicker({
               >
                 {currentTable ? (
                   <>
-                    <div className="mr-1 text-sm font-bold text-action-500">
+                    {/* Use a hand cursor */}
+                    <div className="mr-1 cursor-pointer text-sm font-bold text-action-500">
                       {currentTable.title}
                     </div>
-                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                    <ChevronDownIcon className="mt-0.5 h-4 w-4 cursor-pointer hover:text-gray-700" />
                   </>
                 ) : tables && tables.length > 0 ? (
                   <span>Select Table</span>
@@ -121,21 +124,30 @@ export default function TablePicker({
                   onChange={(e) => setSearchFilter(e)}
                 />
                 <ScrollArea className="flex max-h-[300px] flex-col">
-                  {(filteredTables || []).map((t) => (
-                    <div
-                      key={t.dustDocumentId}
-                      className="flex cursor-pointer flex-col items-start hover:opacity-80"
-                      onClick={() => {
-                        onTableUpdate(t);
-                        setSearchFilter("");
-                      }}
-                    >
-                      <div className="my-1">
-                        <div className="text-sm">{t.title}</div>
+                  {(filteredTables || [])
+                    .filter(
+                      (t) =>
+                        !excludeTables?.some(
+                          (et) =>
+                            et.dataSourceId === dataSource.data_source_id &&
+                            et.tableId === t.dustDocumentId
+                        )
+                    )
+                    .map((t) => (
+                      <div
+                        key={t.dustDocumentId}
+                        className="flex cursor-pointer flex-col items-start hover:opacity-80"
+                        onClick={() => {
+                          onTableUpdate(t);
+                          setSearchFilter("");
+                        }}
+                      >
+                        <div className="my-1">
+                          <div className="text-sm">{t.title}</div>
+                        </div>
+                        <Separator />
                       </div>
-                      <Separator />
-                    </div>
-                  ))}
+                    ))}
                   {filteredTables.length === 0 && (
                     <span className="block px-4 py-2 text-sm text-gray-700">
                       No tables found
