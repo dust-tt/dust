@@ -30,6 +30,11 @@ module.exports = {
         permanent: true,
       },
       {
+        source: "/jobs",
+        destination: "https://jobs.ashbyhq.com/dust",
+        permanent: true,
+      },
+      {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/assistant/:cId",
         permanent: false,
