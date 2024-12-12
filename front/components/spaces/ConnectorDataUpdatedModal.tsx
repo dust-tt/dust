@@ -3,7 +3,6 @@ import {
   ContentMessage,
   Hoverable,
   Icon,
-  InformationCircleIcon,
   Modal,
   Page,
   SparklesIcon,
