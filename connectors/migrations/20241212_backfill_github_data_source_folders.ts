@@ -18,8 +18,6 @@ async function main() {
   });
 
   for (const connector of connectors) {
-    console.log(`Processing connector ${connector.id}...`);
-
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     const repositories = await GithubCodeRepository.findAll({
       where: {
