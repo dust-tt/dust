@@ -654,6 +654,7 @@ export class CoreAPI {
       query: string;
       topK: number;
       filter?: CoreAPISearchFilter | null;
+      view_filter?: CoreAPISearchFilter | null;
       fullText: boolean;
       credentials: { [key: string]: string };
       target_document_tokens?: number | null;
@@ -672,6 +673,7 @@ export class CoreAPI {
           query: payload.query,
           top_k: payload.topK,
           filter: payload.filter,
+          view_filter: payload.view_filter,
           full_text: payload.fullText,
           credentials: payload.credentials,
           target_document_tokens: payload.target_document_tokens,
