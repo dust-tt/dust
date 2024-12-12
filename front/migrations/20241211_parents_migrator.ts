@@ -192,18 +192,26 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       const uniqueIds = _.uniq(
         [nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)
       );
-      return [
-        // new parents
-        ...uniqueIds.map((id) => `notion-${id}`),
-        // legacy parents
-        ...uniqueIds,
-      ];
+      return {
+        parents: [
+          // new parents
+          ...uniqueIds.map((id) => `notion-${id}`),
+          // legacy parents
+          ...uniqueIds,
+        ],
+        parentId: `notion-${uniqueIds[0]}`,
+      };
     },
-    cleaner: (nodeId, parents) =>
+    cleaner: (nodeId, parents) => {
       // Only keep the new parents
-      _.uniq([nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)).map(
-        (id) => `notion-${id}`
-      ),
+      const uniqueIds = _.uniq(
+        [nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)
+      );
+      return {
+        parents: uniqueIds.map((id) => `notion-${id}`),
+        parentId: `notion-${uniqueIds[0]}`,
+      };
+    },
   },
   snowflake: null,
   webcrawler: null,
