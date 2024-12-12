@@ -2,8 +2,8 @@ import type {
   ZendeskCheckIsAdminResponseType,
   ZendeskCommandType,
   ZendeskCountTicketsResponseType,
+  ZendeskResyncTicketsResponseType,
 } from "@dust-tt/types";
-import type { ZendeskResyncTicketsResponseType } from "@dust-tt/types/src";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
