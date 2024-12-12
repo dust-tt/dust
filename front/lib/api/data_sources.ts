@@ -535,9 +535,11 @@ export async function upsertTable({
 export async function handleDataSourceSearch({
   searchQuery,
   dataSource,
+  dataSourceView,
 }: {
   searchQuery: DataSourceSearchQuery;
   dataSource: DataSourceResource;
+  dataSourceView?: DataSourceViewResource;
 }): Promise<
   Result<
     DataSourceSearchResponseType,
@@ -570,6 +572,16 @@ export async function handleDataSourceSearch({
           lt: searchQuery.timestamp_lt ?? null,
         },
       },
+      view_filter: dataSourceView
+        ? {
+            parents: {
+              in: dataSourceView.parentsIn,
+              not: [],
+            },
+            tags: null,
+            timestamp: null,
+          }
+        : undefined,
       credentials: credentials,
     }
   );
