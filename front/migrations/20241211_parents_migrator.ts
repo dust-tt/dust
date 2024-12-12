@@ -21,10 +21,12 @@ const isMigratorAction = (action: string): action is MigratorAction => {
 };
 
 type ProviderMigrator = {
+  /// returns [nodeId, ...oldParents, ...newParents] idempotently
   transformer: (
     nodeId: string,
     parents: string[]
-  ) => { parents: string[]; parentId: string | null };
+  ) => { parents: string[]; parentId: string | null } | null; // null here means we skip the document
+  /// returns [nodeId, ...newParents] idempotently
   cleaner: (
     nodeId: string,
     parents: string[]
@@ -189,8 +191,15 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   webcrawler: null,
   zendesk: null,
   confluence: {
-    transformer: (_, parents) => {
-      assert(parents.length > 1, "parents.length <= 1"); // the only documents are pages, they at least have the space as parent
+    transformer: (nodeId, parents) => {
+      if (parents.length <= 1) {
+        // we skip these for now
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Invalid Confluence parents"
+        );
+        return null;
+      }
       return {
         parents: [
           ...new Set([
@@ -239,12 +248,15 @@ async function migrateDocument({
   let newParents = coreDocument.parents;
   let newParentId: string | null = null;
   try {
-    const { parents, parentId } =
+    const newData =
       action === "transform"
         ? migrator.transformer(coreDocument.document_id, coreDocument.parents)
         : migrator.cleaner(coreDocument.document_id, coreDocument.parents);
-    newParents = parents;
-    newParentId = parentId;
+    if (newData === null) {
+      return new Ok(undefined);
+    }
+    newParents = newData.parents;
+    newParentId = newData.parentId;
   } catch (e) {
     logger.error(
       {
@@ -316,12 +328,15 @@ async function migrateTable({
   let newParents = coreTable.parents;
   let newParentId: string | null = null;
   try {
-    const { parents, parentId } =
+    const newData =
       action === "transform"
         ? migrator.transformer(coreTable.table_id, coreTable.parents)
         : migrator.cleaner(coreTable.table_id, coreTable.parents);
-    newParents = parents;
-    newParentId = parentId;
+    if (newData === null) {
+      return new Ok(undefined);
+    }
+    newParents = newData.parents;
+    newParentId = newData.parentId;
   } catch (e) {
     logger.error(
       {
