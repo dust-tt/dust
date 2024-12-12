@@ -258,15 +258,17 @@ async function migrateDocument({
 
   if (execute) {
     const updateRes = await withRetries(
-      coreAPI.updateDataSourceDocumentParents,
+      async () => {
+        return coreAPI.updateDataSourceDocumentParents({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          documentId: coreDocument.document_id,
+          parents: newParents,
+          parentId: newParentId,
+        });
+      },
       { retries: 3 }
-    )({
-      projectId: dataSource.dustAPIProjectId,
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      documentId: coreDocument.document_id,
-      parents: newParents,
-      parentId: newParentId,
-    });
+    )({});
 
     if (updateRes.isErr()) {
       throw new Error(updateRes.error.message);
@@ -332,15 +334,18 @@ async function migrateTable({
   }
 
   if (execute) {
-    const updateRes = await withRetries(coreAPI.updateTableParents, {
-      retries: 3,
-    })({
-      projectId: dataSource.dustAPIProjectId,
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      tableId: coreTable.table_id,
-      parents: newParents,
-      parentId: newParentId,
-    });
+    const updateRes = await withRetries(
+      async () => {
+        return coreAPI.updateTableParents({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          tableId: coreTable.table_id,
+          parents: newParents,
+          parentId: newParentId,
+        });
+      },
+      { retries: 3 }
+    )({});
 
     if (updateRes.isErr()) {
       throw new Error(updateRes.error.message);
