@@ -1,8 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
 
 import {
-  makeConfluenceInternalPageId,
-  makeConfluenceInternalSpaceId,
+  makePageInternalId,
+  makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { ConfluencePage } from "@connectors/lib/models/confluence";
 
@@ -68,9 +68,9 @@ export async function getConfluencePageParentIds(
 
   return [
     // Add the current page.
-    makeConfluenceInternalPageId(page.pageId),
-    ...parentIds.map((p) => makeConfluenceInternalPageId(p)),
+    makePageInternalId(page.pageId),
+    ...parentIds.map((p) => makePageInternalId(p)),
     // Add the space id at the end.
-    makeConfluenceInternalSpaceId(page.spaceId),
+    makeSpaceInternalId(page.spaceId),
   ];
 }

@@ -18,10 +18,10 @@ import {
   getSpaceHierarchy,
 } from "@connectors/connectors/confluence/lib/hierarchy";
 import {
-  getIdFromConfluenceInternalId,
-  isConfluenceInternalPageId,
-  isConfluenceInternalSpaceId,
-  makeConfluenceInternalSpaceId,
+  getConfluenceIdFromInternalId,
+  isInternalPageId,
+  isInternalSpaceId,
+  makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   checkPageHasChildren,
@@ -40,8 +40,10 @@ import type {
   CreateConnectorErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   ConfluenceConfiguration,
@@ -338,7 +340,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     const addedSpaceIds = [];
     const removedSpaceIds = [];
     for (const [internalId, permission] of Object.entries(permissions)) {
-      const confluenceId = getIdFromConfluenceInternalId(internalId);
+      const confluenceId = getConfluenceIdFromInternalId(internalId);
       if (permission === "none") {
         await ConfluenceSpace.destroy({
           where: {
@@ -412,10 +414,10 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     const pageIds: string[] = [];
 
     internalIds.forEach((internalId) => {
-      if (isConfluenceInternalSpaceId(internalId)) {
-        spaceIds.push(getIdFromConfluenceInternalId(internalId));
-      } else if (isConfluenceInternalPageId(internalId)) {
-        pageIds.push(getIdFromConfluenceInternalId(internalId));
+      if (isInternalSpaceId(internalId)) {
+        spaceIds.push(getConfluenceIdFromInternalId(internalId));
+      } else if (isInternalPageId(internalId)) {
+        pageIds.push(getConfluenceIdFromInternalId(internalId));
       }
     });
 
@@ -479,12 +481,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    if (isConfluenceInternalSpaceId(internalId)) {
+    if (isInternalSpaceId(internalId)) {
       return new Ok([internalId]);
     }
 
-    if (isConfluenceInternalPageId(internalId)) {
-      const confluenceId = getIdFromConfluenceInternalId(internalId);
+    if (isInternalPageId(internalId)) {
+      const confluenceId = getConfluenceIdFromInternalId(internalId);
       const currentPage = await ConfluencePage.findOne({
         attributes: ["pageId", "parentId", "spaceId"],
         where: {
@@ -499,10 +501,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
       // If the page does not have a parentId, return only the spaceId.
       if (!currentPage.parentId) {
-        return new Ok([
-          internalId,
-          makeConfluenceInternalSpaceId(currentPage.spaceId),
-        ]);
+        return new Ok([internalId, makeSpaceInternalId(currentPage.spaceId)]);
       }
 
       // if a memoization key is provided, use it to cache the hierarchy which

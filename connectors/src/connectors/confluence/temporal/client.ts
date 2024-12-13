@@ -12,7 +12,7 @@ import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/s
 import {
   makeConfluencePersonalDataWorkflowId,
   makeConfluenceRemoveSpacesWorkflowId,
-} from "@connectors/connectors/confluence/temporal/utils";
+} from "@connectors/connectors/confluence/temporal/workflow_ids";
 import {
   confluencePersonalDataReportingWorkflow,
   confluenceRemoveSpacesWorkflow,
