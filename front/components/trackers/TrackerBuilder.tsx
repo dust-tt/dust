@@ -24,7 +24,7 @@ import {
   TRACKER_FREQUENCY_TYPES,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AdvancedSettings } from "@app/components/assistant_builder/InstructionScreen";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -34,6 +34,7 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
+import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/document_tracker/consts";
 import { isEmailValid } from "@app/lib/utils";
 
 export const TrackerBuilder = ({
@@ -204,6 +205,16 @@ export const TrackerBuilder = ({
     });
   };
 
+  const trackableDataSourcesViews = useMemo(
+    () =>
+      dataSourceViews.filter(
+        (dsv) =>
+          !dsv.dataSource.connectorProvider ||
+          isConnectorTypeTrackable(dsv.dataSource.connectorProvider)
+      ),
+    [dataSourceViews]
+  );
+
   return (
     <AppLayout
       owner={owner}
@@ -238,13 +249,15 @@ export const TrackerBuilder = ({
         setOpen={(isOpen) => setShowMaintainedDsModal(isOpen)}
         owner={owner}
         onSave={async (dsConfigs) => {
-          setEdited(true);
           setTracker((t) => ({
             ...t,
             maintainedDataSources: dsConfigs,
           }));
+          if (!edited) {
+            setEdited(true);
+          }
         }}
-        dataSourceViews={dataSourceViews}
+        dataSourceViews={trackableDataSourcesViews} // Only show trackable data sources.
         initialDataSourceConfigurations={tracker.maintainedDataSources}
         allowedSpaces={[globalSpace]}
         viewType="documents"
@@ -254,11 +267,13 @@ export const TrackerBuilder = ({
         setOpen={(isOpen) => setShowWatchedDataSourcesModal(isOpen)}
         owner={owner}
         onSave={async (dsConfigs) => {
-          setEdited(true);
           setTracker((t) => ({
             ...t,
             watchedDataSources: dsConfigs,
           }));
+          if (!edited) {
+            setEdited(true);
+          }
         }}
         dataSourceViews={dataSourceViews}
         initialDataSourceConfigurations={tracker.watchedDataSources}
@@ -290,6 +305,9 @@ export const TrackerBuilder = ({
                   providerId: g.modelSettings.providerId,
                   temperature: g.temperature,
                 }));
+                if (!edited) {
+                  setEdited(true);
+                }
               }}
             />
           </div>
@@ -308,13 +326,16 @@ export const TrackerBuilder = ({
               <Input
                 label="Name"
                 value={tracker.name || ""}
-                onChange={(e) =>
+                onChange={(e) => {
                   setTracker((t) => ({
                     ...t,
                     name: e.target.value,
                     nameError: null,
-                  }))
-                }
+                  }));
+                  if (!edited) {
+                    setEdited(true);
+                  }
+                }}
                 placeholder="Descriptive name."
                 message={tracker.nameError}
                 messageStatus={tracker.nameError ? "error" : undefined}
@@ -324,13 +345,16 @@ export const TrackerBuilder = ({
               <Input
                 label="Description"
                 value={tracker.description || ""}
-                onChange={(e) =>
+                onChange={(e) => {
                   setTracker((t) => ({
                     ...t,
                     description: e.target.value,
                     descriptionError: null,
-                  }))
-                }
+                  }));
+                  if (!edited) {
+                    setEdited(true);
+                  }
+                }}
                 placeholder="Brief description of what you're tracking and why."
                 message={tracker.descriptionError}
                 messageStatus={tracker.descriptionError ? "error" : undefined}
@@ -370,6 +394,9 @@ export const TrackerBuilder = ({
                             ...t,
                             frequency: f,
                           }));
+                          if (!edited) {
+                            setEdited(true);
+                          }
                         }}
                       />
                     ))}
@@ -382,13 +409,16 @@ export const TrackerBuilder = ({
                 label="Recipients"
                 placeholder="Enter email addresses (separate multiple addresses with commas)."
                 value={tracker.recipients}
-                onChange={(e) =>
+                onChange={(e) => {
                   setTracker((t) => ({
                     ...t,
                     recipients: e.target.value,
                     recipientsError: null,
-                  }))
-                }
+                  }));
+                  if (!edited) {
+                    setEdited(true);
+                  }
+                }}
                 message={tracker.recipientsError}
                 messageStatus={tracker.recipientsError ? "error" : undefined}
               />
@@ -409,13 +439,16 @@ export const TrackerBuilder = ({
             <TextArea
               placeholder="Describe what changes or updates you want to track (be as specific as possible)."
               value={tracker.prompt || ""}
-              onChange={(e) =>
+              onChange={(e) => {
                 setTracker((t) => ({
                   ...t,
                   prompt: e.target.value,
                   promptError: null,
-                }))
-              }
+                }));
+                if (!edited) {
+                  setEdited(true);
+                }
+              }}
               error={tracker.promptError}
               showErrorLabel={!!tracker.promptError}
             />

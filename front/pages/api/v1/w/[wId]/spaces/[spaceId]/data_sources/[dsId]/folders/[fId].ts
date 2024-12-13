@@ -5,7 +5,7 @@ import type {
 } from "@dust-tt/client";
 import { UpsertDataSourceFolderRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI, rateLimiter } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -35,7 +35,7 @@ async function handler(
 ): Promise<void> {
   const { fId } = req.query;
 
-  if (typeof fId !== "string") {
+  if (typeof fId !== "string" || fId === "") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -46,34 +46,17 @@ async function handler(
   }
 
   const owner = auth.getNonNullableWorkspace();
-
-  const { spaceId } = req.query;
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
+  if (!auth.isSystemKey()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_oauth_token_error",
+        message: "Only system keys are allowed to use this endpoint.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const docRes = await coreAPI.getDataSourceFolder({
@@ -99,34 +82,6 @@ async function handler(
       return;
 
     case "POST":
-      if (dataSource.connectorId && !auth.isSystemKey()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message: "You cannot upsert a folder on a managed data source.",
-          },
-        });
-      }
-
-      if (!auth.isSystemKey()) {
-        const remaining = await rateLimiter({
-          key: `upsert-folder-w-${owner.sId}`,
-          maxPerTimeframe: 120,
-          timeframeSeconds: 60,
-          logger,
-        });
-        if (remaining <= 0) {
-          return apiError(req, res, {
-            status_code: 429,
-            api_error: {
-              type: "rate_limit_error",
-              message: `You have reached the maximum number of 120 upserts per minute.`,
-            },
-          });
-        }
-      }
-
       const r = UpsertDataSourceFolderRequestSchema.safeParse(req.body);
 
       if (r.error) {
@@ -191,16 +146,6 @@ async function handler(
       return;
 
     case "DELETE":
-      if (dataSource.connectorId && !auth.isSystemKey()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message: "You cannot delete a folder from a managed data source.",
-          },
-        });
-      }
-
       const delRes = await coreAPI.deleteDataSourceFolder({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,

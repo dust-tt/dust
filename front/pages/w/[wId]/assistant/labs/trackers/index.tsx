@@ -25,6 +25,7 @@ import React, { useMemo } from "react";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import config from "@app/lib/api/config";
+import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useTrackers } from "@app/lib/swr/trackers";
@@ -47,6 +48,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   if (!owner || !plan || !subscription || !auth.isUser() || !globalSpace) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const flags = await getFeatureFlags(owner);
+  if (!flags.includes("labs_trackers") || !auth.isAdmin()) {
     return {
       notFound: true,
     };

@@ -36,7 +36,7 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl py-2",
+  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-5xl py-2",
   h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl py-2",
   h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1",
   h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl",

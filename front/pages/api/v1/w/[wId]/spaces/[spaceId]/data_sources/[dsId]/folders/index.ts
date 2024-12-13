@@ -22,29 +22,12 @@ async function handler(
   dataSource: DataSourceResource
 ): Promise<void> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  const { spaceId } = req.query;
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
+  if (!auth.isSystemKey()) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
+        type: "invalid_oauth_token_error",
+        message: "Only system keys are allowed to use this endpoint.",
       },
     });
   }
