@@ -160,8 +160,12 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     },
     cleaner: (nodeId, parents) => {
       const channelId = slackNodeIdToChannelId(nodeId);
-
-      if (parents.length === 2) {
+      if (parents.length === 1) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Invalid slack parents"
+        );
+      } else if (parents.length === 2) {
         assert(parents[0] === nodeId, "parents[0] !== nodeId");
         assert(
           parents[1] === `slack-channel-${channelId}`,
@@ -175,7 +179,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
           "parents[2] !== slack-channel-channelId"
         );
       } else {
-        throw new Error("Parents len != 2/3");
+        throw new Error("Parents len > 2");
       }
 
       return {
