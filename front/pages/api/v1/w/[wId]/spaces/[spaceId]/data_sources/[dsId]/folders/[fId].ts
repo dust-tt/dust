@@ -67,7 +67,7 @@ async function handler(
 
       if (docRes.isErr()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 404,
           api_error: {
             type: "data_source_error",
             message: "There was an error retrieving the data source folder.",

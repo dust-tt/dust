@@ -48,6 +48,7 @@ export type CoreAPIDocument = {
   data_source_id: string;
   created: number;
   document_id: string;
+  parents: string[];
   parent_id: string | null;
   timestamp: number;
   tags: string[];

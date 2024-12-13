@@ -5,18 +5,23 @@ import type {
 import { DustAPI } from "@dust-tt/client";
 import type {
   CoreAPIDataSourceDocumentSection,
+  CoreAPIDocument,
+  CoreAPIFolder,
   CoreAPITable,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { isValidDate, safeSubstring, sectionFullText } from "@dust-tt/types";
-import { MAX_CHUNK_SIZE } from "@dust-tt/types";
+import {
+  isValidDate,
+  MAX_CHUNK_SIZE,
+  safeSubstring,
+  sectionFullText,
+} from "@dust-tt/types";
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
 import https from "https";
-import type { Branded } from "io-ts";
-import type { IntBrand } from "io-ts";
+import type { Branded, IntBrand } from "io-ts";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -236,6 +241,41 @@ async function _upsertToDatasource({
       }
     }
   );
+}
+
+export async function getDocumentFromDataSource({
+  dataSourceConfig,
+  documentId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  documentId: string;
+}): Promise<CoreAPIDocument | undefined> {
+  const localLogger = logger.child({
+    documentId,
+  });
+
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/documents?document_ids=${documentId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error getting document from Dust.");
+    throw e;
+  }
+  if (dustRequestResult.data.documents.length === 0) {
+    localLogger.info("Document doesn't exist on Dust. Ignoring.");
+    return;
+  }
+
+  return dustRequestResult.data.documents[0];
 }
 
 export async function deleteFromDataSource(
@@ -1132,6 +1172,42 @@ export async function deleteTable({
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
   }
+}
+
+export async function getFolderNode({
+  dataSourceConfig,
+  folderId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  folderId: string;
+}): Promise<CoreAPIFolder | undefined> {
+  const localLogger = logger.child({
+    folderId,
+  });
+
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/folders/${folderId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    const axiosError = e as AxiosError;
+    if (axiosError?.response?.status === 404) {
+      localLogger.info("Folder doesn't exist on Dust. Ignoring.");
+      return;
+    }
+    localLogger.error({ error: e }, "Error getting folder from Dust.");
+    throw e;
+  }
+
+  return dustRequestResult.data.folder;
 }
 
 export async function upsertFolderNode({
