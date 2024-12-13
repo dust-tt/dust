@@ -32,7 +32,7 @@ async function migrate({
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const parentsMap: Record<string, string | null> = {};
   let nextId = 0;
-  for (;;) {
+  while (nextId) {
     const googleDriveFiles = await GoogleDriveFiles.findAll({
       where: {
         connectorId: connector.id,
@@ -42,16 +42,11 @@ async function migrate({
       },
     });
 
-    const last = googleDriveFiles[googleDriveFiles.length - 1];
-    if (!last) {
-      break;
-    }
-
     googleDriveFiles.forEach((folder) => {
       parentsMap[folder.driveFileId] = folder.parentId;
     });
 
-    nextId = last.id;
+    nextId = googleDriveFiles[googleDriveFiles.length - 1]?.id;
   }
 
   nextId = 0;
