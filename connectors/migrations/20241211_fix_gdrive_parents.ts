@@ -31,41 +31,40 @@ async function migrate({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const parentsMap: Record<string, string | null> = {};
-  let nextId = 0;
-  while (nextId) {
-    const googleDriveFiles = await GoogleDriveFiles.findAll({
-      where: {
-        connectorId: connector.id,
-        id: {
-          [Op.gt]: nextId,
+  let nextId: number | undefined = 0;
+  do {
+    const googleDriveFiles: GoogleDriveFiles[] = await GoogleDriveFiles.findAll(
+      {
+        where: {
+          connectorId: connector.id,
+          id: {
+            [Op.gt]: nextId,
+          },
         },
-      },
-    });
+      }
+    );
 
-    googleDriveFiles.forEach((folder) => {
-      parentsMap[folder.driveFileId] = folder.parentId;
+    googleDriveFiles.forEach((file) => {
+      parentsMap[file.driveFileId] = file.parentId;
     });
 
     nextId = googleDriveFiles[googleDriveFiles.length - 1]?.id;
-  }
+  } while (nextId);
 
   nextId = 0;
-  for (;;) {
-    const googleDriveFiles = await GoogleDriveFiles.findAll({
-      where: {
-        connectorId: connector.id,
-        id: {
-          [Op.gt]: nextId,
+  do {
+    const googleDriveFiles: GoogleDriveFiles[] = await GoogleDriveFiles.findAll(
+      {
+        where: {
+          connectorId: connector.id,
+          id: {
+            [Op.gt]: nextId,
+          },
         },
-      },
-      order: [["id", "ASC"]],
-      limit: QUERY_BATCH_SIZE,
-    });
-
-    const last = googleDriveFiles[googleDriveFiles.length - 1];
-    if (!last) {
-      break;
-    }
+        order: [["id", "ASC"]],
+        limit: QUERY_BATCH_SIZE,
+      }
+    );
 
     for (const file of googleDriveFiles) {
       const internalId = file.dustFileId;
@@ -128,28 +127,24 @@ async function migrate({
           }
         }
       }
-
-      nextId = last.id;
     }
-  }
+
+    nextId = googleDriveFiles[googleDriveFiles.length - 1]?.id;
+  } while (nextId);
 
   nextId = 0;
-  for (;;) {
-    const googleDriveSheets = await GoogleDriveSheet.findAll({
-      where: {
-        connectorId: connector.id,
-        id: {
-          [Op.gt]: nextId,
+  do {
+    const googleDriveSheets: GoogleDriveSheet[] =
+      await GoogleDriveSheet.findAll({
+        where: {
+          connectorId: connector.id,
+          id: {
+            [Op.gt]: nextId,
+          },
         },
-      },
-      order: [["id", "ASC"]],
-      limit: QUERY_BATCH_SIZE,
-    });
-
-    const last = googleDriveSheets[googleDriveSheets.length - 1];
-    if (!last) {
-      break;
-    }
+        order: [["id", "ASC"]],
+        limit: QUERY_BATCH_SIZE,
+      });
 
     for (const sheet of googleDriveSheets) {
       const tableId = getGoogleSheetTableId(
@@ -190,10 +185,10 @@ async function migrate({
           }
         }
       }
-
-      nextId = last.id;
     }
-  }
+
+    nextId = googleDriveSheets[googleDriveSheets.length - 1]?.id;
+  } while (nextId);
 }
 
 makeScript(
