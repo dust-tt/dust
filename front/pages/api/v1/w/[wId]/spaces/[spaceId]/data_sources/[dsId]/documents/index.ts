@@ -47,7 +47,7 @@ import { apiError } from "@app/logger/withlogging";
  *           type: array
  *           items:
  *             type: string
- *        - in: query
+ *       - in: query
  *         name: limit
  *         description: Limit the number of documents returned
  *         schema:
