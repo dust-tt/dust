@@ -74,7 +74,7 @@ export default function CustomerSupport() {
         <Div3D depth={20} className="absolute top-0">
           <img src="/static/landing/support/support3.png" alt="MainVisual3" />
         </Div3D>
-        <Div3D depth={30} className="absolute top-0">
+        <Div3D depth={50} className="absolute top-0">
           <img src="/static/landing/support/support4.png" alt="MainVisual4" />
         </Div3D>
         {/* <Div3D
@@ -109,9 +109,13 @@ export default function CustomerSupport() {
             "col-span-12 justify-center",
             "flex flex-col gap-8 pt-24 lg:min-h-[70vh] lg:pt-0",
             "lg:col-span-5 lg:py-20",
-            "2xl:col-span-5 2xl:col-start-2"
+            "2xl:col-span-5 2xl:col-start-2",
+            "text-center lg:text-left"
           )}
         >
+          <div className="flex w-full px-8 md:px-20 lg:hidden">
+            {MainVisualImage()}
+          </div>
           <H1 from={pageSettings.from} to={pageSettings.to}>
             {pageSettings.title}
           </H1>
@@ -133,10 +137,11 @@ export default function CustomerSupport() {
           className={classNames(
             "col-span-12 mx-auto px-8 py-6 sm:max-w-[100%] md:max-w-[90%]",
             "lg:col-span-7 lg:col-start-6 lg:h-[100%] lg:max-w-[100%]",
-            "2xl:col-span-6"
+            "2xl:col-span-6",
+            "hidden lg:block"
           )}
         >
-          <div className="flex h-full w-full items-center justify-center">
+          <div className="flex h-full w-full items-center justify-center xl:px-8">
             {MainVisualImage()}
           </div>
         </div>
@@ -146,12 +151,7 @@ export default function CustomerSupport() {
           metrics={[
             {
               value: "15x",
-              description: (
-                <>
-                  Responses generated 15x&nbsp;faster
-                  after&nbsp;implementing&nbsp;Dust
-                </>
-              ),
+              description: <>15x&nbsp;faster to craft an answer</>,
             },
             {
               value: "8h",
@@ -212,7 +212,7 @@ export default function CustomerSupport() {
         />
 
         <Quote
-          quote="we’re managing a&nbsp;higher volume of&nbsp;tickets and have cut processing time—from an&nbsp;average of 5&nbsp;minutes per ticket to&nbsp;just a&nbsp;few seconds. This allows the&nbsp;team to&nbsp;focus on more complex requests, ultimately improving the&nbsp;overall quality and speed of&nbsp;customer support."
+          quote="We’re managing a&nbsp;higher volume of&nbsp;tickets and have cut processing time—from an&nbsp;average of 6&nbsp;minutes per ticket to&nbsp;just a&nbsp;few seconds."
           name="Anaïs Ghelfi"
           title="Head of Data Platform at Malt"
           logo="/static/landing/logos/malt.png"

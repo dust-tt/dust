@@ -187,29 +187,21 @@ export const MetricComponent = ({
   from,
   to,
 }: MetricComponentProps) => (
-  <div
-    className={classNames(
-      "col-span-12 flex flex-col items-center py-8 text-center"
-    )}
-  >
-    <div
-      className={classNames(
-        "grid grid-cols-1 gap-x-6 gap-y-8",
-        "md:grid-cols-2 md:gap-x-12"
-      )}
-    >
-      {metrics.map((metric, index) => (
-        <div key={index} className="flex flex-col items-center gap-4">
-          <H1 from={from} to={to}>
-            {metric.value}
-          </H1>
-          <P size="md" className="max-w-[400px]">
-            {metric.description}
-          </P>
-        </div>
-      ))}
-    </div>
-  </div>
+  <>
+    {metrics.map((metric, index) => (
+      <div
+        key={index}
+        className="col-span-6 flex flex-col items-center gap-4 py-12 text-center"
+      >
+        <H1 from={from} to={to}>
+          {metric.value}
+        </H1>
+        <P size="lg" className="max-w-[400px] text-white">
+          {metric.description}
+        </P>
+      </div>
+    ))}
+  </>
 );
 
 interface QuoteProps {
@@ -220,7 +212,7 @@ interface QuoteProps {
 }
 
 export const Quote = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col py-8 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
+  <div className="col-span-12 flex flex-col py-20 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
     <div className="flex flex-col items-center text-center font-objektiv text-xl italic text-white sm:text-2xl lg:text-3xl">
       &ldquo; {quote} &rdquo;
     </div>
