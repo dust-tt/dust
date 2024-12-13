@@ -1,9 +1,9 @@
 import {
-  CitationNew,
-  CitationNewClose,
-  CitationNewIcons,
-  CitationNewImage,
-  CitationNewTitle,
+  Citation,
+  CitationClose,
+  CitationIcons,
+  CitationImage,
+  CitationTitle,
   DocumentIcon,
   Icon,
   ImageIcon,
@@ -25,28 +25,28 @@ export function InputBarCitations({
       const isImage = Boolean(blob.preview);
       nodes.push(
         <>
-          <CitationNew
+          <Citation
             key={`cf-${blob.id}`}
             className="w-48"
             isLoading={blob.isUploading}
           >
             {isImage ? (
               <>
-                <CitationNewImage imgSrc={blob.preview ?? ""} />
-                <CitationNewIcons>
+                <CitationImage imgSrc={blob.preview ?? ""} />
+                <CitationIcons>
                   <Icon visual={ImageIcon} />
-                </CitationNewIcons>
+                </CitationIcons>
               </>
             ) : (
-              <CitationNewIcons>
+              <CitationIcons>
                 <Icon visual={DocumentIcon} />
-              </CitationNewIcons>
+              </CitationIcons>
             )}
-            <CitationNewTitle>{blob.id}</CitationNewTitle>
-            <CitationNewClose
+            <CitationTitle>{blob.id}</CitationTitle>
+            <CitationClose
               onClick={() => fileUploaderService.removeFile(blob.id)}
             />
-          </CitationNew>
+          </Citation>
         </>
       );
     }

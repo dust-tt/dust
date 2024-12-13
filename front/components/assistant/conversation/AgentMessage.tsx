@@ -2,11 +2,11 @@ import type {
   ConversationMessageSizeType,
   FeedbackSelectorProps,
 } from "@dust-tt/sparkle";
-import { CitationNewIndex } from "@dust-tt/sparkle";
+import { CitationIndex } from "@dust-tt/sparkle";
 import {
-  CitationNew,
-  CitationNewIcons,
-  CitationNewTitle,
+  Citation,
+  CitationIcons,
+  CitationTitle,
   ConfluenceLogo,
   DocumentTextIcon,
   DriveLogo,
@@ -725,13 +725,13 @@ function getCitations({
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <CitationNew key={index} href={document.href}>
-        <CitationNewIcons>
-          <CitationNewIndex>{index}</CitationNewIndex>
+      <Citation key={index} href={document.href}>
+        <CitationIcons>
+          <CitationIndex>{index}</CitationIndex>
           <Icon visual={typeIcons[document.type]} />
-        </CitationNewIcons>
-        <CitationNewTitle>{document.title}</CitationNewTitle>
-      </CitationNew>
+        </CitationIcons>
+        <CitationTitle>{document.title}</CitationTitle>
+      </Citation>
     );
   });
 }

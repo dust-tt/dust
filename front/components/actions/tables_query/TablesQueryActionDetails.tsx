@@ -1,6 +1,6 @@
 import {
-  CitationNew,
-  CitationNewTitle,
+  Citation,
+  CitationTitle,
   Collapsible,
   ContentMessage,
   InformationCircleIcon,
@@ -144,9 +144,9 @@ function QueryTablesResults({
     <div>
       <span className="text-sm font-bold text-slate-900">Results</span>
       <div onClick={handleDownload} className="py-2">
-        <CitationNew>
-          <CitationNewTitle>{title}</CitationNewTitle>
-        </CitationNew>
+        <Citation>
+          <CitationTitle>{title}</CitationTitle>
+        </Citation>
       </div>
 
       <Collapsible defaultOpen={false}>
