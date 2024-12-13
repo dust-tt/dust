@@ -31,7 +31,7 @@ export const ConfluenceCommandSchema = t.type({
   command: t.literal("upsert-page"),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
-    pageId: t.union([t.number, t.undefined]),
+    pageId: t.union([t.string, t.undefined]),
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
