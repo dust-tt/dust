@@ -1,4 +1,4 @@
-import type { CitationType, FeedbackSelectorProps } from "@dust-tt/sparkle";
+import type { FeedbackSelectorProps } from "@dust-tt/sparkle";
 import {
   Avatar,
   Citation,
@@ -109,7 +109,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const citationType: CitationType = [
+              const citationType = [
                 "dust-application/slack",
                 "text/vnd.dust.attachment.slack.thread",
               ].includes(contentFragment.contentType)
