@@ -87,29 +87,18 @@ async function migrate({
           dataSourceConfig,
           folderId: internalId,
         });
-        if (folder) {
-          logger.info(
-            {
-              folderId: file.driveFileId,
-            },
-            "Found folder"
-          );
-          if (folder.parents.join("/") !== parents.join("/")) {
-            logger.info(
-              { folderId: file.driveFileId, parents },
-              "Upsert folder"
-            );
+        if (!folder || folder.parents.join("/") !== parents.join("/")) {
+          logger.info({ folderId: file.driveFileId, parents }, "Upsert folder");
 
-            if (execute) {
-              // upsert repository as folder
-              await upsertFolderNode({
-                dataSourceConfig,
-                folderId: file.dustFileId,
-                parents,
-                parentId: file.parentId,
-                title: file.name,
-              });
-            }
+          if (execute) {
+            // upsert repository as folder
+            await upsertFolderNode({
+              dataSourceConfig,
+              folderId: file.dustFileId,
+              parents,
+              parentId: file.parentId,
+              title: file.name,
+            });
           }
         }
       } else {
