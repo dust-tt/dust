@@ -93,7 +93,7 @@ export async function getConfluenceClient(
 ) {
   const { cloudId, connectorId } = config;
 
-  // Ensure connector is fetched if not directly provided.
+  // Ensure the connector is fetched if not directly provided.
   const effectiveConnector =
     connector ??
     (connectorId ? await fetchConfluenceConnector(connectorId) : undefined);
@@ -334,7 +334,8 @@ interface ConfluenceCheckAndUpsertPageActivityInput {
 
 /**
  * Upsert a Confluence page without its full parents.
- * Operates greedily by stopping if the page is restricted or if there is a version match (unless the page was moved, in this case we have to upsert because the parents have changed).
+ * Operates greedily by stopping if the page is restricted or if there is a version match
+ * (unless the page was moved, in this case, we have to upsert because the parents have changed).
  */
 export async function confluenceCheckAndUpsertPageActivity({
   connectorId,
@@ -392,15 +393,15 @@ export async function confluenceCheckAndUpsertPageActivity({
     return false;
   }
 
-  // Check version.
+  // Check the version.
   const isSameVersion =
     pageAlreadyInDb && pageAlreadyInDb.version === pageRef.version;
 
-  // Check if page was moved. Version is not bumped when a page is moved.
+  // Check whether the page was moved (the version is not bumped when a page is moved).
   const pageWasMoved =
     pageAlreadyInDb && pageAlreadyInDb.parentId !== pageRef.parentId;
 
-  // Only index in DB if the page does not exis, has been moved or  we want to upsert.
+  // Only index in DB if the page does not exist, has been moved, or we want to upsert.
   if (isSameVersion && !forceUpsert && !pageWasMoved) {
     // Simply record that we visited the page.
     await markPageHasVisited({
@@ -891,7 +892,7 @@ export async function confluenceGetReportPersonalActionActivity(
         "Error while reporting Confluence account."
       );
 
-      // If token has been revoked, return false.
+      // If the token has been revoked, return false.
       if (err instanceof ExternalOAuthTokenError) {
         return false;
       }
