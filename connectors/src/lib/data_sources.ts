@@ -8,15 +8,18 @@ import type {
   CoreAPITable,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { isValidDate, safeSubstring, sectionFullText } from "@dust-tt/types";
-import { MAX_CHUNK_SIZE } from "@dust-tt/types";
+import {
+  isValidDate,
+  MAX_CHUNK_SIZE,
+  safeSubstring,
+  sectionFullText,
+} from "@dust-tt/types";
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
 import https from "https";
-import type { Branded } from "io-ts";
-import type { IntBrand } from "io-ts";
+import type { Branded, IntBrand } from "io-ts";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -289,6 +292,7 @@ async function _updateDocumentParentsField({
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   parents: string[];
+  parentId?: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -320,12 +324,14 @@ async function _updateDocumentOrTableParentsField({
   dataSourceConfig,
   id,
   parents,
+  parentId = null,
   loggerArgs = {},
   tableOrDocument,
 }: {
   dataSourceConfig: DataSourceConfig;
   id: string;
   parents: string[];
+  parentId?: string | null;
   loggerArgs?: Record<string, string | number>;
   tableOrDocument: "document" | "table";
 }) {
@@ -348,6 +354,7 @@ async function _updateDocumentOrTableParentsField({
       endpoint,
       {
         parents: parents,
+        parent_id: parentId,
       },
       dustRequestConfig
     );
