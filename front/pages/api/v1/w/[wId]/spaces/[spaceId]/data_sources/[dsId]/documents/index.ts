@@ -10,7 +10,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import doc from "@app/pages/api/doc";
 
 /**
  * @swagger
