@@ -221,15 +221,25 @@ export async function markPageHasVisited({
   );
 }
 
-async function upsertConfluencePageToDataSource(
-  page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>,
-  spaceName: string,
-  parents: string[],
-  confluenceConfig: ConfluenceConfiguration,
-  syncType: UpsertToDataSourceParams["upsertContext"]["sync_type"],
-  dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number>
-) {
+interface ConfluenceUpsertPageInput {
+  page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>;
+  spaceName: string;
+  parents: string[];
+  confluenceConfig: ConfluenceConfiguration;
+  syncType?: UpsertToDataSourceParams["upsertContext"]["sync_type"];
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs: Record<string, string | number>;
+}
+
+async function upsertConfluencePageToDataSource({
+  page,
+  spaceName,
+  parents,
+  confluenceConfig,
+  syncType = "batch",
+  dataSourceConfig,
+  loggerArgs,
+}: ConfluenceUpsertPageInput) {
   const localLogger = logger.child(loggerArgs);
 
   const markdown = turndownService.turndown(page.body.storage.value);
@@ -414,16 +424,16 @@ export async function confluenceCheckAndUpsertPageActivity({
 
   localLogger.info("Upserting Confluence page.");
 
-  await upsertConfluencePageToDataSource(
+  await upsertConfluencePageToDataSource({
     page,
     spaceName,
     // Parent Ids will be computed after all page imports within the space have been completed.
-    [makePageInternalId(page.id), HiddenContentNodeParentId],
+    parents: [makePageInternalId(page.id), HiddenContentNodeParentId],
     confluenceConfig,
-    isBatchSync ? "batch" : "incremental",
+    syncType: isBatchSync ? "batch" : "incremental",
     dataSourceConfig,
-    loggerArgs
-  );
+    loggerArgs,
+  });
 
   localLogger.info("Upserting Confluence page in DB.");
 
@@ -511,22 +521,21 @@ export async function confluenceUpsertPageWithFullParentsActivity({
     );
   }
 
-  const parentIds = await getConfluencePageParentIds(
+  const parents = await getConfluencePageParentIds(
     connectorId,
     { pageId: page.id, parentId: page.parentId, spaceId: page.spaceId },
     cachedSpaceHierarchies[page.spaceId]
   );
 
   localLogger.info("Upserting Confluence page.");
-  await upsertConfluencePageToDataSource(
+  await upsertConfluencePageToDataSource({
     page,
     spaceName,
-    parentIds,
+    parents,
     confluenceConfig,
-    "batch",
     dataSourceConfig,
-    loggerArgs
-  );
+    loggerArgs,
+  });
 
   await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
 
