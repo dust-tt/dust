@@ -2374,11 +2374,14 @@ async fn tables_delete(
             "Failed to load table",
             Some(e),
         ),
-        Ok(None) => error_response(
-            StatusCode::NOT_FOUND,
-            "table_not_found",
-            &format!("No table found for id `{}`", table_id),
-            None,
+        Ok(None) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "success": true,
+                })),
+            }),
         ),
         Ok(Some(table)) => {
             match table
@@ -3029,11 +3032,14 @@ async fn folders_delete(
             "Failed to load folder",
             Some(e),
         ),
-        Ok(None) => error_response(
-            StatusCode::NOT_FOUND,
-            "folder_not_found",
-            &format!("No folder found for id `{}`", folder_id),
-            None,
+        Ok(None) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "success": true,
+                })),
+            }),
         ),
         Ok(Some(_)) => {
             match state
