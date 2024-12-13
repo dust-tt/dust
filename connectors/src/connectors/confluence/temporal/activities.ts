@@ -382,6 +382,7 @@ export async function confluenceCheckAndUpsertPageActivity({
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
       parents: [documentId],
+      parentId: null,
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {
@@ -570,6 +571,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
         dataSourceConfig: dataSourceConfigFromConnector(connector),
         documentId: makePageInternalId(page.pageId),
         parents: parentIds,
+        parentId: parentIds[1],
       });
     },
     { concurrency: 10 }
