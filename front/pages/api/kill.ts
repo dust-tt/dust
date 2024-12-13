@@ -13,10 +13,8 @@ export default async function handler(
 ) {
   switch (req.method) {
     case "GET":
-      const killSwitches = await KillSwitchResource.list();
-      return res
-        .status(200)
-        .json({ killSwitches: killSwitches.map((ks) => ks.type) });
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      return res.status(200).json({ killSwitches });
     default:
       return res.status(405).json({ error: "Method not allowed" });
   }
