@@ -39,7 +39,7 @@ export const ConfluenceCommandSchema = t.type({
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
 
 export const ConfluenceUpsertPageResponseSchema = t.type({
-  success: t.union([t.literal(true), t.literal(false)]),
+  success: t.boolean,
 });
 export type ConfluenceUpsertPageResponseType = t.TypeOf<
   typeof ConfluenceUpsertPageResponseSchema
