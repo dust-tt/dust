@@ -94,9 +94,18 @@ export const TableUploadOrEditModal = ({
     disabled: !fileId,
     onSuccess: async (response) => {
       const content = await response.text();
+      if (!content || content.trim().length === 0) {
+        sendNotification({
+          type: "error",
+          title: "Empty content",
+          description: "The file content is empty.",
+        });
+        fileUploaderService.resetUpload();
+        return;
+      }
       setTableState((prev) => ({
         ...prev,
-        content: content ?? null,
+        content: content,
       }));
     },
     onError: (error) => {
@@ -192,71 +201,140 @@ export const TableUploadOrEditModal = ({
     ]
   );
 
-  const handleUpload = async () => {
+  const handleUpload = useCallback(async () => {
     try {
       await handleTableUpload(tableState);
       onClose(true);
     } catch (error) {
       console.error(error);
     }
-  };
+  }, [handleTableUpload, onClose, tableState]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Enforce single file upload
-    const files = e.target.files;
-    if (files && files.length > 1) {
+  // We don't disable the save button, we show an error message instead.
+  // TODO (2024-12-13 lucas): Modify modal to allow disabling the save
+  // button and showing a tooltip + enforce consistency across modal usage
+  const onSave = useCallback(async () => {
+    if (isTableLoading) {
       sendNotification({
         type: "error",
-        title: "Multiple files",
-        description: "Please upload only one file at a time.",
+        title: "Error",
+        description: "Cannot save the table: the file is still loading.",
       });
       return;
     }
 
-    try {
-      // Create a file -> Allows to get processed text content via the file API.
-      const selectedFile = files?.[0];
-      if (!selectedFile) {
+    if (!isValidTable) {
+      if (
+        tableState.name.trim().length === 0 ||
+        !isSlugified(tableState.name)
+      ) {
+        sendNotification({
+          type: "error",
+          title: "Invalid name",
+          description: "You must provide a valid name for the table.",
+        });
         return;
       }
-      const fileBlobs = await fileUploaderService.handleFilesUpload([
-        selectedFile,
-      ]);
-      if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
-        fileUploaderService.resetUpload();
-        return new Err(
-          new Error(
-            "Error uploading file. Please try again or contact support."
-          )
-        );
+
+      if (tableState.description.trim() === "") {
+        sendNotification({
+          type: "error",
+          title: "Invalid description",
+          description: "You must provide a description for the table.",
+        });
+        return;
+      }
+      if (!tableState.content || tableState.content.trim().length === 0) {
+        sendNotification({
+          type: "error",
+          title: "Missing file",
+          description: "You must upload a file to create a table.",
+        });
+        return;
       }
 
-      // triggers content extraction -> tableState.content update
-      setFileId(fileBlobs[0].fileId);
-      setTableState((prev) => ({
-        ...prev,
-        file: selectedFile,
-        name:
-          prev.name.length > 0 ? prev.name : stripTableName(selectedFile.name),
-      }));
-      setIsBigFile(isBigFileSize(selectedFile.size));
-    } catch (error) {
+      // Fallback
       sendNotification({
         type: "error",
-        title: "Error uploading file",
-        description: error instanceof Error ? error.message : String(error),
+        title: "Invalid table",
+        description: "Please fill all the required fields.",
       });
-    } finally {
-      e.target.value = "";
-      fileUploaderService.resetUpload();
+      return;
     }
-  };
+
+    await handleUpload();
+  }, [
+    handleUpload,
+    isTableLoading,
+    isValidTable,
+    tableState,
+    sendNotification,
+  ]);
+
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Enforce single file upload
+      const files = e.target.files;
+      if (files && files.length > 1) {
+        sendNotification({
+          type: "error",
+          title: "Multiple files",
+          description: "Please upload only one file at a time.",
+        });
+        return;
+      }
+
+      try {
+        // Create a file -> Allows to get processed text content via the file API.
+        const selectedFile = files?.[0];
+        if (!selectedFile) {
+          return;
+        }
+        const fileBlobs = await fileUploaderService.handleFilesUpload([
+          selectedFile,
+        ]);
+        if (!fileBlobs || fileBlobs.length == 0 || !fileBlobs[0].fileId) {
+          fileUploaderService.resetUpload();
+          return new Err(
+            new Error(
+              "Error uploading file. Please try again or contact support."
+            )
+          );
+        }
+
+        // triggers content extraction -> tableState.content update
+        setFileId(fileBlobs[0].fileId);
+        setTableState((prev) => ({
+          ...prev,
+          file: selectedFile,
+          name:
+            prev.name.length > 0
+              ? prev.name
+              : stripTableName(selectedFile.name),
+        }));
+        setIsBigFile(isBigFileSize(selectedFile.size));
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Error uploading file",
+          description: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        e.target.value = "";
+        fileUploaderService.resetUpload();
+      }
+    },
+    [fileUploaderService, sendNotification]
+  );
 
   // Effect: Validate the table state when inputs change
   useEffect(() => {
-    const isNameValid = !!tableState.name && isSlugified(tableState.name);
-    const isContentValid = !!tableState.description;
-    setIsValidTable(isNameValid && isContentValid && !!tableState.content);
+    const isNameValid =
+      tableState.name.trim() !== "" && isSlugified(tableState.name);
+    const isDescriptionValid = tableState.description.trim() !== "";
+    const isContentValid =
+      !!tableState.content && tableState.content.trim() !== "";
+    setIsValidTable(isNameValid && isDescriptionValid && isContentValid);
   }, [tableState]);
 
   // Effect: Set the table state when the table is loaded
@@ -283,10 +361,17 @@ export const TableUploadOrEditModal = ({
       onClose={() => {
         onClose(false);
       }}
-      hasChanged={!isTableError && !isTableLoading && isValidTable}
+      hasChanged={
+        table
+          ? table.description !== tableState.description ||
+            table.name !== tableState.name
+          : tableState.description.trim() !== "" ||
+            tableState.name.trim() !== "" ||
+            !!tableState.content
+      }
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} table`}
-      onSave={handleUpload}
+      onSave={onSave}
       isSaving={isUpserting}
     >
       {isTableLoading ? (

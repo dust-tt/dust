@@ -107,9 +107,19 @@ export const DocumentUploadOrEditModal = ({
     disabled: !fileId,
     onSuccess: async (response) => {
       const content = await response.text();
+      if (!content || content.trim().length === 0) {
+        sendNotification({
+          type: "error",
+          title: "Empty document content",
+          description:
+            "The uploaded file is empty. Please upload a file with content.",
+        });
+        fileUploaderService.resetUpload();
+        return;
+      }
       setDocumentState((prev) => ({
         ...prev,
-        text: content ?? "",
+        text: content,
       }));
     },
     onError: (error) => {
@@ -193,6 +203,40 @@ export const DocumentUploadOrEditModal = ({
     }
   }, [handleDocumentUpload, documentState, onClose]);
 
+  // We don't disable the save button, we show an error message instead.
+  const onSave = useCallback(async () => {
+    if (!isValidDocument) {
+      if (documentState.name.trim() === "") {
+        sendNotification({
+          type: "error",
+          title: "Missing document name",
+          description: "You must provide a name for the document.",
+        });
+        return;
+      }
+
+      if (documentState.text.trim() === "") {
+        sendNotification({
+          type: "error",
+          title: "Missing document content",
+          description:
+            "You must provide content for the document. Either upload a file or specify the content.",
+        });
+        return;
+      }
+
+      // Fallback
+      sendNotification({
+        type: "error",
+        title: "Invalid document",
+        description: "Please fill in all required fields.",
+      });
+      return;
+    }
+
+    await handleUpload();
+  }, [isValidDocument, handleUpload, documentState, sendNotification]);
+
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       // Enforce single file upload
@@ -270,8 +314,8 @@ export const DocumentUploadOrEditModal = ({
 
   // Effect: Validate the document state
   useEffect(() => {
-    const isNameValid = !!documentState.name;
-    const isContentValid = documentState.text.length > 0;
+    const isNameValid = documentState.name.trim().length > 0;
+    const isContentValid = documentState.text.trim().length > 0;
     setIsValidDocument(isNameValid && isContentValid);
   }, [documentState]);
 
@@ -283,15 +327,15 @@ export const DocumentUploadOrEditModal = ({
         onClose(false);
       }}
       hasChanged={
-        !isDocumentError &&
-        !isDocumentLoading &&
-        !isContentLoading &&
-        !fileUploaderService.isProcessingFiles &&
-        isValidDocument
+        document
+          ? document.text !== documentState.text ||
+            documentState.name !== initialId
+          : documentState.name.trim().length > 0 ||
+            documentState.text.trim().length > 0
       }
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} document`}
-      onSave={handleUpload}
+      onSave={onSave}
       isSaving={isUpsertingDocument}
     >
       {isDocumentLoading ? (
@@ -321,7 +365,7 @@ export const DocumentUploadOrEditModal = ({
                   }}
                   message={
                     !documentState.name && editionStatus.name
-                      ? "You need to provide a name."
+                      ? "You must provide a name."
                       : null
                   }
                   messageStatus="error"
@@ -389,7 +433,7 @@ export const DocumentUploadOrEditModal = ({
                   }}
                   error={
                     editionStatus.content && !documentState.text
-                      ? "You need to upload a file or specify the content of the document."
+                      ? "You must upload a file or specify the content of the document."
                       : null
                   }
                   showErrorLabel
