@@ -184,7 +184,32 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       };
     },
   },
-  google_drive: null,
+  google_drive: {
+    transformer: (nodeId, parents) => {
+      const newParents = parents.map((id) =>
+        id.startsWith("gdrive-") || id.startsWith("google-spreadsheet-")
+          ? id
+          : `gdrive-${id}`
+      );
+
+      return {
+        parents: [
+          ...newParents,
+          ...parents.filter((id) => !newParents.includes(id)),
+        ],
+        parentId: `gdrive-${parents[1]}`,
+      };
+    },
+    cleaner: (nodeId, parents) => {
+      return {
+        parents: parents.filter(
+          (id) =>
+            id.startsWith("gdrive-") || id.startsWith("google-spreadsheet-")
+        ),
+        parentId: parents[1],
+      };
+    },
+  },
   microsoft: null,
   github: null,
   notion: {
