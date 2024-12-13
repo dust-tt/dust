@@ -45,7 +45,6 @@ export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
 export const ConfluenceMeResponseSchema = t.type({
   me: t.UnknownRecord,
 });
-
 export type ConfluenceMeResponseType = t.TypeOf<
   typeof ConfluenceMeResponseSchema
 >;
