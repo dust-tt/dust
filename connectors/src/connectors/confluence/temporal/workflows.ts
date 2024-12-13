@@ -10,7 +10,6 @@ import {
 
 import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
-import { confluenceUpsertPageWithFullParentsActivity } from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import {
@@ -32,6 +31,7 @@ const {
   confluenceGetActiveChildPageRefsActivity,
   confluenceGetRootPageRefsActivity,
   fetchConfluenceSpaceIdsForConnectorActivity,
+  confluenceUpsertPageWithFullParentsActivity,
 
   confluenceGetReportPersonalActionActivity,
   fetchConfluenceUserAccountAndConnectorIdsActivity,
