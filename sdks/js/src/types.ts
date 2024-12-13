@@ -655,7 +655,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_mini_feature"
   | "snowflake_connector_feature"
-  | "zendesk_connector_feature"
   | "index_private_slack_channel"
   | "conversations_jit_actions"
 >();
