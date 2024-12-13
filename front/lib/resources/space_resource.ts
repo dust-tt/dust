@@ -590,27 +590,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   canAdministrate(auth: Authenticator) {
-    return (
-      auth.canAdministrate(this.requestedPermissions()) ||
-      auth.isSystemKey() ||
-      auth.isDustSuperUser()
-    );
+    return auth.canAdministrate(this.requestedPermissions());
   }
 
   canWrite(auth: Authenticator) {
-    return (
-      auth.canWrite(this.requestedPermissions()) ||
-      auth.isSystemKey() ||
-      auth.isDustSuperUser()
-    );
+    return auth.canWrite(this.requestedPermissions());
   }
 
   canRead(auth: Authenticator) {
-    return (
-      auth.canRead(this.requestedPermissions()) ||
-      auth.isSystemKey() ||
-      auth.isDustSuperUser()
-    );
+    return auth.canRead(this.requestedPermissions());
   }
 
   canList(auth: Authenticator) {
