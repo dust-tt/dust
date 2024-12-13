@@ -4,6 +4,7 @@ import {
   CardButton,
   Checkbox,
   Chip,
+  cn,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -628,21 +629,30 @@ function ActionCard({
     <CardButton
       variant="primary"
       onClick={editAction}
-      className="mx-auto inline-block w-72"
+      className={cn("mx-auto inline-block w-72 pb-1", {
+        "pb-1": !isDefaultActionName(action),
+      })}
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full gap-1 font-medium text-element-900">
-          <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
-          <div className="w-full truncate">{spec.label}</div>
-          <IconButton
-            icon={XMarkIcon}
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              deleteAction();
-              e.stopPropagation();
-            }}
-          />
+        <div className="flex flex-col">
+          <div className="flex w-full gap-1 font-medium text-element-900">
+            <Icon
+              visual={spec.cardIcon}
+              size="sm"
+              className="text-element-900"
+            />
+            <div className="w-full truncate">{spec.label}</div>
+
+            <IconButton
+              icon={XMarkIcon}
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                deleteAction();
+                e.stopPropagation();
+              }}
+            />
+          </div>
         </div>
         {isLegacyConfig ? (
           <div className="mx-auto">
@@ -665,6 +675,9 @@ function ActionCard({
               </div>
             )}
           </>
+        )}
+        {action.name && !isDefaultActionName(action) && (
+          <div className="mx-auto text-xs text-element-600">{action.name}</div>
         )}
       </div>
     </CardButton>

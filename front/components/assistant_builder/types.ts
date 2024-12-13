@@ -41,20 +41,19 @@ export function isDefaultActionName(
 ) {
   switch (action.type) {
     case "RETRIEVAL_SEARCH":
-      return action.name === DEFAULT_RETRIEVAL_ACTION_NAME;
+      return action.name.includes(DEFAULT_RETRIEVAL_ACTION_NAME);
     case "RETRIEVAL_EXHAUSTIVE":
-      return action.name === DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME;
+      return action.name.includes(DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME);
     case "DUST_APP_RUN":
-      return (
-        action.name ===
+      return action.name.includes(
         ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME
       );
     case "TABLES_QUERY":
-      return action.name === DEFAULT_TABLES_QUERY_ACTION_NAME;
+      return action.name.includes(DEFAULT_TABLES_QUERY_ACTION_NAME);
     case "PROCESS":
-      return action.name === DEFAULT_PROCESS_ACTION_NAME;
+      return action.name.includes(DEFAULT_PROCESS_ACTION_NAME);
     case "WEB_NAVIGATION":
-      return action.name === DEFAULT_WEBSEARCH_ACTION_NAME;
+      return action.name.includes(DEFAULT_WEBSEARCH_ACTION_NAME);
     default:
       return false;
   }
