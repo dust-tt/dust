@@ -1354,7 +1354,16 @@ export async function cacheBlockChildren({
     },
   });
 
-  if (notionPageModel?.skipReason) {
+  if (!notionPageModel) {
+    logger.info("Skipping page not found in db.");
+    return {
+      nextCursor: null,
+      blocksWithChildren: [],
+      blocksCount: 0,
+    };
+  }
+
+  if (notionPageModel.skipReason) {
     logger.info(
       { skipReason: notionPageModel.skipReason },
       "Skipping page with skip reason"
