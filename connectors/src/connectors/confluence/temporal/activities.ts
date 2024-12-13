@@ -44,7 +44,6 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import assert from "assert";
 
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
