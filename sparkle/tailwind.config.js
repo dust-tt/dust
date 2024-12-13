@@ -58,7 +58,7 @@ module.exports = {
         sm: "40rem",
         md: "48rem",
         lg: "64rem",
-        lg: "80rem",
+        xl: "80rem",
       },
       scale: {
         99: ".99",
