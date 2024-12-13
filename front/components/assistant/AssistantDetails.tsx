@@ -1,40 +1,27 @@
 import {
   Avatar,
-  Button,
   ContentMessage,
   ElementModal,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
   InformationCircleIcon,
   Page,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { ExternalLinkIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
+import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
-import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
   useAgentConfiguration,
-  useAgentConfigurationFeedbacks,
-  useAgentConfigurationHistory,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
@@ -107,17 +94,9 @@ export function AssistantDetails({
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
         <TabsTrigger value="info" label="Info" icon={InformationCircleIcon} />
-        <TabsTrigger
-          value="performance"
-          label="Performance"
-          icon={HandThumbUpIcon}
-        />
       </TabsList>
       <TabsContent value="info">
         <InfoSection />
-      </TabsContent>
-      <TabsContent value="performance">
-        <FeedbacksSection />
       </TabsContent>
     </Tabs>
   );
@@ -168,74 +147,6 @@ export function AssistantDetails({
       "This assistant has no instructions."
     );
 
-  const FeedbacksSection = () => {
-    const {
-      agentConfigurationFeedbacks,
-      isAgentConfigurationFeedbacksLoading,
-    } = useAgentConfigurationFeedbacks({
-      workspaceId: owner.sId,
-      agentConfigurationId: assistantId ?? "",
-      withMetadata: true,
-    });
-
-    const sortedFeedbacks = useMemo(() => {
-      if (!agentConfigurationFeedbacks) {
-        return null;
-      }
-      return agentConfigurationFeedbacks.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    }, [agentConfigurationFeedbacks]);
-
-    const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
-      useAgentConfigurationHistory({
-        workspaceId: owner.sId,
-        agentConfigurationId: assistantId || "",
-        disabled: !assistantId,
-      });
-
-    return isAgentConfigurationFeedbacksLoading ||
-      isAgentConfigurationHistoryLoading ? (
-      <Spinner />
-    ) : (
-      <div>
-        {!sortedFeedbacks || sortedFeedbacks.length === 0 || !assistantId ? (
-          <div className="mt-3 text-sm text-element-900">No feedbacks.</div>
-        ) : (
-          <div className="mt-3">
-            <AgentConfigurationVersionHeader
-              agentConfiguration={agentConfiguration}
-              agentConfigurationVersion={agentConfiguration.version}
-              isLatestVersion={true}
-            />
-            {sortedFeedbacks.map((feedback, index) => (
-              <div key={feedback.id}>
-                {index > 0 &&
-                  feedback.agentConfigurationVersion !==
-                    sortedFeedbacks[index - 1].agentConfigurationVersion && (
-                    <AgentConfigurationVersionHeader
-                      agentConfiguration={agentConfigurationHistory?.find(
-                        (c) => c.version === feedback.agentConfigurationVersion
-                      )}
-                      agentConfigurationVersion={
-                        feedback.agentConfigurationVersion
-                      }
-                      isLatestVersion={false}
-                    />
-                  )}
-                <FeedbackCard
-                  owner={owner}
-                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <ElementModal
       openOnElement={agentConfiguration}
@@ -249,111 +160,5 @@ export function AssistantDetails({
         <TabsSection />
       </div>
     </ElementModal>
-  );
-}
-
-function AgentConfigurationVersionHeader({
-  agentConfigurationVersion,
-  agentConfiguration,
-  isLatestVersion,
-}: {
-  agentConfigurationVersion: number;
-  agentConfiguration: LightAgentConfigurationType | undefined;
-  isLatestVersion: boolean;
-}) {
-  const getAgentConfigurationVersionString = useCallback(
-    (config: LightAgentConfigurationType) => {
-      return isLatestVersion
-        ? "Latest Version"
-        : !config.versionCreatedAt
-          ? `v${config.version}`
-          : new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            });
-    },
-    [isLatestVersion]
-  );
-
-  return (
-    <div className="flex items-center gap-2">
-      <Page.H variant="h6">
-        {agentConfiguration
-          ? getAgentConfigurationVersionString(agentConfiguration)
-          : `v${agentConfigurationVersion}`}
-      </Page.H>
-    </div>
-  );
-}
-
-function FeedbackCard({
-  owner,
-  feedback,
-}: {
-  owner: LightWorkspaceType;
-  feedback: AgentMessageFeedbackWithMetadataType;
-}) {
-  const conversationUrl =
-    feedback.conversationId && feedback.messageId
-      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#${feedback.messageId}`
-      : null;
-
-  return (
-    <ContentMessage variant="slate" className="my-2">
-      <div className="justify-content-around mb-3 flex items-center gap-2">
-        <div className="flex w-full items-center gap-2">
-          {feedback.userImageUrl ? (
-            <Avatar
-              size="xs"
-              visual={feedback.userImageUrl}
-              name={feedback.userName}
-            />
-          ) : (
-            <Spinner size="xs" />
-          )}
-          <div className="flex-grow text-sm font-bold text-element-900">
-            {feedback.userName}
-          </div>
-        </div>
-        <div className="flex-shrink-0 text-xs text-muted-foreground">
-          {timeAgoFrom(
-            feedback.createdAt instanceof Date
-              ? feedback.createdAt.getTime()
-              : new Date(feedback.createdAt).getTime(),
-            {
-              useLongFormat: true,
-            }
-          )}{" "}
-          ago
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex-grow">{feedback.content}</div>
-        <div className="flex-shrink-0">
-          {feedback.thumbDirection === "up" ? (
-            <button className="rounded bg-sky-200 p-2">
-              <HandThumbUpIcon />
-            </button>
-          ) : (
-            <button className="rounded bg-warning-200 p-2">
-              <HandThumbDownIcon />
-            </button>
-          )}
-        </div>
-      </div>
-      {conversationUrl && (
-        <div className="mt-2">
-          <Button
-            variant="outline"
-            size="xs"
-            href={conversationUrl}
-            label="Conversation"
-            icon={ExternalLinkIcon}
-            target="_blank"
-          />
-        </div>
-      )}
-    </ContentMessage>
   );
 }
