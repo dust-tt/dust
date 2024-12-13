@@ -34,7 +34,7 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
             className="w-full"
           />
           <Card
-            title="Daily Active Users"
+            title="Daily Active Members"
             subtitle="Average on 7 days"
             content={
               <div className="flex flex-col gap-1">
@@ -47,7 +47,7 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
             className="w-full"
           />
           <Card
-            title="Active Users"
+            title="Active Members"
             subtitle="Last 7 days"
             content={
               <div className="grid grid-cols-2">
@@ -65,7 +65,7 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
             className="w-full"
           />
           <Card
-            title="Active Users"
+            title="Active Members"
             subtitle="Last 30 days"
             content={
               <div className="grid grid-cols-2">

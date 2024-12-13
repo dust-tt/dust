@@ -54,7 +54,7 @@ export function ActivityReport({
       {!!monthOptions.length && (
         <div className="flex-grow">
           <div className="flex flex-col gap-3">
-            <Page.H variant="h6">Full activity report</Page.H>
+            <Page.H variant="h6">Detailed activity report</Page.H>
             <Page.P variant="secondary">
               Download workspace activity details.
             </Page.P>
