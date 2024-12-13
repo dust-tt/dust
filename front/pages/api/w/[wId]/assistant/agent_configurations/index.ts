@@ -34,6 +34,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 
@@ -150,6 +151,17 @@ async function handler(
         agentConfigurations,
       });
     case "POST":
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      if (killSwitches?.includes("save_agent_configurations")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Saving agent configurations is temporarily disabled, try again later.",
+          },
+        });
+      }
       const bodyValidation =
         PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {

@@ -45,11 +45,9 @@ export class KillSwitchResource extends BaseResource<KillSwitchModel> {
     });
   }
 
-  static async list(): Promise<KillSwitchResource[]> {
+  static async listEnabledKillSwitches(): Promise<KillSwitchType[]> {
     const killSwitches = await KillSwitchModel.findAll();
-    return killSwitches.map(
-      (ks) => new KillSwitchResource(KillSwitchModel, ks.get())
-    );
+    return killSwitches.map((ks) => ks.type);
   }
 
   async delete(): Promise<Result<number | undefined, Error>> {

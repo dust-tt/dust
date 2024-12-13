@@ -65,6 +65,7 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useKillSwitches } from "@app/lib/swr/kill";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -84,6 +85,9 @@ export default function AssistantBuilder({
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const { killSwitches } = useKillSwitches();
+  const isSavingDisabled = killSwitches?.includes("save_agent_configurations");
 
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
@@ -380,8 +384,13 @@ export default function AssistantBuilder({
               onCancel={async () => {
                 await appLayoutBack(owner, router);
               }}
-              onSave={onAssistantSave}
+              onSave={isSavingDisabled ? undefined : onAssistantSave}
               isSaving={isSavingOrDeleting}
+              saveTooltip={
+                isSavingDisabled
+                  ? "Saving assistants is temporarily disabled and will be re-enabled shortly."
+                  : undefined
+              }
             />
           )
         }

@@ -21,6 +21,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -151,6 +152,18 @@ async function handler(
             type: "workspace_auth_error",
             message:
               "Only users that are `admins` or `builder` can administrate spaces.",
+          },
+        });
+      }
+
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      if (killSwitches?.includes("save_data_source_views")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Saving data source views is temporarily disabled, try again later.",
           },
         });
       }

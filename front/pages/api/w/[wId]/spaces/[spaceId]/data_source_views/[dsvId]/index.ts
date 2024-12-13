@@ -9,6 +9,7 @@ import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -62,6 +63,18 @@ async function handler(
     }
 
     case "PATCH": {
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      if (killSwitches?.includes("save_data_source_views")) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Saving data source views is temporarily disabled, try again later.",
+          },
+        });
+      }
+
       const patchBodyValidation = PatchDataSourceViewSchema.decode(req.body);
 
       if (isLeft(patchBodyValidation)) {

@@ -42,10 +42,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const killSwitches = await KillSwitchResource.list();
-      return res
-        .status(200)
-        .json({ killSwitches: killSwitches.map((ks) => ks.type) });
+      const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+      return res.status(200).json({ killSwitches });
     case "POST":
       const payloadValidation = KillSwitchTypeSchema.decode(req.body);
       if (isLeft(payloadValidation)) {

@@ -4,6 +4,7 @@ import {
   Dialog,
   InformationCircleIcon,
   PlusIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -23,6 +24,7 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
@@ -53,6 +55,10 @@ export function EditSpaceManagedDataSourcesViews({
   const router = useRouter();
 
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
+
+  const { killSwitches } = useKillSwitches();
+
+  const isSavingDisabled = killSwitches?.includes("save_data_source_views");
 
   // DataSources Views of the current space.
   const {
@@ -264,6 +270,28 @@ export function EditSpaceManagedDataSourcesViews({
   if (isSystemSpaceDataSourceViewsLoading || isSpaceDataSourceViewsLoading) {
     return false;
   }
+
+  const addToSpaceButton = (
+    <Button
+      label={
+        dataSourceView
+          ? `Add data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
+          : "Add data from connections"
+      }
+      variant="primary"
+      icon={PlusIcon}
+      size="sm"
+      onClick={() => {
+        if (systemSpaceDataSourceViews.length === 0) {
+          setShowNoConnectionDialog(true);
+        } else {
+          setShowDataSourcesModal(true);
+        }
+      }}
+      disabled={isSavingDisabled}
+    />
+  );
+
   return isAdmin ? (
     <>
       <SpaceManagedDatasourcesViewsModal
@@ -307,23 +335,14 @@ export function EditSpaceManagedDataSourcesViews({
         <p>You have no connection set up.</p>
       </Dialog>
       <AwaitableDialog />
-      <Button
-        label={
-          dataSourceView
-            ? `Add data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
-            : "Add data from connections"
-        }
-        variant="primary"
-        icon={PlusIcon}
-        size="sm"
-        onClick={() => {
-          if (systemSpaceDataSourceViews.length === 0) {
-            setShowNoConnectionDialog(true);
-          } else {
-            setShowDataSourcesModal(true);
-          }
-        }}
-      />
+      {isSavingDisabled ? (
+        <Tooltip
+          trigger={addToSpaceButton}
+          label="Editing spaces is temporarily disabled and will be re-enabled shortly."
+        />
+      ) : (
+        addToSpaceButton
+      )}
     </>
   ) : (
     <RequestDataSourceModal
