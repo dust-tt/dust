@@ -1,10 +1,15 @@
 import {
+  Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ExternalLinkIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   LightbulbIcon,
   MagicIcon,
   Markdown,
@@ -19,10 +24,12 @@ import {
 import type {
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect } from "react";
+import { useCallback, useContext, useEffect, useMemo } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -40,8 +47,13 @@ import type {
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
+import {
+  useAgentConfigurationFeedbacks,
+  useAgentConfigurationHistory,
+} from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 interface AssistantBuilderRightPanelProps {
@@ -54,6 +66,7 @@ interface AssistantBuilderRightPanelProps {
   rightPanelStatus: AssistantBuilderRightPanelStatus;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
+  agentConfigurationId: string | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
 }
 
@@ -67,6 +80,7 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus,
   openRightPanelTab,
   builderState,
+  agentConfigurationId,
   setAction,
 }: AssistantBuilderRightPanelProps) {
   const {
@@ -104,7 +118,8 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {template && (
+      {/* The agentConfigurationId is truthy iff not a new assistant */}
+      {(!!template || !!agentConfigurationId) && (
         <div className="shrink-0 bg-white pt-5">
           <Tabs
             value={rightPanelStatus.tab ?? "Preview"}
@@ -114,7 +129,20 @@ export default function AssistantBuilderRightPanel({
             className="hidden lg:flex"
           >
             <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
-              <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+              {template && (
+                <TabsTrigger
+                  value="Template"
+                  label="Template"
+                  icon={MagicIcon}
+                />
+              )}
+              {agentConfigurationId && (
+                <TabsTrigger
+                  value="Performance"
+                  label="Performance"
+                  icon={LightbulbIcon}
+                />
+              )}
               <TabsTrigger
                 value="Preview"
                 label="Preview"
@@ -263,6 +291,15 @@ export default function AssistantBuilderRightPanel({
               </div>
             </div>
           )}
+        {rightPanelStatus.tab === "Performance" && agentConfigurationId && (
+          <div className="ml-4 mt-4">
+            <Page.SectionHeader title="Feedback" />
+            <FeedbacksSection
+              assistantId={agentConfigurationId}
+              owner={owner}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -372,3 +409,222 @@ const TemplateDropDownMenu = ({
     </DropdownMenu>
   );
 };
+
+const FeedbacksSection = ({
+  owner,
+  assistantId,
+}: {
+  owner: LightWorkspaceType;
+  assistantId: string | null;
+}) => {
+  const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
+    useAgentConfigurationFeedbacks({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId ?? "",
+      withMetadata: true,
+    });
+
+  const sortedFeedbacks = useMemo(() => {
+    if (!agentConfigurationFeedbacks) {
+      return null;
+    }
+    return agentConfigurationFeedbacks.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [agentConfigurationFeedbacks]);
+
+  const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
+    useAgentConfigurationHistory({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId || "",
+      disabled: !assistantId,
+    });
+
+  return isAgentConfigurationFeedbacksLoading ||
+    isAgentConfigurationHistoryLoading ? (
+    <Spinner />
+  ) : (
+    <div>
+      {!sortedFeedbacks || sortedFeedbacks.length === 0 || !assistantId ? (
+        <div className="mt-3 text-sm text-element-900">No feedbacks.</div>
+      ) : !agentConfigurationHistory ? (
+        <div className="mt-3 text-sm text-element-900">
+          Error loading the previous agent versions.
+        </div>
+      ) : (
+        <div className="mt-3">
+          <AgentConfigurationVersionHeader
+            agentConfiguration={agentConfigurationHistory[0]}
+            agentConfigurationVersion={agentConfigurationHistory[0].version}
+            isLatestVersion={true}
+          />
+          {sortedFeedbacks.map((feedback, index) => (
+            <div key={feedback.id}>
+              {index > 0 &&
+                feedback.agentConfigurationVersion !==
+                  sortedFeedbacks[index - 1].agentConfigurationVersion && (
+                  <AgentConfigurationVersionHeader
+                    agentConfiguration={agentConfigurationHistory?.find(
+                      (c) => c.version === feedback.agentConfigurationVersion
+                    )}
+                    agentConfigurationVersion={
+                      feedback.agentConfigurationVersion
+                    }
+                    isLatestVersion={false}
+                  />
+                )}
+              <FeedbackCard
+                owner={owner}
+                feedback={feedback as AgentMessageFeedbackWithMetadataType}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+function AgentConfigurationVersionHeader({
+  agentConfigurationVersion,
+  agentConfiguration,
+  isLatestVersion,
+}: {
+  agentConfigurationVersion: number;
+  agentConfiguration: LightAgentConfigurationType | undefined;
+  isLatestVersion: boolean;
+}) {
+  const getAgentConfigurationVersionString = useCallback(
+    (config: LightAgentConfigurationType) => {
+      return isLatestVersion
+        ? "Current version"
+        : !config.versionCreatedAt
+          ? `v${config.version}`
+          : new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+            });
+    },
+    [isLatestVersion]
+  );
+
+  return (
+    <div className="flex w-fit items-center gap-2 rounded-full bg-sky-100 p-2 text-sm">
+      {agentConfiguration
+        ? getAgentConfigurationVersionString(agentConfiguration)
+        : `v${agentConfigurationVersion}`}
+    </div>
+  );
+}
+
+function FeedbackCard({
+  owner,
+  feedback,
+}: {
+  owner: LightWorkspaceType;
+  feedback: AgentMessageFeedbackWithMetadataType;
+}) {
+  const conversationUrl =
+    feedback.conversationId && feedback.messageId
+      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#${feedback.messageId}`
+      : null;
+
+  const timeSinceFeedback = timeAgoFrom(
+    feedback.createdAt instanceof Date
+      ? feedback.createdAt.getTime()
+      : new Date(feedback.createdAt).getTime(),
+    {
+      useLongFormat: true,
+    }
+  );
+
+  if (!feedback.content) {
+    return (
+      <ContentMessage variant="slate" className="mt-2 p-2">
+        <div className="justify-content-around flex items-center gap-2">
+          <div className="flex w-full items-center gap-2">
+            {feedback.userImageUrl ? (
+              <Avatar
+                size="xs"
+                visual={feedback.userImageUrl}
+                name={feedback.userName}
+              />
+            ) : (
+              <Spinner size="xs" />
+            )}
+            <div className="flex-grow text-sm font-bold text-element-900">
+              {feedback.userName}
+            </div>
+          </div>
+
+          <div className="flex flex-shrink-0 flex-row items-center gap-2 text-xs text-muted-foreground">
+            {timeSinceFeedback} ago
+            <div className="text-xs text-muted-foreground">
+              {feedback.thumbDirection === "up" ? (
+                <HandThumbUpIcon color="#3B82F6" width={16} height={16} />
+              ) : (
+                <HandThumbDownIcon width={16} height={16} />
+              )}
+            </div>
+          </div>
+          {conversationUrl && (
+            <Button
+              variant="ghost"
+              size="xs"
+              href={conversationUrl}
+              icon={ExternalLinkIcon}
+              target="_blank"
+            />
+          )}
+        </div>
+      </ContentMessage>
+    );
+  }
+
+  return (
+    <ContentMessage variant="slate" className="mt-2 p-2">
+      <div className="justify-content-around mb-3 flex items-center gap-2">
+        <div className="flex w-full items-center gap-2">
+          {feedback.userImageUrl ? (
+            <Avatar
+              size="xs"
+              visual={feedback.userImageUrl}
+              name={feedback.userName}
+            />
+          ) : (
+            <Spinner size="xs" />
+          )}
+          <div className="flex-grow text-sm font-bold text-element-900">
+            {feedback.userName}
+          </div>
+        </div>
+        <div className="flex flex-shrink-0 flex-row items-center gap-2 text-xs text-muted-foreground">
+          {timeSinceFeedback} ago
+          <div className="text-xs text-muted-foreground">
+            {feedback.thumbDirection === "up" ? (
+              <HandThumbUpIcon color="#3B82F6" width={16} height={16} />
+            ) : (
+              <HandThumbDownIcon width={16} height={16} />
+            )}
+          </div>
+          {conversationUrl && (
+            <Button
+              variant="ghost"
+              size="xs"
+              href={conversationUrl}
+              icon={ExternalLinkIcon}
+              target="_blank"
+            />
+          )}
+        </div>
+      </div>
+      <div className="ml-4 flex items-center gap-2">
+        <div className="flex-grow">{feedback.content}</div>
+      </div>
+    </ContentMessage>
+  );
+}

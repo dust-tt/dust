@@ -6,6 +6,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   cn,
+  FilterIcon,
   MagicIcon,
   Tabs,
   TabsList,
@@ -489,7 +490,7 @@ export default function AssistantBuilder({
             </div>
           }
           buttonsRightPanel={
-            <>
+            rightPanelStatus.tab !== null ? (
               <Button
                 size="sm"
                 variant="ghost"
@@ -501,42 +502,66 @@ export default function AssistantBuilder({
                 disabled={isBuilderStateEmpty}
                 onClick={toggleRightPanel}
               />
-              {rightPanelStatus.tab === null && template === null && (
+            ) : (
+              <>
+                {/* Chevron button */}
                 <Button
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  onClick={() => openRightPanelTab("Preview")}
-                  size="md"
-                  tooltip={
-                    isBuilderStateEmpty
-                      ? "Add instructions or tools to Preview"
-                      : "Preview"
+                  size="sm"
+                  variant="ghost"
+                  icon={
+                    rightPanelStatus.tab !== null
+                      ? ChevronRightIcon
+                      : ChevronLeftIcon
                   }
-                  variant="highlight"
                   disabled={isBuilderStateEmpty}
-                  className={cn(
-                    isPreviewButtonAnimating && "animate-breathing-scale"
-                  )}
+                  onClick={toggleRightPanel}
                 />
-              )}
-              {rightPanelStatus.tab === null && template !== null && (
+
                 <div className="flex flex-col gap-3">
+                  {/* Preview Button */}
                   <Button
                     icon={ChatBubbleBottomCenterTextIcon}
                     onClick={() => openRightPanelTab("Preview")}
                     size="sm"
                     variant="outline"
-                    tooltip="Preview your assistant"
+                    tooltip={
+                      isBuilderStateEmpty
+                        ? "Add instructions or tools to Preview"
+                        : "Preview your asssitant"
+                    }
+                    className={cn(
+                      isPreviewButtonAnimating && "animate-breathing-scale"
+                    )}
+                    disabled={isBuilderStateEmpty}
                   />
-                  <Button
-                    icon={MagicIcon}
-                    onClick={() => openRightPanelTab("Template")}
-                    size="sm"
-                    variant="outline"
-                    tooltip="Template instructions"
-                  />
+                  {/* Performance Button */}
+                  {!!initialBuilderState && (
+                    <Button
+                      icon={FilterIcon}
+                      onClick={() => openRightPanelTab("Performance")}
+                      size="sm"
+                      variant="outline"
+                      tooltip={
+                        agentConfigurationId
+                          ? "Inspect feedback and performance"
+                          : "Available for existing assistants only"
+                      }
+                      disabled={!agentConfigurationId}
+                    />
+                  )}
+                  {/* Template Button */}
+                  {template !== null && (
+                    <Button
+                      icon={MagicIcon}
+                      onClick={() => openRightPanelTab("Template")}
+                      size="sm"
+                      variant="outline"
+                      tooltip="Template instructions"
+                    />
+                  )}
                 </div>
-              )}
-            </>
+              </>
+            )
           }
           rightPanel={
             <AssistantBuilderRightPanel
@@ -555,6 +580,7 @@ export default function AssistantBuilder({
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
+              agentConfigurationId={agentConfigurationId}
               setAction={setAction}
             />
           }
