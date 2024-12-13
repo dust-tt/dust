@@ -61,6 +61,16 @@ async function handler(
   auth: Authenticator,
   space: SpaceResource
 ): Promise<void> {
+  if (!space.canList(auth)) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const dataSourceViews = await DataSourceViewResource.listBySpace(

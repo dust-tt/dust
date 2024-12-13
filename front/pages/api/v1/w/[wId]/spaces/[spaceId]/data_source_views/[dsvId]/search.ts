@@ -166,7 +166,11 @@ async function handler(
   }
 
   const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
-  if (!dataSourceView || dataSourceView.space.sId !== space.sId) {
+  if (
+    !dataSourceView ||
+    dataSourceView.space.sId !== space.sId ||
+    !dataSourceView.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
