@@ -17,7 +17,7 @@ steps:
     secretEnv:
       - "DEPOT_TOKEN"
 
-timeout: 600s
+timeout: 1200s
 
 availableSecrets:
   secretManager:
