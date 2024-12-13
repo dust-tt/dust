@@ -34,16 +34,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dataSourceViews = await DataSourceViewResource.listBySpaces(auth, [
-    globalSpace,
-  ]);
-
   const flags = await getFeatureFlags(owner);
   if (!flags.includes("labs_trackers") || !auth.isAdmin()) {
     return {
       notFound: true,
     };
   }
+
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(auth, [
+    globalSpace,
+  ]);
 
   return {
     props: {

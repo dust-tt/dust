@@ -91,6 +91,20 @@ async function handler(
       });
 
     case "POST":
+      const existingTrackers = await TrackerConfigurationResource.listBySpace(
+        auth,
+        space
+      );
+      if (existingTrackers.length >= 3) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "You can't have more than 3 trackers in a space.",
+          },
+        });
+      }
+
       const bodyValidation = PostTrackersRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
