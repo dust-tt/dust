@@ -436,6 +436,8 @@ export const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
   BatchAllResponseSchema,
   CheckFileGenericResponseSchema,
+  ConfluenceMeResponseSchema,
+  ConfluenceUpsertPageResponseSchema,
   GetParentsResponseSchema,
   IntercomCheckConversationResponseSchema,
   IntercomCheckMissingConversationsResponseSchema,
