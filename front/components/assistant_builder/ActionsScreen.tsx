@@ -70,7 +70,10 @@ import type {
   AssistantBuilderState,
   AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import {
+  getDefaultActionConfiguration,
+  isDefaultActionName,
+} from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
@@ -120,6 +123,12 @@ export function hasActionError(
     default:
       assertNever(action);
   }
+}
+
+function actionDisplayName(action: AssistantBuilderActionConfiguration) {
+  return `${ACTION_SPECIFICATIONS[action.type].label}${
+    !isDefaultActionName(action) ? " - " + action.name : ""
+  }`;
 }
 
 type SpaceIdToActions = Record<
@@ -630,7 +639,7 @@ function ActionCard({
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full gap-1 font-medium text-element-900">
           <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
-          <div className="w-full truncate">{spec.label}</div>
+          <div className="w-full truncate">{actionDisplayName(action)}</div>
           <IconButton
             icon={XMarkIcon}
             variant="outline"
@@ -863,7 +872,7 @@ function ActionEditor({
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
           <Page.Header
-            title={ACTION_SPECIFICATIONS[action.type].label}
+            title={actionDisplayName(action)}
             icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
           />
           {shouldDisplayAdvancedSettings && (
@@ -898,7 +907,6 @@ function ActionEditor({
             />
           )}
         </div>
-
         {showInvalidActionNameError && (
           <div className="text-sm text-warning-500">
             {showInvalidActionNameError}
