@@ -13,6 +13,7 @@ import apiConfig from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError, statsDClient } from "@app/logger/withlogging";
 
@@ -46,6 +47,32 @@ async function handler(
   }
 
   const owner = auth.getNonNullableWorkspace();
+
+  const { spaceId } = req.query;
+
+  if (
+    !dataSource ||
+    dataSource.space.sId !== spaceId ||
+    !dataSource.canRead(auth)
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  if (dataSource.space.kind === "conversations") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you're trying to access was not found",
+      },
+    });
+  }
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   switch (req.method) {

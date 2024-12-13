@@ -23,6 +23,32 @@ async function handler(
 ): Promise<void> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
+  const { spaceId } = req.query;
+
+  if (
+    !dataSource ||
+    dataSource.space.sId !== spaceId ||
+    !dataSource.canRead(auth)
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  if (dataSource.space.kind === "conversations") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you're trying to access was not found",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
