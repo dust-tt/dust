@@ -10,6 +10,7 @@ import {
 
 import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
+import { confluenceUpsertPageWithFullParentsActivity } from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import {
@@ -410,5 +411,41 @@ export async function confluencePersonalDataReportingWorkflow() {
 
       // TODO(2024-01-23 flav) Implement logic to remove row in the Connector table and stop all workflows.
     }
+  }
+}
+
+export async function confluenceUpsertPageWithFullParentsWorkflow({
+  connectorId,
+  pageId,
+}: {
+  connectorId: ModelId;
+  pageId: string;
+}) {
+  await confluenceUpsertPageWithFullParentsActivity({
+    connectorId,
+    pageId,
+  });
+}
+
+export async function confluenceUpsertPagesWithFullParentsWorkflow({
+  connectorId,
+  pageIds,
+}: {
+  connectorId: ModelId;
+  pageIds: string[];
+}) {
+  const cachedSpaceNames: Record<string, string> = {};
+  const cachedSpaceHierarchies: Record<
+    string,
+    Record<string, string | null>
+  > = {};
+
+  for (const pageId of pageIds) {
+    await confluenceUpsertPageWithFullParentsActivity({
+      connectorId,
+      pageId,
+      cachedSpaceNames,
+      cachedSpaceHierarchies,
+    });
   }
 }

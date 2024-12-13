@@ -6,13 +6,13 @@ import type {
 import assert from "assert";
 import fs from "fs/promises";
 
-import { confluenceUpsertPageWithFullParentsActivity } from "@connectors/connectors/confluence/temporal/activities";
+import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
+import {
+  confluenceUpsertPagesWithFullParentsWorkflow,
+  confluenceUpsertPageWithFullParentsWorkflow,
+} from "@connectors/connectors/confluence/temporal/workflows";
+import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
-
-interface cachedSpace {
-  spaceName: string | null;
-  spaceHierarchy: Record<string, string | null>;
-}
 
 export const confluence = async ({
   command,
@@ -30,11 +30,34 @@ export const confluence = async ({
         throw new Error("Missing --pageId argument");
       }
       const { connectorId, pageId } = args;
-      const success = await confluenceUpsertPageWithFullParentsActivity({
-        connectorId,
-        pageId,
-      });
-      return { success };
+
+      const client = await getTemporalClient();
+      const workflow = await client.workflow.start(
+        confluenceUpsertPageWithFullParentsWorkflow,
+        {
+          args: [{ connectorId, pageId }],
+          taskQueue: QUEUE_NAME,
+          workflowId: `confluence-upsert-page-${connectorId}-${pageId}`,
+          searchAttributes: { connectorId: [connectorId] },
+          memo: { connectorId },
+        }
+      );
+
+      const { workflowId } = workflow;
+      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
+      if (!temporalNamespace) {
+        logger.info(`[Admin] Started temporal workflow with id: ${workflowId}`);
+      } else {
+        logger.info(
+          `[Admin] Started temporal workflow with id: ${workflowId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`
+        );
+      }
+      return {
+        workflowId,
+        workflowUrl: temporalNamespace
+          ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`
+          : undefined,
+      };
     }
     case "upsert-pages": {
       if (!args.connectorId) {
@@ -63,26 +86,33 @@ export const confluence = async ({
         return entry[keyInFile];
       });
 
-      let allSuccesses = true;
-      const cachedSpaceNames: Record<string, string> = {};
-      const cachedSpaceHierarchies: Record<
-        string,
-        Record<string, string | null>
-      > = {};
-
-      for (const pageId of pageIds) {
-        const success = await confluenceUpsertPageWithFullParentsActivity({
-          connectorId,
-          pageId,
-          cachedSpaceNames,
-          cachedSpaceHierarchies,
-        });
-        if (!success) {
-          logger.error({ pageId }, "Failed to upsert page");
-          allSuccesses = false;
+      const client = await getTemporalClient();
+      const workflow = await client.workflow.start(
+        confluenceUpsertPagesWithFullParentsWorkflow,
+        {
+          args: [{ connectorId, pageIds }],
+          taskQueue: QUEUE_NAME,
+          workflowId: `confluence-upsert-pages-${connectorId}`,
+          searchAttributes: { connectorId: [connectorId] },
+          memo: { connectorId },
         }
+      );
+
+      const { workflowId } = workflow;
+      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
+      if (!temporalNamespace) {
+        logger.info(`[Admin] Started temporal workflow with id: ${workflowId}`);
+      } else {
+        logger.info(
+          `[Admin] Started temporal workflow with id: ${workflowId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`
+        );
       }
-      return { success: allSuccesses };
+      return {
+        workflowId,
+        workflowUrl: temporalNamespace
+          ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`
+          : undefined,
+      };
     }
 
     default:
