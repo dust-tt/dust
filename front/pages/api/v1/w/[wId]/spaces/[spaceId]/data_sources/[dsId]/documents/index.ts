@@ -10,6 +10,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import doc from "@app/pages/api/doc";
 
 /**
  * @swagger
@@ -139,10 +140,16 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
+      let documentIds = req.query.document_ids;
+      if (typeof documentIds === "string") {
+        documentIds = [documentIds];
+      }
+
       const documents = await coreAPI.getDataSourceDocuments(
         {
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
+          documentIds,
         },
         { limit, offset }
       );

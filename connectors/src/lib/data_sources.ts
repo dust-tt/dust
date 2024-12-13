@@ -7,6 +7,7 @@ import type {
   CoreAPIDataSourceDocumentSection,
   CoreAPIDocument,
   CoreAPIFolder,
+  CoreAPILightDocument,
   CoreAPITable,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
@@ -254,7 +255,7 @@ export async function getDocumentFromDataSource({
 
   const endpoint =
     `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
-    `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
+    `/data_sources/${dataSourceConfig.dataSourceId}/documents?document_ids=${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -265,16 +266,15 @@ export async function getDocumentFromDataSource({
   try {
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {
-    const axiosError = e as AxiosError;
-    if (axiosError?.response?.status === 400) {
-      localLogger.info("Document doesn't exist on Dust. Ignoring.");
-      return;
-    }
     localLogger.error({ error: e }, "Error getting document from Dust.");
     throw e;
   }
+  if (dustRequestResult.data.documents.length === 0) {
+    localLogger.info("Document doesn't exist on Dust. Ignoring.");
+    return;
+  }
 
-  return dustRequestResult.data.document;
+  return dustRequestResult.data.documents[0];
 }
 
 export async function deleteFromDataSource(
@@ -1199,10 +1199,10 @@ export async function getFolderNode({
   } catch (e) {
     const axiosError = e as AxiosError;
     if (axiosError?.response?.status === 400) {
-      localLogger.info("Document doesn't exist on Dust. Ignoring.");
+      localLogger.info("Folder doesn't exist on Dust. Ignoring.");
       return;
     }
-    localLogger.error({ error: e }, "Error getting document from Dust.");
+    localLogger.error({ error: e }, "Error getting folder from Dust.");
     throw e;
   }
 
