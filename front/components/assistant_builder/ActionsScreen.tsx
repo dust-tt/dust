@@ -70,7 +70,10 @@ import type {
   AssistantBuilderState,
   AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import {
+  getDefaultActionConfiguration,
+  isDefaultActionName,
+} from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
@@ -862,10 +865,17 @@ function ActionEditor({
     <div className="px-1">
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
-          <Page.Header
-            title={ACTION_SPECIFICATIONS[action.type].label}
-            icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-          />
+          <div className="flex flex-col gap-1">
+            <Page.Header
+              title={`${ACTION_SPECIFICATIONS[action.type].label}`}
+              icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+            />
+            {action.name && !isDefaultActionName(action) && (
+              <div className="text-sm text-element-600">
+                Tool name: {action.name}
+              </div>
+            )}
+          </div>
           {shouldDisplayAdvancedSettings && (
             <Popover
               trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
@@ -898,7 +908,6 @@ function ActionEditor({
             />
           )}
         </div>
-
         {showInvalidActionNameError && (
           <div className="text-sm text-warning-500">
             {showInvalidActionNameError}
