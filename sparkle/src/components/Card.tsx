@@ -1,6 +1,7 @@
 import { cva } from "class-variance-authority";
-import React, { ReactNode } from "react";
+import React from "react";
 
+import { LinkWrapperProps } from "@sparkle/components/";
 import {
   noHrefLink,
   SparkleContext,
@@ -8,13 +9,9 @@ import {
 } from "@sparkle/context";
 import { cn } from "@sparkle/lib/utils";
 
-export const CARD_BUTTON_VARIANTS = [
-  "primary",
-  "secondary",
-  "tertiary",
-] as const;
+export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
 
-export type CardVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
+export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
 const variantClasses: Record<CardVariantType, string> = {
   primary: "s-bg-primary-50 s-border-border-dark/0",
@@ -22,14 +19,14 @@ const variantClasses: Record<CardVariantType, string> = {
   tertiary: "s-bg-background s-border-border-dark/0",
 };
 
-const CARD_BUTTON_SIZES = ["sm", "md", "lg"] as const;
+export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;
 
-type CardSizeType = (typeof CARD_BUTTON_SIZES)[number];
+export type CardSizeType = (typeof CARD_VARIANTS_SIZES)[number];
 
 const sizeVariants: Record<CardSizeType, string> = {
   sm: "s-p-3 s-rounded-2xl",
   md: "s-p-4 s-rounded-3xl",
-  lg: "s-p-5 s-rounded-[32px]",
+  lg: "s-p-5 s-rounded-4xl",
 };
 
 const cardVariants = cva(
@@ -52,16 +49,8 @@ interface CommonProps {
   className?: string;
 }
 
-interface LinkProps extends CommonProps {
-  children?: ReactNode;
-  href: string;
-  target?: string;
-  rel?: string;
-  replace?: boolean;
-  shallow?: boolean;
+interface LinkProps extends CommonProps, LinkWrapperProps {
   onClick?: never;
-  onMouseEnter?: never;
-  onMouseLeave?: never;
 }
 
 interface ButtonProps

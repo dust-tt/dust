@@ -52,6 +52,9 @@ module.exports = {
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      borderRadius: {
+        "4xl": "2rem",
+      },
       containers: {
         xxs: "24rem",
         xs: "32rem",

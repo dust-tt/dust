@@ -73,7 +73,7 @@ export const AssistantCardMore = React.forwardRef<
   AssistantCardMore & {
     className?: string;
   }
->(({ className, ...props }, ref) => {
+>(({ className }, ref) => {
   return (
     <Button
       ref={ref}
@@ -81,7 +81,6 @@ export const AssistantCardMore = React.forwardRef<
       variant="outline"
       icon={MoreIcon}
       className={className}
-      {...props}
     />
   );
 });

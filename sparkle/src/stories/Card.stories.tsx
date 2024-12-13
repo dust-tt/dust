@@ -2,6 +2,7 @@ import type { Meta } from "@storybook/react";
 import React, { ComponentType } from "react";
 
 import { Button, Card, Icon } from "@sparkle/components";
+import { CARD_VARIANTS, CARD_VARIANTS_SIZES } from "@sparkle/components/Card";
 import {
   BookOpenStrokeIcon,
   BracesStrokeIcon,
@@ -21,12 +22,8 @@ const meta = {
 export default meta;
 
 export const Demo = () => {
-  const variants: Array<"primary" | "secondary" | "tertiary"> = [
-    "primary",
-    "secondary",
-    "tertiary",
-  ];
-  const sizes: Array<"sm" | "md" | "lg"> = ["sm", "md", "lg"];
+  const variants = CARD_VARIANTS;
+  const sizes = CARD_VARIANTS_SIZES;
 
   return (
     <div className="s-flex s-flex-col s-gap-8">
