@@ -22,6 +22,7 @@ import { makePageInternalId } from "@connectors/connectors/confluence/lib/intern
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import type { UpsertToDataSourceParams } from "@connectors/lib/data_sources";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
@@ -220,7 +221,83 @@ export async function markPageHasVisited({
   );
 }
 
-async function upsertConfluencePageInDb(
+export async function upsertConfluencePageToDataSource(
+  page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>,
+  spaceName: string,
+  confluenceConfig: ConfluenceConfiguration,
+  syncType: UpsertToDataSourceParams["upsertContext"]["sync_type"],
+  dataSourceConfig: DataSourceConfig,
+  loggerArgs: Record<string, string | number>
+) {
+  const localLogger = logger.child(loggerArgs);
+
+  const markdown = turndownService.turndown(page.body.storage.value);
+  const pageCreatedAt = new Date(page.createdAt);
+  const lastPageVersionCreatedAt = new Date(page.version.createdAt);
+
+  if (markdown) {
+    const renderedMarkdown = await renderMarkdownSection(
+      dataSourceConfig,
+      markdown
+    );
+    const renderedPage = await renderDocumentTitleAndContent({
+      dataSourceConfig,
+      title: `Page ${page.title} Space ${spaceName}`,
+      createdAt: pageCreatedAt,
+      updatedAt: lastPageVersionCreatedAt,
+      content: renderedMarkdown,
+    });
+
+    const documentId = makePageInternalId(page.id);
+    const documentUrl = makeConfluenceDocumentUrl({
+      baseUrl: confluenceConfig.url,
+      suffix: page._links.tinyui,
+    });
+
+    // We log the number of labels to help define the importance of labels in the future.
+    if (page.labels.results.length > 0) {
+      localLogger.info(
+        { labelsCount: page.labels.results.length },
+        "Confluence page has labels."
+      );
+    }
+
+    // Limit to 10 custom tags.
+    const customTags = page.labels.results
+      .slice(0, 10)
+      .map((l) => `labels:${l.id}`);
+
+    const tags = [
+      `createdAt:${pageCreatedAt.getTime()}`,
+      `space:${spaceName}`,
+      `title:${page.title}`,
+      `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
+      `version:${page.version.number}`,
+      ...customTags,
+    ];
+
+    await upsertToDatasource({
+      dataSourceConfig,
+      documentContent: renderedPage,
+      documentId,
+      documentUrl,
+      loggerArgs,
+      // Parent Ids will be computed after all page imports within the space have been completed.
+      parents: [documentId, HiddenContentNodeParentId],
+      parentId: HiddenContentNodeParentId,
+      tags,
+      timestampMs: lastPageVersionCreatedAt.getTime(),
+      upsertContext: {
+        sync_type: syncType,
+      },
+      title: page.title,
+      mimeType: "application/vnd.dust.confluence.page",
+      async: true,
+    });
+  }
+}
+
+export async function upsertConfluencePageInDb(
   connectorId: ModelId,
   page: ConfluencePageWithBodyType,
   visitedAtMs: number
@@ -335,70 +412,14 @@ export async function confluenceCheckAndUpsertPageActivity({
 
   localLogger.info("Upserting Confluence page.");
 
-  const markdown = turndownService.turndown(page.body.storage.value);
-  const pageCreatedAt = new Date(page.createdAt);
-  const lastPageVersionCreatedAt = new Date(page.version.createdAt);
-
-  if (markdown) {
-    const renderedMarkdown = await renderMarkdownSection(
-      dataSourceConfig,
-      markdown
-    );
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: `Page ${page.title} Space ${spaceName}`,
-      createdAt: pageCreatedAt,
-      updatedAt: lastPageVersionCreatedAt,
-      content: renderedMarkdown,
-    });
-
-    const documentId = makePageInternalId(pageId);
-    const documentUrl = makeConfluenceDocumentUrl({
-      baseUrl: confluenceConfig.url,
-      suffix: page._links.tinyui,
-    });
-
-    // We log the number of labels to help define the importance of labels in the future.
-    if (page.labels.results.length > 0) {
-      localLogger.info(
-        { labelsCount: page.labels.results.length },
-        "Confluence page has labels."
-      );
-    }
-
-    // Limit to 10 custom tags.
-    const customTags = page.labels.results
-      .slice(0, 10)
-      .map((l) => `labels:${l.id}`);
-
-    const tags = [
-      `createdAt:${pageCreatedAt.getTime()}`,
-      `space:${spaceName}`,
-      `title:${page.title}`,
-      `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
-      `version:${page.version.number}`,
-      ...customTags,
-    ];
-
-    await upsertToDatasource({
-      dataSourceConfig,
-      documentContent: renderedPage,
-      documentId,
-      documentUrl,
-      loggerArgs,
-      // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [documentId, HiddenContentNodeParentId],
-      parentId: HiddenContentNodeParentId,
-      tags,
-      timestampMs: lastPageVersionCreatedAt.getTime(),
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-      title: page.title,
-      mimeType: "application/vnd.dust.confluence.page",
-      async: true,
-    });
-  }
+  await upsertConfluencePageToDataSource(
+    page,
+    spaceName,
+    confluenceConfig,
+    isBatchSync ? "batch" : "incremental",
+    dataSourceConfig,
+    loggerArgs
+  );
 
   localLogger.info("Upserting Confluence page in DB.");
 
