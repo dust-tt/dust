@@ -37,7 +37,7 @@ export async function internalCreateToolOutputCsvFile(
   await processAndStoreFile(auth, { file: fileResource, reqOrString: content });
 
   // If the tool returned no content, it makes no sense to upsert it to the data source
-  if (content && isJITActionsEnabled()) {
+  if (content && isJITActionsEnabled(auth)) {
     const r = await processAndUpsertToDataSource(auth, {
       file: fileResource,
       optionalContent: content,
