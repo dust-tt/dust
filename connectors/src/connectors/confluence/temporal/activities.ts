@@ -423,7 +423,6 @@ export async function confluenceCheckAndUpsertPageActivity({
   }
 
   localLogger.info("Upserting Confluence page.");
-
   await upsertConfluencePageToDataSource({
     page,
     spaceName,
@@ -436,7 +435,6 @@ export async function confluenceCheckAndUpsertPageActivity({
   });
 
   localLogger.info("Upserting Confluence page in DB.");
-
   await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
 
   return true;
@@ -537,6 +535,7 @@ export async function confluenceUpsertPageWithFullParentsActivity({
     loggerArgs,
   });
 
+  localLogger.info("Upserting Confluence page in DB.");
   await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
 
   return true;
