@@ -55,12 +55,12 @@ export const confluence = async ({
       const page = await client.getPageById(pageId);
       if (!page) {
         localLogger.info("Confluence page not found.");
-        return false;
+        return { success: false };
       }
       const space = await client.getSpaceById(page.spaceId);
       if (!space) {
         localLogger.info("Confluence space not found.");
-        return false;
+        return { success: false };
       }
 
       localLogger.info("Upserting Confluence page.");
@@ -72,8 +72,7 @@ export const confluence = async ({
         dataSourceConfig,
         loggerArgs
       );
-
-      break;
+      return { success: true };
     }
 
     default:
