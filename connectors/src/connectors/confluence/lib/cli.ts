@@ -10,6 +10,7 @@ import {
   upsertConfluencePageToDataSource,
 } from "@connectors/connectors/confluence/temporal/activities";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { ConfluencePage } from "@connectors/lib/models/confluence";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -46,6 +47,15 @@ export const confluence = async ({
         workspaceId: dataSourceConfig.workspaceId,
       };
       const localLogger = logger.child(loggerArgs);
+
+      const pageInDb = await ConfluencePage.findOne({
+        attributes: ["parentId", "skipReason", "version"],
+        where: { connectorId, pageId },
+      });
+      if (pageInDb && pageInDb.skipReason !== null) {
+        localLogger.info("Confluence page skipped.");
+        return { success: false };
+      }
 
       const client = await getConfluenceClient(
         { cloudId: confluenceConfig?.cloudId },
