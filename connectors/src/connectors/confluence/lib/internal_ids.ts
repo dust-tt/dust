@@ -7,7 +7,7 @@ Internal IDs are Confluence IDs with a prefix `confluence-space-` or `confluence
 
 enum ConfluenceInternalIdPrefix {
   Space = "confluence-space-",
-  Page = "confluence-page",
+  Page = "confluence-page-",
 }
 
 export function makeSpaceInternalId(confluenceSpaceId: string) {
