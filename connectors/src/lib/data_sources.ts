@@ -5,20 +5,23 @@ import type {
 import { DustAPI } from "@dust-tt/client";
 import type {
   CoreAPIDataSourceDocumentSection,
+  CoreAPIDocument,
   CoreAPIFolder,
-  CoreAPILightDocument,
   CoreAPITable,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { isValidDate, safeSubstring, sectionFullText } from "@dust-tt/types";
-import { MAX_CHUNK_SIZE } from "@dust-tt/types";
+import {
+  isValidDate,
+  MAX_CHUNK_SIZE,
+  safeSubstring,
+  sectionFullText,
+} from "@dust-tt/types";
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
 import https from "https";
-import type { Branded } from "io-ts";
-import type { IntBrand } from "io-ts";
+import type { Branded, IntBrand } from "io-ts";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -246,7 +249,7 @@ export async function getDocumentFromDataSource({
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
-}): Promise<CoreAPILightDocument | undefined> {
+}): Promise<CoreAPIDocument | undefined> {
   const localLogger = logger.child({
     documentId,
   });
