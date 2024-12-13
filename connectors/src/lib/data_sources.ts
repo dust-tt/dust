@@ -5,7 +5,6 @@ import type {
 import { DustAPI } from "@dust-tt/client";
 import type {
   CoreAPIDataSourceDocumentSection,
-  CoreAPIDocument,
   CoreAPIFolder,
   CoreAPILightDocument,
   CoreAPITable,
@@ -25,7 +24,6 @@ import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
-import { getFolderAsContentNode } from "@connectors/connectors/microsoft/lib/content_nodes";
 import { apiConfig } from "@connectors/lib/api/config";
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
 import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
@@ -248,7 +246,7 @@ export async function getDocumentFromDataSource({
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
-}): Promise<CoreAPIDocument | undefined> {
+}): Promise<CoreAPILightDocument | undefined> {
   const localLogger = logger.child({
     documentId,
   });
