@@ -28,10 +28,12 @@ export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
  */
 export const ConfluenceCommandSchema = t.type({
   majorCommand: t.literal("confluence"),
-  command: t.literal("upsert-page"),
+  command: t.union([t.literal("upsert-page"), t.literal("upsert-pages")]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
     pageId: t.union([t.string, t.undefined]),
+    file: t.union([t.string, t.undefined]),
+    keyInFile: t.union([t.string, t.undefined]),
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
