@@ -329,6 +329,7 @@ async function _updateDocumentParentsField({
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   parents: string[];
+  parentId?: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -360,12 +361,14 @@ async function _updateDocumentOrTableParentsField({
   dataSourceConfig,
   id,
   parents,
+  parentId = null,
   loggerArgs = {},
   tableOrDocument,
 }: {
   dataSourceConfig: DataSourceConfig;
   id: string;
   parents: string[];
+  parentId?: string | null;
   loggerArgs?: Record<string, string | number>;
   tableOrDocument: "document" | "table";
 }) {
@@ -388,6 +391,7 @@ async function _updateDocumentOrTableParentsField({
       endpoint,
       {
         parents: parents,
+        parent_id: parentId,
       },
       dustRequestConfig
     );

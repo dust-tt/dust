@@ -44,6 +44,12 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+/**
+ * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
+ * This behavior is typically used to hide content nodes whose position in the ContentNodeTree cannot be resolved at time of upsertion.
+ */
+export const HiddenContentNodeParentId = "__hidden_syncing_content__";
+
 const logger = mainLogger.child({
   provider: "confluence",
 });
@@ -381,7 +387,8 @@ export async function confluenceCheckAndUpsertPageActivity({
       documentUrl,
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [documentId],
+      parents: [documentId, HiddenContentNodeParentId],
+      parentId: HiddenContentNodeParentId,
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {
@@ -570,6 +577,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
         dataSourceConfig: dataSourceConfigFromConnector(connector),
         documentId: makePageInternalId(page.pageId),
         parents: parentIds,
+        parentId: parentIds[1],
       });
     },
     { concurrency: 10 }
