@@ -257,7 +257,7 @@ export const TrackerBuilder = ({
             setEdited(true);
           }
         }}
-        dataSourceViews={dataSourceViews}
+        dataSourceViews={trackableDataSourcesViews} // Only show trackable data sources.
         initialDataSourceConfigurations={tracker.maintainedDataSources}
         allowedSpaces={[globalSpace]}
         viewType="documents"
@@ -275,7 +275,7 @@ export const TrackerBuilder = ({
             setEdited(true);
           }
         }}
-        dataSourceViews={trackableDataSourcesViews} // Only show trackable data sources for watching.
+        dataSourceViews={dataSourceViews}
         initialDataSourceConfigurations={tracker.watchedDataSources}
         allowedSpaces={[globalSpace]}
         viewType="documents"
