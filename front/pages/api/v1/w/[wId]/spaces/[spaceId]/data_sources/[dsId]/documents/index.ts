@@ -41,6 +41,13 @@ import { apiError } from "@app/logger/withlogging";
  *         schema:
  *           type: string
  *       - in: query
+ *         name: document_ids
+ *         description: The IDs of the documents to fetch (optional)
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *        - in: query
  *         name: limit
  *         description: Limit the number of documents returned
  *         schema:
