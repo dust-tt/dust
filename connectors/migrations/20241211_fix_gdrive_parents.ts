@@ -27,7 +27,8 @@ async function migrate({
   connector: ConnectorModel;
   execute: boolean;
 }) {
-  logger.info(`Processing connector ${connector.id}...`);
+  const childLogger = logger.child({ connectorId: connector.id });
+  childLogger.info(`Processing connector ${connector.id}...`);
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const parentsMap: Record<string, string | null> = {};
@@ -75,7 +76,7 @@ async function migrate({
       while (current) {
         parents.push(current);
         if (typeof parentsMap[current] === "undefined") {
-          logger.error({ current, file }, "Parent not found");
+          childLogger.error({ current, driveFileId }, "Parent not found");
           continue loop;
         }
         current = parentsMap[current] || null;
@@ -87,7 +88,10 @@ async function migrate({
           folderId: internalId,
         });
         if (!folder || folder.parents.join("/") !== parents.join("/")) {
-          logger.info({ folderId: file.driveFileId, parents }, "Upsert folder");
+          childLogger.info(
+            { folderId: file.driveFileId, parents },
+            "Upsert folder"
+          );
 
           if (execute) {
             // upsert repository as folder
@@ -107,7 +111,7 @@ async function migrate({
         });
         if (document) {
           if (document.parents.join("/") !== parents.join("/")) {
-            logger.info(
+            childLogger.info(
               {
                 documentId: internalId,
                 parents,
@@ -155,7 +159,7 @@ async function migrate({
       while (current) {
         parents.push(current);
         if (typeof parentsMap[current] === "undefined") {
-          logger.error({ current, sheet }, "Parent not found");
+          childLogger.error({ current, sheet }, "Parent not found");
           continue loop;
         }
         current = parentsMap[current] || null;
@@ -164,7 +168,7 @@ async function migrate({
       const table = await getTable({ dataSourceConfig, tableId });
       if (table) {
         if (table.parents.join("/") !== parents.join("/")) {
-          logger.info(
+          childLogger.info(
             {
               tableId,
               parents,
