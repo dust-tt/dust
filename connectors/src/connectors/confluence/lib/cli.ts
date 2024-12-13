@@ -5,6 +5,10 @@ import type {
 } from "@dust-tt/types";
 
 import {
+  getConfluencePageParentIds,
+  getSpaceHierarchy,
+} from "@connectors/connectors/confluence/lib/hierarchy";
+import {
   fetchConfluenceConfigurationActivity,
   getConfluenceClient,
   upsertConfluencePageToDataSource,
@@ -49,7 +53,7 @@ export const confluence = async ({
       const localLogger = logger.child(loggerArgs);
 
       const pageInDb = await ConfluencePage.findOne({
-        attributes: ["parentId", "skipReason", "version"],
+        attributes: ["parentId", "skipReason"],
         where: { connectorId, pageId },
       });
       if (pageInDb && pageInDb.skipReason !== null) {
@@ -73,10 +77,21 @@ export const confluence = async ({
         return { success: false };
       }
 
+      const cachedHierarchy = await getSpaceHierarchy(
+        connectorId,
+        page.spaceId
+      );
+      const parentIds = await getConfluencePageParentIds(
+        connectorId,
+        { pageId: page.id, parentId: page.parentId, spaceId: page.spaceId },
+        cachedHierarchy
+      );
+
       localLogger.info("Upserting Confluence page.");
       await upsertConfluencePageToDataSource(
         page,
         space.name,
+        parentIds,
         confluenceConfig,
         "batch",
         dataSourceConfig,

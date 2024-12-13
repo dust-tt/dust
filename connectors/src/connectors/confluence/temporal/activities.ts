@@ -44,6 +44,7 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import assert from "assert";
 
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
@@ -224,6 +225,7 @@ export async function markPageHasVisited({
 export async function upsertConfluencePageToDataSource(
   page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>,
   spaceName: string,
+  parents: string[],
   confluenceConfig: ConfluenceConfiguration,
   syncType: UpsertToDataSourceParams["upsertContext"]["sync_type"],
   dataSourceConfig: DataSourceConfig,
@@ -282,14 +284,11 @@ export async function upsertConfluencePageToDataSource(
       documentId,
       documentUrl,
       loggerArgs,
-      // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [documentId, HiddenContentNodeParentId],
-      parentId: HiddenContentNodeParentId,
+      parents,
+      parentId: parents[1],
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
-      upsertContext: {
-        sync_type: syncType,
-      },
+      upsertContext: { sync_type: syncType },
       title: page.title,
       mimeType: "application/vnd.dust.confluence.page",
       async: true,
@@ -415,6 +414,8 @@ export async function confluenceCheckAndUpsertPageActivity({
   await upsertConfluencePageToDataSource(
     page,
     spaceName,
+    // Parent Ids will be computed after all page imports within the space have been completed.
+    [makePageInternalId(page.id), HiddenContentNodeParentId],
     confluenceConfig,
     isBatchSync ? "batch" : "incremental",
     dataSourceConfig,
