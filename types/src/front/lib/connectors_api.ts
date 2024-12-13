@@ -121,16 +121,6 @@ export type ContentNodeWithParentIds = ContentNode & {
   parentInternalIds: string[] | null;
 };
 
-/**
- * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
- * This behavior is typically used to hide content nodes whose position in the ContentNodeTree cannot be resolved at time of upsertion.
- */
-export const HiddenContentNodeParentId = "__dust_synchronizing__";
-
-export function isContentNodeHidden(contentNode: BaseContentNode): boolean {
-  return contentNode.parentInternalId === HiddenContentNodeParentId;
-}
-
 type GetContentNodesReturnType<
   IncludeParents extends boolean,
   Key extends string
