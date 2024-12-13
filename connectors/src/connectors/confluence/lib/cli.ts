@@ -15,6 +15,7 @@ import {
   confluenceGetSpaceNameActivity,
   fetchConfluenceConfigurationActivity,
   getConfluenceClient,
+  upsertConfluencePageInDb,
   upsertConfluencePageToDataSource,
 } from "@connectors/connectors/confluence/temporal/activities";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -88,6 +89,7 @@ export const confluence = async ({
         workspaceId: dataSourceConfig.workspaceId,
       };
       const localLogger = logger.child(loggerArgs);
+      const visitedAtMs = new Date().getTime();
 
       const pageInDb = await ConfluencePage.findOne({
         attributes: ["parentId", "skipReason"],
@@ -134,6 +136,7 @@ export const confluence = async ({
         dataSourceConfig,
         loggerArgs
       );
+      await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
       return { success: true };
     }
     case "upsert-pages": {
@@ -184,6 +187,7 @@ export const confluence = async ({
       );
 
       const cachedSpaces: Record<string, cachedSpace> = {};
+      const visitedAtMs = new Date().getTime();
 
       for (const pageId of pageIds) {
         const loggerArgs = {
@@ -232,6 +236,7 @@ export const confluence = async ({
           dataSourceConfig,
           loggerArgs
         );
+        await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
       }
       return { success: true };
     }
