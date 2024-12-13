@@ -458,6 +458,17 @@ export async function syncSpreadSheet(
               // Allow to locally retry the API call.
               continue;
             }
+          } else if (
+            err instanceof Error &&
+            "code" in err &&
+            err.code === 404
+          ) {
+            localLogger.info(
+              "[Spreadsheet] Consistently getting 404 Not Found from Google Sheets, skipping further processing."
+            );
+            return {
+              isSupported: false,
+            };
           }
 
           throw err;
