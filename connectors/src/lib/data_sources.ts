@@ -76,7 +76,7 @@ type UpsertToDataSourceParams = {
   mimeType: string;
   async: boolean;
 } & (
-  | { parentId: string; hideContentNode?: never }
+  | { parentId?: string | null; hideContentNode?: never } // TODO(2024-12-13) - parentId should not be nullable here, to change after changing the connectors
   | { parentId?: never; hideContentNode: true }
 );
 
@@ -107,7 +107,7 @@ async function _upsertToDatasource({
   title,
   mimeType,
   async,
-  parentId,
+  parentId = null,
   hideContentNode,
 }: UpsertToDataSourceParams) {
   return tracer.trace(
