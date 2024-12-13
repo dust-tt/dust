@@ -126,6 +126,12 @@ export function hasActionError(
   }
 }
 
+function actionDisplayName(action: AssistantBuilderActionConfiguration) {
+  return `${ACTION_SPECIFICATIONS[action.type].label}${
+    !isDefaultActionName(action) ? " - " + action.name : ""
+  }`;
+}
+
 type SpaceIdToActions = Record<
   string,
   AssistantBuilderActionConfigurationWithId[]
@@ -629,28 +635,21 @@ function ActionCard({
     <CardButton
       variant="primary"
       onClick={editAction}
-      className="mx-auto inline-block w-72 pb-1"
+      className="mx-auto inline-block w-72"
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex flex-col">
-          <div className="flex w-full gap-1 font-medium text-element-900">
-            <Icon
-              visual={spec.cardIcon}
-              size="sm"
-              className="text-element-900"
-            />
-            <div className="w-full truncate">{actionDisplayName(action)}</div>
-
-            <IconButton
-              icon={XMarkIcon}
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                deleteAction();
-                e.stopPropagation();
-              }}
-            />
-          </div>
+        <div className="flex w-full gap-1 font-medium text-element-900">
+          <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
+          <div className="w-full truncate">{actionDisplayName(action)}</div>
+          <IconButton
+            icon={XMarkIcon}
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              deleteAction();
+              e.stopPropagation();
+            }}
+          />
         </div>
         {isLegacyConfig ? (
           <div className="mx-auto">
@@ -842,12 +841,6 @@ interface ActionEditorProps {
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
   builderState: AssistantBuilderState;
-}
-
-function actionDisplayName(action: AssistantBuilderActionConfiguration) {
-  return `${ACTION_SPECIFICATIONS[action.type].label}${
-    !isDefaultActionName(action) ? " - " + action.name : ""
-  }`;
 }
 
 function ActionEditor({
