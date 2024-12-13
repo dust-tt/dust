@@ -1199,7 +1199,7 @@ export async function getFolderNode({
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {
     const axiosError = e as AxiosError;
-    if (axiosError?.response?.status === 400) {
+    if (axiosError?.response?.status === 404) {
       localLogger.info("Folder doesn't exist on Dust. Ignoring.");
       return;
     }
