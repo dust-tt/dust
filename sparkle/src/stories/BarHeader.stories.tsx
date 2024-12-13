@@ -160,3 +160,26 @@ export const BasicBarHeaderConversation = () => (
     </div>
   </div>
 );
+
+export const BasicBarHeaderValidateSaveDisabledWithTooltip = () => (
+  <div className="s-mt-16 s-h-full s-w-full">
+    <BarHeader
+      title="Knowledge Base"
+      rightActions={
+        <BarHeader.ButtonBar
+          variant="validate"
+          saveTooltip="Saving assistants is temporarily disabled and will be re-enabled shortly"
+        />
+      }
+    />
+    <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
+      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterTextIcon} />
+      <div className="s-flex s-flex-col s-gap-y-96">
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+        <img src="https://source.unsplash.com/random" />
+      </div>
+    </div>
+  </div>
+);

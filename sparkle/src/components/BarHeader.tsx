@@ -75,6 +75,7 @@ type BarHeaderButtonBarValidateProps = {
   saveLabel?: string;
   isSaving?: boolean;
   savingLabel?: string;
+  saveTooltip?: string;
 };
 
 type BarHeaderButtonBarConversationProps = {
@@ -88,6 +89,28 @@ export type BarHeaderButtonBarProps =
   | BarHeaderButtonBarBackProps
   | BarHeaderButtonBarValidateProps
   | BarHeaderButtonBarConversationProps;
+
+function ValidateSaveButton(props: BarHeaderButtonBarValidateProps) {
+  const button = (
+    <Button
+      size="sm"
+      label={
+        props.isSaving
+          ? props.savingLabel || "Processing..."
+          : props.saveLabel || "Save"
+      }
+      variant="primary"
+      onClick={props.onSave}
+      disabled={!props.onSave || props.isSaving}
+    />
+  );
+
+  return props.saveTooltip ? (
+    <Tooltip label={props.saveTooltip} side="left" trigger={button} />
+  ) : (
+    button
+  );
+}
 
 BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
   switch (props.variant) {
@@ -121,17 +144,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
             onClick={props.onCancel}
             disabled={!props.onCancel || props.isSaving}
           />
-          <Button
-            size="sm"
-            label={
-              props.isSaving
-                ? props.savingLabel || "Processing..."
-                : props.saveLabel || "Save"
-            }
-            variant="primary"
-            onClick={props.onSave}
-            disabled={!props.onSave || props.isSaving}
-          />
+          <ValidateSaveButton {...props} />
         </>
       );
     case "conversation":
