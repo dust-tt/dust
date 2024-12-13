@@ -21,7 +21,7 @@ export async function getVisualizationPrompt({
 }) {
   // If `jit_conversations_actions` is enabled we rely on the `conversations_list_files` emulated
   // actions to make the list of files available to the agent.
-  if (isJITActionsEnabled()) {
+  if (isJITActionsEnabled(auth)) {
     return visualizationSystemPrompt(true);
   }
 
