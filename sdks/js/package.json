@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/client",
-  "version": "1.0.13",
+  "version": "1.0.15",
   "description": "Client for Dust API",
   "repository": {
     "type": "git",
@@ -14,7 +14,7 @@
   "homepage": "https://github.com/dust-tt/dust-sdk-js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "module": "dist/types.esm.js",
+  "module": "dist/client.esm.js",
   "typings": "dist/index.d.ts",
   "files": [
     "dist",

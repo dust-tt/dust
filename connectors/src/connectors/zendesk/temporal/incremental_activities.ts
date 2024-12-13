@@ -10,7 +10,7 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchRecentlyUpdatedArticles,
-  fetchRecentlyUpdatedTickets,
+  fetchZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -207,7 +207,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
     brandId,
   });
 
-  const { tickets, hasMore, nextLink } = await fetchRecentlyUpdatedTickets(
+  const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
     accessToken,
     url ? { url } : { brandSubdomain, startTime }
   );
@@ -222,7 +222,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
-      } else if (ticket.status === "solved") {
+      } else if (["solved", "closed"].includes(ticket.status)) {
         const comments = await zendeskApiClient.tickets.getComments(ticket.id);
         const { result: users } = await zendeskApiClient.users.showMany(
           comments.map((c) => c.author_id)

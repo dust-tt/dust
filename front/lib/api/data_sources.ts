@@ -535,9 +535,11 @@ export async function upsertTable({
 export async function handleDataSourceSearch({
   searchQuery,
   dataSource,
+  dataSourceView,
 }: {
   searchQuery: DataSourceSearchQuery;
   dataSource: DataSourceResource;
+  dataSourceView?: DataSourceViewResource;
 }): Promise<
   Result<
     DataSourceSearchResponseType,
@@ -570,6 +572,16 @@ export async function handleDataSourceSearch({
           lt: searchQuery.timestamp_lt ?? null,
         },
       },
+      view_filter: dataSourceView
+        ? {
+            parents: {
+              in: dataSourceView.parentsIn,
+              not: [],
+            },
+            tags: null,
+            timestamp: null,
+          }
+        : undefined,
       credentials: credentials,
     }
   );
@@ -629,14 +641,6 @@ export async function handleDataSourceTableCSVUpsert({
 
   const tableId = params.tableId ?? generateRandomModelSId();
   const tableParents: string[] = params.parents ?? [];
-
-  // Ensure that the tableId is included in the parents as the first item.
-  // remove it if it's already present and add it as the first item.
-  const indexOfTableId = tableParents.indexOf(tableId);
-  if (indexOfTableId !== -1) {
-    tableParents.splice(indexOfTableId, 1);
-  }
-  tableParents.unshift(tableId);
 
   const flags = await getFeatureFlags(owner);
 

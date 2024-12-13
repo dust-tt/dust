@@ -58,6 +58,16 @@ async function handler(
 ): Promise<void> {
   const dataSources = await DataSourceResource.listBySpace(auth, space);
 
+  if (!space.canList(auth)) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       res.status(200).json({

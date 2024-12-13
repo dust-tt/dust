@@ -87,12 +87,24 @@ async function handler(
   auth: Authenticator,
   space: SpaceResource
 ): Promise<void> {
+  if (!space.canList(auth)) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "The space you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const apps = await AppResource.listBySpace(auth, space);
 
       res.status(200).json({
-        apps: apps.map((app) => app.toJSON()),
+        apps: apps
+          .filter((app) => app.canRead(auth))
+          .map((app) => app.toJSON()),
       });
       return;
 

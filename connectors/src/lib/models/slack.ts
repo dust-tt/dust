@@ -102,7 +102,7 @@ SlackMessages.init(
     sequelize: sequelizeConnection,
     modelName: "slack_messages",
     indexes: [
-      { fields: ["connectorId", "channelId", "messageTs"], unique: true },
+      { fields: ["connectorId", "channelId", "documentId"], unique: true },
     ],
   }
 );

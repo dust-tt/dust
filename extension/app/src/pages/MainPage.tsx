@@ -24,6 +24,9 @@ export const MainPage = ({
 }: ProtectedRouteChildrenProps) => {
   const { handleSelectWorkspace } = useAuth();
 
+  const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
+  const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
+
   return (
     <>
       <BarHeader
@@ -89,7 +92,11 @@ export const MainPage = ({
           </div>
         }
       />
-
+      <div className="flex items-start justify-between">
+        <div className="fixed bottom-0 right-0 z-10 p-2 text-sm element">
+          <p className="text-sm font-normal text-element-700">{shortcut}</p>
+        </div>
+      </div>
       <div className="h-full w-full pt-28 max-w-4xl mx-auto flex justify-center">
         <FileDropProvider>
           <DropzoneContainer

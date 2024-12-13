@@ -6,6 +6,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 import assert from "assert";
+import _ from "lodash";
 
 import apiConfig from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
@@ -21,10 +22,12 @@ const isMigratorAction = (action: string): action is MigratorAction => {
 };
 
 type ProviderMigrator = {
+  /// returns [nodeId, ...oldParents, ...newParents] idempotently
   transformer: (
     nodeId: string,
     parents: string[]
   ) => { parents: string[]; parentId: string | null };
+  /// returns [nodeId, ...newParents] idempotently
   cleaner: (
     nodeId: string,
     parents: string[]
@@ -184,13 +187,45 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   google_drive: null,
   microsoft: null,
   github: null,
-  notion: null,
+  notion: {
+    transformer: (nodeId, parents) => {
+      const uniqueIds = _.uniq(
+        [nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)
+      );
+      return {
+        parents: [
+          // new parents
+          ...uniqueIds.map((id) => `notion-${id}`),
+          // legacy parents
+          ...uniqueIds,
+        ],
+        parentId: `notion-${uniqueIds[0]}`,
+      };
+    },
+    cleaner: (nodeId, parents) => {
+      // Only keep the new parents
+      const uniqueIds = _.uniq(
+        [nodeId, ...parents].map((x) => _.last(x.split("notion-"))!)
+      );
+      return {
+        parents: uniqueIds.map((id) => `notion-${id}`),
+        parentId: `notion-${uniqueIds[0]}`,
+      };
+    },
+  },
   snowflake: null,
   webcrawler: null,
   zendesk: null,
   confluence: {
-    transformer: (_, parents) => {
-      assert(parents.length > 1, "parents.length <= 1"); // the only documents are pages, they at least have the space as parent
+    transformer: (nodeId, parents) => {
+      if (parents.length <= 1) {
+        // we skip these for now
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Invalid Confluence parents"
+        );
+        return { parents: [nodeId], parentId: null };
+      }
       return {
         parents: [
           ...new Set([

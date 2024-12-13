@@ -2,6 +2,7 @@ import type {
   ZendeskCheckIsAdminResponseType,
   ZendeskCommandType,
   ZendeskCountTicketsResponseType,
+  ZendeskResyncTicketsResponseType,
 } from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -10,6 +11,7 @@ import {
   fetchZendeskTicketCount,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { launchZendeskTicketReSyncWorkflow } from "@connectors/connectors/zendesk/temporal/client";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
@@ -18,7 +20,9 @@ export const zendesk = async ({
   command,
   args,
 }: ZendeskCommandType): Promise<
-  ZendeskCheckIsAdminResponseType | ZendeskCountTicketsResponseType
+  | ZendeskCheckIsAdminResponseType
+  | ZendeskCountTicketsResponseType
+  | ZendeskResyncTicketsResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
@@ -80,6 +84,22 @@ export const zendesk = async ({
         "Number of valid tickets found for the brand."
       );
       return { ticketCount };
+    }
+    case "resync-tickets": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      const result = await launchZendeskTicketReSyncWorkflow(connector, {
+        forceResync: args.forceResync === "true",
+      });
+      if (result.isErr()) {
+        logger.error(
+          { error: result.error },
+          "Error launching the sync workflow."
+        );
+        throw result.error;
+      }
+      return { success: true };
     }
   }
 };

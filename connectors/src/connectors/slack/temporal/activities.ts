@@ -37,6 +37,7 @@ import {
   reportInitialSyncProgress,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -574,12 +575,25 @@ export async function syncNonThreaded(
 
   const tags = getTagsForPage(documentId, channelId, channelName);
 
-  await SlackMessages.upsert({
-    connectorId: connectorId,
-    channelId: channelId,
-    messageTs: undefined,
-    documentId: documentId,
+  // Only create the document if it doesn't already exist based on the documentId
+  const existingMessages = await SlackMessages.findAll({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      documentId: documentId,
+    },
+    order: [["id", "ASC"]],
+    limit: 1,
   });
+
+  if (existingMessages.length === 0) {
+    await SlackMessages.create({
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: undefined,
+      documentId: documentId,
+    });
+  }
 
   await upsertToDatasource({
     dataSourceConfig,
@@ -768,12 +782,28 @@ export async function syncThread(
 
   const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
 
-  await SlackMessages.upsert({
-    connectorId: connectorId,
-    channelId: channelId,
-    messageTs: threadTs,
-    documentId: documentId,
+  // Only create the document if it doesn't already exist based on the documentId
+  const existingMessages = await SlackMessages.findAll({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      documentId: documentId,
+    },
+    order: [["id", "ASC"]],
+    limit: 1,
   });
+  if (existingMessages[0]) {
+    await existingMessages[0].update({
+      messageTs: threadTs,
+    });
+  } else {
+    await SlackMessages.create({
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: threadTs,
+      documentId: documentId,
+    });
+  }
 
   await upsertToDatasource({
     dataSourceConfig,
@@ -1121,9 +1151,21 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
       // We delete from the remote datasource first because we would rather double delete remotely
       // than miss one.
       await deleteFromDataSource(dataSourceConfig, slackMessage.documentId);
-      await slackMessage.destroy();
       nbDeleted++;
+
+      if (nbDeleted % 50 === 0) {
+        await heartbeat();
+      }
     }
+
+    // Batch delete after we deleted from the remote datasource
+    await SlackMessages.destroy({
+      where: {
+        channelId: channelId,
+        connectorId: connectorId,
+        id: slackMessages.map((s) => s.id),
+      },
+    });
   } while (slackMessages.length === maxMessages);
   logger.info(
     { nbDeleted, channelId, connectorId },

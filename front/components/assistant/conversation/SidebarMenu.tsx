@@ -215,7 +215,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   variant="ghost"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
-                  className="mr-2"
                 />
               </div>
             ) : (

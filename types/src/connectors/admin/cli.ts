@@ -219,11 +219,16 @@ export type IntercomForceResyncArticlesResponseType = t.TypeOf<
  */
 export const ZendeskCommandSchema = t.type({
   majorCommand: t.literal("zendesk"),
-  command: t.union([t.literal("check-is-admin"), t.literal("count-tickets")]),
+  command: t.union([
+    t.literal("check-is-admin"),
+    t.literal("count-tickets"),
+    t.literal("resync-tickets"),
+  ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
     brandId: t.union([t.number, t.undefined]),
     query: t.union([t.string, t.undefined]),
+    forceResync: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
@@ -242,6 +247,13 @@ export const ZendeskCountTicketsResponseSchema = t.type({
 });
 export type ZendeskCountTicketsResponseType = t.TypeOf<
   typeof ZendeskCountTicketsResponseSchema
+>;
+
+export const ZendeskResyncTicketsResponseSchema = t.type({
+  success: t.literal(true),
+});
+export type ZendeskResyncTicketsResponseType = t.TypeOf<
+  typeof ZendeskResyncTicketsResponseSchema
 >;
 /**
  * </Zendesk>

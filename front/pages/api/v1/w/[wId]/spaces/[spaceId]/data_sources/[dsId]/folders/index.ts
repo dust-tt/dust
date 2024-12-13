@@ -22,6 +22,15 @@ async function handler(
   dataSource: DataSourceResource
 ): Promise<void> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  if (!auth.isSystemKey()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_oauth_token_error",
+        message: "Only system keys are allowed to use this endpoint.",
+      },
+    });
+  }
 
   switch (req.method) {
     case "GET":

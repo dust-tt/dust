@@ -416,7 +416,7 @@ export async function fetchConversationMessages(
   });
 
   if (!conversation) {
-    return new Err(new Error("Conversation not found."));
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
   const { hasMore, messages } = await fetchMessagesForPage(
