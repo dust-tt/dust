@@ -75,7 +75,7 @@ export type AssistantBuilderRetrievalConfiguration = {
 };
 
 export type AssistantBuilderRetrievalExhaustiveConfiguration = {
-  timeFrame?: AssistantBuilderTimeFrame;
+  timeFrame?: AssistantBuilderTimeFrame | null;
 } & AssistantBuilderRetrievalConfiguration;
 
 // DustAppRun configuration
@@ -246,6 +246,7 @@ export function getDefaultRetrievalExhaustiveActionConfiguration() {
     type: "RETRIEVAL_EXHAUSTIVE",
     configuration: {
       dataSourceConfigurations: {},
+      timeFrame: null,
     } as AssistantBuilderRetrievalExhaustiveConfiguration,
     name: DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
     description: "",
