@@ -222,7 +222,7 @@ export async function markPageHasVisited({
   );
 }
 
-export async function upsertConfluencePageToDataSource(
+async function upsertConfluencePageToDataSource(
   page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>,
   spaceName: string,
   parents: string[],
@@ -296,7 +296,7 @@ export async function upsertConfluencePageToDataSource(
   }
 }
 
-export async function upsertConfluencePageInDb(
+async function upsertConfluencePageInDb(
   connectorId: ModelId,
   page: ConfluencePageWithBodyType,
   visitedAtMs: number
@@ -446,7 +446,10 @@ export async function confluenceUpsertPageWithFullParentsActivity({
   connectorId: ModelId;
   pageId: string;
   cachedSpaceNames?: Record<string, string>;
-  cachedSpaceHierarchies?: Record<string, Record<string, string | null>>;
+  cachedSpaceHierarchies?: Record<
+    string,
+    Awaited<ReturnType<typeof getSpaceHierarchy>>
+  >;
 }): Promise<boolean> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
