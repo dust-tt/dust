@@ -60,19 +60,24 @@ async function migrate({
           id: {
             [Op.gt]: nextId,
           },
+          // mimeType: "application/vnd.google-apps.folder",
         },
         order: [["id", "ASC"]],
         limit: QUERY_BATCH_SIZE,
       }
     );
 
-    for (const file of googleDriveFiles) {
+    loop: for (const file of googleDriveFiles) {
       const internalId = file.dustFileId;
       const driveFileId = file.driveFileId;
       const parents = [driveFileId];
       let current: string | null = file.parentId;
       while (current) {
         parents.push(current);
+        if (typeof parentsMap[current] === "undefined") {
+          logger.error({ current, file }, "Parent not found");
+          continue loop;
+        }
         current = parentsMap[current] || null;
       }
 
@@ -101,12 +106,6 @@ async function migrate({
           documentId: internalId,
         });
         if (document) {
-          logger.info(
-            {
-              documentId: file.driveFileId,
-            },
-            "Found document"
-          );
           if (document.parents.join("/") !== parents.join("/")) {
             logger.info(
               {
@@ -146,7 +145,7 @@ async function migrate({
         limit: QUERY_BATCH_SIZE,
       });
 
-    for (const sheet of googleDriveSheets) {
+    loop: for (const sheet of googleDriveSheets) {
       const tableId = getGoogleSheetTableId(
         sheet.driveFileId,
         sheet.driveSheetId
@@ -155,18 +154,15 @@ async function migrate({
       let current: string | null = sheet.driveFileId;
       while (current) {
         parents.push(current);
+        if (typeof parentsMap[current] === "undefined") {
+          logger.error({ current, sheet }, "Parent not found");
+          continue loop;
+        }
         current = parentsMap[current] || null;
       }
 
       const table = await getTable({ dataSourceConfig, tableId });
       if (table) {
-        logger.info(
-          {
-            tableId: tableId,
-          },
-          "Found table"
-        );
-
         if (table.parents.join("/") !== parents.join("/")) {
           logger.info(
             {
