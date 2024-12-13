@@ -63,7 +63,7 @@ type UpsertContext = {
   sync_type: "batch" | "incremental";
 };
 
-type UpsertToDataSourceParams = {
+export type UpsertToDataSourceParams = {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   documentContent: CoreAPIDataSourceDocumentSection;

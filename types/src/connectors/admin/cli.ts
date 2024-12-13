@@ -23,6 +23,32 @@ export const ConnectorsCommandSchema = t.type({
 
 export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
 
+/**
+ * <Confluence>
+ */
+export const ConfluenceCommandSchema = t.type({
+  majorCommand: t.literal("confluence"),
+  command: t.union([t.literal("upsert-page"), t.literal("upsert-pages")]),
+  args: t.type({
+    connectorId: t.union([t.number, t.undefined]),
+    pageId: t.union([t.string, t.undefined]),
+    file: t.union([t.string, t.undefined]),
+    keyInFile: t.union([t.string, t.undefined]),
+  }),
+});
+export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
+
+export const ConfluenceUpsertPageResponseSchema = t.type({
+  workflowId: t.string,
+  workflowUrl: t.union([t.string, t.undefined]),
+});
+export type ConfluenceUpsertPageResponseType = t.TypeOf<
+  typeof ConfluenceUpsertPageResponseSchema
+>;
+/**
+ * </Confluence>
+ */
+
 export const GithubCommandSchema = t.type({
   majorCommand: t.literal("github"),
   command: t.union([
@@ -280,6 +306,7 @@ export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
 export const AdminCommandSchema = t.union([
   BatchCommandSchema,
   ConnectorsCommandSchema,
+  ConfluenceCommandSchema,
   GithubCommandSchema,
   GoogleDriveCommandSchema,
   IntercomCommandSchema,

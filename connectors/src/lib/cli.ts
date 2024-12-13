@@ -16,6 +16,7 @@ import PQueue from "p-queue";
 import readline from "readline";
 
 import { getConnectorManager } from "@connectors/connectors";
+import { confluence } from "@connectors/connectors/confluence/lib/cli";
 import { github } from "@connectors/connectors/github/lib/cli";
 import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
 import { intercom } from "@connectors/connectors/intercom/lib/cli";
@@ -34,6 +35,8 @@ export async function runCommand(adminCommand: AdminCommandType) {
   switch (adminCommand.majorCommand) {
     case "connectors":
       return connectors(adminCommand);
+    case "confluence":
+      return confluence(adminCommand);
     case "batch":
       return batch(adminCommand);
     case "notion":

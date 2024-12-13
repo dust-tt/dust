@@ -22,6 +22,7 @@ import { makePageInternalId } from "@connectors/connectors/confluence/lib/intern
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import type { UpsertToDataSourceParams } from "@connectors/lib/data_sources";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
@@ -92,7 +93,7 @@ export async function getConfluenceClient(
 ) {
   const { cloudId, connectorId } = config;
 
-  // Ensure connector is fetched if not directly provided.
+  // Ensure the connector is fetched if not directly provided.
   const effectiveConnector =
     connector ??
     (connectorId ? await fetchConfluenceConnector(connectorId) : undefined);
@@ -220,6 +221,90 @@ export async function markPageHasVisited({
   );
 }
 
+interface ConfluenceUpsertPageInput {
+  page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>;
+  spaceName: string;
+  parents: string[];
+  confluenceConfig: ConfluenceConfiguration;
+  syncType?: UpsertToDataSourceParams["upsertContext"]["sync_type"];
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs: Record<string, string | number>;
+}
+
+async function upsertConfluencePageToDataSource({
+  page,
+  spaceName,
+  parents,
+  confluenceConfig,
+  syncType = "batch",
+  dataSourceConfig,
+  loggerArgs,
+}: ConfluenceUpsertPageInput) {
+  const localLogger = logger.child(loggerArgs);
+
+  const markdown = turndownService.turndown(page.body.storage.value);
+  const pageCreatedAt = new Date(page.createdAt);
+  const lastPageVersionCreatedAt = new Date(page.version.createdAt);
+
+  if (markdown) {
+    const renderedMarkdown = await renderMarkdownSection(
+      dataSourceConfig,
+      markdown
+    );
+    const renderedPage = await renderDocumentTitleAndContent({
+      dataSourceConfig,
+      title: `Page ${page.title} Space ${spaceName}`,
+      createdAt: pageCreatedAt,
+      updatedAt: lastPageVersionCreatedAt,
+      content: renderedMarkdown,
+    });
+
+    const documentId = makePageInternalId(page.id);
+    const documentUrl = makeConfluenceDocumentUrl({
+      baseUrl: confluenceConfig.url,
+      suffix: page._links.tinyui,
+    });
+
+    // We log the number of labels to help define the importance of labels in the future.
+    if (page.labels.results.length > 0) {
+      localLogger.info(
+        { labelsCount: page.labels.results.length },
+        "Confluence page has labels."
+      );
+    }
+
+    // Limit to 10 custom tags.
+    const customTags = page.labels.results
+      .slice(0, 10)
+      .map((l) => `labels:${l.id}`);
+
+    const tags = [
+      `createdAt:${pageCreatedAt.getTime()}`,
+      `space:${spaceName}`,
+      `title:${page.title}`,
+      `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
+      `version:${page.version.number}`,
+      ...customTags,
+    ];
+
+    await upsertToDatasource({
+      dataSourceConfig,
+      documentContent: renderedPage,
+      documentId,
+      documentUrl,
+      loggerArgs,
+      parents,
+      parentId: parents[1],
+      tags,
+      timestampMs: lastPageVersionCreatedAt.getTime(),
+      upsertContext: { sync_type: syncType },
+      title: page.title,
+      mimeType: "application/vnd.dust.confluence.page",
+      async: true,
+    });
+  }
+}
+
 async function upsertConfluencePageInDb(
   connectorId: ModelId,
   page: ConfluencePageWithBodyType,
@@ -247,6 +332,11 @@ interface ConfluenceCheckAndUpsertPageActivityInput {
   visitedAtMs: number;
 }
 
+/**
+ * Upsert a Confluence page without its full parents.
+ * Operates greedily by stopping if the page is restricted or if there is a version match
+ * (unless the page was moved, in this case, we have to upsert because the parents have changed).
+ */
 export async function confluenceCheckAndUpsertPageActivity({
   connectorId,
   isBatchSync,
@@ -303,15 +393,15 @@ export async function confluenceCheckAndUpsertPageActivity({
     return false;
   }
 
-  // Check version.
+  // Check the version.
   const isSameVersion =
     pageAlreadyInDb && pageAlreadyInDb.version === pageRef.version;
 
-  // Check if page was moved. Version is not bumped when a page is moved.
+  // Check whether the page was moved (the version is not bumped when a page is moved).
   const pageWasMoved =
     pageAlreadyInDb && pageAlreadyInDb.parentId !== pageRef.parentId;
 
-  // Only index in DB if the page does not exis, has been moved or  we want to upsert.
+  // Only index in DB if the page does not exist, has been moved, or we want to upsert.
   if (isSameVersion && !forceUpsert && !pageWasMoved) {
     // Simply record that we visited the page.
     await markPageHasVisited({
@@ -334,74 +424,119 @@ export async function confluenceCheckAndUpsertPageActivity({
   }
 
   localLogger.info("Upserting Confluence page.");
-
-  const markdown = turndownService.turndown(page.body.storage.value);
-  const pageCreatedAt = new Date(page.createdAt);
-  const lastPageVersionCreatedAt = new Date(page.version.createdAt);
-
-  if (markdown) {
-    const renderedMarkdown = await renderMarkdownSection(
-      dataSourceConfig,
-      markdown
-    );
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: `Page ${page.title} Space ${spaceName}`,
-      createdAt: pageCreatedAt,
-      updatedAt: lastPageVersionCreatedAt,
-      content: renderedMarkdown,
-    });
-
-    const documentId = makePageInternalId(pageId);
-    const documentUrl = makeConfluenceDocumentUrl({
-      baseUrl: confluenceConfig.url,
-      suffix: page._links.tinyui,
-    });
-
-    // We log the number of labels to help define the importance of labels in the future.
-    if (page.labels.results.length > 0) {
-      localLogger.info(
-        { labelsCount: page.labels.results.length },
-        "Confluence page has labels."
-      );
-    }
-
-    // Limit to 10 custom tags.
-    const customTags = page.labels.results
-      .slice(0, 10)
-      .map((l) => `labels:${l.id}`);
-
-    const tags = [
-      `createdAt:${pageCreatedAt.getTime()}`,
-      `space:${spaceName}`,
-      `title:${page.title}`,
-      `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
-      `version:${page.version.number}`,
-      ...customTags,
-    ];
-
-    await upsertToDatasource({
-      dataSourceConfig,
-      documentContent: renderedPage,
-      documentId,
-      documentUrl,
-      loggerArgs,
-      // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [documentId, HiddenContentNodeParentId],
-      parentId: HiddenContentNodeParentId,
-      tags,
-      timestampMs: lastPageVersionCreatedAt.getTime(),
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-      title: page.title,
-      mimeType: "application/vnd.dust.confluence.page",
-      async: true,
-    });
-  }
+  await upsertConfluencePageToDataSource({
+    page,
+    spaceName,
+    // Parent Ids will be computed after all page imports within the space have been completed.
+    parents: [makePageInternalId(page.id), HiddenContentNodeParentId],
+    confluenceConfig,
+    syncType: isBatchSync ? "batch" : "incremental",
+    dataSourceConfig,
+    loggerArgs,
+  });
 
   localLogger.info("Upserting Confluence page in DB.");
+  await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
 
+  return true;
+}
+
+/**
+ * Upsert a Confluence page with its full parent hierarchy.
+ * Expensive operation, it should be reserved to admin actions on a limited set of pages.
+ */
+export async function confluenceUpsertPageWithFullParentsActivity({
+  connectorId,
+  pageId,
+  cachedSpaceNames = {},
+  cachedSpaceHierarchies = {},
+}: {
+  connectorId: ModelId;
+  pageId: string;
+  cachedSpaceNames?: Record<string, string>;
+  cachedSpaceHierarchies?: Record<
+    string,
+    Awaited<ReturnType<typeof getSpaceHierarchy>>
+  >;
+}): Promise<boolean> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const confluenceConfig =
+    await fetchConfluenceConfigurationActivity(connectorId);
+
+  const loggerArgs = {
+    connectorId,
+    dataSourceId: dataSourceConfig.dataSourceId,
+    pageId,
+    workspaceId: dataSourceConfig.workspaceId,
+  };
+  const localLogger = logger.child(loggerArgs);
+  const visitedAtMs = new Date().getTime();
+
+  const pageInDb = await ConfluencePage.findOne({
+    attributes: ["parentId", "skipReason"],
+    where: { connectorId, pageId },
+  });
+  if (pageInDb && pageInDb.skipReason !== null) {
+    localLogger.info("Confluence page skipped.");
+    return false;
+  }
+
+  const client = await getConfluenceClient(
+    { cloudId: confluenceConfig?.cloudId },
+    connector
+  );
+
+  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
+  if (hasReadRestrictions) {
+    localLogger.info("Skipping restricted Confluence page.");
+    return false;
+  }
+
+  const page = await client.getPageById(pageId);
+  if (!page) {
+    localLogger.info("Confluence page not found.");
+    return false;
+  }
+
+  let spaceName = cachedSpaceNames[page.spaceId];
+  if (!spaceName) {
+    const space = await client.getSpaceById(page.spaceId);
+    if (!space) {
+      localLogger.info("Confluence space not found.");
+      return false;
+    }
+    cachedSpaceNames[page.spaceId] = space.name;
+    spaceName = space.name;
+  }
+
+  if (!cachedSpaceHierarchies[page.spaceId]) {
+    cachedSpaceHierarchies[page.spaceId] = await getSpaceHierarchy(
+      connectorId,
+      page.spaceId
+    );
+  }
+
+  const parents = await getConfluencePageParentIds(
+    connectorId,
+    { pageId: page.id, parentId: page.parentId, spaceId: page.spaceId },
+    cachedSpaceHierarchies[page.spaceId]
+  );
+
+  localLogger.info("Upserting Confluence page.");
+  await upsertConfluencePageToDataSource({
+    page,
+    spaceName,
+    parents,
+    confluenceConfig,
+    dataSourceConfig,
+    loggerArgs,
+  });
+
+  localLogger.info("Upserting Confluence page in DB.");
   await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
 
   return true;
@@ -757,7 +892,7 @@ export async function confluenceGetReportPersonalActionActivity(
         "Error while reporting Confluence account."
       );
 
-      // If token has been revoked, return false.
+      // If the token has been revoked, return false.
       if (err instanceof ExternalOAuthTokenError) {
         return false;
       }
