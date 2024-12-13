@@ -306,7 +306,7 @@ async function migrateDocument({
           parentId: newParentId,
         });
       },
-      { retries: 3 }
+      { retries: 10 }
     )({});
 
     if (updateRes.isErr()) {
