@@ -18,10 +18,7 @@ import {
   getConfluencePageParentIds,
   getSpaceHierarchy,
 } from "@connectors/connectors/confluence/lib/hierarchy";
-import {
-  makePageInternalId,
-  makeSpaceInternalId,
-} from "@connectors/connectors/confluence/lib/internal_ids";
+import { makePageInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -376,7 +373,6 @@ export async function confluenceCheckAndUpsertPageActivity({
       `version:${page.version.number}`,
       ...customTags,
     ];
-    const spaceId = makeSpaceInternalId(page.spaceId);
 
     await upsertToDatasource({
       dataSourceConfig,
@@ -385,8 +381,8 @@ export async function confluenceCheckAndUpsertPageActivity({
       documentUrl,
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [documentId, spaceId],
-      parentId: spaceId,
+      parents: [documentId],
+      hideContentNode: true,
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {

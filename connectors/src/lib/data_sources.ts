@@ -9,6 +9,7 @@ import type {
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
 import {
+  HiddenContentNodeParentId,
   isValidDate,
   MAX_CHUNK_SIZE,
   safeSubstring,
@@ -69,13 +70,15 @@ type UpsertToDataSourceParams = {
   timestampMs?: number;
   tags?: string[];
   parents: string[];
-  parentId?: string | null;
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
   title: string;
   mimeType: string;
   async: boolean;
-};
+} & (
+  | { parentId: string; hideContentNode?: never }
+  | { parentId?: never; hideContentNode: true }
+);
 
 function getDustAPI(dataSourceConfig: DataSourceConfig) {
   return new DustAPI(
@@ -104,7 +107,8 @@ async function _upsertToDatasource({
   title,
   mimeType,
   async,
-  parentId = null,
+  parentId,
+  hideContentNode,
 }: UpsertToDataSourceParams) {
   return tracer.trace(
     `connectors`,
@@ -149,6 +153,15 @@ async function _upsertToDatasource({
       const timestamp = timestampMs
         ? (Math.floor(timestampMs) as Branded<number, IntBrand>)
         : null;
+
+      // setting the magic values to hide the content node
+      if (hideContentNode) {
+        parentId = HiddenContentNodeParentId; // types enforce that we don't already have a parentId there
+        parents = [
+          ...parents.filter((p) => p !== HiddenContentNodeParentId),
+          HiddenContentNodeParentId,
+        ];
+      }
 
       const dustRequestPayload: PostDataSourceDocumentRequestBody = {
         text: null,

@@ -9,6 +9,7 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { APIError, BaseContentNode } from "@dust-tt/types";
+import { isContentNodeHidden } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
@@ -117,7 +118,9 @@ function ContentNodeTreeChildren({
     useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
-    (n) => search.trim().length === 0 || n.title.includes(search)
+    (n) =>
+      (search.trim().length === 0 || n.title.includes(search)) &&
+      !isContentNodeHidden(n)
   );
 
   const getCheckedState = useCallback(
