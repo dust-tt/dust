@@ -11,6 +11,7 @@ import { useCallback, useState } from "react";
 
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
 import SpaceWebsiteModal from "@app/components/spaces/SpaceWebsiteModal";
+import { useKillSwitches } from "@app/lib/swr/kill";
 
 interface EditSpaceStaticDatasourcesViewsProps {
   canWriteInSpace: boolean;
@@ -40,7 +41,9 @@ export function EditSpaceStaticDatasourcesViews({
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
+  const { killSwitches } = useKillSwitches();
 
+  const isSavingDisabled = killSwitches?.includes("save_data_source_views");
   const planDataSourcesLimit = plan.limits.dataSources.count;
 
   const checkLimitsAndOpenModal = useCallback(() => {
@@ -53,6 +56,15 @@ export function EditSpaceStaticDatasourcesViews({
       onOpen();
     }
   }, [dataSources.length, planDataSourcesLimit, onOpen]);
+
+  const addToSpaceButton = (
+    <Button
+      label={`Add ${category}`}
+      onClick={checkLimitsAndOpenModal}
+      icon={PlusIcon}
+      disabled={!canWriteInSpace || isSavingDisabled}
+    />
+  );
 
   return (
     <>
@@ -89,12 +101,15 @@ export function EditSpaceStaticDatasourcesViews({
         />
       ) : null}
       {canWriteInSpace ? (
-        <Button
-          label={`Add ${category}`}
-          onClick={checkLimitsAndOpenModal}
-          icon={PlusIcon}
-          disabled={!canWriteInSpace}
-        />
+        isSavingDisabled ? (
+          <Tooltip
+            label="Editing spaces is temporarily disabled and will be re-enabled shortly."
+            side="top"
+            trigger={addToSpaceButton}
+          />
+        ) : (
+          addToSpaceButton
+        )
       ) : (
         <Tooltip
           label={
@@ -103,14 +118,7 @@ export function EditSpaceStaticDatasourcesViews({
               : `Only members of the space can add a ${category}.`
           }
           side="top"
-          trigger={
-            <Button
-              label={`Add ${category}`}
-              onClick={checkLimitsAndOpenModal}
-              icon={PlusIcon}
-              disabled={!canWriteInSpace}
-            />
-          }
+          trigger={addToSpaceButton}
         />
       )}
     </>

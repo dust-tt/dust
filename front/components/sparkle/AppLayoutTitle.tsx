@@ -22,14 +22,12 @@ export function AppLayoutSimpleSaveCancelTitle({
   onSave,
   onCancel,
   isSaving,
-  saveDisabled,
   saveTooltip,
 }: {
   title: string;
   onSave?: () => void;
   onCancel: () => void;
   isSaving?: boolean;
-  saveDisabled?: boolean;
   saveTooltip?: string;
 }) {
   return (
@@ -41,7 +39,6 @@ export function AppLayoutSimpleSaveCancelTitle({
           onCancel={onCancel}
           onSave={onSave}
           isSaving={isSaving}
-          saveDisabled={saveDisabled}
           saveTooltip={saveTooltip}
         />
       }
