@@ -119,11 +119,11 @@ async function getRetrievalActionConfiguration(
       ? getDefaultRetrievalSearchActionConfiguration()
       : getDefaultRetrievalExhaustiveActionConfiguration();
   if (
+    "timeFrame" in retrievalConfiguration.configuration &&
     action.relativeTimeFrame !== "auto" &&
-    action.relativeTimeFrame !== "none" &&
-    "timeFrame" in retrievalConfiguration
+    action.relativeTimeFrame !== "none"
   ) {
-    retrievalConfiguration.timeFrame = {
+    retrievalConfiguration.configuration.timeFrame = {
       value: action.relativeTimeFrame.duration,
       unit: action.relativeTimeFrame.unit,
     };
