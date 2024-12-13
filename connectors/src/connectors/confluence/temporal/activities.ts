@@ -323,6 +323,10 @@ interface ConfluenceCheckAndUpsertPageActivityInput {
   visitedAtMs: number;
 }
 
+/**
+ * Upsert a Confluence page without its full parents.
+ * Operates greedily by stopping if the page is restricted or if there is a version match (unless the page was moved, in this case we have to upsert because the parents have changed).
+ */
 export async function confluenceCheckAndUpsertPageActivity({
   connectorId,
   isBatchSync,
@@ -423,6 +427,104 @@ export async function confluenceCheckAndUpsertPageActivity({
   );
 
   localLogger.info("Upserting Confluence page in DB.");
+
+  await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
+
+  return true;
+}
+
+/**
+ * Upsert a Confluence page with its full parent hierarchy.
+ * Expensive operation, it should be reserved to admin actions on a limited set of pages.
+ */
+export async function confluenceUpsertPageWithFullParentsActivity({
+  connectorId,
+  pageId,
+  cachedSpaceNames = {},
+  cachedSpaceHierarchies = {},
+}: {
+  connectorId: ModelId;
+  pageId: string;
+  cachedSpaceNames?: Record<string, string>;
+  cachedSpaceHierarchies?: Record<string, Record<string, string | null>>;
+}): Promise<boolean> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Connector not found.");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const confluenceConfig =
+    await fetchConfluenceConfigurationActivity(connectorId);
+
+  const loggerArgs = {
+    connectorId,
+    dataSourceId: dataSourceConfig.dataSourceId,
+    pageId,
+    workspaceId: dataSourceConfig.workspaceId,
+  };
+  const localLogger = logger.child(loggerArgs);
+  const visitedAtMs = new Date().getTime();
+
+  const pageInDb = await ConfluencePage.findOne({
+    attributes: ["parentId", "skipReason"],
+    where: { connectorId, pageId },
+  });
+  if (pageInDb && pageInDb.skipReason !== null) {
+    localLogger.info("Confluence page skipped.");
+    return false;
+  }
+
+  const client = await getConfluenceClient(
+    { cloudId: confluenceConfig?.cloudId },
+    connector
+  );
+
+  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
+  if (hasReadRestrictions) {
+    localLogger.info("Skipping restricted Confluence page.");
+    return false;
+  }
+
+  const page = await client.getPageById(pageId);
+  if (!page) {
+    localLogger.info("Confluence page not found.");
+    return false;
+  }
+
+  let spaceName = cachedSpaceNames[page.spaceId];
+  if (!spaceName) {
+    const space = await client.getSpaceById(page.spaceId);
+    if (!space) {
+      localLogger.info("Confluence space not found.");
+      return false;
+    }
+    cachedSpaceNames[page.spaceId] = space.name;
+    spaceName = space.name;
+  }
+
+  if (!cachedSpaceHierarchies[page.spaceId]) {
+    cachedSpaceHierarchies[page.spaceId] = await getSpaceHierarchy(
+      connectorId,
+      page.spaceId
+    );
+  }
+
+  const parentIds = await getConfluencePageParentIds(
+    connectorId,
+    { pageId: page.id, parentId: page.parentId, spaceId: page.spaceId },
+    cachedSpaceHierarchies[page.spaceId]
+  );
+
+  localLogger.info("Upserting Confluence page.");
+  await upsertConfluencePageToDataSource(
+    page,
+    spaceName,
+    parentIds,
+    confluenceConfig,
+    "batch",
+    dataSourceConfig,
+    loggerArgs
+  );
 
   await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
 
