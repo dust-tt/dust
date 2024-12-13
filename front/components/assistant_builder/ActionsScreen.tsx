@@ -629,9 +629,7 @@ function ActionCard({
     <CardButton
       variant="primary"
       onClick={editAction}
-      className={cn("mx-auto inline-block w-72 pb-1", {
-        "pb-1": !isDefaultActionName(action),
-      })}
+      className="mx-auto inline-block w-72 pb-1"
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex flex-col">
@@ -641,7 +639,7 @@ function ActionCard({
               size="sm"
               className="text-element-900"
             />
-            <div className="w-full truncate">{spec.label}</div>
+            <div className="w-full truncate">{actionDisplayName(action)}</div>
 
             <IconButton
               icon={XMarkIcon}
@@ -675,9 +673,6 @@ function ActionCard({
               </div>
             )}
           </>
-        )}
-        {action.name && !isDefaultActionName(action) && (
-          <div className="mx-auto text-xs text-element-600">{action.name}</div>
         )}
       </div>
     </CardButton>
@@ -849,6 +844,12 @@ interface ActionEditorProps {
   builderState: AssistantBuilderState;
 }
 
+function actionDisplayName(action: AssistantBuilderActionConfiguration) {
+  return `${ACTION_SPECIFICATIONS[action.type].label}${
+    !isDefaultActionName(action) ? " - " + action.name : ""
+  }`;
+}
+
 function ActionEditor({
   action,
   spacesUsedInActions,
@@ -878,17 +879,10 @@ function ActionEditor({
     <div className="px-1">
       <ActionModeSection show={true}>
         <div className="flex w-full flex-row items-center justify-between px-1">
-          <div className="flex flex-col gap-1">
-            <Page.Header
-              title={`${ACTION_SPECIFICATIONS[action.type].label}`}
-              icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-            />
-            {action.name && !isDefaultActionName(action) && (
-              <div className="text-sm text-element-600">
-                Tool name: {action.name}
-              </div>
-            )}
-          </div>
+          <Page.Header
+            title={actionDisplayName(action)}
+            icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+          />
           {shouldDisplayAdvancedSettings && (
             <Popover
               trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
