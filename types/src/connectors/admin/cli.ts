@@ -28,7 +28,11 @@ export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
  */
 export const ConfluenceCommandSchema = t.type({
   majorCommand: t.literal("confluence"),
-  command: t.union([t.literal("upsert-page"), t.literal("upsert-pages")]),
+  command: t.union([
+    t.literal("me"),
+    t.literal("upsert-page"),
+    t.literal("upsert-pages"),
+  ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
     pageId: t.union([t.string, t.undefined]),
@@ -37,6 +41,14 @@ export const ConfluenceCommandSchema = t.type({
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
+
+export const ConfluenceMeResponseSchema = t.type({
+  me: t.UnknownRecord,
+});
+
+export type ConfluenceMeResponseType = t.TypeOf<
+  typeof ConfluenceMeResponseSchema
+>;
 
 export const ConfluenceUpsertPageResponseSchema = t.type({
   workflowId: t.string,

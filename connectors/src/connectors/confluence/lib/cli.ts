@@ -1,11 +1,16 @@
 import type {
   AdminSuccessResponseType,
   ConfluenceCommandType,
+  ConfluenceMeResponseType,
   ConfluenceUpsertPageResponseType,
 } from "@dust-tt/types";
 import assert from "assert";
 import fs from "fs/promises";
 
+import {
+  fetchConfluenceConfigurationActivity,
+  getConfluenceClient,
+} from "@connectors/connectors/confluence/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import {
   confluenceUpsertPagesWithFullParentsWorkflow,
@@ -13,15 +18,38 @@ import {
 } from "@connectors/connectors/confluence/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export const confluence = async ({
   command,
   args,
 }: ConfluenceCommandType): Promise<
-  AdminSuccessResponseType | ConfluenceUpsertPageResponseType
+  | AdminSuccessResponseType
+  | ConfluenceUpsertPageResponseType
+  | ConfluenceMeResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "confluence", command, args });
   switch (command) {
+    case "me": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+      const { connectorId } = args;
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (!connector) {
+        throw new Error("Connector not found.");
+      }
+      if (connector.type !== "confluence") {
+        throw new Error("Connector is not a Confluence connector.");
+      }
+      const confluenceConfig =
+        await fetchConfluenceConfigurationActivity(connectorId);
+      const client = await getConfluenceClient(
+        { cloudId: confluenceConfig?.cloudId },
+        connector
+      );
+      return { me: await client.getUserAccount() };
+    }
     case "upsert-page": {
       if (!args.connectorId) {
         throw new Error("Missing --connectorId argument");
