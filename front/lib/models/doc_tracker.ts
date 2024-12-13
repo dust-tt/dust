@@ -26,6 +26,7 @@ export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigu
   declare prompt: string | null;
 
   declare frequency: string | null;
+  declare lastNotifiedAt: Date | null;
 
   declare recipients: string[] | null;
 
@@ -85,6 +86,10 @@ TrackerConfigurationModel.init(
     },
     frequency: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lastNotifiedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
     recipients: {
@@ -215,6 +220,8 @@ export class TrackerGenerationModel extends SoftDeletableModel<TrackerGeneration
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare documentId: string;
 
+  declare consumedAt: Date | null;
+
   declare trackerConfiguration: NonAttribute<TrackerConfigurationModel>;
 }
 
@@ -244,6 +251,10 @@ TrackerGenerationModel.init(
     documentId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    consumedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
