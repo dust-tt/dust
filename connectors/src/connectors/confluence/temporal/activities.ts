@@ -48,7 +48,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
  * This behavior is typically used to hide content nodes whose position in the ContentNodeTree cannot be resolved at time of upsertion.
  */
-export const HiddenContentNodeParentId = "__internal_synchronizing__";
+export const HiddenContentNodeParentId = "__hidden_syncing_content__";
 
 const logger = mainLogger.child({
   provider: "confluence",
