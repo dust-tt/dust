@@ -605,7 +605,8 @@ export async function syncNonThreaded(
     documentUrl: sourceUrl,
     timestampMs: updatedAt,
     tags,
-    parents: [documentId, channelId, internalIdFromSlackChannelId(channelId)],
+    parentId: internalIdFromSlackChannelId(channelId),
+    parents: [documentId, internalIdFromSlackChannelId(channelId)],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
@@ -815,7 +816,8 @@ export async function syncThread(
     documentUrl: sourceUrl,
     timestampMs: updatedAt,
     tags,
-    parents: [documentId, channelId, internalIdFromSlackChannelId(channelId)],
+    parentId: internalIdFromSlackChannelId(channelId),
+    parents: [documentId, internalIdFromSlackChannelId(channelId)],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
