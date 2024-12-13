@@ -27,13 +27,13 @@ const CARD_BUTTON_SIZES = ["sm", "md", "lg"] as const;
 type CardButtonSizeType = (typeof CARD_BUTTON_SIZES)[number];
 
 const sizeVariants: Record<CardButtonSizeType, string> = {
-  sm: "s-p-3 s-rounded-xl",
-  md: "s-p-4 s-rounded-2xl",
-  lg: "s-p-5 s-rounded-3xl",
+  sm: "s-px-3 s-rounded-xl",
+  md: "s-px-4 s-rounded-2xl",
+  lg: "s-px-5 s-rounded-3xl",
 };
 
 const cardButtonVariants = cva(
-  "s-flex s-text-left s-group s-border s-overflow-hidden s-text-foreground",
+  "s-flex s-text-left  s-justify-center s-group s-border s-overflow-hidden s-text-foreground",
   {
     variants: {
       variant: variantClasses,
