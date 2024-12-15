@@ -62,8 +62,8 @@ if [ -n "$GCLOUD_IGNORE_FILE" ]; then
     BUILD_CMD+=(--ignore-file="$GCLOUD_IGNORE_FILE")
 fi
 
-# Add substitutions including the config file path
-BUILD_CMD+=(--substitutions="_REGION=$REGION,_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH,_CONFIG_FILE=$CONFIG_FILE,SHORT_SHA=$(git rev-parse --short HEAD)" .)
+# Add substitutions
+BUILD_CMD+=(--substitutions="_REGION=$REGION,_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH,SHORT_SHA=$(git rev-parse --short HEAD)" .)
 
 # Execute the build
 "${BUILD_CMD[@]}"

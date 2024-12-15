@@ -3,7 +3,7 @@ steps:
     name: 'ghcr.io/depot/cli:latest'
     script: |
       # Extract env variables for build args
-      yq e '.env' ${_CONFIG_FILE} > build-args.env
+      yq e '.env' .github/config/${_REGION}.yaml > build-args.env
       
       depot build \
         --project 3vz0lnf16v \
