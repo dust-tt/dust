@@ -35,7 +35,7 @@ export const ConfluenceCommandSchema = t.type({
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
-    pageId: t.union([t.string, t.undefined]),
+    pageId: t.union([t.number, t.undefined]),
     file: t.union([t.string, t.undefined]),
     keyInFile: t.union([t.string, t.undefined]),
   }),

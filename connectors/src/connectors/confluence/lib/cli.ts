@@ -57,7 +57,8 @@ export const confluence = async ({
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
       }
-      const { connectorId, pageId } = args;
+      const { connectorId } = args;
+      const pageId = args.pageId.toString();
 
       const client = await getTemporalClient();
       const workflow = await client.workflow.start(
