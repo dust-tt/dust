@@ -1,20 +1,26 @@
 {
   "properties": {
+    "dynamic": "strict",
     "data_source_id": {
-      "type": "keyword"
+      "type": "keyword",
+      "required": true
     },
     "timestamp": {
-      "type": "date"
+      "type": "date",
+      "required": true
     },
-    "type": {
-      "type": "keyword"
+    "node_type": {
+      "type": "keyword",
+      "required": true
     },
     "node_id": {
-      "type": "keyword"
+      "type": "keyword",
+      "required": true
     },
     "title": {
       "type": "text",
       "analyzer": "standard",
+      "required": true,
       "fields": {
         "edge": {
           "type": "text",
@@ -23,10 +29,16 @@
       }
     },
     "parents": {
-      "type": "keyword"
+      "type": "keyword",
+      "required": true
     },
-    "mimeType": {
-      "type": "keyword"
+    "parent_id": {
+      "type": "keyword",
+      "required": true
+    },
+    "mime_type": {
+      "type": "keyword",
+      "required": true
     }
   }
 }
