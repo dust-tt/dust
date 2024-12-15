@@ -13,6 +13,7 @@ use crate::search_filter::{Filterable, SearchFilter};
 use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
+use elasticsearch::{Elasticsearch, IndexParts};
 use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
@@ -21,7 +22,7 @@ use qdrant_client::qdrant::vectors::VectorsOptions;
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
@@ -614,6 +615,7 @@ impl DataSource {
         source_url: &Option<String>,
         text: Section,
         preserve_system_tags: bool,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Result<Document> {
         let full_text = text.full_text();
         // Disallow preserve_system_tags=true if tags contains a string starting with the system
@@ -758,11 +760,51 @@ impl DataSource {
             .create_data_source_document(&self.project, self.data_source_id.clone(), create_params)
             .await?;
 
+        // Upsert document in search index.
+        search_store.index_document(&document).await?;
+
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
             .await?;
 
         Ok(main_collection_document)
+    }
+
+    async fn _upsert_in_search_index(
+        &self,
+        search_client: &Elasticsearch,
+        document: &Document,
+    ) -> Result<()> {
+        // Extract title from document tags (first tag that starts with "title:")
+        let title = document
+            .tags
+            .iter()
+            .find(|t| t.starts_with("title:"))
+            .map(|t| t.trim_start_matches("title:").to_string())
+            .unwrap_or_else(|| document.document_id.clone());
+
+        // Construct document to index.
+        let es_doc = json!({
+            "data_source_id": document.data_source_id,
+            "document_id": document.document_id,
+            "title": title,
+            "parents": document.parents,
+            "timestamp": document.timestamp,
+            "created": document.created,
+        });
+
+        let response = search_client
+            .index(IndexParts::IndexId(
+                "document_search",
+                &format!("{}-{}", document.data_source_id, document.document_id),
+            ))
+            .body(&es_doc)
+            .send()
+            .await?;
+
+        println!("response: {:?}", response);
+
+        Ok(())
     }
 
     async fn upsert_for_embedder(
