@@ -62,6 +62,7 @@ impl SearchStore for ElasticsearchSearchStore {
 
         self.client
             .index(IndexParts::IndexId(NODES_INDEX_NAME, &document.document_id))
+            .timeout("200ms")
             .body(node)
             .send()
             .await?;
