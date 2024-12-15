@@ -102,6 +102,10 @@ export async function pageHasReadRestrictions(
 ) {
   const pageReadRestrictions = await client.getPageReadRestrictions(pageId);
 
+  if (pageReadRestrictions === null) {
+    return null; // Page not found, we let the caller choose how to handle this.
+  }
+
   const hasGroupReadPermissions =
     pageReadRestrictions.restrictions.group.results.length > 0;
   const hasUserReadPermissions =
