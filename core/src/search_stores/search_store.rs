@@ -12,7 +12,7 @@ use crate::data_sources::node::{Node, NodeType};
 
 #[async_trait]
 pub trait SearchStore {
-    async fn index_document(&self, document_id: &str, document: &Document) -> Result<()>;
+    async fn index_document(&self, document: &Document) -> Result<()>;
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
 
@@ -61,7 +61,7 @@ impl SearchStore for ElasticsearchSearchStore {
         );
 
         self.client
-            .index(IndexParts::IndexId(NODES_INDEX_NAME, document_id))
+            .index(IndexParts::IndexId(NODES_INDEX_NAME, &document.document_id))
             .body(node)
             .send()
             .await?;

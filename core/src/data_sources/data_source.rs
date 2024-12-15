@@ -10,10 +10,10 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
+use crate::search_stores::search_store::SearchStore;
 use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
-use elasticsearch::{Elasticsearch, IndexParts};
 use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
@@ -22,7 +22,7 @@ use qdrant_client::qdrant::vectors::VectorsOptions;
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
@@ -732,7 +732,7 @@ impl DataSource {
                 &qdrant_clients,
                 &document_id,
                 &document_id_hash,
-                document,
+                document.clone(),
                 &document_hash,
                 &text,
                 // Cache is not used when writing to the shadow collection.
@@ -768,43 +768,6 @@ impl DataSource {
             .await?;
 
         Ok(main_collection_document)
-    }
-
-    async fn _upsert_in_search_index(
-        &self,
-        search_client: &Elasticsearch,
-        document: &Document,
-    ) -> Result<()> {
-        // Extract title from document tags (first tag that starts with "title:")
-        let title = document
-            .tags
-            .iter()
-            .find(|t| t.starts_with("title:"))
-            .map(|t| t.trim_start_matches("title:").to_string())
-            .unwrap_or_else(|| document.document_id.clone());
-
-        // Construct document to index.
-        let es_doc = json!({
-            "data_source_id": document.data_source_id,
-            "document_id": document.document_id,
-            "title": title,
-            "parents": document.parents,
-            "timestamp": document.timestamp,
-            "created": document.created,
-        });
-
-        let response = search_client
-            .index(IndexParts::IndexId(
-                "document_search",
-                &format!("{}-{}", document.data_source_id, document.document_id),
-            ))
-            .body(&es_doc)
-            .send()
-            .await?;
-
-        println!("response: {:?}", response);
-
-        Ok(())
     }
 
     async fn upsert_for_embedder(
