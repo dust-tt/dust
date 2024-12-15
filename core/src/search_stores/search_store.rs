@@ -13,6 +13,13 @@ use crate::data_sources::node::{Node, NodeType};
 #[async_trait]
 pub trait SearchStore {
     async fn index_document(&self, document_id: &str, document: &Document) -> Result<()>;
+    fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
+}
+
+impl Clone for Box<dyn SearchStore + Sync + Send> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 
 #[derive(Clone)]
@@ -40,11 +47,11 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
-    async fn index_document(&self, document_id: &str, document: &Document) -> Result<()> {
+    async fn index_document(&self, document: &Document) -> Result<()> {
         // elasticsearch needs to index a Node, not a Document
         let node = Node::new(
             &document.data_source_id,
-            document_id,
+            &document.document_id,
             NodeType::Document,
             document.timestamp,
             &document.title,
@@ -59,5 +66,9 @@ impl SearchStore for ElasticsearchSearchStore {
             .send()
             .await?;
         Ok(())
+    }
+
+    fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send> {
+        Box::new(self.clone())
     }
 }
