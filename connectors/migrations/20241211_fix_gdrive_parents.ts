@@ -4,10 +4,8 @@ import { Op } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  getDocumentFromDataSource,
   getFolderNode,
   getTable,
-  updateDocumentParentsField,
   updateTableParentsField,
   upsertFolderNode,
 } from "@connectors/lib/data_sources";
@@ -61,7 +59,7 @@ async function migrate({
           id: {
             [Op.gt]: nextId,
           },
-          // mimeType: "application/vnd.google-apps.folder",
+          mimeType: "application/vnd.google-apps.folder",
         },
         order: [["id", "ASC"]],
         limit: QUERY_BATCH_SIZE,
@@ -102,31 +100,6 @@ async function migrate({
               parentId: file.parentId,
               title: file.name,
             });
-          }
-        }
-      } else {
-        const document = await getDocumentFromDataSource({
-          dataSourceConfig,
-          documentId: internalId,
-        });
-        if (document) {
-          if (document.parents.join("/") !== parents.join("/")) {
-            childLogger.info(
-              {
-                documentId: internalId,
-                parents,
-                previousParents: document.parents,
-              },
-              "Update parents for document"
-            );
-
-            if (execute) {
-              await updateDocumentParentsField({
-                dataSourceConfig,
-                documentId: file.dustFileId,
-                parents,
-              });
-            }
           }
         }
       }
