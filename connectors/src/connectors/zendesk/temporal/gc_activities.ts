@@ -2,6 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 
 import {
   getArticleInternalId,
+  getBrandInternalId,
   getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
@@ -16,7 +17,10 @@ import { getZendeskGarbageCollectionWorkflowId } from "@connectors/connectors/ze
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import {
+  deleteFolderNode,
+  deleteFromDataSource,
+} from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -291,6 +295,20 @@ export async function deleteBrandsWithNoPermissionActivity(
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
+  // deleting from data_sources_folders (core)
+  const brands =
+    await ZendeskBrandResource.fetchBrandsWithNoPermission(connectorId);
+
+  await concurrentExecutor(
+    brands,
+    async (brandId) => {
+      const folderId = getBrandInternalId({ connectorId, brandId });
+      await deleteFolderNode({ dataSourceConfig, folderId });
+    },
+    { concurrency: 10 }
+  );
+
+  // deleting from zendesk_brands (connectors)
   const deletedCount =
     await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
 

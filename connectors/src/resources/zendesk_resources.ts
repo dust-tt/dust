@@ -24,7 +24,7 @@ import {
   ZendeskTicket,
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
-import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -278,6 +278,16 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   static async fetchTicketsReadForbiddenBrandIds(
+    connectorId: number
+  ): Promise<number[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, ticketsPermission: "none" },
+      attributes: ["brandId"],
+    });
+    return brands.map((brand) => Number(brand.get().brandId));
+  }
+
+  static async fetchBrandsWithNoPermission(
     connectorId: number
   ): Promise<number[]> {
     const brands = await ZendeskBrand.findAll({
