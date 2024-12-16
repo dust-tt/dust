@@ -121,26 +121,16 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listWorkspaceGroupsFromKey(
     key: KeyResource
   ): Promise<GroupResource[]> {
-    let whereCondition: WhereOptions<GroupModel> = {
-      workspaceId: key.workspaceId,
-    };
-
-    // If the key is a system key, we also include the global group.
-    if (key.isSystem) {
-      whereCondition = {
-        ...whereCondition,
-        [Op.or]: [
-          { kind: { [Op.in]: ["system", "global"] } },
-          { id: key.groupId },
-        ],
-      };
-    } else {
-      // If it's not a system key, we only fetch the associated group.
-      whereCondition = {
-        ...whereCondition,
-        id: key.groupId,
-      };
-    }
+    const whereCondition: WhereOptions<GroupModel> = key.isSystem
+      ? // If the key is a system key, we include all groups in the workspace.
+        {
+          workspaceId: key.workspaceId,
+        }
+      : // If it's not a system key, we only fetch the associated group.
+        {
+          workspaceId: key.workspaceId,
+          id: key.groupId,
+        };
 
     const groups = await this.model.findAll({
       where: whereCondition,

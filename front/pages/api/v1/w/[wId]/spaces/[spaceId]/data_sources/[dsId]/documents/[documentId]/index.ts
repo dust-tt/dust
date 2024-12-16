@@ -297,7 +297,7 @@ async function handler(
   if (
     !dataSource ||
     dataSource.space.sId !== spaceId ||
-    (!dataSource.canRead(auth) && !auth.isSystemKey())
+    !dataSource.canRead(auth)
   ) {
     return apiError(req, res, {
       status_code: 404,
