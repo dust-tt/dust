@@ -1676,13 +1676,12 @@ async fn data_sources_documents_upsert(
     match &payload.parent_id {
         Some(parent_id) => {
             if payload.parents.get(1) != Some(parent_id) {
-                // TODO(fontanierh): Temporary, as we need to let some jobs go through.
-                // return error_response(
-                //     StatusCode::BAD_REQUEST,
-                //     "invalid_parent_id",
-                //     "Failed to upsert document - parents[1] and parent_id should be equal",
-                //     None,
-                // );
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_parent_id",
+                    "Failed to upsert document - parents[1] and parent_id should be equal",
+                    None,
+                );
             }
         }
         None => {
