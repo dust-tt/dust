@@ -83,13 +83,13 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
+        "flex w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
         "group transition duration-300 ease-out",
-        "scale-100 hover:scale-100 hover:bg-white"
+        "hover:bg-white"
       )}
     >
       {children ? (
-        <div className="relative aspect-video overflow-hidden rounded-t-xl">
+        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement<React.ImgHTMLAttributes<HTMLImageElement>>(
@@ -98,19 +98,25 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
               child.type === "img"
             ) {
               return React.cloneElement(child, {
-                className:
-                  "absolute h-full w-full object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110 border border-slate-900/10 rounded-t-2xl",
+                className: classNames(
+                  "absolute h-full w-full object-cover",
+                  "brightness-100 transition duration-300 ease-out",
+                  "group-hover:brightness-110",
+                  "border border-slate-900/10 rounded-t-2xl"
+                ),
               });
             }
             return child;
           })}
         </div>
       ) : null}
-      <div className="flex flex-col gap-3 p-6">
-        <H5 className="text-slate-900">{title}</H5>
-        <P size="xs" className="text-slate-900">
-          {content}
-        </P>
+      <div className="flex flex-col p-6">
+        <div className="flex flex-col gap-2">
+          <H5 className="line-clamp-2 text-slate-900">{title}</H5>
+          <P size="xs" className="line-clamp-3 text-slate-900">
+            {content}
+          </P>
+        </div>
       </div>
     </a>
   );
