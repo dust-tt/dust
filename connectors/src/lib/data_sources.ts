@@ -1046,7 +1046,9 @@ export async function deleteTableRow({
   }
 }
 
-export async function getTable({
+export const getTable = withRetries(_getTable);
+
+export async function _getTable({
   dataSourceConfig,
   tableId,
 }: {
@@ -1178,7 +1180,9 @@ export async function deleteTable({
   }
 }
 
-export async function getFolderNode({
+export const getFolderNode = withRetries(_getFolderNode);
+
+export async function _getFolderNode({
   dataSourceConfig,
   folderId,
 }: {
