@@ -218,20 +218,20 @@ export async function removeForbiddenCategoriesActivity(
   };
 
   const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
-  const categoryAndBrandIds =
+  const categoryIdsWithBrand =
     await ZendeskCategoryResource.fetchReadForbiddenCategoryIds({
       connectorId,
       batchSize,
     });
   logger.info(
-    { ...loggerArgs, categoryCount: categoryAndBrandIds.length },
+    { ...loggerArgs, categoryCount: categoryIdsWithBrand.length },
     "[Zendesk] Removing categories with no permission."
   );
 
-  for (const ids of categoryAndBrandIds) {
+  for (const ids of categoryIdsWithBrand) {
     await deleteCategory({ connectorId, ...ids, dataSourceConfig });
   }
-  return { hasMore: categoryAndBrandIds.length === batchSize };
+  return { hasMore: categoryIdsWithBrand.length === batchSize };
 }
 
 /**
@@ -251,12 +251,12 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const categoryAndBrandIds =
+  const categoryIdsWithBrand =
     await ZendeskCategoryResource.fetchIdsForConnector(connectorId);
 
   const categoriesToDelete = new Set<{ categoryId: number; brandId: number }>();
   await concurrentExecutor(
-    categoryAndBrandIds,
+    categoryIdsWithBrand,
     async ({ categoryId, brandId }) => {
       const articles = await ZendeskArticleResource.fetchByCategoryIdReadOnly({
         connectorId,
