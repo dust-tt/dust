@@ -18,13 +18,13 @@ interface BaseAssistantCardProps {
   onClick?: () => void;
 }
 
-type AssistantCardMore = Omit<MiniButtonProps, "icon">;
+type AssistantCardMore = Omit<MiniButtonProps, "icon" | "size">;
 
 export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
   AssistantCardMore
 >(({ ...props }, ref) => {
-  return <CardActionButton ref={ref} icon={MoreIcon} {...props} />;
+  return <CardActionButton size="mini" ref={ref} icon={MoreIcon} {...props} />;
 });
 AssistantCardMore.displayName = "AssistantCardMore";
 
