@@ -118,9 +118,6 @@ async function handler(
       const apiKey = isApiKeyConfig(validatedBody)
         ? validatedBody.apiKey
         : undefined;
-      const apiKeyIsEncrypted = isApiKeyConfig(validatedBody)
-        ? validatedBody.apiKeyIsEncrypted
-        : undefined;
 
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
@@ -138,13 +135,7 @@ async function handler(
         });
       }
 
-      let apiKeyToUse = apiKey ?? null;
-      if (apiKey && !apiKeyIsEncrypted) {
-        // If the API key is not already encrypted, we need to encrypt it.
-        apiKeyToUse = encrypt(apiKey, owner.sId);
-      }
-
-      if (!apiKeyToUse) {
+      if (!apiKey) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -159,7 +150,7 @@ async function handler(
         userId: user.sId,
         workspaceId: owner.sId,
         credentials: {
-          api_key: apiKeyToUse,
+          api_key: apiKey,
         },
       });
 
@@ -180,7 +171,7 @@ async function handler(
           workspaceId: owner.id,
           provider,
           connectionId: connectionId ?? null,
-          apiKey: credentialId,
+          credentialId: credentialId,
         });
 
       return res
