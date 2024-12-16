@@ -129,7 +129,7 @@ export default function LabsTranscriptsIndex({
   const getDefaultConfiguration = useGetDefaultConfiguration({ owner });
 
   const saveApiConnection = async (
-    credentialId: string,
+    apiKey: string,
     provider: string,
     apiKeyIsEncrypted: boolean = false
   ) => {
@@ -139,7 +139,7 @@ export default function LabsTranscriptsIndex({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        credentialId,
+        apiKey,
         provider,
         apiKeyIsEncrypted,
       }),
