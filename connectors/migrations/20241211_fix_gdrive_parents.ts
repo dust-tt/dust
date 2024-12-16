@@ -19,6 +19,24 @@ import { ConnectorModel } from "@connectors/resources/storage/models/connector_m
 
 const QUERY_BATCH_SIZE = 1024;
 
+function getParents(
+  fileId: string | null,
+  nodeId: string,
+  parentsMap: Record<string, string | null>
+) {
+  const parents = [];
+  let current: string | null = fileId;
+  while (current) {
+    parents.push(current);
+    if (typeof parentsMap[current] === "undefined") {
+      logger.error({ fileId: current, nodeId }, "Parent not found");
+      return null;
+    }
+    current = parentsMap[current] || null;
+  }
+  return parents;
+}
+
 async function migrate({
   connector,
   execute,
@@ -69,19 +87,14 @@ async function migrate({
       }
     );
 
-    loop: for (const file of googleDriveFiles) {
+    for (const file of googleDriveFiles) {
       const internalId = file.dustFileId;
       const driveFileId = file.driveFileId;
-      const parents = [driveFileId];
-      let current: string | null = file.parentId;
-      while (current) {
-        parents.push(current);
-        if (typeof parentsMap[current] === "undefined") {
-          childLogger.error({ current, driveFileId }, "Parent not found");
-          continue loop;
-        }
-        current = parentsMap[current] || null;
+      const parents = getParents(file.parentId, driveFileId, parentsMap);
+      if (!parents) {
+        continue;
       }
+      parents.unshift(driveFileId);
 
       if (file.mimeType === "application/vnd.google-apps.folder") {
         const folder = await getFolderNode({
@@ -149,21 +162,17 @@ async function migrate({
         limit: QUERY_BATCH_SIZE,
       });
 
-    loop: for (const sheet of googleDriveSheets) {
+    for (const sheet of googleDriveSheets) {
       const tableId = getGoogleSheetTableId(
         sheet.driveFileId,
         sheet.driveSheetId
       );
-      const parents = [];
-      let current: string | null = sheet.driveFileId;
-      while (current) {
-        parents.push(current);
-        if (typeof parentsMap[current] === "undefined") {
-          childLogger.error({ current, sheet }, "Parent not found");
-          continue loop;
-        }
-        current = parentsMap[current] || null;
+
+      const parents = getParents(sheet.driveFileId, tableId, parentsMap);
+      if (!parents) {
+        continue;
       }
+
       parents.unshift(...parents.map((id) => getDocumentId(id)));
       parents.unshift(tableId);
 
