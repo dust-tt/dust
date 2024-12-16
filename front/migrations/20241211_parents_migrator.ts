@@ -203,7 +203,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
           // legacy parents
           ...uniqueIds,
         ],
-        parentId: uniqueIds[1],
+        parentId: `notion-${uniqueIds[1]}`,
       };
     },
     cleaner: (nodeId, parents) => {
