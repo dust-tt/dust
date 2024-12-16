@@ -2,6 +2,7 @@ import { getGoogleSheetTableId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
+import { getDocumentId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   getFolderNode,
@@ -59,7 +60,9 @@ async function migrate({
           id: {
             [Op.gt]: nextId,
           },
-          mimeType: "application/vnd.google-apps.folder",
+          mimeType: {
+            [Op.or]: ["application/vnd.google-apps.folder", "text/csv"],
+          },
         },
         order: [["id", "ASC"]],
         limit: QUERY_BATCH_SIZE,
@@ -85,9 +88,10 @@ async function migrate({
           dataSourceConfig,
           folderId: internalId,
         });
-        if (!folder || folder.parents.join("/") !== parents.join("/")) {
+        const newParents = parents.map((id) => getDocumentId(id));
+        if (!folder || folder.parents.join("/") !== newParents.join("/")) {
           childLogger.info(
-            { folderId: file.driveFileId, parents },
+            { folderId: file.driveFileId, parents: newParents },
             "Upsert folder"
           );
 
@@ -96,10 +100,33 @@ async function migrate({
             await upsertFolderNode({
               dataSourceConfig,
               folderId: file.dustFileId,
-              parents,
+              parents: newParents,
               parentId: file.parentId,
               title: file.name,
             });
+          }
+        }
+      } else if (file.mimeType === "text/csv") {
+        const tableId = internalId;
+        parents.unshift(...parents.map((id) => getDocumentId(id)));
+        const table = await getTable({ dataSourceConfig, tableId });
+        if (table) {
+          if (table.parents.join("/") !== parents.join("/")) {
+            childLogger.info(
+              {
+                tableId,
+                parents,
+                previousParents: table.parents,
+              },
+              "Update parents for table"
+            );
+            if (execute) {
+              await updateTableParentsField({
+                dataSourceConfig,
+                tableId,
+                parents,
+              });
+            }
           }
         }
       }
@@ -127,7 +154,7 @@ async function migrate({
         sheet.driveFileId,
         sheet.driveSheetId
       );
-      const parents = [tableId];
+      const parents = [];
       let current: string | null = sheet.driveFileId;
       while (current) {
         parents.push(current);
@@ -137,6 +164,8 @@ async function migrate({
         }
         current = parentsMap[current] || null;
       }
+      parents.unshift(...parents.map((id) => getDocumentId(id)));
+      parents.unshift(tableId);
 
       const table = await getTable({ dataSourceConfig, tableId });
       if (table) {
