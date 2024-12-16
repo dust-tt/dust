@@ -444,13 +444,16 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   }: {
     connectorId: number;
     batchSize: number;
-  }): Promise<number[]> {
+  }): Promise<{ categoryId: number; brandId: number }[]> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, permission: "none" },
       attributes: ["categoryId"],
       limit: batchSize,
     });
-    return categories.map((category) => Number(category.get().categoryId));
+    return categories.map((category) => {
+      const { categoryId, brandId } = category.get();
+      return { categoryId, brandId };
+    });
   }
 
   static async fetchIdsForConnector(
@@ -518,6 +521,26 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => category.get().brandId);
   }
 
+  static async fetchByBrandId({
+    connectorId,
+    brandId,
+    batchSize = null,
+  }: {
+    connectorId: number;
+    brandId: number;
+    batchSize?: number | null;
+  }): Promise<{ categoryId: number; brandId: number }[]> {
+    const categories = await ZendeskCategory.findAll({
+      attributes: ["categoryId", "brandId"],
+      where: { connectorId, brandId, permission: "read" },
+      ...(batchSize && { limit: batchSize }),
+    });
+    return categories.map((category) => {
+      const { categoryId, brandId } = category.get();
+      return { categoryId, brandId };
+    });
+  }
+
   static async fetchByBrandIdReadOnly({
     connectorId,
     brandId,
@@ -543,18 +566,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     await ZendeskCategory.destroy({ where: { connectorId, categoryId } });
   }
 
-  static async deleteByBrandId({
+  static async deleteByCategoryIds({
     connectorId,
-    brandId,
-    batchSize = null,
+    categoryIds,
   }: {
     connectorId: number;
-    brandId: number;
-    batchSize?: number | null;
+    categoryIds: number[];
   }): Promise<number> {
     return ZendeskCategory.destroy({
-      where: { connectorId, brandId },
-      ...(batchSize && { limit: batchSize }),
+      where: { connectorId, categoryId: { [Op.in]: categoryIds } },
     });
   }
 
