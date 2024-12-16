@@ -51,10 +51,10 @@ export class ConversationListFilesAction extends BaseAction {
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content =
-      `List of files attached to the conversation with their content type and status (includable, queryable, searchable).\n\n` +
-      `// includable: can be rerieved with the \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\` action.\n` +
-      `// queryable: can be queried with the \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\` action.\n` +
-      `// searchable: can be searched with the \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\` action.\n` +
+      `When a user attaches a file to the conversation, an <attachment> tag marks its position in the conversation history. This tag indicates when the file was attached but does not contain its content. Files attached to the conversation are listed below with their content type and status (includable, queryable, searchable):\n\n` +
+      `// includable: full content can be retrieved using \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\`\n` +
+      `// queryable: represents tabular data that can be queried alongside other queryable files using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
+      `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
       `\n`;
     for (const f of this.files) {
       content += `<file id="${f.fileId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
