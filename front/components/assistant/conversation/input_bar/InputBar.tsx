@@ -18,7 +18,10 @@ import InputBarContainer, {
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useProgressiveAgentConfigurations,
+} from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
@@ -83,9 +86,8 @@ export function AssistantInputBar({
   });
 
   const { agentConfigurations: baseAgentConfigurations } =
-    useAgentConfigurations({
+    useProgressiveAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: "list",
     });
 
   // Files upload.

@@ -149,17 +149,17 @@ export function useProgressiveAgentConfigurations({
   workspaceId: string;
   disabled?: boolean;
 }) {
-  const {
-    agentConfigurations: initialAgentConfigurations,
-    isAgentConfigurationsLoading: isInitialAgentConfigurationsLoading,
-  } = useAgentConfigurations({
-    workspaceId,
-    agentsGetView: "list",
-    limit: 24,
-    includes: ["usage"],
-    disabled,
-    revalidate: false,
-  });
+  // const {
+  //   agentConfigurations: initialAgentConfigurations,
+  //   isAgentConfigurationsLoading: isInitialAgentConfigurationsLoading,
+  // } = useAgentConfigurations({
+  //   workspaceId,
+  //   agentsGetView: "list",
+  //   limit: 24,
+  //   includes: ["usage"],
+  //   disabled,
+  //   revalidate: false,
+  // });
 
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
@@ -173,16 +173,16 @@ export function useProgressiveAgentConfigurations({
     disabled,
   });
 
-  const isLoading =
-    isInitialAgentConfigurationsLoading ||
-    isAgentConfigurationsWithAuthorsLoading;
-  const agentConfigurations = isAgentConfigurationsWithAuthorsLoading
-    ? initialAgentConfigurations
-    : agentConfigurationsWithAuthors;
+  // const isLoading =
+  //   isInitialAgentConfigurationsLoading ||
+  //   isAgentConfigurationsWithAuthorsLoading;
+  // const agentConfigurations = isAgentConfigurationsWithAuthorsLoading
+  //   ? initialAgentConfigurations
+  //   : agentConfigurationsWithAuthors;
 
   return {
-    agentConfigurations,
-    isLoading,
+    agentConfigurations: agentConfigurationsWithAuthors,
+    isLoading: isAgentConfigurationsWithAuthorsLoading,
     mutate,
     mutateRegardlessOfQueryParams,
   };
