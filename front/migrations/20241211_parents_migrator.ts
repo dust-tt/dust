@@ -34,7 +34,7 @@ type ProviderMigrator = {
   ) => { parents: string[]; parentId: string | null };
 };
 
-const QUERY_BATCH_SIZE = 2048;
+const QUERY_BATCH_SIZE = 10_000;
 const DOCUMENT_CONCURRENCY = 16;
 const TABLE_CONCURRENCY = 16;
 
