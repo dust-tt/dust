@@ -48,7 +48,9 @@ use dust::{
     providers::provider::{provider, ProviderID},
     run,
     search_filter::{Filterable, SearchFilter},
-    search_stores::search_store::{ElasticsearchSearchStore, SearchStore},
+    search_stores::search_store::{
+        DatasourceViewFilter, ElasticsearchSearchStore, NodesSearchOptions, SearchStore,
+    },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
         postgres,
@@ -3075,6 +3077,45 @@ async fn folders_delete(
 }
 
 #[derive(serde::Deserialize)]
+struct NodesSearchPayload {
+    query: String,
+    // filter: { datasource_id: string, view_filter: string[] }[]
+    filter: Vec<DatasourceViewFilter>,
+    options: Option<NodesSearchOptions>,
+}
+
+async fn nodes_search(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<NodesSearchPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let nodes = match state
+        .search_store
+        .search_nodes(payload.query, payload.filter, payload.options)
+        .await
+    {
+        Ok(nodes) => nodes,
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to search nodes",
+                Some(e),
+            );
+        }
+    };
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "nodes": nodes,
+            })),
+        }),
+    )
+}
+
+#[derive(serde::Deserialize)]
 struct DatabaseQueryRunPayload {
     query: String,
     tables: Vec<(i64, String, String)>,
@@ -3550,6 +3591,9 @@ fn main() {
             "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",
             delete(folders_delete),
         )
+
+        //Search
+        .route("/nodes/search", post(nodes_search))
 
         // Misc
         .route("/tokenize", post(tokenize))

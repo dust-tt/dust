@@ -78,3 +78,9 @@ impl Node {
         )
     }
 }
+
+impl From<serde_json::Value> for Node {
+    fn from(value: serde_json::Value) -> Self {
+        serde_json::from_value(value).expect("Failed to deserialize Node from JSON value")
+    }
+}
