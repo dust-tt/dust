@@ -62,6 +62,20 @@ export function useFileUploaderService({
 
   const sendNotification = useSendNotification();
 
+  const findAvailableTitle = (
+    baseTitle: string,
+    ext: string,
+    existingTitles: string[]
+  ) => {
+    let count = 1;
+    let title = `${baseTitle}.${ext}`;
+    while (existingTitles.includes(title)) {
+      title = `${baseTitle}-${count++}.${ext}`;
+    }
+    existingTitles.push(title);
+    return title;
+  };
+
   const handleFilesUpload = async (files: File[]) => {
     setIsProcessingFiles(true);
 
@@ -118,14 +132,12 @@ export function useFileUploaderService({
   ): Result<FileBlob, FileBlobUploadError>[] => {
     return selectedFiles.reduce(
       (acc, file) => {
-        if (fileBlobs.some((f) => f.id === file.name)) {
-          sendNotification({
-            type: "error",
-            title: `Failed to upload file ${file.name}`,
-            description: `File "${file.name}" is already uploaded.`,
-          });
-
-          return acc; // Ignore if file already exists.
+        while (fileBlobs.some((f) => f.id === file.name)) {
+          const [base, ext] = file.name.split(/\.(?=[^.]+$)/);
+          const name = findAvailableTitle(base, ext, [
+            ...fileBlobs.map((f) => f.filename),
+          ]);
+          file = new File([file], name, { type: file.type });
         }
 
         const contentType = getMimeTypeFromFile(file);
