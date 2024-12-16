@@ -119,7 +119,7 @@ async function migrate({
               dataSourceConfig,
               folderId: file.dustFileId,
               parents: newParents,
-              parentId: file.parentId,
+              parentId: file.parentId ? getDocumentId(file.parentId) : null,
               title: file.name,
             });
           }
