@@ -341,6 +341,11 @@ AgentMessageFeedback.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    conversationShared: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     modelName: "agent_message_feedback",
