@@ -15,12 +15,6 @@ export async function runDocumentTrackerWorkflow(
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null
 ) {
-  void workspaceId;
-  void dataSourceId;
-  void documentId;
-  void documentHash;
-  void dataSourceConnectorProvider;
-
   let signaled = false;
   const debounceMs = (() => {
     if (!dataSourceConnectorProvider) {
