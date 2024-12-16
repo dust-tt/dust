@@ -2577,6 +2577,7 @@ export async function upsertDatabaseStructuredDataFromCache({
       "Skipping document upsert as body is too long."
     );
   } else {
+    // We also include a text document (not table) with a CSV reprensentation of the database.
     localLogger.info("Upserting Notion Database as Document.");
     const prefix = `${databaseName}\n${csvHeader}\n`;
     const prefixSection = await renderPrefixSection({
@@ -2586,6 +2587,7 @@ export async function upsertDatabaseStructuredDataFromCache({
       maxPrefixChars: MAX_PREFIX_CHARS * 2,
     });
     if (!prefixSection.content) {
+      // We use a special id for the document to avoid conflicts with the table.
       const databaseDocId = `notion-database-${databaseId}`;
       await upsertToDatasource({
         dataSourceConfig,
@@ -2603,8 +2605,10 @@ export async function upsertDatabaseStructuredDataFromCache({
         timestampMs: upsertAt.getTime(),
         tags: [`title:${databaseName}`, "is_database:true"],
         // TODO(kw_search) remove legacy
+        // The parents end up including the special ID for the document, the node ID of the database, and the parents of the database.
         parents: [databaseDocId, ...parentIds, ...legacyParentIds],
-        parentId: parentIds.length > 1 ? parentIds[1] : null,
+        // The direct parent ID is the node ID of the database.
+        parentId: `notion-${databaseId}`,
         loggerArgs,
         upsertContext: {
           sync_type: "batch",
