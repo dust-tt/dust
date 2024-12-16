@@ -7,10 +7,13 @@ steps:
       build_args=()
       while IFS='=' read -r key value; do
         if [[ -n "$key" ]]; then
-          build_args+=("--build-arg" "$key=$value")
+          # Trim any whitespace from key and value
+          key=$(echo "$key" | xargs)
+          value=$(echo "$value" | xargs)
+          build_args+=("--build-arg" "${key}=${value}")
         fi
-      done < <(yq e '.env | to_entries | .[] | .key + "=" + .value' .github/configs/${_REGION}.yaml)
-      
+      done < <(yq .env -o=props .github/configs/${_REGION}.yaml)
+
       depot build \
         --project 3vz0lnf16v \
         --provenance=false \
