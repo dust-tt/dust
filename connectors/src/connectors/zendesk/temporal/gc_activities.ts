@@ -3,7 +3,9 @@ import type { ModelId } from "@dust-tt/types";
 import {
   getArticleInternalId,
   getBrandInternalId,
+  getHelpCenterInternalId,
   getTicketInternalId,
+  getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteCategory } from "@connectors/connectors/zendesk/lib/sync_category";
@@ -302,8 +304,18 @@ export async function deleteBrandsWithNoPermissionActivity(
   await concurrentExecutor(
     brands,
     async (brandId) => {
-      const folderId = getBrandInternalId({ connectorId, brandId });
-      await deleteFolderNode({ dataSourceConfig, folderId });
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: getBrandInternalId({ connectorId, brandId }),
+      });
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: getHelpCenterInternalId({ connectorId, brandId }),
+      });
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: getTicketsInternalId({ connectorId, brandId }),
+      });
     },
     { concurrency: 10 }
   );
