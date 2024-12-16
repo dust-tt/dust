@@ -1,14 +1,16 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { encrypt } from "@dust-tt/types";
+import { encrypt, OAuthAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
@@ -60,6 +62,7 @@ async function handler(
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
   const flags = await getFeatureFlags(owner);
+  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   if (!flags.includes("labs_transcripts")) {
     return apiError(req, res, {
@@ -141,13 +144,43 @@ async function handler(
         apiKeyToUse = encrypt(apiKey, owner.sId);
       }
 
+      if (!apiKeyToUse) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "API key is required",
+          },
+        });
+      }
+
+      const oAuthRes = await oauthApi.postCredentials({
+        provider: "modjo",
+        userId: user.sId,
+        workspaceId: owner.sId,
+        credentials: {
+          api_key: apiKeyToUse,
+        },
+      });
+
+      if (oAuthRes.isErr()) {
+        return res.status(500).json({
+          error: {
+            type: "invalid_request_error",
+            message: "[Modjo] Failed to post credentials",
+          },
+        });
+      }
+
+      const credentialId = oAuthRes.value.credential.credential_id;
+
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
           userId: user.id,
           workspaceId: owner.id,
           provider,
           connectionId: connectionId ?? null,
-          apiKey: apiKeyToUse,
+          apiKey: credentialId,
         });
 
       return res
