@@ -8,6 +8,7 @@ import type {
   SupportedFileContentType,
 } from "@dust-tt/types";
 import {
+  concurrentExecutor,
   Err,
   getFileFormatCategory,
   isAPIErrorResponse,
@@ -16,7 +17,6 @@ import {
   MAX_FILE_SIZES,
   Ok,
 } from "@dust-tt/types";
-import PQueue from "p-queue";
 import { useState } from "react";
 
 import { getMimeTypeFromFile } from "@app/lib/file";
@@ -169,114 +169,101 @@ export function useFileUploaderService({
     // We have a limit of the allowed time to upload the content of a file once the file object has been created.
     // If we start a large amount of uploads at the same time and the network is somewhat slow, it's possible that we'll
     // have created the file objects long before the upload of the content will finish.
-    // Use p-queue to upload files in parallel with a limited concurrency of 4.
-    const queue = new PQueue({ concurrency: 4 });
-    const uploadPromises: Promise<Result<FileBlob, FileBlobUploadError>>[] = [];
-    for (const fileBlob of newFileBlobs) {
-      uploadPromises.push(
-        queue.add<Result<FileBlob, FileBlobUploadError>>(
-          async () => {
-            // Get upload URL from server.
-            let uploadResponse;
-            try {
-              uploadResponse = await fetch(`/api/w/${owner.sId}/files`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  contentType: fileBlob.contentType,
-                  fileName: fileBlob.filename,
-                  fileSize: fileBlob.size,
-                  useCase,
-                  useCaseMetadata,
-                }),
-              });
-            } catch (err) {
-              console.error("Error uploading files:", err);
+    return concurrentExecutor(
+      newFileBlobs,
+      async (fileBlob) => {
+        // Get upload URL from server.
+        let uploadResponse;
+        try {
+          uploadResponse = await fetch(`/api/w/${owner.sId}/files`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contentType: fileBlob.contentType,
+              fileName: fileBlob.filename,
+              fileSize: fileBlob.size,
+              useCase,
+              useCaseMetadata,
+            }),
+          });
+        } catch (err) {
+          console.error("Error uploading files:", err);
 
-              return new Err(
-                new FileBlobUploadError(
-                  "failed_to_upload_file",
-                  fileBlob.file,
-                  err instanceof Error ? err.message : undefined
-                )
-              );
-            }
+          return new Err(
+            new FileBlobUploadError(
+              "failed_to_upload_file",
+              fileBlob.file,
+              err instanceof Error ? err.message : undefined
+            )
+          );
+        }
 
-            if (!uploadResponse.ok) {
-              try {
-                const res = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          try {
+            const res = await uploadResponse.json();
 
-                return new Err(
-                  new FileBlobUploadError(
-                    "failed_to_upload_file",
-                    fileBlob.file,
-                    isAPIErrorResponse(res) ? res.error.message : undefined
-                  )
-                );
-              } catch (err) {
-                return new Err(
-                  new FileBlobUploadError(
-                    "failed_to_upload_file",
-                    fileBlob.file
-                  )
-                );
-              }
-            }
-
-            const { file } =
-              (await uploadResponse.json()) as FileUploadRequestResponseBody;
-
-            const formData = new FormData();
-            formData.append("file", fileBlob.file);
-
-            // Upload file to the obtained URL.
-            let uploadResult;
-            try {
-              uploadResult = await fetch(file.uploadUrl, {
-                method: "POST",
-                body: formData,
-              });
-            } catch (err) {
-              console.error("Error uploading files:", err);
-
-              return new Err(
-                new FileBlobUploadError(
-                  "failed_to_upload_file",
-                  fileBlob.file,
-                  err instanceof Error ? err.message : undefined
-                )
-              );
-            }
-
-            if (!uploadResult.ok) {
-              return new Err(
-                new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
-              );
-            }
-
-            const { file: fileUploaded } =
-              (await uploadResult.json()) as FileUploadedRequestResponseBody;
-
-            return new Ok({
-              ...fileBlob,
-              fileId: file.id,
-              isUploading: false,
-              preview: isSupportedImageContentType(fileBlob.contentType)
-                ? `${fileUploaded.downloadUrl}?action=view`
-                : undefined,
-              publicUrl: file.publicUrl,
-            });
-          },
-          {
-            throwOnTimeout: true,
+            return new Err(
+              new FileBlobUploadError(
+                "failed_to_upload_file",
+                fileBlob.file,
+                isAPIErrorResponse(res) ? res.error.message : undefined
+              )
+            );
+          } catch (err) {
+            return new Err(
+              new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+            );
           }
-        )
-      );
-    }
+        }
 
-    return Promise.all(uploadPromises); // Run all uploads in parallel.
+        const { file } =
+          (await uploadResponse.json()) as FileUploadRequestResponseBody;
+
+        const formData = new FormData();
+        formData.append("file", fileBlob.file);
+
+        // Upload file to the obtained URL.
+        let uploadResult;
+        try {
+          uploadResult = await fetch(file.uploadUrl, {
+            method: "POST",
+            body: formData,
+          });
+        } catch (err) {
+          console.error("Error uploading files:", err);
+
+          return new Err(
+            new FileBlobUploadError(
+              "failed_to_upload_file",
+              fileBlob.file,
+              err instanceof Error ? err.message : undefined
+            )
+          );
+        }
+
+        if (!uploadResult.ok) {
+          return new Err(
+            new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+          );
+        }
+
+        const { file: fileUploaded } =
+          (await uploadResult.json()) as FileUploadedRequestResponseBody;
+
+        return new Ok({
+          ...fileBlob,
+          fileId: file.id,
+          isUploading: false,
+          preview: isSupportedImageContentType(fileBlob.contentType)
+            ? `${fileUploaded.downloadUrl}?action=view`
+            : undefined,
+          publicUrl: file.publicUrl,
+        });
+      },
+      { concurrency: 4 }
+    );
   };
 
   const processResults = (results: Result<FileBlob, FileBlobUploadError>[]) => {
