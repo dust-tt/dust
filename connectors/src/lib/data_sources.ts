@@ -1214,7 +1214,9 @@ export async function getFolderNode({
   return dustRequestResult.data.folder;
 }
 
-export async function upsertFolderNode({
+export const upsertFolderNode = withRetries(_upsertFolderNode);
+
+export async function _upsertFolderNode({
   dataSourceConfig,
   folderId,
   timestampMs,

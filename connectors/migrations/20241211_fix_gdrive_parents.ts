@@ -2,12 +2,11 @@ import { getGoogleSheetTableId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
+import { getDocumentId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  getDocumentFromDataSource,
   getFolderNode,
   getTable,
-  updateDocumentParentsField,
   updateTableParentsField,
   upsertFolderNode,
 } from "@connectors/lib/data_sources";
@@ -15,10 +14,29 @@ import {
   GoogleDriveFiles,
   GoogleDriveSheet,
 } from "@connectors/lib/models/google_drive";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const QUERY_BATCH_SIZE = 1024;
+
+function getParents(
+  fileId: string | null,
+  parentsMap: Record<string, string | null>,
+  logger: Logger
+) {
+  const parents = [];
+  let current: string | null = fileId;
+  while (current) {
+    parents.push(current);
+    if (typeof parentsMap[current] === "undefined") {
+      logger.error({ fileId: current }, "Parent not found");
+      return null;
+    }
+    current = parentsMap[current] || null;
+  }
+  return parents;
+}
 
 async function migrate({
   connector,
@@ -27,7 +45,8 @@ async function migrate({
   connector: ConnectorModel;
   execute: boolean;
 }) {
-  logger.info(`Processing connector ${connector.id}...`);
+  const childLogger = logger.child({ connectorId: connector.id });
+  childLogger.info(`Processing connector ${connector.id}...`);
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const parentsMap: Record<string, string | null> = {};
@@ -60,6 +79,9 @@ async function migrate({
           id: {
             [Op.gt]: nextId,
           },
+          mimeType: {
+            [Op.or]: ["application/vnd.google-apps.folder", "text/csv"],
+          },
         },
         order: [["id", "ASC"]],
         limit: QUERY_BATCH_SIZE,
@@ -69,58 +91,57 @@ async function migrate({
     for (const file of googleDriveFiles) {
       const internalId = file.dustFileId;
       const driveFileId = file.driveFileId;
-      const parents = [driveFileId];
-      let current: string | null = file.parentId;
-      while (current) {
-        parents.push(current);
-        current = parentsMap[current] || null;
+      const parents = getParents(
+        file.parentId,
+        parentsMap,
+        childLogger.child({ nodeId: driveFileId })
+      );
+      if (!parents) {
+        continue;
       }
+      parents.unshift(driveFileId);
 
       if (file.mimeType === "application/vnd.google-apps.folder") {
         const folder = await getFolderNode({
           dataSourceConfig,
           folderId: internalId,
         });
-        if (!folder || folder.parents.join("/") !== parents.join("/")) {
-          logger.info({ folderId: file.driveFileId, parents }, "Upsert folder");
+        const newParents = parents.map((id) => getDocumentId(id));
+        if (!folder || folder.parents.join("/") !== newParents.join("/")) {
+          childLogger.info(
+            { folderId: file.driveFileId, parents: newParents },
+            "Upsert folder"
+          );
 
           if (execute) {
             // upsert repository as folder
             await upsertFolderNode({
               dataSourceConfig,
               folderId: file.dustFileId,
-              parents,
+              parents: newParents,
               parentId: file.parentId,
               title: file.name,
             });
           }
         }
-      } else {
-        const document = await getDocumentFromDataSource({
-          dataSourceConfig,
-          documentId: internalId,
-        });
-        if (document) {
-          logger.info(
-            {
-              documentId: file.driveFileId,
-            },
-            "Found document"
-          );
-          if (document.parents.join("/") !== parents.join("/")) {
-            logger.info(
+      } else if (file.mimeType === "text/csv") {
+        const tableId = internalId;
+        parents.unshift(...parents.map((id) => getDocumentId(id)));
+        const table = await getTable({ dataSourceConfig, tableId });
+        if (table) {
+          if (table.parents.join("/") !== parents.join("/")) {
+            childLogger.info(
               {
-                documentId: internalId,
+                tableId,
                 parents,
-                previousParents: document.parents,
+                previousParents: table.parents,
               },
-              "Update parents for document"
+              "Update parents for table"
             );
-
             if (execute) {
-              await updateDocumentParentsField({
+              await updateTableParentsField({
                 dataSourceConfig,
-                documentId: file.dustFileId,
+                tableId,
                 parents,
               });
             }
@@ -151,24 +172,23 @@ async function migrate({
         sheet.driveFileId,
         sheet.driveSheetId
       );
-      const parents = [tableId];
-      let current: string | null = sheet.driveFileId;
-      while (current) {
-        parents.push(current);
-        current = parentsMap[current] || null;
+
+      const parents = getParents(
+        sheet.driveFileId,
+        parentsMap,
+        childLogger.child({ nodeId: tableId })
+      );
+      if (!parents) {
+        continue;
       }
+
+      parents.unshift(...parents.map((id) => getDocumentId(id)));
+      parents.unshift(tableId);
 
       const table = await getTable({ dataSourceConfig, tableId });
       if (table) {
-        logger.info(
-          {
-            tableId: tableId,
-          },
-          "Found table"
-        );
-
         if (table.parents.join("/") !== parents.join("/")) {
-          logger.info(
+          childLogger.info(
             {
               tableId,
               parents,
