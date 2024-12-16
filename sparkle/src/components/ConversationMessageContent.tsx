@@ -35,7 +35,7 @@ export function ConversationMessageContent({
             "s-grid s-grid-cols-2 s-gap-2",
             size === "compact"
               ? ""
-              : "@xs:s-grid-cols-1 @sm:s-grid-cols-3 @lg:s-grid-cols-4 @xl:s-grid-cols-5"
+              : "@xs:s-grid-cols-2 @sm:s-grid-cols-3 @lg:s-grid-cols-4 @xl:s-grid-cols-5"
           )}
         >
           {citations}
