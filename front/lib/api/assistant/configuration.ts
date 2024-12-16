@@ -347,6 +347,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       }
       const relations = await AgentUserRelation.findAll({
         where: {
+          workspaceId: owner.id,
           userId,
           favorite: true,
         },
@@ -614,8 +615,8 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     }),
   ]);
 
-  // Filter out agents that the user does not have access to
-  // user should be in all groups that are in the agent's groupIds
+  // Filter out agents that the user does not have access to user should be in all groups that are
+  // in the agent's groupIds
   const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
     ? allAgentConfigurations
     : allAgentConfigurations
