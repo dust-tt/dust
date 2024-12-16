@@ -2047,6 +2047,7 @@ export async function renderAndUpsertPageFromCache({
       }),
       // TODO(kw_search) remove legacy
       parents: [...parentIds, ...legacyParentIds],
+      parentId: parentIds.length > 1 ? parentIds[1] : null,
       loggerArgs,
       upsertContext: {
         sync_type: isFullSync ? "batch" : "incremental",
@@ -2603,6 +2604,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         tags: [`title:${databaseName}`, "is_database:true"],
         // TODO(kw_search) remove legacy
         parents: [databaseDocId, ...parentIds, ...legacyParentIds],
+        parentId: parentIds.length > 1 ? parentIds[1] : null,
         loggerArgs,
         upsertContext: {
           sync_type: "batch",
