@@ -101,7 +101,7 @@ export async function retrieveModjoTranscripts(
     return [];
   }
 
-  if (!transcriptsConfiguration.apiKey) {
+  if (!transcriptsConfiguration.credentialId) {
     localLogger.error(
       {},
       "[retrieveModjoTranscripts] No API key found for default configuration. Skipping."
@@ -110,7 +110,10 @@ export async function retrieveModjoTranscripts(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const modjoApiKey = decrypt(transcriptsConfiguration.apiKey, workspace.sId);
+  const modjoApiKey = decrypt(
+    transcriptsConfiguration.credentialId,
+    workspace.sId
+  );
 
   const flags = await getFeatureFlags(workspace);
   const daysOfHistory = flags.includes("labs_transcripts_gong_full_storage")
@@ -230,7 +233,7 @@ export async function retrieveModjoTranscriptContent(
   transcriptContent: string;
   userParticipated: boolean;
 } | null> {
-  if (!transcriptsConfiguration || !transcriptsConfiguration.apiKey) {
+  if (!transcriptsConfiguration || !transcriptsConfiguration.credentialId) {
     localLogger.error(
       {
         fileId,
@@ -242,7 +245,10 @@ export async function retrieveModjoTranscriptContent(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const modjoApiKey = decrypt(transcriptsConfiguration.apiKey, workspace.sId);
+  const modjoApiKey = decrypt(
+    transcriptsConfiguration.credentialId,
+    workspace.sId
+  );
 
   const findModjoUser = async () => {
     const user = await transcriptsConfiguration.getUser();
