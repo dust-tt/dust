@@ -9,6 +9,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteFolderNode,
   deleteFromDataSource,
+  upsertFolderNode,
 } from "@connectors/lib/data_sources";
 import {
   ZendeskArticleResource,
@@ -64,18 +65,20 @@ export async function syncCategory({
   brandId,
   category,
   currentSyncDateMs,
+  dataSourceConfig,
 }: {
   connectorId: ModelId;
   brandId: number;
   category: ZendeskFetchedCategory;
   currentSyncDateMs: number;
+  dataSourceConfig: DataSourceConfig;
 }): Promise<void> {
-  const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
+  let categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     categoryId: category.id,
   });
   if (!categoryInDb) {
-    await ZendeskCategoryResource.makeNew({
+    categoryInDb = await ZendeskCategoryResource.makeNew({
       blob: {
         name: category.name || "Category",
         url: category.html_url,
@@ -95,4 +98,12 @@ export async function syncCategory({
       lastUpsertedTs: new Date(currentSyncDateMs),
     });
   }
+  // upserting a folder to data_sources_folders (core)
+  const parents = categoryInDb.getParentInternalIds(connectorId);
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: parents[0],
+    parents,
+    title: categoryInDb.name,
+  });
 }

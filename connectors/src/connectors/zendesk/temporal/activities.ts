@@ -223,6 +223,7 @@ export async function syncZendeskCategoryBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
@@ -241,8 +242,15 @@ export async function syncZendeskCategoryBatchActivity({
 
   await concurrentExecutor(
     categories,
-    async (category) =>
-      syncCategory({ connectorId, brandId, category, currentSyncDateMs }),
+    async (category) => {
+      return syncCategory({
+        connectorId,
+        brandId,
+        category,
+        currentSyncDateMs,
+        dataSourceConfig,
+      });
+    },
     {
       concurrency: 10,
       onBatchComplete: heartbeat,
