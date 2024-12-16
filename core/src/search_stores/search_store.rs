@@ -51,6 +51,12 @@ impl SearchStore for ElasticsearchSearchStore {
         // elasticsearch needs to index a Node, not a Document
         let node = Node::from(document.clone());
 
+        // safety for rollout: we only index one time on five
+        // TODO(kw-search): remove this once prod testing is ok
+        if rand::thread_rng().gen_bool(0.8) {
+            return Ok(());
+        }
+
         self.client
             .index(IndexParts::IndexId(NODES_INDEX_NAME, &document.document_id))
             .timeout("200ms")
