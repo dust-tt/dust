@@ -449,7 +449,7 @@ async function migrateDataSource({
   for (;;) {
     const [coreDocumentRows] = (await corePrimary.query(
       "SELECT id, parents, document_id, timestamp FROM data_sources_documents " +
-        "WHERE data_source = ? AND STATUS = ? AND timestamp > ? " +
+        "WHERE data_source = ? AND STATUS = ? AND timestamp >= ? " +
         "ORDER BY timestamp ASC LIMIT ?",
       {
         replacements: [
