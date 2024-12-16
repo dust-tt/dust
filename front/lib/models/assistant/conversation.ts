@@ -304,6 +304,7 @@ export class AgentMessageFeedback extends BaseModel<AgentMessageFeedback> {
   declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
+  declare conversationShared: boolean;
 
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
