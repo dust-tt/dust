@@ -1,180 +1,240 @@
 import React, { ReactNode } from "react";
 
-import { Avatar } from "@sparkle/components/Avatar";
-import { CardButton } from "@sparkle/components/CardButton";
-import { Icon } from "@sparkle/components/Icon";
-import { IconButton } from "@sparkle/components/IconButton";
-import Spinner from "@sparkle/components/Spinner";
-import { Tooltip } from "@sparkle/components/Tooltip";
-import { XCircleIcon } from "@sparkle/icons";
-import { DocumentTextStrokeIcon, ImageStrokeIcon } from "@sparkle/icons/stroke";
-import { classNames } from "@sparkle/lib/utils";
 import {
-  ConfluenceLogo,
-  DriveLogo,
-  GithubLogo,
-  IntercomLogo,
-  MicrosoftLogo,
-  NotionLogo,
-  SlackLogo,
-  SnowflakeLogo,
-  ZendeskLogo,
-} from "@sparkle/logo/platforms";
+  Button,
+  CardButton,
+  CardButtonProps,
+  Spinner,
+  Tooltip,
+} from "@sparkle/components/";
+import { XMarkIcon } from "@sparkle/icons";
+import { cn } from "@sparkle/lib/utils";
 
-export type CitationType =
-  | "confluence"
-  | "document"
-  | "github"
-  | "google_drive"
-  | "image"
-  | "intercom"
-  | "microsoft"
-  | "zendesk"
-  | "notion"
-  | "slack"
-  | "snowflake";
-
-const typeIcons = {
-  confluence: ConfluenceLogo,
-  document: DocumentTextStrokeIcon,
-  github: GithubLogo,
-  google_drive: DriveLogo,
-  intercom: IntercomLogo,
-  microsoft: MicrosoftLogo,
-  zendesk: ZendeskLogo,
-  notion: NotionLogo,
-  slack: SlackLogo,
-  image: ImageStrokeIcon,
-  snowflake: SnowflakeLogo,
-};
-
-const typeSizing = {
-  fixed: { xs: "s-w-48", sm: "s-w-64" },
-  fluid: "s-w-full",
-};
-
-interface CitationProps {
-  avatarSrc?: string;
-  description?: string;
-  href?: string;
-  imgSrc?: string;
-  index?: ReactNode;
-  isBlinking?: boolean;
+type CitationProps = CardButtonProps & {
+  children: React.ReactNode;
   isLoading?: boolean;
-  onClose?: () => void;
-  size?: "xs" | "sm";
-  sizing?: "fixed" | "fluid";
-  title: string;
-  type?: CitationType;
-}
+  tooltip?: string;
+};
 
-export function Citation({
-  avatarSrc,
-  description,
-  href,
-  imgSrc,
-  index,
-  isBlinking = false,
-  isLoading,
-  onClose,
-  size = "sm",
-  sizing = "fixed",
-  title,
-  type = "document",
-}: CitationProps) {
-  const cardContent = (
-    <>
-      {type === "image" && imgSrc && (
-        <div
-          className={classNames(
-            "s-absolute s-left-0 s-top-0 s-brightness-90 s-filter s-transition s-duration-200 s-ease-out active:s-brightness-100 group-active:s-brightness-100",
-            href
-              ? "hover:s-brightness-110 group-hover:s-brightness-110 group-hover:s-filter"
-              : ""
-          )}
-          style={{
-            backgroundImage: `url(${imgSrc})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            height: "100%",
-            width: "100%",
-          }}
-        />
-      )}
-      <div className="s-flex s-items-center s-gap-2">
-        {avatarSrc && <Avatar visual={avatarSrc} size="xs" />}
-        {index && (
-          <div
-            className={classNames(
-              "s-flex s-items-center s-justify-center s-rounded-full s-border s-border-violet-200 s-bg-violet-100 s-text-xs s-font-semibold s-text-element-800",
-              size === "sm" ? "s-h-5 s-w-5" : "s-h-4 s-w-4"
-            )}
-          >
-            {index}
-          </div>
+const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
+  (
+    { children, variant = "primary", isLoading, className, tooltip, ...props },
+    ref
+  ) => {
+    const cardButton = (
+      <CardButton
+        ref={ref}
+        variant={variant}
+        size="md"
+        className={cn(
+          "s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end",
+          className
         )}
-
-        {!isLoading && (
-          <Icon visual={typeIcons[type]} className="s-text-element-700" />
-        )}
-        <div className="s-flex-grow s-text-xs" />
-        {onClose && (
-          <div
-            className={classNames(
-              type === "image"
-                ? "s-z-50 s-h-5 s-w-5 s-rounded-full s-bg-slate-950/30"
-                : ""
-            )}
-          >
-            <IconButton
-              icon={XCircleIcon}
-              variant="outline"
-              onClick={onClose}
-            />
-          </div>
-        )}
-      </div>
-      <div
-        className={classNames(
-          "s-line-clamp-1 s-text-sm s-text-element-800",
-          size === "sm" ? "s-font-bold" : "s-font-semibold"
-        )}
+        {...props}
       >
-        {title}
-      </div>
+        {children}
+        {isLoading && <CitationLoading />}
+      </CardButton>
+    );
 
-      {description && (
-        <div className="s-line-clamp-2 s-text-xs s-font-normal s-text-element-700">
-          {description}
-        </div>
-      )}
-    </>
-  );
+    if (tooltip) {
+      return <Tooltip trigger={cardButton} label={tooltip} />;
+    }
 
-  const props = href
-    ? { href, target: "_blank", rel: "noopener noreferrer" }
-    : {};
+    return cardButton;
+  }
+);
 
-  const cardButton = (
-    <CardButton
-      variant="secondary"
-      size="sm"
-      className={classNames(
-        "s-relative s-flex s-h-full s-w-48 s-flex-none s-flex-col s-gap-1",
-        sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
-        size === "sm" ? "sm:s-w-64" : "",
-        isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
-        type === "image" ? "s-min-h-20" : ""
+Citation.displayName = "Citation";
+
+const CitationIndex = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ children, className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-z-10",
+        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-bg-primary-600 s-text-xs s-font-medium s-text-primary-200",
+        className
       )}
       {...props}
     >
-      {isLoading && (
-        <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">
-          <Spinner size="xs" variant="color" />
-        </div>
-      )}
-      <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
-    </CardButton>
+      {children}
+    </div>
   );
-  return href ? <Tooltip trigger={cardButton} label={title} /> : cardButton;
+});
+CitationIndex.displayName = "CitationIndex";
+
+const CitationGrid = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ children, className, ...props }, ref) => {
+  return (
+    <div ref={ref} className={cn("s-@container", className)} {...props}>
+      <div className="s-grid s-grid-cols-1 s-gap-2 @sm:s-grid-cols-2 @xl:s-grid-cols-3 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5">
+        {children}
+      </div>
+    </div>
+  );
+});
+CitationGrid.displayName = "CitationGrid";
+
+interface CitationCloseProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  className?: string;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
+
+const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
+  ({ className, onClick, ...props }, ref) => {
+    return (
+      <Button
+        ref={ref}
+        variant="ghost"
+        size="xs"
+        className={cn(
+          "s-z-10",
+          "s-absolute s-right-2 s-top-2 s-z-10",
+          className
+        )}
+        icon={XMarkIcon}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick?.(e);
+        }}
+        {...props}
+      />
+    );
+  }
+);
+
+CitationClose.displayName = "CitationClose";
+
+interface CitationImageProps extends React.HTMLAttributes<HTMLDivElement> {
+  imgSrc: string;
+}
+
+const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
+  ({ imgSrc, className, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-absolute s-inset-0",
+          "s-bg-cover s-bg-center",
+          className
+        )}
+        style={{
+          backgroundImage: `url(${imgSrc})`,
+        }}
+        {...props}
+      >
+        <div className="s-z-0 s-h-full s-w-full s-bg-primary-100/80 s-transition s-duration-200 group-hover:s-bg-primary-200/70 group-active:s-bg-primary-100/60" />
+      </div>
+    );
+  }
+);
+
+CitationImage.displayName = "CitationImage";
+
+const CitationIcons = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ children, className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-z-10",
+        "s-flex s-items-center s-gap-2 s-pb-1",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+});
+CitationIcons.displayName = "CitationIcons";
+
+const CitationLoading = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-primary-100/80",
+        className
+      )}
+      {...props}
+    >
+      <Spinner variant="dark" size="md" />
+    </div>
+  );
+});
+CitationLoading.displayName = "CitationLoading";
+
+interface CitationTitleProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: ReactNode;
+}
+
+const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
+  ({ children, className, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-z-10",
+          "s-line-clamp-1 s-overflow-hidden s-text-ellipsis",
+          "s-text-sm s-font-medium s-text-foreground",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+CitationTitle.displayName = "CitationTitle";
+
+interface CitationDescriptionProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  children: ReactNode;
+}
+
+const CitationDescription = React.forwardRef<
+  HTMLDivElement,
+  CitationDescriptionProps
+>(({ children, className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-z-10",
+        "s-line-clamp-1 s-overflow-hidden s-text-ellipsis",
+        "s-text-xs s-font-normal s-text-muted-foreground",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+});
+CitationDescription.displayName = "CitationDescription";
+
+export {
+  Citation,
+  CitationClose,
+  CitationDescription,
+  CitationGrid,
+  CitationIcons,
+  CitationImage,
+  CitationIndex,
+  CitationTitle,
+};
