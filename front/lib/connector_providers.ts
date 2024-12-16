@@ -187,7 +187,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   zendesk: {
     name: "Zendesk",
     connectorProvider: "zendesk",
-    status: "rolling_out",
+    status: "built",
     hide: false,
     description:
       "Authorize access to Zendesk for indexing tickets from your support center and articles from your help center.",
@@ -197,7 +197,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: ZendeskLogo,
     isNested: true,
     isSearchEnabled: false,
-    rollingOutFlag: "zendesk_connector_feature",
   },
 };
 
