@@ -49,16 +49,7 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 impl SearchStore for ElasticsearchSearchStore {
     async fn index_document(&self, document: &Document) -> Result<()> {
         // elasticsearch needs to index a Node, not a Document
-        let node = Node::new(
-            &document.data_source_id,
-            &document.document_id,
-            NodeType::Document,
-            document.timestamp,
-            &document.title,
-            &document.mime_type,
-            document.parent_id.clone(),
-            document.parents.clone(),
-        );
+        let node = Node::from(document.clone());
 
         self.client
             .index(IndexParts::IndexId(NODES_INDEX_NAME, &document.document_id))
