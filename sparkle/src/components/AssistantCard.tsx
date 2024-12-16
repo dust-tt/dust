@@ -2,9 +2,9 @@ import React from "react";
 
 import {
   Avatar,
-  ButtonProps,
   Card,
   CardActionButton,
+  MiniButtonProps,
 } from "@sparkle/components/";
 import { MoreIcon } from "@sparkle/icons/";
 import { cn } from "@sparkle/lib/utils";
@@ -18,7 +18,7 @@ interface BaseAssistantCardProps {
   onClick?: () => void;
 }
 
-type AssistantCardMore = ButtonProps;
+type AssistantCardMore = Omit<MiniButtonProps, "icon">;
 
 export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
