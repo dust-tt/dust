@@ -508,7 +508,7 @@ Message.belongsTo(UserMessage, {
 });
 
 AgentMessage.hasOne(Message, {
-  as: "message",
+  as: "agentMessage",
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 Message.belongsTo(AgentMessage, {
