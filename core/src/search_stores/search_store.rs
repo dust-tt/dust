@@ -5,11 +5,12 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     Elasticsearch, IndexParts,
 };
+use rand::Rng;
 use url::Url;
 
-use crate::data_sources::data_source::Document;
-use crate::data_sources::node::{Node, NodeType};
-
+use crate::data_sources::node::Node;
+use crate::{data_sources::data_source::Document, utils};
+use tracing::{error, info};
 #[async_trait]
 pub trait SearchStore {
     async fn index_document(&self, document: &Document) -> Result<()>;
@@ -57,13 +58,34 @@ impl SearchStore for ElasticsearchSearchStore {
             return Ok(());
         }
 
-        self.client
+        // todo(kw-search): fail on error
+        let now = utils::now();
+        match self
+            .client
             .index(IndexParts::IndexId(NODES_INDEX_NAME, &document.document_id))
             .timeout("200ms")
             .body(node)
             .send()
-            .await?;
-        Ok(())
+            .await
+        {
+            Ok(_) => {
+                info!(
+                    duration = utils::now() - now,
+                    document_id = document.document_id,
+                    "[ElasticsearchSearchStore] Indexed document"
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    error = %e,
+                    duration = utils::now() - now,
+                    document_id = document.document_id,
+                    "[ElasticsearchSearchStore] Failed to index document"
+                );
+                Ok(())
+            }
+        }
     }
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send> {
