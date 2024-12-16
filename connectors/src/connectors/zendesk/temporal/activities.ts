@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import _ from "lodash";
 
+import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -16,6 +17,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { upsertFolderNode } from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -122,7 +124,15 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
-  // otherwise, we update the brand data and lastUpsertedTs
+  // upserting to data_sources_folders (core)
+  const folderId = getBrandInternalId({ connectorId, brandId });
+  await upsertFolderNode({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId,
+    parents: [folderId],
+    title: brandInDb.name,
+  });
+
   await brandInDb.update({
     name: fetchedBrand.name || "Brand",
     url: fetchedBrand?.url || brandInDb.url,
