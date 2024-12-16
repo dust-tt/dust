@@ -140,18 +140,13 @@ async function handler(
           auth,
           agents: agentConfigurations,
         });
-        agentConfigurations = await Promise.all(
-          agentConfigurations.map(
-            async (
-              agentConfiguration,
-              index
-            ): Promise<LightAgentConfigurationType> => {
-              return {
-                ...agentConfiguration,
-                lastAuthors: recentAuthors[index],
-              };
-            }
-          )
+        agentConfigurations = agentConfigurations.map(
+          (agentConfiguration, index) => {
+            return {
+              ...agentConfiguration,
+              lastAuthors: recentAuthors[index],
+            };
+          }
         );
       }
 
