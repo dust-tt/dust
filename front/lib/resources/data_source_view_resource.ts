@@ -272,6 +272,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   ) {
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
     });
@@ -285,6 +286,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   ) {
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: space.id,
       },
@@ -298,6 +300,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   ) {
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSources.map((ds) => ds.id),
       },
     });
