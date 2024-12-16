@@ -112,7 +112,7 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     tooltip?: string;
   };
 
-type MiniButtonProps = CommonButtonProps & {
+export type MiniButtonProps = CommonButtonProps & {
   size: "mini";
   icon: React.ComponentType;
   label?: never;

@@ -1,12 +1,13 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { LinkWrapperProps } from "@sparkle/components/";
+import { Button, ButtonProps, LinkWrapperProps } from "@sparkle/components/";
 import {
   noHrefLink,
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
+import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
@@ -24,9 +25,9 @@ export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;
 export type CardSizeType = (typeof CARD_VARIANTS_SIZES)[number];
 
 const sizeVariants: Record<CardSizeType, string> = {
-  sm: "s-p-3 s-rounded-2xl",
-  md: "s-p-4 s-rounded-3xl",
-  lg: "s-p-5 s-rounded-4xl",
+  sm: "s-p-3 s-rounded-xl",
+  md: "s-p-4 s-rounded-2xl",
+  lg: "s-p-5 s-rounded-3xl",
 };
 
 const cardVariants = cva(
@@ -49,11 +50,11 @@ interface CommonProps {
   className?: string;
 }
 
-interface LinkProps extends CommonProps, LinkWrapperProps {
+interface CardLinkProps extends CommonProps, LinkWrapperProps {
   onClick?: never;
 }
 
-interface ButtonProps
+interface CardButtonProps
   extends CommonProps,
     React.ButtonHTMLAttributes<HTMLDivElement> {
   href?: never;
@@ -63,9 +64,9 @@ interface ButtonProps
   shallow?: never;
 }
 
-export type CardProps = LinkProps | ButtonProps;
+type InnerCardProps = CardLinkProps | CardButtonProps;
 
-export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
   (
     {
       children,
@@ -120,7 +121,94 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   }
 );
 
+interface CardPropsBase {
+  action?: React.ReactNode;
+  containerClassName?: string;
+  className?: string;
+  variant?: CardVariantType;
+  size?: CardSizeType;
+}
+
+interface CardPropsWithLink
+  extends CardPropsBase,
+    Omit<CardLinkProps, keyof CardPropsBase> {
+  href: string;
+  onClick?: never;
+}
+
+interface CardPropsWithButton
+  extends CardPropsBase,
+    Omit<CardButtonProps, keyof CardPropsBase> {
+  href?: never;
+}
+
+export type CardProps = CardPropsWithLink | CardPropsWithButton;
+
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ containerClassName, className, action, ...props }, ref) => {
+    return (
+      <div
+        className={cn("s-group/card s-relative", containerClassName)}
+        ref={ref}
+      >
+        <InnerCard className={cn("s-h-full s-w-full", className)} {...props} />
+        {action && <CardActions>{action}</CardActions>}
+      </div>
+    );
+  }
+);
 Card.displayName = "Card";
+
+const CardActions = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentPropsWithoutRef<"div"> & {
+    children: React.ReactNode;
+  }
+>(({ children, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "s-absolute s-right-3 s-top-3 s-opacity-0 s-transition-opacity",
+        "s-opacity-0 group-focus-within/card:s-opacity-100 group-hover/card:s-opacity-100"
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+});
+
+CardActions.displayName = "CardActions";
+
+export const CardActionButton = React.forwardRef<
+  HTMLButtonElement,
+  ButtonProps
+>(
+  (
+    {
+      className,
+      size = "mini",
+      variant = "outline",
+      icon = XMarkIcon,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <Button
+        ref={ref}
+        size={size}
+        variant={variant}
+        icon={icon}
+        className={className}
+        {...props}
+      />
+    );
+  }
+);
+
+CardActionButton.displayName = "CardActionButton";
 
 export const CardGrid = React.forwardRef<
   HTMLDivElement,

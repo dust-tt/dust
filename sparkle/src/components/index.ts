@@ -9,10 +9,14 @@ export { AssistantPreview } from "./AssistantPreview";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
-export type { ButtonProps, RegularButtonProps } from "./Button";
+export type {
+  ButtonProps,
+  MiniButtonProps,
+  RegularButtonProps,
+} from "./Button";
 export { Button } from "./Button";
 export type { CardProps } from "./Card";
-export { Card, CardGrid } from "./Card";
+export { Card, CardActionButton, CardGrid } from "./Card";
 export type { CheckboxProps } from "./Checkbox";
 export {
   Checkbox,

@@ -1,17 +1,21 @@
 import type { Meta } from "@storybook/react";
 import React, { ComponentType } from "react";
 
-import { Button, Card, Icon } from "@sparkle/components";
-import { CARD_VARIANTS, CARD_VARIANTS_SIZES } from "@sparkle/components/Card";
+import { Card, Icon } from "@sparkle/components";
 import {
-  BookOpenStrokeIcon,
-  BracesStrokeIcon,
-  CommandLineStrokeIcon,
-  MagnifyingGlassStrokeIcon,
-  PlanetStrokeIcon,
-  ScanStrokeIcon,
-  TableStrokeIcon,
-  XMarkIcon,
+  CARD_VARIANTS,
+  CARD_VARIANTS_SIZES,
+  CardActionButton,
+  CardGrid,
+} from "@sparkle/components/Card";
+import {
+  BookOpenIcon,
+  BracesIcon,
+  CommandLineIcon,
+  MagnifyingGlassIcon,
+  PlanetIcon,
+  ScanIcon,
+  TableIcon,
 } from "@sparkle/icons";
 
 const meta = {
@@ -79,66 +83,58 @@ interface CardData {
 
 const cardData: CardData[] = [
   {
-    icon: MagnifyingGlassStrokeIcon,
+    icon: MagnifyingGlassIcon,
     title: "Search",
     description: "Architecture Projects Descriptions",
   },
   {
-    icon: TableStrokeIcon,
+    icon: TableIcon,
     title: "Table Query",
     description: "Find product references",
   },
   {
-    icon: PlanetStrokeIcon,
+    icon: PlanetIcon,
     title: "Web",
     description: "Search & browse the web",
   },
   {
-    icon: BracesStrokeIcon,
+    icon: BracesIcon,
     title: "Code Interpreter",
     description: "Write a description for it",
   },
   {
-    icon: CommandLineStrokeIcon,
+    icon: CommandLineIcon,
     title: "Dust App",
     description: "Dust App Name",
   },
   {
-    icon: BookOpenStrokeIcon,
+    icon: BookOpenIcon,
     title: "Include",
     description: "Description of the Data",
   },
   {
-    icon: ScanStrokeIcon,
+    icon: ScanIcon,
     title: "Extract Data",
     description: "Description of the Data",
   },
 ];
 
 export const ActionCardDemo: React.FC = () => (
-  <div className="s-grid s-grid-cols-3 s-gap-3">
+  <CardGrid>
     {cardData.map((card, index) => (
       <Card
         key={index}
         variant="primary"
+        size="md"
         onClick={() => {
           alert(`You clicked on ${card.title}`);
         }}
+        action={<CardActionButton variant="ghost" />}
       >
-        <div className="s-flex s-w-full s-flex-col s-text-sm">
-          <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-element-900">
-            <Icon visual={card.icon} size="sm" className="s-text-element-900" />
+        <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
+          <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-foreground">
+            <Icon visual={card.icon} size="sm" />
             <div className="s-w-full">{card.title}</div>
-            <Button
-              icon={XMarkIcon}
-              className="-s-mr-2 -s-mt-2"
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                alert(`You clicked on close button of ${card.title}`);
-                e.stopPropagation();
-              }}
-            />
           </div>
           <div className="s-w-full s-truncate s-text-sm s-text-muted-foreground">
             {card.description}
@@ -146,5 +142,5 @@ export const ActionCardDemo: React.FC = () => (
         </div>
       </Card>
     ))}
-  </div>
+  </CardGrid>
 );
