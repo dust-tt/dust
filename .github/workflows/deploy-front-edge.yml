@@ -92,12 +92,11 @@ jobs:
 
       - name: Build image for ${{ matrix.region }}
         run: |
-          chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh \
+          chmod +x ./k8s/cloud-build_tmp.sh
+          ./k8s/cloud-build_tmp.sh \
             --image-name=$IMAGE_NAME \
             --dockerfile-path=./front/Dockerfile \
             --working-dir=./ \
-            --dust-client-facing-url=https://front-edge.dust.tt \
             --region=${{ matrix.region }}
 
   deploy:
