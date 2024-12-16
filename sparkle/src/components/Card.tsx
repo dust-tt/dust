@@ -1,7 +1,7 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { Button, ButtonProps, LinkWrapperProps } from "@sparkle/components/";
+import { Button, ButtonProps } from "@sparkle/components/Button";
 import {
   noHrefLink,
   SparkleContext,
@@ -9,6 +9,7 @@ import {
 } from "@sparkle/context";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
+import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 
 export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
 
@@ -184,29 +185,17 @@ CardActions.displayName = "CardActions";
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
   ButtonProps
->(
-  (
-    {
-      className,
-      size = "mini",
-      variant = "outline",
-      icon = XMarkIcon,
-      ...props
-    },
-    ref
-  ) => {
-    return (
-      <Button
-        ref={ref}
-        size={size}
-        variant={variant}
-        icon={icon}
-        className={className}
-        {...props}
-      />
-    );
-  }
-);
+>(({ className, variant = "outline", icon = XMarkIcon, ...props }, ref) => {
+  return (
+    <Button
+      ref={ref}
+      variant={variant}
+      icon={icon}
+      className={className}
+      {...props}
+    />
+  );
+});
 
 CardActionButton.displayName = "CardActionButton";
 

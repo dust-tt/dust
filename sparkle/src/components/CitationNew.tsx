@@ -73,7 +73,7 @@ const CitationNewGrid = React.forwardRef<
 >(({ children, className, ...props }, ref) => {
   return (
     <div ref={ref} className={cn("s-@container", className)} {...props}>
-      <div className="@sm:s-grid-cols-2 @xl:s-grid-cols-3 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5 s-grid s-grid-cols-1 s-gap-2">
+      <div className="s-grid s-grid-cols-1 s-gap-2 @sm:s-grid-cols-2 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5 @xl:s-grid-cols-3">
         {children}
       </div>
     </div>

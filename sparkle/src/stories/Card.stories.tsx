@@ -129,7 +129,7 @@ export const ActionCardDemo: React.FC = () => (
         onClick={() => {
           alert(`You clicked on ${card.title}`);
         }}
-        action={<CardActionButton variant="ghost" />}
+        action={<CardActionButton size="mini" icon={CommandLineIcon} />}
       >
         <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
           <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-foreground">
