@@ -16,6 +16,7 @@ import {
   PlanetIcon,
   ScanIcon,
   TableIcon,
+  XMarkIcon,
 } from "@sparkle/icons";
 
 const meta = {
@@ -129,7 +130,7 @@ export const ActionCardDemo: React.FC = () => (
         onClick={() => {
           alert(`You clicked on ${card.title}`);
         }}
-        action={<CardActionButton size="mini" icon={CommandLineIcon} />}
+        action={<CardActionButton size="mini" icon={XMarkIcon} />}
       >
         <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
           <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-foreground">

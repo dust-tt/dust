@@ -32,7 +32,7 @@ export default meta;
 export const CitationsExample = () => (
   <div className="s-flex s-flex-col s-gap-8">
     Example of attachement
-    <div className="s-flex s-gap-2">
+    <CitationGrid>
       <Citation onClick={() => alert("Card clicked")} className="s-w-48">
         <CitationIcons>
           <Icon visual={SlackLogo} size="sm" />
@@ -69,43 +69,55 @@ export const CitationsExample = () => (
         </CitationIcons>
         <CitationTitle>screenshot.png</CitationTitle>
       </Citation>
-    </div>
+    </CitationGrid>
     Example of dissmissable attachements
-    <div className="s-flex s-gap-8">
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+    <CitationGrid>
+      <Citation
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
+        action={<CitationClose onClick={() => alert("Close clicked")} />}
+      >
         <CitationIcons>
           <Icon visual={SlackLogo} size="sm" />
         </CitationIcons>
         <CitationTitle>Slack thread</CitationTitle>
-        <CitationClose onClick={() => alert("Close clicked")} />
         <CitationDescription>
           @ed at 16:32 This is the latest ve
         </CitationDescription>
       </Citation>
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
+        action={<CitationClose onClick={() => alert("Close clicked")} />}
+      >
         <CitationIcons>
           <Icon visual={TableIcon} size="sm" />
         </CitationIcons>
-        <CitationClose onClick={() => alert("Close clicked")} />
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
+        action={<CitationClose onClick={() => alert("Close clicked")} />}
+      >
         <CitationIcons>
           <Icon visual={GlobeAltIcon} size="sm" />
         </CitationIcons>
-        <CitationClose onClick={() => alert("Close clicked")} />
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
 
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation
+        onClick={() => alert("Card clicked")}
+        className="s-w-48"
+        action={<CitationClose onClick={() => alert("Close clicked")} />}
+      >
         <CitationImage imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" />
         <CitationIcons>
           <Icon visual={ImageIcon} size="sm" />
         </CitationIcons>
-        <CitationClose onClick={() => alert("Close clicked")} />
         <CitationTitle>screenshot.png</CitationTitle>
       </Citation>
-    </div>
+    </CitationGrid>
     Example of citations in markdown
     <div>
       <Popover
