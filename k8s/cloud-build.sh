@@ -48,13 +48,6 @@ fi
 # Change to working directory
 cd "$WORKING_DIR"
 
-# Load region-specific config
-CONFIG_FILE=".github/configs/.env.${REGION}"
-if [ ! -f "$CONFIG_FILE" ]; then
-    echo "Error: Config file not found: $CONFIG_FILE"
-    exit 1
-fi
-
 # Prepare the build command
 BUILD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml")
 
