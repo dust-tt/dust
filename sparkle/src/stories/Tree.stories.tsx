@@ -469,6 +469,16 @@ export const TreeExample = () => {
                       },
                     }}
                   />
+                  <Tree.Item
+                    label="Item 3"
+                    type="leaf"
+                    checkbox={{
+                      checked: "partial",
+                      onChange: () => {
+                        return;
+                      },
+                    }}
+                  />
                 </Tree>
               </Tree.Item>
             </Tree>

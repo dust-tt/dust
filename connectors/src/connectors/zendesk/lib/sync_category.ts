@@ -1,9 +1,16 @@
 import type { ModelId } from "@dust-tt/types";
 
 import type { ZendeskFetchedCategory } from "@connectors/@types/node-zendesk";
-import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import {
+  getArticleInternalId,
+  getCategoryInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import {
+  deleteFolderNode,
+  deleteFromDataSource,
+  upsertFolderNode,
+} from "@connectors/lib/data_sources";
 import {
   ZendeskArticleResource,
   ZendeskCategoryResource,
@@ -16,13 +23,15 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 export async function deleteCategory({
   connectorId,
   categoryId,
+  brandId,
   dataSourceConfig,
 }: {
   connectorId: number;
   categoryId: number;
+  brandId: number;
   dataSourceConfig: DataSourceConfig;
 }) {
-  /// deleting the articles in the data source
+  // deleting the articles in the data source
   const articles = await ZendeskArticleResource.fetchByCategoryId({
     connectorId,
     categoryId,
@@ -36,11 +45,14 @@ export async function deleteCategory({
       ),
     { concurrency: 10 }
   );
-  /// deleting the articles stored in the db
+  // deleting the articles stored in the db
   await ZendeskArticleResource.deleteByCategoryId({
     connectorId,
     categoryId,
   });
+  // deleting the folder in data_sources_folders (core)
+  const folderId = getCategoryInternalId({ connectorId, brandId, categoryId });
+  await deleteFolderNode({ dataSourceConfig, folderId });
   // deleting the category stored in the db
   await ZendeskCategoryResource.deleteByCategoryId({ connectorId, categoryId });
 }
@@ -53,18 +65,20 @@ export async function syncCategory({
   brandId,
   category,
   currentSyncDateMs,
+  dataSourceConfig,
 }: {
   connectorId: ModelId;
   brandId: number;
   category: ZendeskFetchedCategory;
   currentSyncDateMs: number;
+  dataSourceConfig: DataSourceConfig;
 }): Promise<void> {
-  const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
+  let categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     categoryId: category.id,
   });
   if (!categoryInDb) {
-    await ZendeskCategoryResource.makeNew({
+    categoryInDb = await ZendeskCategoryResource.makeNew({
       blob: {
         name: category.name || "Category",
         url: category.html_url,
@@ -84,4 +98,12 @@ export async function syncCategory({
       lastUpsertedTs: new Date(currentSyncDateMs),
     });
   }
+  // upserting a folder to data_sources_folders (core)
+  const parents = categoryInDb.getParentInternalIds(connectorId);
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: parents[0],
+    parents,
+    title: categoryInDb.name,
+  });
 }

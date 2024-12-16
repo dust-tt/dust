@@ -4,9 +4,13 @@ import React from "react";
 import {
   Button,
   Citation,
+  CitationIcons,
+  CitationTitle,
   ConversationMessage,
+  GithubIcon,
+  Icon,
   MagnifyingGlassIcon,
-  ZoomableImageCitationWrapper,
+  SlackLogo,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -43,47 +47,20 @@ export const ConversationExample = () => {
               />,
             ]}
             citations={[
-              <Citation
-                title="Source: Thread on #general message from @ed"
-                size="xs"
-                sizing="fluid"
-                type="slack"
-                index="1"
-                href="https://www.google.com"
-              />,
-              <Citation
-                title="Title"
-                type="github"
-                size="xs"
-                sizing="fluid"
-                index="2"
-                href="https://www.google.com"
-              />,
-
-              <ZoomableImageCitationWrapper
-                size="xs"
-                title="Title"
-                imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-                alt={"Image"}
-              />,
-              <ZoomableImageCitationWrapper
-                size="xs"
-                title="Title"
-                imgSrc="https://placecats.com/poppy/600/600" // Service that generates random cat images of a given size
-                alt={"Image"}
-              />,
-              <ZoomableImageCitationWrapper
-                size="xs"
-                title="Title"
-                imgSrc="https://placecats.com/neo/1200/700"
-                alt={"Image"}
-              />,
-              <ZoomableImageCitationWrapper
-                size="xs"
-                title="Title"
-                imgSrc="https://placecats.com/800/400"
-                alt={"Image"}
-              />,
+              <Citation href="https://www.google.com">
+                <CitationIcons>
+                  <Icon visual={SlackLogo} size="sm" />
+                </CitationIcons>
+                <CitationTitle>
+                  Source: Thread on #general message from @ed
+                </CitationTitle>
+              </Citation>,
+              <Citation href="https://www.google.com">
+                <CitationIcons>
+                  <Icon visual={GithubIcon} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Title</CitationTitle>
+              </Citation>,
             ]}
           >
             To conditionally render the citations only if a citations React node
@@ -120,6 +97,7 @@ export const ConversationExample = () => {
           <ConversationMessage
             type="agent"
             name="@assistant"
+            size="compact"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
               <Button
@@ -129,29 +107,20 @@ export const ConversationExample = () => {
               />,
             ]}
             citations={[
-              <Citation
-                title="Source: Thread on #general message from @ed"
-                size="xs"
-                sizing="fluid"
-                type="slack"
-                index="1"
-                href="https://www.google.com"
-              />,
-              <Citation
-                title="Title"
-                type="github"
-                size="xs"
-                sizing="fluid"
-                index="2"
-                href="https://www.google.com"
-              />,
-
-              <ZoomableImageCitationWrapper
-                size="xs"
-                title="Title"
-                imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-                alt={"Image"}
-              />,
+              <Citation href="https://www.google.com">
+                <CitationIcons>
+                  <Icon visual={SlackLogo} size="sm" />
+                </CitationIcons>
+                <CitationTitle>
+                  Source: Thread on #general message from @ed
+                </CitationTitle>
+              </Citation>,
+              <Citation href="https://www.google.com">
+                <CitationIcons>
+                  <Icon visual={GithubIcon} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Title</CitationTitle>
+              </Citation>,
             ]}
           >
             To conditionally render the citations only if a citations React node

@@ -2,24 +2,8 @@ import type {
   ConversationMessageSizeType,
   FeedbackSelectorProps,
 } from "@dust-tt/sparkle";
-import { CitationNewIndex } from "@dust-tt/sparkle";
-import {
-  CitationNew,
-  CitationNewIcons,
-  CitationNewTitle,
-  ConfluenceLogo,
-  DocumentTextIcon,
-  DriveLogo,
-  GithubLogo,
-  Icon,
-  ImageIcon,
-  IntercomLogo,
-  MicrosoftLogo,
-  NotionLogo,
-  SlackLogo,
-  SnowflakeLogo,
-  ZendeskLogo,
-} from "@dust-tt/sparkle";
+import { CitationIndex } from "@dust-tt/sparkle";
+import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -92,20 +76,6 @@ import {
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
-
-const typeIcons = {
-  confluence: ConfluenceLogo,
-  document: DocumentTextIcon,
-  github: GithubLogo,
-  google_drive: DriveLogo,
-  intercom: IntercomLogo,
-  microsoft: MicrosoftLogo,
-  zendesk: ZendeskLogo,
-  notion: NotionLogo,
-  slack: SlackLogo,
-  image: ImageIcon,
-  snowflake: SnowflakeLogo,
-};
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -725,13 +695,13 @@ function getCitations({
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <CitationNew key={index} href={document.href}>
-        <CitationNewIcons>
-          <CitationNewIndex>{index}</CitationNewIndex>
-          <Icon visual={typeIcons[document.type]} />
-        </CitationNewIcons>
-        <CitationNewTitle>{document.title}</CitationNewTitle>
-      </CitationNew>
+      <Citation key={index} href={document.href}>
+        <CitationIcons>
+          <CitationIndex>{index}</CitationIndex>
+          {document.icon}
+        </CitationIcons>
+        <CitationTitle>{document.title}</CitationTitle>
+      </Citation>
     );
   });
 }

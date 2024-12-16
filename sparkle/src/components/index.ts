@@ -25,7 +25,6 @@ export {
 } from "./Checkbox";
 export { Chip } from "./Chip";
 export * from "./Citation";
-export * from "./CitationNew";
 export { default as CollapseButton } from "./CollapseButton";
 export { Collapsible } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
@@ -123,5 +122,3 @@ export {
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
-export { ComposableCard, ValueCard } from "./ValueCard";
-export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";

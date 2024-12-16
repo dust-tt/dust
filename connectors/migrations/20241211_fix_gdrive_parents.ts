@@ -1,4 +1,4 @@
-import { getGoogleSheetTableId } from "@dust-tt/types";
+import { concurrentExecutor, getGoogleSheetTableId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
@@ -19,6 +19,8 @@ import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const QUERY_BATCH_SIZE = 1024;
+const DOCUMENT_CONCURRENCY = 16;
+const TABLE_CONCURRENCY = 16;
 
 function getParents(
   fileId: string | null,
@@ -88,45 +90,109 @@ async function migrate({
       }
     );
 
-    for (const file of googleDriveFiles) {
-      const internalId = file.dustFileId;
-      const driveFileId = file.driveFileId;
-      const parents = getParents(
-        file.parentId,
-        parentsMap,
-        childLogger.child({ nodeId: driveFileId })
-      );
-      if (!parents) {
-        continue;
-      }
-      parents.unshift(driveFileId);
+    await concurrentExecutor(
+      googleDriveFiles,
+      async (file) => {
+        const internalId = file.dustFileId;
+        const driveFileId = file.driveFileId;
+        const parents = getParents(
+          file.parentId,
+          parentsMap,
+          childLogger.child({ nodeId: driveFileId })
+        );
+        if (!parents) {
+          return;
+        }
+        parents.unshift(driveFileId);
 
-      if (file.mimeType === "application/vnd.google-apps.folder") {
-        const folder = await getFolderNode({
-          dataSourceConfig,
-          folderId: internalId,
-        });
-        const newParents = parents.map((id) => getDocumentId(id));
-        if (!folder || folder.parents.join("/") !== newParents.join("/")) {
-          childLogger.info(
-            { folderId: file.driveFileId, parents: newParents },
-            "Upsert folder"
-          );
+        if (file.mimeType === "application/vnd.google-apps.folder") {
+          const folder = await getFolderNode({
+            dataSourceConfig,
+            folderId: internalId,
+          });
+          const newParents = parents.map((id) => getDocumentId(id));
+          if (!folder || folder.parents.join("/") !== newParents.join("/")) {
+            childLogger.info(
+              { folderId: file.driveFileId, parents: newParents },
+              "Upsert folder"
+            );
 
-          if (execute) {
-            // upsert repository as folder
-            await upsertFolderNode({
-              dataSourceConfig,
-              folderId: file.dustFileId,
-              parents: newParents,
-              parentId: file.parentId ? getDocumentId(file.parentId) : null,
-              title: file.name,
-            });
+            if (execute) {
+              // upsert repository as folder
+              await upsertFolderNode({
+                dataSourceConfig,
+                folderId: file.dustFileId,
+                parents: newParents,
+                parentId: file.parentId ? getDocumentId(file.parentId) : null,
+                title: file.name,
+              });
+            }
+          }
+        } else if (file.mimeType === "text/csv") {
+          const tableId = internalId;
+          parents.unshift(...parents.map((id) => getDocumentId(id)));
+          const table = await getTable({ dataSourceConfig, tableId });
+          if (table) {
+            if (table.parents.join("/") !== parents.join("/")) {
+              childLogger.info(
+                {
+                  tableId,
+                  parents,
+                  previousParents: table.parents,
+                },
+                "Update parents for table"
+              );
+              if (execute) {
+                await updateTableParentsField({
+                  dataSourceConfig,
+                  tableId,
+                  parents,
+                });
+              }
+            }
           }
         }
-      } else if (file.mimeType === "text/csv") {
-        const tableId = internalId;
+      },
+      { concurrency: DOCUMENT_CONCURRENCY }
+    );
+
+    nextId = googleDriveFiles[googleDriveFiles.length - 1]?.id;
+  } while (nextId);
+
+  nextId = 0;
+  do {
+    const googleDriveSheets: GoogleDriveSheet[] =
+      await GoogleDriveSheet.findAll({
+        where: {
+          connectorId: connector.id,
+          id: {
+            [Op.gt]: nextId,
+          },
+        },
+        order: [["id", "ASC"]],
+        limit: QUERY_BATCH_SIZE,
+      });
+
+    await concurrentExecutor(
+      googleDriveSheets,
+      async (sheet) => {
+        const tableId = getGoogleSheetTableId(
+          sheet.driveFileId,
+          sheet.driveSheetId
+        );
+
+        const parents = getParents(
+          sheet.driveFileId,
+          parentsMap,
+          childLogger.child({ nodeId: tableId })
+        );
+        if (!parents) {
+          return;
+        }
+
         parents.unshift(...parents.map((id) => getDocumentId(id)));
+        parents.unshift(tableId);
+
         const table = await getTable({ dataSourceConfig, tableId });
         if (table) {
           if (table.parents.join("/") !== parents.join("/")) {
@@ -147,65 +213,9 @@ async function migrate({
             }
           }
         }
-      }
-    }
-
-    nextId = googleDriveFiles[googleDriveFiles.length - 1]?.id;
-  } while (nextId);
-
-  nextId = 0;
-  do {
-    const googleDriveSheets: GoogleDriveSheet[] =
-      await GoogleDriveSheet.findAll({
-        where: {
-          connectorId: connector.id,
-          id: {
-            [Op.gt]: nextId,
-          },
-        },
-        order: [["id", "ASC"]],
-        limit: QUERY_BATCH_SIZE,
-      });
-
-    for (const sheet of googleDriveSheets) {
-      const tableId = getGoogleSheetTableId(
-        sheet.driveFileId,
-        sheet.driveSheetId
-      );
-
-      const parents = getParents(
-        sheet.driveFileId,
-        parentsMap,
-        childLogger.child({ nodeId: tableId })
-      );
-      if (!parents) {
-        continue;
-      }
-
-      parents.unshift(...parents.map((id) => getDocumentId(id)));
-      parents.unshift(tableId);
-
-      const table = await getTable({ dataSourceConfig, tableId });
-      if (table) {
-        if (table.parents.join("/") !== parents.join("/")) {
-          childLogger.info(
-            {
-              tableId,
-              parents,
-              previousParents: table.parents,
-            },
-            "Update parents for table"
-          );
-          if (execute) {
-            await updateTableParentsField({
-              dataSourceConfig,
-              tableId,
-              parents,
-            });
-          }
-        }
-      }
-    }
+      },
+      { concurrency: TABLE_CONCURRENCY }
+    );
 
     nextId = googleDriveSheets[googleDriveSheets.length - 1]?.id;
   } while (nextId);

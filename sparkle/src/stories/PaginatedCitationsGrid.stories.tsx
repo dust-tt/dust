@@ -1,9 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { CitationType } from "@sparkle/components/Citation";
-
-import { PaginatedCitationsGrid } from "../index_with_tw_base";
+import { DocumentIcon, PaginatedCitationsGrid } from "../index_with_tw_base";
 
 const meta = {
   title: "Modules/PaginatedCitationsGrid",
@@ -16,7 +14,7 @@ function makeCitationItems(items: number) {
   return Array.from({ length: items }, (_, idx) => ({
     title: `test ${idx + 1}`,
     href: "empty",
-    type: "document" as CitationType,
+    icon: <DocumentIcon />,
   }));
 }
 

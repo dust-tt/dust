@@ -1,3 +1,4 @@
+import { DocumentTextStrokeIcon } from "@dust-tt/sparkle";
 import type { WebsearchActionType, WebsearchResultType } from "@dust-tt/types";
 
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
@@ -9,7 +10,7 @@ export function makeWebsearchResultsCitation(
     description: result.snippet,
     href: result.link,
     title: result.title,
-    type: "document" as const,
+    icon: <DocumentTextStrokeIcon />,
   };
 }
 

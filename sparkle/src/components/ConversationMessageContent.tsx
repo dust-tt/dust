@@ -17,7 +17,7 @@ export function ConversationMessageContent({
   return (
     <div
       className={cn(
-        "s-flex s-flex-col s-justify-stretch",
+        "s-flex s-flex-col s-justify-stretch s-@container",
         size === "compact" ? "s-gap-3" : "s-gap-4"
       )}
     >
@@ -32,8 +32,10 @@ export function ConversationMessageContent({
       {citations && (
         <div
           className={cn(
-            "s-grid s-gap-2",
-            size === "compact" ? "s-grid-cols-2" : "s-grid-cols-4"
+            "s-grid s-grid-cols-2 s-gap-2",
+            size === "compact"
+              ? ""
+              : "@xs:s-grid-cols-2 @sm:s-grid-cols-3 @lg:s-grid-cols-4 @xl:s-grid-cols-5"
           )}
         >
           {citations}

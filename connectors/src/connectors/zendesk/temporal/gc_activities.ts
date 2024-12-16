@@ -2,7 +2,11 @@ import type { ModelId } from "@dust-tt/types";
 
 import {
   getArticleInternalId,
+  getBrandInternalId,
+  getCategoryInternalId,
+  getHelpCenterInternalId,
   getTicketInternalId,
+  getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteCategory } from "@connectors/connectors/zendesk/lib/sync_category";
@@ -16,7 +20,10 @@ import { getZendeskGarbageCollectionWorkflowId } from "@connectors/connectors/ze
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
+import {
+  deleteFolderNode,
+  deleteFromDataSource,
+} from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -211,20 +218,20 @@ export async function removeForbiddenCategoriesActivity(
   };
 
   const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
-  const categoryIds =
+  const categoryIdsWithBrand =
     await ZendeskCategoryResource.fetchReadForbiddenCategoryIds({
       connectorId,
       batchSize,
     });
   logger.info(
-    { ...loggerArgs, categoryCount: categoryIds.length },
+    { ...loggerArgs, categoryCount: categoryIdsWithBrand.length },
     "[Zendesk] Removing categories with no permission."
   );
 
-  for (const categoryId of categoryIds) {
-    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+  for (const ids of categoryIdsWithBrand) {
+    await deleteCategory({ connectorId, ...ids, dataSourceConfig });
   }
-  return { hasMore: categoryIds.length === batchSize };
+  return { hasMore: categoryIdsWithBrand.length === batchSize };
 }
 
 /**
@@ -244,20 +251,19 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const categoryIds = (
-    await ZendeskCategoryResource.fetchIdsForConnector(connectorId)
-  ).map(({ categoryId }) => categoryId);
+  const categoryIdsWithBrand =
+    await ZendeskCategoryResource.fetchIdsForConnector(connectorId);
 
-  const categoriesToDelete = new Set<number>();
+  const categoriesToDelete = new Set<{ categoryId: number; brandId: number }>();
   await concurrentExecutor(
-    categoryIds,
-    async (categoryId) => {
+    categoryIdsWithBrand,
+    async ({ categoryId, brandId }) => {
       const articles = await ZendeskArticleResource.fetchByCategoryIdReadOnly({
         connectorId,
         categoryId,
       });
       if (articles.length === 0) {
-        categoriesToDelete.add(categoryId);
+        categoriesToDelete.add({ categoryId, brandId });
       }
     },
     { concurrency: 10 }
@@ -267,8 +273,8 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
     "[Zendesk] Removing empty categories."
   );
 
-  for (const categoryId of categoriesToDelete) {
-    await deleteCategory({ connectorId, categoryId, dataSourceConfig });
+  for (const ids of categoriesToDelete) {
+    await deleteCategory({ connectorId, ...ids, dataSourceConfig });
   }
 }
 
@@ -291,6 +297,30 @@ export async function deleteBrandsWithNoPermissionActivity(
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
+  // deleting from data_sources_folders (core)
+  const brands =
+    await ZendeskBrandResource.fetchBrandsWithNoPermission(connectorId);
+
+  await concurrentExecutor(
+    brands,
+    async (brandId) => {
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: getBrandInternalId({ connectorId, brandId }),
+      });
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: getHelpCenterInternalId({ connectorId, brandId }),
+      });
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: getTicketsInternalId({ connectorId, brandId }),
+      });
+    },
+    { concurrency: 10 }
+  );
+
+  // deleting from zendesk_brands (connectors)
   const deletedCount =
     await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
 
@@ -423,10 +453,26 @@ export async function deleteCategoryBatchActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const deletedCount = await ZendeskCategoryResource.deleteByBrandId({
+  const categories = await ZendeskCategoryResource.fetchByBrandId({
     connectorId,
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
+  });
+
+  await concurrentExecutor(
+    categories,
+    async ({ categoryId, brandId }) => {
+      await deleteFolderNode({
+        dataSourceConfig,
+        folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
+      });
+    },
+    { concurrency: 10 }
+  );
+
+  const deletedCount = await ZendeskCategoryResource.deleteByCategoryIds({
+    connectorId,
+    categoryIds: categories.map((category) => category.categoryId),
   });
   logger.info(
     { ...loggerArgs, brandId, deletedCount },
