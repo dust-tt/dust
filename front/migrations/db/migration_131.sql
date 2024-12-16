@@ -1,0 +1,1 @@
+ALTER TABLE "public"."agent_message_feedbacks" ADD COLUMN "conversationShared" BOOLEAN DEFAULT false;
