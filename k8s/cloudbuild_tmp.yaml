@@ -3,7 +3,7 @@ steps:
     name: 'mikefarah/yq'
     script: |
       #!/usr/bin/env sh
-      yq '.env' -o=props '.github/configs/${_REGION}.yaml' > /build-args/build-args.txt
+      yq '.env' -o=props '.github/configs/${_REGION}.yaml' > /workspace/build-args.txt
     volumes:
       - name: 'build-args'
         path: '/build-args'
@@ -24,7 +24,7 @@ steps:
           value=$(echo "$value" | xargs)
           build_args+=("--build-arg" "${key}=${value}")
         fi
-      done < /build-args/build-args.txt
+      done < /workspace/build-args.txt
       
       echo "BUILD ARGUMENTS:"
       echo ${build_args[@]}
