@@ -13,6 +13,9 @@ steps:
           build_args+=("--build-arg" "${key}=${value}")
         fi
       done < <(yq .env -o=props .github/configs/${_REGION}.yaml)
+      
+      echo "BUILD ARGUMENTS:"
+      echo ${build_args[@]}
 
       depot build \
         --project 3vz0lnf16v \
