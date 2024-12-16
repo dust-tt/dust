@@ -13,7 +13,7 @@ steps:
         CONFIG_SUFFIX="prod"
       fi
 
-      CONFIG_FILE=".github/configs/.env.${_REGION}-${CONFIG_SUFFIX}"
+      CONFIG_FILE=".github/configs/${_REGION}/.env.${CONFIG_SUFFIX}"
 
       build_args=()
       while IFS='=' read -r key value; do
