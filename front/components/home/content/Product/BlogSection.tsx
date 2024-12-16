@@ -47,7 +47,7 @@ export function BlogSection() {
                 href="https://blog.dust.tt/november-five-ai-transformation-dust/"
               >
                 <img
-                  src="https://blog.dust.tt/content/images/size/w2000/2024/04/DSCF6552-1.jpeg"
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/07/blog_nov.png"
                   alt="Blog Image"
                 />
               </BlogBlock>
@@ -59,7 +59,7 @@ export function BlogSection() {
                 href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
               >
                 <img
-                  src="https://blog.dust.tt/content/images/size/w2000/2024/04/Ele-onore-MOTTE--1--1.jpg"
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/07/blog_penny.png"
                   alt="Blog Image"
                 />
               </BlogBlock>
@@ -71,7 +71,7 @@ export function BlogSection() {
                 href="https://blog.dust.tt/integrating-ai-workflows-alan/"
               >
                 <img
-                  src="https://blog.dust.tt/content/images/size/w2000/2024/03/cover-vincent.png"
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/07/blog_alan.png"
                   alt="Blog Image"
                 />
               </BlogBlock>
