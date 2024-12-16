@@ -129,10 +129,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (key.isSystem) {
       whereCondition = {
         ...whereCondition,
-        [Op.or]: [
-          { kind: { [Op.in]: ["system", "global"] } },
-          { id: key.groupId },
-        ],
       };
     } else {
       // If it's not a system key, we only fetch the associated group.
