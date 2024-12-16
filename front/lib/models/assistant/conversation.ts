@@ -310,10 +310,6 @@ export class AgentMessageFeedback extends BaseModel<AgentMessageFeedback> {
 
   declare agentMessage: NonAttribute<AgentMessage>;
   declare user: NonAttribute<UserModel>;
-
-  // Make it easier to get the conversationId and messageId
-  declare conversationId: NonAttribute<Conversation["sId"] | undefined>;
-  declare messageId: NonAttribute<Message["sId"] | undefined>;
 }
 
 AgentMessageFeedback.init(
