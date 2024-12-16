@@ -37,6 +37,7 @@ const {
   fetchConfluenceUserAccountAndConnectorIdsActivity,
 
   fetchConfluenceConfigurationActivity,
+  confluenceUpsertSpaceFolderActivity,
   getSpaceIdsToSyncActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
@@ -149,6 +150,12 @@ export async function confluenceSpaceSyncWorkflow(
   if (spaceName === null) {
     return startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
   }
+
+  await confluenceUpsertSpaceFolderActivity({
+    connectorId,
+    spaceId,
+    spaceName,
+  });
 
   // Get the root level pages for the space.
   const rootPageRefs = await confluenceGetRootPageRefsActivity({
