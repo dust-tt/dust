@@ -1248,7 +1248,6 @@ export async function githubCodeSyncActivity({
           dataSourceConfig,
           folderId: d.internalId,
           parents: [
-            d.internalId,
             ...d.parents,
             `github-code-${repoId.toString()}`,
             repoId.toString(),
