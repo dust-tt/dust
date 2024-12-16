@@ -118,7 +118,6 @@ TemplateModel.init(
     sequelize: frontSequelize,
     modelName: "template",
     indexes: [
-      { unique: true, fields: ["sId"] },
       {
         fields: ["visibility"],
       },
