@@ -172,7 +172,7 @@ Tree.Item = function ({
             }}
           />
         )}
-        {type === "leaf" && <div className="s-w-3 s-flex-shrink-0"></div>}
+        {type === "leaf" && <div className="s-w-8 s-flex-shrink-0"></div>}
         {checkbox && <Checkbox {...checkbox} size="xs" />}
         <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
         <div
