@@ -124,15 +124,36 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
-  // upserting to data_sources_folders (core)
-  const folderId = getBrandInternalId({ connectorId, brandId });
+  // upserting three folders to data_sources_folders (core): brand, help center, tickets
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const brandInternalId = getBrandInternalId({ connectorId, brandId });
   await upsertFolderNode({
-    dataSourceConfig: dataSourceConfigFromConnector(connector),
-    folderId,
-    parents: [folderId],
+    dataSourceConfig,
+    folderId: brandInternalId,
+    parents: [brandInternalId],
     title: brandInDb.name,
   });
 
+  // using the content node to get one source of truth regarding the parent relationship
+  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId);
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: helpCenterNode.internalId,
+    parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
+    title: brandInDb.name,
+  });
+
+  // using the content node to get one source of truth regarding the parent relationship
+  const ticketsNode = brandInDb.getTicketsContentNode(connectorId);
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: ticketsNode.internalId,
+    parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
+    title: brandInDb.name,
+  });
+
+  // updating the entry in db
   await brandInDb.update({
     name: fetchedBrand.name || "Brand",
     url: fetchedBrand?.url || brandInDb.url,

@@ -341,7 +341,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   getHelpCenterContentNode(
     connectorId: number,
     { richTitle = false }: { richTitle?: boolean } = {}
-  ): ContentNode {
+  ): ContentNode & { parentInternalId: string } {
     const { brandId } = this;
     return {
       provider: "zendesk",
@@ -363,7 +363,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       expandable = false,
       richTitle = false,
     }: { expandable?: boolean; richTitle?: boolean } = {}
-  ): ContentNode {
+  ): ContentNode & { parentInternalId: string } {
     const { brandId } = this;
     return {
       provider: "zendesk",
