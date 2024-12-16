@@ -50,7 +50,7 @@ const defaultTranscriptConfigurationState = {
   assistantSelected: null,
   isActive: false,
   dataSourceView: null,
-  apiKey: null,
+  credentialId: null,
   hasDefaultConfiguration: false,
 };
 
@@ -129,7 +129,7 @@ export default function LabsTranscriptsIndex({
   const getDefaultConfiguration = useGetDefaultConfiguration({ owner });
 
   const saveApiConnection = async (
-    apiKey: string,
+    credentialId: string,
     provider: string,
     apiKeyIsEncrypted: boolean = false
   ) => {
@@ -139,7 +139,7 @@ export default function LabsTranscriptsIndex({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        apiKey,
+        credentialId,
         provider,
         apiKeyIsEncrypted,
       }),
@@ -206,7 +206,7 @@ export default function LabsTranscriptsIndex({
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
       dataSourceView: DataSourceViewType | null;
-      apiKey: string | null;
+      credentialId: string | null;
       hasDefaultConfiguration: boolean;
     }>(defaultTranscriptConfigurationState);
 
@@ -545,7 +545,7 @@ export default function LabsTranscriptsIndex({
       if (defaultConfiguration) {
         if (
           defaultConfiguration.provider !== "modjo" ||
-          !defaultConfiguration.apiKey
+          !defaultConfiguration.credentialId
         ) {
           sendNotification({
             type: "error",
@@ -557,12 +557,12 @@ export default function LabsTranscriptsIndex({
         }
 
         await saveApiConnection(
-          defaultConfiguration.apiKey,
+          defaultConfiguration.credentialId,
           defaultConfiguration.provider,
           true
         );
       } else {
-        if (!transcriptsConfigurationState.apiKey) {
+        if (!transcriptsConfigurationState.credentialId) {
           sendNotification({
             type: "error",
             title: "Modjo API key is required",
@@ -571,7 +571,7 @@ export default function LabsTranscriptsIndex({
           return;
         }
         await saveApiConnection(
-          transcriptsConfigurationState.apiKey,
+          transcriptsConfigurationState.credentialId,
           transcriptsConfigurationState.provider
         );
       }
@@ -804,11 +804,11 @@ export default function LabsTranscriptsIndex({
                     {!transcriptsConfigurationState.hasDefaultConfiguration && (
                       <Input
                         placeholder="Modjo API key"
-                        value={transcriptsConfigurationState.apiKey}
+                        value={transcriptsConfigurationState.credentialId}
                         onChange={(e) =>
                           setTranscriptsConfigurationState({
                             ...transcriptsConfigurationState,
-                            apiKey: e.target.value,
+                            credentialId: e.target.value,
                           })
                         }
                       />
