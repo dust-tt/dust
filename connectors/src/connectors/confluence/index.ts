@@ -44,12 +44,7 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import {
-  deleteFolderNode,
-  upsertFolderNode,
-} from "@connectors/lib/data_sources";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -327,7 +322,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         new Error(`Connector not found with id ${this.connectorId}`)
       );
     }
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     let spaces: ConfluenceSpaceType[] = [];
     // Fetch Confluence spaces only if the intention is to add new spaces to sync.
@@ -355,8 +349,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           },
         });
 
-        await deleteFolderNode({ dataSourceConfig, folderId: internalId });
-
         removedSpaceIds.push(confluenceId);
       } else if (permission === "read") {
         const confluenceSpace = spaces.find((s) => s.id === confluenceId);
@@ -366,13 +358,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           name: confluenceSpace?.name ?? confluenceId,
           spaceId: confluenceId,
           urlSuffix: confluenceSpace?._links.webui,
-        });
-
-        await upsertFolderNode({
-          dataSourceConfig,
-          folderId: internalId,
-          parents: [internalId],
-          title: confluenceSpace?.name ?? confluenceId,
         });
 
         addedSpaceIds.push(confluenceId);

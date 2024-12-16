@@ -18,16 +18,21 @@ import {
   getConfluencePageParentIds,
   getSpaceHierarchy,
 } from "@connectors/connectors/confluence/lib/hierarchy";
-import { makePageInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
+import {
+  makePageInternalId,
+  makeSpaceInternalId,
+} from "@connectors/connectors/confluence/lib/internal_ids";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { UpsertToDataSourceParams } from "@connectors/lib/data_sources";
 import {
+  deleteFolderNode,
   deleteFromDataSource,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   updateDocumentParentsField,
+  upsertFolderNode,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import {
@@ -194,6 +199,28 @@ export async function confluenceGetSpaceNameActivity({
 
     throw err;
   }
+}
+
+/**
+ * Upserts the page in data_sources_folders (core).
+ */
+export async function confluenceUpsertSpaceFolderActivity({
+  connectorId,
+  spaceId,
+  spaceName,
+}: {
+  connectorId: ModelId;
+  spaceId: string;
+  spaceName: string;
+}) {
+  const connector = await fetchConfluenceConnector(connectorId);
+
+  await upsertFolderNode({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: makeSpaceInternalId(spaceId),
+    parents: [makeSpaceInternalId(spaceId)],
+    title: spaceName,
+  });
 }
 
 export async function markPageHasVisited({
@@ -814,6 +841,12 @@ export async function confluenceRemoveSpaceActivity(
   for (const page of allPages) {
     await deletePage(connectorId, page.pageId, dataSourceConfig);
   }
+
+  // deleting the folder in data_source_folders (core)
+  await deleteFolderNode({
+    dataSourceConfig,
+    folderId: makeSpaceInternalId(spaceId),
+  });
 }
 
 export async function fetchConfluenceSpaceIdsForConnectorActivity({
