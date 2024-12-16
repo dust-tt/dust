@@ -1,10 +1,10 @@
-import type { CitationType, FeedbackSelectorProps } from "@dust-tt/sparkle";
+import type { FeedbackSelectorProps } from "@dust-tt/sparkle";
 import {
   Avatar,
-  CitationNew,
-  CitationNewIcons,
-  CitationNewImage,
-  CitationNewTitle,
+  Citation,
+  CitationIcons,
+  CitationImage,
+  CitationTitle,
   DocumentTextIcon,
   Icon,
   SlackLogo,
@@ -109,7 +109,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const citationType: CitationType = [
+              const citationType = [
                 "dust-application/slack",
                 "text/vnd.dust.attachment.slack.thread",
               ].includes(contentFragment.contentType)
@@ -120,34 +120,34 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 citationType === "slack" ? SlackLogo : DocumentTextIcon;
 
               return (
-                <CitationNew
+                <Citation
                   key={contentFragment.sId}
                   href={contentFragment.sourceUrl ?? undefined}
                 >
                   <div className="flex gap-2">
                     {contentFragment.context.profilePictureUrl && (
-                      <CitationNewIcons>
+                      <CitationIcons>
                         <Avatar
                           visual={contentFragment.context.profilePictureUrl}
                           size="xs"
                         />
-                      </CitationNewIcons>
+                      </CitationIcons>
                     )}
                     {contentFragment.sourceUrl ? (
                       <>
-                        <CitationNewImage imgSrc={contentFragment.sourceUrl} />
-                        <CitationNewIcons>
+                        <CitationImage imgSrc={contentFragment.sourceUrl} />
+                        <CitationIcons>
                           <Icon visual={icon} />
-                        </CitationNewIcons>
+                        </CitationIcons>
                       </>
                     ) : (
-                      <CitationNewIcons>
+                      <CitationIcons>
                         <Icon visual={icon} />
-                      </CitationNewIcons>
+                      </CitationIcons>
                     )}
                   </div>
-                  <CitationNewTitle>{contentFragment.title}</CitationNewTitle>
-                </CitationNew>
+                  <CitationTitle>{contentFragment.title}</CitationTitle>
+                </Citation>
               );
             })
           : undefined;

@@ -1,8 +1,8 @@
 import {
-  CitationNew,
-  CitationNewDescription,
-  CitationNewIcons,
-  CitationNewTitle,
+  Citation,
+  CitationDescription,
+  CitationIcons,
+  CitationTitle,
   GlobeAltIcon,
   Icon,
 } from "@dust-tt/sparkle";
@@ -34,15 +34,15 @@ export function BrowseActionDetails({
                 </span>
 
                 {r.responseCode === "200" ? (
-                  <CitationNew key={idx} href={r.browsedUrl}>
-                    <CitationNewIcons>
+                  <Citation key={idx} href={r.browsedUrl}>
+                    <CitationIcons>
                       <Icon visual={GlobeAltIcon} />
-                    </CitationNewIcons>
-                    <CitationNewTitle>{r.browsedUrl}</CitationNewTitle>
-                    <CitationNewDescription>
+                    </CitationIcons>
+                    <CitationTitle>{r.browsedUrl}</CitationTitle>
+                    <CitationDescription>
                       {r.content.slice(0, 500)}
-                    </CitationNewDescription>
-                  </CitationNew>
+                    </CitationDescription>
+                  </Citation>
                 ) : (
                   <span className="text-sm text-slate-900">
                     Cannot fetch content, error code : {r.responseCode}.
