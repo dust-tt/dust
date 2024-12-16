@@ -5,13 +5,13 @@ import {
   executeChild,
   proxyActivities,
   setHandler,
+  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as sync_status from "@connectors/lib/sync_status";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
 import { folderUpdatesSignal } from "./signals";
@@ -166,7 +166,6 @@ type DrivesToSyncType = {
  */
 export async function googleDriveIncrementalSync(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
   startSyncTs: number | undefined = undefined,
   drivesToSync: DrivesToSyncType | undefined = undefined,
   nextPageToken: string | undefined = undefined
@@ -199,7 +198,6 @@ export async function googleDriveIncrementalSync(
     do {
       nextPageToken = await incrementalSync(
         connectorId,
-        dataSourceConfig,
         googleDrive.id,
         googleDrive.isShared,
         startSyncTs,
@@ -210,7 +208,6 @@ export async function googleDriveIncrementalSync(
       if (workflowInfo().historyLength > 4000) {
         await continueAsNew<typeof googleDriveIncrementalSync>(
           connectorId,
-          dataSourceConfig,
           startSyncTs,
           drivesToSync,
           nextPageToken
@@ -238,6 +235,9 @@ export async function googleDriveIncrementalSync(
   }
 
   await syncSucceeded(connectorId);
+
+  await sleep("60 minutes");
+  await continueAsNew<typeof googleDriveIncrementalSync>(connectorId);
 }
 
 export async function googleDriveGarbageCollectorWorkflow(
