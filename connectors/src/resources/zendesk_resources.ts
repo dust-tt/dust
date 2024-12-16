@@ -24,7 +24,8 @@ import {
   ZendeskTicket,
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
-import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -186,6 +187,15 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     if (this.ticketsPermission === "read") {
       await this.update({ ticketsPermission: "none" });
     }
+  }
+
+  static async fetchByConnector(
+    connector: ConnectorResource
+  ): Promise<ZendeskBrandResource[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId: connector.id },
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
   }
 
   static async fetchByBrandId({
@@ -454,6 +464,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       const { categoryId, brandId } = category.get();
       return { categoryId, brandId };
     });
+  }
+
+  static async fetchByConnector(
+    connector: ConnectorResource
+  ): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId: connector.id },
+    });
+    return categories.map((category) => new this(this.model, category.get()));
   }
 
   static async fetchIdsForConnector(
