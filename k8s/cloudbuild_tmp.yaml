@@ -5,15 +5,15 @@ steps:
       #!/usr/bin/env bash
 
       build_args=()
-      while IFS=': ' read -r key value; do
-        # Remove surrounding quotes from value
-        value=$(echo "$value" | sed 's/^"\(.*\)"$/\1/')
-
+      while IFS='=' read -r key value; do
         if [[ -n "$key" ]]; then
-          build_args+=(--build-arg "${key}=${value}")
+          # Trim any whitespace from key and value
+          key=$(echo "$key" | xargs)
+          value=$(echo "$value" | xargs)
+          build_args+=("--build-arg" "${key}=${value}")
         fi
-      done < <(yq e '.env' .github/configs/us-central1.yaml)
-      
+      done < <(yq .env -o=props .github/configs/${_REGION}.yaml)
+
       depot build \
         --project 3vz0lnf16v \
         --provenance=false \
@@ -21,7 +21,7 @@ steps:
         -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
         -f ${_DOCKERFILE_PATH} \
         --build-arg COMMIT_HASH=${SHORT_SHA} \
-        "${build_args[@]}" \
+        ${build_args[@]} \
         --push \
         .
 
