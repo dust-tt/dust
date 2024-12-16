@@ -2,6 +2,7 @@ import { makeScript } from "scripts/helpers";
 
 import { getGithubCodeDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertFolderNode } from "@connectors/lib/data_sources";
 import {
   GithubCodeDirectory,
@@ -13,7 +14,7 @@ import {
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-async function main() {
+async function createFolderNodes() {
   const connectors = await ConnectorModel.findAll({
     where: {
       type: "github",
@@ -51,54 +52,48 @@ async function main() {
           connectorId: connector.id,
         },
       });
-      // upsert directories as folders, in chunks
-      for (let i = 0; i < directories.length; i += 16) {
-        const chunk = directories.slice(i, i + 16);
-        await Promise.all(
-          chunk.map(async (directory) => {
-            await upsertDirectoryFolderNode(
-              directory,
-              repository.id,
-              dataSourceConfig
-            );
-          })
-        );
-      }
-    }
-
-    // Upsert issue folder if we have issues
-    const repoWithDiscussions = await getUniqueRepositoryIdsWithIssues(
-      connector.id
-    );
-    // Chunk and create issue nodes
-    for (let i = 0; i < repoWithDiscussions.length; i += 16) {
-      const chunk = repoWithDiscussions.slice(i, i + 16);
-      await Promise.all(
-        chunk.map(async (repoId) => {
-          // The node id is the same as the repoId
-          await upsertIssueFolderNode(repoId, `${repoId}`, dataSourceConfig);
-        })
-      );
-    }
-
-    // Upsert discussion folder if we have discussions
-    const repoWithIssues = await getUniqueRepositoryIdsWithDiscussions(
-      connector.id
-    );
-    // Chunk and create discussion nodes
-    for (let i = 0; i < repoWithIssues.length; i += 16) {
-      const chunk = repoWithIssues.slice(i, i + 16);
-      await Promise.all(
-        chunk.map(async (repoId) => {
-          await upsertDiscussionFolderNode(
-            repoId,
-            // The node id is the same as the repoId
-            `${repoId}`,
+      // Upsert directories as folders, in chunks
+      await concurrentExecutor(
+        directories,
+        async (directory) => {
+          await upsertDirectoryFolderNode(
+            directory,
+            repository.id,
             dataSourceConfig
           );
-        })
+        },
+        { concurrency: 16 }
       );
     }
+
+    // Upsert issues folder if we have some
+    const repoWithIssues = await getUniqueRepositoryIdsWithIssues(connector.id);
+    await concurrentExecutor(
+      repoWithIssues,
+      async (repoId) => {
+        // The node id is the same as the repoId
+        await upsertIssueFolderNode(repoId, `${repoId}`, dataSourceConfig);
+      },
+      { concurrency: 16 }
+    );
+
+    // Upsert discussions folder if we have some
+    const repoWithDiscussions = await getUniqueRepositoryIdsWithDiscussions(
+      connector.id
+    );
+    await concurrentExecutor(
+      repoWithDiscussions,
+      async (repoId) => {
+        // The node id is the same as the repoId
+        await upsertDiscussionFolderNode(
+          repoId,
+          // The node id is the same as the repoId
+          `${repoId}`,
+          dataSourceConfig
+        );
+      },
+      { concurrency: 16 }
+    );
   }
 }
 
@@ -221,6 +216,6 @@ async function getUniqueRepositoryIdsWithDiscussions(connectorId: number) {
 
 makeScript({}, async ({ execute }) => {
   if (execute) {
-    await main();
+    await createFolderNodes();
   }
 });

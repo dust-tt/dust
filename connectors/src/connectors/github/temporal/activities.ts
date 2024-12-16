@@ -1296,14 +1296,12 @@ export async function githubCodeSyncActivity({
     );
 
     // Create the Code folder node.
-    if (files.length > 0 || directories.length > 0) {
-      await upsertFolderNode({
-        dataSourceConfig,
-        folderId: `github-code-${repoId}`,
-        title: "Code",
-        parents: [`github-code-${repoId}`, repoId.toString()],
-      });
-    }
+    await upsertFolderNode({
+      dataSourceConfig,
+      folderId: `github-code-${repoId}`,
+      title: "Code",
+      parents: [`github-code-${repoId}`, repoId.toString()],
+    });
 
     // Finally we update the repository updatedAt value.
     if (repoUpdatedAt) {
