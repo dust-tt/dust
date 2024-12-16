@@ -309,6 +309,15 @@ export async function syncZendeskCategoryActivity({
     return { shouldSyncArticles: false };
   }
 
+  // upserting a folder to data_sources_folders (core)
+  const parents = categoryInDb.getParentInternalIds(connectorId);
+  await upsertFolderNode({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: parents[0],
+    parents,
+    title: categoryInDb.name,
+  });
+
   // otherwise, we update the category name and lastUpsertedTs
   await categoryInDb.update({
     name: fetchedCategory.name || "Category",
