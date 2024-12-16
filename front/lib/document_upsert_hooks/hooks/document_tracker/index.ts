@@ -13,7 +13,12 @@ export const documentTrackerUpsertHook: DocumentUpsertHook = {
     documentId,
     documentHash,
     dataSourceConnectorProvider,
+    upsertContext,
   }) => {
+    if (upsertContext?.sync_type !== "incremental") {
+      return;
+    }
+
     const owner = auth.workspace();
     if (!owner) {
       return;
