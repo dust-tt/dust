@@ -175,7 +175,7 @@ export async function createOrUpdateMessageFeedback(
       userId: user.id,
       thumbDirection,
       content,
-      conversationShared: false,
+      isConversationShared: false,
     });
     return newFeedback !== null;
   }
