@@ -182,12 +182,14 @@ async function handleFileExport(
   if (file.mimeType === "text/plain") {
     result = handleTextFile(res.data, maxDocumentLen);
   } else if (file.mimeType === "text/csv") {
-    const parents = await getFileParentsMemoized(
+    const parentGoogleIds = await getFileParentsMemoized(
       connectorId,
       oauth2client,
       file,
       startSyncTs
     );
+
+    const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
 
     result = await handleCsvFile({
       data: res.data,
@@ -198,7 +200,8 @@ async function handleFileExport(
       dataSourceConfig,
       provider: "google_drive",
       connectorId,
-      parents,
+      // TODO(kw_search) remove legacy parentGoogleIds
+      parents: [...parents, ...parentGoogleIds],
     });
   } else {
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);
@@ -473,12 +476,14 @@ async function upsertGdriveDocument(
   const documentLen = documentContent ? sectionLength(documentContent) : 0;
 
   if (documentLen > 0 && documentLen <= maxDocumentLen) {
-    const parents = await getFileParentsMemoized(
+    const parentGoogleIds = await getFileParentsMemoized(
       connectorId,
       oauth2client,
       file,
       startSyncTs
     );
+
+    const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
 
     await upsertToDatasource({
       dataSourceConfig,
@@ -487,7 +492,8 @@ async function upsertGdriveDocument(
       documentUrl: file.webViewLink,
       timestampMs: file.updatedAtMs,
       tags,
-      parents,
+      // TODO(kw_search) remove legacy parentGoogleIds
+      parents: [...parents, ...parentGoogleIds],
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },

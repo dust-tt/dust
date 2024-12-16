@@ -12,6 +12,7 @@ import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getDocumentId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -489,16 +490,22 @@ export async function syncSpreadSheet(
         },
       });
 
-      const parents = await getFileParentsMemoized(
+      const parentGoogleIds = await getFileParentsMemoized(
         connectorId,
         oauth2client,
         file,
         startSyncTs
       );
 
+      const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
+
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {
-        const isImported = await processSheet(connector, sheet, parents);
+        // TODO(kw_search) remove legacy parentGoogleIds
+        const isImported = await processSheet(connector, sheet, [
+          ...parents,
+          ...parentGoogleIds,
+        ]);
         if (isImported) {
           successfulSheetIdImports.push(sheet.id);
         }

@@ -471,12 +471,14 @@ export async function incrementalSync(
         authCredentials
       );
       if (driveFile.mimeType === "application/vnd.google-apps.folder") {
-        const parents = await getFileParentsMemoized(
+        const parentGoogleIds = await getFileParentsMemoized(
           connectorId,
           authCredentials,
           driveFile,
           startSyncTs
         );
+
+        const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
 
         await upsertFolderNode({
           dataSourceConfig,
@@ -809,12 +811,14 @@ export async function markFolderAsVisited(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const parents = await getFileParentsMemoized(
+  const parentGoogleIds = await getFileParentsMemoized(
     connectorId,
     authCredentials,
     file,
     startSyncTs
   );
+
+  const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
 
   await upsertFolderNode({
     dataSourceConfig,
