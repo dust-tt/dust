@@ -190,7 +190,24 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   },
   google_drive: null,
   microsoft: null,
-  github: null,
+  github: {
+    transformer: (nodeId, parents) => {
+      if (!nodeId.startsWith("github-code-")) {
+        return { parents, parentId: parents[1] }; // discussions and issues are already ok
+      }
+      assert(parents.length >= 3, "parents.length < 3");
+      // github-code-${repoId}-file-xxx, github-code-${repoId}-dir-xxx, ..., github-code-${repoId}, ${repoId}
+      const newParents = [
+        parents[0],
+        ...parents.slice(1, -2).reverse(),
+        parents[parents.length - 2],
+        parents[parents.length - 1],
+      ];
+      assert(newParents.length === parents.length, "Length mismatch.");
+      return { parents: newParents, parentId: newParents[1] };
+    },
+    cleaner: (nodeId, parents) => ({ parents, parentId: parents[1] }), // mock, we're not going to use this
+  },
   notion: {
     transformer: (nodeId, parents) => {
       const uniqueIds = _.uniq(
