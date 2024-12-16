@@ -104,7 +104,6 @@ jobs:
             --dockerfile-path=./prodbox.Dockerfile \
             --working-dir=./ \
             --gcloud-ignore-file=.gcloudignore-prodbox \
-            --dust-client-facing-url=https://dust.tt \
             --region=${{ matrix.region }}
 
   deploy:

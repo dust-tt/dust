@@ -67,7 +67,6 @@ jobs:
             --image-name=viz \
             --dockerfile-path=./viz/Dockerfile \
             --working-dir=./ \
-            --dust-client-facing-url=https://dust.tt \
             --region=us-central1
 
       - name: Generate a token
