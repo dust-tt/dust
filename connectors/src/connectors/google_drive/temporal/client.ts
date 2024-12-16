@@ -104,31 +104,29 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   }
 
   const client = await getTemporalClient();
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
 
-  // Randomize the initial minute to avoid all incremental syncs starting at the same time.
-  const intialMinute = Math.floor(Math.random() * 5);
+  // Randomize the delay to avoid all incremental syncs starting at the same time, especially when restarting all via cli.
+  const delay = Math.floor(Math.random() * 60);
 
   try {
     await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveIncrementalSync, {
-      args: [connectorId, dataSourceConfig],
+      args: [connectorId],
       taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
       },
-      // Every 5 minutes.
-      cronSchedule: `${intialMinute}-59/5 * * * *`,
       memo: {
         connectorId: connectorId,
       },
+      startDelay: `${delay} minutes`,
     });
     logger.info(
       {
-        workspaceId: dataSourceConfig.workspaceId,
+        workspaceId: connector.workspaceId,
         workflowId,
       },
       `Started workflow.`
@@ -137,7 +135,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   } catch (e) {
     logger.error(
       {
-        workspaceId: dataSourceConfig.workspaceId,
+        workspaceId: connector.workspaceId,
         workflowId,
         error: e,
       },

@@ -40,7 +40,6 @@ import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
@@ -323,7 +322,6 @@ export async function objectIsInFolderSelection(
 
 export async function incrementalSync(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
   driveId: string,
   isSharedDrive: boolean,
   startSyncTs: number,
@@ -465,6 +463,8 @@ export async function incrementalSync(
         );
       }
       localLogger.info({ file_id: change.file.id }, "will sync file");
+
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
       const driveFile: GoogleDriveObjectType = await driveObjectToDustType(
         change.file,
