@@ -14,6 +14,7 @@ import {
   GoogleDriveFiles,
   GoogleDriveSheet,
 } from "@connectors/lib/models/google_drive";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -21,15 +22,15 @@ const QUERY_BATCH_SIZE = 1024;
 
 function getParents(
   fileId: string | null,
-  nodeId: string,
-  parentsMap: Record<string, string | null>
+  parentsMap: Record<string, string | null>,
+  logger: Logger
 ) {
   const parents = [];
   let current: string | null = fileId;
   while (current) {
     parents.push(current);
     if (typeof parentsMap[current] === "undefined") {
-      logger.error({ fileId: current, nodeId }, "Parent not found");
+      logger.error({ fileId: current }, "Parent not found");
       return null;
     }
     current = parentsMap[current] || null;
@@ -90,7 +91,11 @@ async function migrate({
     for (const file of googleDriveFiles) {
       const internalId = file.dustFileId;
       const driveFileId = file.driveFileId;
-      const parents = getParents(file.parentId, driveFileId, parentsMap);
+      const parents = getParents(
+        file.parentId,
+        parentsMap,
+        childLogger.child({ nodeId: driveFileId })
+      );
       if (!parents) {
         continue;
       }
@@ -168,7 +173,11 @@ async function migrate({
         sheet.driveSheetId
       );
 
-      const parents = getParents(sheet.driveFileId, tableId, parentsMap);
+      const parents = getParents(
+        sheet.driveFileId,
+        parentsMap,
+        childLogger.child({ nodeId: tableId })
+      );
       if (!parents) {
         continue;
       }
