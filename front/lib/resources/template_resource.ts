@@ -1,4 +1,4 @@
-import type { Result, TemplateVisibility } from "@dust-tt/types";
+import type { ModelId, Result, TemplateVisibility } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -10,6 +10,12 @@ import type {
 
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources//string_ids";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -39,23 +45,14 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return new this(TemplateModel, template.get());
   }
 
-  // TODO(2024-03-27 flav) Move this to the `BaseResource`.
   static async fetchByExternalId(
-    sId: string,
-    transaction?: Transaction
+    sId: string
   ): Promise<TemplateResource | null> {
-    const blob = await this.model.findOne({
-      where: {
-        sId,
-      },
-      transaction,
-    });
-    if (!blob) {
+    const id = getResourceIdFromSId(sId);
+    if (!id) {
       return null;
     }
-
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    return new TemplateResource(this.model, blob.get());
+    return this.fetchByModelId(id);
   }
 
   static async listAll({
@@ -117,6 +114,23 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       },
       this.backgroundColor as `bg-${string}`
     );
+  }
+
+  get sId(): string {
+    return TemplateResource.modelIdToSId({
+      id: this.id,
+    });
+  }
+
+  static modelIdToSId({ id }: { id: ModelId }): string {
+    return makeSId("template", {
+      id,
+      workspaceId: CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
+    });
+  }
+
+  static isTemplateSId(sId: string): boolean {
+    return isResourceSId("template", sId);
   }
 
   toListJSON() {

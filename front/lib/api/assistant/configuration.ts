@@ -496,11 +496,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       actions.push(...processActionConfigurations);
     }
 
-    let template: TemplateResource | null = null;
-    if (agent.templateId) {
-      template = await TemplateResource.fetchByModelId(agent.templateId);
-    }
-
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -522,7 +517,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
       versionAuthorId: agent.authorId,
       maxStepsPerRun: agent.maxStepsPerRun,
       visualizationEnabled: agent.visualizationEnabled ?? false,
-      templateId: template?.sId ?? null,
+      templateId: agent.templateId
+        ? TemplateResource.modelIdToSId({ id: agent.templateId })
+        : null,
       groupIds: agent.groupIds.map((id) =>
         GroupResource.modelIdToSId({ id, workspaceId: owner.id })
       ),

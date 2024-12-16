@@ -10,7 +10,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
@@ -104,7 +103,6 @@ async function handler(
         presetModelId: model.modelId,
         presetProviderId: model.providerId,
         presetTemperature: body.presetTemperature ?? null,
-        sId: generateRandomModelSId(),
         tags: body.tags,
         visibility: body.visibility,
       });
