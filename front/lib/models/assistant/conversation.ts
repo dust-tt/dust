@@ -244,10 +244,6 @@ export class AgentMessage extends BaseModel<AgentMessage> {
   declare agentConfigurationVersion: number;
 
   declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
-
-  // Handle to models linked to this agent message
-  declare message?: NonAttribute<Message>;
-  declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 }
 
 AgentMessage.init(
@@ -308,9 +304,6 @@ export class AgentMessageFeedback extends BaseModel<AgentMessageFeedback> {
 
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
-
-  declare agentMessage: NonAttribute<AgentMessage>;
-  declare user: NonAttribute<UserModel>;
 }
 
 AgentMessageFeedback.init(
@@ -374,16 +367,10 @@ Workspace.hasMany(AgentMessageFeedback, {
   onDelete: "RESTRICT",
 });
 AgentMessage.hasMany(AgentMessageFeedback, {
-  as: "feedbacks",
   onDelete: "RESTRICT",
 });
 UserModel.hasMany(AgentMessageFeedback, {
   onDelete: "SET NULL",
-});
-AgentMessageFeedback.belongsTo(UserModel);
-AgentMessageFeedback.belongsTo(AgentMessage, {
-  as: "agentMessage",
-  foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
 export class Message extends BaseModel<Message> {
@@ -407,9 +394,6 @@ export class Message extends BaseModel<Message> {
   declare agentMessage?: NonAttribute<AgentMessage>;
   declare contentFragment?: NonAttribute<ContentFragmentModel>;
   declare reactions?: NonAttribute<MessageReaction[]>;
-
-  // Handle to conversation linked to this message
-  declare conversation?: NonAttribute<Conversation>;
 }
 
 Message.init(
