@@ -485,6 +485,17 @@ async function handler(
         });
       }
 
+      if (r.data.parent_id && r.data.parents?.[1] !== r.data.parent_id) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Invalid parent id: parents[1] and parent_id should be equal",
+          },
+        });
+      }
+
       const statsDTags = [
         `data_source_id:${dataSource.id}`,
         `workspace_id:${owner.sId}`,
