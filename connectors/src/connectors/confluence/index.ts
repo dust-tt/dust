@@ -355,10 +355,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           },
         });
 
-        await deleteFolderNode({
-          dataSourceConfig,
-          folderId: makeSpaceInternalId(internalId),
-        });
+        await deleteFolderNode({ dataSourceConfig, folderId: internalId });
 
         removedSpaceIds.push(confluenceId);
       } else if (permission === "read") {
@@ -373,8 +370,8 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
         await upsertFolderNode({
           dataSourceConfig,
-          folderId: makeSpaceInternalId(internalId),
-          parents: [makeSpaceInternalId(internalId)],
+          folderId: internalId,
+          parents: [internalId],
           title: confluenceSpace?.name ?? confluenceId,
         });
 
