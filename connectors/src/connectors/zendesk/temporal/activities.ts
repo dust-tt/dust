@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import _ from "lodash";
 
+import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
@@ -16,6 +17,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { upsertFolderNode } from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -122,7 +124,36 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
-  // otherwise, we update the brand data and lastUpsertedTs
+  // upserting three folders to data_sources_folders (core): brand, help center, tickets
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const brandInternalId = getBrandInternalId({ connectorId, brandId });
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: brandInternalId,
+    parents: [brandInternalId],
+    title: brandInDb.name,
+  });
+
+  // using the content node to get one source of truth regarding the parent relationship
+  const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId);
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: helpCenterNode.internalId,
+    parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
+    title: helpCenterNode.title,
+  });
+
+  // using the content node to get one source of truth regarding the parent relationship
+  const ticketsNode = brandInDb.getTicketsContentNode(connectorId);
+  await upsertFolderNode({
+    dataSourceConfig,
+    folderId: ticketsNode.internalId,
+    parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
+    title: ticketsNode.title,
+  });
+
+  // updating the entry in db
   await brandInDb.update({
     name: fetchedBrand.name || "Brand",
     url: fetchedBrand?.url || brandInDb.url,
@@ -192,6 +223,7 @@ export async function syncZendeskCategoryBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
@@ -210,8 +242,15 @@ export async function syncZendeskCategoryBatchActivity({
 
   await concurrentExecutor(
     categories,
-    async (category) =>
-      syncCategory({ connectorId, brandId, category, currentSyncDateMs }),
+    async (category) => {
+      return syncCategory({
+        connectorId,
+        brandId,
+        category,
+        currentSyncDateMs,
+        dataSourceConfig,
+      });
+    },
     {
       concurrency: 10,
       onBatchComplete: heartbeat,
@@ -277,6 +316,15 @@ export async function syncZendeskCategoryActivity({
     await categoryInDb.revokePermissions();
     return { shouldSyncArticles: false };
   }
+
+  // upserting a folder to data_sources_folders (core)
+  const parents = categoryInDb.getParentInternalIds(connectorId);
+  await upsertFolderNode({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: parents[0],
+    parents,
+    title: categoryInDb.name,
+  });
 
   // otherwise, we update the category name and lastUpsertedTs
   await categoryInDb.update({

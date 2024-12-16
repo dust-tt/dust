@@ -14,6 +14,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { upsertFolderNode } from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -139,6 +140,14 @@ export async function syncZendeskArticleUpdateBatchActivity({
                 url: fetchedCategory.html_url,
                 description: fetchedCategory.description,
               },
+            });
+            // upserting a folder to data_sources_folders (core)
+            const parents = category.getParentInternalIds(connectorId);
+            await upsertFolderNode({
+              dataSourceConfig,
+              folderId: parents[0],
+              parents,
+              title: category.name,
             });
           } else {
             /// ignoring these to proceed with the other articles, but these might have to be checked at some point
