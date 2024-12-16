@@ -63,6 +63,7 @@ export abstract class ResourceWithSpace<
     } & { model: ModelStaticSoftDeletable<M> },
     auth: Authenticator,
     {
+      attributes,
       includes,
       limit,
       order,
@@ -80,6 +81,7 @@ export abstract class ResourceWithSpace<
     ];
 
     const blobs = await this.model.findAll({
+      attributes,
       where: where as WhereOptions<M>,
       include: includeClauses,
       limit,

@@ -19,6 +19,7 @@ export type TrackerConfigurationType = {
   space: SpaceType;
   maintainedDataSources: TrackerDataSourceConfigurationType[];
   watchedDataSources: TrackerDataSourceConfigurationType[];
+  generations?: TrackerGenerationToProcess[];
 };
 
 export type TrackerDataSourceConfigurationType = {
@@ -59,3 +60,16 @@ export type TrackerFrequencyType = "daily" | "weekly" | "monthly";
 export const FrequencyCodec = ioTsEnum<
   (typeof TRACKER_FREQUENCY_TYPES)[number]
 >(TRACKER_FREQUENCY_TYPES);
+
+export type TrackerIdWorkspaceId = {
+  trackerId: number;
+  workspaceId: string;
+};
+
+export type TrackerGenerationToProcess = {
+  id: ModelId;
+  content: string;
+  thinking: string | null;
+  documentId: string;
+  // TODO: Add info about the document.
+};

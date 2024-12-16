@@ -3,6 +3,7 @@ import type {
   CoreAPIDataSource,
   CoreAPIDocument,
   Result,
+  TrackerIdWorkspaceId,
 } from "@dust-tt/types";
 import { CoreAPI, Err, Ok } from "@dust-tt/types";
 
@@ -11,6 +12,7 @@ import { Authenticator } from "@app/lib/auth";
 import { documentTrackerSuggestChanges } from "@app/lib/document_upsert_hooks/hooks/document_tracker/lib";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 
@@ -120,3 +122,64 @@ async function getDataSourceDocument({
   }
   return new Ok(docText.value);
 }
+
+/**
+ * Tracker Notification Workflow:
+ * Activity to get tracker ids to notify activity.
+ * They are the active trackers that have generations to consume.
+ * @returns TrackerIdWorkspaceId[]
+ */
+export const getTrackerIdsToNotifyActivity = async (): Promise<
+  TrackerIdWorkspaceId[]
+> => {
+  return TrackerConfigurationResource.internalFetchActivetrackersToProcessByNotificationWorkflow();
+};
+
+/**
+ * Tracker Notification Workflow:
+ * Activity to process tracker notification workflow activity.
+ * Consumes generations for the tracker: fetches the generations, send notifications and consume them.
+ */
+export const processTrackerNotificationWorkflowActivity = async ({
+  trackerId,
+  workspaceId,
+  currentSyncMs,
+}: {
+  trackerId: number;
+  workspaceId: string;
+  currentSyncMs: number;
+}) => {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const tracker =
+    await TrackerConfigurationResource.fetchWithGenerationsToConsume(
+      auth,
+      trackerId
+    );
+  if (!tracker) {
+    logger.error(
+      {
+        trackerId,
+      },
+      "[Tracker] Tracker not found."
+    );
+    return;
+  }
+
+  const generations = tracker.generations;
+  if (!generations?.length) {
+    return;
+  }
+
+  if (!tracker.recipients?.length) {
+    logger.error(
+      {
+        trackerId: tracker.id,
+      },
+      "[Tracker] No recipients found for tracker. Should not be possible from the UI."
+    );
+    return;
+  }
+
+  // @todo Implement the notification logic here.
+  void currentSyncMs;
+};

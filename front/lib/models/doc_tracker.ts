@@ -37,6 +37,10 @@ export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigu
   declare workspace: NonAttribute<Workspace>;
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel> | null;
+  declare dataSourceConfigurations: NonAttribute<
+    TrackerDataSourceConfigurationModel[]
+  >;
+  declare generations: NonAttribute<TrackerGenerationModel[]>;
 }
 
 TrackerConfigurationModel.init(
@@ -266,6 +270,7 @@ TrackerGenerationModel.init(
 
 TrackerConfigurationModel.hasMany(TrackerGenerationModel, {
   foreignKey: { allowNull: false },
+  as: "generations",
   onDelete: "RESTRICT",
 });
 TrackerGenerationModel.belongsTo(TrackerConfigurationModel, {
