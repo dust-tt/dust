@@ -1,79 +1,69 @@
 #!/bin/bash
 set -e
-set -x
 
+# Default values
 SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
-
-# default values
 WORKING_DIR=""
-GCLOUD_IGNORE_FILE=""
 IMAGE_NAME=""
 DOCKERFILE_PATH=""
-DUST_CLIENT_FACING_URL=""
 REGION=""
+GCLOUD_IGNORE_FILE=""
 
-# parse command-line arguments
+# Parse command-line arguments
 while [[ $# -gt 0 ]]; do
-  case $1 in
-    --working-dir=*)
-      WORKING_DIR="${1#*=}"
-      shift
-      ;;
-    --gcloud-ignore-file=*)
-      GCLOUD_IGNORE_FILE="${1#*=}"
-      shift
-      ;;
-    --image-name=*)
-      IMAGE_NAME="${1#*=}"
-      shift
-      ;;
-    --dockerfile-path=*)
-      DOCKERFILE_PATH="${1#*=}"
-      shift
-      ;;
-    --dust-client-facing-url=*)
-      DUST_CLIENT_FACING_URL="${1#*=}"
-      shift
-      ;;
-    --region=*)
-      REGION="${1#*=}"
-      shift
-      ;;
-    *)
-      echo "unknown argument: $1"
-      exit 1
-      ;;
-  esac
+    case $1 in
+        --working-dir=*)
+            WORKING_DIR="${1#*=}"
+            shift
+            ;;
+        --image-name=*)
+            IMAGE_NAME="${1#*=}"
+            shift
+            ;;
+        --dockerfile-path=*)
+            DOCKERFILE_PATH="${1#*=}"
+            shift
+            ;;
+        --region=*)
+            REGION="${1#*=}"
+            shift
+            ;;
+        --gcloud-ignore-file=*)
+            GCLOUD_IGNORE_FILE="${1#*=}"
+            shift
+            ;;
+        *)
+            echo "Error: Unknown argument $1"
+            exit 1
+            ;;
+    esac
 done
 
-# check required arguments
+# Validate required arguments
 if [ -z "$WORKING_DIR" ] || [ -z "$IMAGE_NAME" ] || [ -z "$DOCKERFILE_PATH" ] || [ -z "$REGION" ]; then
-  echo "error: --working-dir, --image-name, --region and --dockerfile-path are required"
-  exit 1
+    echo "Error: --working-dir, --image-name, --region and --dockerfile-path are required"
+    exit 1
 fi
 
-# change the current working directory to the directory in which to build the image
+# Change to working directory
 cd "$WORKING_DIR"
 
-# check the current working directory
-echo "current working directory is $(pwd)"
-
-# prepare substitutions
-SUBSTITUTIONS="SHORT_SHA=$(git rev-parse --short HEAD),_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH,_REGION=$REGION"
-if [ -n "$DUST_CLIENT_FACING_URL" ]; then
-    SUBSTITUTIONS="$SUBSTITUTIONS,_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL"
+# Load region-specific config
+CONFIG_FILE=".github/configs/.env.${REGION}"
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Error: Config file not found: $CONFIG_FILE"
+    exit 1
 fi
 
-# prepare the gcloud command
-GCLOUD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --region="$REGION")
+# Prepare the build command
+BUILD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml")
 
-# add ignore file argument if specified
 if [ -n "$GCLOUD_IGNORE_FILE" ]; then
-    GCLOUD_CMD+=(--ignore-file="$GCLOUD_IGNORE_FILE")
+    BUILD_CMD+=(--ignore-file="$GCLOUD_IGNORE_FILE")
 fi
 
-# add substitutions and current directory
-GCLOUD_CMD+=(--substitutions="$SUBSTITUTIONS" .)
+# Add substitutions
+BUILD_CMD+=(--substitutions="_REGION=$REGION,_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH,SHORT_SHA=$(git rev-parse --short HEAD)" .)
 
-# execute the command
-"${GCLOUD_CMD[@]}"
+# Execute the build
+"${BUILD_CMD[@]}"

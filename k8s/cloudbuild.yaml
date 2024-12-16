@@ -2,6 +2,21 @@ steps:
   - id: 'Build Container Image'
     name: 'ghcr.io/depot/cli:latest'
     script: |
+      #!/usr/bin/env bash
+
+      build_args=()
+      while IFS='=' read -r key value; do
+        if [[ -n "$key" ]]; then
+          # Trim any whitespace from key and value
+          key=$(echo "$key" | xargs)
+          value=$(echo "$value" | xargs)
+          build_args+=("--build-arg" "${key}=${value}")
+        fi
+      done < .github/configs/.env.${_REGION}
+      
+      echo "BUILD ARGUMENTS:"
+      echo ${build_args[@]}
+
       depot build \
         --project 3vz0lnf16v \
         --provenance=false \
@@ -9,11 +24,10 @@ steps:
         -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
         -f ${_DOCKERFILE_PATH} \
         --build-arg COMMIT_HASH=${SHORT_SHA} \
-        --build-arg NEXT_PUBLIC_VIZ_URL=https://viz.dust.tt \
-        --build-arg NEXT_PUBLIC_GA_TRACKING_ID=G-K9HQ2LE04G \
-        --build-arg NEXT_PUBLIC_DUST_CLIENT_FACING_URL=${_DUST_CLIENT_FACING_URL} \
+        ${build_args[@]} \
         --push \
         .
+
     secretEnv:
       - "DEPOT_TOKEN"
 
