@@ -22,7 +22,7 @@ export class LabsTranscriptsConfigurationModel extends BaseModel<LabsTranscripts
   declare userId: ForeignKey<UserModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
-  declare apiKey: string | null;
+  declare credentialId: string | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -59,7 +59,7 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
-    apiKey: {
+    credentialId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
