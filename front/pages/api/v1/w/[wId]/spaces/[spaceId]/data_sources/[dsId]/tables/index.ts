@@ -373,6 +373,17 @@ async function handler(
         });
       }
 
+      if (parentId && parents?.[1] !== parentId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Invalid parent id: parents[1] and parent_id should be equal",
+          },
+        });
+      }
+
       // Enforce that the table is a parent of itself by default.
       const upsertRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
