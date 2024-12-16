@@ -84,6 +84,15 @@ export async function enqueueUpsertDocument({
     "[UpsertQueue] Enqueueing document"
   );
 
+  if (
+    upsertDocument.parentId &&
+    upsertDocument.parents?.[1] !== upsertDocument.parentId
+  ) {
+    throw new Error(
+      "Invalid parent id: parents[1] and parentId should be equal"
+    );
+  }
+
   return enqueueUpsert({
     upsertItem: upsertDocument,
     upsertQueueId,
@@ -108,6 +117,15 @@ export async function enqueueUpsertTable({
     },
     "[UpsertQueue] Enqueueing table"
   );
+
+  if (
+    upsertTable.tableParentId &&
+    upsertTable.tableParents?.[1] !== upsertTable.tableParentId
+  ) {
+    throw new Error(
+      "Invalid parent id: parents[1] and tableParentId should be equal"
+    );
+  }
 
   return enqueueUpsert({
     upsertItem: upsertTable,
