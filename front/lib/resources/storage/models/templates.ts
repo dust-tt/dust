@@ -17,7 +17,6 @@ export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare sId: string;
   declare description: string | null;
 
   declare visibility: TemplateVisibility;
@@ -53,10 +52,6 @@ TemplateModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     description: {
       type: DataTypes.TEXT,
@@ -123,7 +118,6 @@ TemplateModel.init(
     sequelize: frontSequelize,
     modelName: "template",
     indexes: [
-      { unique: true, fields: ["sId"] },
       {
         fields: ["visibility"],
       },

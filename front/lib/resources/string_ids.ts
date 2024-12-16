@@ -26,7 +26,10 @@ const RESOURCES_PREFIX = {
   data_source: "dts",
   data_source_view: "dsv",
   tracker: "trk",
+  template: "tpl",
 };
+
+export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
 
 const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);
 

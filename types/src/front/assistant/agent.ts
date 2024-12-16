@@ -231,8 +231,7 @@ export type LightAgentConfigurationType = {
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
-  // If empty, no actions are performed, otherwise the actions are
-  // performed.
+  // If empty, no actions are performed, otherwise the actions are performed.
   actions: AgentActionConfigurationType[];
 };
 
