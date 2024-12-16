@@ -264,6 +264,7 @@ async function migrateDocument({
   dataSource,
   coreDocument,
   execute,
+  skipIfParentsAreAlreadyCorrect,
 }: {
   action: MigratorAction;
   migrator: ProviderMigrator;
@@ -274,6 +275,7 @@ async function migrateDocument({
     document_id: string;
   };
   execute: boolean;
+  skipIfParentsAreAlreadyCorrect: boolean;
 }) {
   let newParents = coreDocument.parents;
   let newParentId: string | null = null;
@@ -293,6 +295,21 @@ async function migrateDocument({
       `TRANSFORM_ERROR`
     );
     throw e;
+  }
+
+  if (
+    skipIfParentsAreAlreadyCorrect &&
+    newParents.every((x, i) => x === coreDocument.parents[i])
+  ) {
+    logger.info(
+      {
+        documentId: coreDocument.document_id,
+        fromParents: coreDocument.parents,
+        toParents: newParents,
+      },
+      `SKIP document (parents are already correct)`
+    );
+    return new Ok(undefined);
   }
 
   if (execute) {
@@ -417,11 +434,13 @@ async function migrateDataSource({
   migrator,
   dataSource,
   execute,
+  skipIfParentsAreAlreadyCorrect,
 }: {
   action: MigratorAction;
   migrator: ProviderMigrator;
   dataSource: DataSourceModel;
   execute: boolean;
+  skipIfParentsAreAlreadyCorrect: boolean;
 }) {
   const corePrimary = getCorePrimaryDbConnection();
 
@@ -480,6 +499,7 @@ async function migrateDataSource({
             migrator,
             dataSource,
             coreDocument,
+            skipIfParentsAreAlreadyCorrect,
             execute,
           }),
         { concurrency: DOCUMENT_CONCURRENCY }
@@ -555,12 +575,14 @@ async function migrateAll({
   migrator,
   nextDataSourceId,
   execute,
+  skipIfParentsAreAlreadyCorrect,
 }: {
   provider: ConnectorProvider;
   action: MigratorAction;
   migrator: ProviderMigrator;
   nextDataSourceId: number;
   execute: boolean;
+  skipIfParentsAreAlreadyCorrect: boolean;
 }) {
   // retrieve all data sources for the provider
   const dataSources = await DataSourceModel.findAll({
@@ -584,6 +606,7 @@ async function migrateAll({
         action,
         dataSource,
         execute,
+        skipIfParentsAreAlreadyCorrect,
       });
     } else {
       logger.info({ dataSourceId: dataSource.id }, "SKIP");
@@ -601,13 +624,24 @@ makeScript(
       type: "string",
       required: true,
     },
+    skipIfParentsAreAlreadyCorrect: {
+      type: "boolean",
+      required: false,
+      default: false,
+    },
     nextDataSourceId: {
       type: "number",
       required: false,
       default: 0,
     },
   },
-  async ({ provider, action, nextDataSourceId, execute }) => {
+  async ({
+    provider,
+    action,
+    nextDataSourceId,
+    execute,
+    skipIfParentsAreAlreadyCorrect,
+  }) => {
     if (!isMigratorAction(action)) {
       console.error(
         `Invalid action ${action}, supported actions are "transform" and "clean"`
@@ -630,6 +664,7 @@ makeScript(
       migrator,
       nextDataSourceId,
       execute,
+      skipIfParentsAreAlreadyCorrect,
     });
   }
 );
