@@ -49,7 +49,7 @@ fi
 cd "$WORKING_DIR"
 
 # Load region-specific config
-CONFIG_FILE=".github/configs/${REGION}.yaml"
+CONFIG_FILE=".github/configs/.env.${REGION}"
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Error: Config file not found: $CONFIG_FILE"
     exit 1
