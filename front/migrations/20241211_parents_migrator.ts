@@ -34,7 +34,7 @@ type ProviderMigrator = {
   ) => { parents: string[]; parentId: string | null };
 };
 
-const QUERY_BATCH_SIZE = 10_000;
+const QUERY_BATCH_SIZE = 256;
 const DOCUMENT_CONCURRENCY = 16;
 const TABLE_CONCURRENCY = 16;
 
@@ -464,21 +464,43 @@ async function migrateDataSource({
 
   // For all documents in the data source (can be big).
   let nextTimestamp = 0;
+  let nextId = null;
 
   for (;;) {
-    const [coreDocumentRows] = (await corePrimary.query(
-      "SELECT id, parents, document_id, timestamp FROM data_sources_documents " +
-        "WHERE data_source = ? AND STATUS = ? AND timestamp >= ? " +
-        "ORDER BY timestamp ASC LIMIT ?",
-      {
-        replacements: [
-          coreDataSourceId,
-          "latest",
-          nextTimestamp,
-          QUERY_BATCH_SIZE,
-        ],
+    const [coreDocumentRows] = (await (async () => {
+      // If nextId is null, we only filter by timestamp
+      if (nextId === null) {
+        return corePrimary.query(
+          "SELECT id, parents, document_id, timestamp FROM data_sources_documents " +
+            "WHERE data_source = ? AND STATUS = ? AND timestamp >= ? " +
+            "ORDER BY timestamp ASC, id ASC LIMIT ?",
+          {
+            replacements: [
+              coreDataSourceId,
+              "latest",
+              nextTimestamp,
+              QUERY_BATCH_SIZE,
+            ],
+          }
+        );
+      } else {
+        // If nextId is not null, we filter by timestamp and id
+        return corePrimary.query(
+          "SELECT id, parents, document_id, timestamp FROM data_sources_documents " +
+            "WHERE data_source = ? AND STATUS = ? AND timestamp >= ? AND id > ? " +
+            "ORDER BY timestamp ASC, id ASC LIMIT ?",
+          {
+            replacements: [
+              coreDataSourceId,
+              "latest",
+              nextTimestamp,
+              nextId,
+              QUERY_BATCH_SIZE,
+            ],
+          }
+        );
       }
-    )) as {
+    })()) as {
       id: number;
       parents: string[];
       document_id: string;
@@ -488,6 +510,13 @@ async function migrateDataSource({
     if (coreDocumentRows.length === 0) {
       break;
     }
+
+    // If all documents have the same timestamp, we set nextId to the last id
+    nextId =
+      coreDocumentRows[0].timestamp ===
+      coreDocumentRows[coreDocumentRows.length - 1].timestamp
+        ? coreDocumentRows[coreDocumentRows.length - 1].id
+        : null;
 
     // concurrentExecutor on documents
     try {
