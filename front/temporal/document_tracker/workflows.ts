@@ -15,7 +15,8 @@ export async function runDocumentTrackerWorkflow(
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null
 ) {
-  let signaled = false;
+  let signaled = true;
+
   const debounceMs = (() => {
     if (!dataSourceConnectorProvider) {
       return 10000;
@@ -32,8 +33,8 @@ export async function runDocumentTrackerWorkflow(
 
   while (signaled) {
     signaled = false;
-
     await sleep(debounceMs);
+
     if (signaled) {
       continue;
     }
