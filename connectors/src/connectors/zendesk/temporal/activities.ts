@@ -141,7 +141,7 @@ export async function syncZendeskBrandActivity({
     dataSourceConfig,
     folderId: helpCenterNode.internalId,
     parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
-    title: brandInDb.name,
+    title: helpCenterNode.title,
   });
 
   // using the content node to get one source of truth regarding the parent relationship
@@ -150,7 +150,7 @@ export async function syncZendeskBrandActivity({
     dataSourceConfig,
     folderId: ticketsNode.internalId,
     parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
-    title: brandInDb.name,
+    title: ticketsNode.title,
   });
 
   // updating the entry in db
