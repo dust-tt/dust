@@ -7,7 +7,7 @@ import React from "react";
 export type NextPageWithLayout<P = unknown, IP = P> = NextPage<P, IP> & {
   getLayout?: (
     page: React.ReactElement,
-    pageProps: AppProps
+    pageProps: AppProps,
   ) => React.ReactNode;
 };
 
@@ -21,6 +21,6 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
     <AppLayout>
       <Component {...pageProps} />
     </AppLayout>,
-    pageProps
+    pageProps,
   );
 }

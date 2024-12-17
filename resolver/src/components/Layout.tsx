@@ -4,17 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 function NextLinkWrapper({
-                           href,
-                           className,
-                           children,
-                           ariaCurrent,
-                           ariaLabel,
-                           onClick,
-                           replace = false,
-                           shallow = false,
-                           target = "_self",
-                           rel,
-                         }: {
+  href,
+  className,
+  children,
+  ariaCurrent,
+  ariaLabel,
+  onClick,
+  replace = false,
+  shallow = false,
+  target = "_self",
+  rel,
+}: {
   ariaCurrent?:
     | boolean
     | "time"
@@ -52,11 +52,7 @@ function NextLinkWrapper({
   );
 }
 
-export default function AppLayout({
-                                     children,
-                                   }: {
-  children: React.ReactNode;
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   return (
