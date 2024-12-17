@@ -33,6 +33,7 @@ pub trait SearchStore {
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<Node>>;
     async fn index_document(&self, document: &Document) -> Result<()>;
+    async fn index_node(&self, node: Node) -> Result<()>;
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
 
@@ -78,22 +79,26 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 impl SearchStore for ElasticsearchSearchStore {
     async fn index_document(&self, document: &Document) -> Result<()> {
         let node = Node::from(document.clone());
+        self.index_node(node).await
+    }
 
+    async fn index_node(&self, node: Node) -> Result<()> {
         // todo(kw-search): fail on error
         let now = utils::now();
         match self
             .client
-            .index(IndexParts::IndexId(NODES_INDEX_NAME, &document.document_id))
+            .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.node_id))
             .timeout("200ms")
-            .body(node)
+            .body(node.clone())
             .send()
             .await
         {
             Ok(_) => {
                 info!(
                     duration = utils::now() - now,
-                    document_id = document.document_id,
-                    "[ElasticsearchSearchStore] Indexed document"
+                    node_id = node.node_id,
+                    "[ElasticsearchSearchStore] Indexed {}",
+                    node.node_type.to_string()
                 );
                 Ok(())
             }
@@ -101,8 +106,9 @@ impl SearchStore for ElasticsearchSearchStore {
                 error!(
                     error = %e,
                     duration = utils::now() - now,
-                    document_id = document.document_id,
-                    "[ElasticsearchSearchStore] Failed to index document"
+                    node_id = node.node_id,
+                    "[ElasticsearchSearchStore] Failed to index {}",
+                    node.node_type.to_string()
                 );
                 Ok(())
             }

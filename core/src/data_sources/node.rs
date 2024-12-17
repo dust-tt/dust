@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 use super::folder::Folder;
 
@@ -9,16 +10,26 @@ pub enum NodeType {
     Folder,
 }
 
+impl fmt::Display for NodeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            NodeType::Document => write!(f, "Document"),
+            NodeType::Table => write!(f, "Table"),
+            NodeType::Folder => write!(f, "Folder"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
-    data_source_id: String,
-    node_id: String,
-    node_type: NodeType,
-    timestamp: u64,
-    title: String,
-    mime_type: String,
-    parent_id: Option<String>,
-    parents: Vec<String>,
+    pub data_source_id: String,
+    pub node_id: String,
+    pub node_type: NodeType,
+    pub timestamp: u64,
+    pub title: String,
+    pub mime_type: String,
+    pub parent_id: Option<String>,
+    pub parents: Vec<String>,
 }
 
 impl Node {
