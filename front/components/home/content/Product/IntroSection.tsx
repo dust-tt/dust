@@ -9,10 +9,8 @@ import {
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
-import { Grid, H1, P, Strong } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
-
-import TrustedBy from "../../TrustedBy";
+import { H1, P, Strong } from "@app/components/home/ContentComponents";
+import TrustedBy from "@app/components/home/TrustedBy";
 
 const ResponsiveIframe = () => {
   return (
@@ -111,59 +109,35 @@ export function IntroSection() {
   );
 
   return (
-    <>
-      <Grid
-        className="pt-[6vh] sm:pt-[8vh] xl:pt-[12vh] 2xl:pt-[18vh]"
-        verticalAlign="center"
-      >
-        <div
-          className={classNames(
-            "col-span-12",
-            "flex flex-col gap-8",
-            "md:col-span-6",
-            "2xl:col-span-5 2xl:col-start-2"
-          )}
-        >
-          <H1 from="from-red-200" to="to-red-400">
-            Build custom AI&nbsp;assistants to speed up your work
-          </H1>
-          {<div className="w-full md:hidden">{MainVisualImage()}</div>}
-          <P size="lg" className="text-slate-50">
-            Amplify your team's performance with personalized assistants
-            connected to your proprietary knowledge and data.
-          </P>
-          <div>
-            <Link href="/home/pricing" shallow={true}>
-              <Button
-                variant="highlight"
-                size="md"
-                label="Get started"
-                icon={RocketIcon}
-              />
-            </Link>
+    <div className="w-full pt-[6vh] sm:pt-[8vh] xl:pt-[12vh] 2xl:pt-[18vh]">
+      <div className="flex flex-col gap-16">
+        <div className="flex flex-col items-center gap-16 md:flex-row md:gap-32">
+          <div className="flex flex-col gap-8">
+            <H1 from="from-red-200" to="to-red-400">
+              Build custom AI&nbsp;assistants to speed up your work
+            </H1>
+            <div className="w-full md:hidden">{MainVisualImage()}</div>
+            <P size="lg" className="text-slate-50">
+              Amplify your team's performance with personalized assistants
+              connected to your proprietary knowledge and data.
+            </P>
+            <div>
+              <Link href="/home/pricing" shallow={true}>
+                <Button
+                  variant="highlight"
+                  size="md"
+                  label="Get started"
+                  icon={RocketIcon}
+                />
+              </Link>
+            </div>
           </div>
-        </div>
-        <div
-          className={classNames(
-            "col-span-12 hidden",
-            "md:col-span-6 md:block",
-            "2xl:col-span-5 2xl:col-start-8"
-          )}
-        >
-          {MainVisualImage()}
+          <div className="hidden md:block">{MainVisualImage()}</div>
         </div>
 
         <TrustedBy />
 
-        <div
-          className={classNames(
-            "col-span-12",
-            "grid grid-cols-1 gap-12 px-6",
-            "sm:grid-cols-2 sm:gap-6 sm:pr-0",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-12 xl:grid-cols-4"
-          )}
-        >
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <P size="md" dotCSS="text-amber-300" shape="triangle">
             Connect <Strong>your team's data</Strong> and{" "}
             <Strong>break&nbsp;down knowledge silos</Strong> with
@@ -184,7 +158,7 @@ export function IntroSection() {
             <Strong>safe and privacy-obsessed</Strong> application.
           </P>
         </div>
-      </Grid>
-    </>
+      </div>
+    </div>
   );
 }

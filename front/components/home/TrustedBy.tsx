@@ -18,59 +18,59 @@ export default function TrustedBy() {
         </H3>
         <div
           className={classNames(
-            "mt-8 max-w-[400px] sm:w-full sm:max-w-none",
-            "grid grid-cols-2 gap-x-2",
-            "sm:grid-cols-3 sm:gap-x-16",
-            "md:grid-cols-4 md:gap-x-16"
+            "mt-8 w-full",
+            "grid grid-cols-2 place-items-center gap-1",
+            "sm:grid-cols-3 sm:gap-0",
+            "md:grid-cols-4 md:gap-0"
           )}
         >
           <Image
             alt="alan"
             src="/static/landing/logos/alan.png"
-            width={600}
-            height={300}
+            width={250}
+            height={100}
           />
           <Image
             alt="watershed"
             src="/static/landing/logos/watershed.png"
-            width={600}
-            height={300}
+            width={250}
+            height={100}
           />
           <Image
             alt="qonto"
             src="/static/landing/logos/qonto.png"
-            width={600}
-            height={300}
+            width={250}
+            height={100}
           />
           <Image
             alt="pennylane"
             src="/static/landing/logos/pennylane.png"
-            width={600}
-            height={300}
+            width={250}
+            height={100}
           />
           <Image
             alt="payfit"
             src="/static/landing/logos/payfit.png"
-            width={600}
-            height={300}
+            width={250}
+            height={100}
           />
           <Image
-            alt="watershed"
+            alt="malt"
             src="/static/landing/logos/malt.png"
-            width={600}
-            height={300}
+            width={250}
+            height={100}
           />
           <Image
             alt="hivebrite"
             src="/static/landing/logos/hivebrite.png"
-            width={600}
-            height={300}
+            width={250}
+            height={100}
           />
           <Image
             alt="blueground"
             src="/static/landing/logos/blueground.png"
-            width={600}
-            height={300}
+            width={250}
+            height={100}
           />
         </div>
       </div>

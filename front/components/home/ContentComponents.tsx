@@ -36,11 +36,11 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-5xl py-2",
-  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl py-2",
-  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1",
-  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl",
-  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl",
+  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-5xl py-2 text-left",
+  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl py-2 text-left",
+  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1 text-left",
+  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl text-left",
+  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl text-left",
 };
 
 interface ContentProps {

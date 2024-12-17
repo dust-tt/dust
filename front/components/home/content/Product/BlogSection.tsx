@@ -9,40 +9,34 @@ import {
 } from "@app/components/home/Carousel";
 import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
 
 export function BlogSection() {
   return (
     <Grid gap="gap-8">
-      <div
-        className={classNames(
-          "flex flex-col gap-8",
-          "col-span-12",
-          "lg:col-span-10 lg:col-start-2",
-          "xl:col-span-9 xl:col-start-2",
-          "2xl:col-start-3"
-        )}
-      >
-        <H2 from="from-green-200" to="to-emerald-400">
-          Dust in Action:
-          <br />
-          Customer Stories
-        </H2>
-        <P size="lg">
-          Discover how our customers augment their&nbsp;workflows
-          with&nbsp;Dust.
-        </P>
-      </div>
-      <div className="col-span-12 flex flex-col items-center gap-4">
+      <div className="col-span-12">
         <Carousel className="w-full">
-          <div className="flex w-full flex-row gap-4 md:justify-center">
-            <CarouselPrevious />
-            <CarouselNext />
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <H2 from="from-green-200" to="to-emerald-400">
+                Dust in Action:
+                <br />
+                Customer Stories
+              </H2>
+              <P size="lg">
+                Discover how our customers augment their&nbsp;workflows
+                with&nbsp;Dust.
+              </P>
+            </div>
+            <div className="flex gap-4">
+              <CarouselPrevious />
+              <CarouselNext />
+            </div>
           </div>
+
           <CarouselContent>
-            <CarouselItem className="basis-full md:basis-1/2 md:px-6 lg:basis-1/3">
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
-                title="Navigating Growth and Innovation with November Five’s Dario Prskalo"
+                title="Navigating Growth and Innovation with November Five's Dario Prskalo"
                 content="Discover how November Five leverages AI with Dust to enhance efficiency and maintain a human touch in their digital solutions."
                 href="https://blog.dust.tt/november-five-ai-transformation-dust/"
               >
@@ -52,10 +46,10 @@ export function BlogSection() {
                 />
               </BlogBlock>
             </CarouselItem>
-            <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
-                title="How Eléonore improved the efficiency of Pennylane’s Care team thanks to Dust"
-                content="Discover how Pennylane leveraged Dust’s specialized virtual assistants to improve efficiency and optimize workflows."
+                title="How Eléonore improved the efficiency of Pennylane's Care team thanks to Dust"
+                content="Discover how Pennylane leveraged Dust's specialized virtual assistants to improve efficiency and optimize workflows."
                 href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
               >
                 <img
@@ -64,7 +58,7 @@ export function BlogSection() {
                 />
               </BlogBlock>
             </CarouselItem>
-            <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
                 title="Integrating AI for Enhanced Workflows at Alan"
                 content="Discover how Alan revolutionizes healthcare and enhances workflows using AI. See how @code-help and Dust streamline developer tasks."

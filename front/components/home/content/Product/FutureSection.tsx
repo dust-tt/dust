@@ -10,31 +10,26 @@ export function FutureSection() {
   return (
     <>
       <Grid>
-        <div
-          className={classNames(
-            "col-span-12 flex flex-col gap-8",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-8 xl:col-start-2",
-            "2xl:col-start-3"
-          )}
-        >
-          <H2 from="from-sky-200" to="to-blue-400">
-            Future-Proof
-            <br />
-            your AI&nbsp;Strategy
-          </H2>
-          <P size="lg">
-            Integrates with your internal&nbsp;data. <br />
-            Automatically updated with the&nbsp;latest&nbsp;models
-            across&nbsp;all&nbsp;major&nbsp;AI&nbsp;providers.
-          </P>
+        <div className="col-span-12 mb-6">
+          <div>
+            <H2 from="from-sky-200" to="to-blue-400">
+              Future-Proof
+              <br />
+              your AI&nbsp;Strategy
+            </H2>
+            <P size="lg">
+              Integrates with your internal&nbsp;data.
+              <br />
+              Automatically updated with the&nbsp;latest&nbsp;models
+              across&nbsp;all&nbsp;major&nbsp;AI&nbsp;providers.
+            </P>
+          </div>
         </div>
         <div
           className={classNames(
             "col-span-12 pt-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16",
-            "2xl:col-span-10 2xl:col-start-2"
+            "md:grid-cols-3 md:gap-y-16"
           )}
         >
           <ImgBlock
