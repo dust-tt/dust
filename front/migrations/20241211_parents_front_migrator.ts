@@ -63,31 +63,32 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     ),
   microsoft: null,
   github: (parents) => {
-    const repoId = parents[parents.length - 1];
-    // case where we are already good
-    if (repoId.startsWith("github-repository")) {
-      return parents;
-    }
-    const nodeId = parents[0];
-    if (nodeId.startsWith("github-issue-")) {
-      return [nodeId, `github-issues-${repoId}`, `github-repository-${repoId}`];
-    }
-    if (nodeId.startsWith("github-discussion-")) {
-      return [
-        nodeId,
-        `github-discussions-${repoId}`,
-        `github-repository-${repoId}`,
-      ];
-    }
-    if (nodeId.startsWith("github-code")) {
-      return [
-        nodeId,
-        ...parents.slice(1, -2).reverse(),
-        `github-code-${repoId}`,
-        `github-repository-${repoId}`,
-      ];
-    }
-    throw new Error(`Unrecognized node type: ${nodeId}`);
+    return parents.map((parent) => {
+      if (/^\d+$/.test(parent)) {
+        return `github-repository-${parent}`;
+      }
+      if (/\d+-issues$/.test(parent)) {
+        const repoId = parseInt(parent.replace(/-issues$/, ""), 10);
+        return `github-issues-${repoId}`;
+      }
+      if (/\d+-discussions$/.test(parent)) {
+        const repoId = parseInt(parent.replace(/-discussions$/, ""), 10);
+        return `github-discussions-${repoId}`;
+      }
+      if (
+        /^github-code-\d+$/.test(parent) ||
+        /^github-code-\d+-dir-[a-f0-9]+$/.test(parent) ||
+        /^github-code-\d+-file-[a-f0-9]+$/.test(parent) ||
+        /^github-discussions-\d+$/.test(parent) ||
+        /^github-discussion-\d+$/.test(parent) ||
+        /^github-issues-\d+$/.test(parent) ||
+        /^github-issue-\d+$/.test(parent) ||
+        /^github-repository-\d+$/.test(parent)
+      ) {
+        return parent;
+      }
+      throw new Error(`Unrecognized parent type: ${parent}`);
+    });
   },
   notion: (parents) => {
     return _.uniq(parents.map((p) => _.last(p.split("notion-"))!)).map(
