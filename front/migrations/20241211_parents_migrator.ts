@@ -251,7 +251,66 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       }
       throw new Error(`Unrecognized node type: ${nodeId}`);
     },
-    cleaner: (nodeId, parents) => ({ parents, parentId: parents[1] }), // TODO(2024-12-17 aubin)
+    cleaner: (nodeId, parents) => {
+      if (nodeId !== parents[0]) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Github nodeId !== parents[0]"
+        );
+        return { parents, parentId: parents[1] };
+      }
+      const lastParent = parents[parents.length - 1];
+      // case where we are already good
+      if (!lastParent.startsWith("github-repository")) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Github parents[-1] !== github-repository-xxx"
+        );
+        return { parents, parentId: parents[1] };
+      }
+      const repoId = lastParent.replace("github-repository-", "");
+      assert(/^\d+$/.test(repoId), `Invalid repoId: ${repoId}`);
+
+      if (nodeId.startsWith("github-code")) {
+        const parentsDir = parents.filter((p) => p.includes("-dir-"));
+
+        assert(
+          parentsDir.length % 2 === 0,
+          `Odd number of parents: ${parentsDir.join(", ")}`
+        );
+
+        // making sure that we got the parents in reverse
+        for (let i = 0; i < Math.floor(parents.length / 2); i++) {
+          assert(
+            parentsDir[i] === parentsDir[parentsDir.length - 1 - i],
+            `parentsDir[${i}] !== parentsDir[${parentsDir.length - 1 - i}]: ${parentsDir.join(", ")}`
+          );
+        }
+        assert(
+          nodeId.startsWith(`github-code-${repoId}-file-`),
+          `Github invalid nodeId: ${nodeId}`
+        );
+
+        return {
+          parents: [
+            nodeId,
+            ...parentsDir.slice(parentsDir.length / 2, parentsDir.length), // taking only the part that is in reverse
+            `github-code-${repoId}`,
+            `github-repository-${repoId}`,
+          ],
+          parentId: parents[1],
+        };
+      }
+
+      assert(
+        parents
+          .filter((p) => !p.startsWith("github-"))
+          .every((p) => p.endsWith("discussions") || p.endsWith("issues"))
+      );
+      // looks brittle but is not, for issues and discussions old parents match ${repoId}-discussions, ${repoId}-issues, ${repoId}
+      const newParents = parents.filter((p) => p.startsWith("github-"));
+      return { parents: newParents, parentId: newParents[1] };
+    },
   },
   notion: {
     transformer: (nodeId, parents) => {
