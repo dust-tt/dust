@@ -159,7 +159,7 @@ impl SearchStore for ElasticsearchSearchStore {
                     .as_array()
                     .unwrap()
                     .iter()
-                    .map(|h| Node::from(h.get("source").unwrap().clone()))
+                    .map(|h| Node::from(h.get("_source").unwrap().clone()))
                     .collect();
                 Ok(nodes)
             }
