@@ -76,7 +76,7 @@ export function getIssuesInternalId(repoId: string | number): string {
   return `github-issues-${repoId}`;
 }
 
-export function getIssueInternalId(
+export function getIssueDocumentId(
   repoId: string | number,
   issueNumber: number
 ): string {
@@ -87,7 +87,7 @@ export function getDiscussionsInternalId(repoId: string | number): string {
   return `github-discussions-${repoId}`;
 }
 
-export function getDiscussionInternalId(
+export function getDiscussionDocumentId(
   repoId: string | number,
   discussionNumber: number
 ): string {
@@ -108,7 +108,7 @@ export function getCodeDirInternalId(
     .substring(0, 16)}`;
 }
 
-export function getCodeFileInternalId(
+export function getCodeFileDocumentId(
   repoId: string | number,
   codePath: string
 ): string {

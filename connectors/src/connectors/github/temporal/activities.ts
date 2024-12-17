@@ -24,9 +24,9 @@ import {
 } from "@connectors/connectors/github/lib/github_api";
 import {
   getCodeRootInternalId,
-  getDiscussionInternalId,
+  getDiscussionDocumentId,
   getDiscussionsInternalId,
-  getIssueInternalId,
+  getIssueDocumentId,
   getIssuesInternalId,
   getRepositoryInternalId,
 } from "@connectors/connectors/github/lib/utils";
@@ -273,7 +273,7 @@ export async function githubUpsertIssueActivity(
     content: renderedIssue,
   } = renderedIssueResult;
 
-  const documentId = getIssueInternalId(repoId.toString(), issueNumber);
+  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
     `title:${issue.title}`,
@@ -470,7 +470,7 @@ export async function githubUpsertDiscussionActivity(
     logger
   );
 
-  const documentId = getDiscussionInternalId(
+  const documentId = getDiscussionDocumentId(
     repoId.toString(),
     discussionNumber
   );
@@ -714,7 +714,7 @@ async function deleteIssue(
     );
   }
 
-  const documentId = getIssueInternalId(repoId.toString(), issueNumber);
+  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   logger.info({ documentId }, "Deleting GitHub issue from Dust data source.");
   await deleteFromDataSource(dataSourceConfig, documentId, logger.bindings());
 
@@ -747,7 +747,7 @@ async function deleteDiscussion(
     logger.warn("Discussion not found in DB");
   }
 
-  const documentId = getDiscussionInternalId(
+  const documentId = getDiscussionDocumentId(
     repoId.toString(),
     discussionNumber
   );

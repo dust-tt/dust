@@ -31,7 +31,7 @@ import {
 } from "@connectors/connectors/github/lib/github_graphql";
 import {
   getCodeDirInternalId,
-  getCodeFileInternalId,
+  getCodeFileDocumentId,
 } from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -862,7 +862,7 @@ export async function processRepository({
         });
       }
 
-      const documentId = getCodeFileInternalId(
+      const documentId = getCodeFileDocumentId(
         repoId,
         `${path.join("/")}/${fileName}`
       );

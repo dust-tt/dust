@@ -2,8 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import {
-  getDiscussionInternalId,
-  getIssueInternalId,
+  getDiscussionDocumentId,
+  getIssueDocumentId,
 } from "@connectors/connectors/github/lib/utils";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
@@ -77,7 +77,7 @@ async function updateDiscussionsParentsFieldForConnector(
     // update parents field for each document of the chunk, in parallel
     await Promise.all(
       chunk.map(async (document) => {
-        const docId = getDiscussionInternalId(
+        const docId = getDiscussionDocumentId(
           document.repoId,
           document.discussionNumber
         );
@@ -85,7 +85,7 @@ async function updateDiscussionsParentsFieldForConnector(
           dataSourceConfig: connector,
           documentId: docId,
           parents: [
-            getDiscussionInternalId(document.repoId, document.discussionNumber),
+            getDiscussionDocumentId(document.repoId, document.discussionNumber),
             document.repoId,
           ],
         });
@@ -110,12 +110,12 @@ async function updateIssuesParentsFieldForConnector(connector: ConnectorModel) {
     // update parents field for each document of the chunk, in parallel
     await Promise.all(
       chunk.map(async (document) => {
-        const docId = getIssueInternalId(document.repoId, document.issueNumber);
+        const docId = getIssueDocumentId(document.repoId, document.issueNumber);
         await updateDocumentParentsField({
           dataSourceConfig: connector,
           documentId: docId,
           parents: [
-            getIssueInternalId(document.repoId, document.issueNumber),
+            getIssueDocumentId(document.repoId, document.issueNumber),
             document.repoId,
           ],
         });
