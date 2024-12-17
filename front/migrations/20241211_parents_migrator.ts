@@ -212,7 +212,116 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     },
   },
   microsoft: null,
-  github: null,
+  github: {
+    transformer: (nodeId, parents) => {
+      if (nodeId !== parents[0]) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Github nodeId !== parents[0]"
+        );
+        return { parents, parentId: parents[1] };
+      }
+      const repoId = parents[parents.length - 1];
+      // case where we are already good
+      if (repoId.startsWith("github-repository")) {
+        return { parents, parentId: parents[1] };
+      }
+      if (parents.length < 3) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Invalid Github parents"
+        );
+        return { parents, parentId: parents[1] };
+      }
+      assert(/^\d+$/.test(repoId), `Invalid repoId: ${repoId}`);
+
+      if (nodeId.startsWith("github-issue-")) {
+        return {
+          parents: [
+            // old parents
+            ...parents,
+            // new parents
+            `github-issues-${repoId}`,
+            `github-repository-${repoId}`,
+          ],
+          parentId: parents[1],
+        };
+      }
+      if (nodeId.startsWith("github-discussion-")) {
+        return {
+          parents: [
+            // old parents
+            ...parents,
+            // new parents
+            `github-discussions-${repoId}`,
+            `github-repository-${repoId}`,
+          ],
+          parentId: parents[1],
+        };
+      }
+      if (nodeId.startsWith("github-code")) {
+        // github-code-${repoId}-file-xxx, github-code-${repoId}-dir-xxx, ..., github-code-${repoId}, ${repoId}
+        return {
+          parents: [
+            nodeId,
+            /// putting the code directories here in reverse
+            ...parents
+              .filter((p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p)) // same regex as in connectors/github/lib/utils.ts
+              .reverse(),
+            `github-code-${repoId}`,
+            `github-repository-${repoId}`,
+          ],
+          parentId: parents[1],
+        };
+      }
+      throw new Error(`Unrecognized node type: ${nodeId}`);
+    },
+    cleaner: (nodeId, parents) => {
+      if (nodeId !== parents[0]) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Github nodeId !== parents[0]"
+        );
+        return { parents, parentId: parents[1] };
+      }
+      const lastParent = parents[parents.length - 1];
+      if (!lastParent.startsWith("github-repository-")) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Github parents[-1] !== github-repository-xxx"
+        );
+        return { parents, parentId: parents[1] };
+      }
+      const repoId = lastParent.replace("github-repository-", "");
+      assert(/^\d+$/.test(repoId), `Invalid repoId: ${repoId}`);
+
+      if (nodeId.startsWith("github-code-")) {
+        assert(
+          /^github-code-\d+-file-[a-f0-9]+$/.test(nodeId),
+          `Github invalid nodeId: ${nodeId}`
+        );
+
+        return {
+          parents: [
+            nodeId,
+            ...parents.filter((p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p)), // same regex as in connectors/github/lib/utils.ts
+            `github-code-${repoId}`,
+            `github-repository-${repoId}`,
+          ],
+          parentId: parents[1],
+        };
+      }
+
+      assert(
+        parents
+          .filter((p) => !p.startsWith("github-"))
+          .every((p) => p.endsWith("discussions") || p.endsWith("issues"))
+      );
+      // looks brittle but is not, for issues and discussions old parents match ${repoId}-discussions, ${repoId}-issues, ${repoId}
+      const newParents = parents.filter((p) => p.startsWith("github-"));
+      return { parents: newParents, parentId: newParents[1] };
+    },
+  },
   notion: {
     transformer: (nodeId, parents) => {
       const uniqueIds = _.uniq(

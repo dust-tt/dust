@@ -22,6 +22,14 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
+import {
+  getCodeRootNodeId,
+  getDiscussionNodeId,
+  getDiscussionsNodeId,
+  getIssueNodeId,
+  getIssuesNodeId,
+  getRepositoryNodeId,
+} from "@connectors/connectors/github/lib/utils";
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
@@ -265,7 +273,7 @@ export async function githubUpsertIssueActivity(
     content: renderedIssue,
   } = renderedIssueResult;
 
-  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
+  const documentId = getIssueNodeId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
     `title:${issue.title}`,
@@ -291,7 +299,15 @@ export async function githubUpsertIssueActivity(
     // Therefore as a special case we use getIssueDocumentId() to get a parent string
     // The repo id from github is globally unique so used as-is, as per
     // convention to use the external id string.
-    parents: [documentId, `${repoId}-issues`, repoId.toString()],
+    parents: [
+      documentId,
+      // TODO(2024-12-17 aubin): remove the old parent IDs below
+      `${repoId}-issues`,
+      repoId.toString(),
+      // new parent IDs
+      getIssuesNodeId(repoId),
+      getRepositoryNodeId(repoId),
+    ],
     loggerArgs: logger.bindings(),
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
@@ -454,10 +470,7 @@ export async function githubUpsertDiscussionActivity(
     logger
   );
 
-  const documentId = getDiscussionDocumentId(
-    repoId.toString(),
-    discussionNumber
-  );
+  const documentId = getDiscussionNodeId(repoId.toString(), discussionNumber);
   const tags = [
     `title:${discussion.title}`,
     `author:${discussion.author ? discussion.author.login : "unknown"}`,
@@ -477,7 +490,15 @@ export async function githubUpsertDiscussionActivity(
     // as a special case we use getDiscussionDocumentId() to get a parent string
     // The repo id from github is globally unique so used as-is, as per
     // convention to use the external id string.
-    parents: [documentId, `${repoId}-discussions`, repoId.toString()],
+    parents: [
+      documentId,
+      // TODO(2024-12-17 aubin): remove the old parent IDs below
+      `${repoId}-discussions`,
+      repoId.toString(),
+      // new parent IDs
+      getDiscussionsNodeId(repoId),
+      getRepositoryNodeId(repoId),
+    ],
     loggerArgs: logger.bindings(),
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
@@ -690,7 +711,7 @@ async function deleteIssue(
     );
   }
 
-  const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
+  const documentId = getIssueNodeId(repoId.toString(), issueNumber);
   logger.info({ documentId }, "Deleting GitHub issue from Dust data source.");
   await deleteFromDataSource(dataSourceConfig, documentId, logger.bindings());
 
@@ -723,10 +744,7 @@ async function deleteDiscussion(
     logger.warn("Discussion not found in DB");
   }
 
-  const documentId = getDiscussionDocumentId(
-    repoId.toString(),
-    discussionNumber
-  );
+  const documentId = getDiscussionNodeId(repoId.toString(), discussionNumber);
   logger.info(
     { documentId },
     "Deleting GitHub discussion from Dust data source."
@@ -751,20 +769,6 @@ function renderGithubUser(user: GithubUser | null): string {
     return `@${user.login}`;
   }
   return `@${user.id}`;
-}
-
-export function getIssueDocumentId(
-  repoId: string,
-  issueNumber: number
-): string {
-  return `github-issue-${repoId}-${issueNumber}`;
-}
-
-export function getDiscussionDocumentId(
-  repoId: string,
-  discussionNumber: number
-): string {
-  return `github-discussion-${repoId}-${discussionNumber}`;
 }
 
 export function formatCodeContentForUpsert(
@@ -1018,7 +1022,7 @@ export async function githubCodeSyncActivity({
     // incoherent state (files that moved will appear twice before final cleanup). This seems fine
     // given that syncing stallness is already considered an incident.
 
-    const rootInternalId = `github-code-${repoId}`;
+    const rootInternalId = getCodeRootNodeId(repoId);
     const updatedDirectories: { [key: string]: boolean } = {};
     let repoUpdatedAt: Date | null = null;
 
@@ -1104,7 +1108,16 @@ export async function githubCodeSyncActivity({
             documentUrl: f.sourceUrl,
             timestampMs: codeSyncStartedAt.getTime(),
             tags,
-            parents: [...f.parents, rootInternalId, repoId.toString()],
+            parents: [
+              // TODO(2024-12-17 aubin): remove the old parent IDs below
+              ...f.parents,
+              rootInternalId,
+              repoId.toString(),
+              // new parent IDs
+              ...f.parents.slice(1).reverse(),
+              rootInternalId,
+              getRepositoryNodeId(repoId),
+            ],
             loggerArgs: logger.bindings(),
             upsertContext: {
               sync_type: isBatchSync ? "batch" : "incremental",
