@@ -673,8 +673,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const baseParents: string[] = [internalId];
-
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
@@ -686,14 +684,14 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     switch (type) {
       case "REPO_FULL": {
-        return new Ok(baseParents);
+        return new Ok([internalId]);
       }
       case "REPO_ISSUES":
       case "REPO_DISCUSSIONS": {
-        return new Ok([...baseParents, getRepositoryNodeId(repoId)]);
+        return new Ok([internalId, getRepositoryNodeId(repoId)]);
       }
       case "REPO_CODE": {
-        return new Ok([...baseParents, getRepositoryNodeId(repoId)]);
+        return new Ok([internalId, getRepositoryNodeId(repoId)]);
       }
       case "REPO_CODE_DIR":
       case "REPO_CODE_FILE": {
@@ -702,7 +700,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           internalId,
           repoId
         );
-        return new Ok([...baseParents, ...parents]);
+        return new Ok([internalId, ...parents]);
       }
       default: {
         assertNever(type);
