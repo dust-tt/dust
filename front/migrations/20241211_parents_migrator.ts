@@ -190,10 +190,12 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   },
   google_drive: {
     transformer: (nodeId, parents) => {
-      const newParents = parents.map((id) =>
-        id.startsWith("gdrive-") || id.startsWith("google-spreadsheet-")
-          ? id
-          : `gdrive-${id}`
+      const newParents = _.uniq(
+        parents.map((id) =>
+          id.startsWith("gdrive-") || id.startsWith("google-spreadsheet-")
+            ? id
+            : `gdrive-${id}`
+        )
       );
 
       return {
