@@ -5,6 +5,7 @@ import {
   getOAuthConnectionAccessToken,
   Ok,
 } from "@dust-tt/types";
+import _ from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
 import type {
@@ -32,6 +33,14 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+function nodeIdFromNotionId(notionId: string) {
+  return `notion-${notionId}`;
+}
+
+function notionIdFromNodeId(nodeId: string) {
+  return _.last(nodeId.split("notion-"))!;
+}
 
 async function workspaceIdFromConnectionId(connectionId: string) {
   const tokRes = await getOAuthConnectionAccessToken({
@@ -403,19 +412,20 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const parentId = parentInternalId || "workspace";
+    const notionId =
+      (parentInternalId && notionIdFromNodeId(parentInternalId)) || "workspace";
 
     const [pages, dbs] = await Promise.all([
       NotionPage.findAll({
         where: {
           connectorId: this.connectorId,
-          parentId,
+          parentId: notionId,
         },
       }),
       NotionDatabase.findAll({
         where: {
           connectorId: this.connectorId,
-          parentId,
+          parentId: notionId,
         },
       }),
     ]);
@@ -426,17 +436,17 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
       return {
         provider: c.type,
-        internalId: page.notionPageId,
+        internalId: nodeIdFromNotionId(page.notionPageId),
         parentInternalId:
           !page.parentId || page.parentId === "workspace"
             ? null
-            : page.parentId,
+            : nodeIdFromNotionId(page.parentId),
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable,
         permission: "read",
-        dustDocumentId: `notion-${page.notionPageId}`,
+        dustDocumentId: nodeIdFromNotionId(page.notionPageId),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
       };
     };
@@ -450,15 +460,17 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
       return {
         provider: c.type,
-        internalId: db.notionDatabaseId,
+        internalId: nodeIdFromNotionId(db.notionDatabaseId),
         parentInternalId:
-          !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+          !db.parentId || db.parentId === "workspace"
+            ? null
+            : nodeIdFromNotionId(db.parentId),
         type: "database",
         title: db.title || "",
         sourceUrl: db.notionUrl || null,
         expandable: true,
         permission: "read",
-        dustDocumentId: `notion-database-${db.notionDatabaseId}`,
+        dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
       };
     };
@@ -474,7 +486,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         folderNodes.push({
           provider: c.type,
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: "unknown",
+          internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
@@ -501,17 +513,19 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     internalIds: string[];
   }): Promise<Result<ContentNode[], Error>> {
+    const notionIds = internalIds.map((id) => notionIdFromNodeId(id));
+
     const [pages, dbs] = await Promise.all([
       NotionPage.findAll({
         where: {
           connectorId: this.connectorId,
-          notionPageId: internalIds,
+          notionPageId: notionIds,
         },
       }),
       NotionDatabase.findAll({
         where: {
           connectorId: this.connectorId,
-          notionDatabaseId: internalIds,
+          notionDatabaseId: notionIds,
         },
       }),
     ]);
@@ -520,17 +534,17 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const pageNodes: ContentNode[] = await Promise.all(
       pages.map(async (page) => ({
         provider: "notion",
-        internalId: page.notionPageId,
+        internalId: nodeIdFromNotionId(page.notionPageId),
         parentInternalId:
           !page.parentId || page.parentId === "workspace"
             ? null
-            : page.parentId,
+            : nodeIdFromNotionId(page.parentId),
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
         permission: "read",
-        dustDocumentId: `notion-${page.notionPageId}`,
+        dustDocumentId: nodeIdFromNotionId(page.notionPageId),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
         dustTableId: null,
       }))
@@ -538,28 +552,30 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const dbNodes: ContentNode[] = dbs.map((db) => ({
       provider: "notion",
-      internalId: db.notionDatabaseId,
+      internalId: nodeIdFromNotionId(db.notionDatabaseId),
       parentInternalId:
-        !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+        !db.parentId || db.parentId === "workspace"
+          ? null
+          : nodeIdFromNotionId(db.parentId),
       type: "database",
       title: db.title || "",
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
-      dustDocumentId: null,
+      dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
       lastUpdatedAt: null,
       dustTableId: getNotionDatabaseTableId(db.notionDatabaseId),
     }));
 
     const contentNodes = pageNodes.concat(dbNodes);
 
-    if (internalIds.indexOf("unknown") !== -1) {
+    if (notionIds.includes("unknown")) {
       const orphanedCount = await getOrphanedCount(this.connectorId);
       if (orphanedCount > 0) {
         contentNodes.push({
           provider: "notion",
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: "unknown",
+          internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
@@ -581,6 +597,8 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
+    const notionId = notionIdFromNodeId(internalId);
+
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
@@ -592,13 +610,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     try {
       const parents = await getParents(
         this.connectorId,
-        internalId,
+        notionId,
         [],
         memo,
         undefined
       );
 
-      return new Ok(parents);
+      return new Ok(parents.map((p) => nodeIdFromNotionId(p)));
     } catch (e) {
       logger.error(
         { connectorId: this.connectorId, internalId, memoizationKey, error: e },
