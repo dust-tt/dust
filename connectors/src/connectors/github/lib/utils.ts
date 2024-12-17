@@ -1,3 +1,5 @@
+import { hash as blake3 } from "blake3/esm/node/hash-fn";
+
 export const GITHUB_CONTENT_NODE_TYPES = [
   "REPO_FULL",
   "REPO_ISSUES",
@@ -64,4 +66,55 @@ export function matchGithubInternalIdType(internalId: string): {
     };
   }
   throw new Error(`Invalid Github internal id: ${internalId}`);
+}
+
+export function getRepositoryInternalId(repoId: string | number): string {
+  return `github-repository-${repoId}`;
+}
+
+export function getIssuesInternalId(repoId: string | number): string {
+  return `github-issues-${repoId}`;
+}
+
+export function getIssueInternalId(
+  repoId: string | number,
+  issueNumber: number
+): string {
+  return `github-issue-${repoId}-${issueNumber}`;
+}
+
+export function getDiscussionsInternalId(repoId: string | number): string {
+  return `github-discussions-${repoId}`;
+}
+
+export function getDiscussionInternalId(
+  repoId: string | number,
+  discussionNumber: number
+): string {
+  return `github-discussion-${repoId}-${discussionNumber}`;
+}
+
+export function getCodeRootInternalId(repoId: string | number): string {
+  return `github-code-${repoId}`;
+}
+
+export function getCodeDirInternalId(
+  repoId: string | number,
+  codePath: string
+): string {
+  const p = `github-code-${repoId}-dir-${codePath}`;
+  return `github-code-${repoId}-dir-${blake3(p)
+    .toString("hex")
+    .substring(0, 16)}`;
+}
+
+export function getCodeFileInternalId(
+  repoId: string | number,
+  codePath: string
+): string {
+  return `github-code-${repoId}-file-${blake3(
+    `github-code-${repoId}-file-${codePath}`
+  )
+    .toString("hex")
+    .substring(0, 16)}`;
 }

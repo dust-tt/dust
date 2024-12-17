@@ -192,21 +192,57 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   microsoft: null,
   github: {
     transformer: (nodeId, parents) => {
-      if (!nodeId.startsWith("github-code-")) {
-        return { parents, parentId: parents[1] }; // discussions and issues are already ok
+      const repoId = parents[parents.length - 1];
+      // case where we are already good
+      if (repoId.startsWith("github-repository")) {
+        return { parents, parentId: parents[1] };
       }
-      assert(parents.length >= 3, "parents.length < 3");
-      // github-code-${repoId}-file-xxx, github-code-${repoId}-dir-xxx, ..., github-code-${repoId}, ${repoId}
-      const newParents = [
-        parents[0],
-        ...parents.slice(1, -2).reverse(),
-        parents[parents.length - 2],
-        parents[parents.length - 1],
-      ];
-      assert(newParents.length === parents.length, "Length mismatch.");
-      return { parents: newParents, parentId: newParents[1] };
+      if (parents.length < 3) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Invalid Github parents"
+        );
+      }
+
+      if (nodeId.startsWith("github-issue-")) {
+        return {
+          parents: [
+            // old parents
+            ...parents,
+            // new parents
+            `github-issues-${repoId}`,
+            `github-repository-${repoId}`,
+          ],
+          parentId: parents[1],
+        };
+      }
+      if (nodeId.startsWith("github-discussion-")) {
+        return {
+          parents: [
+            // old parents
+            ...parents,
+            // new parents
+            `github-discussions-${repoId}`,
+            `github-repository-${repoId}`,
+          ],
+          parentId: parents[1],
+        };
+      }
+      if (nodeId.startsWith("github-code")) {
+        // github-code-${repoId}-file-xxx, github-code-${repoId}-dir-xxx, ..., github-code-${repoId}, ${repoId}
+        return {
+          parents: [
+            ...parents,
+            ...parents.slice(1, -2).reverse(),
+            `github-code-${repoId}`,
+            `github-repository-${repoId}`,
+          ],
+          parentId: parents[1],
+        };
+      }
+      throw new Error(`Unrecognized node type: ${nodeId}`);
     },
-    cleaner: (nodeId, parents) => ({ parents, parentId: parents[1] }), // mock, we're not going to use this
+    cleaner: (nodeId, parents) => ({ parents, parentId: parents[1] }), // TODO(2024-12-17 aubin)
   },
   notion: {
     transformer: (nodeId, parents) => {

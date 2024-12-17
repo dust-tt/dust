@@ -1,6 +1,5 @@
 import type { Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
-import { hash as blake3 } from "blake3";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
@@ -30,6 +29,10 @@ import {
   GetDiscussionPayloadSchema,
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
+import {
+  getCodeDirInternalId,
+  getCodeFileInternalId,
+} from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
@@ -848,10 +851,10 @@ export async function processRepository({
 
       const parents = [];
       for (let i = 0; i < path.length; i++) {
-        const p = `github-code-${repoId}-dir-${path.slice(0, i + 1).join("/")}`;
-        const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
-          .toString("hex")
-          .substring(0, 16)}`;
+        const pathInternalId = getCodeDirInternalId(
+          repoId,
+          path.slice(0, i + 1).join("/")
+        );
         parents.push({
           internalId: pathInternalId,
           dirName: path[i] as string,
@@ -859,11 +862,10 @@ export async function processRepository({
         });
       }
 
-      const documentId = `github-code-${repoId}-file-${blake3(
-        `github-code-${repoId}-file-${path.join("/")}/${fileName}`
-      )
-        .toString("hex")
-        .substring(0, 16)}`;
+      const documentId = getCodeFileInternalId(
+        repoId,
+        `${path.join("/")}/${fileName}`
+      );
 
       const parentInternalId =
         parents.length === 0
@@ -882,7 +884,7 @@ export async function processRepository({
         documentId,
         parentInternalId,
         /// reversing the parents here since the convention is bottom to top
-        parents: [documentId, ...parents.map((p) => p.internalId).reverse()],
+        parents: [documentId, ...parents.map((p) => p.internalId)],
         localFilePath: file,
       });
 
