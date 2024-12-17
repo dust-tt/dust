@@ -508,15 +508,17 @@ async function handler(
         statsDClient.increment("document_no_self_ref.count", 1, statsDTags);
       }
 
+      const documentId = req.query.documentId as string;
+
       if (r.data.async === true) {
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
             workspaceId: owner.sId,
             dataSourceId: dataSource.sId,
-            documentId: req.query.documentId as string,
+            documentId,
             tags: r.data.tags || [],
             parentId: r.data.parent_id || null,
-            parents: r.data.parents || [],
+            parents: r.data.parents || [documentId],
             timestamp: r.data.timestamp || null,
             sourceUrl,
             section,
@@ -556,7 +558,7 @@ async function handler(
           documentId: req.query.documentId as string,
           tags: r.data.tags || [],
           parentId: r.data.parent_id || null,
-          parents: r.data.parents || [],
+          parents: r.data.parents || [documentId],
           sourceUrl,
           timestamp: r.data.timestamp || null,
           section,

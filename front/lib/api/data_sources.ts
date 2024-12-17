@@ -640,7 +640,7 @@ export async function handleDataSourceTableCSVUpsert({
   }
 
   const tableId = params.tableId ?? generateRandomModelSId();
-  const tableParents: string[] = params.parents ?? [];
+  const tableParents: string[] = params.parents ?? [tableId];
 
   const flags = await getFeatureFlags(owner);
 
