@@ -11,6 +11,7 @@ import {
   Icon,
   MagnifyingGlassIcon,
   SlackLogo,
+  TableIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -30,6 +31,14 @@ export const ConversationExample = () => {
             type="user"
             name="Edouard"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+            citations={[
+              <Citation href="https://www.google.com">
+                <CitationIcons>
+                  <Icon visual={TableIcon} size="sm" />
+                </CitationIcons>
+                <CitationTitle>Title</CitationTitle>
+              </Citation>,
+            ]}
           >
             I only want to show citations if a citations reactnode has been
             passed

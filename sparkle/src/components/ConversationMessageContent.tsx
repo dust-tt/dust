@@ -1,5 +1,6 @@
 import React from "react";
 
+import { CitationGrid } from "@sparkle/components/";
 import { ConversationMessageSizeType } from "@sparkle/components/ConversationMessage";
 import { cn } from "@sparkle/lib/utils";
 
@@ -29,18 +30,7 @@ export function ConversationMessageContent({
       >
         {children}
       </div>
-      {citations && (
-        <div
-          className={cn(
-            "s-grid s-grid-cols-2 s-gap-2",
-            size === "compact"
-              ? ""
-              : "@xs:s-grid-cols-2 @sm:s-grid-cols-3 @lg:s-grid-cols-4 @xl:s-grid-cols-5"
-          )}
-        >
-          {citations}
-        </div>
-      )}
+      {citations && <CitationGrid>{citations}</CitationGrid>}
     </div>
   );
 }
