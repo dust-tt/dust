@@ -251,8 +251,13 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         totalExtracted += extracted.length;
         const pageTitle = $("title").text();
 
-        const folders = getAllFoldersForUrl(request.url);
-        for (const folder of folders) {
+        // note that parentFolderUrls.length === parentFolderIds.length -1
+        // since parentFolderIds includes the page as first element
+        // and parentFolderUrls does not
+        const parentFolderUrls = getAllFoldersForUrl(request.url);
+        const parentFolderIds = getParentsForPage(request.url, false);
+
+        for (const [index, folder] of parentFolderUrls.entries()) {
           if (createdFolders.has(folder)) {
             continue;
           }
@@ -260,7 +265,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           const logicalParent = isTopFolder(request.url)
             ? null
             : getFolderForUrl(folder);
-          await WebCrawlerFolder.upsert({
+          const [webCrawlerFolder] = await WebCrawlerFolder.upsert({
             url: folder,
             parentUrl: logicalParent,
             connectorId: connector.id,
@@ -270,6 +275,18 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               ressourceType: "folder",
             }),
             lastSeenAt: new Date(),
+          });
+
+          await upsertFolderNode({
+            dataSourceConfig,
+            folderId: webCrawlerFolder.internalId,
+            timestampMs: webCrawlerFolder.updatedAt.getTime(),
+
+            // parent folder ids of the page are in hierarchy order from the
+            // page to the root so for the current folder, its parents start at
+            // index+1 (including itself as first parent) and end at the root
+            parents: parentFolderIds.slice(index + 1),
+            title: folder,
           });
 
           createdFolders.add(folder);
@@ -342,7 +359,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               documentUrl: validatedUrl.standardized,
               timestampMs: new Date().getTime(),
               tags: [`title:${stripNullBytes(pageTitle)}`],
-              parents: getParentsForPage(request.url, false),
+              parents: parentFolderIds,
               upsertContext: {
                 sync_type: "batch",
               },
@@ -559,4 +576,16 @@ export async function webCrawlerGarbageCollector(
 
 export async function getConnectorIdsForWebsitesToCrawl() {
   return WebCrawlerConfigurationResource.getConnectorIdsForWebsitesToCrawl();
+}
+function upsertFolderNode(arg0: {
+  dataSourceConfig: import("../../../types/data_source_config").DataSourceConfig;
+  folderId: string;
+  timestampMs: number;
+  // parent folder ids of the page are in hierarchy order from the
+  // page to the root so for the current folder, its parents start at
+  // index+1 (including itself as first parent) and end at the root
+  parents: string[];
+  title: string;
+}) {
+  throw new Error("Function not implemented.");
 }
