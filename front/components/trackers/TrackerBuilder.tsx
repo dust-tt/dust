@@ -34,7 +34,7 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
-import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/document_tracker/consts";
+import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/tracker/consts";
 import { isEmailValid } from "@app/lib/utils";
 
 export const TrackerBuilder = ({

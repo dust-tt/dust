@@ -8,7 +8,9 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
+import _ from "lodash";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -330,6 +332,43 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       trackerId: tracker.id,
       workspaceId: tracker.workspace.sId,
     }));
+  }
+
+  static async internalFetchAllWatchedForDocument(
+    auth: Authenticator,
+    dataSourceId: string,
+    parentIds: string[] | null
+  ): Promise<TrackerConfigurationResource[]> {
+    const dataSourceModelId = getResourceIdFromSId(dataSourceId);
+
+    if (!dataSourceModelId) {
+      throw new Error(`Invalid data source ID: ${dataSourceId}`);
+    }
+
+    const dsConfigs = await TrackerDataSourceConfigurationModel.findAll({
+      where: {
+        dataSourceId: dataSourceModelId,
+        scope: "watched",
+        // TODO(DOC_TRACKER): GIN index.
+        parentsIn: parentIds
+          ? {
+              [Op.overlap]: parentIds,
+            }
+          : null,
+      },
+    });
+
+    // Fetch the associated tracker configurations
+    const trackerIds = _.uniq(
+      dsConfigs.map((config) => config.trackerConfigurationId)
+    );
+
+    return this.baseFetch(auth, {
+      where: {
+        id: trackerIds,
+        status: "active",
+      },
+    });
   }
 
   // Deletion.

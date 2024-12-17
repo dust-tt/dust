@@ -3,7 +3,7 @@ import parseArgs from "minimist";
 import {
   launchTrackerNotificationWorkflow,
   stopTrackerNotificationWorkflow,
-} from "@app/temporal/document_tracker/client";
+} from "@app/temporal/tracker/client";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));

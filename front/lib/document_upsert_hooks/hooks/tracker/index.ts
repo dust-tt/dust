@@ -1,12 +1,12 @@
 import { getFeatureFlags } from "@app/lib/auth";
 import type { DocumentUpsertHook } from "@app/lib/document_upsert_hooks/hooks";
-import { launchRunDocumentTrackerWorkflow } from "@app/temporal/document_tracker/client";
+import { launchTrackersGenerationWorkflow } from "@app/temporal/tracker/client";
 
 // this hook is meant to suggest changes to tracked documents
 // based on new information that has been added to other documents
 // it should run on upserts if the workspace has tracked docs
-export const documentTrackerUpsertHook: DocumentUpsertHook = {
-  type: "document_tracker",
+export const trackerUpsertHook: DocumentUpsertHook = {
+  type: "tracker",
   fn: async ({
     auth,
     dataSourceId,
@@ -29,7 +29,7 @@ export const documentTrackerUpsertHook: DocumentUpsertHook = {
       return;
     }
 
-    await launchRunDocumentTrackerWorkflow({
+    await launchTrackersGenerationWorkflow({
       workspaceId: owner.sId,
       dataSourceId,
       documentId,
