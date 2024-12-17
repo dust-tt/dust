@@ -5,7 +5,6 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     Elasticsearch, IndexParts,
 };
-use rand::Rng;
 use url::Url;
 
 use crate::data_sources::node::Node;
