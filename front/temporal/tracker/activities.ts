@@ -84,7 +84,7 @@ export async function trackersGenerationActivity(
   }
 
   const trackers =
-    await TrackerConfigurationResource.internalFetchAllWatchedForDocument(
+    await TrackerConfigurationResource.fetchAllWatchedForDocument(
       auth,
       dataSourceId,
       docParentIds

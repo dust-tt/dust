@@ -334,7 +334,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     }));
   }
 
-  static async internalFetchAllWatchedForDocument(
+  static async fetchAllWatchedForDocument(
     auth: Authenticator,
     dataSourceId: string,
     parentIds: string[] | null
@@ -356,6 +356,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             }
           : null,
       },
+      attributes: ["trackerConfigurationId"],
     });
 
     // Fetch the associated tracker configurations
