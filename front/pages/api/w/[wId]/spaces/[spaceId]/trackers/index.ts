@@ -2,11 +2,7 @@ import type {
   TrackerConfigurationType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  FrequencyCodec,
-  ModelIdCodec,
-  ModelProviderIdCodec,
-} from "@dust-tt/types";
+import { ModelIdCodec, ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -46,7 +42,7 @@ export const PostTrackersRequestBodySchema = t.type({
   prompt: t.union([t.string, t.null]),
   modelId: ModelIdCodec,
   providerId: ModelProviderIdCodec,
-  frequency: FrequencyCodec,
+  frequency: t.string,
   temperature: t.number,
   recipients: t.array(t.string),
   maintainedDataSources: TrackerDataSourcesConfigurationBodySchema,

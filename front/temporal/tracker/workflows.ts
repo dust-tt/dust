@@ -88,7 +88,7 @@ export async function trackersNotificationsWorkflow() {
 
   // If we got no signal then we're on the scheduled execution: we process all trackers.
   if (uniqueTrackers.size === 0) {
-    const trackers = await getTrackerIdsToNotifyActivity();
+    const trackers = await getTrackerIdsToNotifyActivity(currentSyncMs);
     trackers.forEach((tracker) => uniqueTrackers.add(tracker));
   }
 

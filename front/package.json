@@ -51,6 +51,7 @@
     "blake3": "^2.1.7",
     "class-variance-authority": "^0.7.0",
     "cmdk": "^1.0.0",
+    "cron-parser": "^4.9.0",
     "csv-parse": "^5.5.2",
     "csv-stringify": "^6.4.5",
     "date-fns": "^3.6.0",

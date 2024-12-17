@@ -268,10 +268,12 @@ async function getDataSourceDocument({
  * They are the active trackers that have generations to consume.
  * @returns TrackerIdWorkspaceId[]
  */
-export const getTrackerIdsToNotifyActivity = async (): Promise<
-  TrackerIdWorkspaceId[]
-> => {
-  return TrackerConfigurationResource.internalFetchAllActiveWithUnconsumedGenerations();
+export const getTrackerIdsToNotifyActivity = async (
+  currentSyncMs: number
+): Promise<TrackerIdWorkspaceId[]> => {
+  return TrackerConfigurationResource.internalFetchTrackersToNotify(
+    currentSyncMs
+  );
 };
 
 /**

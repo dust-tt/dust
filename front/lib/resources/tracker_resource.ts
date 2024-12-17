@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
+import { parseExpression } from "cron-parser";
 import _ from "lodash";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
@@ -26,6 +27,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -300,12 +302,12 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
   // Internal method for fetching trackers without any authorization checks.
   // Not intended for use outside of the Tracker workflow.
-  // Fetches the active trackers that have generations to consume.
-  static async internalFetchAllActiveWithUnconsumedGenerations(): Promise<
-    TrackerIdWorkspaceId[]
-  > {
+  // Fetches the active trackers that need to be processed for notifications.
+  static async internalFetchTrackersToNotify(
+    currentSyncMs: number
+  ): Promise<TrackerIdWorkspaceId[]> {
     const trackers = await TrackerConfigurationResource.model.findAll({
-      attributes: ["id"],
+      attributes: ["id", "frequency", "lastNotifiedAt"],
       where: {
         status: "active",
       },
@@ -314,19 +316,26 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
           model: Workspace,
           attributes: ["sId"],
         },
-        {
-          model: TrackerGenerationModel,
-          as: "generations",
-          where: {
-            consumedAt: null,
-          },
-        },
       ],
     });
 
-    const filteredTrackers = trackers.filter(
-      (tracker) => tracker.generations.length
-    );
+    const filteredTrackers = trackers.filter((tracker) => {
+      if (!tracker.frequency) {
+        return false;
+      }
+      try {
+        const interval = parseExpression(tracker.frequency, {
+          currentDate: tracker.lastNotifiedAt || tracker.createdAt,
+        });
+        return interval.next().toDate().getTime() <= currentSyncMs;
+      } catch (e) {
+        logger.error(
+          { trackerId: tracker.id },
+          "[Tracker] Invalid cron expression."
+        );
+        return false;
+      }
+    });
 
     return filteredTrackers.map((tracker) => ({
       trackerId: tracker.id,
