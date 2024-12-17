@@ -349,6 +349,15 @@ async function migrateDocument({
     )({});
 
     if (updateRes.isErr()) {
+      logger.error(
+        {
+          tableId: coreDocument.document_id,
+          fromParents: coreDocument.parents,
+          toParents: newParents,
+          toParentId: newParentId,
+        },
+        `Error while updating parents`
+      );
       throw new Error(updateRes.error.message);
     }
 
@@ -380,6 +389,7 @@ async function migrateTable({
   dataSource,
   coreTable,
   execute,
+  skipIfParentsAreAlreadyCorrect,
 }: {
   action: MigratorAction;
   migrator: ProviderMigrator;
@@ -390,6 +400,7 @@ async function migrateTable({
     table_id: string;
   };
   execute: boolean;
+  skipIfParentsAreAlreadyCorrect: boolean;
 }) {
   let newParents = coreTable.parents;
   let newParentId: string | null = null;
@@ -411,6 +422,21 @@ async function migrateTable({
     throw e;
   }
 
+  if (
+    skipIfParentsAreAlreadyCorrect &&
+    newParents.every((x, i) => x === coreTable.parents[i])
+  ) {
+    logger.info(
+      {
+        tableId: coreTable.table_id,
+        fromParents: coreTable.parents,
+        toParents: newParents,
+      },
+      `SKIP table (parents are already correct)`
+    );
+    return new Ok(undefined);
+  }
+
   if (execute) {
     const updateRes = await withRetries(
       async () => {
@@ -426,6 +452,15 @@ async function migrateTable({
     )({});
 
     if (updateRes.isErr()) {
+      logger.error(
+        {
+          tableId: coreTable.table_id,
+          fromParents: coreTable.parents,
+          toParents: newParents,
+          toParentId: newParentId,
+        },
+        `Error while updating parents`
+      );
       throw new Error(updateRes.error.message);
     }
 
@@ -601,6 +636,7 @@ async function migrateDataSource({
             dataSource,
             coreTable,
             execute,
+            skipIfParentsAreAlreadyCorrect,
           }),
         { concurrency: TABLE_CONCURRENCY }
       );
