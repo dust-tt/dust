@@ -13,6 +13,7 @@ use super::encryption::{seal_str, unseal_str};
 #[serde(rename_all = "snake_case")]
 pub enum CredentialProvider {
     Snowflake,
+    Modjo,
 }
 
 impl fmt::Display for CredentialProvider {
@@ -106,6 +107,9 @@ impl Credential {
         let keys_to_check = match provider {
             CredentialProvider::Snowflake => {
                 vec!["account", "warehouse", "username", "password", "role"]
+            }
+            CredentialProvider::Modjo => {
+                vec!["api_key"]
             }
         };
 
