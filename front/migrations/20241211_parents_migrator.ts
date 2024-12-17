@@ -241,8 +241,11 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         // github-code-${repoId}-file-xxx, github-code-${repoId}-dir-xxx, ..., github-code-${repoId}, ${repoId}
         return {
           parents: [
-            ...parents,
-            ...parents.slice(1, -2).reverse(),
+            nodeId,
+            /// putting the code directories here in reverse
+            ...parents
+              .filter((p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p)) // same regex as in connectors/github/lib/utils.ts
+              .reverse(),
             `github-code-${repoId}`,
             `github-repository-${repoId}`,
           ],
