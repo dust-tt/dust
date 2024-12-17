@@ -17,6 +17,7 @@ import {
   getCodeRootNodeId,
   getDiscussionsNodeId,
   getIssuesNodeId,
+  getRepositoryIdFromNodeId,
   getRepositoryNodeId,
   matchGithubNodeIdType,
 } from "@connectors/connectors/github/lib/utils";
@@ -269,7 +270,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         nodes = nodes.concat(
           page.map((repo) => ({
             provider: c.type,
-            internalId: repo.id.toString(),
+            internalId: getRepositoryNodeId(repo.id),
             parentInternalId: null,
             type: "folder",
             title: repo.name,
@@ -352,7 +353,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         // If parentInternalId is set and does not start with `github-code` it means that it is
         // supposed to be the repoId. We support issues and discussions and also want to add the code
         // repo resource if it exists (code sync enabled).
-        const repoId = parseInt(parentInternalId, 10);
+        const repoId = getRepositoryIdFromNodeId(parentInternalId);
         if (isNaN(repoId)) {
           return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
         }
@@ -401,7 +402,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         if (latestIssue) {
           nodes.push({
             provider: c.type,
-            internalId: `${repoId}-issues`,
+            internalId: getIssuesNodeId(repoId),
             parentInternalId,
             type: "database",
             title: "Issues",
@@ -416,7 +417,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         if (latestDiscussion) {
           nodes.push({
             provider: c.type,
-            internalId: `${repoId}-discussions`,
+            internalId: getDiscussionsNodeId(repoId),
             parentInternalId,
             type: "channel",
             title: "Discussions",
@@ -431,7 +432,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         if (codeRepo) {
           nodes.push({
             provider: c.type,
-            internalId: `github-code-${repoId}`,
+            internalId: getCodeRootNodeId(repoId),
             parentInternalId,
             type: "folder",
             title: "Code",
