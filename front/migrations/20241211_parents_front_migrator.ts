@@ -62,7 +62,33 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         : `gdrive-${parent}`
     ),
   microsoft: null,
-  github: null,
+  github: (parents) => {
+    const repoId = parents[parents.length - 1];
+    // case where we are already good
+    if (repoId.startsWith("github-repository")) {
+      return parents;
+    }
+    const nodeId = parents[0];
+    if (nodeId.startsWith("github-issue-")) {
+      return [nodeId, `github-issues-${repoId}`, `github-repository-${repoId}`];
+    }
+    if (nodeId.startsWith("github-discussion-")) {
+      return [
+        nodeId,
+        `github-discussions-${repoId}`,
+        `github-repository-${repoId}`,
+      ];
+    }
+    if (nodeId.startsWith("github-code")) {
+      return [
+        nodeId,
+        ...parents.slice(1, -2).reverse(),
+        `github-code-${repoId}`,
+        `github-repository-${repoId}`,
+      ];
+    }
+    throw new Error(`Unrecognized node type: ${nodeId}`);
+  },
   notion: (parents) => {
     return _.uniq(parents.map((p) => _.last(p.split("notion-"))!)).map(
       (id) => `notion-${id}`
