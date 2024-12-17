@@ -62,7 +62,38 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         : `gdrive-${parent}`
     ),
   microsoft: null,
-  github: null,
+  github: (parents) => {
+    return [
+      ...new Set(
+        parents.map((parent) => {
+          if (/^\d+$/.test(parent)) {
+            return `github-repository-${parent}`;
+          }
+          if (/\d+-issues$/.test(parent)) {
+            const repoId = parseInt(parent.replace(/-issues$/, ""), 10);
+            return `github-issues-${repoId}`;
+          }
+          if (/\d+-discussions$/.test(parent)) {
+            const repoId = parseInt(parent.replace(/-discussions$/, ""), 10);
+            return `github-discussions-${repoId}`;
+          }
+          if (
+            /^github-code-\d+$/.test(parent) ||
+            /^github-code-\d+-dir-[a-f0-9]+$/.test(parent) ||
+            /^github-code-\d+-file-[a-f0-9]+$/.test(parent) ||
+            /^github-discussions-\d+$/.test(parent) ||
+            /^github-discussion-\d+$/.test(parent) ||
+            /^github-issues-\d+$/.test(parent) ||
+            /^github-issue-\d+$/.test(parent) ||
+            /^github-repository-\d+$/.test(parent)
+          ) {
+            return parent;
+          }
+          throw new Error(`Unrecognized parent type: ${parent}`);
+        })
+      ),
+    ];
+  },
   notion: (parents) => {
     return _.uniq(parents.map((p) => _.last(p.split("notion-"))!)).map(
       (id) => `notion-${id}`
