@@ -17,25 +17,25 @@ export function matchGithubNodeIdType(internalId: string): {
   type: GithubContentNodeType;
   repoId: number;
 } {
-  // Full repo is selected, format = "12345678"
-  if (/^\d+$/.test(internalId)) {
+  // Full repo is selected, format = "github-repository-12345678"
+  if (/^github-repository-\d+$/.test(internalId)) {
     return {
       type: "REPO_FULL",
-      repoId: parseInt(internalId, 10),
+      repoId: parseInt(internalId.replace(/^github-repository-/, ""), 10),
     };
   }
-  // All issues from repo are selected, format = "12345678-issues"
-  if (/\d+-issues$/.test(internalId)) {
+  // All issues from repo are selected, format = "github-issues-12345678"
+  if (/^github-issues-\d+$/.test(internalId)) {
     return {
       type: "REPO_ISSUES",
-      repoId: parseInt(internalId.replace(/-issues$/, ""), 10),
+      repoId: parseInt(internalId.replace(/^github-issues-/, ""), 10),
     };
   }
-  // All discussions from repo are selected, format = "12345678-discussions"
-  if (/\d+-discussions$/.test(internalId)) {
+  // All discussions from repo are selected, format = "github-discussions-12345678"
+  if (/^github-discussions-\d+$/.test(internalId)) {
     return {
       type: "REPO_DISCUSSIONS",
-      repoId: parseInt(internalId.replace(/-discussions$/, ""), 10),
+      repoId: parseInt(internalId.replace(/^github-discussions-/, ""), 10),
     };
   }
   // All code from repo is selected, format = "github-code-12345678"
