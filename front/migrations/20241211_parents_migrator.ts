@@ -194,7 +194,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
 
       return {
         parents: _.uniq([...newParents, ...parents]),
-        parentId: `gdrive-${parents[1]}`,
+        parentId: newParents[1],
       };
     },
     cleaner: (nodeId, parents) => {
