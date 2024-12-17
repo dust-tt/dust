@@ -34,7 +34,11 @@ export function BrowseActionDetails({
                 </span>
 
                 {r.responseCode === "200" ? (
-                  <Citation key={idx} href={r.browsedUrl}>
+                  <Citation
+                    key={idx}
+                    href={r.browsedUrl}
+                    className="w-48 min-w-48 max-w-48"
+                  >
                     <CitationIcons>
                       <Icon visual={GlobeAltIcon} />
                     </CitationIcons>

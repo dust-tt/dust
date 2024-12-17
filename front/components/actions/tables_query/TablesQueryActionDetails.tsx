@@ -1,8 +1,10 @@
 import {
   Citation,
+  CitationIcons,
   CitationTitle,
   Collapsible,
   ContentMessage,
+  Icon,
   InformationCircleIcon,
   TableIcon,
   useSendNotification,
@@ -144,7 +146,10 @@ function QueryTablesResults({
     <div>
       <span className="text-sm font-bold text-slate-900">Results</span>
       <div onClick={handleDownload} className="py-2">
-        <Citation>
+        <Citation className="w-48 min-w-48 max-w-48">
+          <CitationIcons>
+            <Icon visual={TableIcon} />
+          </CitationIcons>
           <CitationTitle>{title}</CitationTitle>
         </Citation>
       </div>

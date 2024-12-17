@@ -1,4 +1,4 @@
-import { AssistantPreview } from "@dust-tt/sparkle";
+import { AssistantCard, CardGrid } from "@dust-tt/sparkle";
 
 import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 
@@ -15,17 +15,16 @@ export function TemplateGrid({
     return null;
   }
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <CardGrid>
       {templates.map((t) => (
-        <AssistantPreview
+        <AssistantCard
           key={t.sId}
           title={t.handle}
           pictureUrl={t.pictureUrl}
           description={t.description ?? ""}
-          variant="list"
           onClick={() => openTemplateModal(t.sId)}
         />
       ))}
-    </div>
+    </CardGrid>
   );
 }

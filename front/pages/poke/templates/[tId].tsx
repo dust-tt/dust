@@ -1,5 +1,5 @@
 import {
-  AssistantPreview,
+  AssistantCard,
   ColorPicker,
   DropdownMenu,
   DropdownMenuContent,
@@ -436,7 +436,7 @@ function PreviewDialog({ form }: { form: any }) {
         <PokeDialogHeader>
           <PokeDialogTitle>Preview</PokeDialogTitle>
         </PokeDialogHeader>
-        <AssistantPreview
+        <AssistantCard
           title={form.getValues("handle")}
           pictureUrl={avatarVisual}
           description={form.getValues("description") ?? ""}

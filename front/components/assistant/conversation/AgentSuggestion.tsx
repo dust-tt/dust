@@ -1,6 +1,8 @@
 import {
-  AssistantPreview,
+  AssistantCard,
+  AssistantCardMore,
   Button,
+  CardGrid,
   RobotIcon,
   Spinner,
   useSendNotification,
@@ -121,20 +123,23 @@ export function AgentSuggestion({
             <Spinner />
           </div>
         ) : (
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <CardGrid>
             {topAgents.map((agent, id) => (
-              <AssistantPreview
+              <AssistantCard
                 key={`${agent.sId}-${id}`}
-                variant="minimal"
                 description={agent.description}
                 subtitle={agent.lastAuthors?.join(", ") ?? ""}
                 title={agent.name}
                 pictureUrl={agent.pictureUrl}
                 onClick={() => handleSelectSuggestion(agent)}
-                onActionClick={() => showAssistantDetails(agent)}
+                action={
+                  <AssistantCardMore
+                    onClick={() => showAssistantDetails(agent)}
+                  />
+                }
               />
             ))}
-          </div>
+          </CardGrid>
         )}
       </div>
     </>

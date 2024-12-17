@@ -1,10 +1,10 @@
 import {
-  AssistantPreview,
+  AssistantCard,
+  AssistantCardMore,
   Button,
   CompanyIcon,
   LockIcon,
   MagnifyingGlassIcon,
-  MoreIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
@@ -203,19 +203,15 @@ export function AssistantBrowser({
       {viewTab && (
         <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
           {agentsByTab[viewTab].map((agent) => (
-            <AssistantPreview
+            <AssistantCard
               key={agent.sId}
               title={agent.name}
               pictureUrl={agent.pictureUrl}
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
               description={agent.description}
-              variant="minimal"
               onClick={() => handleAssistantClick(agent)}
-              actionElement={
-                <Button
-                  icon={MoreIcon}
-                  variant="outline"
-                  size="sm"
+              action={
+                <AssistantCardMore
                   onClick={(e: Event) => {
                     e.stopPropagation();
                     setQueryParam(router, "assistantDetails", agent.sId);
