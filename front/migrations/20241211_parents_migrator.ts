@@ -193,10 +193,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       );
 
       return {
-        parents: [
-          ...newParents,
-          ...parents.filter((id) => !newParents.includes(id)),
-        ],
+        parents: _.uniq([...newParents, ...parents]),
         parentId: `gdrive-${parents[1]}`,
       };
     },
