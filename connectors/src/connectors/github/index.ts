@@ -289,12 +289,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       return new Ok(nodes);
     } else {
       const { type, repoId } = matchGithubNodeIdType(parentInternalId);
+      if (isNaN(repoId)) {
+        return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
+      }
+
       switch (type) {
         case "REPO_FULL": {
-          if (isNaN(repoId)) {
-            return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
-          }
-
           const [latestDiscussion, latestIssue, repoRes, codeRepo] =
             await Promise.all([
               (async () => {
