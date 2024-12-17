@@ -260,8 +260,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         return { parents, parentId: parents[1] };
       }
       const lastParent = parents[parents.length - 1];
-      // case where we are already good
-      if (!lastParent.startsWith("github-repository")) {
+      if (!lastParent.startsWith("github-repository-")) {
         logger.warn(
           { nodeId, parents, problem: "Not enough parents" },
           "Github parents[-1] !== github-repository-xxx"
@@ -271,7 +270,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       const repoId = lastParent.replace("github-repository-", "");
       assert(/^\d+$/.test(repoId), `Invalid repoId: ${repoId}`);
 
-      if (nodeId.startsWith("github-code")) {
+      if (nodeId.startsWith("github-code-")) {
         const parentsDir = parents.filter((p) => p.includes("-dir-"));
 
         assert(
