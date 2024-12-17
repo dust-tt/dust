@@ -192,6 +192,13 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   microsoft: null,
   github: {
     transformer: (nodeId, parents) => {
+      if (nodeId !== parents[0]) {
+        logger.warn(
+          { nodeId, parents, problem: "Not enough parents" },
+          "Github nodeId !== parents[0]"
+        );
+        return { parents, parentId: parents[1] };
+      }
       const repoId = parents[parents.length - 1];
       // case where we are already good
       if (repoId.startsWith("github-repository")) {
