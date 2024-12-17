@@ -202,6 +202,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
           { nodeId, parents, problem: "Not enough parents" },
           "Invalid Github parents"
         );
+        return { parents, parentId: parents[1] };
       }
       assert(/^\d+$/.test(repoId), `Invalid repoId: ${repoId}`);
 
