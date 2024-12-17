@@ -270,8 +270,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     spaces: SpaceResource[],
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
     });
@@ -283,8 +286,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: space.id,
       },
@@ -296,8 +302,11 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     dataSources: DataSourceResource[],
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
+    // We inject the auth workspaceId to make sure we rely on the associated index as there is no
+    // cross-workspace data source support at this stage.
     return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSources.map((ds) => ds.id),
       },
     });
