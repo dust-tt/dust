@@ -184,7 +184,14 @@ TrackerDataSourceConfigurationModel.init(
   {
     modelName: "tracker_data_source_configuration",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["trackerConfigurationId"] }],
+    indexes: [
+      { fields: ["trackerConfigurationId"] },
+      {
+        fields: ["parentsIn"],
+        using: "gin",
+        name: "tracker_data_source_configuration_parent_ids_gin_idx",
+      },
+    ],
   }
 );
 

@@ -1,0 +1,2 @@
+-- Migration created on Jan 10, 2024
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "tracker_data_source_configuration_parents_in_gin_idx" ON "public"."tracker_data_source_configurations" USING gin("parentsIn");
