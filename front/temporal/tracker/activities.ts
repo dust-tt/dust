@@ -84,11 +84,10 @@ export async function trackersGenerationActivity(
   }
 
   const trackers =
-    await TrackerConfigurationResource.fetchAllWatchedForDocument(
-      auth,
+    await TrackerConfigurationResource.fetchAllWatchedForDocument(auth, {
       dataSourceId,
-      docParentIds
-    );
+      parentIds: docParentIds,
+    });
 
   if (!trackers.length) {
     localLogger.info("No active trackers found for document.");

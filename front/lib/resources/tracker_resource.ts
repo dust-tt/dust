@@ -27,6 +27,16 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 
+type TrackerMaintainedScopeType = Array<{
+  dataSourceViewId: string;
+  filter: {
+    parents: {
+      in: string[];
+      not: string[];
+    };
+  };
+}>;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -218,6 +228,29 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
   // Fetching.
 
+  async fetchMaintainedScope(): Promise<TrackerMaintainedScopeType> {
+    const maintainedDataSources =
+      await TrackerDataSourceConfigurationModel.findAll({
+        where: {
+          trackerConfigurationId: this.id,
+          scope: "maintained",
+        },
+      });
+
+    return maintainedDataSources.map((m) => ({
+      dataSourceViewId: makeSId("data_source_view", {
+        id: m.dataSourceViewId,
+        workspaceId: this.workspaceId,
+      }),
+      filter: {
+        parents: {
+          in: m.parentsIn ?? [],
+          not: m.parentsNotIn ?? [],
+        },
+      },
+    }));
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<TrackerConfigurationModel>
@@ -336,16 +369,23 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
   static async fetchAllWatchedForDocument(
     auth: Authenticator,
-    dataSourceId: string,
-    parentIds: string[] | null
+    {
+      dataSourceId,
+      parentIds,
+    }: {
+      dataSourceId: string;
+      parentIds: string[] | null;
+    }
   ): Promise<TrackerConfigurationResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
     const dataSourceModelId = getResourceIdFromSId(dataSourceId);
 
     if (!dataSourceModelId) {
       throw new Error(`Invalid data source ID: ${dataSourceId}`);
     }
 
-    const dsConfigs = await TrackerDataSourceConfigurationModel.findAll({
+    let dsConfigs = await TrackerDataSourceConfigurationModel.findAll({
       where: {
         dataSourceId: dataSourceModelId,
         scope: "watched",
@@ -356,9 +396,32 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             }
           : null,
       },
-      attributes: ["trackerConfigurationId"],
+      attributes: ["trackerConfigurationId", "dataSourceViewId"],
     });
 
+    // Only consider the ds Configs for which the document is in the data source view.
+    const dsViewIds = dsConfigs.map((c) =>
+      makeSId("data_source_view", {
+        id: c.dataSourceViewId,
+        workspaceId: owner.id,
+      })
+    );
+    const parentsSet = new Set(parentIds);
+    const dsViews = await DataSourceViewResource.fetchByIds(auth, dsViewIds);
+    // These are the data source views that contain the document.
+    const validDsViewIds = new Set(
+      dsViews
+        .filter(
+          (dsView) =>
+            dsView.parentsIn === null ||
+            dsView.parentsIn.some((p) => parentsSet.has(p))
+        )
+        .map((dsView) => dsView.id)
+    );
+
+    dsConfigs = dsConfigs.filter((c) => validDsViewIds.has(c.dataSourceViewId));
+
+    // Fetch the associated tracker configurations
     // Fetch the associated tracker configurations
     const trackerIds = _.uniq(
       dsConfigs.map((config) => config.trackerConfigurationId)
