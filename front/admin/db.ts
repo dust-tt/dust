@@ -75,6 +75,7 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
 // Labs - Can be removed at all times if a solution is dropped
 import {
   LabsTranscriptsConfigurationModel,
@@ -171,6 +172,7 @@ async function main() {
   await RetrievalDocumentChunk.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
+  await KillSwitchModel.sync({ alter: true });
 
   await ConversationClassification.sync({ alter: true });
 
