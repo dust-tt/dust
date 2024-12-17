@@ -33,6 +33,7 @@ export type TypedIncludeable<M> = {
 }[NonAttributeKeys<M>];
 
 export type ResourceFindOptions<M extends Model> = {
+  attributes?: FindOptions<M>["attributes"];
   includes?: TypedIncludeable<M>[];
   limit?: number;
   order?: FindOptions<M>["order"];

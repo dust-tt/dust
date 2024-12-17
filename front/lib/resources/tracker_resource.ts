@@ -3,6 +3,8 @@ import type {
   Result,
   TrackerConfigurationType,
   TrackerDataSourceConfigurationType,
+  TrackerGenerationToProcess,
+  TrackerIdWorkspaceId,
 } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
@@ -12,7 +14,9 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
+  TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
+import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -32,6 +36,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     TrackerConfigurationModel;
 
   readonly dataSourceConfigurations: TrackerDataSourceConfigurationModel[];
+  readonly generations: TrackerGenerationToProcess[];
 
   constructor(
     model: ModelStatic<TrackerConfigurationModel>,
@@ -42,6 +47,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   ) {
     super(TrackerConfigurationResource.model, blob, space);
     this.dataSourceConfigurations = blob.dataSourceConfigurations;
+    this.generations = [];
   }
 
   static async makeNew(
@@ -219,6 +225,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     const trackers = await this.baseFetchWithAuthorization(auth, {
       ...options,
       includes: [
+        ...(options?.includes || []),
         {
           model: TrackerDataSourceConfigurationModel,
           as: "dataSourceConfigurations",
@@ -226,9 +233,9 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       ],
     });
 
-    // This is what enforces the accessibility to an app.
+    // This is what enforces the accessibility to a Tracker.
     return trackers.filter(
-      (tracker) => auth.isBuilder() || tracker.canRead(auth)
+      (tracker) => auth.isAdmin() || tracker.canRead(auth)
     );
   }
 
@@ -262,6 +269,67 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         vaultId: space.id,
       },
     });
+  }
+
+  static async fetchWithGenerationsToConsume(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<TrackerConfigurationType | null> {
+    const tracker = await this.baseFetch(auth, {
+      where: {
+        id,
+        status: "active",
+      },
+      includes: [
+        {
+          // @ts-expect-error @todo(DOC_TRACKER) Fix to remove the ts-expect-error.
+          model: TrackerGenerationModel,
+          // @ts-expect-error @todo(DOC_TRACKER) Fix to remove the ts-expect-error.
+          as: "generations",
+          where: {
+            consumedAt: null,
+          },
+        },
+      ],
+    });
+
+    return tracker ? tracker[0].toJSON() : null;
+  }
+
+  // Internal method for fetching trackers without any authorization checks.
+  // Not intended for use outside of the Tracker workflow.
+  // Fetches the active trackers that have generations to consume.
+  static async internalFetchAllActiveWithUnconsumedGenerations(): Promise<
+    TrackerIdWorkspaceId[]
+  > {
+    const trackers = await TrackerConfigurationResource.model.findAll({
+      attributes: ["id"],
+      where: {
+        status: "active",
+      },
+      include: [
+        {
+          model: Workspace,
+          attributes: ["sId"],
+        },
+        {
+          model: TrackerGenerationModel,
+          as: "generations",
+          where: {
+            consumedAt: null,
+          },
+        },
+      ],
+    });
+
+    const filteredTrackers = trackers.filter(
+      (tracker) => tracker.generations.length
+    );
+
+    return filteredTrackers.map((tracker) => ({
+      trackerId: tracker.id,
+      workspaceId: tracker.workspace.sId,
+    }));
   }
 
   // Deletion.
@@ -322,7 +390,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       },
     });
 
-    return {
+    const tracker: TrackerConfigurationType = {
       id: this.id,
       sId: this.sId,
       name: this.name,
@@ -342,5 +410,18 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         .filter((dsc) => dsc.scope === "watched")
         .map(dataSourceToJSON),
     };
+
+    if (this.generations.length) {
+      tracker.generations = this.generations.map((g) => {
+        return {
+          id: g.id,
+          content: g.content,
+          thinking: g.thinking,
+          documentId: g.documentId,
+        };
+      });
+    }
+
+    return tracker;
   }
 }

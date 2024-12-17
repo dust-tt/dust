@@ -4,7 +4,10 @@ import { hideBin } from "yargs/helpers";
 
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
-import { runDocumentTrackerWorker } from "@app/temporal/document_tracker/worker";
+import {
+  runDocumentTrackerWorker,
+  runTrackerNotificationWorker,
+} from "@app/temporal/document_tracker/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsWorker } from "@app/temporal/labs/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
@@ -24,6 +27,7 @@ type WorkerName =
   | "permissions_queue"
   | "poke"
   | "document_tracker"
+  | "tracker_notification"
   | "production_checks"
   | "scrub_workspace_queue"
   | "update_workspace_usage"
@@ -37,6 +41,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
   document_tracker: runDocumentTrackerWorker,
+  tracker_notification: runTrackerNotificationWorker,
   production_checks: runProductionChecksWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
@@ -47,7 +52,10 @@ const ALL_WORKERS = Object.keys(workerFunctions);
 
 async function runWorkers(workers: WorkerName[]) {
   // Disable document_tracker
-  workers = workers.filter((worker) => worker !== "document_tracker");
+  workers = workers.filter(
+    (worker) =>
+      worker !== "document_tracker" && worker !== "tracker_notification"
+  );
   for (const worker of workers) {
     workerFunctions[worker]().catch((err) =>
       logger.error({ error: err }, `Error running ${worker} worker.`)
