@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::node::{Node, NodeType};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
     data_source_id: String,
@@ -49,5 +51,20 @@ impl Folder {
     }
     pub fn parents(&self) -> &Vec<String> {
         &self.parents
+    }
+}
+
+impl From<Folder> for Node {
+    fn from(folder: Folder) -> Node {
+        Node::new(
+            &folder.data_source_id,
+            &folder.folder_id,
+            NodeType::Folder,
+            folder.timestamp,
+            &folder.title,
+            FOLDER_MIMETYPE,
+            folder.parent_id,
+            folder.parents,
+        )
     }
 }

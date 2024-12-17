@@ -2896,23 +2896,29 @@ async fn folders_upsert(
         )
         .await
     {
-        Err(e) => {
-            return error_response(
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert folder",
+            Some(e),
+        ),
+        Ok(folder) => match state.search_store.index_folder(&folder).await {
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "folder": folder
+                    })),
+                }),
+            ),
+            Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
-                "Failed to upsert folder",
+                "Failed to index folder",
                 Some(e),
-            )
-        }
-        Ok(folder) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "folder": folder
-                })),
-            }),
-        ),
+            ),
+        },
     }
 }
 

@@ -8,8 +8,11 @@ use elasticsearch::{
 use serde_json::json;
 use url::Url;
 
-use crate::{data_sources::data_source::Document, utils};
 use crate::{data_sources::node::Node, databases::table::Table};
+use crate::{
+    data_sources::{data_source::Document, folder::Folder},
+    utils,
+};
 use tracing::{error, info};
 
 #[derive(serde::Deserialize)]
