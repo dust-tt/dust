@@ -20,7 +20,7 @@ pub struct NodesSearchOptions {
 
 #[derive(serde::Deserialize)]
 pub struct DatasourceViewFilter {
-    datasource_id: String,
+    data_source_id: String,
     view_filter: Vec<String>,
 }
 
@@ -121,7 +121,7 @@ impl SearchStore for ElasticsearchSearchStore {
             filter_conditions.push(json!({
                 "bool": {
                     "must": [
-                        { "term": { "data_source_id": f.datasource_id } },
+                        { "term": { "data_source_id": f.data_source_id } },
                         { "terms": { "parents": f.view_filter } }
                     ]
                 }
