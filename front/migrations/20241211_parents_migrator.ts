@@ -444,31 +444,30 @@ async function migrateDocument({
   }
 
   if (execute) {
-    const updateRes = await withRetries(
+    await withRetries(
       async () => {
-        return coreAPI.updateDataSourceDocumentParents({
+        const updateRes = await coreAPI.updateDataSourceDocumentParents({
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           documentId: coreDocument.document_id,
           parents: newParents,
           parentId: newParentId,
         });
+        if (updateRes.isErr()) {
+          logger.error(
+            {
+              tableId: coreDocument.document_id,
+              fromParents: coreDocument.parents,
+              toParents: newParents,
+              toParentId: newParentId,
+            },
+            `Error while updating parents`
+          );
+          throw new Error(updateRes.error.message);
+        }
       },
       { retries: 10 }
     )({});
-
-    if (updateRes.isErr()) {
-      logger.error(
-        {
-          tableId: coreDocument.document_id,
-          fromParents: coreDocument.parents,
-          toParents: newParents,
-          toParentId: newParentId,
-        },
-        `Error while updating parents`
-      );
-      throw new Error(updateRes.error.message);
-    }
 
     logger.info(
       {
@@ -547,31 +546,30 @@ async function migrateTable({
   }
 
   if (execute) {
-    const updateRes = await withRetries(
+    await withRetries(
       async () => {
-        return coreAPI.updateTableParents({
+        const updateRes = await coreAPI.updateTableParents({
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           tableId: coreTable.table_id,
           parents: newParents,
           parentId: newParentId,
         });
+        if (updateRes.isErr()) {
+          logger.error(
+            {
+              tableId: coreTable.table_id,
+              fromParents: coreTable.parents,
+              toParents: newParents,
+              toParentId: newParentId,
+            },
+            `Error while updating parents`
+          );
+          throw new Error(updateRes.error.message);
+        }
       },
       { retries: 3 }
     )({});
-
-    if (updateRes.isErr()) {
-      logger.error(
-        {
-          tableId: coreTable.table_id,
-          fromParents: coreTable.parents,
-          toParents: newParents,
-          toParentId: newParentId,
-        },
-        `Error while updating parents`
-      );
-      throw new Error(updateRes.error.message);
-    }
 
     logger.info(
       {
