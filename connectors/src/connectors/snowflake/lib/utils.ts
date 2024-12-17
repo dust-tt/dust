@@ -59,12 +59,8 @@ export const getCredentials = async ({
   // Narrow the type of credentials to just the username/password variant
   const credentials = credentialsRes.value.credential.content;
   if (!isSnowflakeCredentials(credentials)) {
-    logger.error(
-      { credentialsId },
+    throw new Error(
       "Invalid credentials type - expected snowflake credentials"
-    );
-    return new Err(
-      Error("Invalid credentials type - expected snowflake credentials")
     );
   }
   return new Ok({
@@ -105,12 +101,8 @@ export const getConnectorAndCredentials = async ({
   // Narrow the type of credentials to just the username/password variant
   const credentials = credentialsRes.value.credential.content;
   if (!isSnowflakeCredentials(credentials)) {
-    logger.error(
-      { connectorId },
+    throw new Error(
       "Invalid credentials type - expected snowflake credentials"
-    );
-    return new Err(
-      Error("Invalid credentials type - expected snowflake credentials")
     );
   }
   return new Ok({

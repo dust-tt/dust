@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 
 use crate::{
@@ -35,9 +35,6 @@ pub async fn get_remote_database(
             let db = SnowflakeRemoteDatabase::new(content)?;
             Ok(Box::new(db) as Box<dyn RemoteDatabase + Sync + Send>)
         }
-        _ => Err(anyhow::anyhow!(
-            "Provider {} is not a remote database",
-            provider
-        )),
+        _ => Err(anyhow!("Provider {} is not a remote database", provider)),
     }
 }

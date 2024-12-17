@@ -74,11 +74,8 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     const credentials = credentialsRes.value.credentials;
 
     if (!isSnowflakeCredentials(credentials)) {
-      return new Err(
-        new ConnectorManagerError(
-          "INVALID_CONFIGURATION",
-          "Invalid credentials type - expected snowflake credentials"
-        )
+      throw new Error(
+        "Invalid credentials type - expected snowflake credentials"
       );
     }
 
@@ -281,11 +278,8 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (!isSnowflakeCredentials(credentials)) {
-      return new Err(
-        new ConnectorManagerError(
-          "INVALID_CONFIGURATION",
-          "Invalid credentials type - expected snowflake credentials"
-        )
+      throw new Error(
+        "Invalid credentials type - expected snowflake credentials"
       );
     }
 
