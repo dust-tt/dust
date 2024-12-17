@@ -300,6 +300,7 @@ export class AgentMessageFeedback extends BaseModel<AgentMessageFeedback> {
   declare agentConfigurationVersion: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
+  declare isConversationShared: boolean;
 
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
@@ -332,6 +333,11 @@ AgentMessageFeedback.init(
     content: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    isConversationShared: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
