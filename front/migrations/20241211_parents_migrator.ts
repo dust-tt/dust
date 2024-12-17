@@ -432,7 +432,7 @@ async function migrateTable({
         fromParents: coreTable.parents,
         toParents: newParents,
       },
-      `SKIP document (parents are already correct)`
+      `SKIP table (parents are already correct)`
     );
     return new Ok(undefined);
   }
