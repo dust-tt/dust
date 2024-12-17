@@ -5,10 +5,7 @@ import React from "react";
 
 // Define types for pages with layouts
 export type NextPageWithLayout<P = unknown, IP = P> = NextPage<P, IP> & {
-  getLayout?: (
-    page: React.ReactElement,
-    pageProps: P,
-  ) => React.ReactNode;
+  getLayout?: (page: React.ReactElement, pageProps: P) => React.ReactNode;
 };
 
 export type AppPropsWithLayout = AppProps & {
@@ -16,11 +13,12 @@ export type AppPropsWithLayout = AppProps & {
 };
 
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
-  const getLayout = Component.getLayout ?? ((page) => page);
-  return getLayout(
+  if (Component.getLayout) {
+    return Component.getLayout(<Component {...pageProps} />, pageProps);
+  }
+  return (
     <AppLayout>
       <Component {...pageProps} />
-    </AppLayout>,
-    pageProps,
+    </AppLayout>
   );
 }

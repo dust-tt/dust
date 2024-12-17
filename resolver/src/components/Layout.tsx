@@ -1,7 +1,7 @@
 import { SparkleContext } from "@dust-tt/sparkle";
 import type { UrlObject } from "url";
 import Link from "next/link";
-import { useRouter } from "next/router";
+import React, { useMemo } from "react";
 
 function NextLinkWrapper({
   href,
@@ -53,10 +53,15 @@ function NextLinkWrapper({
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const contextValue = useMemo(
+    () => ({
+      components: { link: NextLinkWrapper },
+    }),
+    [],
+  );
 
   return (
-    <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>
+    <SparkleContext.Provider value={contextValue}>
       {children}
     </SparkleContext.Provider>
   );
