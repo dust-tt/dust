@@ -13,12 +13,17 @@ import {
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
+  getParentIdsForArticle,
+  getParentIdsForCollection,
 } from "@connectors/connectors/intercom/lib/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import type { IntercomHelpCenter } from "@connectors/lib/models/intercom";
 import {
@@ -26,6 +31,7 @@ import {
   IntercomCollection,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
@@ -62,6 +68,10 @@ export async function removeHelpCenter({
     })
   );
   await helpCenter.destroy();
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getHelpCenterInternalId(connectorId, helpCenter.helpCenterId),
+  });
 }
 
 /**
@@ -110,6 +120,10 @@ export async function deleteCollectionWithChildren({
 
   // Then we delete the collection
   await collection.destroy();
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getHelpCenterCollectionInternalId(connectorId, collectionId),
+  });
   logger.info(
     { ...loggerArgs, collectionId },
     "[Intercom] Collection deleted."
@@ -191,6 +205,28 @@ export async function upsertCollectionWithChildren({
       url: collection.url || fallbackCollectionUrl,
       permission: "read",
       lastUpsertedTs: new Date(currentSyncMs),
+    });
+  }
+  // Update datasource folder node
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (connector !== null) {
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    const internalCollectionId = getHelpCenterCollectionInternalId(
+      connectorId,
+      collectionId
+    );
+    const collectionParents = await getParentIdsForCollection({
+      connectorId,
+      collectionId,
+      parentCollectionId: collection.parent_id,
+      helpCenterId,
+    });
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: internalCollectionId,
+      title: collection.name,
+      parents: collectionParents,
+      parentId: collectionParents.length > 2 ? collectionParents[1] : null,
     });
   }
 
@@ -402,53 +438,4 @@ export async function upsertArticle({
       "[Intercom] Article has no content. Skipping sync."
     );
   }
-}
-
-// Parents in the Core datasource should map the internal ids that we use in the permission modal
-// Order is important: We want the id of the article, then all parents collection in order, then the help center
-async function getParentIdsForArticle({
-  documentId,
-  connectorId,
-  parentCollectionId,
-  helpCenterId,
-}: {
-  documentId: string;
-  connectorId: number;
-  parentCollectionId: string;
-  helpCenterId: string;
-}) {
-  // Initialize the internal IDs array with the article ID.
-  const parentIds = [documentId];
-
-  // Add the parent collection ID.
-  parentIds.push(
-    getHelpCenterCollectionInternalId(connectorId, parentCollectionId)
-  );
-
-  // Fetch and add any grandparent collection IDs.
-  let currentParentId = parentCollectionId;
-
-  // There's max 2-levels on Intercom.
-  for (let i = 0; i < 2; i++) {
-    const currentParent = await IntercomCollection.findOne({
-      where: {
-        connectorId,
-        collectionId: currentParentId,
-      },
-    });
-
-    if (currentParent && currentParent.parentId) {
-      currentParentId = currentParent.parentId;
-      parentIds.push(
-        getHelpCenterCollectionInternalId(connectorId, currentParentId)
-      );
-    } else {
-      break;
-    }
-  }
-
-  // Add the help center internal ID.
-  parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
-
-  return parentIds;
 }

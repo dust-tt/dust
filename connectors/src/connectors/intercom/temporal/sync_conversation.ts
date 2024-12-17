@@ -17,6 +17,7 @@ import {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertDataSourceDocument,
@@ -59,6 +60,12 @@ export async function deleteTeamAndConversations({
   );
 
   await team.destroy();
+
+  // Delete datasource team node
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getTeamInternalId(connectorId, team.teamId),
+  });
 }
 
 export async function deleteConversation({
