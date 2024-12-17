@@ -343,13 +343,17 @@ export default function AssistantBuilder({
         if (slackDataSource) {
           await mutateSlackChannels();
         }
-        // Redirect to the assistant list once saved.
-        if (flow === "personal_assistants") {
-          await router.push(
-            `/w/${owner.sId}/assistant/new?selectedTab=personal`
-          );
+        if (isBuilder(owner)) {
+          // Redirect to the assistant list once saved.
+          if (flow === "personal_assistants") {
+            await router.push(
+              `/w/${owner.sId}/assistant/new?selectedTab=personal`
+            );
+          } else {
+            await router.push(`/w/${owner.sId}/builder/assistants`);
+          }
         } else {
-          await router.push(`/w/${owner.sId}/builder/assistants`);
+          await router.push(`/w/${owner.sId}/assistant/new`);
         }
       }
     }
