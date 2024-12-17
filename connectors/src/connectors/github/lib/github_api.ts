@@ -883,7 +883,6 @@ export async function processRepository({
         sizeBytes: size,
         documentId,
         parentInternalId,
-        /// reversing the parents here since the convention is bottom to top
         parents: [documentId, ...parents.map((p) => p.internalId)],
         localFilePath: file,
       });
