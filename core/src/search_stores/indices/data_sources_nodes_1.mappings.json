@@ -1,4 +1,5 @@
 {
+  "dynamic": "strict",
   "properties": {
     "data_source_id": {
       "type": "keyword"
@@ -6,7 +7,7 @@
     "timestamp": {
       "type": "date"
     },
-    "type": {
+    "node_type": {
       "type": "keyword"
     },
     "node_id": {
@@ -25,7 +26,10 @@
     "parents": {
       "type": "keyword"
     },
-    "mimeType": {
+    "parent_id": {
+      "type": "keyword"
+    },
+    "mime_type": {
       "type": "keyword"
     }
   }

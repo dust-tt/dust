@@ -48,6 +48,7 @@ use dust::{
     providers::provider::{provider, ProviderID},
     run,
     search_filter::{Filterable, SearchFilter},
+    search_stores::search_store::{ElasticsearchSearchStore, SearchStore},
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
         postgres,
@@ -70,7 +71,7 @@ struct APIState {
     store: Box<dyn store::Store + Sync + Send>,
     databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
     qdrant_clients: QdrantClients,
-
+    search_store: Box<dyn SearchStore + Sync + Send>,
     run_manager: Arc<Mutex<RunManager>>,
 }
 
@@ -79,11 +80,13 @@ impl APIState {
         store: Box<dyn store::Store + Sync + Send>,
         databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Self {
         APIState {
             store,
             qdrant_clients,
             databases_store,
+            search_store,
             run_manager: Arc::new(Mutex::new(RunManager {
                 pending_apps: vec![],
                 pending_runs: vec![],
@@ -1730,6 +1733,7 @@ async fn data_sources_documents_upsert(
                         &payload.source_url,
                         payload.section,
                         true, // preserve system tags
+                        state.search_store.clone(),
                     )
                     .await
                 {
@@ -3373,10 +3377,19 @@ fn main() {
                 Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
             };
 
+        let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
+        let username =
+            std::env::var("ELASTICSEARCH_USERNAME").expect("ELASTICSEARCH_USERNAME must be set");
+        let password =
+            std::env::var("ELASTICSEARCH_PASSWORD").expect("ELASTICSEARCH_PASSWORD must be set");
+
+        let search_store : Box<dyn SearchStore + Sync + Send> = Box::new(ElasticsearchSearchStore::new(&url, &username, &password).await?);
+
         let state = Arc::new(APIState::new(
             store,
             databases_store,
             QdrantClients::build().await?,
+            search_store,
         ));
 
         let router = Router::new()
