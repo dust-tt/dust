@@ -3077,6 +3077,7 @@ async fn folders_delete(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct NodesSearchPayload {
     query: String,
     filter: Vec<DatasourceViewFilter>,
