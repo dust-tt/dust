@@ -54,7 +54,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
       <div className="ml-[10%] pr-[20%] md:m-0 md:pr-[28%]">
         {children ? children : null}
       </div>
-      <div className="flex flex-col gap-2 lg:gap-4">
+      <div className="flex flex-col px-0 py-6">
         <H3 className="text-white">{title}</H3>
         {renderContent()}
       </div>
@@ -274,8 +274,8 @@ export const CarousselContentBlock = ({
           {description}
         </P>
       </div>
-      <div className="w-full text-center">
-        <Link href={href} shallow={true} className="block w-full">
+      <div className="w-full text-left">
+        <Link href={href} shallow={true} className="inline-block">
           <Button
             label={"Discover Dust for " + title}
             variant="outline"
