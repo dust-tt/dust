@@ -11,9 +11,9 @@ import {
   getDatasource,
   getDocumentDiff,
 } from "@app/lib/document_upsert_hooks/hooks/data_source_helpers";
-import { callDocTrackerRetrievalAction } from "@app/lib/document_upsert_hooks/hooks/document_tracker/actions/doc_tracker_retrieval";
-import { callDocTrackerSuggestChangesAction } from "@app/lib/document_upsert_hooks/hooks/document_tracker/actions/doc_tracker_suggest_changes";
-import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/document_tracker/consts";
+import { callDocTrackerRetrievalAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_retrieval";
+import { callDocTrackerSuggestChangesAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_suggest_changes";
+import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/tracker/consts";
 import {
   DocumentTrackerChangeSuggestion,
   TrackedDocument,

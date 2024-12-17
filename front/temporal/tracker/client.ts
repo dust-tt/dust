@@ -6,15 +6,15 @@ import logger from "@app/logger/logger";
 import {
   RUN_QUEUE_NAME,
   TRACKER_NOTIFICATION_QUEUE_NAME,
-} from "@app/temporal/document_tracker/config";
+} from "@app/temporal/tracker/config";
 
 import { newUpsertSignal, notifySignal } from "./signals";
 import {
-  runDocumentTrackerWorkflow,
+  trackersGenerationWorkflow,
   trackersNotificationsWorkflow,
 } from "./workflows";
 
-export async function launchRunDocumentTrackerWorkflow({
+export async function launchTrackersGenerationWorkflow({
   workspaceId,
   dataSourceId,
   documentId,
@@ -29,7 +29,7 @@ export async function launchRunDocumentTrackerWorkflow({
 }) {
   const client = await getTemporalClient();
 
-  await client.workflow.signalWithStart(runDocumentTrackerWorkflow, {
+  await client.workflow.signalWithStart(trackersGenerationWorkflow, {
     args: [
       workspaceId,
       dataSourceId,
@@ -38,7 +38,7 @@ export async function launchRunDocumentTrackerWorkflow({
       dataSourceConnectorProvider,
     ],
     taskQueue: RUN_QUEUE_NAME,
-    workflowId: `workflow-run-document-tracker-${workspaceId}-${dataSourceId}-${documentId}`,
+    workflowId: `tracker-generate-workflow-${workspaceId}-${dataSourceId}-${documentId}`,
     signal: newUpsertSignal,
     signalArgs: undefined,
   });
@@ -51,7 +51,7 @@ export async function launchTrackerNotificationWorkflow(
   await client.workflow.signalWithStart(trackersNotificationsWorkflow, {
     args: [],
     taskQueue: TRACKER_NOTIFICATION_QUEUE_NAME,
-    workflowId: "document-tracker-notify-workflow",
+    workflowId: "tracker-notify-workflow",
     signal: notifySignal,
     signalArgs: [signaledTrackerIds],
     cronSchedule: "0 * * * *", // Every hour.
@@ -63,7 +63,7 @@ export async function stopTrackerNotificationWorkflow() {
 
   try {
     const handle: WorkflowHandle<typeof trackersNotificationsWorkflow> =
-      client.workflow.getHandle("document-tracker-notify-workflow");
+      client.workflow.getHandle("tracker-notify-workflow");
     await handle.terminate();
   } catch (e) {
     logger.error(

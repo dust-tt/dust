@@ -4,16 +4,16 @@ import { hideBin } from "yargs/helpers";
 
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
-import {
-  runDocumentTrackerWorker,
-  runTrackerNotificationWorker,
-} from "@app/temporal/document_tracker/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsWorker } from "@app/temporal/labs/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 import { runPermissionsWorker } from "@app/temporal/permissions_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
+import {
+  runTrackerNotificationWorker,
+  runTrackerWorker,
+} from "@app/temporal/tracker/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
@@ -40,7 +40,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   mentions_count: runMentionsCountWorker,
   permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
-  document_tracker: runDocumentTrackerWorker,
+  document_tracker: runTrackerWorker,
   tracker_notification: runTrackerNotificationWorker,
   production_checks: runProductionChecksWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
@@ -51,6 +51,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
 const ALL_WORKERS = Object.keys(workerFunctions);
 
 async function runWorkers(workers: WorkerName[]) {
+  // TODO(DOC_TRACKER): remove this.
   // Disable document_tracker
   workers = workers.filter(
     (worker) =>

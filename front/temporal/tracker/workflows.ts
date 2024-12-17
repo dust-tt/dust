@@ -10,7 +10,7 @@ import {
 import type * as activities from "./activities";
 import { newUpsertSignal, notifySignal } from "./signals";
 
-const { runDocumentTrackerActivity } = proxyActivities<typeof activities>({
+const { trackersGenerationActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minutes",
 });
 
@@ -24,7 +24,11 @@ const { processTrackerNotificationWorkflowActivity } = proxyActivities<
   startToCloseTimeout: "30 minutes",
 });
 
-export async function runDocumentTrackerWorkflow(
+/**
+ * Workflow that is ran when a document is upserted.
+ * It fetches the trackers that are watching the document and runs the document tracker generation.
+ */
+export async function trackersGenerationWorkflow(
   workspaceId: string,
   dataSourceId: string,
   documentId: string,
@@ -55,7 +59,7 @@ export async function runDocumentTrackerWorkflow(
       continue;
     }
 
-    await runDocumentTrackerActivity(
+    await trackersGenerationActivity(
       workspaceId,
       dataSourceId,
       documentId,
