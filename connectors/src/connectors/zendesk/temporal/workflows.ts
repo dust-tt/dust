@@ -75,15 +75,15 @@ export async function zendeskSyncWorkflow({
   const isInitialSync = !cursor;
 
   const brandIds = new Set<number>();
-  const brandSignals: ZendeskUpdateSignal[] = [];
+  const brandSignals = new Map<number, ZendeskUpdateSignal>();
   const brandHelpCenterIds = new Set<number>();
-  const brandHelpCenterSignals: ZendeskUpdateSignal[] = [];
+  const brandHelpCenterSignals = new Map<number, ZendeskUpdateSignal>();
   const brandTicketsIds = new Set<number>();
-  const brandTicketSignals: ZendeskUpdateSignal[] = [];
+  const brandTicketSignals = new Map<number, ZendeskUpdateSignal>();
 
   const categoryIds = new Set<number>();
   const categoryBrands: Record<number, number> = {};
-  const categorySignals: ZendeskCategoryUpdateSignal[] = [];
+  const categorySignals = new Map<number, ZendeskCategoryUpdateSignal>();
 
   // If we get a signal, update the workflow state by adding help center ids.
   // Signals are sent when permissions are updated by the admin.
@@ -94,23 +94,23 @@ export async function zendeskSyncWorkflow({
         switch (signal.type) {
           case "brand": {
             brandIds.add(signal.zendeskId);
-            brandSignals.push(signal);
+            brandSignals.set(signal.zendeskId, signal);
             break;
           }
           case "help-center": {
             brandHelpCenterIds.add(signal.zendeskId);
-            brandHelpCenterSignals.push(signal);
+            brandHelpCenterSignals.set(signal.zendeskId, signal);
             break;
           }
           case "tickets": {
             brandTicketsIds.add(signal.zendeskId);
-            brandTicketSignals.push(signal);
+            brandTicketSignals.set(signal.zendeskId, signal);
             break;
           }
           case "category": {
             categoryIds.add(signal.categoryId);
             categoryBrands[signal.categoryId] = signal.brandId;
-            categorySignals.push(signal);
+            categorySignals.set(signal.categoryId, signal);
             break;
           }
           default:
@@ -152,9 +152,7 @@ export async function zendeskSyncWorkflow({
     // copying the set to avoid issues with concurrent modifications
     const brandIdsToProcess = new Set(brandIds);
     for (const brandId of brandIdsToProcess) {
-      const relatedSignal = brandSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
+      const relatedSignal = brandSignals.get(brandId);
       const forceResync = relatedSignal?.forceResync || false;
 
       await executeChild(zendeskBrandSyncWorkflow, {
@@ -171,9 +169,7 @@ export async function zendeskSyncWorkflow({
   while (brandHelpCenterIds.size > 0) {
     const brandIdsToProcess = new Set(brandHelpCenterIds);
     for (const brandId of brandIdsToProcess) {
-      const relatedSignal = brandHelpCenterSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
+      const relatedSignal = brandHelpCenterSignals.get(brandId);
       const forceResync = relatedSignal?.forceResync || false;
 
       await executeChild(zendeskBrandHelpCenterSyncWorkflow, {
@@ -188,9 +184,7 @@ export async function zendeskSyncWorkflow({
   while (brandTicketsIds.size > 0) {
     const brandIdsToProcess = new Set(brandTicketsIds);
     for (const brandId of brandIdsToProcess) {
-      const relatedSignal = brandTicketSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
+      const relatedSignal = brandTicketSignals.get(brandId);
       const forceResync = relatedSignal?.forceResync || false;
 
       await executeChild(zendeskBrandTicketsSyncWorkflow, {
@@ -205,9 +199,7 @@ export async function zendeskSyncWorkflow({
   while (categoryIds.size > 0) {
     const categoryIdsToProcess = new Set(categoryIds);
     for (const categoryId of categoryIdsToProcess) {
-      const relatedSignal = categorySignals.find(
-        (signal) => signal.categoryId === categoryId
-      );
+      const relatedSignal = categorySignals.get(categoryId);
       const forceResync = relatedSignal?.forceResync || false;
       const brandId = categoryBrands[categoryId];
       if (!brandId) {
