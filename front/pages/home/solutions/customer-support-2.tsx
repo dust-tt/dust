@@ -1,6 +1,6 @@
 import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
-import type { ReactElement } from "react";
+import type { ReactElement } from "react-markdown/lib/react-markdown";
 
 import {
   Carousel,
@@ -11,6 +11,7 @@ import {
 } from "@app/components/home/Carousel";
 import {
   BlogBlock,
+  CarousselContentBlock,
   MetricComponent,
   Quote,
 } from "@app/components/home/ContentBlocks";
@@ -74,7 +75,7 @@ export default function CustomerSupport() {
         <Div3D depth={20} className="absolute top-0">
           <img src="/static/landing/support/support3.png" alt="MainVisual3" />
         </Div3D>
-        <Div3D depth={30} className="absolute top-0">
+        <Div3D depth={50} className="absolute top-0">
           <img src="/static/landing/support/support4.png" alt="MainVisual4" />
         </Div3D>
         {/* <Div3D
@@ -107,11 +108,15 @@ export default function CustomerSupport() {
         <div
           className={classNames(
             "col-span-12 justify-center",
-            "flex flex-col gap-8 pt-24 lg:min-h-[70vh] lg:pt-0",
+            "mt-36 flex flex-col gap-8 lg:min-h-[50vh]",
             "lg:col-span-5 lg:py-20",
-            "2xl:col-span-5 2xl:col-start-2"
+            "2xl:col-span-5 2xl:col-start-2",
+            "text-center lg:text-left"
           )}
         >
+          <div className="flex w-full px-8 md:px-20 lg:hidden">
+            {MainVisualImage()}
+          </div>
           <H1 from={pageSettings.from} to={pageSettings.to}>
             {pageSettings.title}
           </H1>
@@ -133,25 +138,20 @@ export default function CustomerSupport() {
           className={classNames(
             "col-span-12 mx-auto px-8 py-6 sm:max-w-[100%] md:max-w-[90%]",
             "lg:col-span-7 lg:col-start-6 lg:h-[100%] lg:max-w-[100%]",
-            "2xl:col-span-6"
+            "2xl:col-span-6",
+            "hidden lg:block"
           )}
         >
-          <div className="flex h-full w-full items-center justify-center">
+          <div className="flex h-full w-full items-center justify-center pt-36 xl:px-8">
             {MainVisualImage()}
           </div>
         </div>
-        <TrustedBy />
 
         <MetricComponent
           metrics={[
             {
               value: "15x",
-              description: (
-                <>
-                  Responses generated 15x&nbsp;faster
-                  after&nbsp;implementing&nbsp;Dust
-                </>
-              ),
+              description: <>15x&nbsp;faster to craft an answer</>,
             },
             {
               value: "8h",
@@ -166,7 +166,107 @@ export default function CustomerSupport() {
           to="to-amber-500"
         />
 
+        <TrustedBy />
+
         <SolutionSection
+          title={<>Exceed customer&nbsp;expectations.</>}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: (
+                    <>Parse tickets and&nbsp;get to&nbsp;resolution faster</>
+                  ),
+                  content: [
+                    <>
+                      Allow agents to&nbsp;understand customer messages
+                      and&nbsp;technical errors faster and&nbsp;in
+                      50+&nbsp;languages.
+                    </>,
+                    <>
+                      Build AI assistants based on&nbsp;company knowledge
+                      and&nbsp;past support interactions to&nbsp;bring
+                      the&nbsp;company's collective intelligence to&nbsp;the
+                      support team's fingertips.
+                    </>,
+                  ],
+                },
+                {
+                  title: (
+                    <>Keep your&nbsp;team up-to-date at&nbsp;all&nbsp;times</>
+                  ),
+                  content: [
+                    <>Break down information silos.</>,
+                    <>
+                      Give your frontline team access to&nbsp;up-to-date
+                      information on&nbsp;projects, ongoing product incidents
+                      or&nbsp;issues to&nbsp;help them&nbsp;take action
+                      thoughtfully.
+                    </>,
+                  ],
+                },
+              ],
+              assistantBlocks: [
+                assistantExamples[0],
+                assistantExamples[4],
+                assistantExamples[5],
+              ],
+            },
+          ]}
+        />
+        <SolutionSection
+          title="Elevated team collaboration."
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: (
+                    <>
+                      Bring new team members
+                      <br />
+                      up-to-speed&nbsp;fast
+                    </>
+                  ),
+                  content: [
+                    <>
+                      Reduce your&nbsp;onboarding and&nbsp;training time
+                      drastically.
+                    </>,
+                    <>
+                      Put your&nbsp;documentation on&nbsp;processes
+                      and&nbsp;methods to&nbsp;work to&nbsp;help the&nbsp;team
+                      learn autonomously.
+                    </>,
+                  ],
+                },
+                {
+                  title: (
+                    <>
+                      Maintain visibility
+                      <br />
+                      on&nbsp;customer needs
+                    </>
+                  ),
+                  content: [
+                    <>
+                      Surface insights from&nbsp;interactions with customers
+                      to&nbsp;your Support, Success and&nbsp;Product teams.
+                    </>,
+                    <>
+                      Maintain a&nbsp;continuous understanding of&nbsp;customer
+                      needs to inform your&nbsp;product priorities.
+                    </>,
+                  ],
+                },
+              ],
+              assistantBlocks: [assistantExamples[3], assistantExamples[2]],
+            },
+          ]}
+        />
+
+        {/* <SolutionSection
           title="Top customer support use-cases."
           blocks={[
             {
@@ -209,10 +309,10 @@ export default function CustomerSupport() {
               ],
             },
           ]}
-        />
+        /> */}
 
         <Quote
-          quote="we’re managing a&nbsp;higher volume of&nbsp;tickets and have cut processing time—from an&nbsp;average of 5&nbsp;minutes per ticket to&nbsp;just a&nbsp;few seconds. This allows the&nbsp;team to&nbsp;focus on more complex requests, ultimately improving the&nbsp;overall quality and speed of&nbsp;customer support."
+          quote="We’re managing a&nbsp;higher volume of&nbsp;tickets and have cut processing time—from an&nbsp;average of 6&nbsp;minutes per ticket to&nbsp;just a&nbsp;few seconds."
           name="Anaïs Ghelfi"
           title="Head of Data Platform at Malt"
           logo="/static/landing/logos/malt.png"
@@ -282,46 +382,46 @@ export default function CustomerSupport() {
   );
 }
 
-const assistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🔍",
-    name: "@ticketResolution",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>Smart answer suggestions and contextual knowledge at your fingertips.</>
-    ),
-  },
-  {
-    emoji: "🎓",
-    name: "@agentCoaching",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Helps new support agents learn bst practices and company knowledge
-        faster.
-      </>
-    ),
-  },
-  {
-    emoji: "📝",
-    name: "@documentationBuilder",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Converts resolved support tickets into searchable knowledge base
-        articles and FAQ.
-      </>
-    ),
-  },
-  {
-    emoji: "📢",
-    name: "@customerVoice",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>Turn customer feedback from every channel into actionable insights.</>
-    ),
-  },
-];
+// const assistantExamples: SolutionSectionAssistantBlockProps[] = [
+//   {
+//     emoji: "🔍",
+//     name: "@ticketResolution",
+//     backgroundColor: "bg-sky-300",
+//     description: (
+//       <>Smart answer suggestions and contextual knowledge at your fingertips.</>
+//     ),
+//   },
+//   {
+//     emoji: "🎓",
+//     name: "@agentCoaching",
+//     backgroundColor: "bg-sky-300",
+//     description: (
+//       <>
+//         Helps new support agents learn bst practices and company knowledge
+//         faster.
+//       </>
+//     ),
+//   },
+//   {
+//     emoji: "📝",
+//     name: "@documentationBuilder",
+//     backgroundColor: "bg-sky-300",
+//     description: (
+//       <>
+//         Converts resolved support tickets into searchable knowledge base
+//         articles and FAQ.
+//       </>
+//     ),
+//   },
+//   {
+//     emoji: "📢",
+//     name: "@customerVoice",
+//     backgroundColor: "bg-sky-300",
+//     description: (
+//       <>Turn customer feedback from every channel into actionable insights.</>
+//     ),
+//   },
+// ];
 
 CustomerSupport.getLayout = (
   page: ReactElement,
@@ -329,3 +429,93 @@ CustomerSupport.getLayout = (
 ) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
+
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
+  {
+    emoji: "🤝",
+    backgroundColor: "bg-sky-300",
+    name: "@supportExpert",
+    description: (
+      <>
+        Surfaces relevant information from&nbsp;your Help Center, FAQs,
+        knowledge base, online documentation, and&nbsp;tickets. Understands
+        errors codes without help from&nbsp;the tech&nbsp;team
+      </>
+    ),
+  },
+  {
+    emoji: "📡",
+    backgroundColor: "bg-sky-300",
+    name: "@productInfo",
+    description: (
+      <>
+        Answer questions on&nbsp;product evolutions, engineering activity,
+        alerts, and&nbsp;downtime
+      </>
+    ),
+  },
+  {
+    emoji: "🔮",
+    backgroundColor: "bg-sky-300",
+    name: "@supportAnalyst",
+    description: (
+      <>
+        Identifies patterns and&nbsp;sentiment in&nbsp;support interactions
+        to&nbsp;highlight recurring needs and&nbsp;actionable initiatives based
+        on&nbsp;the internal product team nomenclature and&nbsp;infrastructure
+      </>
+    ),
+  },
+  {
+    emoji: "💡",
+    backgroundColor: "bg-sky-300",
+    name: "@supportOnboarding",
+    description: (
+      <>
+        Helps new members of&nbsp;the support team navigate the&nbsp;tools
+        and&nbsp;processes in&nbsp;their first weeks to&nbsp;set them up for
+        success
+      </>
+    ),
+  },
+  {
+    emoji: "🚨",
+    backgroundColor: "bg-sky-300",
+    name: "@supportAlerts",
+    description: (
+      <>
+        Connects to&nbsp;product and&nbsp;engineering communication channels
+        to&nbsp;surface ongoing engineering activity, incidents or&nbsp;issues
+        and&nbsp;highlight the&nbsp;possible impact on&nbsp;users
+        and&nbsp;customers
+      </>
+    ),
+  },
+  {
+    emoji: "😳",
+    backgroundColor: "bg-sky-300",
+    name: "@whatWouldUserDo",
+    description: (
+      <>
+        Crafts training, product documentation and&nbsp;training materials
+        through the&nbsp;eyes of&nbsp;your users to&nbsp;help improve content
+        ahead of&nbsp;issues
+      </>
+    ),
+  },
+];
+
+export function CustomerCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/home/solutions/customer-support"
+    />
+  );
+}
