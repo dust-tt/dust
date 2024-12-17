@@ -5,7 +5,6 @@ use elasticsearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     Elasticsearch, IndexParts,
 };
-use rand::Rng;
 use url::Url;
 
 use crate::data_sources::node::Node;
@@ -49,14 +48,7 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
     async fn index_document(&self, document: &Document) -> Result<()> {
-        // elasticsearch needs to index a Node, not a Document
         let node = Node::from(document.clone());
-
-        // safety for rollout: we only index one time on five
-        // TODO(kw-search): remove this once prod testing is ok
-        if rand::thread_rng().gen_bool(0.8) {
-            return Ok(());
-        }
 
         // todo(kw-search): fail on error
         let now = utils::now();
