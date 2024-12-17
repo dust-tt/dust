@@ -568,7 +568,7 @@ async function migrateTable({
           throw new Error(updateRes.error.message);
         }
       },
-      { retries: 3 }
+      { retries: 10 }
     )({});
 
     logger.info(
