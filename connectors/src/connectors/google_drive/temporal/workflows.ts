@@ -8,6 +8,7 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+import { uniq } from "lodash";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
@@ -87,7 +88,9 @@ export async function googleDriveFullSync({
     for (const { action, folderId } of folderUpdates) {
       switch (action) {
         case "added":
-          foldersToBrowse.push(folderId);
+          if (!foldersToBrowse.includes(folderId)) {
+            foldersToBrowse.push(folderId);
+          }
           break;
         case "removed":
           foldersToBrowse.splice(foldersToBrowse.indexOf(folderId), 1);
@@ -100,6 +103,9 @@ export async function googleDriveFullSync({
       }
     }
   });
+
+  // Temp to clean up the running workflows state
+  foldersToBrowse = uniq(foldersToBrowse);
 
   while (foldersToBrowse.length > 0) {
     const folder = foldersToBrowse.pop();
@@ -134,6 +140,9 @@ export async function googleDriveFullSync({
         mimeTypeFilter,
       });
     }
+
+    // Temp to clean up the running workflows state
+    foldersToBrowse = uniq(foldersToBrowse);
   }
   await syncSucceeded(connectorId);
 
