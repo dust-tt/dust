@@ -18,8 +18,8 @@
 .dockerignore
 
 # dependencies
-/.pnp
-.pnp.js
+**/.pnp
+**/.pnp.js
 
 # testing
 **/coverage
