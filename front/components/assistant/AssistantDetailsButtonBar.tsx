@@ -156,6 +156,7 @@ export function AssistantDetailsButtonBar({
 
       {agentConfiguration.scope !== "global" && (
         <Link
+          onClick={(e) => !canEditAssistant && e.preventDefault()}
           href={`/w/${owner.sId}/builder/assistants/${
             agentConfiguration.sId
           }?flow=${
