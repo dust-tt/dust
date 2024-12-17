@@ -58,7 +58,11 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   google_drive: null,
   microsoft: null,
   github: null,
-  notion: null,
+  notion: (parents) => {
+    return _.uniq(parents.map((p) => _.last(p.split("notion-"))!)).map(
+      (id) => `notion-${id}`
+    );
+  },
   snowflake: null,
   webcrawler: null,
   zendesk: null, // no migration needed!
