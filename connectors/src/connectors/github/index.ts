@@ -13,7 +13,13 @@ import {
   installationIdFromConnectionId,
 } from "@connectors/connectors/github/lib/github_api";
 import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
-import { matchGithubNodeIdType } from "@connectors/connectors/github/lib/utils";
+import {
+  getCodeRootNodeId,
+  getDiscussionsNodeId,
+  getIssuesNodeId,
+  getRepositoryNodeId,
+  matchGithubNodeIdType,
+} from "@connectors/connectors/github/lib/utils";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import type {
   CreateConnectorErrorCode,
@@ -547,7 +553,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
       nodes.push({
         provider: c.type,
-        internalId: repoId.toString(),
+        internalId: getRepositoryNodeId(repoId),
         parentInternalId: null,
         type: "folder",
         title: repo.name,
@@ -568,8 +574,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
       nodes.push({
         provider: c.type,
-        internalId: `${repoId}-issues`,
-        parentInternalId: repoId.toString(),
+        internalId: getIssuesNodeId(repoId),
+        parentInternalId: getRepositoryNodeId(repoId),
         type: "database",
         title: "Issues",
         titleWithParentsContext: `[${repo.name}] Issues`,
@@ -587,8 +593,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
       nodes.push({
         provider: c.type,
-        internalId: `${repoId}-discussions`,
-        parentInternalId: repoId.toString(),
+        internalId: getDiscussionsNodeId(repoId),
+        parentInternalId: getRepositoryNodeId(repoId),
         type: "channel",
         title: "Discussions",
         titleWithParentsContext: `[${repo.name}] Discussions`,
@@ -605,8 +611,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       const repo = uniqueRepos[parseInt(codeRepo.repoId)];
       nodes.push({
         provider: c.type,
-        internalId: `github-code-${codeRepo.repoId}`,
-        parentInternalId: codeRepo.repoId,
+        internalId: getCodeRootNodeId(codeRepo.repoId),
+        parentInternalId: getRepositoryNodeId(codeRepo.repoId),
         type: "folder",
         title: "Code",
         titleWithParentsContext: repo ? `[${repo.name}] Code` : "Code",
