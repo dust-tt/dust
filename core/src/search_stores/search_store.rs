@@ -124,12 +124,14 @@ impl SearchStore for ElasticsearchSearchStore {
         // First, collect all datasource_ids and their corresponding view_filters
         let mut filter_conditions = Vec::new();
         for f in filter {
+            let mut must_clause = Vec::new();
+            must_clause.push(json!({ "term": { "data_source_id": f.data_source_id } }));
+            if !f.view_filter.is_empty() {
+                must_clause.push(json!({ "terms": { "parents": f.view_filter } }));
+            }
             filter_conditions.push(json!({
                 "bool": {
-                    "must": [
-                        { "term": { "data_source_id": f.data_source_id } },
-                        { "terms": { "parents": f.view_filter } }
-                    ]
+                    "must": must_clause
                 }
             }));
         }
