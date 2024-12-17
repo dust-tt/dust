@@ -274,29 +274,15 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       assert(/^\d+$/.test(repoId), `Invalid repoId: ${repoId}`);
 
       if (nodeId.startsWith("github-code-")) {
-        const parentsDir = parents.filter((p) => p.includes("-dir-"));
-
         assert(
-          parentsDir.length % 2 === 0,
-          `Odd number of parents: ${parentsDir.join(", ")}`
-        );
-
-        // making sure that we got the parents in reverse
-        for (let i = 0; i < Math.floor(parents.length / 2); i++) {
-          assert(
-            parentsDir[i] === parentsDir[parentsDir.length - 1 - i],
-            `parentsDir[${i}] !== parentsDir[${parentsDir.length - 1 - i}]: ${parentsDir.join(", ")}`
-          );
-        }
-        assert(
-          nodeId.startsWith(`github-code-${repoId}-file-`),
+          /^github-code-\d+-file-[a-f0-9]+$/.test(nodeId),
           `Github invalid nodeId: ${nodeId}`
         );
 
         return {
           parents: [
             nodeId,
-            ...parentsDir.slice(parentsDir.length / 2, parentsDir.length), // taking only the part that is in reverse
+            ...parents.filter((p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p)), // same regex as in connectors/github/lib/utils.ts
             `github-code-${repoId}`,
             `github-repository-${repoId}`,
           ],
