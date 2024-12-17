@@ -69,7 +69,7 @@ async function backfillFolder({
         id: {
           [Op.gt]: nextId,
         },
-        nodeType: "folder",
+        nodeType: { [Op.or]: ["folder", "drive"] },
       },
       order: [["id", "ASC"]],
       limit: QUERY_BATCH_SIZE,
