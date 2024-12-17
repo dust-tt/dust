@@ -636,6 +636,7 @@ async function migrateDataSource({
             dataSource,
             coreTable,
             execute,
+            skipIfParentsAreAlreadyCorrect,
           }),
         { concurrency: TABLE_CONCURRENCY }
       );
