@@ -4,6 +4,7 @@ import type {
   IntercomArticleType,
   IntercomCollectionType,
 } from "@connectors/connectors/intercom/lib/types";
+import { IntercomCollection } from "@connectors/lib/models/intercom";
 
 /**
  * From id to internalId
@@ -112,4 +113,79 @@ export function getConversationInAppUrl(
 ): string {
   const domain = getIntercomDomain(region);
   return `${domain}/a/inbox/${workspaceId}/inbox/conversation/${conversationId}`;
+}
+
+// Parents in the Core datasource should map the internal ids that we use in the permission modal
+// Order is important: We want the id of the article, then all parents collection in order, then the help center
+export async function getParentIdsForArticle({
+  documentId,
+  connectorId,
+  parentCollectionId,
+  helpCenterId,
+}: {
+  documentId: string;
+  connectorId: number;
+  parentCollectionId: string;
+  helpCenterId: string;
+}) {
+  // Get collection parents
+  const collectionParents = await getParentIdsForCollection({
+    connectorId,
+    collectionId: parentCollectionId,
+    parentCollectionId,
+    helpCenterId,
+  });
+
+  return [...documentId, ...collectionParents];
+}
+
+export async function getParentIdsForCollection({
+  connectorId,
+  collectionId,
+  parentCollectionId,
+  helpCenterId,
+}: {
+  connectorId: number;
+  collectionId: string;
+  parentCollectionId: string | null;
+  helpCenterId: string;
+}) {
+  if (parentCollectionId === null) {
+    return [
+      getHelpCenterCollectionInternalId(connectorId, collectionId),
+      getHelpCenterInternalId(connectorId, helpCenterId),
+    ];
+  }
+
+  // Initialize the internal IDs array with the collection ID.
+  const parentIds = [
+    getHelpCenterCollectionInternalId(connectorId, collectionId),
+  ];
+
+  // Fetch and add any grandparent collection IDs.
+  let currentParentId = parentCollectionId;
+
+  // There's max 2-levels on Intercom.
+  for (let i = 0; i < 2; i++) {
+    const currentParent = await IntercomCollection.findOne({
+      where: {
+        connectorId,
+        collectionId: currentParentId,
+      },
+    });
+
+    if (currentParent && currentParent.parentId) {
+      currentParentId = currentParent.parentId;
+      parentIds.push(
+        getHelpCenterCollectionInternalId(connectorId, currentParentId)
+      );
+    } else {
+      break;
+    }
+  }
+
+  // Add the help center internal ID.
+  parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
+
+  return parentIds;
 }

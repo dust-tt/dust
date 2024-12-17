@@ -14,6 +14,8 @@ import {
   getTeamInternalId,
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { upsertFolderNode } from "@connectors/lib/data_sources";
 import {
   IntercomTeam,
   IntercomWorkspace,
@@ -51,6 +53,28 @@ export async function allowSyncTeam({
         name: teamOnIntercom.name,
         permission: "read",
       });
+
+      // Update datasource folder node
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (connector !== null) {
+        // Create folder node for the team
+        const teamInternalId = getTeamInternalId(
+          connectorId,
+          teamOnIntercom.id
+        );
+        await upsertFolderNode({
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
+          folderId: teamInternalId,
+          title: team.name,
+          parents: [teamInternalId, getTeamsInternalId(connectorId)],
+        });
+        await upsertFolderNode({
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
+          folderId: teamInternalId,
+          title: "Teams",
+          parents: [teamInternalId, getTeamsInternalId(connectorId)],
+        });
+      }
     }
   }
 

@@ -20,7 +20,10 @@ import {
   getHelpCenterCollectionInternalId,
   getHelpCenterIdFromInternalId,
   getHelpCenterInternalId,
+  getParentIdsForCollection,
 } from "@connectors/connectors/intercom/lib/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { upsertFolderNode } from "@connectors/lib/data_sources";
 import {
   IntercomArticle,
   IntercomCollection,
@@ -81,6 +84,22 @@ export async function allowSyncHelpCenter({
         websiteTurnedOn: helpCenterOnIntercom.website_turned_on,
         permission: "read",
       });
+
+      // Create datasource folder node
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (connector !== null) {
+        const dataSourceConfig = dataSourceConfigFromConnector(connector);
+        const helpCenterInternalId = getHelpCenterInternalId(
+          connectorId,
+          helpCenterOnIntercom.id
+        );
+        await upsertFolderNode({
+          dataSourceConfig,
+          folderId: helpCenterInternalId,
+          title: helpCenterOnIntercom.display_name || "Help Center",
+          parents: [helpCenterInternalId],
+        });
+      }
     }
   }
 
@@ -219,6 +238,30 @@ export async function allowSyncCollection({
           intercomCollection.url ||
           getCollectionInAppUrl(intercomCollection, region),
         permission: "read",
+      });
+
+      // Create datasource folder node
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (!connector) {
+        logger.error(
+          { connectorId, connectionId, collectionId },
+          "[Intercom] Failed to sync collection. Connector not found."
+        );
+        throw new Error("Connector not found.");
+      }
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+      const parents = await getParentIdsForCollection({
+        connectorId,
+        collectionId,
+        parentCollectionId: collection.parentId,
+        helpCenterId: collection.helpCenterId,
+      });
+      await upsertFolderNode({
+        dataSourceConfig,
+        folderId: getHelpCenterCollectionInternalId(connectorId, collectionId),
+        title: collection.name,
+        parents,
+        parentId: parents.length > 1 ? parents[1] : null,
       });
     }
   }
