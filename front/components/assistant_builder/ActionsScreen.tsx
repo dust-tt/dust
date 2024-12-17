@@ -1,7 +1,8 @@
 import {
   BookOpenIcon,
   Button,
-  CardButton,
+  Card,
+  CardActionButton,
   Checkbox,
   Chip,
   ContentMessage,
@@ -13,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
-  IconButton,
   InformationCircleIcon,
   Input,
   Modal,
@@ -631,24 +631,25 @@ function ActionCard({
   }
   const actionError = hasActionError(action);
   return (
-    <CardButton
+    <Card
       variant="primary"
       onClick={editAction}
       className="mx-auto inline-block w-72"
+      action={
+        <CardActionButton
+          size="mini"
+          icon={XMarkIcon}
+          onClick={(e: any) => {
+            deleteAction();
+            e.stopPropagation();
+          }}
+        />
+      }
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full gap-1 font-medium text-element-900">
           <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
           <div className="w-full truncate">{actionDisplayName(action)}</div>
-          <IconButton
-            icon={XMarkIcon}
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              deleteAction();
-              e.stopPropagation();
-            }}
-          />
         </div>
         {isLegacyConfig ? (
           <div className="mx-auto">
@@ -673,7 +674,7 @@ function ActionCard({
           </>
         )}
       </div>
-    </CardButton>
+    </Card>
   );
 }
 

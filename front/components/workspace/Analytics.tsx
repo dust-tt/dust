@@ -1,4 +1,4 @@
-import { Card, Page, Spinner } from "@dust-tt/sparkle";
+import { Page, Spinner, ValueCard } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 
 import { useWorkspaceAnalytics } from "@app/lib/swr/workspaces";
@@ -22,7 +22,7 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
         </div>
       ) : (
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <Card
+          <ValueCard
             title="Members"
             subtitle="Total members"
             content={
@@ -30,10 +30,9 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
                 {analytics.memberCount}
               </div>
             }
-            size="sm"
             className="w-full"
           />
-          <Card
+          <ValueCard
             title="Daily Active Members"
             subtitle="Average on 7 days"
             content={
@@ -43,10 +42,9 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
                 </div>
               </div>
             }
-            size="sm"
             className="w-full"
           />
-          <Card
+          <ValueCard
             title="Active Members"
             subtitle="Last 7 days"
             content={
@@ -61,10 +59,9 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
                 </div>
               </div>
             }
-            size="sm"
             className="w-full"
           />
-          <Card
+          <ValueCard
             title="Active Members"
             subtitle="Last 30 days"
             content={
@@ -79,7 +76,6 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
                 </div>
               </div>
             }
-            size="sm"
             className="w-full"
           />
         </div>
