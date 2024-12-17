@@ -55,7 +55,12 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     parents.map(
       (parent) => `slack-channel-` + _.last(parent.split(`slack-channel-`))!
     ),
-  google_drive: null,
+  google_drive: (parents) =>
+    parents.map((parent) =>
+      parent.startsWith("gdrive-") || parent.startsWith("google-spreadsheet-")
+        ? parent
+        : `gdrive-${parent}`
+    ),
   microsoft: null,
   github: null,
   notion: (parents) => {
