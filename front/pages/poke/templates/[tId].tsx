@@ -440,7 +440,6 @@ function PreviewDialog({ form }: { form: any }) {
           title={form.getValues("handle")}
           pictureUrl={avatarVisual}
           description={form.getValues("description") ?? ""}
-          variant="list"
           onClick={() => console.log("clicked")}
         />
       </PokeDialogContent>
