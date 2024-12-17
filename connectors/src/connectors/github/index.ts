@@ -297,33 +297,27 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         case "REPO_FULL": {
           const [latestDiscussion, latestIssue, repoRes, codeRepo] =
             await Promise.all([
-              (async () => {
-                return GithubDiscussion.findOne({
-                  where: {
-                    connectorId: c.id,
-                    repoId: repoId.toString(),
-                  },
-                  order: [["updatedAt", "DESC"]],
-                });
-              })(),
-              (async () => {
-                return GithubIssue.findOne({
-                  where: {
-                    connectorId: c.id,
-                    repoId: repoId.toString(),
-                  },
-                  order: [["updatedAt", "DESC"]],
-                });
-              })(),
+              GithubDiscussion.findOne({
+                where: {
+                  connectorId: c.id,
+                  repoId: repoId.toString(),
+                },
+                order: [["updatedAt", "DESC"]],
+              }),
+              GithubIssue.findOne({
+                where: {
+                  connectorId: c.id,
+                  repoId: repoId.toString(),
+                },
+                order: [["updatedAt", "DESC"]],
+              }),
               getRepo(connectionId, repoId),
-              (async () => {
-                return GithubCodeRepository.findOne({
-                  where: {
-                    connectorId: c.id,
-                    repoId: repoId.toString(),
-                  },
-                });
-              })(),
+              GithubCodeRepository.findOne({
+                where: {
+                  connectorId: c.id,
+                  repoId: repoId.toString(),
+                },
+              }),
             ]);
 
           if (repoRes.isErr()) {
