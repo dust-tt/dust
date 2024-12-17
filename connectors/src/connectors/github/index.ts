@@ -682,27 +682,31 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    if (internalId.startsWith(`github-code-`)) {
-      const repoId = parseInt(internalId.split("-")[2] || "", 10);
-      if (internalId.split("-").length > 3) {
+    const { type, repoId } = matchGithubNodeIdType(internalId);
+
+    switch (type) {
+      case "REPO_FULL": {
+        return new Ok(baseParents);
+      }
+      case "REPO_ISSUES":
+      case "REPO_DISCUSSIONS": {
+        return new Ok([...baseParents, getRepositoryNodeId(repoId)]);
+      }
+      case "REPO_CODE": {
+        return new Ok([...baseParents, getRepositoryNodeId(repoId)]);
+      }
+      case "REPO_CODE_DIR":
+      case "REPO_CODE_FILE": {
         const parents = await getGithubCodeOrDirectoryParentIds(
           connector.id,
           internalId,
           repoId
         );
         return new Ok([...baseParents, ...parents]);
-      } else {
-        return new Ok([...baseParents, `${repoId}`]);
       }
-    } else {
-      const repoId = parseInt(internalId.split("-")[0] || "", 10);
-      if (
-        internalId.endsWith("-issues") ||
-        internalId.endsWith("-discussions")
-      ) {
-        return new Ok([...baseParents, `${repoId}`]);
+      default: {
+        assertNever(type);
       }
-      return new Ok(baseParents);
     }
   }
 
