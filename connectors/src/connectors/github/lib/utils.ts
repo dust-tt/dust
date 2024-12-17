@@ -13,7 +13,7 @@ export type GithubContentNodeType = (typeof GITHUB_CONTENT_NODE_TYPES)[number];
 /**
  * Gets the type of the Github content node from its internal id.
  */
-export function matchGithubInternalIdType(internalId: string): {
+export function matchGithubNodeIdType(internalId: string): {
   type: GithubContentNodeType;
   repoId: number;
 } {
@@ -68,37 +68,37 @@ export function matchGithubInternalIdType(internalId: string): {
   throw new Error(`Invalid Github internal id: ${internalId}`);
 }
 
-export function getRepositoryInternalId(repoId: string | number): string {
+export function getRepositoryNodeId(repoId: string | number): string {
   return `github-repository-${repoId}`;
 }
 
-export function getIssuesInternalId(repoId: string | number): string {
+export function getIssuesNodeId(repoId: string | number): string {
   return `github-issues-${repoId}`;
 }
 
-export function getIssueDocumentId(
+export function getIssueNodeId(
   repoId: string | number,
   issueNumber: number
 ): string {
   return `github-issue-${repoId}-${issueNumber}`;
 }
 
-export function getDiscussionsInternalId(repoId: string | number): string {
+export function getDiscussionsNodeId(repoId: string | number): string {
   return `github-discussions-${repoId}`;
 }
 
-export function getDiscussionDocumentId(
+export function getDiscussionNodeId(
   repoId: string | number,
   discussionNumber: number
 ): string {
   return `github-discussion-${repoId}-${discussionNumber}`;
 }
 
-export function getCodeRootInternalId(repoId: string | number): string {
+export function getCodeRootNodeId(repoId: string | number): string {
   return `github-code-${repoId}`;
 }
 
-export function getCodeDirInternalId(
+export function getCodeDirNodeId(
   repoId: string | number,
   codePath: string
 ): string {
@@ -108,7 +108,7 @@ export function getCodeDirInternalId(
     .substring(0, 16)}`;
 }
 
-export function getCodeFileDocumentId(
+export function getCodeFileNodeId(
   repoId: string | number,
   codePath: string
 ): string {

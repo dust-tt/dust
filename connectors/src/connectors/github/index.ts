@@ -1,5 +1,9 @@
-import type { ContentNode, Result } from "@dust-tt/types";
-import type { ConnectorPermission, ContentNodesViewType } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  Result,
+} from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
@@ -9,14 +13,16 @@ import {
   installationIdFromConnectionId,
 } from "@connectors/connectors/github/lib/github_api";
 import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
-import { matchGithubInternalIdType } from "@connectors/connectors/github/lib/utils";
+import { matchGithubNodeIdType } from "@connectors/connectors/github/lib/utils";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import type {
   CreateConnectorErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   GithubCodeDirectory,
@@ -467,7 +473,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     // We loop on all the internalIds we receive to know what is the related data type
     internalIds.forEach((internalId) => {
-      const { type, repoId } = matchGithubInternalIdType(internalId);
+      const { type, repoId } = matchGithubNodeIdType(internalId);
       allReposIdsToFetch.add(repoId);
 
       switch (type) {
