@@ -261,18 +261,17 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       }
       if (nodeId.startsWith("github-code")) {
         // github-code-${repoId}-file-xxx, github-code-${repoId}-dir-xxx, ..., github-code-${repoId}, ${repoId}
-        return {
-          parents: [
-            nodeId,
-            /// putting the code directories here in reverse
-            ...parents
-              .filter((p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p)) // same regex as in connectors/github/lib/utils.ts
-              .reverse(),
-            `github-code-${repoId}`,
-            `github-repository-${repoId}`,
-          ],
-          parentId: parents[1],
-        };
+        const newParents = [
+          nodeId,
+          /// putting the code directories here in reverse
+          ...parents
+            .filter((p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p)) // same regex as in connectors/github/lib/utils.ts
+            .reverse(),
+          repoId.toString(),
+          `github-code-${repoId}`,
+          `github-repository-${repoId}`,
+        ];
+        return { parents: newParents, parentId: newParents[1] };
       }
       throw new Error(`Unrecognized node type: ${nodeId}`);
     },
