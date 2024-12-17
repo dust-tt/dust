@@ -2202,21 +2202,27 @@ async fn tables_upsert(
         )
         .await
     {
-        Ok(table) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({ "table": table })),
-            }),
-        ),
-        Err(e) => {
-            return error_response(
+        Ok(table) => match state.search_store.index_table(&table).await {
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({ "table": table })),
+                }),
+            ),
+            Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
-                "Failed to upsert table",
+                "Failed to index table",
                 Some(e),
-            )
-        }
+            ),
+        },
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert table",
+            Some(e),
+        ),
     }
 }
 
@@ -3574,6 +3580,7 @@ fn main() {
             post(databases_query_run),
         )
         .route("/sqlite_workers", delete(sqlite_workers_delete))
+
         // Folders
         .route(
             "/projects/:project_id/data_sources/:data_source_id/folders",

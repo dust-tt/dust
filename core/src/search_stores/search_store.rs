@@ -8,8 +8,8 @@ use elasticsearch::{
 use serde_json::json;
 use url::Url;
 
-use crate::data_sources::node::Node;
 use crate::{data_sources::data_source::Document, utils};
+use crate::{data_sources::node::Node, databases::table::Table};
 use tracing::{error, info};
 
 #[derive(serde::Deserialize)]
@@ -33,6 +33,8 @@ pub trait SearchStore {
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<Node>>;
     async fn index_document(&self, document: &Document) -> Result<()>;
+    async fn index_table(&self, table: &Table) -> Result<()>;
+    async fn index_folder(&self, folder: &Folder) -> Result<()>;
     async fn index_node(&self, node: Node) -> Result<()>;
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
@@ -79,6 +81,16 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 impl SearchStore for ElasticsearchSearchStore {
     async fn index_document(&self, document: &Document) -> Result<()> {
         let node = Node::from(document.clone());
+        self.index_node(node).await
+    }
+
+    async fn index_table(&self, table: &Table) -> Result<()> {
+        let node = Node::from(table.clone());
+        self.index_node(node).await
+    }
+
+    async fn index_folder(&self, folder: &Folder) -> Result<()> {
+        let node = Node::from(folder.clone());
         self.index_node(node).await
     }
 
