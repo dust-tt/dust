@@ -26,7 +26,6 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useDataSources } from "@app/lib/swr/data_sources";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -194,7 +193,7 @@ export default function EditDustAssistant({
             <>
               <Page.SectionHeader
                 title="Availability"
-                description="The Dust assistant requres at least one data source to be enabled."
+                description="The Dust assistant requires at least one data source to be enabled."
               />
 
               <ContextItem
@@ -225,7 +224,7 @@ export default function EditDustAssistant({
             <>
               <Page.SectionHeader
                 title="Data Sources and Connections"
-                description="Configure which connections and data sources will be searched by the Dust assistant."
+                description="Configure which Company Data connections and data sources will be searched by the Dust assistant."
               />
               <>
                 {
@@ -269,14 +268,14 @@ export default function EditDustAssistant({
             <>
               <Page.SectionHeader
                 title="This workspace doesn't currently have any data sources."
-                description="Add connections or data sources to enable the Dust assistant."
+                description="Add Company Data connections or data sources to enable the Dust assistant."
                 action={{
-                  label: "Add connections",
+                  label: "Add data",
                   variant: "primary",
                   icon: PlusIcon,
                   onClick: async () => {
                     await router.push(
-                      `/w/${owner.sId}/builder/data-sources/managed`
+                      `/w/${owner.sId}/spaces/${globalSpace.sId}`
                     );
                   },
                 }}
