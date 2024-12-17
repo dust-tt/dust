@@ -132,7 +132,7 @@ async function getDataSourceDocument({
 export const getTrackerIdsToNotifyActivity = async (): Promise<
   TrackerIdWorkspaceId[]
 > => {
-  return TrackerConfigurationResource.internalFetchActivetrackersToProcessByNotificationWorkflow();
+  return TrackerConfigurationResource.internalFetchAllActiveWithUnconsumedGenerations();
 };
 
 /**

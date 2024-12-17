@@ -299,7 +299,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   // Internal method for fetching trackers without any authorization checks.
   // Not intended for use outside of the Tracker workflow.
   // Fetches the active trackers that have generations to consume.
-  static async internalFetchActivetrackersToProcessByNotificationWorkflow(): Promise<
+  static async internalFetchAllActiveWithUnconsumedGenerations(): Promise<
     TrackerIdWorkspaceId[]
   > {
     const trackers = await TrackerConfigurationResource.model.findAll({
