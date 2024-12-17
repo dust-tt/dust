@@ -17,7 +17,6 @@ import {
   getCodeRootNodeId,
   getDiscussionsNodeId,
   getIssuesNodeId,
-  getRepositoryIdFromNodeId,
   getRepositoryNodeId,
   matchGithubNodeIdType,
 } from "@connectors/connectors/github/lib/utils";
@@ -289,162 +288,168 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(nodes);
     } else {
-      if (parentInternalId.startsWith("github-code-")) {
-        const [files, directories] = await Promise.all([
-          (async () => {
-            return GithubCodeFile.findAll({
-              where: {
-                connectorId: c.id,
-                parentInternalId,
-              },
+      const { type, repoId } = matchGithubNodeIdType(parentInternalId);
+      switch (type) {
+        case "REPO_FULL": {
+          if (isNaN(repoId)) {
+            return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
+          }
+
+          const [latestDiscussion, latestIssue, repoRes, codeRepo] =
+            await Promise.all([
+              (async () => {
+                return GithubDiscussion.findOne({
+                  where: {
+                    connectorId: c.id,
+                    repoId: repoId.toString(),
+                  },
+                  order: [["updatedAt", "DESC"]],
+                });
+              })(),
+              (async () => {
+                return GithubIssue.findOne({
+                  where: {
+                    connectorId: c.id,
+                    repoId: repoId.toString(),
+                  },
+                  order: [["updatedAt", "DESC"]],
+                });
+              })(),
+              getRepo(connectionId, repoId),
+              (async () => {
+                return GithubCodeRepository.findOne({
+                  where: {
+                    connectorId: c.id,
+                    repoId: repoId.toString(),
+                  },
+                });
+              })(),
+            ]);
+
+          if (repoRes.isErr()) {
+            return repoRes;
+          }
+
+          const repo = repoRes.value;
+
+          const nodes: ContentNode[] = [];
+
+          if (latestIssue) {
+            nodes.push({
+              provider: c.type,
+              internalId: getIssuesNodeId(repoId),
+              parentInternalId,
+              type: "database",
+              title: "Issues",
+              sourceUrl: repo.url + "/issues",
+              expandable: false,
+              permission: "read",
+              dustDocumentId: null,
+              lastUpdatedAt: latestIssue.updatedAt.getTime(),
             });
-          })(),
-          (async () => {
-            return GithubCodeDirectory.findAll({
-              where: {
-                connectorId: c.id,
-                parentInternalId,
-              },
+          }
+
+          if (latestDiscussion) {
+            nodes.push({
+              provider: c.type,
+              internalId: getDiscussionsNodeId(repoId),
+              parentInternalId,
+              type: "channel",
+              title: "Discussions",
+              sourceUrl: repo.url + "/discussions",
+              expandable: false,
+              permission: "read",
+              dustDocumentId: null,
+              lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
             });
-          })(),
-        ]);
+          }
 
-        files.sort((a, b) => {
-          return a.fileName.localeCompare(b.fileName);
-        });
-        directories.sort((a, b) => {
-          return a.dirName.localeCompare(b.dirName);
-        });
+          if (codeRepo) {
+            nodes.push({
+              provider: c.type,
+              internalId: getCodeRootNodeId(repoId),
+              parentInternalId,
+              type: "folder",
+              title: "Code",
+              sourceUrl: repo.url,
+              expandable: true,
+              permission: "read",
+              dustDocumentId: null,
+              lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
+            });
+          }
 
-        const nodes: ContentNode[] = [];
-
-        directories.forEach((directory) => {
-          nodes.push({
-            provider: c.type,
-            internalId: directory.internalId,
-            parentInternalId,
-            type: "folder",
-            title: directory.dirName,
-            sourceUrl: directory.sourceUrl,
-            expandable: true,
-            permission: "read",
-            dustDocumentId: null,
-            lastUpdatedAt: directory.codeUpdatedAt.getTime(),
-          });
-        });
-
-        files.forEach((file) => {
-          nodes.push({
-            provider: c.type,
-            internalId: file.documentId,
-            parentInternalId,
-            type: "file",
-            title: file.fileName,
-            sourceUrl: file.sourceUrl,
-            expandable: false,
-            permission: "read",
-            dustDocumentId: file.documentId,
-            lastUpdatedAt: file.codeUpdatedAt.getTime(),
-          });
-        });
-
-        return new Ok(nodes);
-      } else {
-        // If parentInternalId is set and does not start with `github-code` it means that it is
-        // supposed to be the repoId. We support issues and discussions and also want to add the code
-        // repo resource if it exists (code sync enabled).
-        const repoId = getRepositoryIdFromNodeId(parentInternalId);
-        if (isNaN(repoId)) {
-          return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
+          return new Ok(nodes);
         }
-
-        const [latestDiscussion, latestIssue, repoRes, codeRepo] =
-          await Promise.all([
+        case "REPO_CODE":
+        case "REPO_CODE_DIR": {
+          const [files, directories] = await Promise.all([
             (async () => {
-              return GithubDiscussion.findOne({
+              return GithubCodeFile.findAll({
                 where: {
                   connectorId: c.id,
-                  repoId: repoId.toString(),
+                  parentInternalId,
                 },
-                limit: 1,
-                order: [["updatedAt", "DESC"]],
               });
             })(),
             (async () => {
-              return GithubIssue.findOne({
+              return GithubCodeDirectory.findAll({
                 where: {
                   connectorId: c.id,
-                  repoId: repoId.toString(),
-                },
-                limit: 1,
-                order: [["updatedAt", "DESC"]],
-              });
-            })(),
-            getRepo(connectionId, repoId),
-            (async () => {
-              return GithubCodeRepository.findOne({
-                where: {
-                  connectorId: c.id,
-                  repoId: repoId.toString(),
+                  parentInternalId,
                 },
               });
             })(),
           ]);
 
-        if (repoRes.isErr()) {
-          return repoRes;
-        }
-
-        const repo = repoRes.value;
-
-        const nodes: ContentNode[] = [];
-
-        if (latestIssue) {
-          nodes.push({
-            provider: c.type,
-            internalId: getIssuesNodeId(repoId),
-            parentInternalId,
-            type: "database",
-            title: "Issues",
-            sourceUrl: repo.url + "/issues",
-            expandable: false,
-            permission: "read",
-            dustDocumentId: null,
-            lastUpdatedAt: latestIssue.updatedAt.getTime(),
+          files.sort((a, b) => {
+            return a.fileName.localeCompare(b.fileName);
           });
-        }
-
-        if (latestDiscussion) {
-          nodes.push({
-            provider: c.type,
-            internalId: getDiscussionsNodeId(repoId),
-            parentInternalId,
-            type: "channel",
-            title: "Discussions",
-            sourceUrl: repo.url + "/discussions",
-            expandable: false,
-            permission: "read",
-            dustDocumentId: null,
-            lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+          directories.sort((a, b) => {
+            return a.dirName.localeCompare(b.dirName);
           });
-        }
 
-        if (codeRepo) {
-          nodes.push({
-            provider: c.type,
-            internalId: getCodeRootNodeId(repoId),
-            parentInternalId,
-            type: "folder",
-            title: "Code",
-            sourceUrl: repo.url,
-            expandable: true,
-            permission: "read",
-            dustDocumentId: null,
-            lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
+          const nodes: ContentNode[] = [];
+
+          directories.forEach((directory) => {
+            nodes.push({
+              provider: c.type,
+              internalId: directory.internalId,
+              parentInternalId,
+              type: "folder",
+              title: directory.dirName,
+              sourceUrl: directory.sourceUrl,
+              expandable: true,
+              permission: "read",
+              dustDocumentId: null,
+              lastUpdatedAt: directory.codeUpdatedAt.getTime(),
+            });
           });
-        }
 
-        return new Ok(nodes);
+          files.forEach((file) => {
+            nodes.push({
+              provider: c.type,
+              internalId: file.documentId,
+              parentInternalId,
+              type: "file",
+              title: file.fileName,
+              sourceUrl: file.sourceUrl,
+              expandable: false,
+              permission: "read",
+              dustDocumentId: file.documentId,
+              lastUpdatedAt: file.codeUpdatedAt.getTime(),
+            });
+          });
+
+          return new Ok(nodes);
+        }
+        // we should never be getting issues, discussions or code files as parent
+        case "REPO_ISSUES":
+        case "REPO_DISCUSSIONS":
+        case "REPO_CODE_FILE":
+          return new Err(new Error("Invalid parent ID."));
+        default:
+          assertNever(type);
       }
     }
   }
