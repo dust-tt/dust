@@ -4,6 +4,7 @@ import type {
 } from "@dust-tt/sparkle";
 import { CitationIndex } from "@dust-tt/sparkle";
 import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
+import { Checkbox } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -84,9 +85,13 @@ function cleanUpCitations(message: string): string {
 export const FeedbackSelectorPopoverContent = ({
   owner,
   agentMessageToRender,
+  isConversationShared,
+  setIsConversationShared,
 }: {
   owner: WorkspaceType;
   agentMessageToRender: AgentMessageType;
+  isConversationShared: boolean;
+  setIsConversationShared: (value: boolean) => void;
 }) => {
   const { agentLastAuthor } = useAgentConfigurationLastAuthor({
     workspaceId: owner.sId,
@@ -96,7 +101,10 @@ export const FeedbackSelectorPopoverContent = ({
   return (
     agentLastAuthor && (
       <>
-        <div className="itemcenter mt-4 flex gap-2">
+        <div className="mt-4">
+          <Page.P variant="secondary">Your feedback goes to:</Page.P>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
           {agentLastAuthor?.image && (
             <img
               src={agentLastAuthor?.image}
@@ -104,15 +112,20 @@ export const FeedbackSelectorPopoverContent = ({
               className="h-8 w-8 rounded-full"
             />
           )}
-          <Page.P variant="secondary">
-            Your feedback will be sent to:
-            <br />
+          <Page.P variant="primary">
             {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
           </Page.P>
         </div>
-        <div className="mt-2 text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+          <Checkbox
+            checked={isConversationShared}
+            onCheckedChange={(value) => {
+              setIsConversationShared(!!value);
+            }}
+            className="text-primary-500"
+          />
           <Page.P variant="secondary">
-            Your full conversation with the assistant will be shared.
+            By clicking, you accept to share your full conversation
           </Page.P>
         </div>
       </>
@@ -160,6 +173,8 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+
+  const [isConversationShared, setIsConversationShared] = useState(false);
 
   const shouldStream = (() => {
     if (message.status !== "created") {
@@ -402,49 +417,62 @@ export function AgentMessage({
       <FeedbackSelectorPopoverContent
         owner={owner}
         agentMessageToRender={agentMessageToRender}
+        isConversationShared={isConversationShared}
+        setIsConversationShared={setIsConversationShared}
       />
     ),
-    [owner, agentMessageToRender]
+    [owner, agentMessageToRender, isConversationShared]
   );
 
-  const buttons =
-    message.status === "failed"
-      ? []
-      : [
-          <Button
-            key="copy-msg-button"
-            tooltip="Copy to clipboard"
-            variant="ghost"
-            size="xs"
-            onClick={() => {
-              void navigator.clipboard.writeText(
-                cleanUpCitations(agentMessageToRender.content || "")
-              );
-            }}
-            icon={ClipboardIcon}
-            className="text-muted-foreground"
-          />,
-          <Button
-            key="retry-msg-button"
-            tooltip="Retry"
-            variant="ghost"
-            size="xs"
-            onClick={() => {
-              void retryHandler(agentMessageToRender);
-            }}
-            icon={ArrowPathIcon}
-            className="text-muted-foreground"
-            disabled={isRetryHandlerProcessing || shouldStream}
-          />,
-          <div key="separator" className="flex items-center">
-            <div className="h-5 w-px bg-border" />
-          </div>,
-          <FeedbackSelector
-            key="feedback-selector"
-            {...messageFeedback}
-            getPopoverInfo={PopoverContent}
-          />,
-        ];
+  const buttons = useMemo(
+    () =>
+      message.status === "failed"
+        ? []
+        : [
+            <Button
+              key="copy-msg-button"
+              tooltip="Copy to clipboard"
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                void navigator.clipboard.writeText(
+                  cleanUpCitations(agentMessageToRender.content || "")
+                );
+              }}
+              icon={ClipboardIcon}
+              className="text-muted-foreground"
+            />,
+            <Button
+              key="retry-msg-button"
+              tooltip="Retry"
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                void retryHandler(agentMessageToRender);
+              }}
+              icon={ArrowPathIcon}
+              className="text-muted-foreground"
+              disabled={isRetryHandlerProcessing || shouldStream}
+            />,
+            <div key="separator" className="flex items-center">
+              <div className="h-5 w-px bg-border" />
+            </div>,
+            <FeedbackSelector
+              key="feedback-selector"
+              {...messageFeedback}
+              getPopoverInfo={PopoverContent}
+            />,
+          ],
+    [
+      message.status,
+      agentMessageToRender,
+      isRetryHandlerProcessing,
+      shouldStream,
+      retryHandler,
+      messageFeedback,
+      PopoverContent,
+    ]
+  );
 
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {

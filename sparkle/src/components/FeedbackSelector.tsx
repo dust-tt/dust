@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 
 import { Button } from "@sparkle/components/Button";
 import { Page } from "@sparkle/components/Page";
@@ -57,18 +57,49 @@ export function FeedbackSelector({
       }
       setLocalFeedbackContent(feedback?.feedbackContent ?? null);
     }
-  }, [isPopoverOpen, feedback?.feedbackContent]);
+  }, [isPopoverOpen, feedback?.feedbackContent, getPopoverInfo]);
 
-  const selectThumb = async (thumb: ThumbReaction) => {
-    const isToRemove = feedback?.thumb === thumb;
-    setIsPopoverOpen(!isToRemove);
+  const selectThumb = useCallback(
+    async (thumb: ThumbReaction) => {
+      const isToRemove = feedback?.thumb === thumb;
+      setIsPopoverOpen(!isToRemove);
 
+      await onSubmitThumb({
+        feedbackContent: localFeedbackContent,
+        thumb,
+        isToRemove,
+      });
+    },
+    [feedback?.thumb, localFeedbackContent, onSubmitThumb]
+  );
+
+  const handleThumbUp = useCallback(async () => {
+    await selectThumb("up");
+  }, [selectThumb]);
+
+  const handleThumbDown = useCallback(async () => {
+    await selectThumb("down");
+  }, [selectThumb]);
+
+  const handleTextAreaChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setLocalFeedbackContent(e.target.value);
+    },
+    []
+  );
+
+  const closePopover = useCallback(() => {
+    setIsPopoverOpen(false);
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
     await onSubmitThumb({
+      thumb: feedback?.thumb ?? "up",
+      isToRemove: false,
       feedbackContent: localFeedbackContent,
-      thumb,
-      isToRemove,
     });
-  };
+    setIsPopoverOpen(false);
+  }, [onSubmitThumb, feedback?.thumb, localFeedbackContent]);
 
   return (
     <div ref={containerRef} className="s-flex s-items-center">
@@ -82,7 +113,7 @@ export function FeedbackSelector({
                   variant={feedback?.thumb === "up" ? "primary" : "ghost"}
                   size="xs"
                   disabled={isSubmittingThumb}
-                  onClick={() => selectThumb("up")}
+                  onClick={handleThumbUp}
                   icon={HandThumbUpIcon}
                   className={
                     feedback?.thumb === "up"
@@ -99,7 +130,7 @@ export function FeedbackSelector({
                   variant={feedback?.thumb === "down" ? "primary" : "ghost"}
                   size="xs"
                   disabled={isSubmittingThumb}
-                  onClick={() => selectThumb("down")}
+                  onClick={handleThumbDown}
                   icon={HandThumbDownIcon}
                   className={
                     feedback?.thumb === "down"
@@ -132,31 +163,29 @@ export function FeedbackSelector({
                 className="s-mt-4"
                 rows={3}
                 value={localFeedbackContent ?? ""}
-                onChange={(e) => setLocalFeedbackContent(e.target.value)}
+                onChange={handleTextAreaChange}
               />
               {popOverInfo}
-              <div className="s-mt-4">
-                <Page.P variant="secondary">
-                  Your full conversation with the assistant will be shared.
-                </Page.P>
-              </div>
-              <div className="s-mt-4 s-flex s-justify-between s-gap-2">
-                <Button
-                  variant="ghost"
-                  label="Skip"
-                  onClick={() => setIsPopoverOpen(false)}
-                />
+              <div
+                className={`s-mt-4 s-flex s-gap-2 ${feedback?.thumb === "down" ? "s-justify-between" : "s-justify-end"}`}
+              >
+                {feedback?.thumb === "down" && (
+                  <Button
+                    variant="ghost"
+                    label="Cancel"
+                    onClick={closePopover}
+                  />
+                )}
+
                 <Button
                   variant="primary"
                   label="Submit feedback"
-                  onClick={async () => {
-                    await onSubmitThumb({
-                      thumb: feedback?.thumb ?? "up",
-                      isToRemove: false,
-                      feedbackContent: localFeedbackContent,
-                    });
-                    setIsPopoverOpen(false);
-                  }}
+                  onClick={handleSubmit}
+                  disabled={
+                    !localFeedbackContent ||
+                    localFeedbackContent === "" ||
+                    isSubmittingThumb
+                  }
                 />
               </div>
             </div>
