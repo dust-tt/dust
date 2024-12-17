@@ -203,6 +203,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
           "Invalid Github parents"
         );
       }
+      assert(/^\d+$/.test(repoId), `Invalid repoId: ${repoId}`);
 
       if (nodeId.startsWith("github-issue-")) {
         return {
