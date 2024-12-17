@@ -470,7 +470,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: db.notionUrl || null,
         expandable: true,
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(db.notionDatabaseId),
+        dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
       };
     };
@@ -562,7 +562,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
-      dustDocumentId: nodeIdFromNotionId(db.notionDatabaseId),
+      dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
       lastUpdatedAt: null,
       dustTableId: getNotionDatabaseTableId(db.notionDatabaseId),
     }));
