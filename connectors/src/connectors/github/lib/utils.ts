@@ -10,10 +10,6 @@ export const GITHUB_CONTENT_NODE_TYPES = [
 ] as const;
 export type GithubContentNodeType = (typeof GITHUB_CONTENT_NODE_TYPES)[number];
 
-export function getRepositoryIdFromNodeId(internalId: string): number {
-  return parseInt(internalId.replace(/^github-repository-/, ""), 10);
-}
-
 /**
  * Gets the type of the Github content node from its internal id.
  */
@@ -25,7 +21,7 @@ export function matchGithubNodeIdType(internalId: string): {
   if (/^github-repository-\d+$/.test(internalId)) {
     return {
       type: "REPO_FULL",
-      repoId: getRepositoryIdFromNodeId(internalId),
+      repoId: parseInt(internalId.replace(/^github-repository-/, ""), 10),
     };
   }
   // All issues from repo are selected, format = "github-issues-12345678"
