@@ -222,6 +222,13 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    // cleaning up the Shared With Me folder
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getSharedWithMeFolderId(dataSourceConfig),
+    });
+
     // Google revocation requires refresh tokens so would have to happen in `oauth`. But Google
     // Drive does not rely on webhooks anymore so we can just delete the connector.
 
@@ -233,12 +240,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
       return res;
     }
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    // cleaning up the Shared With Me folder
-    await deleteDataSourceFolder({
-      dataSourceConfig,
-      folderId: getSharedWithMeFolderId(dataSourceConfig),
-    });
 
     return new Ok(undefined);
   }
