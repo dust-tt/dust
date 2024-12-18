@@ -28,6 +28,7 @@ import {
   getDiscussionsInternalId,
   getIssueInternalId,
   getIssuesInternalId,
+  getMimeTypeFromGithubContentNodeType,
   getRepositoryInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
@@ -126,7 +127,7 @@ export async function githubGetRepoIssuesResultPageActivity(
     folderId: getIssuesInternalId(repoId),
     title: "Issues",
     parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
-    mimeType: "application/vnd.dust.github.issues-folder",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_ISSUES"),
   });
 
   return page.map((issue) => issue.number);
@@ -317,7 +318,7 @@ export async function githubUpsertIssueActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: issue.title,
-    mimeType: "application/vnd.dust.github.issue",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_ISSUE"),
     async: true,
   });
 
@@ -501,7 +502,7 @@ export async function githubUpsertDiscussionActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: discussion.title,
-    mimeType: "application/vnd.dust.github.discussion",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_DISCUSSION"),
     async: true,
   });
 
@@ -550,7 +551,7 @@ export async function githubGetRepoDiscussionsResultPageActivity(
       getDiscussionsInternalId(repoId),
       getRepositoryInternalId(repoId),
     ],
-    mimeType: "application/vnd.dust.github.discussions-folder",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_DISCUSSIONS"),
   });
 
   return {
@@ -1009,7 +1010,7 @@ export async function githubCodeSyncActivity({
     folderId: getRepositoryInternalId(githubCodeRepository.repoId),
     title: githubCodeRepository.repoName,
     parents: [getRepositoryInternalId(githubCodeRepository.repoId)],
-    mimeType: "application/vnd.dust.github.repository-folder",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_FULL"),
   });
 
   logger.info(
@@ -1190,7 +1191,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: "application/vnd.dust.github.code.file",
+            mimeType: getMimeTypeFromGithubContentNodeType("REPO_CODE_FILE"),
             async: true,
           });
 
@@ -1256,7 +1257,7 @@ export async function githubCodeSyncActivity({
             getRepositoryInternalId(repoId),
           ],
           title: d.dirName,
-          mimeType: "application/vnd.dust.github.code.directory",
+          mimeType: getMimeTypeFromGithubContentNodeType("REPO_CODE_DIR"),
         });
 
         // If the parents have updated then the internalId gets updated as well so we should never
@@ -1303,7 +1304,7 @@ export async function githubCodeSyncActivity({
       folderId: getCodeRootInternalId(repoId),
       title: "Code",
       parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
-      mimeType: "application/vnd.dust.github.code-folder",
+      mimeType: getMimeTypeFromGithubContentNodeType("REPO_CODE"),
     });
 
     // Finally we update the repository updatedAt value.

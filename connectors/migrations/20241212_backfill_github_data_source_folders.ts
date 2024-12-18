@@ -1,9 +1,16 @@
 import { makeScript } from "scripts/helpers";
 
 import { getGithubCodeDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
+import {
+  getCodeRootInternalId,
+  getDiscussionsInternalId,
+  getIssuesInternalId,
+  getMimeTypeFromGithubContentNodeType,
+  getRepositoryInternalId,
+} from "@connectors/connectors/github/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertFolderNode } from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -72,7 +79,11 @@ async function createFolderNodes() {
       repoWithIssues,
       async (repoId) => {
         // The node id is the same as the repoId
-        await upsertIssueFolderNode(repoId, `${repoId}`, dataSourceConfig);
+        await upsertIssueFolderNode(
+          repoId,
+          getRepositoryInternalId(repoId),
+          dataSourceConfig
+        );
       },
       { concurrency: 16 }
     );
@@ -87,8 +98,7 @@ async function createFolderNodes() {
         // The node id is the same as the repoId
         await upsertDiscussionFolderNode(
           repoId,
-          // The node id is the same as the repoId
-          `${repoId}`,
+          getRepositoryInternalId(repoId),
           dataSourceConfig
         );
       },
@@ -102,11 +112,12 @@ async function upsertRepositoryFolderNode(
   dataSourceConfig: DataSourceConfig
 ) {
   const repoFolderId = repository.repoId;
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
-    folderId: repoFolderId,
+    folderId: getRepositoryInternalId(repository.repoId),
     parents: [repoFolderId],
     title: repository.repoName,
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_FULL"),
   });
   return repoFolderId;
 }
@@ -116,12 +127,13 @@ async function upsertCodeFolderNode(
   repositoryNodeId: string,
   dataSourceConfig: DataSourceConfig
 ) {
-  const codeFolderId = `github-code-${repositoryId}`;
-  await upsertFolderNode({
+  const codeFolderId = getCodeRootInternalId(repositoryId);
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: codeFolderId,
     parents: [codeFolderId, repositoryNodeId],
     title: "Code",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_CODE"),
   });
   return codeFolderId;
 }
@@ -137,11 +149,12 @@ async function upsertDirectoryFolderNode(
     directory.internalId,
     repositoryId
   );
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: directory.internalId,
     parents: [directory.internalId, ...parents],
     title: directory.dirName,
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_CODE_DIR"),
   });
 }
 
@@ -150,12 +163,13 @@ async function upsertIssueFolderNode(
   repositoryNodeId: string,
   dataSourceConfig: DataSourceConfig
 ) {
-  const issuesFolderId = `${repositoryId}-issues`;
-  await upsertFolderNode({
+  const issuesFolderId = getIssuesInternalId(repositoryId);
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: issuesFolderId,
     parents: [issuesFolderId, repositoryNodeId],
     title: "Issues",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_ISSUES"),
   });
 }
 
@@ -164,12 +178,13 @@ async function upsertDiscussionFolderNode(
   repositoryNodeId: string,
   dataSourceConfig: DataSourceConfig
 ) {
-  const discussionsFolderId = `${repositoryId}-discussions`;
-  await upsertFolderNode({
+  const discussionsFolderId = getDiscussionsInternalId(repositoryId);
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: discussionsFolderId,
     parents: [discussionsFolderId, repositoryNodeId],
     title: "Discussions",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_DISCUSSIONS"),
   });
 }
 
