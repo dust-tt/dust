@@ -1,6 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
+import { getNotionUnknownFolderId } from "@connectors/connectors/notion";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { deleteDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -67,6 +70,10 @@ export class NotionConnectorStrategy
         connectorId: connector.id,
       },
       transaction,
+    });
+    await deleteDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: getNotionUnknownFolderId(connector.id),
     });
   }
 

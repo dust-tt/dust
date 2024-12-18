@@ -12,8 +12,10 @@ import type {
   CreateConnectorErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -21,6 +23,7 @@ import {
 } from "@connectors/connectors/notion/temporal/client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   NotionConnectorState,
   NotionDatabase,
@@ -33,6 +36,10 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+export function getNotionUnknownFolderId(connectorId: number) {
+  return `${nodeIdFromNotionId("unknown")}-${connectorId}`;
+}
 
 function nodeIdFromNotionId(notionId: string) {
   return `notion-${notionId}`;
@@ -56,6 +63,22 @@ async function workspaceIdFromConnectionId(connectionId: string) {
     (tokRes.value.scrubbed_raw_json as { workspace_id?: string })
       .workspace_id ?? null
   );
+}
+
+/**
+ * Upserts to data_sources_folders (core) a top-level folder for the orphaned resources.
+ */
+async function upsertNotionUnknownFolder(connector: ConnectorResource) {
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const folderId = getNotionUnknownFolderId(connector.id);
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId,
+    parents: [folderId],
+    parentId: null,
+    title: "Orphaned Resources",
+    mimeType: "application/vnd.dust.notion.folder", // TODO: choose what we do here, this doesn't work since mimeType is not supported
+  });
 }
 
 export class NotionConnectorManager extends BaseConnectorManager<null> {
@@ -91,6 +114,8 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       },
       {}
     );
+
+    await upsertNotionUnknownFolder(connector);
 
     try {
       await launchNotionSyncWorkflow(connector.id);
@@ -486,7 +511,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         folderNodes.push({
           provider: c.type,
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: nodeIdFromNotionId("unknown"),
+          internalId: getNotionUnknownFolderId(c.id),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
@@ -575,7 +600,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         contentNodes.push({
           provider: "notion",
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: nodeIdFromNotionId("unknown"),
+          internalId: getNotionUnknownFolderId(this.connectorId),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
