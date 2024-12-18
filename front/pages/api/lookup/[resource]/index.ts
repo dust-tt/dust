@@ -127,14 +127,11 @@ async function handler(
 async function handleLookupUser(
   userLookup: t.TypeOf<typeof UserLookupSchema>
 ): Promise<UserLookupResponse> {
-  // Check if user exists
-  const user = await fetchUserWithAuth0Sub(userLookup.user.sub);
-
-  // Check for pending invitations
-  const pendingInvite =
-    await getPendingMembershipInvitationWithWorkspaceForEmail(
-      userLookup.user.email
-    );
+  // Check if user exists and for pending invitations
+  const [user, pendingInvite] = await Promise.all([
+    fetchUserWithAuth0Sub(userLookup.user.sub),
+    getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.user.email),
+  ]);
 
   return {
     status: user || pendingInvite ? "known" : "unknown",
