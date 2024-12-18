@@ -128,11 +128,7 @@ export default function LabsTranscriptsIndex({
 
   const getDefaultConfiguration = useGetDefaultConfiguration({ owner });
 
-  const saveApiConnection = async (
-    apiKey: string,
-    provider: string,
-    apiKeyIsEncrypted: boolean = false
-  ) => {
+  const saveApiConnection = async (apiKey: string, provider: string) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
       headers: {
@@ -141,7 +137,6 @@ export default function LabsTranscriptsIndex({
       body: JSON.stringify({
         apiKey,
         provider,
-        apiKeyIsEncrypted,
       }),
     });
 

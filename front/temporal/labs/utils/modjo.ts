@@ -1,12 +1,14 @@
-import { decrypt } from "@dust-tt/types";
+import { isModjoCredentials, OAuthAPI } from "@dust-tt/types";
 import { either } from "fp-ts";
 import { pipe } from "fp-ts/function";
 import * as t from "io-ts";
 
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
+import logger from "@app/logger/logger";
 
 const ModjoSpeaker = t.type({
   contactId: t.union([t.number, t.undefined]),
@@ -110,10 +112,25 @@ export async function retrieveModjoTranscripts(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const modjoApiKey = decrypt(
-    transcriptsConfiguration.credentialId,
-    workspace.sId
-  );
+  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+  const modjoApiKeyRes = await oauthApi.getCredentials({
+    credentialsId: transcriptsConfiguration.credentialId,
+  });
+
+  if (modjoApiKeyRes.isErr()) {
+    localLogger.error(
+      { error: modjoApiKeyRes.error },
+      "[retrieveModjoTranscripts] Error fetching API key from Modjo. Skipping."
+    );
+    return [];
+  }
+
+  if (!isModjoCredentials(modjoApiKeyRes.value.credential.content)) {
+    throw new Error("Invalid credentials type - expected modjo credentials");
+  }
+
+  const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
   const flags = await getFeatureFlags(workspace);
   const daysOfHistory = flags.includes("labs_transcripts_gong_full_storage")
@@ -234,21 +251,30 @@ export async function retrieveModjoTranscriptContent(
   userParticipated: boolean;
 } | null> {
   if (!transcriptsConfiguration || !transcriptsConfiguration.credentialId) {
-    localLogger.error(
-      {
-        fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.id,
-      },
-      "[processTranscriptActivity] No API key found. Skipping."
+    throw new Error(
+      "[processTranscriptActivity]No credentialId for modjo transcriptsConfiguration found. Skipping."
     );
-    throw new Error("No API key for transcriptsConfiguration found. Skipping.");
   }
 
-  const workspace = auth.getNonNullableWorkspace();
-  const modjoApiKey = decrypt(
-    transcriptsConfiguration.credentialId,
-    workspace.sId
-  );
+  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+  const modjoApiKeyRes = await oauthApi.getCredentials({
+    credentialsId: transcriptsConfiguration.credentialId,
+  });
+
+  if (modjoApiKeyRes.isErr()) {
+    throw new Error(
+      "[processTranscriptActivity] Error fetching API key from Modjo. Skipping."
+    );
+  }
+
+  if (!isModjoCredentials(modjoApiKeyRes.value.credential.content)) {
+    throw new Error(
+      "[processTranscriptActivity] Invalid credentials type - expected modjo credentials"
+    );
+  }
+
+  const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
   const findModjoUser = async () => {
     const user = await transcriptsConfiguration.getUser();
