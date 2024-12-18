@@ -84,16 +84,6 @@ async function handler(
     });
   }
   const { resource } = req.query;
-  if (!resource || typeof resource !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid resource parameter",
-      },
-    });
-  }
-
   const resourceValidation = ResourceType.decode(resource);
   if (isLeft(resourceValidation)) {
     return apiError(req, res, {
