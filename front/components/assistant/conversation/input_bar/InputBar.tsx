@@ -277,7 +277,7 @@ export function AssistantInputBar({
         >
           <div
             className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-2 sm:flex-row sm:pl-5",
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
               "bg-primary-50",
               "transition-all",
               isFloating

@@ -2,6 +2,7 @@ import {
   AssistantCard,
   AssistantCardMore,
   Button,
+  CardGrid,
   CompanyIcon,
   LockIcon,
   MagnifyingGlassIcon,
@@ -201,7 +202,7 @@ export function AssistantBrowser({
       )}
 
       {viewTab && (
-        <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
+        <CardGrid>
           {agentsByTab[viewTab].map((agent) => (
             <AssistantCard
               key={agent.sId}
@@ -220,7 +221,7 @@ export function AssistantBrowser({
               }
             />
           ))}
-        </div>
+        </CardGrid>
       )}
     </>
   );
