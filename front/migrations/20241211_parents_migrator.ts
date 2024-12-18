@@ -87,6 +87,9 @@ export function isGithubCodeDirId(internalId: string): boolean {
 export function isGithubCodeFileId(internalId: string): boolean {
   return /^github-code-\d+-file-[a-f0-9]+$/.test(internalId);
 }
+export function isOldGithuRepoId(internalId: string): boolean {
+  return /^\d+$/.test(internalId);
+}
 
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: {
@@ -336,7 +339,13 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       assert(
         parents
           .filter((p) => !p.startsWith("github-"))
-          .every((p) => p.endsWith("discussions") || p.endsWith("issues"))
+          .every(
+            (p) =>
+              p.endsWith("discussions") ||
+              p.endsWith("issues") ||
+              isOldGithuRepoId(p)
+          ),
+        "unrecognized parents, nor new nor old"
       );
       // looks brittle but is not, for issues and discussions old parents match ${repoId}-discussions, ${repoId}-issues, ${repoId}
       const newParents = parents.filter((p) => p.startsWith("github-"));
