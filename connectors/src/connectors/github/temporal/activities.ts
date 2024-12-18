@@ -293,21 +293,7 @@ export async function githubUpsertIssueActivity(
     documentUrl: issue.url,
     timestampMs: updatedAtTimestamp,
     tags: tags,
-    // The convention for parents is to use the external id string; it is ok for
-    // repos, but not practical for issues since the external id is the
-    // issue number, which is not guaranteed unique in the workspace.
-    // Therefore as a special case we use getIssueDocumentId() to get a parent string
-    // The repo id from github is globally unique so used as-is, as per
-    // convention to use the external id string.
-    parents: [
-      documentId,
-      // TODO(2024-12-17 aubin): remove the old parent IDs below
-      `${repoId}-issues`,
-      repoId.toString(),
-      // new parent IDs
-      getIssuesNodeId(repoId),
-      getRepositoryNodeId(repoId),
-    ],
+    parents: [documentId, getIssuesNodeId(repoId), getRepositoryNodeId(repoId)],
     loggerArgs: logger.bindings(),
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
@@ -484,18 +470,8 @@ export async function githubUpsertDiscussionActivity(
     documentUrl: discussion.url,
     timestampMs: new Date(discussion.createdAt).getTime(),
     tags,
-    // The convention for parents is to use the external id string; it is ok for
-    // repos, but not practical for discussions since the external id is the
-    // issue number, which is not guaranteed unique in the workspace. Therefore
-    // as a special case we use getDiscussionDocumentId() to get a parent string
-    // The repo id from github is globally unique so used as-is, as per
-    // convention to use the external id string.
     parents: [
       documentId,
-      // TODO(2024-12-17 aubin): remove the old parent IDs below
-      `${repoId}-discussions`,
-      repoId.toString(),
-      // new parent IDs
       getDiscussionsNodeId(repoId),
       getRepositoryNodeId(repoId),
     ],
