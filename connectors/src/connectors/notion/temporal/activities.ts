@@ -1357,16 +1357,8 @@ export async function cacheBlockChildren({
     },
   });
 
-  if (!notionPageModel) {
-    logger.info("Skipping page not found in db.");
-    return {
-      nextCursor: null,
-      blocksWithChildren: [],
-      blocksCount: 0,
-    };
-  }
-
-  if (notionPageModel.skipReason) {
+  // The page might not exist yet as in the first run of the workflow as we cache block children THEN we store the page
+  if (notionPageModel?.skipReason) {
     logger.info(
       { skipReason: notionPageModel.skipReason },
       "Skipping page with skip reason"
