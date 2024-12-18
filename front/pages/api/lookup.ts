@@ -74,7 +74,7 @@ async function handler(
     });
   }
 
-  if (bearerTokenRes.value !== config.getLookUpBearerToken()) {
+  if (bearerTokenRes.value !== config.getRegionResolverSecret()) {
     return apiError(req, res, {
       status_code: 401,
       api_error: {

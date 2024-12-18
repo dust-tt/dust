@@ -116,8 +116,8 @@ const config = {
       "DEVELOPMENT_DUST_APPS_VAULT_ID"
     );
   },
-  getLookUpBearerToken: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("LOOKUP_API_BEARER");
+  getRegionResolverSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
   // OAuth
   getOAuthGithubApp: (): string => {
