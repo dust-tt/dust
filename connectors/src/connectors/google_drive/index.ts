@@ -50,7 +50,10 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -230,6 +233,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
       return res;
     }
+    // cleaning up the Shared With Me folder
+    await deleteDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: getSharedWithMeFolderId(connector),
+    });
 
     return new Ok(undefined);
   }

@@ -1,9 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
-import { getSharedWithMeFolderId } from "@connectors/connectors/google_drive/lib/hierarchy";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { deleteDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -71,10 +68,6 @@ export class GoogleDriveConnectorStrategy
         connectorId: connector.id,
       },
       transaction,
-    });
-    await deleteDataSourceFolder({
-      dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId: getSharedWithMeFolderId(connector),
     });
   }
 
