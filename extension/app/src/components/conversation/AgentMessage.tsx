@@ -37,10 +37,10 @@ import {
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import {
-  CitationNew,
-  CitationNewIcons,
-  CitationNewIndex,
-  CitationNewTitle,
+  Citation,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
   Icon,
 } from "@dust-tt/sparkle";
 import {
@@ -85,20 +85,6 @@ import type { Components } from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
-
-const typeIcons = {
-  confluence: ConfluenceLogo,
-  document: DocumentTextIcon,
-  github: GithubLogo,
-  google_drive: DriveLogo,
-  intercom: IntercomLogo,
-  microsoft: MicrosoftLogo,
-  zendesk: ZendeskLogo,
-  notion: NotionLogo,
-  slack: SlackLogo,
-  image: ImageIcon,
-  snowflake: SnowflakeLogo,
-};
 
 export function visualizationDirective() {
   return (tree: any) => {
@@ -651,13 +637,13 @@ function getCitations({
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <CitationNew key={index} href={document.href}>
-        <CitationNewIcons>
-          <CitationNewIndex>{index}</CitationNewIndex>
-          <Icon visual={typeIcons[document.type]} />
-        </CitationNewIcons>
-        <CitationNewTitle>{document.title}</CitationNewTitle>
-      </CitationNew>
+      <Citation key={index} href={document.href}>
+        <CitationIcons>
+          <CitationIndex>{index}</CitationIndex>
+          {document.icon}
+        </CitationIcons>
+        <CitationTitle>{document.title}</CitationTitle>
+      </Citation>
     );
   });
 }
