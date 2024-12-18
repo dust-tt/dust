@@ -302,14 +302,24 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
           `Github invalid nodeId: ${nodeId}`
         );
 
+        let dirParents = parents.filter(
+          (p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p) // same regex as in connectors/github/lib/utils.ts
+        );
+        /// case where we sent the [nodeId, dir3, dir2, dir1, dir1, dir2, dir3, code, repo] and we want to keep only [nodeId, dir1, dir2, dir3, code, repo]
+        if (dirParents.length !== new Set(dirParents).size) {
+          dirParents = dirParents.slice(
+            dirParents.length / 2,
+            dirParents.length
+          );
+        }
         return {
           parents: [
             nodeId,
-            ...parents.filter((p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p)), // same regex as in connectors/github/lib/utils.ts
+            ...dirParents,
             `github-code-${repoId}`,
             `github-repository-${repoId}`,
           ],
-          parentId: parents[1],
+          parentId: dirParents[0],
         };
       }
 
