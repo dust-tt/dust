@@ -44,7 +44,13 @@ export function getNotionUnknownFolderId(dataSourceConfig: DataSourceConfig) {
   return `notion-unknown-${dataSourceConfig.dataSourceId}`;
 }
 
-function nodeIdFromNotionId(notionId: string) {
+function nodeIdFromNotionId(
+  notionId: string,
+  dataSourceConfig: DataSourceConfig
+) {
+  if (notionId === "unknown") {
+    return getNotionUnknownFolderId(dataSourceConfig);
+  }
   return `notion-${notionId}`;
 }
 
@@ -61,9 +67,7 @@ function getNotionResourceParentInternalId(
 ): string | null {
   return !resource.parentId || resource.parentId === "workspace"
     ? null
-    : resource.parentId === "unknown"
-      ? getNotionUnknownFolderId(dataSourceConfig)
-      : nodeIdFromNotionId(resource.parentId);
+    : nodeIdFromNotionId(resource.parentId, dataSourceConfig);
 }
 
 async function workspaceIdFromConnectionId(connectionId: string) {
@@ -486,7 +490,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
       return {
         provider: c.type,
-        internalId: nodeIdFromNotionId(page.notionPageId),
+        internalId: nodeIdFromNotionId(page.notionPageId, dataSourceConfig),
         parentInternalId: getNotionResourceParentInternalId(
           page,
           dataSourceConfig
@@ -496,7 +500,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: page.notionUrl || null,
         expandable,
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(page.notionPageId),
+        dustDocumentId: nodeIdFromNotionId(page.notionPageId, dataSourceConfig),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
       };
     };
@@ -510,7 +514,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
       return {
         provider: c.type,
-        internalId: nodeIdFromNotionId(db.notionDatabaseId),
+        internalId: nodeIdFromNotionId(db.notionDatabaseId, dataSourceConfig),
         parentInternalId: getNotionResourceParentInternalId(
           db,
           dataSourceConfig
@@ -520,7 +524,10 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: db.notionUrl || null,
         expandable: true,
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
+        dustDocumentId: nodeIdFromNotionId(
+          `database-${db.notionDatabaseId}`,
+          dataSourceConfig
+        ),
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
       };
     };
@@ -593,7 +600,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const pageNodes: ContentNode[] = await Promise.all(
       pages.map(async (page) => ({
         provider: "notion",
-        internalId: nodeIdFromNotionId(page.notionPageId),
+        internalId: nodeIdFromNotionId(page.notionPageId, dataSourceConfig),
         parentInternalId: getNotionResourceParentInternalId(
           page,
           dataSourceConfig
@@ -603,7 +610,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         sourceUrl: page.notionUrl || null,
         expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(page.notionPageId),
+        dustDocumentId: nodeIdFromNotionId(page.notionPageId, dataSourceConfig),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
         dustTableId: null,
       }))
@@ -611,14 +618,17 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const dbNodes: ContentNode[] = dbs.map((db) => ({
       provider: "notion",
-      internalId: nodeIdFromNotionId(db.notionDatabaseId),
+      internalId: nodeIdFromNotionId(db.notionDatabaseId, dataSourceConfig),
       parentInternalId: getNotionResourceParentInternalId(db, dataSourceConfig),
       type: "database",
       title: db.title || "",
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
-      dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
+      dustDocumentId: nodeIdFromNotionId(
+        `database-${db.notionDatabaseId}`,
+        dataSourceConfig
+      ),
       lastUpdatedAt: null,
       dustTableId: getNotionDatabaseTableId(db.notionDatabaseId),
     }));
@@ -663,6 +673,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(new Error("Connector not found"));
     }
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     const memo = memoizationKey || uuidv4();
 
@@ -675,7 +686,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         undefined
       );
 
-      return new Ok(parents.map((p) => nodeIdFromNotionId(p)));
+      return new Ok(
+        parents.map((p) => nodeIdFromNotionId(p, dataSourceConfig))
+      );
     } catch (e) {
       logger.error(
         { connectorId: this.connectorId, internalId, memoizationKey, error: e },
