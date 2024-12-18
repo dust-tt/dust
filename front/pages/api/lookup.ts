@@ -1,3 +1,4 @@
+import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
@@ -6,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { getBearerToken } from "@app/lib/auth";
 import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
@@ -103,7 +105,12 @@ async function handler(
   switch (body.resource) {
     case "user":
       {
-        response = await handleLookupUser(body);
+        const session = await getAuth0Session(req, res);
+        const sessionWithUser = {
+          user: body.user,
+          session,
+        };
+        response = await handleLookupUser(sessionWithUser);
       }
       break;
     case "workspace": {
@@ -115,7 +122,7 @@ async function handler(
 }
 
 async function handleLookupUser(
-  body: t.TypeOf<typeof UserLookupSchema>
+  body: SessionWithUser
 ): Promise<UserLookupResponse> {
   // Check if user exists
   const user = await fetchUserFromSession(body);
