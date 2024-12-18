@@ -87,6 +87,7 @@ export async function getAgentConfigurationFeedbacks({
         conversationId:
           withMetadata &&
           feedback.agentMessage.message?.conversation &&
+          feedback.isConversationShared &&
           canAccessConversation(
             auth,
             feedback.agentMessage.message.conversation
