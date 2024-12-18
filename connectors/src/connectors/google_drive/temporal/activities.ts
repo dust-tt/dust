@@ -766,7 +766,10 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
   ) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    await deleteDataSourceDocument(dataSourceConfig, googleDriveFile.dustFileId);
+    await deleteDataSourceDocument(
+      dataSourceConfig,
+      googleDriveFile.dustFileId
+    );
   }
   const folder = await GoogleDriveFolders.findOne({
     where: {
