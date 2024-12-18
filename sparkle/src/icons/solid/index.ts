@@ -12,6 +12,7 @@ export { default as ArrowUpOnSquareIcon } from "./ArrowUpOnSquare";
 export { default as ArrowUpSIcon } from "./ArrowUpS";
 export { default as AttachmentIcon } from "./Attachment";
 export { default as BackspaceIcon } from "./Backspace";
+export { default as BarChartIcon } from "./BarChart";
 export { default as BookmarkIcon } from "./Bookmark";
 export { default as BookOpenIcon } from "./BookOpen";
 export { default as BracesIcon } from "./Braces";
