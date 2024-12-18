@@ -1,4 +1,3 @@
-import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
@@ -8,8 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { getBearerToken } from "@app/lib/auth";
 import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
-import type { SessionWithUser } from "@app/lib/iam/provider";
-import { fetchUserFromSession } from "@app/lib/iam/users";
+import { fetchUserWithAuth0Sub } from "@app/lib/iam/users";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -29,12 +27,7 @@ type UserLookupResponse = {
 const ExternalUserCodec = t.type({
   email: t.string,
   email_verified: t.boolean,
-  name: t.string,
-  nickname: t.string,
   sub: t.string,
-  family_name: t.union([t.string, t.undefined]),
-  given_name: t.union([t.string, t.undefined]),
-  picture: t.union([t.string, t.undefined]),
 });
 
 type LookupResponseBody = UserLookupResponse | WorkspaceLookupResponse;
@@ -112,11 +105,6 @@ async function handler(
             },
           });
         }
-        const session = await getAuth0Session(req, res);
-        const sessionWithUser = {
-          user: bodyValidation.right.user,
-          session,
-        };
         response = await handleLookupUser(sessionWithUser);
       }
       break;
@@ -140,18 +128,22 @@ async function handler(
 }
 
 async function handleLookupUser(
-  body: SessionWithUser
+  userLookup: t.TypeOf<typeof UserLookupSchema>
 ): Promise<UserLookupResponse> {
   // Check if user exists
-  const user = await fetchUserFromSession(body);
+  const user = await fetchUserWithAuth0Sub(userLookup.user.sub);
 
   // Check for pending invitations
   const pendingInvite =
-    await getPendingMembershipInvitationWithWorkspaceForEmail(body.user.email);
+    await getPendingMembershipInvitationWithWorkspaceForEmail(
+      userLookup.user.email
+    );
 
   // Check for workspace with verified domain
-  const workspaceWithVerifiedDomain =
-    await findWorkspaceWithVerifiedDomain(body);
+  const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain({
+    email: userLookup.user.email,
+    email_verified: userLookup.user.email_verified,
+  });
 
   // Check auto-join
   const canAutoJoin =
