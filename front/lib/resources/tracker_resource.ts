@@ -297,7 +297,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       ],
     });
 
-    return tracker ? tracker[0].toJSON() : null;
+    return tracker[0]?.toJSON() ?? null;
   }
 
   // Internal method for fetching trackers without any authorization checks.
@@ -306,13 +306,10 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   static async internalFetchTrackersToNotify(
     currentRunMs: number
   ): Promise<TrackerIdWorkspaceId[]> {
-    if (!currentRunMs || typeof currentRunMs !== "number") {
-      throw new Error("Invalid currentRunMs parameter");
-    }
-
     // Look back 20 minutes to ensure we don't miss any runs.
     const LOOK_BACK_PERIOD_MS = 1 * 20 * 60 * 1000; // 20 minutes.
     const lookBackMs = currentRunMs - LOOK_BACK_PERIOD_MS;
+    const lookForwardMs = currentRunMs + LOOK_BACK_PERIOD_MS;
 
     const trackers = await TrackerConfigurationResource.model.findAll({
       attributes: ["id", "frequency", "lastNotifiedAt", "createdAt"],
@@ -343,7 +340,9 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         });
         const nextExpectedRunMs = interval.next().getTime();
 
-        return nextExpectedRunMs <= lookBackMs;
+        return (
+          nextExpectedRunMs >= lookBackMs && nextExpectedRunMs <= lookForwardMs
+        );
       } catch (e) {
         logger.error(
           {
@@ -353,7 +352,9 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
           },
           "[Tracker] Invalid cron expression or parsing error"
         );
-        return false;
+        throw new Error(
+          `[Tracker] Invalid cron expression or parsing error for #${tracker.id}`
+        );
       }
     });
 
