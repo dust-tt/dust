@@ -13,7 +13,9 @@ import { Workspace } from "@app/lib/models/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 type WorkspaceLookupResponse = {
-  isNew: boolean;
+  workspace: {
+    sId: string;
+  } | null;
 };
 
 type UserLookupResponse = {
@@ -164,7 +166,7 @@ async function handleLookupWorkspace(
     where: { sId: body.workspace },
   });
   return {
-    isNew: !!workspace,
+    workspace: workspace?.sId ? { sId: workspace.sId } : null,
   };
 }
 
