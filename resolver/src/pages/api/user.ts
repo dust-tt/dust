@@ -33,7 +33,7 @@ export default async function handler(
 
   const client = new RegionLookupClient(
     config.getLookupApiSecret(),
-    config.getRegionUrls()
+    config.getRegionUrls(),
   );
 
   const bodyValidation = UserSearchPostBodySchema.decode(req.body);
@@ -58,6 +58,6 @@ export default async function handler(
   }
 
   return res.status(200).json({
-    regionUrl: null
+    regionUrl: null,
   });
 }

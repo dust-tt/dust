@@ -10,7 +10,7 @@ export function isValidRegion(region: string): region is ClusterRegionType {
 const clusterUrl = {
   "europe-west1": "https://eu.dust.tt",
   "us-central1": "https://dust.tt",
-}
+};
 
 export const config = {
   getLookupApiSecret: (): string => {
@@ -20,6 +20,6 @@ export const config = {
     return clusterUrl;
   },
   getRegionUrl: (region: ClusterRegionType) => {
-    return clusterUrl[region]
-  }
+    return clusterUrl[region];
+  },
 };

@@ -1,6 +1,6 @@
 import { ClusterRegionType } from "@app/src/lib/config";
 
-type Resource = "user" | "workspace";
+type Resource = "user";
 
 type ExternalUser = {
   email: string;
@@ -11,12 +11,6 @@ type ExternalUser = {
 export type UserLookupResponse = {
   user: {
     email: string;
-  } | null;
-};
-
-type WorkspaceLookupResponse = {
-  workspace: {
-    sId: string;
   } | null;
 };
 
@@ -33,12 +27,6 @@ export class RegionLookupClient {
     user: ExternalUser,
   ): Promise<Record<ClusterRegionType, UserLookupResponse>> {
     return this.lookup("user", { user });
-  }
-
-  async lookupWorkspace(
-    sId: string,
-  ): Promise<Record<ClusterRegionType, WorkspaceLookupResponse>> {
-    return this.lookup("workspace", { workspace: sId });
   }
 
   private async lookup<T extends object>(
