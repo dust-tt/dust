@@ -979,3 +979,19 @@ function getSourceUrlForGoogleDriveFiles(f: GoogleDriveFiles): string {
 
   return `https://drive.google.com/file/d/${f.driveFileId}/view`;
 }
+
+/**
+ * Upserts to data_sources_folders (core) a top-level folder "Shared with me".
+ */
+async function upsertSharedWithMeFolder(connector: ConnectorResource) {
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const folderId = getSharedWithMeFolderId(dataSourceConfig);
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId,
+    parents: [folderId],
+    parentId: null,
+    title: "Shared with me",
+    mimeType: "application/vnd.dust.googledrive.folder",
+  });
+}

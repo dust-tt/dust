@@ -14,7 +14,7 @@ makeScript({}, async ({ execute }, logger) => {
     async (connector) => {
       // this is a strict copy-paste of upsertSharedWithMeFolder, I don't want to export it for a migration script and want the folderId for logging purposes
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
-      const folderId = getSharedWithMeFolderId(connector);
+      const folderId = getSharedWithMeFolderId(dataSourceConfig);
 
       if (execute) {
         await upsertDataSourceFolder({
