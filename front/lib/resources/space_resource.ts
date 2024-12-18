@@ -319,6 +319,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
       transaction,
     });
+    await Promise.all(
+      this.groups.map(async (group) => {
+        const count = await GroupSpaceModel.count({
+          where: {
+            groupId: group.id,
+          },
+          transaction,
+        });
+        if (count === 0) {
+          await group.delete(auth, { transaction });
+        }
+      })
+    );
 
     await SpaceModel.destroy({
       where: {
