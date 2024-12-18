@@ -80,6 +80,14 @@ function slackNodeIdToChannelId(nodeId: string) {
   return parts[1];
 }
 
+export function isGithubCodeDirId(internalId: string): boolean {
+  return /^github-code-\d+-dir-[a-f0-9]+$/.test(internalId);
+}
+
+export function isGithubCodeFileId(internalId: string): boolean {
+  return /^github-code-\d+-file-[a-f0-9]+$/.test(internalId);
+}
+
 const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
   slack: {
     transformer: (nodeId, parents) => {
@@ -266,9 +274,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         const newParents = [
           nodeId,
           /// putting the code directories here in reverse
-          ...parents
-            .filter((p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p)) // same regex as in connectors/github/lib/utils.ts
-            .reverse(),
+          ...parents.filter(isGithubCodeDirId).reverse(),
           repoId.toString(),
           `github-code-${repoId}`,
           `github-repository-${repoId}`,
@@ -297,14 +303,9 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
       assert(/^\d+$/.test(repoId), `Invalid repoId: ${repoId}`);
 
       if (nodeId.startsWith("github-code-")) {
-        assert(
-          /^github-code-\d+-file-[a-f0-9]+$/.test(nodeId),
-          `Github invalid nodeId: ${nodeId}`
-        );
+        assert(isGithubCodeFileId(nodeId), `Github invalid nodeId: ${nodeId}`);
 
-        let dirParents = parents.filter(
-          (p) => /^github-code-\d+-dir-[a-f0-9]+$/.test(p) // same regex as in connectors/github/lib/utils.ts
-        );
+        let dirParents = parents.filter(isGithubCodeDirId);
         /// case where we sent the [nodeId, dir3, dir2, dir1, dir1, dir2, dir3, code, repo] and we want to keep only [nodeId, dir1, dir2, dir3, code, repo]
         if (dirParents.length !== new Set(dirParents).size) {
           dirParents = dirParents.slice(
