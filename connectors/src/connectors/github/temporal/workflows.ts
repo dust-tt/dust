@@ -183,6 +183,7 @@ export async function githubRepoIssuesSyncWorkflow({
     connectorId,
     repoName,
     repoLogin,
+    repoId,
     pageNumber,
     { repoId }
   );
@@ -238,6 +239,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
       connectorId,
       repoName,
       repoLogin,
+      repoId,
       nextCursor,
       { repoId }
     );

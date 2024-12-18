@@ -92,6 +92,7 @@ export async function githubGetRepoIssuesResultPageActivity(
   connectorId: ModelId,
   repoName: string,
   repoLogin: string,
+  repoId: number,
   pageNumber: number, // 1-indexed
   loggerArgs: Record<string, string | number>
 ): Promise<number[]> {
@@ -116,6 +117,17 @@ export async function githubGetRepoIssuesResultPageActivity(
     repoLogin,
     pageNumber
   );
+
+  // Create Issues data source folder node, because anticipating upserts
+  // Here for performance reasons, we don't want to create the folder node for each issue
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getIssuesInternalId(repoId),
+    title: "Issues",
+    parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
+    mimeType: "application/vnd.dust.github.issues-folder",
+  });
 
   return page.map((issue) => issue.number);
 }
@@ -315,14 +327,6 @@ export async function githubUpsertIssueActivity(
     issueNumber,
     connectorId: connector.id,
   });
-
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: getIssuesInternalId(repoId),
-    title: "Issues",
-    parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
-    mimeType: "application/vnd.dust.github.issues-folder",
-  });
 }
 
 async function renderDiscussion(
@@ -507,23 +511,13 @@ export async function githubUpsertDiscussionActivity(
     discussionNumber: discussionNumber,
     connectorId: connector.id,
   });
-
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: getDiscussionsInternalId(repoId),
-    title: "Discussions",
-    parents: [
-      getDiscussionsInternalId(repoId),
-      getRepositoryInternalId(repoId),
-    ],
-    mimeType: "application/vnd.dust.github.discussions-folder",
-  });
 }
 
 export async function githubGetRepoDiscussionsResultPageActivity(
   connectorId: ModelId,
   repoName: string,
   repoLogin: string,
+  repoId: number,
   cursor: string | null,
   loggerArgs: Record<string, string | number>
 ): Promise<{ cursor: string | null; discussionNumbers: number[] }> {
@@ -544,6 +538,20 @@ export async function githubGetRepoDiscussionsResultPageActivity(
     repoLogin,
     cursor
   );
+
+  // Create Discussions data source folder node, because anticipating upserts
+  // Here for performance reasons, we don't want to create the folder node for each discussion
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getDiscussionsInternalId(repoId),
+    title: "Discussions",
+    parents: [
+      getDiscussionsInternalId(repoId),
+      getRepositoryInternalId(repoId),
+    ],
+    mimeType: "application/vnd.dust.github.discussions-folder",
+  });
 
   return {
     cursor: nextCursor,
