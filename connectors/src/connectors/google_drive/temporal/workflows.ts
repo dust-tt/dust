@@ -245,7 +245,7 @@ export async function googleDriveIncrementalSync(
 
   await syncSucceeded(connectorId);
 
-  await sleep("60 minutes");
+  await sleep("5 minutes");
   await continueAsNew<typeof googleDriveIncrementalSync>(connectorId);
 }
 
