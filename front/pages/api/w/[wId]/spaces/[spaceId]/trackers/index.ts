@@ -67,7 +67,11 @@ async function handler(
   }
 
   const flags = await getFeatureFlags(owner);
-  if (!flags.includes("labs_trackers") || !auth.isAdmin()) {
+  if (
+    !flags.includes("labs_trackers") ||
+    !auth.isAdmin() ||
+    !space.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -87,6 +91,15 @@ async function handler(
       });
 
     case "POST":
+      if (!space.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Missing permission to edit the space's trackers.",
+          },
+        });
+      }
       const existingTrackers = await TrackerConfigurationResource.listBySpace(
         auth,
         space
