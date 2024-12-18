@@ -23,7 +23,10 @@ import {
 } from "@connectors/connectors/notion/temporal/client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {
   NotionConnectorState,
   NotionDatabase,
@@ -297,6 +300,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       );
       return new Err(new Error("Connector not found"));
     }
+
+    // delete the "Orphaned Resources" folder
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getNotionUnknownFolderId(dataSourceConfig),
+    });
 
     const res = await connector.delete();
     if (res.isErr()) {
