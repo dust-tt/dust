@@ -64,5 +64,10 @@ export type TrackerGenerationToProcess = {
   content: string;
   thinking: string | null;
   documentId: string;
-  // TODO: Add info about the document.
+  dataSource: {
+    id: ModelId;
+    name: string;
+    dustAPIProjectId: string;
+    dustAPIDataSourceId: string;
+  };
 };

@@ -3,10 +3,9 @@ import type {
   Result,
   TrackerConfigurationType,
   TrackerDataSourceConfigurationType,
-  TrackerGenerationToProcess,
   TrackerIdWorkspaceId,
 } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { CONNECTOR_TYPE_TO_NAME, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { parseExpression } from "cron-parser";
 import _ from "lodash";
@@ -24,6 +23,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -51,7 +51,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     TrackerConfigurationModel;
 
   readonly dataSourceConfigurations: TrackerDataSourceConfigurationModel[];
-  readonly generations: TrackerGenerationToProcess[];
+  readonly generations: TrackerGenerationModel[];
 
   constructor(
     model: ModelStatic<TrackerConfigurationModel>,
@@ -390,7 +390,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     auth: Authenticator,
     id: ModelId
   ): Promise<TrackerConfigurationType | null> {
-    const tracker = await this.baseFetch(auth, {
+    const [tracker] = await this.baseFetch(auth, {
       where: {
         id,
         status: "active",
@@ -405,11 +405,18 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
             consumedAt: null,
           },
           required: false,
+          include: [
+            {
+              model: DataSourceModel,
+              as: "dataSource",
+              required: true,
+            },
+          ],
         },
       ],
     });
 
-    return tracker[0]?.toJSON() ?? null;
+    return tracker?.toJSON() ?? null;
   }
 
   // Internal method for fetching trackers without any authorization checks.
@@ -625,11 +632,21 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
     if (this.generations?.length) {
       tracker.generations = this.generations.map((g) => {
+        const dataSourceName = g.dataSource.connectorProvider
+          ? CONNECTOR_TYPE_TO_NAME[g.dataSource.connectorProvider]
+          : `Folder ${g.dataSource.name}`;
+
         return {
           id: g.id,
           content: g.content,
           thinking: g.thinking,
           documentId: g.documentId,
+          dataSource: {
+            id: g.dataSourceId,
+            name: dataSourceName,
+            dustAPIProjectId: g.dataSource.dustAPIProjectId,
+            dustAPIDataSourceId: g.dataSource.dustAPIDataSourceId,
+          },
         };
       });
     }
