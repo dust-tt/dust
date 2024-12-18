@@ -6,6 +6,7 @@ import {
   CardActionButton,
   MiniButtonProps,
 } from "@sparkle/components/";
+import { CardVariantType } from "@sparkle/components/Card";
 import { MoreIcon } from "@sparkle/icons/";
 import { cn } from "@sparkle/lib/utils";
 
@@ -16,6 +17,7 @@ interface BaseAssistantCardProps {
   subtitle?: string;
   className?: string;
   onClick?: () => void;
+  variant?: CardVariantType;
 }
 
 type AssistantCardMore = Omit<MiniButtonProps, "icon" | "size">;
@@ -37,7 +39,16 @@ export const AssistantCard = React.forwardRef<
   AssistantCardProps
 >(
   (
-    { className, onClick, title, description, pictureUrl, subtitle, action },
+    {
+      className,
+      onClick,
+      title,
+      description,
+      pictureUrl,
+      subtitle,
+      action,
+      variant = "primary",
+    },
     ref
   ) => {
     return (
@@ -47,6 +58,7 @@ export const AssistantCard = React.forwardRef<
         className={cn("s-flex s-flex-col s-gap-3", className)}
         onClick={onClick}
         action={action}
+        variant={variant}
       >
         <div className="s-flex s-gap-3">
           <Avatar visual={pictureUrl} size="md" />

@@ -90,6 +90,7 @@ export const AssistantCardExample = () => (
         description="Showing a custom action element"
         onClick={() => console.log("AssistantCard clicked")}
         action={<AssistantCardMore onClick={() => console.log("hello")} />}
+        variant="secondary"
       />
     </CardGrid>
   </div>
