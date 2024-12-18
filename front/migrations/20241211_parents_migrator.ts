@@ -306,11 +306,20 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
         assert(isGithubCodeFileId(nodeId), `Github invalid nodeId: ${nodeId}`);
 
         let dirParents = parents.filter(isGithubCodeDirId);
+        const setDirParents = new Set(dirParents);
         /// case where we sent the [nodeId, dir3, dir2, dir1, dir1, dir2, dir3, code, repo] and we want to keep only [nodeId, dir1, dir2, dir3, code, repo]
-        if (dirParents.length !== new Set(dirParents).size) {
+        if (dirParents.length !== setDirParents.size) {
           dirParents = dirParents.slice(
             dirParents.length / 2,
             dirParents.length
+          );
+          assert(
+            dirParents.every((p) => setDirParents.has(p)),
+            "dirParent not in set"
+          );
+          assert(
+            setDirParents.size === dirParents.length,
+            "an element from the set is missing"
           );
         }
         return {
