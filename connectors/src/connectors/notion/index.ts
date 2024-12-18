@@ -52,6 +52,17 @@ function notionIdFromNodeId(nodeId: string) {
   return _.last(nodeId.split("notion-"))!;
 }
 
+function getNotionResourceParentInternalId(
+  resource: NotionPage | NotionDatabase,
+  dataSourceConfig: DataSourceConfig
+): string | null {
+  return !resource.parentId || resource.parentId === "workspace"
+    ? null
+    : resource.parentId === "unknown"
+      ? getNotionUnknownFolderId(dataSourceConfig)
+      : nodeIdFromNotionId(resource.parentId);
+}
+
 async function workspaceIdFromConnectionId(connectionId: string) {
   const tokRes = await getOAuthConnectionAccessToken({
     config: apiConfig.getOAuthAPIConfig(),
@@ -446,6 +457,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(new Error("Connector not found"));
     }
+    const dataSourceConfig = dataSourceConfigFromConnector(c);
 
     const notionId =
       (parentInternalId && notionIdFromNodeId(parentInternalId)) || "workspace";
@@ -472,10 +484,10 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       return {
         provider: c.type,
         internalId: nodeIdFromNotionId(page.notionPageId),
-        parentInternalId:
-          !page.parentId || page.parentId === "workspace"
-            ? null
-            : nodeIdFromNotionId(page.parentId),
+        parentInternalId: getNotionResourceParentInternalId(
+          page,
+          dataSourceConfig
+        ),
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
@@ -496,10 +508,10 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       return {
         provider: c.type,
         internalId: nodeIdFromNotionId(db.notionDatabaseId),
-        parentInternalId:
-          !db.parentId || db.parentId === "workspace"
-            ? null
-            : nodeIdFromNotionId(db.parentId),
+        parentInternalId: getNotionResourceParentInternalId(
+          db,
+          dataSourceConfig
+        ),
         type: "database",
         title: db.title || "",
         sourceUrl: db.notionUrl || null,
@@ -555,6 +567,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(new Error("Connector not found"));
     }
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     const notionIds = internalIds.map((id) => notionIdFromNodeId(id));
 
@@ -578,10 +591,10 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       pages.map(async (page) => ({
         provider: "notion",
         internalId: nodeIdFromNotionId(page.notionPageId),
-        parentInternalId:
-          !page.parentId || page.parentId === "workspace"
-            ? null
-            : nodeIdFromNotionId(page.parentId),
+        parentInternalId: getNotionResourceParentInternalId(
+          page,
+          dataSourceConfig
+        ),
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
@@ -596,10 +609,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const dbNodes: ContentNode[] = dbs.map((db) => ({
       provider: "notion",
       internalId: nodeIdFromNotionId(db.notionDatabaseId),
-      parentInternalId:
-        !db.parentId || db.parentId === "workspace"
-          ? null
-          : nodeIdFromNotionId(db.parentId),
+      parentInternalId: getNotionResourceParentInternalId(db, dataSourceConfig),
       type: "database",
       title: db.title || "",
       sourceUrl: db.notionUrl || null,
