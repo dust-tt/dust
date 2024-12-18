@@ -8,6 +8,10 @@ import type {
 import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
+import {
+  sendTrackerEmailWithGenerations,
+  sendTrackerEmailWithNoGeneration,
+} from "@app/lib/api/tracker";
 import { Authenticator } from "@app/lib/auth";
 import { getDocumentDiff } from "@app/lib/document_upsert_hooks/hooks/data_source_helpers";
 import { callDocTrackerRetrievalAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_retrieval";
@@ -376,11 +380,6 @@ export const processTrackerNotificationWorkflowActivity = async ({
     return;
   }
 
-  const generations = tracker.generations;
-  if (!generations?.length) {
-    return;
-  }
-
   if (!tracker.recipients?.length) {
     localLogger.error(
       {
@@ -391,9 +390,27 @@ export const processTrackerNotificationWorkflowActivity = async ({
     return;
   }
 
-  // @todo Implement the notification logic here.
   localLogger.info(
-    `Processing tracker ${trackerId} with ${generations.length} generations.`
+    `[Tracker] Processing tracker ${trackerId} for workspace ${workspaceId}.`
   );
-  void currentRunMs;
+
+  const generations = tracker.generations || [];
+
+  if (generations.length) {
+    await sendTrackerEmailWithNoGeneration(tracker);
+  } else {
+    await sendTrackerEmailWithGenerations(tracker);
+  }
+
+  // Consume the tracker & associated generations.
+  await TrackerConfigurationResource.consumeGenerations({
+    auth,
+    trackerId,
+    generationIds: generations.map((g) => g.id),
+    currentRunMs,
+  });
+
+  localLogger.info(
+    `[Tracker] Processed tracker ${trackerId} for workspace ${workspaceId}.`
+  );
 };
