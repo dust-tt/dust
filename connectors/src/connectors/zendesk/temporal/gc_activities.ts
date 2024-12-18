@@ -21,8 +21,8 @@ import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/conf
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  deleteFolderNode,
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -304,15 +304,15 @@ export async function deleteBrandsWithNoPermissionActivity(
   await concurrentExecutor(
     brands,
     async (brandId) => {
-      await deleteFolderNode({
+      await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getBrandInternalId({ connectorId, brandId }),
       });
-      await deleteFolderNode({
+      await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getHelpCenterInternalId({ connectorId, brandId }),
       });
-      await deleteFolderNode({
+      await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getTicketsInternalId({ connectorId, brandId }),
       });
@@ -367,7 +367,7 @@ export async function deleteTicketBatchActivity({
   await concurrentExecutor(
     ticketIds,
     (ticketId) =>
-      deleteFromDataSource(
+      deleteDataSourceDocument(
         dataSourceConfig,
         getTicketInternalId({ connectorId, ticketId })
       ),
@@ -417,7 +417,7 @@ export async function deleteArticleBatchActivity({
   await concurrentExecutor(
     articleIds,
     (articleId) =>
-      deleteFromDataSource(
+      deleteDataSourceDocument(
         dataSourceConfig,
         getArticleInternalId({ connectorId, articleId })
       ),
@@ -462,7 +462,7 @@ export async function deleteCategoryBatchActivity({
   await concurrentExecutor(
     categories,
     async ({ categoryId, brandId }) => {
-      await deleteFolderNode({
+      await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
       });

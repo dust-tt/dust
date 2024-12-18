@@ -17,7 +17,7 @@ import {
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertFolderNode } from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -128,7 +128,7 @@ export async function syncZendeskBrandActivity({
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const brandInternalId = getBrandInternalId({ connectorId, brandId });
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: brandInternalId,
     parents: [brandInternalId],
@@ -137,7 +137,7 @@ export async function syncZendeskBrandActivity({
 
   // using the content node to get one source of truth regarding the parent relationship
   const helpCenterNode = brandInDb.getHelpCenterContentNode(connectorId);
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: helpCenterNode.internalId,
     parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
@@ -146,7 +146,7 @@ export async function syncZendeskBrandActivity({
 
   // using the content node to get one source of truth regarding the parent relationship
   const ticketsNode = brandInDb.getTicketsContentNode(connectorId);
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: ticketsNode.internalId,
     parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
@@ -319,7 +319,7 @@ export async function syncZendeskCategoryActivity({
 
   // upserting a folder to data_sources_folders (core)
   const parents = categoryInDb.getParentInternalIds(connectorId);
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId: parents[0],
     parents,

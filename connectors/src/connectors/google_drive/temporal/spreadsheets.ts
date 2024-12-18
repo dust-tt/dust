@@ -16,9 +16,9 @@ import { getDocumentId } from "@connectors/connectors/google_drive/temporal/util
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  deleteTable,
+  deleteDataSourceTable,
   MAX_FILE_SIZE_TO_DOWNLOAD,
-  upsertTableFromCsv,
+  upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
@@ -55,7 +55,7 @@ async function upsertGdriveTable(
   rows: string[][],
   loggerArgs: object
 ) {
-  const dataSourceConfig = await dataSourceConfigFromConnector(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { id, spreadsheet, title } = sheet;
   const tableId = getGoogleSheetTableId(spreadsheet.id, id);
@@ -70,7 +70,7 @@ async function upsertGdriveTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await upsertTableFromCsv({
+  await upsertDataSourceTableFromCsv({
     dataSourceConfig,
     tableId,
     tableName,
@@ -181,7 +181,7 @@ async function processSheet(
     "[Spreadsheet] Processing sheet in Google Spreadsheet."
   );
 
-  const rows = await getValidRows(sheet.values, loggerArgs);
+  const rows = getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
     try {
@@ -551,7 +551,7 @@ async function deleteSheetForSpreadsheet(
   );
 
   // First remove the upserted table in core.
-  await deleteTable({
+  await deleteDataSourceTable({
     dataSourceConfig,
     tableId: getGoogleSheetTableId(spreadsheetFileId, sheet.driveSheetId),
     loggerArgs: {

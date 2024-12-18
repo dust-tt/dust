@@ -41,8 +41,8 @@ import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mi
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  updateDocumentParentsField,
-  upsertFolderNode,
+  updateDataSourceDocumentParents,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -188,7 +188,7 @@ export async function getRootNodesToSyncFromResources(
   await concurrentExecutor(
     nodeResources,
     async (createdOrUpdatedResource) =>
-      upsertFolderNode({
+      upsertDataSourceFolder({
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId],
@@ -458,7 +458,7 @@ export async function syncFiles({
   await concurrentExecutor(
     createdOrUpdatedResources,
     async (createdOrUpdatedResource) =>
-      upsertFolderNode({
+      upsertDataSourceFolder({
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId, ...parents],
@@ -630,7 +630,7 @@ export async function syncDeltaForRootNodesInDrive({
           blob
         );
 
-        await upsertFolderNode({
+        await upsertDataSourceFolder({
           dataSourceConfig,
           folderId: blob.internalId,
           parents: [blob.internalId],
@@ -869,7 +869,7 @@ async function updateParentsField({
     startSyncTs,
   });
 
-  await updateDocumentParentsField({
+  await updateDataSourceDocumentParents({
     dataSourceConfig,
     documentId: file.internalId,
     parents,

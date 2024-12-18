@@ -3,7 +3,7 @@ import { makeScript } from "scripts/helpers";
 import { makeSpaceInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertFolderNode } from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConfluenceSpace } from "@connectors/lib/models/confluence";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -22,7 +22,7 @@ makeScript({}, async ({ execute }, logger) => {
       await concurrentExecutor(
         confluenceSpaces,
         async (space) => {
-          await upsertFolderNode({
+          await upsertDataSourceFolder({
             dataSourceConfig,
             folderId: makeSpaceInternalId(space.spaceId),
             parents: [makeSpaceInternalId(space.spaceId)],

@@ -3,7 +3,7 @@ import * as readline from "readline";
 import { makeScript } from "scripts/helpers";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -40,7 +40,7 @@ async function processLogFile(
         "Restoring parent for document"
       );
       if (execute) {
-        await updateDocumentParentsField({
+        await updateDataSourceDocumentParents({
           dataSourceConfig,
           documentId: documentId,
           parents: previousParents,

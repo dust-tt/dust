@@ -8,8 +8,8 @@ import { getParents as getMicrosoftParents } from "@connectors/connectors/micros
 import { getParents as getNotionParents } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  getTable,
-  updateTableParentsField,
+  getDataSourceTable,
+  updateDataSourceTableParents,
 } from "@connectors/lib/data_sources";
 import {
   GoogleDriveFiles,
@@ -34,7 +34,7 @@ async function updateParents({
   execute: boolean;
   logger: Logger;
 }): Promise<void> {
-  const table = await getTable({
+  const table = await getDataSourceTable({
     dataSourceConfig,
     tableId,
   });
@@ -45,7 +45,11 @@ async function updateParents({
   ) {
     logger.info(`Update parents for ${tableId}, new value: ${parents}`);
     if (execute) {
-      await updateTableParentsField({ tableId, parents, dataSourceConfig });
+      await updateDataSourceTableParents({
+        tableId,
+        parents,
+        dataSourceConfig,
+      });
     }
   }
 }

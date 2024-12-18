@@ -25,15 +25,15 @@ import {
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import type { UpsertToDataSourceParams } from "@connectors/lib/data_sources";
+import type { UpsertDataSourceDocumentParams } from "@connectors/lib/data_sources";
 import {
-  deleteFolderNode,
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  updateDocumentParentsField,
-  upsertFolderNode,
-  upsertToDatasource,
+  updateDataSourceDocumentParents,
+  upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
   ExternalOAuthTokenError,
@@ -215,7 +215,7 @@ export async function confluenceUpsertSpaceFolderActivity({
 }) {
   const connector = await fetchConfluenceConnector(connectorId);
 
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId: makeSpaceInternalId(spaceId),
     parents: [makeSpaceInternalId(spaceId)],
@@ -253,7 +253,7 @@ interface ConfluenceUpsertPageInput {
   spaceName: string;
   parents: string[];
   confluenceConfig: ConfluenceConfiguration;
-  syncType?: UpsertToDataSourceParams["upsertContext"]["sync_type"];
+  syncType?: UpsertDataSourceDocumentParams["upsertContext"]["sync_type"];
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number>;
 }
@@ -314,7 +314,7 @@ async function upsertConfluencePageToDataSource({
       ...customTags,
     ];
 
-    await upsertToDatasource({
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentContent: renderedPage,
       documentId,
@@ -735,7 +735,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
         cachedHierarchy
       );
 
-      await updateDocumentParentsField({
+      await updateDataSourceDocumentParents({
         dataSourceConfig: dataSourceConfigFromConnector(connector),
         documentId: makePageInternalId(page.pageId),
         parents: parentIds,
@@ -796,7 +796,7 @@ async function deletePage(
     "Deleting Confluence page from Dust data source."
   );
 
-  await deleteFromDataSource(dataSourceConfig, documentId, {
+  await deleteDataSourceDocument(dataSourceConfig, documentId, {
     connectorId,
     pageId,
   });
@@ -843,7 +843,7 @@ export async function confluenceRemoveSpaceActivity(
   }
 
   // deleting the folder in data_source_folders (core)
-  await deleteFolderNode({
+  await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: makeSpaceInternalId(spaceId),
   });

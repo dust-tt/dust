@@ -10,7 +10,7 @@ import {
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -174,7 +174,7 @@ export async function updateAllParentsFields(
           },
           "Updating parents field for page"
         );
-        await updateDocumentParentsField({
+        await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: `notion-${pageId}`,
           parents: [...parents, ...legacyParents],

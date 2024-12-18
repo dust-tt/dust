@@ -5,7 +5,7 @@ import {
   getDiscussionInternalId,
   getIssueInternalId,
 } from "@connectors/connectors/github/lib/utils";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -81,7 +81,7 @@ async function updateDiscussionsParentsFieldForConnector(
           document.repoId,
           document.discussionNumber
         );
-        await updateDocumentParentsField({
+        await updateDataSourceDocumentParents({
           dataSourceConfig: connector,
           documentId: docId,
           parents: [
@@ -111,7 +111,7 @@ async function updateIssuesParentsFieldForConnector(connector: ConnectorModel) {
     await Promise.all(
       chunk.map(async (document) => {
         const docId = getIssueInternalId(document.repoId, document.issueNumber);
-        await updateDocumentParentsField({
+        await updateDataSourceDocumentParents({
           dataSourceConfig: connector,
           documentId: docId,
           parents: [

@@ -29,9 +29,9 @@ import {
 } from "@connectors/connectors/webcrawler/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   MAX_SMALL_DOCUMENT_TXT_LEN,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import {
   WebCrawlerFolder,
@@ -335,7 +335,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               url: validatedUrl.standardized,
             });
 
-            await upsertToDatasource({
+            await upsertDataSourceDocument({
               dataSourceConfig,
               documentId: documentId,
               documentContent: formattedDocumentContent,
@@ -531,7 +531,7 @@ export async function webCrawlerGarbageCollector(
       Context.current().heartbeat({
         type: "delete_page",
       });
-      await deleteFromDataSource(dataSourceConfig, page.documentId);
+      await deleteDataSourceDocument(dataSourceConfig, page.documentId);
       await page.destroy();
     }
   } while (pagesToDelete.length > 0);

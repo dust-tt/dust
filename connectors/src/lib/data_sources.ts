@@ -63,7 +63,7 @@ type UpsertContext = {
   sync_type: "batch" | "incremental";
 };
 
-export type UpsertToDataSourceParams = {
+export type UpsertDataSourceDocumentParams = {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   documentContent: CoreAPIDataSourceDocumentSection;
@@ -91,9 +91,9 @@ function getDustAPI(dataSourceConfig: DataSourceConfig) {
   );
 }
 
-export const upsertToDatasource = withRetries(_upsertToDatasource);
+export const upsertDataSourceDocument = withRetries(_upsertDataSourceDocument);
 
-async function _upsertToDatasource({
+async function _upsertDataSourceDocument({
   dataSourceConfig,
   documentId,
   documentContent,
@@ -107,7 +107,7 @@ async function _upsertToDatasource({
   mimeType,
   async,
   parentId = null,
-}: UpsertToDataSourceParams) {
+}: UpsertDataSourceDocumentParams) {
   return tracer.trace(
     `connectors`,
     {
@@ -243,7 +243,7 @@ async function _upsertToDatasource({
   );
 }
 
-export async function getDocumentFromDataSource({
+export async function getDataSourceDocument({
   dataSourceConfig,
   documentId,
 }: {
@@ -278,7 +278,7 @@ export async function getDocumentFromDataSource({
   return dustRequestResult.data.documents[0];
 }
 
-export async function deleteFromDataSource(
+export async function deleteDataSourceDocument(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
   loggerArgs: Record<string, string | number> = {}
@@ -318,11 +318,11 @@ export async function deleteFromDataSource(
   }
 }
 
-export const updateDocumentParentsField = withRetries(
-  _updateDocumentParentsField
+export const updateDataSourceDocumentParents = withRetries(
+  _updateDataSourceDocumentParents
 );
 
-async function _updateDocumentParentsField({
+async function _updateDataSourceDocumentParents({
   documentId,
   ...params
 }: {
@@ -339,9 +339,11 @@ async function _updateDocumentParentsField({
   });
 }
 
-export const updateTableParentsField = withRetries(_updateTableParentsField);
+export const updateDataSourceTableParents = withRetries(
+  _updateDataSourceTableParents
+);
 
-async function _updateTableParentsField({
+async function _updateDataSourceTableParents({
   tableId,
   ...params
 }: {
@@ -617,7 +619,7 @@ export function sectionLength(
   );
 }
 
-export async function upsertTableFromConnectors({
+export async function upsertDataSourceRemoteTable({
   dataSourceConfig,
   tableId,
   tableName,
@@ -765,7 +767,7 @@ export async function upsertTableFromConnectors({
   }
 }
 
-export async function upsertTableFromCsv({
+export async function upsertDataSourceTableFromCsv({
   dataSourceConfig,
   tableId,
   tableName,
@@ -947,7 +949,7 @@ export async function upsertTableFromCsv({
   }
 }
 
-export async function deleteTableRow({
+export async function deleteDataSourceTableRow({
   dataSourceConfig,
   tableId,
   rowId,
@@ -1046,9 +1048,9 @@ export async function deleteTableRow({
   }
 }
 
-export const getTable = withRetries(_getTable);
+export const getDataSourceTable = withRetries(_getDataSourceTable);
 
-export async function _getTable({
+export async function _getDataSourceTable({
   dataSourceConfig,
   tableId,
 }: {
@@ -1084,7 +1086,7 @@ export async function _getTable({
   return dustRequestResult.data.table;
 }
 
-export async function deleteTable({
+export async function deleteDataSourceTable({
   dataSourceConfig,
   tableId,
   loggerArgs,
@@ -1180,9 +1182,9 @@ export async function deleteTable({
   }
 }
 
-export const getFolderNode = withRetries(_getFolderNode);
+export const getDataSourceFolder = withRetries(_getDataSourceFolder);
 
-export async function _getFolderNode({
+export async function _getDataSourceFolder({
   dataSourceConfig,
   folderId,
 }: {
@@ -1218,9 +1220,9 @@ export async function _getFolderNode({
   return dustRequestResult.data.folder;
 }
 
-export const upsertFolderNode = withRetries(_upsertFolderNode);
+export const upsertDataSourceFolder = withRetries(_upsertDataSourceFolder);
 
-export async function _upsertFolderNode({
+export async function _upsertDataSourceFolder({
   dataSourceConfig,
   folderId,
   timestampMs,
@@ -1251,7 +1253,7 @@ export async function _upsertFolderNode({
   }
 }
 
-export async function deleteFolderNode({
+export async function deleteDataSourceFolder({
   dataSourceConfig,
   folderId,
 }: {

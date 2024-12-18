@@ -40,17 +40,17 @@ import {
 } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  deleteFromDataSource,
-  deleteTable,
-  deleteTableRow,
+  deleteDataSourceDocument,
+  deleteDataSourceTable,
+  deleteDataSourceTableRow,
   MAX_DOCUMENT_TXT_LEN,
   MAX_PREFIX_CHARS,
   MAX_PREFIX_TOKENS,
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
-  upsertTableFromCsv,
-  upsertToDatasource,
+  upsertDataSourceDocument,
+  upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import { TablesError } from "@connectors/lib/error";
 import {
@@ -705,7 +705,7 @@ export async function deletePage({
   logger: Logger;
 }) {
   logger.info("Deleting page.");
-  await deleteFromDataSource(dataSourceConfig, `notion-${pageId}`);
+  await deleteDataSourceDocument(dataSourceConfig, `notion-${pageId}`);
   const notionPage = await NotionPage.findOne({
     where: {
       connectorId,
@@ -722,7 +722,7 @@ export async function deletePage({
     if (parentDatabase) {
       const tableId = `notion-${parentDatabase.notionDatabaseId}`;
       const rowId = `notion-${notionPage.notionPageId}`;
-      await deleteTableRow({ dataSourceConfig, tableId, rowId });
+      await deleteDataSourceTableRow({ dataSourceConfig, tableId, rowId });
     }
   }
   await notionPage?.destroy();
@@ -740,7 +740,10 @@ export async function deleteDatabase({
   logger: Logger;
 }) {
   logger.info("Deleting database.");
-  await deleteFromDataSource(dataSourceConfig, `notion-database-${databaseId}`);
+  await deleteDataSourceDocument(
+    dataSourceConfig,
+    `notion-database-${databaseId}`
+  );
   const notionDatabase = await NotionDatabase.findOne({
     where: {
       connectorId,
@@ -749,7 +752,7 @@ export async function deleteDatabase({
   });
   if (notionDatabase) {
     const tableId = `notion-${notionDatabase.notionDatabaseId}`;
-    await deleteTable({ dataSourceConfig, tableId });
+    await deleteDataSourceTable({ dataSourceConfig, tableId });
   }
   await NotionDatabase.destroy({
     where: {
@@ -1815,7 +1818,7 @@ export async function renderAndUpsertPageFromCache({
 
         await ignoreTablesError(
           () =>
-            upsertTableFromCsv({
+            upsertDataSourceTableFromCsv({
               dataSourceConfig: dataSourceConfigFromConnector(connector),
               tableId,
               tableName,
@@ -2031,7 +2034,7 @@ export async function renderAndUpsertPageFromCache({
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
     );
-    await upsertToDatasource({
+    await upsertDataSourceDocument({
       dataSourceConfig: dsConfig,
       documentId,
       documentContent: content,
@@ -2540,7 +2543,7 @@ export async function upsertDatabaseStructuredDataFromCache({
   localLogger.info("Upserting Notion Database as Table.");
   await ignoreTablesError(
     () =>
-      upsertTableFromCsv({
+      upsertDataSourceTableFromCsv({
         dataSourceConfig,
         tableId,
         tableName,
@@ -2589,7 +2592,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     if (!prefixSection.content) {
       // We use a special id for the document to avoid conflicts with the table.
       const databaseDocId = `notion-database-${databaseId}`;
-      await upsertToDatasource({
+      await upsertDataSourceDocument({
         dataSourceConfig,
         documentId: databaseDocId,
         documentContent: {

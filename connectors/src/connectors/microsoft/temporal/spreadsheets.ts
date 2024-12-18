@@ -15,7 +15,10 @@ import {
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
+import {
+  deleteDataSourceTable,
+  upsertDataSourceTableFromCsv,
+} from "@connectors/lib/data_sources";
 import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -83,7 +86,7 @@ async function upsertMSTable(
 
   // Upserting is safe: Core truncates any previous table with the same Id before
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
-  await upsertTableFromCsv({
+  await upsertDataSourceTableFromCsv({
     dataSourceConfig,
     tableId: internalId,
     tableName,
@@ -338,7 +341,7 @@ export async function deleteAllSheets(
   await concurrentExecutor(
     await spreadsheet.fetchChildren(),
     async (sheet) => {
-      await deleteTable({
+      await deleteDataSourceTable({
         dataSourceConfig,
         tableId: sheet.internalId,
         loggerArgs: {

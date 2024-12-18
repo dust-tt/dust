@@ -14,7 +14,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertFolderNode } from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -143,7 +143,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
             });
             // upserting a folder to data_sources_folders (core)
             const parents = category.getParentInternalIds(connectorId);
-            await upsertFolderNode({
+            await upsertDataSourceFolder({
               dataSourceConfig,
               folderId: parents[0],
               parents,

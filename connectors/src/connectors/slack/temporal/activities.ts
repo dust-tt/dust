@@ -32,9 +32,9 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   renderDocumentTitleAndContent,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError } from "@connectors/lib/error";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
@@ -598,7 +598,7 @@ export async function syncNonThreaded(
     });
   }
 
-  await upsertToDatasource({
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: content,
@@ -809,7 +809,7 @@ export async function syncThread(
     });
   }
 
-  await upsertToDatasource({
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: content,
@@ -1155,7 +1155,7 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
     for (const slackMessage of slackMessages) {
       // We delete from the remote datasource first because we would rather double delete remotely
       // than miss one.
-      await deleteFromDataSource(dataSourceConfig, slackMessage.documentId);
+      await deleteDataSourceDocument(dataSourceConfig, slackMessage.documentId);
       nbDeleted++;
 
       if (nbDeleted % 50 === 0) {

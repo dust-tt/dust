@@ -23,14 +23,14 @@ import {
   handleTextFile,
 } from "@connectors/connectors/shared/file";
 import {
-  deleteFolderNode,
-  deleteFromDataSource,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
@@ -298,7 +298,7 @@ export async function syncOneFile({
           })),
         ];
 
-        await upsertToDatasource({
+        await upsertDataSourceDocument({
           dataSourceConfig,
           documentId,
           documentContent: content,
@@ -426,7 +426,7 @@ export async function deleteFolder({
     throw new Error("Unexpected: attempt to delete folder with root node");
   }
 
-  await deleteFolderNode({ dataSourceConfig, folderId: internalId });
+  await deleteDataSourceFolder({ dataSourceConfig, folderId: internalId });
 
   if (folder) {
     await folder.delete();
@@ -461,7 +461,7 @@ export async function deleteFile({
   ) {
     await deleteAllSheets(dataSourceConfig, file);
   } else {
-    await deleteFromDataSource(dataSourceConfig, internalId);
+    await deleteDataSourceDocument(dataSourceConfig, internalId);
   }
   return file.delete();
 }

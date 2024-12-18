@@ -27,7 +27,7 @@ import {
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
@@ -485,7 +485,7 @@ async function upsertGdriveDocument(
 
     const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
 
-    await upsertToDatasource({
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
       documentContent: content,
