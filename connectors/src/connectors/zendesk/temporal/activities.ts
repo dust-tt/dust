@@ -133,6 +133,7 @@ export async function syncZendeskBrandActivity({
     folderId: brandInternalId,
     parents: [brandInternalId],
     title: brandInDb.name,
+    mimeType: "application/vnd.dust.zendesk.brand",
   });
 
   // using the content node to get one source of truth regarding the parent relationship
@@ -142,6 +143,7 @@ export async function syncZendeskBrandActivity({
     folderId: helpCenterNode.internalId,
     parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
     title: helpCenterNode.title,
+    mimeType: "application/vnd.dust.zendesk.helpcenter",
   });
 
   // using the content node to get one source of truth regarding the parent relationship
@@ -151,6 +153,7 @@ export async function syncZendeskBrandActivity({
     folderId: ticketsNode.internalId,
     parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
     title: ticketsNode.title,
+    mimeType: "application/vnd.dust.zendesk.tickets",
   });
 
   // updating the entry in db
@@ -324,6 +327,7 @@ export async function syncZendeskCategoryActivity({
     folderId: parents[0],
     parents,
     title: categoryInDb.name,
+    mimeType: "application/vnd.dust.zendesk.category",
   });
 
   // otherwise, we update the category name and lastUpsertedTs

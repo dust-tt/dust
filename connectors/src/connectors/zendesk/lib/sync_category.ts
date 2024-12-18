@@ -105,5 +105,6 @@ export async function syncCategory({
     folderId: parents[0],
     parents,
     title: categoryInDb.name,
+    mimeType: "application/vnd.dust.zendesk.category",
   });
 }

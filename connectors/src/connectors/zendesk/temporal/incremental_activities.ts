@@ -148,6 +148,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
               folderId: parents[0],
               parents,
               title: category.name,
+              mimeType: "application/vnd.dust.zendesk.category",
             });
           } else {
             /// ignoring these to proceed with the other articles, but these might have to be checked at some point

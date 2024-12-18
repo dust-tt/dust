@@ -485,6 +485,7 @@ export async function incrementalSync(
           folderId: getDocumentId(driveFile.id),
           parents,
           title: driveFile.name ?? "",
+          mimeType: "application/vnd.dust.googledrive.folder",
         });
 
         await GoogleDriveFiles.upsert({
@@ -828,6 +829,7 @@ export async function markFolderAsVisited(
     folderId: getDocumentId(file.id),
     parents,
     title: file.name ?? "",
+    mimeType: "application/vnd.dust.googledrive.folder",
   });
 
   await GoogleDriveFiles.upsert({

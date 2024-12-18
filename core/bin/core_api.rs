@@ -2839,6 +2839,7 @@ struct FoldersUpsertPayload {
     parent_id: Option<String>,
     parents: Vec<String>,
     title: String,
+    mime_type: String,
 }
 
 async fn folders_upsert(
@@ -2892,6 +2893,7 @@ async fn folders_upsert(
                 timestamp: payload.timestamp.unwrap_or(utils::now()),
                 parents: payload.parents,
                 title: payload.title,
+                mime_type: payload.mime_type,
             },
         )
         .await

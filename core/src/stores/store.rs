@@ -76,6 +76,7 @@ pub struct FolderUpsertParams {
     pub timestamp: u64,
     pub title: String,
     pub parents: Vec<String>,
+    pub mime_type: String,
 }
 
 #[async_trait]

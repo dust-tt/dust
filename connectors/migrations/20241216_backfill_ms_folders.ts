@@ -110,6 +110,7 @@ async function backfillFolder({
               parents,
               parentId: file.parentInternalId,
               title: file.name || "",
+              mimeType: "application/vnd.dust.microsoft.folder",
             });
           }
         }

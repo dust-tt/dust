@@ -94,7 +94,13 @@ async function handler(
         });
       }
 
-      const { timestamp, parent_id: parentId, parents, title } = r.data;
+      const {
+        timestamp,
+        parent_id: parentId,
+        parents,
+        title,
+        mime_type,
+      } = r.data;
       if (parentId && parents && parents[1] !== parentId) {
         return apiError(req, res, {
           status_code: 400,
@@ -126,6 +132,7 @@ async function handler(
         parentId: parentId || null,
         parents: parents || [fId],
         title: title,
+        mimeType: mime_type,
       });
 
       if (upsertRes.isErr()) {
