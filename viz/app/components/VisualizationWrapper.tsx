@@ -9,15 +9,12 @@ import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { toBlob } from "html-to-image";
 import { Download, SquareTerminal } from "lucide-react";
-import { Inter } from "next/font/google";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
@@ -283,7 +280,7 @@ export function VisualizationWrapper({
   }
 
   return (
-    <div className={`relative group/viz ${inter.className}`}>
+    <div className="relative group/viz" style={{ fontFamily: "sans-serif" }}>
       <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
         <button
           onClick={handleScreenshotDownload}
