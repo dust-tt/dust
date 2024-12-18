@@ -73,7 +73,7 @@ function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-1">
       {icon && <Icon visual={icon} className="text-warning-400" size="lg" />}
-      <p className="text-center text-xl font-bold leading-7 text-slate-900">
+      <p className="text-center text-xl font-bold leading-7 text-foreground">
         {title}
       </p>
       <p className="text-center text-sm font-normal leading-tight text-slate-700">

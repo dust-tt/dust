@@ -112,8 +112,8 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       ) : null}
       <div className="flex flex-col p-6">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-slate-900">{title}</H5>
-          <P size="xs" className="line-clamp-3 text-slate-900">
+          <H5 className="line-clamp-2 text-foreground">{title}</H5>
+          <P size="xs" className="line-clamp-3 text-foreground">
             {content}
           </P>
         </div>
@@ -151,7 +151,7 @@ export const HeaderContentBlock = ({
       )}
     >
       {uptitle && (
-        <P size="lg" className="text-slate-500">
+        <P size="lg" className="text-muted-foreground">
           {uptitle}
         </P>
       )}
@@ -270,7 +270,7 @@ export const CarousselContentBlock = ({
       <H3 className="text-slate-800">{"Dust for " + title}</H3>
       <div className="flex flex-col gap-2">
         <H2 className="max-w-[600px] text-white">{subtitle}</H2>
-        <P size="md" className="max-w-[720px] text-slate-600">
+        <P size="md" className="max-w-[720px] text-muted-foreground">
           {description}
         </P>
       </div>

@@ -17,7 +17,7 @@ export function ConversationIncludeFileActionDetails({
       visual={MagnifyingGlassIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <p className="text-sm font-normal text-slate-500">
+        <p className="text-sm font-normal text-muted-foreground">
           {fileTitle || "(no file name available)"}
         </p>
       </div>

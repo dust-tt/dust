@@ -660,17 +660,13 @@ function ActionCard({
             />
           </div>
         ) : (
-          <>
+          <div className="w-full truncate text-muted-foreground">
             {actionError ? (
-              <div className="w-full truncate text-base text-warning-500">
-                {actionError}
-              </div>
+              <span className="text-warning-500">{actionError}</span>
             ) : (
-              <div className="w-full truncate text-base text-element-700">
-                {action.description}
-              </div>
+              <>{action.description}</>
             )}
-          </>
+          </div>
         )}
       </div>
     </Card>

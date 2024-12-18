@@ -52,7 +52,7 @@ const backgroundVariants: Record<ChipColorType, string> = {
 const textVariants: Record<ChipColorType, string> = {
   emerald: "s-text-emerald-900",
   amber: "s-text-amber-900",
-  slate: "s-text-slate-900",
+  slate: "s-text-foreground",
   purple: "s-text-purple-900",
   warning: "s-text-warning-900",
   sky: "s-text-sky-900",
