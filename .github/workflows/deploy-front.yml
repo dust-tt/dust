@@ -101,6 +101,7 @@ jobs:
             --region=${{ matrix.region }}
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: [notify-start, build]
     runs-on: ubuntu-latest
     steps:
