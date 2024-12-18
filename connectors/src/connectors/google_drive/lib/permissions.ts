@@ -2,7 +2,7 @@ import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
-import { getDocumentId } from "@connectors/connectors/google_drive/temporal/utils";
+import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 
 export function getPermissionViewType(file: GoogleDriveFiles) {
@@ -18,5 +18,5 @@ export function getGoogleDriveEntityDocumentId(file: GoogleDriveFiles) {
     return null;
   }
 
-  return getDocumentId(file.driveFileId);
+  return getInternalId(file.driveFileId);
 }
