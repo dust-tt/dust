@@ -12,7 +12,10 @@ import {
   getReposPage,
   installationIdFromConnectionId,
 } from "@connectors/connectors/github/lib/github_api";
-import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
+import {
+  getGithubCodeDirectoryParentIds,
+  getGithubCodeFileParentIds,
+} from "@connectors/connectors/github/lib/hierarchy";
 import {
   getCodeRootNodeId,
   getDiscussionsNodeId,
@@ -693,9 +696,16 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       case "REPO_CODE": {
         return new Ok([internalId, getRepositoryNodeId(repoId)]);
       }
-      case "REPO_CODE_DIR":
+      case "REPO_CODE_DIR": {
+        const parents = await getGithubCodeDirectoryParentIds(
+          connector.id,
+          internalId,
+          repoId
+        );
+        return new Ok([internalId, ...parents]);
+      }
       case "REPO_CODE_FILE": {
-        const parents = await getGithubCodeOrDirectoryParentIds(
+        const parents = await getGithubCodeFileParentIds(
           connector.id,
           internalId,
           repoId
