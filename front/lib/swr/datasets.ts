@@ -35,7 +35,7 @@ export function useDatasets({
 export function useDataset(
   owner: LightWorkspaceType,
   app: AppType,
-  dataset: string,
+  dataset: string | undefined,
   showData = false
 ) {
   const datasetFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
@@ -44,7 +44,8 @@ export function useDataset(
     `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${dataset}${
       showData ? "?data=true" : ""
     }`,
-    datasetFetcher
+    datasetFetcher,
+    { disabled: !dataset }
   );
 
   return {
