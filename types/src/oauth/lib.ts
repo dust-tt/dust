@@ -87,6 +87,12 @@ export function isSnowflakeCredentials(
   return "username" in credentials && "password" in credentials;
 }
 
+export function isModjoCredentials(
+  credentials: ConnectionCredentials
+): credentials is ModjoCredentials {
+  return "api_key" in credentials;
+}
+
 // POST Credentials
 
 export const PostSnowflakeCredentialsBodySchema = t.type({

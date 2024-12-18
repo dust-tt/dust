@@ -1,5 +1,5 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { encrypt, OAuthAPI } from "@dust-tt/types";
+import { OAuthAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -37,7 +37,6 @@ const ApiKeyConfig = t.intersection([
   BaseConfiguration,
   t.type({
     apiKey: t.string,
-    apiKeyIsEncrypted: t.union([t.boolean, t.undefined]),
   }),
 ]);
 
