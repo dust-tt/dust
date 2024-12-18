@@ -1,5 +1,5 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { OAuthAPI } from "@dust-tt/types";
+import { isCredentialProvider, OAuthAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -117,6 +117,7 @@ async function handler(
       const apiKey = isApiKeyConfig(validatedBody)
         ? validatedBody.apiKey
         : undefined;
+      let credentialId: string | undefined;
 
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
@@ -134,35 +135,39 @@ async function handler(
         });
       }
 
-      if (!apiKey) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "API key is required",
-          },
-        });
+      if (isApiKeyConfig(validatedBody)) {
+        if (!apiKey) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "API key is required",
+            },
+          });
+        }
+
+        if (isCredentialProvider(provider)) {
+          const oAuthRes = await oauthApi.postCredentials({
+            provider,
+            userId: user.sId,
+            workspaceId: owner.sId,
+            credentials: {
+              api_key: apiKey,
+            },
+          });
+
+          if (oAuthRes.isErr()) {
+            return res.status(500).json({
+              error: {
+                type: "invalid_request_error",
+                message: "[Modjo] Failed to post credentials",
+              },
+            });
+          }
+
+          credentialId = oAuthRes.value.credential.credential_id;
+        }
       }
-
-      const oAuthRes = await oauthApi.postCredentials({
-        provider: "modjo",
-        userId: user.sId,
-        workspaceId: owner.sId,
-        credentials: {
-          api_key: apiKey,
-        },
-      });
-
-      if (oAuthRes.isErr()) {
-        return res.status(500).json({
-          error: {
-            type: "invalid_request_error",
-            message: "[Modjo] Failed to post credentials",
-          },
-        });
-      }
-
-      const credentialId = oAuthRes.value.credential.credential_id;
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
@@ -170,7 +175,7 @@ async function handler(
           workspaceId: owner.id,
           provider,
           connectionId: connectionId ?? null,
-          credentialId: credentialId,
+          credentialId: credentialId ?? null,
         });
 
       return res
