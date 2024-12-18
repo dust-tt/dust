@@ -147,14 +147,16 @@ function QueryTablesResults({
   return (
     <div>
       <span className="text-sm font-semibold text-foreground">Results</span>
-      <div onClick={handleDownload} className="py-2">
-        <Citation className="w-48 min-w-48 max-w-48">
-          <CitationIcons>
-            <Icon visual={TableIcon} />
-          </CitationIcons>
-          <CitationTitle>{title}</CitationTitle>
-        </Citation>
-      </div>
+      <Citation
+        className="w-48 min-w-48 max-w-48"
+        containerClassName="my-2"
+        onClick={handleDownload}
+      >
+        <CitationIcons>
+          <Icon visual={TableIcon} />
+        </CitationIcons>
+        <CitationTitle>{title}</CitationTitle>
+      </Citation>
 
       <Collapsible defaultOpen={false}>
         <Collapsible.Button>

@@ -92,10 +92,10 @@ export function AgentSuggestion({
   return (
     <>
       <div className="pt-4">
-        <div className="flex items-center gap-2">
-          <span className="grow text-sm text-element-800">
+        <div className="flex items-center gap-2 pb-2">
+          <p className="grow text-base text-muted-foreground">
             Which Assistant would you like to chat with?
-          </span>
+          </p>
           <AssistantPicker
             owner={owner}
             assistants={otherAgents}
@@ -109,7 +109,7 @@ export function AgentSuggestion({
             pickerButton={
               <Button
                 variant="outline"
-                size="xs"
+                size="sm"
                 icon={RobotIcon}
                 label="Select another"
                 isSelect

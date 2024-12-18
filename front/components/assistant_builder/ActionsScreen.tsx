@@ -633,7 +633,6 @@ function ActionCard({
     <Card
       variant="primary"
       onClick={editAction}
-      className="mx-auto inline-block w-72"
       action={
         <CardActionButton
           size="mini"

@@ -196,13 +196,13 @@ export function AssistantBrowser({
       </div>
 
       {!viewTab && (
-        <div className="text-center">
+        <div className="my-12 text-center text-sm text-muted-foreground">
           No assistants found. Try adjusting your search criteria.
         </div>
       )}
 
       {viewTab && (
-        <CardGrid>
+        <CardGrid className="mb-12">
           {agentsByTab[viewTab].map((agent) => (
             <AssistantCard
               key={agent.sId}

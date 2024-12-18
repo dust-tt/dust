@@ -61,7 +61,7 @@ export function InputBarCitations({
   }
 
   return (
-    <div className="mr-3 flex gap-1 overflow-auto border-b border-separator pb-3 pt-3">
+    <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
       {processContentFragments()}
     </div>
   );
