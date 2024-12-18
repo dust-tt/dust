@@ -14,17 +14,17 @@ import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type BaseLookupResponse = {
+type WorkspaceLookupResponse = {
   isNew: boolean;
 };
 
-type UserLookupResponse = BaseLookupResponse & {
-  hasInvite: boolean;
-  hasAutoJoinWorkspace: boolean;
-  workspaceId?: string;
+type UserLookupResponse = {
+  status: "invited" | "member" | "new";
+  workspace: {
+    id?: string;
+    autoJoin?: boolean;
+  };
 };
-
-type WorkspaceLookupResponse = BaseLookupResponse;
 
 const ExternalUserCodec = t.type({
   email: t.string,
@@ -112,7 +112,6 @@ async function handler(
             },
           });
         }
-        response = await handleLookupUser(bodyValidation.right);
         const session = await getAuth0Session(req, res);
         const sessionWithUser = {
           user: bodyValidation.right.user,
@@ -159,12 +158,13 @@ async function handleLookupUser(
     workspaceWithVerifiedDomain?.domainAutoJoinEnabled ?? false;
 
   return {
-    isNew: !user,
-    hasInvite: !!pendingInvite,
-    hasAutoJoinWorkspace: canAutoJoin,
-    workspaceId:
-      pendingInvite?.workspace.sId ||
-      (canAutoJoin ? workspaceWithVerifiedDomain?.workspace?.sId : undefined),
+    status: user ? "member" : pendingInvite ? "invited" : "new",
+    workspace: {
+      autoJoin: canAutoJoin,
+      id:
+        pendingInvite?.workspace.sId ||
+        (canAutoJoin ? workspaceWithVerifiedDomain?.workspace?.sId : undefined),
+    },
   };
 }
 
