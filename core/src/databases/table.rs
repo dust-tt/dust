@@ -12,6 +12,7 @@ use crate::{
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
+    search_stores::search_store::SearchStore,
     sqlite_workers::client::HEARTBEAT_INTERVAL_MS,
     stores::store::Store,
     utils,
@@ -170,10 +171,12 @@ impl Table {
         self.schema = Some(schema);
     }
 
+    // if search_store is provided, delete the table node from the search index
     pub async fn delete(
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        search_store: Option<Box<dyn SearchStore + Sync + Send>>,
     ) -> Result<()> {
         if self.table_type()? == TableType::Local {
             // Invalidate the databases that use the table.
@@ -204,6 +207,13 @@ impl Table {
         store
             .delete_data_source_table(&self.project, &self.data_source_id, &self.table_id)
             .await?;
+
+        // Delete the table node from the search index.
+        if let Some(search_store) = search_store {
+            search_store
+                .delete_node(self.table_id().to_string())
+                .await?;
+        }
 
         Ok(())
     }

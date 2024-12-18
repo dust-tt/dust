@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use elasticsearch::{
     auth::Credentials,
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
-    Elasticsearch, IndexParts, SearchParts,
+    DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
 use serde_json::json;
 use url::Url;
@@ -35,10 +35,15 @@ pub trait SearchStore {
         filter: Vec<DatasourceViewFilter>,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<Node>>;
+
+    async fn index_node(&self, node: Node) -> Result<()>;
     async fn index_document(&self, document: Document) -> Result<()>;
     async fn index_table(&self, table: Table) -> Result<()>;
     async fn index_folder(&self, folder: Folder) -> Result<()>;
-    async fn index_node(&self, node: Node) -> Result<()>;
+
+    async fn delete_node(&self, node_id: String) -> Result<()>;
+    async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()>;
+
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
 
@@ -82,54 +87,6 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
-    async fn index_document(&self, document: Document) -> Result<()> {
-        let node = Node::from(document);
-        self.index_node(node).await
-    }
-
-    async fn index_table(&self, table: Table) -> Result<()> {
-        let node = Node::from(table);
-        self.index_node(node).await
-    }
-
-    async fn index_folder(&self, folder: Folder) -> Result<()> {
-        let node = Node::from(folder);
-        self.index_node(node).await
-    }
-
-    async fn index_node(&self, node: Node) -> Result<()> {
-        // todo(kw-search): fail on error
-        let now = utils::now();
-        match self
-            .client
-            .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.node_id))
-            .timeout("200ms")
-            .body(node.clone())
-            .send()
-            .await
-        {
-            Ok(_) => {
-                info!(
-                    duration = utils::now() - now,
-                    node_id = node.node_id,
-                    "[ElasticsearchSearchStore] Indexed {}",
-                    node.node_type.to_string()
-                );
-                Ok(())
-            }
-            Err(e) => {
-                error!(
-                    error = %e,
-                    duration = utils::now() - now,
-                    node_id = node.node_id,
-                    "[ElasticsearchSearchStore] Failed to index {}",
-                    node.node_type.to_string()
-                );
-                Ok(())
-            }
-        }
-    }
-
     async fn search_nodes(
         &self,
         query: String,
@@ -188,6 +145,75 @@ impl SearchStore for ElasticsearchSearchStore {
             }
             Err(e) => Err(e.into()),
         }
+    }
+
+    async fn index_node(&self, node: Node) -> Result<()> {
+        // todo(kw-search): fail on error
+        let now = utils::now();
+        match self
+            .client
+            .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.node_id))
+            .timeout("200ms")
+            .body(node.clone())
+            .send()
+            .await
+        {
+            Ok(_) => {
+                info!(
+                    duration = utils::now() - now,
+                    node_id = node.node_id,
+                    "[ElasticsearchSearchStore] Indexed {}",
+                    node.node_type.to_string()
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    error = %e,
+                    duration = utils::now() - now,
+                    node_id = node.node_id,
+                    "[ElasticsearchSearchStore] Failed to index {}",
+                    node.node_type.to_string()
+                );
+                Ok(())
+            }
+        }
+    }
+
+    async fn index_document(&self, document: Document) -> Result<()> {
+        let node = Node::from(document);
+        self.index_node(node).await
+    }
+
+    async fn index_table(&self, table: Table) -> Result<()> {
+        let node = Node::from(table);
+        self.index_node(node).await
+    }
+
+    async fn index_folder(&self, folder: Folder) -> Result<()> {
+        let node = Node::from(folder);
+        self.index_node(node).await
+    }
+
+    async fn delete_node(&self, node_id: String) -> Result<()> {
+        self.client
+            .delete(DeleteParts::IndexId(NODES_INDEX_NAME, &node_id))
+            .send()
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()> {
+        self.client
+            .delete_by_query(DeleteByQueryParts::Index(&[NODES_INDEX_NAME]))
+            .body(json!({
+                "query": {
+                    "term": { "data_source_id": data_source_id }
+                }
+            }))
+            .send()
+            .await?;
+        Ok(())
     }
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send> {
