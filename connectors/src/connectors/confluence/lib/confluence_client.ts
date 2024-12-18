@@ -550,10 +550,17 @@ export class ConfluenceClient {
   }
 
   async getPageReadRestrictions(pageId: string) {
-    return this.request(
-      `${this.legacyRestApiBaseUrl}/content/${pageId}/restriction/byOperation/read`,
-      ConfluenceReadOperationRestrictionsCodec
-    );
+    try {
+      return await this.request(
+        `${this.legacyRestApiBaseUrl}/content/${pageId}/restriction/byOperation/read`,
+        ConfluenceReadOperationRestrictionsCodec
+      );
+    } catch (err) {
+      if (err instanceof ConfluenceClientError && err.status === 404) {
+        return null;
+      }
+      throw err;
+    }
   }
 
   async getUserAccount() {
