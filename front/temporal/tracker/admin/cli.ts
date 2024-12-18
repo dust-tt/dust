@@ -1,6 +1,7 @@
 import parseArgs from "minimist";
 
-import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
+import { processTrackerNotification } from "@app/lib/api/tracker";
+import logger from "@app/logger/logger";
 import {
   launchTrackerNotificationWorkflow,
   stopTrackerNotificationWorkflow,
@@ -13,6 +14,9 @@ const main = async () => {
 
   console.log(`Running command: ${command}`);
 
+  const workspaceId = argv.workspaceId;
+  const trackerId = argv.trackerId;
+
   switch (command) {
     case "start":
       await launchTrackerNotificationWorkflow();
@@ -20,9 +24,9 @@ const main = async () => {
     case "stop":
       await stopTrackerNotificationWorkflow();
       return;
-    case "notify":
-      const workspaceId = argv.workspaceId;
-      const trackerId = argv.trackerId;
+    case "run-workflow-for-tracker":
+      // This is a debug command to run the tracker notification workflow for a specific tracker.
+      // This will run the workflow immediately with this tracker signaled.
       if (!workspaceId || !trackerId) {
         console.error("workspaceId and trackerId are required");
         return;
@@ -33,6 +37,20 @@ const main = async () => {
           trackerId,
         },
       ]);
+      return;
+    case "run-tracker-notification-manually":
+      // This is a debug command to run the tracker notification for a specific tracker.
+      // This does not run the workflow, but just the notification logic.
+      if (!workspaceId || !trackerId) {
+        console.error("workspaceId and trackerId are required");
+        return;
+      }
+      await processTrackerNotification({
+        trackerId: argv.trackerId,
+        workspaceId: argv.workspaceId,
+        currentRunMs: Date.now(),
+        localLogger: logger,
+      });
       return;
     default:
       return;
