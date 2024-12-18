@@ -6,10 +6,12 @@
     "build": "next build",
     "start": "next start -p 3010",
     "lint": "next lint",
+    "tsc": "tsc",
     "format": "prettier --write ."
   },
   "dependencies": {
     "@dust-tt/sparkle": "^0.2.342",
+    "@dust-tt/types": "file:../types",
     "express": "^4.21.2",
     "body-parser": "^1.20.2",
     "io-ts": "^2.2.20",

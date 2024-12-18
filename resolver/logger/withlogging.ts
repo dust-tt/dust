@@ -3,20 +3,20 @@ import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import logger from "./logger";
-import { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/src/lib/errors";
+import { APIErrorWithStatusCode, WithAPIErrorResponse } from "@dust-tt/types";
 
 export const statsDClient = new StatsD();
 
 export function withLogging<T>(
   handler: (
     req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
   ) => Promise<void>,
-  streaming = false
+  streaming = false,
 ) {
   return async (
     req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
   ): Promise<void> => {
     const ddtraceSpan = tracer.scope().active();
     if (ddtraceSpan) {
@@ -59,7 +59,7 @@ export function withLogging<T>(
           error_stack: err?.stack,
           workspaceId,
         },
-        "Unhandled API Error"
+        "Unhandled API Error",
       );
 
       const tags = [
@@ -102,7 +102,7 @@ export function withLogging<T>(
         url: req.url,
         workspaceId,
       },
-      "Processed request"
+      "Processed request",
     );
   };
 }
@@ -111,7 +111,7 @@ export function apiError<T>(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<T>>,
   apiError: APIErrorWithStatusCode,
-  error?: Error
+  error?: Error,
 ): void {
   logger.error(
     {
@@ -122,7 +122,7 @@ export function apiError<T>(
       error: error,
       apiErrorHandlerCallStack: new Error().stack,
     },
-    "API Error"
+    "API Error",
   );
 
   const tags = [
