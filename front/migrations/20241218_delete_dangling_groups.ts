@@ -13,10 +13,6 @@ const cleanDanglingGroups = async (
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   const allGroups = await GroupResource.listAllWorkspaceGroups(auth);
-  // const allGroups: GroupModel[] = await GroupModel.findAll({
-  //   where: { id: { [Op.gt]: nextId } },
-  //   limit: 1000,
-  // });
 
   for (const group of allGroups) {
     frontSequelize.transaction(async (transaction) => {
