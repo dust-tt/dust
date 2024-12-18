@@ -2083,7 +2083,7 @@ export const GetFolderResponseSchema = z.object({
 });
 export type GetFolderResponseType = z.infer<typeof GetFolderResponseSchema>;
 
-const DeleteFolderResponseSchema = z.object({
+export const DeleteFolderResponseSchema = z.object({
   folder: z.object({
     folder_id: z.string(),
   }),
@@ -2091,13 +2091,8 @@ const DeleteFolderResponseSchema = z.object({
 export type DeleteFolderResponseType = z.infer<
   typeof DeleteFolderResponseSchema
 >;
-const UpsertFolderResponseSchema = z.object({
-  document: z.union([
-    CoreAPIFolderSchema,
-    z.object({
-      document_id: z.string(),
-    }),
-  ]),
+export const UpsertFolderResponseSchema = z.object({
+  folder: CoreAPIFolderSchema,
   data_source: DataSourceTypeSchema,
 });
 export type UpsertFolderResponseType = z.infer<
