@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   CardActionButton,
+  CardGrid,
   Checkbox,
   Chip,
   ContentMessage,
@@ -422,26 +423,24 @@ export default function ActionsScreen({
               />
             </div>
           )}
-          <div className="mx-auto grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+          <CardGrid>
             {configurableActions.map((a) => (
-              <div className="flex w-full" key={a.name}>
-                <ActionCard
-                  action={a}
-                  key={a.name}
-                  editAction={() => {
-                    setAction({
-                      type: "edit",
-                      action: a,
-                    });
-                  }}
-                  deleteAction={() => {
-                    deleteAction(a.name);
-                  }}
-                  isLegacyConfig={isLegacyConfig}
-                />
-              </div>
+              <ActionCard
+                action={a}
+                key={a.name}
+                editAction={() => {
+                  setAction({
+                    type: "edit",
+                    action: a,
+                  });
+                }}
+                deleteAction={() => {
+                  deleteAction(a.name);
+                }}
+                isLegacyConfig={isLegacyConfig}
+              />
             ))}
-          </div>
+          </CardGrid>
         </div>
 
         <Capabilities
