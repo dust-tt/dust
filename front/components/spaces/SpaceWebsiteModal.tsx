@@ -49,11 +49,11 @@ import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_sourc
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import { useDataSources } from "@app/lib/swr/data_sources";
 
 const WEBSITE_CAT = "website";
 
 interface SpaceWebsiteModalProps {
-  dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
   isOpen: boolean;
   onClose: () => void;
@@ -64,7 +64,6 @@ interface SpaceWebsiteModalProps {
 // todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component
 // this should be refactored to use the new design.
 export default function SpaceWebsiteModal({
-  dataSources,
   dataSourceView,
   isOpen,
   onClose,
@@ -90,6 +89,8 @@ export default function SpaceWebsiteModal({
   const [dataSourceNameError, setDataSourceNameError] = useState<string | null>(
     null
   );
+
+  const { dataSources, mutateDataSources } = useDataSources(owner);
 
   const [maxPages, setMaxPages] = useState<number | null>(
     WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
@@ -185,9 +186,9 @@ export default function SpaceWebsiteModal({
 
   const updateUrl = (url: string) => {
     setDataSourceUrl(url);
-    const validatedUrl = validateUrl(dataSourceUrl);
+    const validatedUrl = validateUrl(url);
     if (validatedUrl.valid && !dataSourceView) {
-      setDataSourceName(urlToDataSourceName(dataSourceUrl));
+      setDataSourceName(urlToDataSourceName(url));
     }
   };
 
@@ -331,6 +332,7 @@ export default function SpaceWebsiteModal({
         description: `The website has been successfully ${action}.`,
       });
       void mutateSpaceDataSourceViews();
+      void mutateDataSources();
       setIsSaving(false);
     } else {
       const err: { error: APIError } = await res.json();

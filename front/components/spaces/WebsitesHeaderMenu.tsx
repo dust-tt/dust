@@ -7,7 +7,6 @@ import type {
 import { useState } from "react";
 
 import SpaceWebsiteModal from "@app/components/spaces/SpaceWebsiteModal";
-import { useDataSources } from "@app/lib/swr/data_sources";
 
 type WebsitesHeaderMenuProps = {
   owner: WorkspaceType;
@@ -24,8 +23,6 @@ export const WebsitesHeaderMenu = ({
 }: WebsitesHeaderMenuProps) => {
   const [showEditWebsiteModal, setShowEditWebsiteModal] = useState(false);
 
-  const { dataSources } = useDataSources(owner);
-
   return (
     <>
       <SpaceWebsiteModal
@@ -35,7 +32,6 @@ export const WebsitesHeaderMenu = ({
         }}
         owner={owner}
         space={space}
-        dataSources={dataSources}
         dataSourceView={dataSourceView}
       />
       <Button

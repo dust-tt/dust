@@ -96,7 +96,6 @@ export function EditSpaceStaticDatasourcesViews({
           onClose={onClose}
           owner={owner}
           space={space}
-          dataSources={dataSources}
           dataSourceView={dataSourceView}
         />
       ) : null}
