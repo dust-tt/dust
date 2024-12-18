@@ -5,6 +5,7 @@ import {
   CloudArrowLeftRightIcon,
   ContentMessage,
   Dialog,
+  Input,
   Page,
   SliderToggle,
   Spinner,
@@ -17,6 +18,7 @@ import type {
   LabsTranscriptsProviderType,
   LightAgentConfigurationType,
   SubscriptionType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
@@ -33,7 +35,10 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
+import {
+  useLabsTranscriptsConfiguration,
+  useLabsTranscriptsDefaultConfiguration,
+} from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
@@ -41,9 +46,12 @@ const defaultTranscriptConfigurationState = {
   provider: "",
   isGDriveConnected: false,
   isGongConnected: false,
+  isModjoConnected: false,
   assistantSelected: null,
   isActive: false,
   dataSourceView: null,
+  credentialId: null,
+  hasDefaultConfiguration: false,
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -51,6 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   dataSourcesViews: DataSourceViewType[];
   hasDefaultStorageConfiguration: boolean;
+  featureFlags: WhitelistableFeature[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -72,8 +81,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const flags = await getFeatureFlags(owner);
-  if (!flags.includes("labs_transcripts")) {
+  const featureFlags = await getFeatureFlags(owner);
+  if (!featureFlags.includes("labs_transcripts")) {
     return {
       notFound: true,
     };
@@ -85,6 +94,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       dataSourcesViews,
       hasDefaultStorageConfiguration,
+      featureFlags,
     },
   };
 });
@@ -94,6 +104,7 @@ export default function LabsTranscriptsIndex({
   subscription,
   dataSourcesViews,
   hasDefaultStorageConfiguration,
+  featureFlags,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
   const {
@@ -114,6 +125,33 @@ export default function LabsTranscriptsIndex({
     agentsGetView: "list",
     sort: "priority",
   });
+
+  const { defaultConfiguration: defaultModjoConfiguration } =
+    useLabsTranscriptsDefaultConfiguration({
+      owner,
+      provider: "modjo",
+    });
+
+  const { defaultConfiguration: defaultGongConfiguration } =
+    useLabsTranscriptsDefaultConfiguration({
+      owner,
+      provider: "gong",
+    });
+
+  const saveApiConnection = async (apiKey: string, provider: string) => {
+    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        apiKey,
+        provider,
+      }),
+    });
+
+    return response;
+  };
 
   const handleSetStoreInFolder: Dispatch<SetStateAction<boolean>> = async (
     newValue
@@ -169,9 +207,12 @@ export default function LabsTranscriptsIndex({
       provider: string;
       isGDriveConnected: boolean;
       isGongConnected: boolean;
+      isModjoConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
       dataSourceView: DataSourceViewType | null;
+      credentialId: string | null;
+      hasDefaultConfiguration: boolean;
     }>(defaultTranscriptConfigurationState);
 
   useEffect(() => {
@@ -195,9 +236,12 @@ export default function LabsTranscriptsIndex({
         return {
           ...prev,
           provider: transcriptsConfiguration.provider || "",
-          isGongConnected: transcriptsConfiguration.provider == "gong" || false,
+          isGongConnected:
+            transcriptsConfiguration.provider === "gong" || false,
+          isModjoConnected:
+            transcriptsConfiguration.provider === "modjo" || false,
           isGDriveConnected:
-            transcriptsConfiguration.provider == "google_drive" || false,
+            transcriptsConfiguration.provider === "google_drive" || false,
           assistantSelected:
             agentConfigurations.find(
               (a) => a.sId === transcriptsConfiguration.agentConfigurationId
@@ -225,10 +269,16 @@ export default function LabsTranscriptsIndex({
   const handleProviderChange = async (
     provider: LabsTranscriptsProviderType
   ) => {
+    let hasDefaultConfiguration = false;
+    if (provider === "modjo" && defaultModjoConfiguration) {
+      hasDefaultConfiguration = true;
+    }
+
     setTranscriptsConfigurationState((prev) => {
       return {
         ...prev,
         provider,
+        hasDefaultConfiguration,
       };
     });
     await mutateTranscriptsConfiguration();
@@ -437,16 +487,11 @@ export default function LabsTranscriptsIndex({
         return;
       }
 
-      const response = await fetch(
-        `/api/w/${owner.sId}/labs/transcripts/default?provider=gong`
-      );
-
-      if (response.ok) {
-        const defaultConfigurationRes = await response.json();
-        const defaultConfiguration: LabsTranscriptsConfigurationResource =
-          defaultConfigurationRes.configuration;
-
-        if (defaultConfiguration.provider !== "gong") {
+      if (defaultGongConfiguration) {
+        if (
+          defaultGongConfiguration.provider !== "gong" ||
+          !defaultGongConfiguration.connectionId
+        ) {
           sendNotification({
             type: "error",
             title: "Failed to connect Gong",
@@ -457,7 +502,7 @@ export default function LabsTranscriptsIndex({
         }
 
         await saveOAuthConnection(
-          defaultConfiguration.connectionId,
+          defaultGongConfiguration.connectionId,
           transcriptsConfigurationState.provider
         );
 
@@ -485,6 +530,62 @@ export default function LabsTranscriptsIndex({
         type: "error",
         title: "Failed to connect Gong",
         description: "Could not connect to Gong. Please try again.",
+      });
+    }
+  };
+
+  const handleConnectModjoTranscriptsSource = async () => {
+    try {
+      if (transcriptsConfigurationState.provider !== "modjo") {
+        return;
+      }
+
+      if (defaultModjoConfiguration) {
+        if (
+          defaultModjoConfiguration.provider !== "modjo" ||
+          !defaultModjoConfiguration.credentialId
+        ) {
+          sendNotification({
+            type: "error",
+            title: "Failed to connect Modjo",
+            description:
+              "Your workspace is already connected to another provider by default.",
+          });
+          return;
+        }
+
+        await saveApiConnection(
+          defaultModjoConfiguration.credentialId,
+          defaultModjoConfiguration.provider
+        );
+      } else {
+        if (!transcriptsConfigurationState.credentialId) {
+          sendNotification({
+            type: "error",
+            title: "Modjo API key is required",
+            description: "Please enter your Modjo API key.",
+          });
+          return;
+        }
+        await saveApiConnection(
+          transcriptsConfigurationState.credentialId,
+          transcriptsConfigurationState.provider
+        );
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Modjo connected",
+        description:
+          "Your transcripts provider has been connected successfully.",
+      });
+
+      await mutateTranscriptsConfiguration();
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Modjo",
+        description: "Could not connect to Modjo. Please try again.",
       });
     }
   };
@@ -579,6 +680,21 @@ export default function LabsTranscriptsIndex({
                   style={{ maxHeight: "35px" }}
                 />
               </div>
+              {featureFlags.includes("labs_transcripts_modjo") && (
+                <div
+                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                    transcriptsConfigurationState.provider == "gong"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleProviderChange("modjo")}
+                >
+                  <img
+                    src="/static/labs/transcripts/modjo.png"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
+              )}
             </Page.Layout>
           )}
 
@@ -657,10 +773,61 @@ export default function LabsTranscriptsIndex({
               )}
             </Page.Layout>
           )}
+          {transcriptsConfigurationState.provider === "modjo" && (
+            <Page.Layout direction="vertical">
+              {transcriptsConfigurationState.isModjoConnected ? (
+                <Page.Layout direction="horizontal">
+                  <Button
+                    label="Modjo connected"
+                    size="sm"
+                    icon={CloudArrowLeftRightIcon}
+                    disabled={true}
+                  />
+                  <Button
+                    label="Disconnect"
+                    icon={XMarkIcon}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsDeleteProviderDialogOpened(true)}
+                  />
+                </Page.Layout>
+              ) : (
+                <>
+                  <Page.P>
+                    Connect to Modjo so Dust can access your meeting
+                    transcripts.
+                  </Page.P>
+                  <div className="flex gap-2">
+                    {!transcriptsConfigurationState.hasDefaultConfiguration && (
+                      <Input
+                        placeholder="Modjo API key"
+                        value={transcriptsConfigurationState.credentialId}
+                        onChange={(e) =>
+                          setTranscriptsConfigurationState({
+                            ...transcriptsConfigurationState,
+                            credentialId: e.target.value,
+                          })
+                        }
+                      />
+                    )}
+                    <Button
+                      label="Connect Modjo"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      onClick={async () => {
+                        await handleConnectModjoTranscriptsSource();
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </Page.Layout>
+          )}
         </Page.Layout>
         {transcriptsConfiguration &&
           (transcriptsConfigurationState.isGDriveConnected ||
-            transcriptsConfigurationState.isGongConnected) && (
+            transcriptsConfigurationState.isGongConnected ||
+            transcriptsConfigurationState.isModjoConnected) && (
             <>
               {(!hasDefaultStorageConfiguration ||
                 (hasDefaultStorageConfiguration &&
