@@ -553,8 +553,7 @@ export default function LabsTranscriptsIndex({
 
         await saveApiConnection(
           defaultConfiguration.credentialId,
-          defaultConfiguration.provider,
-          true
+          defaultConfiguration.provider
         );
       } else {
         if (!transcriptsConfigurationState.credentialId) {
