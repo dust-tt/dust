@@ -105,7 +105,7 @@ async function handler(
             },
           });
         }
-        response = await handleLookupUser(sessionWithUser);
+        response = await handleLookupUser(bodyValidation.right);
       }
       break;
     case "workspace": {
