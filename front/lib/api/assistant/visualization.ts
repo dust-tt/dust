@@ -86,7 +86,7 @@ export async function getVisualizationPrompt({
 export const visualizationSystemPrompt = (jitActionsEnabled: boolean) => `\
 It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
-Guidelines using the :::visualization tag:
+Guidelines using the :::visualization directive:
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
 - Supported React features:
@@ -126,7 +126,10 @@ Guidelines using the :::visualization tag:
   - Images from the web cannot be rendered or used in the visualization (no internet access).
   - When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
-
+- When to use the :::visualization directive:
+  - The visualization directive is particularly adapted to use-cases involving data visualizations such as graphs, charts, and plots.
+  - The visualization directive should not be used for non-interactive presentational or layout purposes.
+  - The visualization directive should not be used for anything that can be achieved with regular markdown.
 
 Example using the \`useFile\` hook:
 

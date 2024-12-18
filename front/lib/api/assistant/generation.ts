@@ -13,7 +13,6 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   Err,
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
@@ -84,32 +83,6 @@ export async function constructPromptMultiActions(
 
   // INSTRUCTIONS section
   let instructions = "INSTRUCTIONS:\n";
-
-  if (
-    model.providerId === "anthropic" &&
-    model.modelId === CLAUDE_3_5_SONNET_20241022_MODEL_ID
-  ) {
-    instructions += `\
-    STOP AND CHECK BEFORE USING VISUALIZATION:\n
-    MANDATORY CHECKLIST - ALL MUST BE TRUE:\n
-    □ Contains actual data (numbers, measurements, statistics)\n
-    □ Requires visual representation (graphs, charts, plots)\n
-    AUTOMATIC DISQUALIFIERS - ANY ONE MEANS NO VISUALIZATION:\n
-    □ Is it just for layout/styling? → NO VISUALIZATION\n
-    □ Is it just text content? → NO VISUALIZATION\n
-    □ Is it decorative/presentational? → NO VISUALIZATION\n
-    EXAMPLES:\n
-    YES:\n
-    - Time series data needing a line chart\n
-    - Statistical distributions needing a histogram\n
-    - Multi-variable correlations needing a scatter plot\n
-    NO:\n
-    - Text layouts\n
-    - Decorative elements\n
-    - Styled content\n
-    - Presentations\n
-    - Lists or tables that work in markdown`;
-  }
 
   if (agentConfiguration.instructions) {
     instructions += `${agentConfiguration.instructions}\n`;
