@@ -3,6 +3,7 @@ import type { ModelId } from "@dust-tt/types";
 import {
   getCodeRootNodeId,
   getRepositoryNodeId,
+  isGithubCodeDirId,
 } from "@connectors/connectors/github/lib/utils";
 import {
   GithubCodeDirectory,
@@ -25,7 +26,7 @@ export async function getGithubCodeDirectoryParentIds(
     return [];
   }
 
-  if (/^github-code-\d+-dir-[a-f0-9]+$/.test(directory.parentInternalId)) {
+  if (isGithubCodeDirId(directory.parentInternalId)) {
     // Pull the directory.
     const parents = await getGithubCodeDirectoryParentIds(
       connectorId,
@@ -55,7 +56,7 @@ export async function getGithubCodeFileParentIds(
     return [];
   }
 
-  if (/^github-code-\d+-dir-[a-f0-9]+$/.test(file.parentInternalId)) {
+  if (isGithubCodeDirId(file.parentInternalId)) {
     // Pull the directory.
     const parents = await getGithubCodeDirectoryParentIds(
       connectorId,

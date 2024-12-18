@@ -8,7 +8,16 @@ export const GITHUB_CONTENT_NODE_TYPES = [
   "REPO_CODE_DIR",
   "REPO_CODE_FILE",
 ] as const;
+
 export type GithubContentNodeType = (typeof GITHUB_CONTENT_NODE_TYPES)[number];
+
+export function isGithubCodeDirId(internalId: string): boolean {
+  return /^github-code-\d+-dir-[a-f0-9]+$/.test(internalId);
+}
+
+export function isGithubCodeFileId(internalId: string): boolean {
+  return /^github-code-\d+-file-[a-f0-9]+$/.test(internalId);
+}
 
 /**
  * Gets the type of the Github content node from its internal id.
@@ -46,7 +55,7 @@ export function matchGithubNodeIdType(internalId: string): {
     };
   }
   // A code directory is selected, format = "github-code-12345678-dir-s0Up1n0u"
-  if (/^github-code-\d+-dir-[a-f0-9]+$/.test(internalId)) {
+  if (isGithubCodeDirId(internalId)) {
     return {
       type: "REPO_CODE_DIR",
       repoId: parseInt(
@@ -56,7 +65,7 @@ export function matchGithubNodeIdType(internalId: string): {
     };
   }
   // A code file is selected, format = "github-code-12345678-file-s0Up1n0u"
-  if (/^github-code-\d+-file-[a-f0-9]+$/.test(internalId)) {
+  if (isGithubCodeFileId(internalId)) {
     return {
       type: "REPO_CODE_FILE",
       repoId: parseInt(
