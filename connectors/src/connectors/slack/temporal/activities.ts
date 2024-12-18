@@ -33,8 +33,10 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
   deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError } from "@connectors/lib/error";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
@@ -240,6 +242,20 @@ export async function syncChannel(
     );
     return;
   }
+
+  // If the cursor is not set this is the first call to syncChannel so we upsert the associated
+  // folder.
+  if (!messagesCursor) {
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: internalIdFromSlackChannelId(channelId),
+      title: `#${channel.name}`,
+      parentId: null,
+      parents: [internalIdFromSlackChannelId(channelId)],
+      mimeType: "application/vnd.dust.slack.channel",
+    });
+  }
+
   const threadsToSync: string[] = [];
   let unthreadedTimeframesToSync: number[] = [];
   const messages = await getMessagesForChannel(
@@ -1172,6 +1188,12 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
       },
     });
   } while (slackMessages.length === maxMessages);
+
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: internalIdFromSlackChannelId(channelId),
+  });
+
   logger.info(
     { nbDeleted, channelId, connectorId },
     "Deleted documents from datasource while garbage collecting."
