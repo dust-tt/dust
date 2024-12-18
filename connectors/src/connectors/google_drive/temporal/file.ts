@@ -13,8 +13,8 @@ import {
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
-  getDocumentId,
   getDriveClient,
+  getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   handleCsvFile,
@@ -189,7 +189,7 @@ async function handleFileExport(
       startSyncTs
     );
 
-    const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
+    const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
     result = await handleCsvFile({
       data: res.data,
@@ -241,7 +241,7 @@ export async function syncOneFile(
         },
       });
 
-      const documentId = getDocumentId(file.id);
+      const documentId = getInternalId(file.id);
       const fileInDb = await GoogleDriveFiles.findOne({
         where: { connectorId, driveFileId: file.id },
       });
@@ -329,7 +329,7 @@ async function syncOneFileTable(
   let skipReason: string | undefined;
   const upsertTimestampMs = undefined;
 
-  const documentId = getDocumentId(file.id);
+  const documentId = getInternalId(file.id);
 
   if (isGoogleDriveSpreadSheetFile(file)) {
     const res = await syncSpreadSheet(
@@ -389,7 +389,7 @@ async function syncOneFileTextDocument(
     csvEnabled: config?.csvEnabled || false,
   });
 
-  const documentId = getDocumentId(file.id);
+  const documentId = getInternalId(file.id);
 
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     documentContent = await handleGoogleDriveExport(
@@ -483,7 +483,7 @@ async function upsertGdriveDocument(
       startSyncTs
     );
 
-    const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
+    const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
     await upsertDataSourceDocument({
       dataSourceConfig,

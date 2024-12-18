@@ -36,9 +36,9 @@ import {
 import {
   driveObjectToDustType,
   getAuthObject,
-  getDocumentId,
   getDriveClient,
   getDriveId,
+  getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import type {
   CreateConnectorErrorCode,
@@ -308,7 +308,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
             return {
               provider: c.type,
-              internalId: getDocumentId(f.driveFileId),
+              internalId: getInternalId(f.driveFileId),
               parentInternalId: null,
               type,
               title: f.name || "",
@@ -336,7 +336,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   s.driveFileId,
                   s.driveSheetId
                 ),
-                parentInternalId: getDocumentId(s.driveFileId),
+                parentInternalId: getInternalId(s.driveFileId),
                 type: "database" as const,
                 title: s.name || "",
                 dustDocumentId: null,
@@ -381,10 +381,10 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             }
             return {
               provider: c.type,
-              internalId: getDocumentId(driveObject.id),
+              internalId: getInternalId(driveObject.id),
               parentInternalId:
                 // note: if the parent is null, the drive object falls at top-level
-                driveObject.parent && getDocumentId(driveObject.parent),
+                driveObject.parent && getInternalId(driveObject.parent),
               type: "folder" as const,
               title: driveObject.name,
               sourceUrl: driveObject.webViewLink || null,
@@ -475,9 +475,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
             return {
               provider: c.type,
-              internalId: getDocumentId(driveObject.id),
+              internalId: getInternalId(driveObject.id),
               parentInternalId:
-                driveObject.parent && getDocumentId(driveObject.parent),
+                driveObject.parent && getInternalId(driveObject.parent),
               type: "folder" as const,
               title: driveObject.name,
               sourceUrl: driveObject.webViewLink || null,
@@ -645,7 +645,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
         return {
           provider: "google_drive",
-          internalId: getDocumentId(f.driveFileId),
+          internalId: getInternalId(f.driveFileId),
           parentInternalId: null,
           type,
           title: f.name || "",
@@ -689,7 +689,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         s.driveFileId,
         s.driveSheetId
       ),
-      parentInternalId: getDocumentId(s.driveFileId),
+      parentInternalId: getInternalId(s.driveFileId),
       type: "database",
       title: s.name || "",
       dustDocumentId: null,
@@ -946,7 +946,7 @@ async function getFoldersAsContentNodes({
       const sourceUrl = `https://drive.google.com/drive/folders/${f.folderId}`;
       return {
         provider: "google_drive",
-        internalId: getDocumentId(f.folderId),
+        internalId: getInternalId(f.folderId),
         parentInternalId: null,
         type: "folder",
         title: fd.name || "",

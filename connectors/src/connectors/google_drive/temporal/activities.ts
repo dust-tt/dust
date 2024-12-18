@@ -19,8 +19,8 @@ import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/
 import {
   driveObjectToDustType,
   getAuthObject,
-  getDocumentId,
   getDriveClient,
+  getInternalId,
   getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -478,18 +478,18 @@ export async function incrementalSync(
           startSyncTs
         );
 
-        const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
+        const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
         await upsertDataSourceFolder({
           dataSourceConfig,
-          folderId: getDocumentId(driveFile.id),
+          folderId: getInternalId(driveFile.id),
           parents,
           title: driveFile.name ?? "",
         });
 
         await GoogleDriveFiles.upsert({
           connectorId: connectorId,
-          dustFileId: getDocumentId(driveFile.id),
+          dustFileId: getInternalId(driveFile.id),
           driveFileId: file.id,
           name: file.name,
           mimeType: file.mimeType,
@@ -821,18 +821,18 @@ export async function markFolderAsVisited(
     startSyncTs
   );
 
-  const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
+  const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
   await upsertDataSourceFolder({
     dataSourceConfig,
-    folderId: getDocumentId(file.id),
+    folderId: getInternalId(file.id),
     parents,
     title: file.name ?? "",
   });
 
   await GoogleDriveFiles.upsert({
     connectorId: connectorId,
-    dustFileId: getDocumentId(driveFileId),
+    dustFileId: getInternalId(driveFileId),
     driveFileId: file.id,
     name: file.name,
     mimeType: file.mimeType,

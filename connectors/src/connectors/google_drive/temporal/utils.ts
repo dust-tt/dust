@@ -9,7 +9,7 @@ import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
-export function getDocumentId(driveFileId: string): string {
+export function getInternalId(driveFileId: string): string {
   return `gdrive-${driveFileId}`;
 }
 

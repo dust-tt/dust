@@ -8,8 +8,8 @@ import type { InferAttributes, WhereOptions } from "sequelize";
 
 import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
-  getDocumentId,
   getDriveId,
+  getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   GoogleDriveFiles,
@@ -73,7 +73,7 @@ async function _getLocalParents(
     const { googleFileId } = getGoogleIdsFromSheetContentNodeInternalId(
       contentNodeInternalId
     );
-    parentId = getDocumentId(googleFileId);
+    parentId = getInternalId(googleFileId);
   } else {
     const object = await GoogleDriveFiles.findOne({
       where: {
@@ -81,7 +81,7 @@ async function _getLocalParents(
         driveFileId: getDriveId(contentNodeInternalId),
       },
     });
-    parentId = object?.parentId ? getDocumentId(object.parentId) : null;
+    parentId = object?.parentId ? getInternalId(object.parentId) : null;
   }
 
   if (!parentId) {

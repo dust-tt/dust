@@ -2,7 +2,7 @@ import { concurrentExecutor, getGoogleSheetTableId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
-import { getDocumentId } from "@connectors/connectors/google_drive/temporal/utils";
+import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   getDataSourceFolder,
@@ -110,7 +110,7 @@ async function migrate({
             dataSourceConfig,
             folderId: internalId,
           });
-          const newParents = parents.map((id) => getDocumentId(id));
+          const newParents = parents.map((id) => getInternalId(id));
           if (!folder || folder.parents.join("/") !== newParents.join("/")) {
             childLogger.info(
               { folderId: file.driveFileId, parents: newParents },
@@ -123,14 +123,14 @@ async function migrate({
                 dataSourceConfig,
                 folderId: file.dustFileId,
                 parents: newParents,
-                parentId: file.parentId ? getDocumentId(file.parentId) : null,
+                parentId: file.parentId ? getInternalId(file.parentId) : null,
                 title: file.name,
               });
             }
           }
         } else if (file.mimeType === "text/csv") {
           const tableId = internalId;
-          parents.unshift(...parents.map((id) => getDocumentId(id)));
+          parents.unshift(...parents.map((id) => getInternalId(id)));
           const table = await getDataSourceTable({ dataSourceConfig, tableId });
           if (table) {
             if (table.parents.join("/") !== parents.join("/")) {
@@ -190,7 +190,7 @@ async function migrate({
           return;
         }
 
-        parents.unshift(...parents.map((id) => getDocumentId(id)));
+        parents.unshift(...parents.map((id) => getInternalId(id)));
         parents.unshift(tableId);
 
         const table = await getDataSourceTable({ dataSourceConfig, tableId });
