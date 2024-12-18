@@ -4,7 +4,7 @@ import type {
   Result,
   SpaceType,
 } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
+import { concurrentExecutor, Err } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import assert from "assert";
 import type {
@@ -319,8 +319,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
       transaction,
     });
-    await Promise.all(
-      this.groups.map(async (group) => {
+    await concurrentExecutor(
+      this.groups,
+      async (group) => {
         const count = await GroupSpaceModel.count({
           where: {
             groupId: group.id,
@@ -330,7 +331,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         if (count === 0) {
           await group.delete(auth, { transaction });
         }
-      })
+      },
+      {
+        concurrency: 8,
+      }
     );
 
     await SpaceModel.destroy({
