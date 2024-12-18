@@ -18,7 +18,7 @@ export type PatchLinkedSlackChannelsResponseBody = {
 };
 
 export const PatchLinkedSlackChannelsRequestBodySchema = t.type({
-  slack_channel_ids: t.array(t.string),
+  slack_channel_internal_ids: t.array(t.string),
 });
 
 async function handler(
@@ -101,7 +101,8 @@ async function handler(
       const connectorsApiRes = await connectorsAPI.linkSlackChannelsWithAgent({
         connectorId: connectorId.toString(),
         agentConfigurationId: agentConfiguration.sId,
-        slackChannelIds: bodyValidation.right.slack_channel_ids,
+        slackChannelInternalIds:
+          bodyValidation.right.slack_channel_internal_ids,
       });
 
       if (connectorsApiRes.isErr()) {
