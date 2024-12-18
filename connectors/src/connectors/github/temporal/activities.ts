@@ -119,17 +119,6 @@ export async function githubGetRepoIssuesResultPageActivity(
     pageNumber
   );
 
-  // Create Issues data source folder node, because anticipating upserts
-  // Here for performance reasons, we don't want to create the folder node for each issue
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: getIssuesInternalId(repoId),
-    title: "Issues",
-    parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
-    mimeType: getMimeTypeFromGithubContentNodeType("REPO_ISSUES"),
-  });
-
   return page.map((issue) => issue.number);
 }
 
@@ -539,20 +528,6 @@ export async function githubGetRepoDiscussionsResultPageActivity(
     repoLogin,
     cursor
   );
-
-  // Create Discussions data source folder node, because anticipating upserts
-  // Here for performance reasons, we don't want to create the folder node for each discussion
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: getDiscussionsInternalId(repoId),
-    title: "Discussions",
-    parents: [
-      getDiscussionsInternalId(repoId),
-      getRepositoryInternalId(repoId),
-    ],
-    mimeType: getMimeTypeFromGithubContentNodeType("REPO_DISCUSSIONS"),
-  });
 
   return {
     cursor: nextCursor,
@@ -1359,5 +1334,52 @@ export async function githubCodeSyncDailyCronActivity({
     memo: {
       connectorId: connectorId,
     },
+  });
+}
+
+export async function githubUpsertIssuesDirectoryActivity({
+  connectorId,
+  repoId,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getIssuesInternalId(repoId),
+    title: "Issues",
+    parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_ISSUES"),
+  });
+}
+
+export async function githubUpsertDiscussionsDirectoryActivity({
+  connectorId,
+  repoId,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getDiscussionsInternalId(repoId),
+    title: "Discussions",
+    parents: [
+      getDiscussionsInternalId(repoId),
+      getRepositoryInternalId(repoId),
+    ],
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_DISCUSSIONS"),
   });
 }

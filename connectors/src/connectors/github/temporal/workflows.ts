@@ -19,6 +19,8 @@ const {
   githubSaveStartSyncActivity,
   githubSaveSuccessSyncActivity,
   githubCodeSyncDailyCronActivity,
+  githubUpsertIssuesDirectoryActivity,
+  githubUpsertDiscussionsDirectoryActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -179,6 +181,8 @@ export async function githubRepoIssuesSyncWorkflow({
   });
   const promises: Promise<void>[] = [];
 
+  await githubUpsertIssuesDirectoryActivity({ connectorId, repoId });
+
   const resultsPage = await githubGetRepoIssuesResultPageActivity(
     connectorId,
     repoName,
@@ -233,6 +237,8 @@ export async function githubRepoDiscussionsSyncWorkflow({
     concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
   });
   const promises: Promise<void>[] = [];
+
+  await githubUpsertDiscussionsDirectoryActivity({ connectorId, repoId });
 
   const { cursor, discussionNumbers } =
     await githubGetRepoDiscussionsResultPageActivity(
