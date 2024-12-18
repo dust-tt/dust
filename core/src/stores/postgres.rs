@@ -3194,8 +3194,8 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_folders \
-                       (id, data_source, created, folder_id, mime_type) \
-                       VALUES (DEFAULT, $1, $2, $3, $4) \
+                       (id, data_source, created, folder_id) \
+                       VALUES (DEFAULT, $1, $2, $3) \
                        ON CONFLICT (folder_id, data_source)  DO UPDATE \
                        SET folder_id = data_sources_folders.folder_id \
                        RETURNING id, created",
@@ -3209,7 +3209,6 @@ impl Store for PostgresStore {
                     &data_source_row_id,
                     &(created as i64),
                     &upsert_params.folder_id,
-                    &upsert_params.mime_type,
                 ],
             )
             .await?;
