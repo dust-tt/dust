@@ -25,7 +25,7 @@ export async function getGithubCodeDirectoryParentIds(
     return [];
   }
 
-  if (directory.parentInternalId.startsWith(`github-code-${repoId}-dir`)) {
+  if (/^github-code-\d+-dir-[a-f0-9]+$/.test(directory.parentInternalId)) {
     // Pull the directory.
     const parents = await getGithubCodeDirectoryParentIds(
       connectorId,
@@ -33,8 +33,8 @@ export async function getGithubCodeDirectoryParentIds(
       repoId
     );
     return [directory.parentInternalId, ...parents];
-  } else if (directory.parentInternalId === `github-code-${repoId}`) {
-    return [`github-code-${repoId}`, `${repoId}`];
+  } else if (directory.parentInternalId === getCodeRootNodeId(repoId)) {
+    return [directory.parentInternalId, getRepositoryNodeId(repoId)];
   }
   return [];
 }
@@ -55,7 +55,7 @@ export async function getGithubCodeFileParentIds(
     return [];
   }
 
-  if (file.parentInternalId.startsWith(`github-code-${repoId}-dir`)) {
+  if (/^github-code-\d+-dir-[a-f0-9]+$/.test(file.parentInternalId)) {
     // Pull the directory.
     const parents = await getGithubCodeDirectoryParentIds(
       connectorId,
@@ -63,8 +63,8 @@ export async function getGithubCodeFileParentIds(
       repoId
     );
     return [file.parentInternalId, ...parents];
-  } else if (file.parentInternalId === `github-code-${repoId}`) {
-    return [`${repoId}`, `github-code-${repoId}`];
+  } else if (file.parentInternalId === getCodeRootNodeId(repoId)) {
+    return [file.parentInternalId, getRepositoryNodeId(repoId)];
   }
   return [];
 }
