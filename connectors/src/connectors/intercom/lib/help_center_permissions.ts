@@ -15,6 +15,7 @@ import {
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   getCollectionInAppUrl,
+  getDataSourceNodeMimeType,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionIdFromInternalId,
   getHelpCenterCollectionInternalId,
@@ -23,7 +24,7 @@ import {
   getParentIdsForCollection,
 } from "@connectors/connectors/intercom/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertFolderNode } from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   IntercomArticle,
   IntercomCollection,
@@ -93,11 +94,12 @@ export async function allowSyncHelpCenter({
           connectorId,
           helpCenterOnIntercom.id
         );
-        await upsertFolderNode({
+        await upsertDataSourceFolder({
           dataSourceConfig,
           folderId: helpCenterInternalId,
           title: helpCenterOnIntercom.display_name || "Help Center",
           parents: [helpCenterInternalId],
+          mimeType: getDataSourceNodeMimeType("HELP_CENTER"),
         });
       }
     }
@@ -256,12 +258,13 @@ export async function allowSyncCollection({
         parentCollectionId: collection.parentId,
         helpCenterId: collection.helpCenterId,
       });
-      await upsertFolderNode({
+      await upsertDataSourceFolder({
         dataSourceConfig,
         folderId: getHelpCenterCollectionInternalId(connectorId, collectionId),
         title: collection.name,
         parents,
         parentId: parents.length > 1 ? parents[1] : null,
+        mimeType: getDataSourceNodeMimeType("COLLECTION"),
       });
     }
   }
