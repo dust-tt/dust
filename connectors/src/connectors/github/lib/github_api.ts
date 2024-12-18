@@ -30,8 +30,8 @@ import {
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
 import {
-  getCodeDirNodeId,
-  getCodeFileNodeId,
+  getCodeDirInternalId,
+  getCodeFileInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -851,7 +851,7 @@ export async function processRepository({
 
       const parents = [];
       for (let i = 0; i < path.length; i++) {
-        const pathInternalId = getCodeDirNodeId(
+        const pathInternalId = getCodeDirInternalId(
           repoId,
           path.slice(0, i + 1).join("/")
         );
@@ -862,7 +862,7 @@ export async function processRepository({
         });
       }
 
-      const documentId = getCodeFileNodeId(
+      const documentId = getCodeFileInternalId(
         repoId,
         `${path.join("/")}/${fileName}`
       );
@@ -883,7 +883,8 @@ export async function processRepository({
         sizeBytes: size,
         documentId,
         parentInternalId,
-        parents: [documentId, ...parents.map((p) => p.internalId)],
+        /// we reverse the parents here since the convention is bottom to top
+        parents: [documentId, ...parents.map((p) => p.internalId).reverse()],
         localFilePath: file,
       });
 
