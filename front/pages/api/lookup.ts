@@ -14,17 +14,17 @@ import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type BaseLookupResponse = {
+type BaseLookupResponse = {
   isNew: boolean;
 };
 
-export type UserLookupResponse = BaseLookupResponse & {
+type UserLookupResponse = BaseLookupResponse & {
   hasInvite: boolean;
   hasAutoJoinWorkspace: boolean;
   workspaceId?: string;
 };
 
-export type WorkspaceLookupResponse = BaseLookupResponse;
+type WorkspaceLookupResponse = BaseLookupResponse;
 
 const ExternalUserCodec = t.type({
   email: t.string,
@@ -37,7 +37,7 @@ const ExternalUserCodec = t.type({
   picture: t.union([t.string, t.undefined]),
 });
 
-export type LookupResponseBody = UserLookupResponse | WorkspaceLookupResponse;
+type LookupResponseBody = UserLookupResponse | WorkspaceLookupResponse;
 
 const UserLookupSchema = t.type({
   user: ExternalUserCodec,
