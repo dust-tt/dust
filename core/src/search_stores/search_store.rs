@@ -35,9 +35,9 @@ pub trait SearchStore {
         filter: Vec<DatasourceViewFilter>,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<Node>>;
-    async fn index_document(&self, document: &Document) -> Result<()>;
-    async fn index_table(&self, table: &Table) -> Result<()>;
-    async fn index_folder(&self, folder: &Folder) -> Result<()>;
+    async fn index_document(&self, document: Document) -> Result<()>;
+    async fn index_table(&self, table: Table) -> Result<()>;
+    async fn index_folder(&self, folder: Folder) -> Result<()>;
     async fn index_node(&self, node: Node) -> Result<()>;
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
@@ -82,18 +82,18 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
-    async fn index_document(&self, document: &Document) -> Result<()> {
-        let node = Node::from(document.clone());
+    async fn index_document(&self, document: Document) -> Result<()> {
+        let node = Node::from(document);
         self.index_node(node).await
     }
 
-    async fn index_table(&self, table: &Table) -> Result<()> {
-        let node = Node::from(table.clone());
+    async fn index_table(&self, table: Table) -> Result<()> {
+        let node = Node::from(table);
         self.index_node(node).await
     }
 
-    async fn index_folder(&self, folder: &Folder) -> Result<()> {
-        let node = Node::from(folder.clone());
+    async fn index_folder(&self, folder: Folder) -> Result<()> {
+        let node = Node::from(folder);
         self.index_node(node).await
     }
 

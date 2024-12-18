@@ -2202,7 +2202,7 @@ async fn tables_upsert(
         )
         .await
     {
-        Ok(table) => match state.search_store.index_table(&table).await {
+        Ok(table) => match state.search_store.index_table(table.clone()).await {
             Ok(_) => (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -2902,7 +2902,7 @@ async fn folders_upsert(
             "Failed to upsert folder",
             Some(e),
         ),
-        Ok(folder) => match state.search_store.index_folder(&folder).await {
+        Ok(folder) => match state.search_store.index_folder(folder.clone()).await {
             Ok(_) => (
                 StatusCode::OK,
                 Json(APIResponse {
