@@ -37,8 +37,8 @@ import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
 
-export function getNotionUnknownFolderId(connectorId: number) {
-  return `notion-unknown-${connectorId}`;
+export function getNotionUnknownFolderId(dataSourceConfig: DataSourceConfig) {
+  return `notion-unknown-${dataSourceConfig.dataSourceId}`;
 }
 
 function nodeIdFromNotionId(notionId: string) {
@@ -70,7 +70,7 @@ async function workspaceIdFromConnectionId(connectionId: string) {
  */
 async function upsertNotionUnknownFolder(connector: ConnectorResource) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const folderId = getNotionUnknownFolderId(connector.id);
+  const folderId = getNotionUnknownFolderId(dataSourceConfig);
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId,
@@ -511,7 +511,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         folderNodes.push({
           provider: c.type,
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: getNotionUnknownFolderId(c.id),
+          internalId: getNotionUnknownFolderId(
+            dataSourceConfigFromConnector(c)
+          ),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
@@ -538,6 +540,12 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     internalIds: string[];
   }): Promise<Result<ContentNode[], Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      logger.error({ connectorId: this.connectorId }, "Connector not found");
+      return new Err(new Error("Connector not found"));
+    }
+
     const notionIds = internalIds.map((id) => notionIdFromNodeId(id));
 
     const [pages, dbs] = await Promise.all([
@@ -594,7 +602,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const contentNodes = pageNodes.concat(dbNodes);
 
-    const notionUnknownFolderId = getNotionUnknownFolderId(this.connectorId);
+    const notionUnknownFolderId = getNotionUnknownFolderId(
+      dataSourceConfigFromConnector(connector)
+    );
     if (notionIds.includes(notionUnknownFolderId)) {
       const orphanedCount = await getOrphanedCount(this.connectorId);
       if (orphanedCount > 0) {

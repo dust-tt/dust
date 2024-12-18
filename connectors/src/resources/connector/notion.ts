@@ -71,9 +71,10 @@ export class NotionConnectorStrategy
       },
       transaction,
     });
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteDataSourceFolder({
-      dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId: getNotionUnknownFolderId(connector.id),
+      dataSourceConfig,
+      folderId: getNotionUnknownFolderId(dataSourceConfig),
     });
   }
 
