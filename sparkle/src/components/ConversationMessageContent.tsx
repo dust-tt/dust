@@ -24,7 +24,7 @@ export function ConversationMessageContent({
     >
       <div
         className={cn(
-          "s-px-3 s-font-normal s-text-element-900",
+          "s-px-2 s-font-normal s-text-foreground",
           size === "compact" ? "s-text-sm" : "s-text-base"
         )}
       >

@@ -15,7 +15,7 @@ const messageSizeClasses: Record<ConversationMessageSizeType, string> = {
 };
 
 const messageTypeClasses: Record<ConversationMessageType, string> = {
-  user: "s-bg-structure-50",
+  user: "s-bg-muted-background",
   agent: "",
 };
 

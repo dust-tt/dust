@@ -87,9 +87,13 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
     const { components } = React.useContext(SparkleContext);
     const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
+    // Determine if the card is interactive based on href or onClick
+    const isInteractive = Boolean(href || onClick);
+
     const cardButtonClassNames = cn(
       cardVariants({ variant, size }),
-      onClick &&
+      // Apply interactive styles when either href or onClick is present
+      isInteractive &&
         "s-cursor-pointer disabled:s-text-primary-muted disabled:s-border-structure-100 disabled:s-pointer-events-none s-transition s-duration-200 hover:s-bg-primary-100 active:s-bg-primary-200",
       className
     );
