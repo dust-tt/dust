@@ -86,6 +86,7 @@ impl Node {
             self.title,
             self.parent_id,
             self.parents,
+            self.mime_type,
         )
     }
 }

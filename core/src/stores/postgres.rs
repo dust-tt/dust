@@ -13,7 +13,6 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::folder::FOLDER_MIMETYPE;
 use crate::data_sources::node::{Node, NodeType};
 use crate::{
     blocks::block::BlockType,
@@ -3195,8 +3194,8 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_folders \
-                       (id, data_source, created, folder_id) \
-                       VALUES (DEFAULT, $1, $2, $3) \
+                       (id, data_source, created, folder_id, mime_type) \
+                       VALUES (DEFAULT, $1, $2, $3, $4) \
                        ON CONFLICT (folder_id, data_source)  DO UPDATE \
                        SET folder_id = data_sources_folders.folder_id \
                        RETURNING id, created",
@@ -3210,6 +3209,7 @@ impl Store for PostgresStore {
                     &data_source_row_id,
                     &(created as i64),
                     &upsert_params.folder_id,
+                    &upsert_params.mime_type,
                 ],
             )
             .await?;
@@ -3224,6 +3224,7 @@ impl Store for PostgresStore {
             upsert_params.title,
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
+            upsert_params.mime_type,
         );
 
         self.upsert_data_source_node(
@@ -3232,7 +3233,7 @@ impl Store for PostgresStore {
                 node_type: &NodeType::Folder,
                 timestamp: folder.timestamp(),
                 title: folder.title(),
-                mime_type: FOLDER_MIMETYPE,
+                mime_type: folder.mime_type(),
                 parents: folder.parents(),
             },
             data_source_row_id,
@@ -3343,7 +3344,7 @@ impl Store for PostgresStore {
         }
 
         let sql = format!(
-            "SELECT dsn.node_id, dsn.title, dsn.timestamp, dsn.parents \
+            "SELECT dsn.node_id, dsn.title, dsn.timestamp, dsn.parents, dsn.mime_type \
                FROM data_sources_nodes dsn \
                WHERE dsn.folder IS NOT NULL AND {} ORDER BY dsn.timestamp DESC",
             where_clauses.join(" AND "),
@@ -3391,6 +3392,7 @@ impl Store for PostgresStore {
                 let title: String = r.get(1);
                 let timestamp: i64 = r.get(2);
                 let parents: Vec<String> = r.get(3);
+                let mime_type: String = r.get(4);
 
                 Ok(Folder::new(
                     data_source_id.clone(),
@@ -3399,6 +3401,7 @@ impl Store for PostgresStore {
                     title,
                     parents.get(1).cloned(),
                     parents,
+                    mime_type,
                 ))
             })
             .collect::<Result<Vec<_>>>()?;

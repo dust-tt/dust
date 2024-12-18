@@ -10,10 +10,8 @@ pub struct Folder {
     title: String,
     parent_id: Option<String>,
     parents: Vec<String>,
+    mime_type: String,
 }
-
-/// MIME type used to identify folder objects
-pub const FOLDER_MIMETYPE: &str = "application/vnd.dust.folder";
 
 impl Folder {
     pub fn new(
@@ -23,6 +21,7 @@ impl Folder {
         title: String,
         parent_id: Option<String>,
         parents: Vec<String>,
+        mime_type: String,
     ) -> Self {
         Folder {
             data_source_id,
@@ -31,6 +30,7 @@ impl Folder {
             title,
             parent_id,
             parents,
+            mime_type,
         }
     }
 
@@ -52,6 +52,9 @@ impl Folder {
     pub fn parents(&self) -> &Vec<String> {
         &self.parents
     }
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
 }
 
 impl From<Folder> for Node {
@@ -62,7 +65,7 @@ impl From<Folder> for Node {
             NodeType::Folder,
             folder.timestamp,
             &folder.title,
-            FOLDER_MIMETYPE,
+            &folder.mime_type,
             folder.parent_id,
             folder.parents,
         )
