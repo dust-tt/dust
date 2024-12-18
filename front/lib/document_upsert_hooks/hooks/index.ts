@@ -1,4 +1,5 @@
 import type { ConnectorProvider, UpsertContext } from "@dust-tt/types";
+import { isDevelopment } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { trackerUpsertHook } from "@app/lib/document_upsert_hooks/hooks/tracker";
@@ -30,7 +31,7 @@ export function runDocumentUpsertHooks(
   params: Parameters<DocumentUpsertHook["fn"]>[0]
 ): void {
   // TODO(document-tracker): remove this once we have a way to enable/disable
-  if (params.auth.workspace()?.sId !== DUST_WORKSPACE) {
+  if (params.auth.workspace()?.sId !== DUST_WORKSPACE && !isDevelopment()) {
     return;
   }
 

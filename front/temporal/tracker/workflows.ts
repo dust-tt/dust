@@ -41,7 +41,7 @@ export async function trackersGenerationWorkflow(
     if (!dataSourceConnectorProvider) {
       return 10000;
     }
-    if (dataSourceConnectorProvider === "notion") {
+    if (["notion", "google_drive"].includes(dataSourceConnectorProvider)) {
       return 600000;
     }
     return 3600000;
