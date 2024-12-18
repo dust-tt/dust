@@ -544,7 +544,7 @@ function FeedbackCard({
 
   if (!feedback.content) {
     return (
-      <ContentMessage variant="slate" className="mt-2 p-2">
+      <ContentMessage variant="slate" className="mr-2 mt-2 p-2">
         <div className="justify-content-around flex items-center gap-2">
           <div className="flex w-full items-center gap-2">
             {feedback.userImageUrl ? (
@@ -571,15 +571,15 @@ function FeedbackCard({
               )}
             </div>
           </div>
-          {conversationUrl && (
-            <Button
-              variant="ghost"
-              size="xs"
-              href={conversationUrl}
-              icon={ExternalLinkIcon}
-              target="_blank"
-            />
-          )}
+
+          <Button
+            variant="ghost"
+            size="xs"
+            href={conversationUrl ?? ""}
+            icon={ExternalLinkIcon}
+            disabled={!conversationUrl}
+            target="_blank"
+          />
         </div>
       </ContentMessage>
     );
@@ -611,15 +611,14 @@ function FeedbackCard({
               <HandThumbDownIcon width={16} height={16} />
             )}
           </div>
-          {conversationUrl && (
-            <Button
-              variant="ghost"
-              size="xs"
-              href={conversationUrl}
-              icon={ExternalLinkIcon}
-              target="_blank"
-            />
-          )}
+          <Button
+            variant="ghost"
+            size="xs"
+            href={conversationUrl ?? ""}
+            icon={ExternalLinkIcon}
+            target="_blank"
+            disabled={!conversationUrl}
+          />
         </div>
       </div>
       <div className="ml-4 flex items-center gap-2">
