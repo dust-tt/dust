@@ -124,12 +124,11 @@ export const DustProdActionRegistry = createActionRegistry({
     config: {
       SEMANTIC_SEARCH: {
         data_sources: [],
-        // top k will probably need to be
-        // proportional to the number of documents
         top_k: 1,
         filter: {
           tags: null,
           timestamp: null,
+          parents: null,
         },
         use_cache: false,
         full_text: false,
@@ -142,7 +141,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "76b40f14fb",
       appHash:
-        "d06ec19c9196fdecda4c37f0f96c00343fcf401e0e9d206c1b12618292c6462a",
+        "5cf8b39da27d1b107c75af833d2ddec8d796ce919eefa10a1aa91779c9cbb33c",
       appSpaceId: PRODUCTION_DUST_APPS_SPACE_ID,
     },
     config: {
