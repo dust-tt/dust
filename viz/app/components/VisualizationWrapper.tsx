@@ -280,7 +280,7 @@ export function VisualizationWrapper({
   }
 
   return (
-    <div className="relative group/viz" style={{ fontFamily: "sans-serif" }}>
+    <div className="relative font-sans group/viz">
       <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
         <button
           onClick={handleScreenshotDownload}
