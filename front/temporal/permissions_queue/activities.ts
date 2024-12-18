@@ -32,14 +32,15 @@ export async function updateSpacePermissions({
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
+  const logger = mainLogger.child({ spaceId, workspaceId });
+
   const space = await SpaceResource.fetchById(auth, spaceId);
   if (!space) {
-    throw new Error("Space not found.");
+    logger.info("Space not found, cancelling activity.");
+    return;
   }
 
   assert(space.isRegular(), "Cannot update permissions for non-regular space.");
-
-  const logger = mainLogger.child({ spaceId, workspaceId });
 
   // Fetch all regular groups of the space.
   const spaceRegularGroups = space.groups.filter((g) => g.isRegular());
