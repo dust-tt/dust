@@ -18,7 +18,9 @@ type WorkspaceLookupResponse = {
 };
 
 type UserLookupResponse = {
-  status: "unknown" | "known";
+  user: {
+    email: string;
+  } | null;
 };
 
 const ExternalUserCodec = t.type({
@@ -43,6 +45,18 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<LookupResponseBody>>
 ): Promise<void> {
+  const { resource } = req.query;
+
+  if (typeof resource !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid path parameters.",
+      },
+    });
+  }
+
   if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,
@@ -73,7 +87,7 @@ async function handler(
       },
     });
   }
-  const { resource } = req.query;
+
   const resourceValidation = ResourceType.decode(resource);
   if (isLeft(resourceValidation)) {
     return apiError(req, res, {
@@ -127,17 +141,15 @@ async function handler(
 async function handleLookupUser(
   userLookup: t.TypeOf<typeof UserLookupSchema>
 ): Promise<UserLookupResponse> {
-  // Check if user exists
-  const user = await fetchUserWithAuth0Sub(userLookup.user.sub);
+  // Check if user exists and for pending invitations
+  const [user, pendingInvite] = await Promise.all([
+    fetchUserWithAuth0Sub(userLookup.user.sub),
+    getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.user.email),
+  ]);
 
-  // Check for pending invitations
-  const pendingInvite =
-    await getPendingMembershipInvitationWithWorkspaceForEmail(
-      userLookup.user.email
-    );
-
+  const isUserKnown = !!user || !!pendingInvite;
   return {
-    status: user || pendingInvite ? "known" : "unknown",
+    user: isUserKnown ? { email: userLookup.user.email } : null,
   };
 }
 
