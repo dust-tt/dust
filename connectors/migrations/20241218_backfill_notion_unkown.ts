@@ -23,7 +23,7 @@ makeScript({}, async ({ execute }, logger) => {
           parents: [folderId],
           parentId: null,
           title: "Orphaned Resources",
-          mimeType: "application/vnd.dust.notion.folder", // TODO: choose what we do here, this doesn't work since mimeType is not supported
+          mimeType: "application/vnd.dust.notion.page",
         });
         logger.info(
           `Upserted folder ${folderId} for connector ${connector.id}`

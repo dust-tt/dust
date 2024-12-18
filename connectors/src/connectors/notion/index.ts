@@ -77,7 +77,7 @@ async function upsertNotionUnknownFolder(connector: ConnectorResource) {
     parents: [folderId],
     parentId: null,
     title: "Orphaned Resources",
-    mimeType: "application/vnd.dust.notion.folder", // TODO: choose what we do here, this doesn't work since mimeType is not supported
+    mimeType: "application/vnd.dust.notion.page",
   });
 }
 
