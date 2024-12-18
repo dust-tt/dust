@@ -2202,21 +2202,27 @@ async fn tables_upsert(
         )
         .await
     {
-        Ok(table) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({ "table": table })),
-            }),
-        ),
-        Err(e) => {
-            return error_response(
+        Ok(table) => match state.search_store.index_table(table.clone()).await {
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({ "table": table })),
+                }),
+            ),
+            Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
-                "Failed to upsert table",
+                "Failed to index table",
                 Some(e),
-            )
-        }
+            ),
+        },
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert table",
+            Some(e),
+        ),
     }
 }
 
@@ -2890,23 +2896,29 @@ async fn folders_upsert(
         )
         .await
     {
-        Err(e) => {
-            return error_response(
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to upsert folder",
+            Some(e),
+        ),
+        Ok(folder) => match state.search_store.index_folder(folder.clone()).await {
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "folder": folder
+                    })),
+                }),
+            ),
+            Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
-                "Failed to upsert folder",
+                "Failed to index folder",
                 Some(e),
-            )
-        }
-        Ok(folder) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "folder": folder
-                })),
-            }),
-        ),
+            ),
+        },
     }
 }
 
@@ -3077,6 +3089,7 @@ async fn folders_delete(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct NodesSearchPayload {
     query: String,
     filter: Vec<DatasourceViewFilter>,
@@ -3573,6 +3586,7 @@ fn main() {
             post(databases_query_run),
         )
         .route("/sqlite_workers", delete(sqlite_workers_delete))
+
         // Folders
         .route(
             "/projects/:project_id/data_sources/:data_source_id/folders",

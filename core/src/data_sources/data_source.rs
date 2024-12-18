@@ -761,7 +761,7 @@ impl DataSource {
             .await?;
 
         // Upsert document in search index.
-        search_store.index_document(&document).await?;
+        search_store.index_document(document.clone()).await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)

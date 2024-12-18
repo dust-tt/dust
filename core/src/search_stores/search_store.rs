@@ -8,8 +8,11 @@ use elasticsearch::{
 use serde_json::json;
 use url::Url;
 
-use crate::data_sources::node::Node;
-use crate::{data_sources::data_source::Document, utils};
+use crate::{data_sources::node::Node, databases::table::Table};
+use crate::{
+    data_sources::{data_source::Document, folder::Folder},
+    utils,
+};
 use tracing::{error, info};
 
 #[derive(serde::Deserialize)]
@@ -32,7 +35,10 @@ pub trait SearchStore {
         filter: Vec<DatasourceViewFilter>,
         options: Option<NodesSearchOptions>,
     ) -> Result<Vec<Node>>;
-    async fn index_document(&self, document: &Document) -> Result<()>;
+    async fn index_document(&self, document: Document) -> Result<()>;
+    async fn index_table(&self, table: Table) -> Result<()>;
+    async fn index_folder(&self, folder: Folder) -> Result<()>;
+    async fn index_node(&self, node: Node) -> Result<()>;
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
 }
 
@@ -76,24 +82,38 @@ const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
-    async fn index_document(&self, document: &Document) -> Result<()> {
-        let node = Node::from(document.clone());
+    async fn index_document(&self, document: Document) -> Result<()> {
+        let node = Node::from(document);
+        self.index_node(node).await
+    }
 
+    async fn index_table(&self, table: Table) -> Result<()> {
+        let node = Node::from(table);
+        self.index_node(node).await
+    }
+
+    async fn index_folder(&self, folder: Folder) -> Result<()> {
+        let node = Node::from(folder);
+        self.index_node(node).await
+    }
+
+    async fn index_node(&self, node: Node) -> Result<()> {
         // todo(kw-search): fail on error
         let now = utils::now();
         match self
             .client
-            .index(IndexParts::IndexId(NODES_INDEX_NAME, &document.document_id))
+            .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.node_id))
             .timeout("200ms")
-            .body(node)
+            .body(node.clone())
             .send()
             .await
         {
             Ok(_) => {
                 info!(
                     duration = utils::now() - now,
-                    document_id = document.document_id,
-                    "[ElasticsearchSearchStore] Indexed document"
+                    node_id = node.node_id,
+                    "[ElasticsearchSearchStore] Indexed {}",
+                    node.node_type.to_string()
                 );
                 Ok(())
             }
@@ -101,8 +121,9 @@ impl SearchStore for ElasticsearchSearchStore {
                 error!(
                     error = %e,
                     duration = utils::now() - now,
-                    document_id = document.document_id,
-                    "[ElasticsearchSearchStore] Failed to index document"
+                    node_id = node.node_id,
+                    "[ElasticsearchSearchStore] Failed to index {}",
+                    node.node_type.to_string()
                 );
                 Ok(())
             }
@@ -118,12 +139,14 @@ impl SearchStore for ElasticsearchSearchStore {
         // First, collect all datasource_ids and their corresponding view_filters
         let mut filter_conditions = Vec::new();
         for f in filter {
+            let mut must_clause = Vec::new();
+            must_clause.push(json!({ "term": { "data_source_id": f.data_source_id } }));
+            if !f.view_filter.is_empty() {
+                must_clause.push(json!({ "terms": { "parents": f.view_filter } }));
+            }
             filter_conditions.push(json!({
                 "bool": {
-                    "must": [
-                        { "term": { "data_source_id": f.data_source_id } },
-                        { "terms": { "parents": f.view_filter } }
-                    ]
+                    "must": must_clause
                 }
             }));
         }
