@@ -49,6 +49,9 @@ function nodeIdFromNotionId(notionId: string) {
 }
 
 function notionIdFromNodeId(nodeId: string) {
+  if (nodeId.startsWith("notion-unknown-")) {
+    return "unknown";
+  }
   return _.last(nodeId.split("notion-"))!;
 }
 
