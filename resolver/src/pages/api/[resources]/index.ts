@@ -17,6 +17,8 @@ export type UserSearchResponseBody = {
   regionDomain: string | null;
 };
 
+const ResourceType = t.literal("user");
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<UserSearchResponseBody>>,
@@ -27,6 +29,28 @@ export default async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "Only POST requests are supported",
+      },
+    });
+  }
+  const { resource } = req.query;
+
+  if (typeof resource !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid path parameters.",
+      },
+    });
+  }
+
+  const resourceValidation = ResourceType.decode(resource);
+  if (isLeft(resourceValidation)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid resource type. Must be 'user' or 'workspace'",
       },
     });
   }
