@@ -15,7 +15,6 @@ const Home: NextPageWithLayout = () => {
   );
 };
 
-// Optional: override the default layout for this page
 Home.getLayout = (page: ReactElement) => {
   return <AppLayout>{page}</AppLayout>;
 };

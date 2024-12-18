@@ -3,7 +3,6 @@ import type { AppProps } from "next/app";
 import AppLayout from "@app/src/components/Layout";
 import React from "react";
 
-// Define types for pages with layouts
 export type NextPageWithLayout<P = unknown, IP = P> = NextPage<P, IP> & {
   getLayout?: (page: React.ReactElement, pageProps: P) => React.ReactNode;
 };
