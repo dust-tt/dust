@@ -5,6 +5,7 @@ import React from "react";
 import {
   Citation,
   CitationDescription,
+  CitationGrid,
   CitationIcons,
   CitationIndex,
   CitationTitle,
@@ -26,37 +27,28 @@ interface PaginatedCitationsGridProps {
 
 export function PaginatedCitationsGrid({
   items,
-  maxItemsPerPage = 9,
+  maxItemsPerPage = 12,
 }: PaginatedCitationsGridProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: maxItemsPerPage,
   });
-  const cols = 3;
-  const rows = Math.ceil(Math.min(maxItemsPerPage, items.length) / cols);
 
   if (items.length === 0) {
     return null;
   }
 
   const { pageIndex, pageSize } = pagination;
-  // Calculate start index.
   const startIndex = pageIndex * pageSize;
-  // Slice items for current page.
+
   const paginatedItems = items.slice(startIndex, startIndex + pageSize);
 
   return (
     <div className="s-flex s-w-full s-flex-col">
-      <div
-        className={classNames(
-          "s-grid s-w-full s-gap-2 s-overflow-x-hidden s-py-1",
-          `s-grid-cols-${cols}`,
-          `s-grid-rows-${rows}`
-        )}
-      >
+      <CitationGrid>
         {paginatedItems.map((d, idx) => {
           return (
-            <Citation href={d.href}>
+            <Citation href={d.href} variant="primary">
               <CitationIcons>
                 <CitationIndex>{idx}</CitationIndex>
                 {d.icon}
@@ -66,7 +58,7 @@ export function PaginatedCitationsGrid({
             </Citation>
           );
         })}
-      </div>
+      </CitationGrid>
 
       <div
         className={classNames(
