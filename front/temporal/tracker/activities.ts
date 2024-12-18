@@ -9,7 +9,7 @@ import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 import _ from "lodash";
 
 import config from "@app/lib/api/config";
-import { sendTrackerEmail } from "@app/lib/api/tracker";
+import { processTrackerNotification } from "@app/lib/api/tracker";
 import { Authenticator } from "@app/lib/auth";
 import { getDocumentDiff } from "@app/lib/document_upsert_hooks/hooks/data_source_helpers";
 import { callDocTrackerRetrievalAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_retrieval";
@@ -360,7 +360,7 @@ export const getTrackerIdsToNotifyActivity = async (
     {
       results,
     },
-    "Fetching trackers to notify."
+    "[Tracker] Fetching trackers to notify."
   );
   return results;
 };
@@ -385,40 +385,15 @@ export const processTrackerNotificationWorkflowActivity = async ({
     currentRunMs,
   });
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const tracker =
-    await TrackerConfigurationResource.fetchWithGenerationsToConsume(
-      auth,
-      trackerId
-    );
-  if (!tracker || !tracker.recipients?.length) {
-    localLogger.error(
-      {
-        trackerId,
-      },
-      "[Tracker] Tracker not found or found without recipient. Should not be possible from the UI."
-    );
-    return;
-  }
-
   localLogger.info(
-    `[Tracker] Processing tracker ${trackerId} for workspace ${workspaceId}.`
+    `[Tracker] Processing tracker ${trackerId} for workspace ${workspaceId}.\n\n`
   );
 
-  // Send the tracker email(s).
-  const generations = tracker.generations || [];
-  await sendTrackerEmail({
-    name: tracker.name,
-    recipients: tracker.recipients,
-    generations,
-  });
-
-  // Consume the tracker & associated generations.
-  await TrackerConfigurationResource.consumeGenerations({
-    auth,
+  await processTrackerNotification({
     trackerId,
-    generationIds: generations.map((g) => g.id),
+    workspaceId,
     currentRunMs,
+    localLogger,
   });
 
   localLogger.info(

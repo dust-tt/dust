@@ -57,12 +57,13 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     model: ModelStatic<TrackerConfigurationModel>,
     blob: Attributes<TrackerConfigurationModel> & {
       dataSourceConfigurations: TrackerDataSourceConfigurationModel[];
+      generations: TrackerGenerationModel[];
     },
     space: SpaceResource
   ) {
     super(TrackerConfigurationResource.model, blob, space);
     this.dataSourceConfigurations = blob.dataSourceConfigurations;
-    this.generations = [];
+    this.generations = blob.generations;
   }
 
   static async makeNew(
@@ -133,6 +134,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         {
           ...tracker.get(),
           dataSourceConfigurations,
+          generations: [],
         },
         space
       );
@@ -265,13 +267,12 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     generationIds: ModelId[];
     currentRunMs: number;
   }): Promise<Result<number, Error>> {
-    const tracker = await TrackerConfigurationResource.fetchById(
-      auth,
-      makeSId("tracker", {
+    const [tracker] = await this.baseFetch(auth, {
+      where: {
         id: trackerId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      })
-    );
+        status: "active",
+      },
+    });
 
     if (!tracker) {
       return new Err(new Error("Tracker not found"));
@@ -403,6 +404,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
           where: {
             consumedAt: null,
           },
+          required: false,
         },
       ],
     });
@@ -621,7 +623,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         .map(dataSourceToJSON),
     };
 
-    if (this.generations.length) {
+    if (this.generations?.length) {
       tracker.generations = this.generations.map((g) => {
         return {
           id: g.id,
