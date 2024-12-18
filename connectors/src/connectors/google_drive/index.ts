@@ -25,6 +25,7 @@ import {
 } from "@connectors/connectors/google_drive/lib";
 import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import { getSharedWithMeFolderId } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getGoogleDriveEntityDocumentId,
   getPermissionViewType,
@@ -48,7 +49,9 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -128,6 +131,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       },
       googleDriveConfigurationBlob
     );
+
+    await upsertSharedWithMeFolder(connector);
 
     // We mark it artificially as sync succeeded as google drive is created empty.
     await syncSucceeded(connector.id);
