@@ -30,7 +30,7 @@ export function ConversationMessageHeader({
       <div className="flex items-center gap-2">
         <div
           className={cn(
-            "s-pb-1 s-text-base s-font-medium s-text-element-900",
+            "s-pb-1 s-text-base s-font-medium s-text-foreground",
             size === "compact" ? "s-text-sm" : "s-text-base"
           )}
         >

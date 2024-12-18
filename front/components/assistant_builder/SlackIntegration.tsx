@@ -177,7 +177,7 @@ export function SlackAssistantDefaultManager({
                 <SlackLogo className="h-8 w-8" />
               </div>
 
-              <div className="text-sm font-normal text-element-900">
+              <div className="text-sm font-normal text-foreground">
                 Set this assistant as the default assistant on one or several of
                 your Slack channels. It will answer by default when the{" "}
                 <span className="font-bold">{assistantHandle}</span> Slack bot

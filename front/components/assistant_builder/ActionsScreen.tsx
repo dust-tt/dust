@@ -646,8 +646,8 @@ function ActionCard({
       }
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full gap-1 font-medium text-element-900">
-          <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
+        <div className="flex w-full gap-1 font-medium text-foreground">
+          <Icon visual={spec.cardIcon} size="sm" className="text-foreground" />
           <div className="w-full truncate">{actionDisplayName(action)}</div>
         </div>
         {isLegacyConfig ? (
@@ -1121,7 +1121,7 @@ function Capabilities({
           onCheckedChange={enabled ? onDisable : onEnable}
         />
         <div>
-          <div className="flex text-base font-semibold text-element-900">
+          <div className="flex text-base font-semibold text-foreground">
             {name}
           </div>
           <div className="text-base text-element-700">{description}</div>

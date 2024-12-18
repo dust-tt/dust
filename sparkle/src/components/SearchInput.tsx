@@ -57,7 +57,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             <div
               className={cn(
                 "s-px-2",
-                disabled ? "s-text-element-600" : "s-text-element-900"
+                disabled ? "s-text-element-600" : "s-text-foreground"
               )}
             >
               <Icon

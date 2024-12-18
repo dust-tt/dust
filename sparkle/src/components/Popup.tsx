@@ -57,7 +57,7 @@ export function Popup({
             </div>
           )}
         </div>
-        <div className="s-text-sm s-font-normal s-text-element-900">
+        <div className="s-text-sm s-font-normal s-text-foreground">
           {description}
         </div>
         <div className="s-self-center">

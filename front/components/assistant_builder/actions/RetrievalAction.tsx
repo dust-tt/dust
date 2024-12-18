@@ -190,7 +190,7 @@ export function ActionRetrievalExhaustive({
         <div
           className={classNames(
             "text-sm font-semibold",
-            timeFrameDisabled ? "text-slate-400" : "text-element-900"
+            timeFrameDisabled ? "text-slate-400" : "text-foreground"
           )}
         >
           Only include data from the last

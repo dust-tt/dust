@@ -19,7 +19,7 @@ export function ActionDetailsWrapper({
       <Collapsible.Button>
         <div className="flex flex-row items-center gap-x-2">
           <Icon className="text-brand" size="xs" visual={visual} />
-          <span className="text-sm font-bold text-element-900">
+          <span className="text-sm font-bold text-foreground">
             {actionName}
           </span>
         </div>

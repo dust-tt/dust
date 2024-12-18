@@ -221,7 +221,7 @@ export function InviteEmailModal({
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <div className="font-semibold text-element-900">Role:</div>
+                <div className="font-semibold text-foreground">Role:</div>
                 <RoleDropDown
                   selectedRole={invitationRole}
                   onChange={setInvitationRole}

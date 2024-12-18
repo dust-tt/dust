@@ -96,7 +96,7 @@ export function SpaceSelector({
                         className={classNames(
                           "font-bold",
                           "align-middle",
-                          isDisabled ? "text-element-700" : "text-element-900"
+                          isDisabled ? "text-element-700" : "text-foreground"
                         )}
                       >
                         {getSpaceName(space)}

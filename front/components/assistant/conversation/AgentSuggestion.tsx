@@ -132,6 +132,7 @@ export function AgentSuggestion({
                 title={agent.name}
                 pictureUrl={agent.pictureUrl}
                 onClick={() => handleSelectSuggestion(agent)}
+                variant="secondary"
                 action={
                   <AssistantCardMore
                     onClick={() => showAssistantDetails(agent)}
