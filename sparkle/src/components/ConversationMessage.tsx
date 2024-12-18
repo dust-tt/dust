@@ -67,8 +67,7 @@ export function ConversationMessage({
       <ConversationMessageContent citations={citations} size={size}>
         {children}
       </ConversationMessageContent>
-
-      <div className="s-flex s-justify-end s-gap-2">{buttons}</div>
+      {buttons && <div className="s-flex s-justify-end s-gap-2">{buttons}</div>}
     </div>
   );
 }
