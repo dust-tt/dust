@@ -108,7 +108,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
 
   // Randomize the delay to avoid all incremental syncs starting at the same time, especially when restarting all via cli.
-  const delay = Math.floor(Math.random() * 60);
+  const delay = Math.floor(Math.random() * 5);
 
   try {
     await terminateWorkflow(workflowId);
