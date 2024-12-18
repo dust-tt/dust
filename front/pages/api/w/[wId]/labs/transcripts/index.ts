@@ -1,4 +1,4 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { CredentialsProvider, WithAPIErrorResponse } from "@dust-tt/types";
 import { OAuthAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -23,6 +23,12 @@ export const acceptableTranscriptProvidersCodec = t.union([
   t.literal("gong"),
   t.literal("modjo"),
 ]);
+
+function isCredentialsProvider(
+  provider: string
+): provider is CredentialsProvider {
+  return ["modjo"].includes(provider as CredentialsProvider);
+}
 
 const BaseConfigurationSchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
@@ -146,9 +152,9 @@ async function handler(
           });
         }
 
-        if (provider === "modjo") {
+        if (isCredentialsProvider(provider)) {
           const oAuthRes = await oauthApi.postCredentials({
-            provider: "modjo",
+            provider,
             userId: user.sId,
             workspaceId: owner.sId,
             credentials: {
