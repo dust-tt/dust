@@ -254,6 +254,50 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     });
   }
 
+  static async consumeGenerations({
+    auth,
+    trackerId,
+    generationIds,
+    currentRunMs,
+  }: {
+    auth: Authenticator;
+    trackerId: ModelId;
+    generationIds: ModelId[];
+    currentRunMs: number;
+  }): Promise<Result<number, Error>> {
+    const tracker = await TrackerConfigurationResource.fetchById(
+      auth,
+      makeSId("tracker", {
+        id: trackerId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    );
+
+    if (!tracker) {
+      return new Err(new Error("Tracker not found"));
+    }
+
+    return frontSequelize.transaction(async (transaction) => {
+      await tracker.update(
+        { lastNotifiedAt: new Date(currentRunMs) },
+        transaction
+      );
+      // We don't want to consume generations that were created after the notification was sent.
+      // So we cannot filter on consumedAt being null and have to provide the IDs explicitly.
+      const consumedCount = await TrackerGenerationModel.update(
+        { consumedAt: new Date(currentRunMs) },
+        {
+          where: {
+            id: generationIds,
+            consumedAt: null,
+          },
+          transaction,
+        }
+      );
+      return new Ok(consumedCount[0]);
+    });
+  }
+
   // Fetching.
 
   async fetchMaintainedScope(): Promise<TrackerMaintainedScopeType> {
