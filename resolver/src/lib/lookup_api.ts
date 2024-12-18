@@ -8,7 +8,7 @@ type ExternalUser = {
   sub: string;
 };
 
-type UserLookupResponse = {
+export type UserLookupResponse = {
   user: {
     email: string;
   } | null;

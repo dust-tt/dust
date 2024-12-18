@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import { apiError } from "@app/logger/withlogging";
 import { RegionLookupClient } from "@app/src/lib/lookup_api";
 import { WithAPIErrorResponse } from "@dust-tt/types";
+import { config, isValidRegion } from "@app/src/lib/config";
 
 const UserSearchPostBodySchema = t.type({
   email: t.string,
@@ -13,34 +14,50 @@ const UserSearchPostBodySchema = t.type({
 });
 
 export type UserSearchResponseBody = {
-  success: boolean;
+  regionUrl: string | null;
 };
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<UserSearchResponseBody>>,
 ) {
-  const client = new RegionLookupClient("test", {
-    "europe-west1": "https://api.eu.dust.tt",
-    "us-central1": "https://api.us.dust.tt",
-  });
-  switch (req.method) {
-    case "POST":
-      const bodyValidation = UserSearchPostBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
-        });
-      }
-      console.log("HEY");
-      const result = await client.lookupUser(bodyValidation.right);
-      console.log(result);
+  if (req.method !== "POST") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "method_not_supported_error",
+        message: "Only POST requests are supported",
+      },
+    });
   }
-  res.status(200).json({ success: true });
-  return;
+
+  const client = new RegionLookupClient(
+    config.getLookupApiSecret(),
+    config.getRegionUrls()
+  );
+
+  const bodyValidation = UserSearchPostBodySchema.decode(req.body);
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid request body: ${pathError}`,
+      },
+    });
+  }
+
+  const response = await client.lookupUser(bodyValidation.right);
+  for (const [region, userLookupResponse] of Object.entries(response)) {
+    if (userLookupResponse.user?.email && isValidRegion(region)) {
+      return res.status(200).json({
+        regionUrl: config.getRegionUrl(region),
+      });
+    }
+  }
+
+  return res.status(200).json({
+    regionUrl: null
+  });
 }
