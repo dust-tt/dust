@@ -13,6 +13,10 @@ export function getDocumentId(driveFileId: string): string {
   return `gdrive-${driveFileId}`;
 }
 
+export function getDriveId(documentId: string): string {
+  return documentId.replace(/^gdrive-/, "");
+}
+
 async function _getMyDriveId(auth_credentials: OAuth2Client) {
   const drive = await getDriveClient(auth_credentials);
   let myDriveRes: GaxiosResponse<drive_v3.Schema$File>;
