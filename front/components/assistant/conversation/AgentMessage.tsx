@@ -4,7 +4,6 @@ import type {
 } from "@dust-tt/sparkle";
 import { CitationIndex } from "@dust-tt/sparkle";
 import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
-import { Checkbox } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -85,13 +84,9 @@ function cleanUpCitations(message: string): string {
 export const FeedbackSelectorPopoverContent = ({
   owner,
   agentMessageToRender,
-  isConversationShared,
-  setIsConversationShared,
 }: {
   owner: WorkspaceType;
   agentMessageToRender: AgentMessageType;
-  isConversationShared: boolean;
-  setIsConversationShared: (value: boolean) => void;
 }) => {
   const { agentLastAuthor } = useAgentConfigurationLastAuthor({
     workspaceId: owner.sId,
@@ -114,18 +109,6 @@ export const FeedbackSelectorPopoverContent = ({
           )}
           <Page.P variant="primary">
             {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
-          </Page.P>
-        </div>
-        <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-          <Checkbox
-            checked={isConversationShared}
-            onCheckedChange={(value) => {
-              setIsConversationShared(!!value);
-            }}
-            className="text-primary-500"
-          />
-          <Page.P variant="secondary">
-            By clicking, you accept to share your full conversation
           </Page.P>
         </div>
       </>
@@ -173,8 +156,6 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
-
-  const [isConversationShared, setIsConversationShared] = useState(false);
 
   const shouldStream = (() => {
     if (message.status !== "created") {
@@ -417,11 +398,9 @@ export function AgentMessage({
       <FeedbackSelectorPopoverContent
         owner={owner}
         agentMessageToRender={agentMessageToRender}
-        isConversationShared={isConversationShared}
-        setIsConversationShared={setIsConversationShared}
       />
     ),
-    [owner, agentMessageToRender, isConversationShared]
+    [owner, agentMessageToRender]
   );
 
   const retryHandler = useCallback(

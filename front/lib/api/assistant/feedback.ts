@@ -29,6 +29,7 @@ export type AgentMessageFeedbackType = {
   userId: number;
   thumbDirection: AgentMessageFeedbackDirection;
   content: string | null;
+  isConversationShared: boolean;
   agentConfigurationVersion: number;
   agentConfigurationId: string;
   createdAt: Date;
@@ -75,6 +76,7 @@ export async function getAgentConfigurationFeedbacks({
         userId: feedback.userId,
         thumbDirection: feedback.thumbDirection,
         content: feedback.content,
+        isConversationShared: feedback.isConversationShared,
         agentConfigurationVersion: feedback.agentConfigurationVersion,
         agentConfigurationId: feedback.agentConfigurationId,
         createdAt: feedback.createdAt,
@@ -156,6 +158,7 @@ export async function getConversationFeedbacksForUser(
         userId: feedback.userId,
         thumbDirection: feedback.thumbDirection,
         content: feedback.content,
+        isConversationShared: feedback.isConversationShared,
       } as AgentMessageFeedbackType;
     });
 
@@ -174,12 +177,14 @@ export async function createOrUpdateMessageFeedback(
     user,
     thumbDirection,
     content,
+    isConversationShared,
   }: {
     messageId: string;
     conversation: ConversationType | ConversationWithoutContentType;
     user: UserType;
     thumbDirection: AgentMessageFeedbackDirection;
     content?: string;
+    isConversationShared: boolean;
   }
 ): Promise<boolean | null> {
   const owner = auth.workspace();
@@ -241,7 +246,8 @@ export async function createOrUpdateMessageFeedback(
   if (feedback) {
     const updatedFeedback = await feedback.updateContentAndThumbDirection(
       content ?? "",
-      thumbDirection
+      thumbDirection,
+      isConversationShared
     );
 
     return updatedFeedback.isOk();
@@ -254,7 +260,7 @@ export async function createOrUpdateMessageFeedback(
       userId: user.id,
       thumbDirection,
       content,
-      isConversationShared: false,
+      isConversationShared,
     });
     return newFeedback !== null;
   }

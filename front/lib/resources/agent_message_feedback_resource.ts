@@ -143,13 +143,15 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   async updateContentAndThumbDirection(
     content: string,
-    thumbDirection: AgentMessageFeedbackDirection
+    thumbDirection: AgentMessageFeedbackDirection,
+    isConversationShared: boolean
   ): Promise<Result<undefined, Error>> {
     try {
       await this.model.update(
         {
           content,
           thumbDirection,
+          isConversationShared,
         },
         {
           where: {
