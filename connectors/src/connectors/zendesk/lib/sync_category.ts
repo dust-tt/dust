@@ -7,9 +7,9 @@ import {
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  deleteFolderNode,
-  deleteFromDataSource,
-  upsertFolderNode,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
   ZendeskArticleResource,
@@ -39,7 +39,7 @@ export async function deleteCategory({
   await concurrentExecutor(
     articles,
     (article) =>
-      deleteFromDataSource(
+      deleteDataSourceDocument(
         dataSourceConfig,
         getArticleInternalId({ connectorId, articleId: article.articleId })
       ),
@@ -52,7 +52,7 @@ export async function deleteCategory({
   });
   // deleting the folder in data_sources_folders (core)
   const folderId = getCategoryInternalId({ connectorId, brandId, categoryId });
-  await deleteFolderNode({ dataSourceConfig, folderId });
+  await deleteDataSourceFolder({ dataSourceConfig, folderId });
   // deleting the category stored in the db
   await ZendeskCategoryResource.deleteByCategoryId({ connectorId, categoryId });
 }
@@ -100,7 +100,7 @@ export async function syncCategory({
   }
   // upserting a folder to data_sources_folders (core)
   const parents = categoryInDb.getParentInternalIds(connectorId);
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: parents[0],
     parents,

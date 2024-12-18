@@ -15,10 +15,10 @@ import {
   getHelpCenterInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import type { IntercomHelpCenter } from "@connectors/lib/models/intercom";
 import {
@@ -102,7 +102,7 @@ export async function deleteCollectionWithChildren({
         article.articleId
       );
       await Promise.all([
-        deleteFromDataSource(dataSourceConfig, dsArticleId),
+        deleteDataSourceDocument(dataSourceConfig, dsArticleId),
         article.destroy(),
       ]);
     })
@@ -370,7 +370,7 @@ export async function upsertArticle({
       helpCenterId,
     });
 
-    await upsertToDatasource({
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
       documentContent: renderedPage,

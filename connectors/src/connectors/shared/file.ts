@@ -15,7 +15,7 @@ import {
 import { parseAndStringifyCsv, slugify } from "@dust-tt/types";
 
 import { apiConfig } from "@connectors/lib/api/config";
-import { upsertTableFromCsv } from "@connectors/lib/data_sources";
+import { upsertDataSourceTableFromCsv } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -65,7 +65,7 @@ export async function handleCsvFile({
 
   try {
     const stringifiedContent = await parseAndStringifyCsv(tableCsv);
-    await upsertTableFromCsv({
+    await upsertDataSourceTableFromCsv({
       dataSourceConfig,
       tableId,
       tableName,

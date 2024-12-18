@@ -9,8 +9,8 @@ import {
 import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  deleteTable,
-  upsertTableFromConnectors,
+  deleteDataSourceTable,
+  upsertDataSourceRemoteTable,
 } from "@connectors/lib/data_sources";
 import {
   RemoteDatabaseModel,
@@ -81,7 +81,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     await syncFailed(connectorId, "remote_database_connection_not_readonly");
 
     for (const t of allTables) {
-      await deleteTable({
+      await deleteDataSourceTable({
         dataSourceConfig: dataSourceConfigFromConnector(connector),
         tableId: t.internalId,
       });
@@ -158,7 +158,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           });
         }
 
-        await upsertTableFromConnectors({
+        await upsertDataSourceRemoteTable({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           tableId: internalId,
           tableName: internalId,
@@ -186,7 +186,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
       !internalIdsOnSnowflake.has(t.internalId)
     ) {
       if (t.lastUpsertedAt) {
-        await deleteTable({
+        await deleteDataSourceTable({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           tableId: t.internalId,
         });

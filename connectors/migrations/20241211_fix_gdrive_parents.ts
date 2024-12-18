@@ -5,10 +5,10 @@ import { Op } from "sequelize";
 import { getDocumentId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  getFolderNode,
-  getTable,
-  updateTableParentsField,
-  upsertFolderNode,
+  getDataSourceFolder,
+  getDataSourceTable,
+  updateDataSourceTableParents,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
   GoogleDriveFiles,
@@ -106,7 +106,7 @@ async function migrate({
         parents.unshift(driveFileId);
 
         if (file.mimeType === "application/vnd.google-apps.folder") {
-          const folder = await getFolderNode({
+          const folder = await getDataSourceFolder({
             dataSourceConfig,
             folderId: internalId,
           });
@@ -119,7 +119,7 @@ async function migrate({
 
             if (execute) {
               // upsert repository as folder
-              await upsertFolderNode({
+              await upsertDataSourceFolder({
                 dataSourceConfig,
                 folderId: file.dustFileId,
                 parents: newParents,
@@ -131,7 +131,7 @@ async function migrate({
         } else if (file.mimeType === "text/csv") {
           const tableId = internalId;
           parents.unshift(...parents.map((id) => getDocumentId(id)));
-          const table = await getTable({ dataSourceConfig, tableId });
+          const table = await getDataSourceTable({ dataSourceConfig, tableId });
           if (table) {
             if (table.parents.join("/") !== parents.join("/")) {
               childLogger.info(
@@ -143,7 +143,7 @@ async function migrate({
                 "Update parents for table"
               );
               if (execute) {
-                await updateTableParentsField({
+                await updateDataSourceTableParents({
                   dataSourceConfig,
                   tableId,
                   parents,
@@ -193,7 +193,7 @@ async function migrate({
         parents.unshift(...parents.map((id) => getDocumentId(id)));
         parents.unshift(tableId);
 
-        const table = await getTable({ dataSourceConfig, tableId });
+        const table = await getDataSourceTable({ dataSourceConfig, tableId });
         if (table) {
           if (table.parents.join("/") !== parents.join("/")) {
             childLogger.info(
@@ -205,7 +205,7 @@ async function migrate({
               "Update parents for table"
             );
             if (execute) {
-              await updateTableParentsField({
+              await updateDataSourceTableParents({
                 dataSourceConfig,
                 tableId,
                 parents,

@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -76,7 +76,7 @@ async function updateParentsFieldForConnector(
           return true;
         }
 
-        return updateDocumentParentsField({
+        return updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: node.internalId,
           parents,

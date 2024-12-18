@@ -35,10 +35,10 @@ import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals
 import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -286,7 +286,7 @@ export async function githubUpsertIssueActivity(
   }
 
   // TODO: last commentor, last comment date, issue labels (as tags)
-  await upsertToDatasource({
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: renderedIssue,
@@ -470,7 +470,7 @@ export async function githubUpsertDiscussionActivity(
     `updatedAt:${new Date(discussion.updatedAt).getTime()}`,
   ];
 
-  await upsertToDatasource({
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: renderedDiscussion,
@@ -696,7 +696,11 @@ async function deleteIssue(
 
   const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   logger.info({ documentId }, "Deleting GitHub issue from Dust data source.");
-  await deleteFromDataSource(dataSourceConfig, documentId, logger.bindings());
+  await deleteDataSourceDocument(
+    dataSourceConfig,
+    documentId,
+    logger.bindings()
+  );
 
   logger.info("Deleting GitHub issue from database.");
   await GithubIssue.destroy({
@@ -735,7 +739,11 @@ async function deleteDiscussion(
     { documentId },
     "Deleting GitHub discussion from Dust data source."
   );
-  await deleteFromDataSource(dataSourceConfig, documentId, logger.bindings());
+  await deleteDataSourceDocument(
+    dataSourceConfig,
+    documentId,
+    logger.bindings()
+  );
 
   logger.info({ documentId }, "Deleting GitHub discussion from database.");
   await GithubDiscussion.destroy({
@@ -796,7 +804,7 @@ async function garbageCollectCodeSync(
     filesToDelete.forEach((f) =>
       fq.add(async () => {
         Context.current().heartbeat();
-        await deleteFromDataSource(
+        await deleteDataSourceDocument(
           dataSourceConfig,
           f.documentId,
           logger.bindings()
@@ -1087,7 +1095,7 @@ export async function githubCodeSyncActivity({
           ];
 
           // Time to upload the file to the data source.
-          await upsertToDatasource({
+          await upsertDataSourceDocument({
             dataSourceConfig,
             documentId: f.documentId,
             documentContent: formatCodeContentForUpsert(f.sourceUrl, content),

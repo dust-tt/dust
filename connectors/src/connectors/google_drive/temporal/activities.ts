@@ -25,9 +25,9 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  deleteFolderNode,
-  deleteFromDataSource,
-  upsertFolderNode,
+  deleteDataSourceDocument,
+  deleteDataSourceFolder,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
@@ -480,7 +480,7 @@ export async function incrementalSync(
 
         const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
 
-        await upsertFolderNode({
+        await upsertDataSourceFolder({
           dataSourceConfig,
           folderId: getDocumentId(driveFile.id),
           parents,
@@ -766,7 +766,7 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
   ) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
+    await deleteDataSourceDocument(dataSourceConfig, googleDriveFile.dustFileId);
   }
   const folder = await GoogleDriveFolders.findOne({
     where: {
@@ -783,7 +783,7 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
   });
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  await deleteFolderNode({
+  await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: googleDriveFile.dustFileId,
   });
@@ -820,7 +820,7 @@ export async function markFolderAsVisited(
 
   const parents = parentGoogleIds.map((parent) => getDocumentId(parent));
 
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: getDocumentId(file.id),
     parents,

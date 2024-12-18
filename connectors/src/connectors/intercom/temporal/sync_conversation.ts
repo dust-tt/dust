@@ -16,10 +16,10 @@ import {
 } from "@connectors/connectors/intercom/lib/utils";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import {
   IntercomConversation,
@@ -75,7 +75,7 @@ export async function deleteConversation({
     conversationId
   );
   await Promise.all([
-    deleteFromDataSource(dataSourceConfig, dsConversationId),
+    deleteDataSourceDocument(dataSourceConfig, dsConversationId),
     IntercomConversation.destroy({
       where: {
         connectorId,
@@ -305,7 +305,7 @@ export async function syncConversation({
   }
   parents.push(getTeamsInternalId(connectorId));
 
-  await upsertToDatasource({
+  await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
     documentContent: renderedPage,

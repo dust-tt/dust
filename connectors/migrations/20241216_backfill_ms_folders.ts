@@ -3,7 +3,10 @@ import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { getFolderNode, upsertFolderNode } from "@connectors/lib/data_sources";
+import {
+  getDataSourceFolder,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import {} from "@connectors/lib/models/google_drive";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import type { Logger } from "@connectors/logger/logger";
@@ -89,7 +92,7 @@ async function backfillFolder({
         }
         parents.unshift(internalId);
 
-        const folder = await getFolderNode({
+        const folder = await getDataSourceFolder({
           dataSourceConfig,
           folderId: internalId,
         });
@@ -101,7 +104,7 @@ async function backfillFolder({
 
           if (execute) {
             // upsert repository as folder
-            await upsertFolderNode({
+            await upsertDataSourceFolder({
               dataSourceConfig,
               folderId: file.internalId,
               parents,

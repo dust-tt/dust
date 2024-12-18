@@ -8,10 +8,10 @@ import type {
 } from "@connectors/@types/node-zendesk";
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
@@ -37,7 +37,7 @@ export async function deleteTicket({
     { ...loggerArgs, connectorId, ticketId },
     "[Zendesk] Deleting ticket."
   );
-  await deleteFromDataSource(
+  await deleteDataSourceDocument(
     dataSourceConfig,
     getTicketInternalId({ connectorId, ticketId })
   );
@@ -209,7 +209,7 @@ ${comments
       ticketId: ticket.id,
     });
 
-    await upsertToDatasource({
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
       documentContent,

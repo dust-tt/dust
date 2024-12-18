@@ -8,10 +8,10 @@ import type {
 } from "@connectors/@types/node-zendesk";
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
-  deleteFromDataSource,
+  deleteDataSourceDocument,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  upsertToDatasource,
+  upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
@@ -33,7 +33,7 @@ export async function deleteArticle(
     { ...loggerArgs, connectorId, articleId },
     "[Zendesk] Deleting article."
   );
-  await deleteFromDataSource(
+  await deleteDataSourceDocument(
     dataSourceConfig,
     getArticleInternalId({ connectorId, articleId })
   );
@@ -151,7 +151,7 @@ export async function syncArticle({
       articleId: article.id,
     });
 
-    await upsertToDatasource({
+    await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
       documentContent,

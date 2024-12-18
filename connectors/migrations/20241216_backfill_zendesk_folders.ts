@@ -3,7 +3,7 @@ import { makeScript } from "scripts/helpers";
 import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertFolderNode } from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskBrandResource,
@@ -29,7 +29,7 @@ makeScript({}, async ({ execute }, logger) => {
             connectorId,
             brandId: brand.brandId,
           });
-          await upsertFolderNode({
+          await upsertDataSourceFolder({
             dataSourceConfig,
             folderId: brandInternalId,
             parents: [brandInternalId],
@@ -37,7 +37,7 @@ makeScript({}, async ({ execute }, logger) => {
           });
 
           const helpCenterNode = brand.getHelpCenterContentNode(connectorId);
-          await upsertFolderNode({
+          await upsertDataSourceFolder({
             dataSourceConfig,
             folderId: helpCenterNode.internalId,
             parents: [
@@ -48,7 +48,7 @@ makeScript({}, async ({ execute }, logger) => {
           });
 
           const ticketsNode = brand.getTicketsContentNode(connectorId);
-          await upsertFolderNode({
+          await upsertDataSourceFolder({
             dataSourceConfig,
             folderId: ticketsNode.internalId,
             parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
@@ -74,7 +74,7 @@ makeScript({}, async ({ execute }, logger) => {
         async (category) => {
           /// same code as in the connector
           const parents = category.getParentInternalIds(connectorId);
-          await upsertFolderNode({
+          await upsertDataSourceFolder({
             dataSourceConfig: dataSourceConfigFromConnector(connector),
             folderId: parents[0],
             parents,
