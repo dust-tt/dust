@@ -11,7 +11,7 @@ const SvgTemplate = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M21 3v18H3V3h18ZM11 13H5v6h6v-6Zm2 6h6V5h-6v14ZM11 5H5v6h6V5Z"
+      d="M21 3v18H3V3zM11 13H5v6h6zm2 6h6V5h-6zM11 5H5v6h6z"
     />
   </svg>
 );

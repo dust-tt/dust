@@ -11,12 +11,9 @@ const SvgClipboardCheck = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M16 16v5H3V7.992L8 8V3h13l-.003 13H16Zm-2 0H8v-6H5v9h9v-3Zm4.997-2L19 5h-9v9h8.997Z"
+      d="M16 16v5H3V7.993L8 8V3h13l-.003 13zm-2 0H8v-6H5v9h9zm4.997-2L19 5h-9v9z"
     />
-    <path
-      fill="currentColor"
-      d="M16.5 7 14 9.5 12.5 8 11 9.5l3 3 4-4L16.5 7Z"
-    />
+    <path fill="currentColor" d="M16.5 7 14 9.5 12.5 8 11 9.5l3 3 4-4z" />
   </svg>
 );
 export default SvgClipboardCheck;

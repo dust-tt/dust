@@ -12,7 +12,7 @@ const SvgStopSign = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12s4.48 10 10 10 10-4.48 10-10Zm-4-1.5H6v3h12v-3Z"
+      d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12s4.48 10 10 10 10-4.48 10-10m-4-1.5H6v3h12z"
       clipRule="evenodd"
     />
   </svg>

@@ -12,7 +12,7 @@ const SvgRectangle = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M15 4H9v16h6V4ZM7 2v20h10V2H7Z"
+      d="M15 4H9v16h6zM7 2v20h10V2z"
       clipRule="evenodd"
     />
   </svg>

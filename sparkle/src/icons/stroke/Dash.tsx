@@ -9,7 +9,7 @@ const SvgDash = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M18 11v2H6v-2h12Z" />
+    <path fill="currentColor" d="M18 11v2H6v-2z" />
   </svg>
 );
 export default SvgDash;

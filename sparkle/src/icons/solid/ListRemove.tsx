@@ -12,12 +12,12 @@ const SvgListRemove = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M15 13a3 3 0 0 0-3 3v2a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3v-2a3 3 0 0 0-3-3h-2ZM16 3a3 3 0 0 0-3 3v2a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3h-2ZM6 3a3 3 0 0 0-3 3v2a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3H6Z"
+      d="M15 13a3 3 0 0 0-3 3v2a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3v-2a3 3 0 0 0-3-3zM16 3a3 3 0 0 0-3 3v2a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3zM6 3a3 3 0 0 0-3 3v2a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3z"
       clipRule="evenodd"
     />
     <path
       fill="currentColor"
-      d="m5.707 21.707 1.414-1.414L4.828 18h5.086v-2H4.83l2.292-2.293-1.414-1.414L1 17l4.707 4.707Z"
+      d="m5.707 21.707 1.414-1.414L4.828 18h5.086v-2H4.83l2.292-2.293-1.414-1.414L1 17z"
     />
   </svg>
 );

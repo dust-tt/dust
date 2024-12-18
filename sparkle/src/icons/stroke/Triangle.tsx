@@ -12,7 +12,7 @@ const SvgTriangle = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M12 3 1.608 21h20.784L12 3Zm0 4L5.072 19h13.856L12 7Z"
+      d="M12 3 1.608 21h20.784zm0 4L5.072 19h13.856z"
       clipRule="evenodd"
     />
   </svg>

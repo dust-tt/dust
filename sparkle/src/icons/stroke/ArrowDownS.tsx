@@ -9,7 +9,7 @@ const SvgArrowDownS = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="m12 16-6-6h12l-6 6Z" />
+    <path fill="currentColor" d="m12 16-6-6h12z" />
   </svg>
 );
 export default SvgArrowDownS;

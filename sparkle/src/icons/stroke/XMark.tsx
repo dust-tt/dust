@@ -11,7 +11,7 @@ const SvgXMark = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m12 10.5 4.95-5L18.5 7l-5 5 5 4.95-1.55 1.55-4.95-5-5 5L5.5 17l5-5-5-5 1.55-1.5 4.95 5Z"
+      d="m12 10.5 4.95-5L18.5 7l-5 5 5 4.95-1.55 1.55-4.95-5-5 5L5.5 17l5-5-5-5 1.55-1.5z"
     />
   </svg>
 );

@@ -12,7 +12,7 @@ const SvgTable = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M2 22h20V2H2v20Zm9-18v4H4V4h7ZM4 14v-4h7v4H4Zm0 2h7v4H4v-4Zm9 0h7v4h-7v-4Zm7-2h-7v-4h7v4Zm0-10v4h-7V4h7Z"
+      d="M2 22h20V2H2zm9-18v4H4V4zM4 14v-4h7v4zm0 2h7v4H4zm9 0h7v4h-7zm7-2h-7v-4h7zm0-10v4h-7V4z"
       clipRule="evenodd"
     />
   </svg>

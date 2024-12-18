@@ -11,7 +11,7 @@ const SvgCog6Tooth = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m12 1 9.5 5.5v11L12 23l-9.5-5.5v-11L12 1Zm0 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+      d="m12 1 9.5 5.5v11L12 23l-9.5-5.5v-11zm0 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6"
     />
   </svg>
 );

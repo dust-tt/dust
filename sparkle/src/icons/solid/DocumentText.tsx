@@ -12,10 +12,10 @@ const SvgDocumentText = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M20 9v13H4V2h9v7h7ZM8 7v2h3V7H8Zm0 4v2h8v-2H8Zm0 4v2h8v-2H8Z"
+      d="M20 9v13H4V2h9v7zM8 7v2h3V7zm0 4v2h8v-2zm0 4v2h8v-2z"
       clipRule="evenodd"
     />
-    <path fill="currentColor" d="M20 7h-5V2.003L20 7Z" />
+    <path fill="currentColor" d="M20 7h-5V2.003z" />
   </svg>
 );
 export default SvgDocumentText;

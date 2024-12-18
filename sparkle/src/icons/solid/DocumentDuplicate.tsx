@@ -9,11 +9,11 @@ const SvgDocumentDuplicate = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M13 6v4h4l-4-4Z" />
+    <path fill="currentColor" d="M13 6v4h4z" />
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M7 6V2h10l4 4v12h-4v4H3V6h4Zm12 10h-2v-4h-6V6H9V4h7v3h3v9Z"
+      d="M7 6V2h10l4 4v12h-4v4H3V6zm12 10h-2v-4h-6V6H9V4h7v3h3z"
       clipRule="evenodd"
     />
   </svg>

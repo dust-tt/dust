@@ -9,7 +9,7 @@ const SvgTriangle = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="m12 3 10.392 18H1.608L12 3Z" />
+    <path fill="currentColor" d="m12 3 10.392 18H1.608z" />
   </svg>
 );
 export default SvgTriangle;

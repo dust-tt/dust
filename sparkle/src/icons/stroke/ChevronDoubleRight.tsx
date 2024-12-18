@@ -9,8 +9,8 @@ const SvgChevronDoubleRight = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="m12 7 5 5-5 5 1.5 1.5L20 12l-6.5-6.5L12 7Z" />
-    <path fill="currentColor" d="m5 7 5 5-5 5 1.5 1.5L13 12 6.5 5.5 5 7Z" />
+    <path fill="currentColor" d="m12 7 5 5-5 5 1.5 1.5L20 12l-6.5-6.5z" />
+    <path fill="currentColor" d="m5 7 5 5-5 5 1.5 1.5L13 12 6.5 5.5z" />
   </svg>
 );
 export default SvgChevronDoubleRight;

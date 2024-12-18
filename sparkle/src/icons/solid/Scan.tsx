@@ -9,11 +9,11 @@ const SvgScan = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="M20 22v-7H4v7h16ZM4 5h16V2H4v3Z" />
+    <path fill="currentColor" d="M20 22v-7H4v7zM4 5h16V2H4z" />
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M2 7h20v6H2V7Zm2 2h16v2H4V9Z"
+      d="M2 7h20v6H2zm2 2h16v2H4z"
       clipRule="evenodd"
     />
   </svg>

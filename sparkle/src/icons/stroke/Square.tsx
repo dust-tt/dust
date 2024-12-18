@@ -12,7 +12,7 @@ const SvgSquare = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M18 6H6v12h12V6ZM4 4v16h16V4H4Z"
+      d="M18 6H6v12h12zM4 4v16h16V4z"
       clipRule="evenodd"
     />
   </svg>

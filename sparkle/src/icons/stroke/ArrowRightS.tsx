@@ -9,7 +9,7 @@ const SvgArrowRightS = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="m16 12-6 6V6l6 6Z" />
+    <path fill="currentColor" d="m16 12-6 6V6z" />
   </svg>
 );
 export default SvgArrowRightS;

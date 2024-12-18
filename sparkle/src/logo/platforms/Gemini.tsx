@@ -12,11 +12,11 @@ const SvgGemini = (props: SVGProps<SVGSVGElement>) => (
     <g clipPath="url(#Gemini_svg__a)">
       <path
         fill="#1B1E29"
-        d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4Z"
+        d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4z"
       />
       <path
         fill="url(#Gemini_svg__b)"
-        d="M12 2c0 5.523 4.477 10 10 10-5.523 0-10 4.477-10 10 0-5.523-4.477-10-10-10 5.523 0 10-4.477 10-10Z"
+        d="M12 2c0 5.523 4.477 10 10 10-5.523 0-10 4.477-10 10 0-5.523-4.477-10-10-10 5.523 0 10-4.477 10-10"
       />
     </g>
     <defs>
@@ -25,7 +25,7 @@ const SvgGemini = (props: SVGProps<SVGSVGElement>) => (
         cx={0}
         cy={0}
         r={1}
-        gradientTransform="rotate(135 10.586 5.556) scale(28.2843)"
+        gradientTransform="rotate(135 10.586 5.556)scale(28.2843)"
         gradientUnits="userSpaceOnUse"
       >
         <stop offset={0.358} stopColor="#FADFBC" />

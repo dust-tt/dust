@@ -9,7 +9,7 @@ const SvgCheck = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="m10 15 9-9 1.5 1.5L10 18l-6.5-6.5L5 10l5 5Z" />
+    <path fill="currentColor" d="m10 15 9-9 1.5 1.5L10 18l-6.5-6.5L5 10z" />
   </svg>
 );
 export default SvgCheck;

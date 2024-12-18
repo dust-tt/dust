@@ -11,7 +11,7 @@ const SvgUserArrow = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M14 8A5 5 0 1 1 4 8a5 5 0 0 1 10 0ZM1 22a8 8 0 1 1 16 0H1ZM22 13l-4-4v3h-4v2h4v3l4-4Z"
+      d="M14 8A5 5 0 1 1 4 8a5 5 0 0 1 10 0M1 22a8 8 0 1 1 16 0zM22 13l-4-4v3h-4v2h4v3z"
     />
   </svg>
 );

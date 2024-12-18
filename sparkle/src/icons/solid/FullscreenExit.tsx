@@ -11,12 +11,12 @@ const SvgFullscreenExit = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M15.5 8.5H21V11h-8V3h2.5v5.5ZM11 13v8H8.5v-5.5H3V13h8Z"
+      d="M15.5 8.5H21V11h-8V3h2.5zM11 13v8H8.5v-5.5H3V13z"
     />
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="m14.94 6.94 5-5 2.12 2.12-5 5-1.56-.56-.56-1.56ZM9.06 17.06l-5 5L2 20l4.94-5.06 1.56.56.56 1.56Z"
+      d="m14.94 6.94 5-5 2.12 2.12-5 5-1.56-.56zM9.06 17.06l-5 5L2 20l4.94-5.06 1.56.56z"
       clipRule="evenodd"
     />
   </svg>

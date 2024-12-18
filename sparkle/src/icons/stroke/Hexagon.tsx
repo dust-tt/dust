@@ -12,7 +12,7 @@ const SvgHexagon = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M16.347 5H7.653l-4.342 7.5L7.653 20h8.694l4.342-7.5L16.347 5ZM23 12.5 17.5 3h-11L1 12.5 6.5 22h11l5.5-9.5Z"
+      d="M16.347 5H7.653l-4.342 7.5L7.653 20h8.694l4.342-7.5zM23 12.5 17.5 3h-11L1 12.5 6.5 22h11z"
       clipRule="evenodd"
     />
   </svg>

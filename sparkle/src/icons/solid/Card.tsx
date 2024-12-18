@@ -11,7 +11,7 @@ const SvgCard = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M22.005 11v7a3 3 0 0 1-3 3h-14a3 3 0 0 1-3-3v-7h20Zm0-4h-20V6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v1Z"
+      d="M22.005 11v7a3 3 0 0 1-3 3h-14a3 3 0 0 1-3-3v-7zm0-4h-20V6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3z"
     />
   </svg>
 );

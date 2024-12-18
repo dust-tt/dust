@@ -11,7 +11,7 @@ const SvgBookOpen = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M13 20v2h-2v-2H2V4h7a3.99 3.99 0 0 1 3 1.354A3.99 3.99 0 0 1 15 4h7v16h-9Zm7-2V6h-5a2 2 0 0 0-2 2v10h7Zm-9 0V8a2 2 0 0 0-2-2H4v12h7Z"
+      d="M13 20v2h-2v-2H2V4h7a4 4 0 0 1 3 1.354A4 4 0 0 1 15 4h7v16zm7-2V6h-5a2 2 0 0 0-2 2v10zm-9 0V8a2 2 0 0 0-2-2H4v12z"
     />
   </svg>
 );

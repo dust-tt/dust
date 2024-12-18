@@ -12,12 +12,12 @@ const SvgUser = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M17 8A5 5 0 1 1 7 8a5 5 0 0 1 10 0Zm-2 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+      d="M17 8A5 5 0 1 1 7 8a5 5 0 0 1 10 0m-2 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0"
       clipRule="evenodd"
     />
     <path
       fill="currentColor"
-      d="M12 14a8 8 0 0 0-8 8h2a6 6 0 0 1 12 0h2a8 8 0 0 0-8-8Z"
+      d="M12 14a8 8 0 0 0-8 8h2a6 6 0 0 1 12 0h2a8 8 0 0 0-8-8"
     />
   </svg>
 );

@@ -12,7 +12,7 @@ const SvgCloudArrowLeftRight = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M9 20.985a8.5 8.5 0 1 1 7.715-12.982A6.5 6.5 0 0 1 17 20.981V21H9v-.015ZM9 14l-3-3 3-3v2h4v2H9v2Zm6-2 3 3-3 3v-2h-4v-2h4v-2Z"
+      d="M9 20.986a8.5 8.5 0 1 1 7.715-12.983A6.5 6.5 0 0 1 17 20.981V21H9zM9 14l-3-3 3-3v2h4v2H9zm6-2 3 3-3 3v-2h-4v-2h4z"
       clipRule="evenodd"
     />
   </svg>

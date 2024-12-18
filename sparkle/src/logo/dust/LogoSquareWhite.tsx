@@ -13,13 +13,13 @@ const SvgLogoSquareWhite = (props: SVGProps<SVGSVGElement>) => (
       fill="#fff"
       fillOpacity={0.7}
       fillRule="evenodd"
-      d="M12 24c6.627 0 12-5.373 12-12 0 6.627 5.373 12 12 12s12-5.373 12-12S42.627 0 36 0 24 5.373 24 12c0-6.627-5.373-12-12-12S0 5.373 0 12s5.373 12 12 12Zm24 12H24v12h12V36ZM12 48a6 6 0 0 0 0-12H0v12h12Z"
+      d="M12 24c6.627 0 12-5.373 12-12 0 6.627 5.373 12 12 12s12-5.373 12-12S42.627 0 36 0 24 5.373 24 12c0-6.627-5.373-12-12-12S0 5.373 0 12s5.373 12 12 12m24 12H24v12h12zM12 48a6 6 0 0 0 0-12H0v12z"
       clipRule="evenodd"
     />
     <path
       fill="#fff"
       fillRule="evenodd"
-      d="M12 0H0v24h12a6 6 0 0 0 0 12h36V24H12V0Zm12 0h24v12H24V0Z"
+      d="M12 0H0v24h12a6 6 0 0 0 0 12h36V24H12zm12 0h24v12H24z"
       clipRule="evenodd"
     />
   </svg>

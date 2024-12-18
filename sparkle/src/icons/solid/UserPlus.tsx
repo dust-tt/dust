@@ -11,7 +11,7 @@ const SvgUserPlus = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M14 8A5 5 0 1 1 4 8a5 5 0 0 1 10 0ZM1 22a8 8 0 1 1 16 0H1ZM18 12V9h2v3h3v2h-3v3h-2v-3h-3v-2h3Z"
+      d="M14 8A5 5 0 1 1 4 8a5 5 0 0 1 10 0M1 22a8 8 0 1 1 16 0zM18 12V9h2v3h3v2h-3v3h-2v-3h-3v-2z"
     />
   </svg>
 );
