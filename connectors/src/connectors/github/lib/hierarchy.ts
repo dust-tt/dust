@@ -1,8 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
 
 import {
-  getCodeRootNodeId,
-  getRepositoryNodeId,
+  getCodeRootInternalId,
+  getRepositoryInternalId,
   isGithubCodeDirId,
 } from "@connectors/connectors/github/lib/utils";
 import {
@@ -34,8 +34,8 @@ export async function getGithubCodeDirectoryParentIds(
       repoId
     );
     return [directory.parentInternalId, ...parents];
-  } else if (directory.parentInternalId === getCodeRootNodeId(repoId)) {
-    return [directory.parentInternalId, getRepositoryNodeId(repoId)];
+  } else if (directory.parentInternalId === getCodeRootInternalId(repoId)) {
+    return [directory.parentInternalId, getRepositoryInternalId(repoId)];
   }
   return [];
 }
@@ -64,8 +64,8 @@ export async function getGithubCodeFileParentIds(
       repoId
     );
     return [file.parentInternalId, ...parents];
-  } else if (file.parentInternalId === getCodeRootNodeId(repoId)) {
-    return [file.parentInternalId, getRepositoryNodeId(repoId)];
+  } else if (file.parentInternalId === getCodeRootInternalId(repoId)) {
+    return [file.parentInternalId, getRepositoryInternalId(repoId)];
   }
   return [];
 }

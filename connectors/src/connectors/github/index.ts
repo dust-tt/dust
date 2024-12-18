@@ -17,11 +17,11 @@ import {
   getGithubCodeFileParentIds,
 } from "@connectors/connectors/github/lib/hierarchy";
 import {
-  getCodeRootNodeId,
-  getDiscussionsNodeId,
-  getIssuesNodeId,
-  getRepositoryNodeId,
-  matchGithubNodeIdType,
+  getCodeRootInternalId,
+  getDiscussionsInternalId,
+  getIssuesInternalId,
+  getRepositoryInternalId,
+  matchGithubInternalIdType,
 } from "@connectors/connectors/github/lib/utils";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import type {
@@ -272,7 +272,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         nodes = nodes.concat(
           page.map((repo) => ({
             provider: c.type,
-            internalId: getRepositoryNodeId(repo.id),
+            internalId: getRepositoryInternalId(repo.id),
             parentInternalId: null,
             type: "folder",
             title: repo.name,
@@ -291,7 +291,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(nodes);
     } else {
-      const { type, repoId } = matchGithubNodeIdType(parentInternalId);
+      const { type, repoId } = matchGithubInternalIdType(parentInternalId);
       if (isNaN(repoId)) {
         return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
       }
@@ -334,7 +334,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           if (latestIssue) {
             nodes.push({
               provider: c.type,
-              internalId: getIssuesNodeId(repoId),
+              internalId: getIssuesInternalId(repoId),
               parentInternalId,
               type: "database",
               title: "Issues",
@@ -349,7 +349,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           if (latestDiscussion) {
             nodes.push({
               provider: c.type,
-              internalId: getDiscussionsNodeId(repoId),
+              internalId: getDiscussionsInternalId(repoId),
               parentInternalId,
               type: "channel",
               title: "Discussions",
@@ -364,7 +364,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           if (codeRepo) {
             nodes.push({
               provider: c.type,
-              internalId: getCodeRootNodeId(repoId),
+              internalId: getCodeRootInternalId(repoId),
               parentInternalId,
               type: "folder",
               title: "Code",
@@ -478,7 +478,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     // We loop on all the internalIds we receive to know what is the related data type
     internalIds.forEach((internalId) => {
-      const { type, repoId } = matchGithubNodeIdType(internalId);
+      const { type, repoId } = matchGithubInternalIdType(internalId);
       allReposIdsToFetch.add(repoId);
 
       switch (type) {
@@ -552,7 +552,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
       nodes.push({
         provider: c.type,
-        internalId: getRepositoryNodeId(repoId),
+        internalId: getRepositoryInternalId(repoId),
         parentInternalId: null,
         type: "folder",
         title: repo.name,
@@ -573,8 +573,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
       nodes.push({
         provider: c.type,
-        internalId: getIssuesNodeId(repoId),
-        parentInternalId: getRepositoryNodeId(repoId),
+        internalId: getIssuesInternalId(repoId),
+        parentInternalId: getRepositoryInternalId(repoId),
         type: "database",
         title: "Issues",
         titleWithParentsContext: `[${repo.name}] Issues`,
@@ -592,8 +592,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
       nodes.push({
         provider: c.type,
-        internalId: getDiscussionsNodeId(repoId),
-        parentInternalId: getRepositoryNodeId(repoId),
+        internalId: getDiscussionsInternalId(repoId),
+        parentInternalId: getRepositoryInternalId(repoId),
         type: "channel",
         title: "Discussions",
         titleWithParentsContext: `[${repo.name}] Discussions`,
@@ -610,8 +610,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       const repo = uniqueRepos[parseInt(codeRepo.repoId)];
       nodes.push({
         provider: c.type,
-        internalId: getCodeRootNodeId(codeRepo.repoId),
-        parentInternalId: getRepositoryNodeId(codeRepo.repoId),
+        internalId: getCodeRootInternalId(codeRepo.repoId),
+        parentInternalId: getRepositoryInternalId(codeRepo.repoId),
         type: "folder",
         title: "Code",
         titleWithParentsContext: repo ? `[${repo.name}] Code` : "Code",
@@ -679,7 +679,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const { type, repoId } = matchGithubNodeIdType(internalId);
+    const { type, repoId } = matchGithubInternalIdType(internalId);
 
     switch (type) {
       case "REPO_FULL": {
@@ -687,10 +687,10 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
       case "REPO_ISSUES":
       case "REPO_DISCUSSIONS": {
-        return new Ok([internalId, getRepositoryNodeId(repoId)]);
+        return new Ok([internalId, getRepositoryInternalId(repoId)]);
       }
       case "REPO_CODE": {
-        return new Ok([internalId, getRepositoryNodeId(repoId)]);
+        return new Ok([internalId, getRepositoryInternalId(repoId)]);
       }
       case "REPO_CODE_DIR": {
         const parents = await getGithubCodeDirectoryParentIds(

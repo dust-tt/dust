@@ -23,12 +23,12 @@ import {
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
 import {
-  getCodeRootNodeId,
-  getDiscussionNodeId,
-  getDiscussionsNodeId,
-  getIssueNodeId,
-  getIssuesNodeId,
-  getRepositoryNodeId,
+  getCodeRootInternalId,
+  getDiscussionInternalId,
+  getDiscussionsInternalId,
+  getIssueInternalId,
+  getIssuesInternalId,
+  getRepositoryInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
@@ -273,7 +273,7 @@ export async function githubUpsertIssueActivity(
     content: renderedIssue,
   } = renderedIssueResult;
 
-  const documentId = getIssueNodeId(repoId.toString(), issueNumber);
+  const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
     `title:${issue.title}`,
@@ -293,7 +293,11 @@ export async function githubUpsertIssueActivity(
     documentUrl: issue.url,
     timestampMs: updatedAtTimestamp,
     tags: tags,
-    parents: [documentId, getIssuesNodeId(repoId), getRepositoryNodeId(repoId)],
+    parents: [
+      documentId,
+      getIssuesInternalId(repoId),
+      getRepositoryInternalId(repoId),
+    ],
     loggerArgs: logger.bindings(),
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
@@ -456,7 +460,10 @@ export async function githubUpsertDiscussionActivity(
     logger
   );
 
-  const documentId = getDiscussionNodeId(repoId.toString(), discussionNumber);
+  const documentId = getDiscussionInternalId(
+    repoId.toString(),
+    discussionNumber
+  );
   const tags = [
     `title:${discussion.title}`,
     `author:${discussion.author ? discussion.author.login : "unknown"}`,
@@ -472,8 +479,8 @@ export async function githubUpsertDiscussionActivity(
     tags,
     parents: [
       documentId,
-      getDiscussionsNodeId(repoId),
-      getRepositoryNodeId(repoId),
+      getDiscussionsInternalId(repoId),
+      getRepositoryInternalId(repoId),
     ],
     loggerArgs: logger.bindings(),
     upsertContext: {
@@ -687,7 +694,7 @@ async function deleteIssue(
     );
   }
 
-  const documentId = getIssueNodeId(repoId.toString(), issueNumber);
+  const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   logger.info({ documentId }, "Deleting GitHub issue from Dust data source.");
   await deleteFromDataSource(dataSourceConfig, documentId, logger.bindings());
 
@@ -720,7 +727,10 @@ async function deleteDiscussion(
     logger.warn("Discussion not found in DB");
   }
 
-  const documentId = getDiscussionNodeId(repoId.toString(), discussionNumber);
+  const documentId = getDiscussionInternalId(
+    repoId.toString(),
+    discussionNumber
+  );
   logger.info(
     { documentId },
     "Deleting GitHub discussion from Dust data source."
@@ -998,7 +1008,7 @@ export async function githubCodeSyncActivity({
     // incoherent state (files that moved will appear twice before final cleanup). This seems fine
     // given that syncing stallness is already considered an incident.
 
-    const rootInternalId = getCodeRootNodeId(repoId);
+    const rootInternalId = getCodeRootInternalId(repoId);
     const updatedDirectories: { [key: string]: boolean } = {};
     let repoUpdatedAt: Date | null = null;
 
@@ -1087,7 +1097,7 @@ export async function githubCodeSyncActivity({
             parents: [
               ...f.parents,
               rootInternalId,
-              getRepositoryNodeId(repoId),
+              getRepositoryInternalId(repoId),
             ],
             loggerArgs: logger.bindings(),
             upsertContext: {
