@@ -10,7 +10,7 @@ import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/la
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 
-const ModjoSpeaker = t.type({
+const ModjoSpeakerSchema = t.type({
   contactId: t.union([t.number, t.undefined]),
   userId: t.union([t.number, t.undefined]),
   email: t.union([t.string, t.null]),
@@ -20,43 +20,43 @@ const ModjoSpeaker = t.type({
   type: t.string,
 });
 
-const ModjoTopic = t.type({
+const ModjoTopicSchema = t.type({
   topicId: t.number,
   name: t.string,
 });
 
-const ModjoTranscriptEntry = t.type({
+const ModjoTranscriptEntrySchema = t.type({
   startTime: t.number,
   endTime: t.number,
   speakerId: t.number,
   content: t.string,
-  topics: t.array(ModjoTopic),
+  topics: t.array(ModjoTopicSchema),
 });
 
-const ModjoTag = t.type({
+const ModjoTagSchema = t.type({
   name: t.string,
 });
 
-const ModjoRecording = t.type({
+const ModjoRecordingSchema = t.type({
   url: t.string,
 });
 
-const ModjoHighlight = t.union([
+const ModjoHighlightSchema = t.union([
   t.type({
     content: t.string,
   }),
   t.null,
 ]);
 
-const ModjoRelations = t.type({
-  recording: ModjoRecording,
-  highlights: ModjoHighlight,
-  speakers: t.array(ModjoSpeaker),
-  transcript: t.array(ModjoTranscriptEntry),
-  tags: t.array(ModjoTag),
+const ModjoRelationsSchema = t.type({
+  recording: ModjoRecordingSchema,
+  highlights: ModjoHighlightSchema,
+  speakers: t.array(ModjoSpeakerSchema),
+  transcript: t.array(ModjoTranscriptEntrySchema),
+  tags: t.array(ModjoTagSchema),
 });
 
-const ModjoCall = t.type({
+const ModjoCallSchema = t.type({
   callId: t.number,
   title: t.string,
   startDate: t.string,
@@ -64,26 +64,26 @@ const ModjoCall = t.type({
   provider: t.string,
   language: t.string,
   callCrmId: t.union([t.string, t.null]),
-  relations: ModjoRelations,
+  relations: ModjoRelationsSchema,
 });
 
-const ModjoPagination = t.type({
+const ModjoPaginationSchema = t.type({
   totalValues: t.number,
   lastPage: t.number,
 });
 
-const ModjoApiResponse = t.type({
-  pagination: ModjoPagination,
-  values: t.array(ModjoCall),
+const ModjoApiResponseSchema = t.type({
+  pagination: ModjoPaginationSchema,
+  values: t.array(ModjoCallSchema),
 });
 
-type ModjoApiResponseType = t.TypeOf<typeof ModjoApiResponse>;
+type ModjoApiResponseType = t.TypeOf<typeof ModjoApiResponseSchema>;
 
 function validateModjoResponse(
   data: unknown
 ): either.Either<Error, ModjoApiResponseType> {
   return pipe(
-    ModjoApiResponse.decode(data),
+    ModjoApiResponseSchema.decode(data),
     either.mapLeft(
       (errors) => new Error(`Invalid API response: ${JSON.stringify(errors)}`)
     )

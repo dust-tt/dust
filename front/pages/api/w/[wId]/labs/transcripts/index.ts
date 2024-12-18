@@ -24,30 +24,30 @@ export const acceptableTranscriptProvidersCodec = t.union([
   t.literal("modjo"),
 ]);
 
-const BaseConfiguration = t.type({
+const BaseConfigurationSchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
 });
 
-const ConnectionConfig = t.intersection([
-  BaseConfiguration,
+const ConnectionConfigSchema = t.intersection([
+  BaseConfigurationSchema,
   t.type({ connectionId: t.string }),
 ]);
 
-const ApiKeyConfig = t.intersection([
-  BaseConfiguration,
+const ApiKeyConfigSchema = t.intersection([
+  BaseConfigurationSchema,
   t.type({
     apiKey: t.string,
   }),
 ]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.union([
-  ConnectionConfig,
-  ApiKeyConfig,
+  ConnectionConfigSchema,
+  ApiKeyConfigSchema,
 ]);
 
 export function isApiKeyConfig(
   config: t.TypeOf<typeof PostLabsTranscriptsConfigurationBodySchema>
-): config is t.TypeOf<typeof ApiKeyConfig> {
+): config is t.TypeOf<typeof ApiKeyConfigSchema> {
   return "apiKey" in config;
 }
 
