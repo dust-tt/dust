@@ -10,6 +10,8 @@ import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { getDocumentDiff } from "@app/lib/document_upsert_hooks/hooks/data_source_helpers";
+import { callDocTrackerRetrievalAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_retrieval";
+import { callDocTrackerSuggestChangesAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_suggest_changes";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
@@ -24,6 +26,10 @@ const TRACKER_WATCHED_DOCUMENT_MINIMUM_DIFF_LINE_LENGTH = 4;
 const TRACKER_WATCHED_DOCUMENT_MAX_DIFF_TOKENS = 4096;
 // The total number of tokens to show to the model (watched doc diff + maintained scope retrieved tokens)
 const TRACKER_TOTAL_TARGET_TOKENS = 8192;
+// The topK used for the semantic search against the maintained scope.
+// TODO(DOC_TRACKER): Decide how we handle this. If the top doc has less than $targetDocumentTokens,
+// we could include content from the next doc in the maintained scope.
+const TRACKER_MAINTAINED_DOCUMENT_TOP_K = 1;
 
 export async function trackersGenerationActivity(
   workspaceId: string,
@@ -213,12 +219,61 @@ export async function trackersGenerationActivity(
 
     trackerLogger.info("Running document tracker.");
 
-    void targetMaintainedScopeTokens;
+    const maintainedScope = await tracker.fetchMaintainedScope();
+    const maintainedScopeRetrieval = await callDocTrackerRetrievalAction(auth, {
+      inputText: diffString,
+      targetDocumentTokens: targetMaintainedScopeTokens,
+      topK: TRACKER_MAINTAINED_DOCUMENT_TOP_K,
+      maintainedScope,
+    });
 
-    // TODO(DOC_TRACKER): Run document tracker generation.
-    // - retrieve $targetMaintainedScopeTokens from maintained scope
-    // - call doc tracker generation action with diff + tokens retrieved from maintained scope
-    // - Depending on output, create a new generation or not
+    // TODO(DOC_TRACKER): Right now we only handle the top match.
+    // We may want to support topK > 1 and process more than 1 doc if the top doc has less than
+    // $targetDocumentTokens.
+    if (maintainedScopeRetrieval.length === 0) {
+      trackerLogger.info("No content retrieved from maintained scope.");
+      continue;
+    }
+
+    const content = maintainedScopeRetrieval[0].text;
+    if (!content) {
+      trackerLogger.info("No content retrieved from maintained scope.");
+      continue;
+    }
+
+    const suggestChangesResult = await callDocTrackerSuggestChangesAction(
+      auth,
+      {
+        watchedDocDiff: diffString,
+        maintainedDocContent: content,
+        prompt: tracker.prompt,
+        providerId: tracker.providerId,
+        modelId: tracker.modelId,
+      }
+    );
+
+    if (!suggestChangesResult.suggestion) {
+      trackerLogger.info("No changes suggested.");
+      continue;
+    }
+
+    const suggestedChanges = suggestChangesResult.suggestion;
+    const thinking = suggestChangesResult.thinking;
+    const confidenceScore = suggestChangesResult.confidence_score;
+
+    trackerLogger.info(
+      {
+        confidenceScore,
+      },
+      "Changes suggested."
+    );
+
+    await tracker.addGeneration({
+      generation: suggestedChanges,
+      thinking: thinking ?? null,
+      dataSourceId,
+      documentId,
+    });
   }
 }
 

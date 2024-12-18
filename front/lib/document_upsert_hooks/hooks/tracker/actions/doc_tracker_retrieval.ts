@@ -1,45 +1,55 @@
 import * as t from "io-ts";
+import _ from "lodash";
 
 import { callAction } from "@app/lib/actions/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { TrackerMaintainedScopeType } from "@app/lib/resources/tracker_resource";
 
-// Part of the new doc tracker pipeline, performs the retrieval (semantic search) step
-// it takes {input_text: string} as input
-// and returns an array of DocTrackerRetrievalActionValue as output
 export async function callDocTrackerRetrievalAction(
   auth: Authenticator,
   {
     inputText,
     targetDocumentTokens,
     topK,
-    dataSourceViews,
+    maintainedScope,
   }: {
     inputText: string;
     targetDocumentTokens: number;
     topK: number;
-    dataSourceViews: DataSourceViewResource[];
+    maintainedScope: TrackerMaintainedScopeType;
   }
 ): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
-  if (!dataSourceViews.length) {
+  const ownerWorkspace = auth.getNonNullableWorkspace();
+
+  if (!maintainedScope.length) {
     return [];
   }
+
+  if (
+    _.uniqBy(maintainedScope, "dataSourceId").length !== maintainedScope.length
+  ) {
+    throw new Error("Duplicate data source ids in maintained scope");
+  }
+
+  const parentsInMap = _.mapValues(
+    _.keyBy(maintainedScope, "dataSourceId"),
+    (x) => x.filter?.parents?.in ?? null
+  );
 
   const action = DustProdActionRegistry["doc-tracker-retrieval"];
   const config = cloneBaseConfig(action.config);
 
-  config.SEMANTIC_SEARCH.data_sources = dataSourceViews.map((view) => ({
-    workspace_id: auth.getNonNullableWorkspace().sId,
-    data_source_id: view.sId,
+  config.SEMANTIC_SEARCH.data_sources = maintainedScope.map((view) => ({
+    workspace_id: ownerWorkspace.sId,
+    data_source_id: view.dataSourceViewId,
   }));
+  config.SEMANTIC_SEARCH.filter.parents = {
+    in_map: parentsInMap,
+  };
 
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
   config.SEMANTIC_SEARCH.top_k = topK;
-  config.SEMANTIC_SEARCH.filter = {
-    tags: { in: ["__DUST_TRACKED"], not: null },
-    timestamp: null,
-  };
 
   const res = await callAction(auth, {
     action,

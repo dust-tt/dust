@@ -29,14 +29,15 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 
-type TrackerMaintainedScopeType = Array<{
+export type TrackerMaintainedScopeType = Array<{
   dataSourceViewId: string;
+  dataSourceId: string;
   filter: {
     parents: {
-      in: string[];
-      not: string[];
+      in: string[] | null;
+      not: string[] | null;
     };
-  };
+  } | null;
 }>;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -228,6 +229,31 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     });
   }
 
+  async addGeneration({
+    generation,
+    thinking,
+    dataSourceId,
+    documentId,
+  }: {
+    generation: string;
+    thinking: string | null;
+    dataSourceId: string;
+    documentId: string;
+  }) {
+    const dataSourceModelId = getResourceIdFromSId(dataSourceId);
+    if (!dataSourceModelId) {
+      throw new Error(`Invalid data source ID: ${dataSourceId}`);
+    }
+
+    await TrackerGenerationModel.create({
+      content: generation,
+      thinking,
+      dataSourceId: dataSourceModelId,
+      documentId,
+      trackerConfigurationId: this.id,
+    });
+  }
+
   // Fetching.
 
   async fetchMaintainedScope(): Promise<TrackerMaintainedScopeType> {
@@ -244,12 +270,19 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         id: m.dataSourceViewId,
         workspaceId: this.workspaceId,
       }),
-      filter: {
-        parents: {
-          in: m.parentsIn ?? [],
-          not: m.parentsNotIn ?? [],
-        },
-      },
+      dataSourceId: makeSId("data_source", {
+        id: m.dataSourceId,
+        workspaceId: this.workspaceId,
+      }),
+      filter:
+        m.parentsIn || m.parentsNotIn
+          ? {
+              parents: {
+                in: m.parentsIn,
+                not: m.parentsNotIn,
+              },
+            }
+          : null,
     }));
   }
 
