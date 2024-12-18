@@ -169,7 +169,7 @@ async function handleLookupUser(
     workspaceWithVerifiedDomain?.domainAutoJoinEnabled ?? false;
 
   return {
-    isNew: !!user,
+    isNew: !user,
     hasInvite: !!pendingInvite,
     hasAutoJoinWorkspace: canAutoJoin,
     workspaceId:
