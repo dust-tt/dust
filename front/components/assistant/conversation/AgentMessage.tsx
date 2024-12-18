@@ -426,6 +426,23 @@ export function AgentMessage({
     [owner, agentMessageToRender, isConversationShared]
   );
 
+  const retryHandler = useCallback(
+    async (agentMessage: AgentMessageType) => {
+      setIsRetryHandlerProcessing(true);
+      await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      setIsRetryHandlerProcessing(false);
+    },
+    [conversationId, owner.sId]
+  );
+
   const buttons = useMemo(
     () =>
       message.status === "failed"
@@ -668,20 +685,6 @@ export function AgentMessage({
         )}
       </div>
     );
-  }
-
-  async function retryHandler(agentMessage: AgentMessageType) {
-    setIsRetryHandlerProcessing(true);
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    setIsRetryHandlerProcessing(false);
   }
 }
 
