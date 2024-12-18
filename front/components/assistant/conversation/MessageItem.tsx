@@ -170,7 +170,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div key={`message-id-${sId}`} ref={ref}>
             <AgentMessage
               conversationId={conversationId}
-              isInModal={isInModal}
               isLastMessage={isLastMessage}
               message={message}
               messageFeedback={messageFeedbackWithSubmit}

@@ -115,7 +115,6 @@ export const FeedbackSelectorPopoverContent = ({
 
 interface AgentMessageProps {
   conversationId: string;
-  isInModal: boolean;
   isLastMessage: boolean;
   message: AgentMessageType;
   messageFeedback: FeedbackSelectorProps;
@@ -134,7 +133,6 @@ export type AgentStateClassification = "thinking" | "acting" | "done";
  */
 export function AgentMessage({
   conversationId,
-  isInModal,
   isLastMessage,
   message,
   messageFeedback,
@@ -668,7 +666,7 @@ function AssitantName(
     <Link
       href={href}
       shallow
-      className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
+      className="cursor-pointer transition duration-200 hover:text-highlight active:text-highlight-600"
     >
       @{assistant.name}
     </Link>
