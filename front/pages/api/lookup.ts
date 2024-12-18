@@ -19,11 +19,7 @@ type WorkspaceLookupResponse = {
 };
 
 type UserLookupResponse = {
-  status: "invited" | "member" | "new";
-  workspace: {
-    sId?: string;
-    autoJoin?: boolean;
-  };
+  status: "unknown" | "known";
 };
 
 const ExternalUserCodec = t.type({
@@ -136,26 +132,13 @@ async function handleLookupUser(
   const user = await fetchUserWithAuth0Sub(userLookup.user.sub);
 
   // Check for pending invitations
-  const [pendingInvite, workspaceWithVerifiedDomain] = await Promise.all([
-    getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.user.email),
-    findWorkspaceWithVerifiedDomain({
-      email: userLookup.user.email,
-      email_verified: userLookup.user.email_verified,
-    }),
-  ]);
-
-  // Check auto-join
-  const canAutoJoin =
-    workspaceWithVerifiedDomain?.domainAutoJoinEnabled ?? false;
+  const pendingInvite =
+    await getPendingMembershipInvitationWithWorkspaceForEmail(
+      userLookup.user.email
+    );
 
   return {
-    status: user ? "member" : pendingInvite ? "invited" : "new",
-    workspace: {
-      autoJoin: canAutoJoin,
-      sId:
-        pendingInvite?.workspace.sId ||
-        (canAutoJoin ? workspaceWithVerifiedDomain?.workspace?.sId : undefined),
-    },
+    status: user || pendingInvite ? "known" : "unknown",
   };
 }
 
