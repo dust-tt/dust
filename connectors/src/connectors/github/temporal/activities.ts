@@ -657,7 +657,7 @@ export async function githubRepoGarbageCollectActivity(
 
   await deleteDataSourceFolder({
     dataSourceConfig,
-    folderId: `${repoId}-issues`,
+    folderId: getIssuesInternalId(repoId),
   });
 
   const discussionsInRepo = await GithubDiscussion.findAll({
@@ -683,7 +683,7 @@ export async function githubRepoGarbageCollectActivity(
 
   await deleteDataSourceFolder({
     dataSourceConfig,
-    folderId: `${repoId}-discussions`,
+    folderId: getDiscussionsInternalId(repoId),
   });
 
   await Promise.all(promises);
@@ -706,7 +706,7 @@ export async function githubRepoGarbageCollectActivity(
 
   await deleteDataSourceFolder({
     dataSourceConfig,
-    folderId: repoId,
+    folderId: getRepositoryInternalId(repoId),
   });
 }
 
@@ -895,7 +895,7 @@ async function garbageCollectCodeSync(
 
   await deleteDataSourceFolder({
     dataSourceConfig,
-    folderId: `github-code-${repoId}`,
+    folderId: getCodeRootInternalId(repoId),
   });
 }
 
@@ -962,7 +962,7 @@ export async function githubCodeSyncActivity({
 
     await deleteDataSourceFolder({
       dataSourceConfig,
-      folderId: repoId.toString(),
+      folderId: getRepositoryInternalId(repoId),
     });
 
     return;
@@ -1056,7 +1056,7 @@ export async function githubCodeSyncActivity({
 
       await deleteDataSourceFolder({
         dataSourceConfig,
-        folderId: repoId.toString(),
+        folderId: getRepositoryInternalId(repoId),
       });
 
       return;
@@ -1295,7 +1295,7 @@ export async function githubCodeSyncActivity({
       folderId: getCodeRootInternalId(repoId),
       title: "Code",
       parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
-      mimeType: "application/vnd.dust.github.code-root",
+      mimeType: "application/vnd.dust.github.code-folder",
     });
 
     // Finally we update the repository updatedAt value.
