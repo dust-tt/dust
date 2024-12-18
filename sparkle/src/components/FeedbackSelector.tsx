@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 
 import { Button } from "@sparkle/components/Button";
+import { Checkbox } from "@sparkle/components/Checkbox";
 import { Page } from "@sparkle/components/Page";
 import {
   PopoverContent,
@@ -11,17 +12,14 @@ import Spinner from "@sparkle/components/Spinner";
 import { TextArea } from "@sparkle/components/TextArea";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { HandThumbDownIcon, HandThumbUpIcon } from "@sparkle/icons/solid";
-
-export type FeedbackAssistantBuilder = {
-  name: string;
-  pictureUrl: string;
-};
+import { cn } from "@sparkle/lib/utils";
 
 export type ThumbReaction = "up" | "down";
 
 export type FeedbackType = {
   thumb: ThumbReaction;
   feedbackContent: string | null;
+  isConversationShared: boolean;
 };
 
 export interface FeedbackSelectorProps {
@@ -49,6 +47,11 @@ export function FeedbackSelector({
   const [popOverInfo, setPopoverInfo] = React.useState<JSX.Element | null>(
     null
   );
+  const [isConversationShared, setIsConversationShared] = React.useState(
+    feedback?.isConversationShared ?? false
+  );
+  const [lastSelectedThumb, setLastSelectedThumb] =
+    React.useState<ThumbReaction | null>(feedback?.thumb ?? null);
 
   useEffect(() => {
     if (isPopoverOpen) {
@@ -61,16 +64,30 @@ export function FeedbackSelector({
 
   const selectThumb = useCallback(
     async (thumb: ThumbReaction) => {
+      // Whether to remove the thumb reaction
       const isToRemove = feedback?.thumb === thumb;
       setIsPopoverOpen(!isToRemove);
+      setLastSelectedThumb(isToRemove ? null : thumb);
+
+      // We enforce written feedback for thumbs down
+      // -> Not saving the reaction until then
+      if (thumb === "down" && !isToRemove) {
+        return;
+      }
+
+      // Checkbox ticked by default only for new thumbs down
+      setIsConversationShared(
+        feedback?.isConversationShared ?? thumb === "down"
+      );
 
       await onSubmitThumb({
         feedbackContent: localFeedbackContent,
         thumb,
         isToRemove,
+        isConversationShared,
       });
     },
-    [feedback?.thumb, localFeedbackContent, onSubmitThumb]
+    [feedback?.thumb, localFeedbackContent, onSubmitThumb, isConversationShared]
   );
 
   const handleThumbUp = useCallback(async () => {
@@ -93,13 +110,20 @@ export function FeedbackSelector({
   }, []);
 
   const handleSubmit = useCallback(async () => {
+    setIsPopoverOpen(false);
     await onSubmitThumb({
-      thumb: feedback?.thumb ?? "up",
+      thumb: lastSelectedThumb ?? "up",
       isToRemove: false,
       feedbackContent: localFeedbackContent,
+      isConversationShared,
     });
-    setIsPopoverOpen(false);
-  }, [onSubmitThumb, feedback?.thumb, localFeedbackContent]);
+  }, [
+    onSubmitThumb,
+    feedback?.thumb,
+    localFeedbackContent,
+    isConversationShared,
+    lastSelectedThumb,
+  ]);
 
   return (
     <div ref={containerRef} className="s-flex s-items-center">
@@ -142,7 +166,15 @@ export function FeedbackSelector({
             />
           </div>
         </PopoverTrigger>
-        <PopoverContent fullWidth={true}>
+        <PopoverContent
+          fullWidth={true}
+          // thumb up -> dismissable
+          onInteractOutside={() => {
+            if (lastSelectedThumb === "up") {
+              setIsPopoverOpen(false);
+            }
+          }}
+        >
           {isSubmittingThumb ? (
             <div className="m-3 s-flex s-items-center s-justify-center">
               <Spinner size="sm" />
@@ -150,26 +182,42 @@ export function FeedbackSelector({
           ) : (
             <div className="s-w-80 s-p-4">
               <Page.H variant="h6">
-                {feedback?.thumb === "up"
+                {lastSelectedThumb === "up"
                   ? "🎉 Glad you liked it! Tell us more?"
                   : "🫠 Help make the answers better!"}
               </Page.H>
               <TextArea
                 placeholder={
-                  feedback?.thumb === "up"
+                  lastSelectedThumb === "up"
                     ? "What did you like?"
                     : "Tell us what went wrong so we can make this assistant better."
                 }
-                className="s-mt-4"
+                className="s-mb-4 s-mt-4"
                 rows={3}
                 value={localFeedbackContent ?? ""}
                 onChange={handleTextAreaChange}
               />
+
               {popOverInfo}
+              <div className="s-mt-2 s-flex s-items-center s-gap-2">
+                <Checkbox
+                  checked={isConversationShared}
+                  onCheckedChange={(value) => {
+                    setIsConversationShared(!!value);
+                  }}
+                  className="s-text-primary-500"
+                />
+                <Page.P variant="secondary">
+                  By clicking, you accept to share your full conversation
+                </Page.P>
+              </div>
               <div
-                className={`s-mt-4 s-flex s-gap-2 ${feedback?.thumb === "down" ? "s-justify-between" : "s-justify-end"}`}
+                className={cn("s-mt-4 s-flex s-gap-2", {
+                  "s-justify-between": lastSelectedThumb === "down",
+                  "s-justify-end": lastSelectedThumb !== "down",
+                })}
               >
-                {feedback?.thumb === "down" && (
+                {lastSelectedThumb === "down" && (
                   <Button
                     variant="ghost"
                     label="Cancel"
