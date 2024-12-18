@@ -30,7 +30,9 @@ export function ConversationMessageContent({
       >
         {children}
       </div>
-      {citations && <CitationGrid>{citations}</CitationGrid>}
+      {citations && citations.length > 0 && (
+        <CitationGrid>{citations}</CitationGrid>
+      )}
     </div>
   );
 }
