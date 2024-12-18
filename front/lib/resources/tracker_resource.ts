@@ -304,17 +304,30 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   // Not intended for use outside of the Tracker workflow.
   // Fetches the active trackers that need to be processed for notifications.
   static async internalFetchTrackersToNotify(
-    currentSyncMs: number
+    currentRunMs: number
   ): Promise<TrackerIdWorkspaceId[]> {
+    if (!currentRunMs || typeof currentRunMs !== "number") {
+      throw new Error("Invalid currentRunMs parameter");
+    }
+
+    // Look back 20 minutes to ensure we don't miss any runs.
+    const LOOK_BACK_PERIOD_MS = 1 * 20 * 60 * 1000; // 20 minutes.
+    const lookBackMs = currentRunMs - LOOK_BACK_PERIOD_MS;
+
     const trackers = await TrackerConfigurationResource.model.findAll({
-      attributes: ["id", "frequency", "lastNotifiedAt"],
+      attributes: ["id", "frequency", "lastNotifiedAt", "createdAt"],
       where: {
         status: "active",
+        frequency: {
+          [Op.not]: null,
+        },
+        lastNotifiedAt: { [Op.or]: [{ [Op.lt]: new Date(lookBackMs) }, null] },
       },
       include: [
         {
           model: Workspace,
           attributes: ["sId"],
+          required: true,
         },
       ],
     });
@@ -323,15 +336,22 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       if (!tracker.frequency) {
         return false;
       }
+
       try {
         const interval = parseExpression(tracker.frequency, {
-          currentDate: tracker.lastNotifiedAt || tracker.createdAt,
+          currentDate: tracker.lastNotifiedAt ?? tracker.createdAt, // Start from the last run to avoid missing a run.
         });
-        return interval.next().toDate().getTime() <= currentSyncMs;
+        const nextExpectedRunMs = interval.next().getTime();
+
+        return nextExpectedRunMs <= lookBackMs;
       } catch (e) {
         logger.error(
-          { trackerId: tracker.id },
-          "[Tracker] Invalid cron expression."
+          {
+            trackerId: tracker.id,
+            frequency: tracker.frequency,
+            error: e,
+          },
+          "[Tracker] Invalid cron expression or parsing error"
         );
         return false;
       }

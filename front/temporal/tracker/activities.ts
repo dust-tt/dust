@@ -269,11 +269,21 @@ async function getDataSourceDocument({
  * @returns TrackerIdWorkspaceId[]
  */
 export const getTrackerIdsToNotifyActivity = async (
-  currentSyncMs: number
+  currentRunMs: number
 ): Promise<TrackerIdWorkspaceId[]> => {
-  return TrackerConfigurationResource.internalFetchTrackersToNotify(
-    currentSyncMs
+  const localLogger = logger.child({
+    currentRunMs,
+  });
+  const results =
+    TrackerConfigurationResource.internalFetchTrackersToNotify(currentRunMs);
+
+  localLogger.info(
+    {
+      results,
+    },
+    "Fetching trackers to notify."
   );
+  return results;
 };
 
 /**
@@ -284,12 +294,18 @@ export const getTrackerIdsToNotifyActivity = async (
 export const processTrackerNotificationWorkflowActivity = async ({
   trackerId,
   workspaceId,
-  currentSyncMs,
+  currentRunMs,
 }: {
   trackerId: number;
   workspaceId: string;
-  currentSyncMs: number;
+  currentRunMs: number;
 }) => {
+  const localLogger = logger.child({
+    trackerId,
+    workspaceId,
+    currentRunMs,
+  });
+
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const tracker =
     await TrackerConfigurationResource.fetchWithGenerationsToConsume(
@@ -297,7 +313,7 @@ export const processTrackerNotificationWorkflowActivity = async ({
       trackerId
     );
   if (!tracker) {
-    logger.error(
+    localLogger.error(
       {
         trackerId,
       },
@@ -312,7 +328,7 @@ export const processTrackerNotificationWorkflowActivity = async ({
   }
 
   if (!tracker.recipients?.length) {
-    logger.error(
+    localLogger.error(
       {
         trackerId: tracker.id,
       },
@@ -322,5 +338,8 @@ export const processTrackerNotificationWorkflowActivity = async ({
   }
 
   // @todo Implement the notification logic here.
-  void currentSyncMs;
+  localLogger.info(
+    `Processing tracker ${trackerId} with ${generations.length} generations.`
+  );
+  void currentRunMs;
 };

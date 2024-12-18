@@ -76,7 +76,7 @@ export async function trackersGenerationWorkflow(
  */
 export async function trackersNotificationsWorkflow() {
   const { workflowId, memo } = workflowInfo();
-  const currentSyncMs = new Date().getTime();
+  const currentRunMs = new Date().getTime();
   const uniqueTrackers = new Set<TrackerIdWorkspaceId>();
 
   // Signal handler. Receives the tracker ids to notify.
@@ -88,7 +88,7 @@ export async function trackersNotificationsWorkflow() {
 
   // If we got no signal then we're on the scheduled execution: we process all trackers.
   if (uniqueTrackers.size === 0) {
-    const trackers = await getTrackerIdsToNotifyActivity(currentSyncMs);
+    const trackers = await getTrackerIdsToNotifyActivity(currentRunMs);
     trackers.forEach((tracker) => uniqueTrackers.add(tracker));
   }
 
@@ -112,7 +112,7 @@ export async function trackersNotificationsWorkflow() {
           {
             workspaceId,
             trackerId,
-            currentSyncMs,
+            currentRunMs,
           },
         ],
         memo,
@@ -131,15 +131,15 @@ export async function trackersNotificationsWorkflow() {
 export async function processTrackerNotificationWorkflow({
   trackerId,
   workspaceId,
-  currentSyncMs,
+  currentRunMs,
 }: {
   trackerId: number;
   workspaceId: string;
-  currentSyncMs: number;
+  currentRunMs: number;
 }) {
   await processTrackerNotificationWorkflowActivity({
     trackerId,
     workspaceId,
-    currentSyncMs,
+    currentRunMs,
   });
 }
