@@ -7,6 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { GetTrackersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
@@ -15,7 +16,8 @@ import { PostTrackersRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[sp
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetTrackersResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  space: SpaceResource
 ): Promise<void> {
   const owner = auth.workspace();
   if (!owner) {
@@ -29,7 +31,11 @@ async function handler(
   }
 
   const flags = await getFeatureFlags(owner);
-  if (!flags.includes("labs_trackers") || !auth.isAdmin()) {
+  if (
+    !flags.includes("labs_trackers") ||
+    !auth.isAdmin() ||
+    !space.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -41,6 +47,15 @@ async function handler(
   }
   switch (req.method) {
     case "PATCH":
+      if (!space.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Missing permission to edit the space's trackers.",
+          },
+        });
+      }
       if (typeof req.query.tId !== "string") {
         return apiError(req, res, {
           status_code: 400,
