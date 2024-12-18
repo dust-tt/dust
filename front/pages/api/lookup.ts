@@ -2,6 +2,7 @@ import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
@@ -39,19 +40,14 @@ const ExternalUserCodec = t.type({
 export type LookupResponseBody = UserLookupResponse | WorkspaceLookupResponse;
 
 const UserLookupSchema = t.type({
-  resource: t.literal("user"),
   user: ExternalUserCodec,
 });
 
 const WorkspaceLookupSchema = t.type({
-  resource: t.literal("workspace"),
   workspace: t.string,
 });
 
-const LookupRequestBodySchema = t.union([
-  UserLookupSchema,
-  WorkspaceLookupSchema,
-]);
+const ResourceType = t.union([t.literal("user"), t.literal("workspace")]);
 
 async function handler(
   req: NextApiRequest,
@@ -87,34 +83,67 @@ async function handler(
       },
     });
   }
-
-  const bodyValidation = LookupRequestBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
+  const { resource } = req.query;
+  if (!resource || typeof resource !== "string") {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid request body",
+        message: "Missing or invalid resource parameter",
       },
     });
   }
 
-  const body = bodyValidation.right;
+  const resourceValidation = ResourceType.decode(resource);
+  if (isLeft(resourceValidation)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid resource type. Must be 'user' or 'workspace'",
+      },
+    });
+  }
 
   let response: LookupResponseBody | null = null;
-  switch (body.resource) {
+  switch (resourceValidation.right) {
     case "user":
       {
+        const bodyValidation = UserLookupSchema.decode(req.body);
+        if (isLeft(bodyValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            bodyValidation.left
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body for user lookup: ${pathError}`,
+            },
+          });
+        }
+        response = await handleLookupUser(bodyValidation.right);
         const session = await getAuth0Session(req, res);
         const sessionWithUser = {
-          user: body.user,
+          user: bodyValidation.right.user,
           session,
         };
         response = await handleLookupUser(sessionWithUser);
       }
       break;
     case "workspace": {
-      response = await handleLookupWorkspace(body);
+      const bodyValidation = WorkspaceLookupSchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body for user lookup ${pathError}`,
+          },
+        });
+      }
+      response = await handleLookupWorkspace(bodyValidation.right);
     }
   }
   res.status(200).json(response);
