@@ -1085,12 +1085,7 @@ export async function githubCodeSyncActivity({
             timestampMs: codeSyncStartedAt.getTime(),
             tags,
             parents: [
-              // TODO(2024-12-17 aubin): remove the old parent IDs below
               ...f.parents,
-              rootInternalId,
-              repoId.toString(),
-              // new parent IDs
-              ...f.parents.slice(1).reverse(),
               rootInternalId,
               getRepositoryNodeId(repoId),
             ],
