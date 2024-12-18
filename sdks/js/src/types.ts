@@ -1422,8 +1422,6 @@ export type DustAPICredentials = {
   apiKey: string | (() => string | null | Promise<string | null>);
   workspaceId: string;
   extraHeaders?: Record<string, string>;
-  groupIds?: string[];
-  userEmail?: string;
 };
 
 const SpaceKindSchema = FlexibleEnumSchema<

@@ -71,9 +71,6 @@ export function isAPIError(obj: unknown): obj is APIError {
   );
 }
 
-export const DustGroupIdsHeader = "X-Dust-Group-Ids";
-export const DustUserEmailHeader = "x-api-user-email";
-
 type RequestArgsType = {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
@@ -85,11 +82,9 @@ type RequestArgsType = {
 
 export class DustAPI {
   _url: string;
-  _nodeEnv: string;
   _credentials: DustAPICredentials;
-  _useLocalInDev: boolean;
   _logger: LoggerInterface;
-  _urlOverride?: string;
+  _urlOverride?: () => string | undefined | null;
 
   /**
    * @param credentials DustAPICrededentials
@@ -97,23 +92,14 @@ export class DustAPI {
   constructor(
     config: {
       url: string;
-      nodeEnv: string;
     },
     credentials: DustAPICredentials,
     logger: LoggerInterface,
-    {
-      useLocalInDev,
-      urlOverride,
-    }: {
-      useLocalInDev: boolean;
-      urlOverride?: string;
-    } = { useLocalInDev: false }
+    urlOverride?: () => string | undefined | null
   ) {
     this._url = config.url;
-    this._nodeEnv = config.nodeEnv;
     this._credentials = credentials;
     this._logger = logger;
-    this._useLocalInDev = useLocalInDev;
     this._urlOverride = urlOverride;
   }
 
@@ -126,12 +112,12 @@ export class DustAPI {
   }
 
   apiUrl(): string {
-    if (this._urlOverride) {
-      return this._urlOverride;
+    const urlOverride = this._urlOverride?.();
+    if (urlOverride) {
+      return urlOverride;
     }
-    return this._useLocalInDev && this._nodeEnv === "development"
-      ? "http://localhost:3000"
-      : this._url;
+
+    return this._url;
   }
 
   async getApiKey(): Promise<string | null> {
@@ -145,12 +131,6 @@ export class DustAPI {
     const headers: RequestInit["headers"] = {
       Authorization: `Bearer ${await this.getApiKey()}`,
     };
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
     if (this._credentials.extraHeaders) {
       Object.assign(headers, this._credentials.extraHeaders);
     }

@@ -1,7 +1,7 @@
 import type { DustAppConfigType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type { APIError, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, getHeaderFromGroupIds, Ok } from "@dust-tt/types";
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -52,7 +52,10 @@ export async function callAction<V extends t.Mixed>(
 
   const prodAPI = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    { ...prodCredentials, groupIds: requestedGroupIds },
+    {
+      ...prodCredentials,
+      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+    },
     logger
   );
 

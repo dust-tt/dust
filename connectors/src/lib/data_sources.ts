@@ -79,15 +79,17 @@ export type UpsertDataSourceDocumentParams = {
   async: boolean;
 };
 
-function getDustAPI(dataSourceConfig: DataSourceConfig) {
+export function getDustAPI(dataSourceConfig: DataSourceConfig) {
+  const config = apiConfig.getDustAPIConfig();
+
   return new DustAPI(
-    apiConfig.getDustAPIConfig(),
+    config,
     {
       apiKey: dataSourceConfig.workspaceAPIKey,
       workspaceId: dataSourceConfig.workspaceId,
     },
     logger,
-    { useLocalInDev: true }
+    () => (config.nodeEnv === "development" ? "http://localhost:3000" : null)
   );
 }
 

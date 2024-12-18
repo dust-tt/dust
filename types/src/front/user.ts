@@ -166,3 +166,26 @@ export function isOnlyAdmin(
   }
   return owner.role === "admin";
 }
+
+const DustUserEmailHeader = "x-api-user-email";
+
+export function getUserEmailFromHeaders(headers: {
+  [key: string]: string | string[] | undefined;
+}) {
+  const email = headers[DustUserEmailHeader];
+  if (typeof email === "string") {
+    return email;
+  }
+
+  return undefined;
+}
+
+export function getHeaderFromUserEmail(email: string | undefined) {
+  if (!email) {
+    return undefined;
+  }
+
+  return {
+    [DustUserEmailHeader]: email,
+  };
+}
