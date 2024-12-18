@@ -10,18 +10,11 @@ import { IntercomCollection } from "@connectors/lib/models/intercom";
  * Mimetypes
  */
 export function getDataSourceNodeMimeType(
-  intercomNodeType:
-    | "COLLECTION"
-    | "TEAM"
-    | "TEAMS_FOLDER"
-    | "HELP_CENTER"
-    | "COLLECTIONS_FOLDER"
+  intercomNodeType: "COLLECTION" | "TEAM" | "TEAMS_FOLDER" | "HELP_CENTER"
 ): string {
   switch (intercomNodeType) {
     case "COLLECTION":
       return "application/vnd.dust.intercom.collection";
-    case "COLLECTIONS_FOLDER":
-      return "application/vnd.dust.intercom.collections-folder";
     case "TEAMS_FOLDER":
       return "application/vnd.dust.intercom.teams-folder";
     case "TEAM":
