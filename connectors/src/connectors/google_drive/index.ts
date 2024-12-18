@@ -233,10 +233,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
       return res;
     }
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
     // cleaning up the Shared With Me folder
     await deleteDataSourceFolder({
-      dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId: getSharedWithMeFolderId(connector),
+      dataSourceConfig,
+      folderId: getSharedWithMeFolderId(dataSourceConfig),
     });
 
     return new Ok(undefined);
@@ -419,9 +420,10 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         );
         // Adding a fake "Shared with me" node, to allow the user to see their shared files
         // that are not living in a shared drive.
+        const dataSourceConfig = dataSourceConfigFromConnector(c);
         nodes.push({
           provider: c.type,
-          internalId: getSharedWithMeFolderId(c),
+          internalId: getSharedWithMeFolderId(dataSourceConfig),
           parentInternalId: null,
           type: "folder" as const,
           preventSelection: true,
@@ -447,7 +449,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         // The "Shared with me" view requires to look for folders
         // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
         let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
-        if (parentInternalId === getSharedWithMeFolderId(c)) {
+        const dataSourceConfig = dataSourceConfigFromConnector(c);
+        if (parentInternalId === getSharedWithMeFolderId(dataSourceConfig)) {
           gdriveQuery += ` and sharedWithMe=true`;
         } else {
           gdriveQuery += ` and '${parentDriveId}' in parents`;
