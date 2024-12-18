@@ -19,7 +19,7 @@ type WorkspaceLookupResponse = {
 type UserLookupResponse = {
   status: "invited" | "member" | "new";
   workspace: {
-    id?: string;
+    sId?: string;
     autoJoin?: boolean;
   };
 };
@@ -150,7 +150,7 @@ async function handleLookupUser(
     status: user ? "member" : pendingInvite ? "invited" : "new",
     workspace: {
       autoJoin: canAutoJoin,
-      id:
+      sId:
         pendingInvite?.workspace.sId ||
         (canAutoJoin ? workspaceWithVerifiedDomain?.workspace?.sId : undefined),
     },
