@@ -319,9 +319,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
       transaction,
     });
+
+    // Groups and spaces are currently tied together in a 1-1 way, even though the model allow a n-n relation between them.
+    // When deleting a space, we delete the dangling groups as it won't be available in the UI anymore.
+    // This should be changed when we separate the management of groups and spaces
     await concurrentExecutor(
       this.groups,
       async (group) => {
+        // As the model allows it, ensure the group is not associated with any other space.
         const count = await GroupSpaceModel.count({
           where: {
             groupId: group.id,
