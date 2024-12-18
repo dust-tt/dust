@@ -34,6 +34,7 @@ import {
   APIErrorSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
+  DeleteFolderResponseSchema,
   Err,
   FileUploadRequestResponseSchema,
   FileUploadUrlRequestSchema,
@@ -53,6 +54,7 @@ import {
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
   TokenizeResponseSchema,
+  UpsertFolderResponseSchema,
 } from "./types";
 
 export * from "./types";
@@ -827,7 +829,7 @@ export class DustAPI {
     parents: string[],
     mimeType: string
   ) {
-    return this.request({
+    const res = await this.request({
       method: "POST",
       path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
         folderId
@@ -840,15 +842,29 @@ export class DustAPI {
         mime_type: mimeType,
       },
     });
+
+    const r = await this._resultFromResponse(UpsertFolderResponseSchema, res);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value);
   }
 
   async deleteFolder(dataSourceId: string, folderId: string) {
-    return this.request({
+    const res = await this.request({
       method: "DELETE",
       path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
         folderId
       )}`,
     });
+
+    const r = await this._resultFromResponse(DeleteFolderResponseSchema, res);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value);
   }
 
   async uploadFile({
