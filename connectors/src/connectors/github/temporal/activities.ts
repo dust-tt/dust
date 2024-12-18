@@ -36,12 +36,11 @@ import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/ut
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceDocument,
-  deleteFolderNode,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertDataSourceDocument,
-  upsertFolderNode,
-  upsertToDatasource,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -317,12 +316,12 @@ export async function githubUpsertIssueActivity(
     connectorId: connector.id,
   });
 
-  // Also upsert the Issue folder node
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
-    folderId: `${repoId}-issues`,
+    folderId: getIssuesInternalId(repoId),
     title: "Issues",
-    parents: [`${repoId}-issues`, repoId.toString()],
+    parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
+    mimeType: "application/vnd.dust.github.issues-folder",
   });
 }
 
@@ -509,12 +508,15 @@ export async function githubUpsertDiscussionActivity(
     connectorId: connector.id,
   });
 
-  // Also upsert the Discussion folder node
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
-    folderId: `${repoId}-discussions`,
+    folderId: getDiscussionsInternalId(repoId),
     title: "Discussions",
-    parents: [`${repoId}-discussions`, repoId.toString()],
+    parents: [
+      getDiscussionsInternalId(repoId),
+      getRepositoryInternalId(repoId),
+    ],
+    mimeType: "application/vnd.dust.github.discussions-folder",
   });
 }
 
@@ -653,8 +655,7 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
-  // Delete the Issues folder node
-  await deleteFolderNode({
+  await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: `${repoId}-issues`,
   });
@@ -680,8 +681,7 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
-  // Delete the Discussion folder node
-  await deleteFolderNode({
+  await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: `${repoId}-discussions`,
   });
@@ -704,8 +704,7 @@ export async function githubRepoGarbageCollectActivity(
     },
   });
 
-  // Delete the Repository folder node
-  await deleteFolderNode({
+  await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: repoId,
   });
@@ -886,7 +885,7 @@ async function garbageCollectCodeSync(
     directoriesToDelete.forEach((d) =>
       fq.add(async () => {
         Context.current().heartbeat();
-        await deleteFolderNode({
+        await deleteDataSourceFolder({
           dataSourceConfig,
           folderId: d.internalId,
         });
@@ -894,8 +893,7 @@ async function garbageCollectCodeSync(
     );
   }
 
-  // Delete the Code folder
-  await deleteFolderNode({
+  await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: `github-code-${repoId}`,
   });
@@ -962,8 +960,7 @@ export async function githubCodeSyncActivity({
       },
     });
 
-    // Delete the Repository folder too
-    await deleteFolderNode({
+    await deleteDataSourceFolder({
       dataSourceConfig,
       folderId: repoId.toString(),
     });
@@ -999,12 +996,12 @@ export async function githubCodeSyncActivity({
   githubCodeRepository.lastSeenAt = codeSyncStartedAt;
   await githubCodeRepository.save();
 
-  // Create the Repository folder node
-  await upsertFolderNode({
+  await upsertDataSourceFolder({
     dataSourceConfig,
-    folderId: githubCodeRepository.repoId,
+    folderId: getRepositoryInternalId(githubCodeRepository.repoId),
     title: githubCodeRepository.repoName,
-    parents: [githubCodeRepository.repoId],
+    parents: [getRepositoryInternalId(githubCodeRepository.repoId)],
+    mimeType: "application/vnd.dust.github.repository-folder",
   });
 
   logger.info(
@@ -1057,8 +1054,7 @@ export async function githubCodeSyncActivity({
         },
       });
 
-      // Delete the Repository folder too
-      await deleteFolderNode({
+      await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: repoId.toString(),
       });
@@ -1243,16 +1239,16 @@ export async function githubCodeSyncActivity({
           });
         }
 
-        // Create the folder node
-        await upsertFolderNode({
+        await upsertDataSourceFolder({
           dataSourceConfig,
           folderId: d.internalId,
           parents: [
             ...d.parents,
-            `github-code-${repoId.toString()}`,
-            repoId.toString(),
+            getCodeRootInternalId(repoId),
+            getRepositoryInternalId(repoId),
           ],
           title: d.dirName,
+          mimeType: "application/vnd.dust.github.code.directory",
         });
 
         // If the parents have updated then the internalId gets updated as well so we should never
@@ -1294,12 +1290,12 @@ export async function githubCodeSyncActivity({
       logger.child({ task: "garbageCollectCodeSync" })
     );
 
-    // Create the Code folder node.
-    await upsertFolderNode({
+    await upsertDataSourceFolder({
       dataSourceConfig,
-      folderId: `github-code-${repoId}`,
+      folderId: getCodeRootInternalId(repoId),
       title: "Code",
-      parents: [`github-code-${repoId}`, repoId.toString()],
+      parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
+      mimeType: "application/vnd.dust.github.code-root",
     });
 
     // Finally we update the repository updatedAt value.
