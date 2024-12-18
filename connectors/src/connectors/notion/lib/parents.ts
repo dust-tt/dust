@@ -163,8 +163,6 @@ export async function updateAllParentsFields(
           onProgress
         );
 
-        // TODO(kw_search) remove legacy
-        const legacyParents = pageOrDbIds;
         const parents = pageOrDbIds.map((id) => `notion-${id}`);
 
         logger.info(
@@ -177,7 +175,7 @@ export async function updateAllParentsFields(
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: `notion-${pageId}`,
-          parents: [...parents, ...legacyParents],
+          parents,
         });
         if (onProgress) {
           await onProgress();
