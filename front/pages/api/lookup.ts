@@ -134,16 +134,13 @@ async function handleLookupUser(
   const user = await fetchUserWithAuth0Sub(userLookup.user.sub);
 
   // Check for pending invitations
-  const pendingInvite =
-    await getPendingMembershipInvitationWithWorkspaceForEmail(
-      userLookup.user.email
-    );
-
-  // Check for workspace with verified domain
-  const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain({
-    email: userLookup.user.email,
-    email_verified: userLookup.user.email_verified,
-  });
+  const [pendingInvite, workspaceWithVerifiedDomain] = await Promise.all([
+    getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.user.email),
+    findWorkspaceWithVerifiedDomain({
+      email: userLookup.user.email,
+      email_verified: userLookup.user.email_verified,
+    }),
+  ]);
 
   // Check auto-join
   const canAutoJoin =
