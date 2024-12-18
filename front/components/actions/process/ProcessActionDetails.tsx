@@ -21,13 +21,15 @@ export function ProcessActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-foreground">Query</span>
+          <span className="text-sm font-semibold text-foreground">Query</span>
           <ProcessActionQuery action={action} />
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-bold text-foreground">Results</span>
+              <span className="text-sm font-semibold text-foreground">
+                Results
+              </span>
             </Collapsible.Button>
             <Collapsible.Panel>
               <ProcessActionOutputDetails action={action} />
