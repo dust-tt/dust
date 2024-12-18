@@ -823,6 +823,14 @@ export async function createDataSourceWithoutProvider(
     });
   }
 
+  if (dataSources.some((ds) => ds.name === name)) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Data source with that name already exist.",
+    });
+  }
+
   const dataSourceEmbedder =
     owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
   const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
