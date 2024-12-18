@@ -282,8 +282,8 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         { lastNotifiedAt: new Date(currentRunMs) },
         transaction
       );
-      // We only consume generations that were passed it.
       // We don't want to consume generations that were created after the notification was sent.
+      // So we cannot filter on consumedAt being null and have to provide the IDs explicitly.
       const consumedCount = await TrackerGenerationModel.update(
         { consumedAt: new Date(currentRunMs) },
         {
