@@ -1804,8 +1804,6 @@ export async function renderAndUpsertPageFromCache({
           }
         );
 
-        // TODO(kw_search) remove legacy
-        const legacyParents = parentPageOrDbIds;
         const parents = parentPageOrDbIds.map((id) => `notion-${id}`);
 
         await ignoreTablesError(
@@ -1819,7 +1817,7 @@ export async function renderAndUpsertPageFromCache({
               loggerArgs,
               // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
               truncate: false,
-              parents: [...parents, ...legacyParents],
+              parents: parents,
               title: parentDb.title ?? "Untitled Notion Database",
               mimeType: "application/vnd.dust.notion.database",
             }),
@@ -2009,8 +2007,6 @@ export async function renderAndUpsertPageFromCache({
       }
     );
 
-    // TODO(kw_search) remove legacy
-    const legacyParentIds = parentPageOrDbIds;
     const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
 
     const content = await renderDocumentTitleAndContent({
@@ -2040,8 +2036,7 @@ export async function renderAndUpsertPageFromCache({
         updatedTime: updatedAt.getTime(),
         parsedProperties,
       }),
-      // TODO(kw_search) remove legacy
-      parents: [...parentIds, ...legacyParentIds],
+      parents: parentIds,
       parentId: parentIds.length > 1 ? parentIds[1] : null,
       loggerArgs,
       upsertContext: {
@@ -2528,8 +2523,6 @@ export async function upsertDatabaseStructuredDataFromCache({
     async () => heartbeat()
   );
 
-  // TODO(kw_search) remove legacy
-  const legacyParentIds = parentPageOrDbIds;
   const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
 
   localLogger.info("Upserting Notion Database as Table.");
@@ -2544,8 +2537,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         loggerArgs,
         // We overwrite the whole table since we just fetched all child pages.
         truncate: true,
-        // TODO(kw_search) remove legacy
-        parents: [...parentIds, ...legacyParentIds],
+        parents: parentIds,
         title: dbModel.title ?? "Untitled Notion Database",
         mimeType: "application/vnd.dust.notion.database",
       }),
@@ -2599,9 +2591,8 @@ export async function upsertDatabaseStructuredDataFromCache({
         // we currently don't have it because we don't fetch the DB object from notion.
         timestampMs: upsertAt.getTime(),
         tags: [`title:${databaseName}`, "is_database:true"],
-        // TODO(kw_search) remove legacy
         // The parents end up including the special ID for the document, the node ID of the database, and the parents of the database.
-        parents: [databaseDocId, ...parentIds, ...legacyParentIds],
+        parents: [databaseDocId, ...parentIds],
         // The direct parent ID is the node ID of the database.
         parentId: `notion-${databaseId}`,
         loggerArgs,
