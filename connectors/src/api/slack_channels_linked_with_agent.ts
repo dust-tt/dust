@@ -6,11 +6,11 @@ import * as reporter from "io-ts-reporters";
 import { Op } from "sequelize";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
+import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 import { getChannels } from "@connectors/connectors/slack/temporal/activities";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,
