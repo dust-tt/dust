@@ -13,21 +13,18 @@ import {
 } from "@dust-tt/sparkle";
 import type { SVGProps } from "react";
 
-const CITATION_ICONS = [
-  "confluence",
-  "document",
-  "github",
-  "google_drive",
-  "intercom",
-  "microsoft",
-  "zendesk",
-  "notion",
-  "slack",
-  "image",
-  "snowflake",
-] as const;
-
-export type CitationIconType = (typeof CITATION_ICONS)[number];
+export type CitationIconType =
+  | "confluence"
+  | "document"
+  | "github"
+  | "google_drive"
+  | "intercom"
+  | "microsoft"
+  | "zendesk"
+  | "notion"
+  | "slack"
+  | "image"
+  | "snowflake";
 
 export const citationIconMap: Record<
   CitationIconType,
