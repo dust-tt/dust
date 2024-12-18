@@ -22,7 +22,6 @@ import {
 import type {
   APIError,
   CrawlingFrequency,
-  DataSourceType,
   DataSourceViewType,
   DepthOption,
   SpaceType,
@@ -42,10 +41,11 @@ import {
 import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
+import { useDataSources } from "@app/lib/swr/data_sources";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
@@ -53,7 +53,6 @@ import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api
 const WEBSITE_CAT = "website";
 
 interface SpaceWebsiteModalProps {
-  dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
   isOpen: boolean;
   onClose: () => void;
@@ -64,7 +63,6 @@ interface SpaceWebsiteModalProps {
 // todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component
 // this should be refactored to use the new design.
 export default function SpaceWebsiteModal({
-  dataSources,
   dataSourceView,
   isOpen,
   onClose,
@@ -90,6 +88,8 @@ export default function SpaceWebsiteModal({
   const [dataSourceNameError, setDataSourceNameError] = useState<string | null>(
     null
   );
+
+  const { dataSources, mutateDataSources } = useDataSources(owner);
 
   const [maxPages, setMaxPages] = useState<number | null>(
     WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
@@ -185,9 +185,9 @@ export default function SpaceWebsiteModal({
 
   const updateUrl = (url: string) => {
     setDataSourceUrl(url);
-    const validatedUrl = validateUrl(dataSourceUrl);
+    const validatedUrl = validateUrl(url);
     if (validatedUrl.valid && !dataSourceView) {
-      setDataSourceName(urlToDataSourceName(dataSourceUrl));
+      setDataSourceName(urlToDataSourceName(url));
     }
   };
 
@@ -331,6 +331,7 @@ export default function SpaceWebsiteModal({
         description: `The website has been successfully ${action}.`,
       });
       void mutateSpaceDataSourceViews();
+      void mutateDataSources();
       setIsSaving(false);
     } else {
       const err: { error: APIError } = await res.json();
