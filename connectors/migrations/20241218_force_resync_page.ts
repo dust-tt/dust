@@ -16,6 +16,7 @@ makeScript({}, async (execute, logger) => {
       AND "skipReason" is null
     `);
 
+  let delay: number = 0;
   for (const row of rows as { connectorId: number; pageId: string }[]) {
     const { connectorId, pageId } = row;
 
@@ -32,9 +33,15 @@ makeScript({}, async (execute, logger) => {
         memo: {
           connectorId,
         },
+        startDelay: `${delay} seconds`,
       });
 
-      logger.info({ workflowId, connectorId, pageId }, "Started workflow");
+      logger.info(
+        { workflowId, connectorId, pageId },
+        `Started workflow with ${delay} s delay`
+      );
+
+      delay += 3;
     } else {
       logger.info({ connectorId, pageId }, "Would start workflow");
     }
