@@ -33,6 +33,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
   deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
@@ -1187,6 +1188,12 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
       },
     });
   } while (slackMessages.length === maxMessages);
+
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: internalIdFromSlackChannelId(channelId),
+  });
+
   logger.info(
     { nbDeleted, channelId, connectorId },
     "Deleted documents from datasource while garbage collecting."
