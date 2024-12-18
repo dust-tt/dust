@@ -14,7 +14,7 @@ const UserSearchPostBodySchema = t.type({
 });
 
 export type UserSearchResponseBody = {
-  regionUrl: string | null;
+  regionDomain: string | null;
 };
 
 export default async function handler(
@@ -33,7 +33,7 @@ export default async function handler(
 
   const client = new RegionLookupClient(
     config.getLookupApiSecret(),
-    config.getRegionUrls(),
+    config.getRegionDomains(),
   );
 
   const bodyValidation = UserSearchPostBodySchema.decode(req.body);
@@ -52,12 +52,12 @@ export default async function handler(
   for (const [region, userLookupResponse] of Object.entries(response)) {
     if (userLookupResponse.user?.email && isValidRegion(region)) {
       return res.status(200).json({
-        regionUrl: config.getRegionUrl(region),
+        regionDomain: config.getRegionDomain(region),
       });
     }
   }
 
   return res.status(200).json({
-    regionUrl: null,
+    regionDomain: null,
   });
 }

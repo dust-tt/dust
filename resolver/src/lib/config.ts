@@ -7,7 +7,7 @@ export function isValidRegion(region: string): region is ClusterRegionType {
   return ["europe-west1", "us-central1"].includes(region as ClusterRegionType);
 }
 
-const clusterUrl = {
+const clusterDomain = {
   "europe-west1": "https://eu.dust.tt",
   "us-central1": "https://dust.tt",
 };
@@ -16,10 +16,10 @@ export const config = {
   getLookupApiSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("REGION_RESOLVER_SECRET");
   },
-  getRegionUrls: (): Record<ClusterRegionType, string> => {
-    return clusterUrl;
+  getRegionDomains: (): Record<ClusterRegionType, string> => {
+    return clusterDomain;
   },
-  getRegionUrl: (region: ClusterRegionType) => {
-    return clusterUrl[region];
+  getRegionDomain: (region: ClusterRegionType) => {
+    return clusterDomain[region];
   },
 };
