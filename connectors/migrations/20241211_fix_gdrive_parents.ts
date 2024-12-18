@@ -125,6 +125,7 @@ async function migrate({
                 parents: newParents,
                 parentId: file.parentId ? getDocumentId(file.parentId) : null,
                 title: file.name,
+                mimeType: "application/vnd.dust.googledrive.folder",
               });
             }
           }

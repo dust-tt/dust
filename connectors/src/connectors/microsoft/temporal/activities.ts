@@ -193,6 +193,7 @@ export async function getRootNodesToSyncFromResources(
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId],
         title: createdOrUpdatedResource.name ?? "",
+        mimeType: "application/vnd.dust.microsoft.folder",
       }),
     { concurrency: 5 }
   );
@@ -463,6 +464,7 @@ export async function syncFiles({
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId, ...parents],
         title: createdOrUpdatedResource.name ?? "",
+        mimeType: "application/vnd.dust.microsoft.folder",
       }),
     { concurrency: 5 }
   );
@@ -635,6 +637,7 @@ export async function syncDeltaForRootNodesInDrive({
           folderId: blob.internalId,
           parents: [blob.internalId],
           title: blob.name ?? "",
+          mimeType: "application/vnd.dust.microsoft.folder",
         });
 
         // add parent information to new node resource. for the toplevel folder,

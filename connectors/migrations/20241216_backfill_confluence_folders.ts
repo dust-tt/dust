@@ -27,6 +27,7 @@ makeScript({}, async ({ execute }, logger) => {
             folderId: makeSpaceInternalId(space.spaceId),
             parents: [makeSpaceInternalId(space.spaceId)],
             title: space.name,
+            mimeType: "application/vnd.dust.confluence.space",
           });
         },
         { concurrency: FOLDER_CONCURRENCY }

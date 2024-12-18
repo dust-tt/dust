@@ -824,7 +824,8 @@ export class DustAPI {
     timestamp: number,
     title: string,
     parentId: string | null,
-    parents: string[]
+    parents: string[],
+    mimeType: string
   ) {
     return this.request({
       method: "POST",
@@ -836,6 +837,7 @@ export class DustAPI {
         title,
         parent_id: parentId,
         parents,
+        mime_type: mimeType,
       },
     });
   }

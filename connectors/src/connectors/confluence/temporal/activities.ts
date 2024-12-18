@@ -220,6 +220,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     folderId: makeSpaceInternalId(spaceId),
     parents: [makeSpaceInternalId(spaceId)],
     title: spaceName,
+    mimeType: "application/vnd.dust.confluence.space",
   });
 }
 

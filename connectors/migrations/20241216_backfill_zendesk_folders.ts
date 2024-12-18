@@ -34,6 +34,7 @@ makeScript({}, async ({ execute }, logger) => {
             folderId: brandInternalId,
             parents: [brandInternalId],
             title: brand.name,
+            mimeType: "application/vnd.dust.zendesk.brand",
           });
 
           const helpCenterNode = brand.getHelpCenterContentNode(connectorId);
@@ -45,6 +46,7 @@ makeScript({}, async ({ execute }, logger) => {
               helpCenterNode.parentInternalId,
             ],
             title: helpCenterNode.title,
+            mimeType: "application/vnd.dust.zendesk.helpcenter",
           });
 
           const ticketsNode = brand.getTicketsContentNode(connectorId);
@@ -53,6 +55,7 @@ makeScript({}, async ({ execute }, logger) => {
             folderId: ticketsNode.internalId,
             parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
             title: ticketsNode.title,
+            mimeType: "application/vnd.dust.zendesk.tickets",
           });
         },
         { concurrency: FOLDER_CONCURRENCY }
@@ -79,6 +82,7 @@ makeScript({}, async ({ execute }, logger) => {
             folderId: parents[0],
             parents,
             title: category.name,
+            mimeType: "application/vnd.dust.zendesk.category",
           });
         },
         { concurrency: FOLDER_CONCURRENCY }
