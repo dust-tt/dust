@@ -10,6 +10,7 @@ import type {
 import {
   getArticleInAppUrl,
   getCollectionInAppUrl,
+  getDataSourceNodeMimeType,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
@@ -227,6 +228,7 @@ export async function upsertCollectionWithChildren({
       title: collection.name,
       parents: collectionParents,
       parentId: collectionParents.length > 2 ? collectionParents[1] : null,
+      mimeType: getDataSourceNodeMimeType("COLLECTION"),
     });
   }
 
