@@ -14,7 +14,7 @@ import { sequelizeConnection } from "@connectors/resources/storage";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,
-  slack_channel_ids: t.array(t.string),
+  slack_channel_internal_ids: t.array(t.string),
   connector_id: t.string,
 });
 
@@ -52,7 +52,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   const {
     connector_id: connectorId,
     agent_configuration_id: agentConfigurationId,
-    slack_channel_ids: slackChannelInternalIds,
+    slack_channel_internal_ids: slackChannelInternalIds,
   } = bodyValidation.right;
 
   const slackChannelIds = slackChannelInternalIds.map((s) =>

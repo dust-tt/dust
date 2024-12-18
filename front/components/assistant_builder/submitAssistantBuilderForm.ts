@@ -272,7 +272,7 @@ export async function submitAssistantBuilderForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          slack_channel_ids: selectedSlackChannels.map(
+          slack_channel_internal_ids: selectedSlackChannels.map(
             ({ slackChannelId }) => slackChannelId
           ),
         }),

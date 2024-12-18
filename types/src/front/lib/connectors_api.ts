@@ -566,11 +566,11 @@ export class ConnectorsAPI {
 
   async linkSlackChannelsWithAgent({
     connectorId,
-    slackChannelIds,
+    slackChannelInternalIds,
     agentConfigurationId,
   }: {
     connectorId: string;
-    slackChannelIds: string[];
+    slackChannelInternalIds: string[];
     agentConfigurationId: string;
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await this._fetchWithError(
@@ -581,7 +581,7 @@ export class ConnectorsAPI {
         body: JSON.stringify({
           connector_id: connectorId,
           agent_configuration_id: agentConfigurationId,
-          slack_channel_ids: slackChannelIds,
+          slack_channel_internal_ids: slackChannelInternalIds,
         }),
       }
     );
