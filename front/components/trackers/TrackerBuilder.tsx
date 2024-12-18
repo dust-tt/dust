@@ -21,7 +21,7 @@ import type {
 } from "@dust-tt/types";
 import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-  TRACKER_FREQUENCY_TYPES,
+  TRACKER_FREQUENCIES,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
@@ -68,7 +68,7 @@ export const TrackerBuilder = ({
       descriptionError: null,
       prompt: null,
       promptError: null,
-      frequency: "daily",
+      frequency: TRACKER_FREQUENCIES[0].value,
       frequencyError: null,
       recipients: "",
       recipientsError: null,
@@ -379,20 +379,24 @@ export const TrackerBuilder = ({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      label={tracker.frequency}
+                      label={
+                        TRACKER_FREQUENCIES.find(
+                          (f) => f.value === tracker.frequency
+                        )?.label || "Select Frequency"
+                      }
                       variant="outline"
                       isSelect
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    {TRACKER_FREQUENCY_TYPES.map((f) => (
+                    {TRACKER_FREQUENCIES.map(({ label, value }) => (
                       <DropdownMenuItem
-                        key={f}
-                        label={f}
+                        key={label}
+                        label={label}
                         onClick={() => {
                           setTracker((t) => ({
                             ...t,
-                            frequency: f,
+                            frequency: value,
                           }));
                           if (!edited) {
                             setEdited(true);

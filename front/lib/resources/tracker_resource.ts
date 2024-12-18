@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
+import { parseExpression } from "cron-parser";
 import _ from "lodash";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
@@ -26,6 +27,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 
 type TrackerMaintainedScopeType = Array<{
   dataSourceViewId: string;
@@ -328,38 +330,66 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       ],
     });
 
-    return tracker ? tracker[0].toJSON() : null;
+    return tracker[0]?.toJSON() ?? null;
   }
 
   // Internal method for fetching trackers without any authorization checks.
   // Not intended for use outside of the Tracker workflow.
-  // Fetches the active trackers that have generations to consume.
-  static async internalFetchAllActiveWithUnconsumedGenerations(): Promise<
-    TrackerIdWorkspaceId[]
-  > {
+  // Fetches the active trackers that need to be processed for notifications.
+  static async internalFetchTrackersToNotify(
+    currentRunMs: number
+  ): Promise<TrackerIdWorkspaceId[]> {
+    // Look back 20 minutes to ensure we don't miss any runs.
+    const LOOK_BACK_PERIOD_MS = 1 * 20 * 60 * 1000; // 20 minutes.
+    const lookBackMs = currentRunMs - LOOK_BACK_PERIOD_MS;
+    const lookForwardMs = currentRunMs + LOOK_BACK_PERIOD_MS;
+
     const trackers = await TrackerConfigurationResource.model.findAll({
-      attributes: ["id"],
+      attributes: ["id", "frequency", "lastNotifiedAt", "createdAt"],
       where: {
         status: "active",
+        frequency: {
+          [Op.not]: null,
+        },
+        lastNotifiedAt: { [Op.or]: [{ [Op.lt]: new Date(lookBackMs) }, null] },
       },
       include: [
         {
           model: Workspace,
           attributes: ["sId"],
-        },
-        {
-          model: TrackerGenerationModel,
-          as: "generations",
-          where: {
-            consumedAt: null,
-          },
+          required: true,
         },
       ],
     });
 
-    const filteredTrackers = trackers.filter(
-      (tracker) => tracker.generations.length
-    );
+    const filteredTrackers = trackers.filter((tracker) => {
+      if (!tracker.frequency) {
+        return false;
+      }
+
+      try {
+        const interval = parseExpression(tracker.frequency, {
+          currentDate: tracker.lastNotifiedAt ?? tracker.createdAt, // Start from the last run to avoid missing a run.
+        });
+        const nextExpectedRunMs = interval.next().getTime();
+
+        return (
+          nextExpectedRunMs >= lookBackMs && nextExpectedRunMs <= lookForwardMs
+        );
+      } catch (e) {
+        logger.error(
+          {
+            trackerId: tracker.id,
+            frequency: tracker.frequency,
+            error: e,
+          },
+          "[Tracker] Invalid cron expression or parsing error"
+        );
+        throw new Error(
+          `[Tracker] Invalid cron expression or parsing error for #${tracker.id}`
+        );
+      }
+    });
 
     return filteredTrackers.map((tracker) => ({
       trackerId: tracker.id,

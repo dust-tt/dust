@@ -1,5 +1,4 @@
 import { ModelId } from "../shared/model_id";
-import { ioTsEnum } from "../shared/utils/iots_utils";
 import { DataSourceViewSelectionConfigurations } from "./data_source_view";
 import { ModelIdType, ModelProviderIdType } from "./lib/assistant";
 import { SpaceType } from "./space";
@@ -50,16 +49,10 @@ export type TrackerConfigurationStateType = {
   watchedDataSources: DataSourceViewSelectionConfigurations;
 };
 
-export const TRACKER_FREQUENCY_TYPES: TrackerFrequencyType[] = [
-  "daily",
-  "weekly",
-  "monthly",
+export const TRACKER_FREQUENCIES = [
+  { label: "Daily", value: "0 17 * * 1-5" },
+  { label: "Weekly", value: "0 17 * * 5" },
 ];
-export type TrackerFrequencyType = "daily" | "weekly" | "monthly";
-
-export const FrequencyCodec = ioTsEnum<
-  (typeof TRACKER_FREQUENCY_TYPES)[number]
->(TRACKER_FREQUENCY_TYPES);
 
 export type TrackerIdWorkspaceId = {
   trackerId: number;

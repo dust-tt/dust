@@ -1,5 +1,6 @@
 import parseArgs from "minimist";
 
+import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import {
   launchTrackerNotificationWorkflow,
   stopTrackerNotificationWorkflow,
