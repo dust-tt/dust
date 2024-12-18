@@ -36,8 +36,8 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
-  useGetDefaultConfiguration,
   useLabsTranscriptsConfiguration,
+  useLabsTranscriptsDefaultConfiguration,
 } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
@@ -126,7 +126,17 @@ export default function LabsTranscriptsIndex({
     sort: "priority",
   });
 
-  const getDefaultConfiguration = useGetDefaultConfiguration({ owner });
+  const { defaultConfiguration: defaultModjoConfiguration } =
+    useLabsTranscriptsDefaultConfiguration({
+      owner,
+      provider: "modjo",
+    });
+
+  const { defaultConfiguration: defaultGongConfiguration } =
+    useLabsTranscriptsDefaultConfiguration({
+      owner,
+      provider: "gong",
+    });
 
   const saveApiConnection = async (apiKey: string, provider: string) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
@@ -260,11 +270,8 @@ export default function LabsTranscriptsIndex({
     provider: LabsTranscriptsProviderType
   ) => {
     let hasDefaultConfiguration = false;
-    if (provider === "modjo") {
-      const defaultConfiguration = await getDefaultConfiguration(provider);
-      if (defaultConfiguration) {
-        hasDefaultConfiguration = true;
-      }
+    if (provider === "modjo" && defaultModjoConfiguration) {
+      hasDefaultConfiguration = true;
     }
 
     setTranscriptsConfigurationState((prev) => {
@@ -480,12 +487,10 @@ export default function LabsTranscriptsIndex({
         return;
       }
 
-      const defaultConfiguration = await getDefaultConfiguration("gong");
-
-      if (defaultConfiguration) {
+      if (defaultGongConfiguration) {
         if (
-          defaultConfiguration.provider !== "gong" ||
-          !defaultConfiguration.connectionId
+          defaultGongConfiguration.provider !== "gong" ||
+          !defaultGongConfiguration.connectionId
         ) {
           sendNotification({
             type: "error",
@@ -497,7 +502,7 @@ export default function LabsTranscriptsIndex({
         }
 
         await saveOAuthConnection(
-          defaultConfiguration.connectionId,
+          defaultGongConfiguration.connectionId,
           transcriptsConfigurationState.provider
         );
 
@@ -535,12 +540,10 @@ export default function LabsTranscriptsIndex({
         return;
       }
 
-      const defaultConfiguration = await getDefaultConfiguration("modjo");
-
-      if (defaultConfiguration) {
+      if (defaultModjoConfiguration) {
         if (
-          defaultConfiguration.provider !== "modjo" ||
-          !defaultConfiguration.credentialId
+          defaultModjoConfiguration.provider !== "modjo" ||
+          !defaultModjoConfiguration.credentialId
         ) {
           sendNotification({
             type: "error",
@@ -552,8 +555,8 @@ export default function LabsTranscriptsIndex({
         }
 
         await saveApiConnection(
-          defaultConfiguration.credentialId,
-          defaultConfiguration.provider
+          defaultModjoConfiguration.credentialId,
+          defaultModjoConfiguration.provider
         );
       } else {
         if (!transcriptsConfigurationState.credentialId) {

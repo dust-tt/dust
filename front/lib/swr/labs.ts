@@ -3,7 +3,6 @@
 import type { WorkspaceType } from "@dust-tt/types";
 import type { Fetcher } from "swr";
 
-import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
@@ -29,26 +28,25 @@ export function useLabsTranscriptsConfiguration({
   };
 }
 
-export function useGetDefaultConfiguration({
+export function useLabsTranscriptsDefaultConfiguration({
   owner,
+  provider,
 }: {
   owner: WorkspaceType;
+  provider: string;
 }) {
-  const getDefaultConfiguration = async (provider: string) => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/labs/transcripts/default?provider=${provider}`
-    );
+  const defaultConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
+    fetcher;
 
-    if (response.ok) {
-      const defaultConfigurationRes = await response.json();
-      const defaultConfiguration: LabsTranscriptsConfigurationResource =
-        defaultConfigurationRes.configuration;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/labs/transcripts/default?provider=${provider}`,
+    defaultConfigurationFetcher
+  );
 
-      return defaultConfiguration;
-    }
-
-    return null;
+  return {
+    defaultConfiguration: data ? data.configuration : null,
+    isDefaultConfigurationLoading: !error && !data,
+    isDefaultConfigurationError: error,
+    mutateDefaultConfiguration: mutate,
   };
-
-  return getDefaultConfiguration;
 }
