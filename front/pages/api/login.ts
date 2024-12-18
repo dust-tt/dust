@@ -243,8 +243,9 @@ async function handleRegularSignupFlow(
     });
   }
 
-  const workspaceWithVerifiedDomain =
-    await findWorkspaceWithVerifiedDomain(session);
+  const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
+    session.user
+  );
   const { workspace: existingWorkspace } = workspaceWithVerifiedDomain ?? {};
 
   // Verify that the user is allowed to join the specified workspace.

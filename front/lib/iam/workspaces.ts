@@ -66,11 +66,10 @@ export async function createWorkspaceInternal({
   return workspace;
 }
 
-export async function findWorkspaceWithVerifiedDomain(
-  session: SessionWithUser
-): Promise<WorkspaceHasDomain | null> {
-  const { user } = session;
-
+export async function findWorkspaceWithVerifiedDomain(user: {
+  email: string;
+  email_verified: boolean;
+}): Promise<WorkspaceHasDomain | null> {
   if (!user.email_verified) {
     return null;
   }

@@ -116,6 +116,9 @@ const config = {
       "DEVELOPMENT_DUST_APPS_VAULT_ID"
     );
   },
+  getRegionResolverSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
+  },
   // OAuth
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");

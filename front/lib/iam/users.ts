@@ -31,7 +31,7 @@ async function fetchUserWithLegacyProvider(
   return user;
 }
 
-async function fetchUserWithAuth0Sub(sub: string) {
+export async function fetchUserWithAuth0Sub(sub: string) {
   const userWithAuth0 = await UserResource.fetchByAuth0Sub(sub);
 
   return userWithAuth0;
