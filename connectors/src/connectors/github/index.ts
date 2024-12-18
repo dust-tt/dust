@@ -381,22 +381,18 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         case "REPO_CODE":
         case "REPO_CODE_DIR": {
           const [files, directories] = await Promise.all([
-            (async () => {
-              return GithubCodeFile.findAll({
-                where: {
-                  connectorId: c.id,
-                  parentInternalId,
-                },
-              });
-            })(),
-            (async () => {
-              return GithubCodeDirectory.findAll({
-                where: {
-                  connectorId: c.id,
-                  parentInternalId,
-                },
-              });
-            })(),
+            GithubCodeFile.findAll({
+              where: {
+                connectorId: c.id,
+                parentInternalId,
+              },
+            }),
+            GithubCodeDirectory.findAll({
+              where: {
+                connectorId: c.id,
+                parentInternalId,
+              },
+            }),
           ]);
 
           files.sort((a, b) => {
