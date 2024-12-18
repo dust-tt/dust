@@ -252,7 +252,7 @@ export async function syncChannel(
       title: `#${channel.name}`,
       parentId: null,
       parents: [internalIdFromSlackChannelId(channelId)],
-      // mimeType: "application/vnd.dust.slack.channel",
+      mimeType: "application/vnd.dust.slack.channel",
     });
   }
 
