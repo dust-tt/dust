@@ -6,16 +6,18 @@ import type {
   VisualizationRPCRequestMap,
 } from "@dust-tt/types";
 import { Spinner } from "@viz/app/components/Components";
+import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import { toBlob } from "html-to-image";
+import { Download, SquareTerminal } from "lucide-react";
+import { Inter } from "next/font/google";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
-import React, { useCallback, useMemo } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
-import { useResizeDetector } from "react-resize-detector";
-import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
-import { Download, SquareTerminal } from "lucide-react";
-import { toBlob } from "html-to-image";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
@@ -83,12 +85,9 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
-  const displayCode = useCallback(
-    async () => {
-      await sendCrossDocumentMessage("displayCode", null);
-    },
-    [sendCrossDocumentMessage]
-  );
+  const displayCode = useCallback(async () => {
+    await sendCrossDocumentMessage("displayCode", null);
+  }, [sendCrossDocumentMessage]);
 
   return {
     error,
@@ -190,7 +189,14 @@ export function VisualizationWrapper({
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  const { fetchCode, fetchFile, error, sendHeightToParent, downloadFile, displayCode } = api;
+  const {
+    fetchCode,
+    fetchFile,
+    error,
+    sendHeightToParent,
+    downloadFile,
+    displayCode,
+  } = api;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 
@@ -257,7 +263,7 @@ export function VisualizationWrapper({
     }
   }, [ref, downloadFile]);
 
-    const handleDisplayCode = useCallback(async () => {
+  const handleDisplayCode = useCallback(async () => {
     await displayCode();
   }, [displayCode]);
 
@@ -277,17 +283,20 @@ export function VisualizationWrapper({
   }
 
   return (
-    <div className="relative group/viz">
+    <div className={`relative group/viz ${inter.className}`}>
       <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
-      <button
-        onClick={handleScreenshotDownload}
-        className="hover:bg-slate-200 rounded p-2 border border-slate-200"
-      >
-        <Download size={20} />
-      </button>
-      <button className="hover:bg-slate-200 rounded p-2 border border-slate-200" onClick={handleDisplayCode}>
-        <SquareTerminal size={20} />
-      </button>
+        <button
+          onClick={handleScreenshotDownload}
+          className="hover:bg-slate-200 rounded p-2 border border-slate-200"
+        >
+          <Download size={20} />
+        </button>
+        <button
+          className="hover:bg-slate-200 rounded p-2 border border-slate-200"
+          onClick={handleDisplayCode}
+        >
+          <SquareTerminal size={20} />
+        </button>
       </div>
       <div ref={ref}>
         <Runner
