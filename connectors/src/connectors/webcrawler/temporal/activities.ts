@@ -30,8 +30,10 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceDocument,
+  deleteDataSourceFolder,
   MAX_SMALL_DOCUMENT_TXT_LEN,
   upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
   WebCrawlerFolder,
@@ -277,7 +279,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             lastSeenAt: new Date(),
           });
 
-          await upsertFolderNode({
+          await upsertDataSourceFolder({
             dataSourceConfig,
             folderId: webCrawlerFolder.internalId,
             timestampMs: webCrawlerFolder.updatedAt.getTime(),
@@ -287,6 +289,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             // index+1 (including itself as first parent) and end at the root
             parents: parentFolderIds.slice(index + 1),
             title: folder,
+            mimeType: "application/vnd.dust.webcrawler.folder",
           });
 
           createdFolders.add(folder);
@@ -569,6 +572,10 @@ export async function webCrawlerGarbageCollector(
       type: "delete_folder",
     });
     for (const folder of foldersToDelete) {
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: folder.internalId,
+      });
       await folder.destroy();
     }
   } while (foldersToDelete.length > 0);
@@ -576,16 +583,4 @@ export async function webCrawlerGarbageCollector(
 
 export async function getConnectorIdsForWebsitesToCrawl() {
   return WebCrawlerConfigurationResource.getConnectorIdsForWebsitesToCrawl();
-}
-function upsertFolderNode(arg0: {
-  dataSourceConfig: import("../../../types/data_source_config").DataSourceConfig;
-  folderId: string;
-  timestampMs: number;
-  // parent folder ids of the page are in hierarchy order from the
-  // page to the root so for the current folder, its parents start at
-  // index+1 (including itself as first parent) and end at the root
-  parents: string[];
-  title: string;
-}) {
-  throw new Error("Function not implemented.");
 }
