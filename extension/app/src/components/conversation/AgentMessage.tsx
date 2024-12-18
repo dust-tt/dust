@@ -23,25 +23,12 @@ import {
   removeNulls,
 } from "@dust-tt/client";
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
-import {
-  ConfluenceLogo,
-  DocumentTextIcon,
-  DriveLogo,
-  GithubLogo,
-  ImageIcon,
-  IntercomLogo,
-  MicrosoftLogo,
-  NotionLogo,
-  SlackLogo,
-  SnowflakeLogo,
-  ZendeskLogo,
-} from "@dust-tt/sparkle";
+import { DocumentTextStrokeIcon } from "@dust-tt/sparkle";
 import {
   Citation,
   CitationIcons,
   CitationIndex,
   CitationTitle,
-  Icon,
 } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
@@ -59,12 +46,13 @@ import {
 } from "@dust-tt/sparkle";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
 import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
-import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@extension/components/markdown/CiteBlock";
+import type { MarkdownCitation } from "@extension/components/markdown/MarkdownCitation";
+import { citationIconMap } from "@extension/components/markdown/MarkdownCitation";
 import {
   MentionBlock,
   mentionDirective,
@@ -103,10 +91,12 @@ export function visualizationDirective() {
 export function makeDocumentCitation(
   document: RetrievalDocumentPublicType
 ): MarkdownCitation {
+  const IconComponent =
+    citationIconMap[getProviderFromRetrievedDocument(document)];
   return {
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
-    type: getProviderFromRetrievedDocument(document),
+    icon: <IconComponent />,
   };
 }
 
@@ -117,7 +107,7 @@ export function makeWebsearchResultsCitation(
     description: result.snippet,
     href: result.link,
     title: result.title,
-    type: "document" as const,
+    icon: <DocumentTextStrokeIcon />,
   };
 }
 
