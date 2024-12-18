@@ -101,7 +101,8 @@ async function handler(
       const connectorsApiRes = await connectorsAPI.linkSlackChannelsWithAgent({
         connectorId: connectorId.toString(),
         agentConfigurationId: agentConfiguration.sId,
-        slackChannelInternalIds: bodyValidation.right.slack_channel_internal_ids,
+        slackChannelInternalIds:
+          bodyValidation.right.slack_channel_internal_ids,
       });
 
       if (connectorsApiRes.isErr()) {
