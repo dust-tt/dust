@@ -84,7 +84,7 @@ export class DustAPI {
   _url: string;
   _credentials: DustAPICredentials;
   _logger: LoggerInterface;
-  _urlOverride?: () => string | undefined | null;
+  _urlOverride: string | undefined | null;
 
   /**
    * @param credentials DustAPICrededentials
@@ -95,7 +95,7 @@ export class DustAPI {
     },
     credentials: DustAPICredentials,
     logger: LoggerInterface,
-    urlOverride?: () => string | undefined | null
+    urlOverride?: string | undefined | null
   ) {
     this._url = config.url;
     this._credentials = credentials;
@@ -112,12 +112,7 @@ export class DustAPI {
   }
 
   apiUrl(): string {
-    const urlOverride = this._urlOverride?.();
-    if (urlOverride) {
-      return urlOverride;
-    }
-
-    return this._url;
+    return this._urlOverride ? this._urlOverride : this._url;
   }
 
   async getApiKey(): Promise<string | null> {

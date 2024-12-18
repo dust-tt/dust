@@ -370,7 +370,7 @@ async function answerMessage(
       },
     },
     logger,
-    () => DUST_FRONT_API
+    DUST_FRONT_API
   );
 
   const buildContentFragmentRes = await makeContentFragment(

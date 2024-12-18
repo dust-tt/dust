@@ -103,7 +103,7 @@ export async function autoReadChannel(
         apiKey: connector.workspaceAPIKey,
       },
       logger,
-      () => DUST_FRONT_API
+      DUST_FRONT_API
     );
 
     const searchParams = new URLSearchParams({

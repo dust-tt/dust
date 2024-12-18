@@ -89,7 +89,7 @@ export function getDustAPI(dataSourceConfig: DataSourceConfig) {
       workspaceId: dataSourceConfig.workspaceId,
     },
     logger,
-    () => (config.nodeEnv === "development" ? "http://localhost:3000" : null)
+    config.nodeEnv === "development" ? "http://localhost:3000" : null
   );
 }
 

@@ -308,8 +308,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
       },
       logger,
-      () =>
-        apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
+      apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
     );
 
     // As we run the app (using a system API key here), we do force using the workspace credentials so
