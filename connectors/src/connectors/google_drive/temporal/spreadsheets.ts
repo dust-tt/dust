@@ -501,11 +501,7 @@ export async function syncSpreadSheet(
 
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {
-        // TODO(kw_search) remove legacy parentGoogleIds
-        const isImported = await processSheet(connector, sheet, [
-          ...parents,
-          ...parentGoogleIds,
-        ]);
+        const isImported = await processSheet(connector, sheet, parents);
         if (isImported) {
           successfulSheetIdImports.push(sheet.id);
         }

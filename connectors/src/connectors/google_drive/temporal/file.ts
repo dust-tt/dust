@@ -200,8 +200,7 @@ async function handleFileExport(
       dataSourceConfig,
       provider: "google_drive",
       connectorId,
-      // TODO(kw_search) remove legacy parentGoogleIds
-      parents: [...parents, ...parentGoogleIds],
+      parents,
     });
   } else {
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);
@@ -492,8 +491,7 @@ async function upsertGdriveDocument(
       documentUrl: file.webViewLink,
       timestampMs: file.updatedAtMs,
       tags,
-      // TODO(kw_search) remove legacy parentGoogleIds
-      parents: [...parents, ...parentGoogleIds],
+      parents,
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
