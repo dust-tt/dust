@@ -10,6 +10,7 @@ import { getChannels } from "@connectors/connectors/slack/temporal/activities";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,
@@ -51,9 +52,12 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   const {
     connector_id: connectorId,
     agent_configuration_id: agentConfigurationId,
-    slack_channel_ids: slackChannelIds,
+    slack_channel_ids: slackChannelInternalIds,
   } = bodyValidation.right;
 
+  const slackChannelIds = slackChannelInternalIds.map((s) =>
+    slackChannelIdFromInternalId(s)
+  );
   const slackChannels = await SlackChannel.findAll({
     where: {
       slackChannelId: slackChannelIds,
