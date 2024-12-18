@@ -3,17 +3,13 @@ import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getBearerToken } from "@app/lib/auth";
 import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const { LOOKUP_API_SECRET } = process.env;
-
-if (!LOOKUP_API_SECRET) {
-  throw new Error("LOOKUP_API_SECRET is not defined");
-}
 
 export type UserLookupResponseBody = {
   isNew: boolean;
@@ -62,7 +58,7 @@ async function handler(
     });
   }
 
-  if (bearerTokenRes.value !== LOOKUP_API_SECRET) {
+  if (bearerTokenRes.value !== config.getLookUpBearerToken()) {
     return apiError(req, res, {
       status_code: 401,
       api_error: {
@@ -86,7 +82,6 @@ async function handler(
 
   // Check if user exists
   const user = await fetchUserFromSession(session);
-  const isNew = !!user;
 
   // Check for pending invitations
   const pendingInvite =
@@ -103,7 +98,7 @@ async function handler(
     workspaceWithVerifiedDomain?.domainAutoJoinEnabled ?? false;
 
   res.status(200).json({
-    isNew,
+    isNew: !!user,
     hasInvite: !!pendingInvite,
     hasAutoJoinWorkspace: canAutoJoin,
     workspaceId:
