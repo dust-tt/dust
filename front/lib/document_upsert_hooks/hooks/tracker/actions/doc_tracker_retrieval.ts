@@ -13,11 +13,13 @@ export async function callDocTrackerRetrievalAction(
     targetDocumentTokens,
     topK,
     maintainedScope,
+    parentsInMap,
   }: {
     inputText: string;
     targetDocumentTokens: number;
     topK: number;
     maintainedScope: TrackerMaintainedScopeType;
+    parentsInMap: Record<string, string[] | null>;
   }
 ): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
   const ownerWorkspace = auth.getNonNullableWorkspace();
@@ -31,11 +33,6 @@ export async function callDocTrackerRetrievalAction(
   ) {
     throw new Error("Duplicate data source ids in maintained scope");
   }
-
-  const parentsInMap = _.mapValues(
-    _.keyBy(maintainedScope, "dataSourceId"),
-    (x) => x.filter?.parents?.in ?? null
-  );
 
   const action = DustProdActionRegistry["doc-tracker-retrieval"];
   const config = cloneBaseConfig(action.config);

@@ -6,6 +6,7 @@ import type {
   TrackerIdWorkspaceId,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
+import _ from "lodash";
 
 import config from "@app/lib/api/config";
 import { sendTrackerEmail } from "@app/lib/api/tracker";
@@ -221,11 +222,32 @@ export async function trackersGenerationActivity(
     trackerLogger.info("Running document tracker.");
 
     const maintainedScope = await tracker.fetchMaintainedScope();
+    const maintainedDataSourceIds = _.uniq(
+      maintainedScope.map((x) => x.dataSourceId)
+    );
+    const maintainedDataSources = await DataSourceResource.fetchByIds(
+      auth,
+      maintainedDataSourceIds
+    );
+    const maintainedDsCoreIdByDataSourceId = _.mapValues(
+      _.keyBy(maintainedDataSources, (x) => x.sId),
+      (x) => x.dustAPIDataSourceId
+    );
+
+    const parentsInMap = _.mapValues(
+      _.keyBy(
+        maintainedScope,
+        (x) => maintainedDsCoreIdByDataSourceId[x.dataSourceId]
+      ),
+      (x) => x.filter?.parents?.in ?? null
+    );
+
     const maintainedScopeRetrieval = await callDocTrackerRetrievalAction(auth, {
       inputText: diffString,
       targetDocumentTokens: targetMaintainedScopeTokens,
       topK: TRACKER_MAINTAINED_DOCUMENT_TOP_K,
       maintainedScope,
+      parentsInMap,
     });
 
     // TODO(DOC_TRACKER): Right now we only handle the top match.
@@ -236,7 +258,9 @@ export async function trackersGenerationActivity(
       continue;
     }
 
-    const content = maintainedScopeRetrieval[0].text;
+    const content = maintainedScopeRetrieval[0].chunks
+      .map((c) => c.text)
+      .join("\n");
     if (!content) {
       trackerLogger.info("No content retrieved from maintained scope.");
       continue;
