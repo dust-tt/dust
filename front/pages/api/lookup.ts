@@ -8,7 +8,6 @@ import config from "@app/lib/api/config";
 import { getBearerToken } from "@app/lib/auth";
 import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
 import { fetchUserWithAuth0Sub } from "@app/lib/iam/users";
-import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
