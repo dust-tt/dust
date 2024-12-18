@@ -38,7 +38,7 @@ import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 const logger = mainLogger.child({ provider: "notion" });
 
 export function getNotionUnknownFolderId(connectorId: number) {
-  return `${nodeIdFromNotionId("unknown")}-${connectorId}`;
+  return `notion-unknown-${connectorId}`;
 }
 
 function nodeIdFromNotionId(notionId: string) {
