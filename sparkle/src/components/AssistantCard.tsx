@@ -79,7 +79,13 @@ export const LargeAssistantCard = React.forwardRef<
   LargeAssistantCardProps
 >(({ className, onClick, title, description, pictureUrl }, ref) => {
   return (
-    <Card ref={ref} size="lg" className={className} onClick={onClick}>
+    <Card
+      ref={ref}
+      size="lg"
+      className={className}
+      onClick={onClick}
+      variant="tertiary"
+    >
       <div className="s-flex s-gap-3">
         <Avatar visual={pictureUrl} size="lg" />
         <div className="s-flex s-flex-col s-gap-2 s-text-base s-text-foreground">
