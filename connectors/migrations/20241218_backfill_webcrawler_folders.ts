@@ -66,17 +66,23 @@ makeScript(
         folders,
         async (folder) => {
           logger.info({
-            folder,
+            folderId: folder.internalId,
+            folderUrl: folder.url,
             execute,
           });
           if (execute) {
-            await upsertDataSourceFolder({
+            const result = await upsertDataSourceFolder({
               dataSourceConfig,
               folderId: folder.internalId,
               timestampMs: folder.updatedAt.getTime(),
               parents: getParents(folder),
               title: folder.url,
               mimeType: "application/vnd.dust.webcrawler.folder",
+            });
+            logger.info({
+              result,
+              folderId: folder.internalId,
+              folderUrl: folder.url,
             });
           }
         },
