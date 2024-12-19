@@ -602,14 +602,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const contentNodes = pageNodes.concat(dbNodes);
 
-    const notionUnknownFolderId = nodeIdFromNotionId("unknown");
-    if (notionIds.includes(notionUnknownFolderId)) {
+    if (notionIds.includes("unknown")) {
       const orphanedCount = await getOrphanedCount(this.connectorId);
       if (orphanedCount > 0) {
         contentNodes.push({
           provider: "notion",
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: notionUnknownFolderId,
+          internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
