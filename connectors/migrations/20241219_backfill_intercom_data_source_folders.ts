@@ -4,6 +4,7 @@ import {
   getDataSourceNodeMimeType,
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
+  getTeamInternalId,
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -41,11 +42,11 @@ async function createFolderNodes() {
     await concurrentExecutor(
       teams,
       async (team) => {
-        const teamInternalId = getTeamsInternalId(connector.id);
+        const teamInternalId = getTeamInternalId(connector.id, team.teamId);
         await upsertDataSourceFolder({
           dataSourceConfig,
           folderId: teamInternalId,
-          parents: [getTeamsInternalId(connector.id)],
+          parents: [teamInternalId, getTeamsInternalId(connector.id)],
           title: team.name,
           mimeType: getDataSourceNodeMimeType("TEAM"),
         });
@@ -101,7 +102,7 @@ async function createFolderNodes() {
             await upsertDataSourceFolder({
               dataSourceConfig,
               folderId: collectionInternalId,
-              parents: [helpCenterInternalId],
+              parents: [collectionInternalId, helpCenterInternalId],
               title: collection.name,
               mimeType: getDataSourceNodeMimeType("COLLECTION"),
             });

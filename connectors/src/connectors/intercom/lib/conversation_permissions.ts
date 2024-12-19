@@ -72,9 +72,9 @@ export async function allowSyncTeam({
         });
         await upsertDataSourceFolder({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
-          folderId: teamInternalId,
+          folderId: getTeamsInternalId(connectorId),
           title: "Teams",
-          parents: [teamInternalId, getTeamsInternalId(connectorId)],
+          parents: [getTeamsInternalId(connectorId)],
           mimeType: getDataSourceNodeMimeType("TEAMS_FOLDER"),
         });
       }
