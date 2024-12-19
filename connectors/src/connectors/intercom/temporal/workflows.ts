@@ -34,10 +34,13 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
-const { saveIntercomConnectorStartSync, saveIntercomConnectorSuccessSync } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
-  });
+const {
+  saveIntercomConnectorStartSync,
+  saveIntercomConnectorSuccessSync,
+  upsertIntercomTeamsFolderActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
+});
 
 /**
  * Sync Workflow for Intercom.
@@ -51,6 +54,11 @@ export async function intercomSyncWorkflow({
   connectorId: ModelId;
 }) {
   await saveIntercomConnectorStartSync({ connectorId });
+
+  // Add folder node for teams
+  await upsertIntercomTeamsFolderActivity({
+    connectorId,
+  });
 
   const uniqueHelpCenterIds = new Set<string>();
   const uniqueTeamIds = new Set<string>();
