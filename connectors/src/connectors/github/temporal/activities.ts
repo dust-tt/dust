@@ -668,7 +668,19 @@ export async function githubRepoGarbageCollectActivity(
     logger
   );
 
-  // deleting the repository folder from data_source_folders (core)
+  // deleting the folders that are tied to a repository from data_source_folders (core)
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getDiscussionsInternalId(repoId),
+  });
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getIssuesInternalId(repoId),
+  });
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getCodeRootInternalId(repoId),
+  });
   await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: getRepositoryInternalId(repoId),
