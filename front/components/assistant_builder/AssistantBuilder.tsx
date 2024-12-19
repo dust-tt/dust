@@ -503,7 +503,8 @@ export default function AssistantBuilder({
             </div>
           }
           buttonsRightPanel={
-            rightPanelStatus.tab !== null ? (
+            <>
+              {/* Chevron button */}
               <Button
                 size="sm"
                 variant="ghost"
@@ -515,21 +516,7 @@ export default function AssistantBuilder({
                 disabled={isBuilderStateEmpty}
                 onClick={toggleRightPanel}
               />
-            ) : (
-              <>
-                {/* Chevron button */}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  icon={
-                    rightPanelStatus.tab !== null
-                      ? ChevronRightIcon
-                      : ChevronLeftIcon
-                  }
-                  disabled={isBuilderStateEmpty}
-                  onClick={toggleRightPanel}
-                />
-
+              {rightPanelStatus.tab === null && (
                 <div className="flex flex-col gap-3">
                   {/* Preview Button */}
                   <Button
@@ -548,17 +535,13 @@ export default function AssistantBuilder({
                     disabled={isBuilderStateEmpty}
                   />
                   {/* Performance Button */}
-                  {!!initialBuilderState && (
+                  {!!agentConfigurationId && (
                     <Button
                       icon={BarChartIcon}
                       onClick={() => openRightPanelTab("Performance")}
                       size="sm"
                       variant="outline"
-                      tooltip={
-                        agentConfigurationId
-                          ? "Inspect feedback and performance"
-                          : "Available for existing assistants only"
-                      }
+                      tooltip="Inspect feedback and performance"
                       disabled={!agentConfigurationId}
                     />
                   )}
@@ -573,8 +556,8 @@ export default function AssistantBuilder({
                     />
                   )}
                 </div>
-              </>
-            )
+              )}
+            </>
           }
           rightPanel={
             <AssistantBuilderRightPanel

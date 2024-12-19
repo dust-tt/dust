@@ -251,6 +251,7 @@ export function useAgentConfigurationFeedbacks({
   agentConfigurationId,
   withMetadata,
   pagination,
+  disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string | null;
@@ -259,6 +260,7 @@ export function useAgentConfigurationFeedbacks({
     olderThan?: Date;
   };
   withMetadata?: boolean;
+  disabled?: boolean;
 }) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -281,7 +283,8 @@ export function useAgentConfigurationFeedbacks({
     agentConfigurationId
       ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks?${urlParams.toString()}`
       : null,
-    agentConfigurationFeedbacksFetcher
+    agentConfigurationFeedbacksFetcher,
+    { disabled }
   );
 
   return {

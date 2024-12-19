@@ -111,12 +111,14 @@ export function FeedbackSelector({
 
   const handleSubmit = useCallback(async () => {
     setIsPopoverOpen(false);
-    await onSubmitThumb({
-      thumb: lastSelectedThumb ?? "up",
-      isToRemove: false,
-      feedbackContent: localFeedbackContent,
-      isConversationShared,
-    });
+    if (lastSelectedThumb) {
+      await onSubmitThumb({
+        thumb: lastSelectedThumb,
+        isToRemove: false,
+        feedbackContent: localFeedbackContent,
+        isConversationShared,
+      });
+    }
   }, [
     onSubmitThumb,
     feedback?.thumb,

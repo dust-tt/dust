@@ -4,10 +4,6 @@ import {
   ElementModal,
   InformationCircleIcon,
   Page,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
@@ -35,7 +31,6 @@ export function AssistantDetails({
   owner,
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
-  const [activeTab, setActiveTab] = useState("info");
 
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -60,7 +55,7 @@ export function AssistantDetails({
     return <></>;
   }
 
-  const TopSection = () => (
+  const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
         <Avatar
@@ -87,22 +82,6 @@ export function AssistantDetails({
           )}
         </div>
       </div>
-    </div>
-  );
-
-  const TabsSection = () => (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList>
-        <TabsTrigger value="info" label="Info" icon={InformationCircleIcon} />
-      </TabsList>
-      <TabsContent value="info">
-        <InfoSection />
-      </TabsContent>
-    </Tabs>
-  );
-
-  const InfoSection = () => (
-    <div className="mt-2 flex flex-col gap-5">
       {agentConfiguration.status === "active" && (
         <AssistantDetailsButtonBar
           owner={owner}
@@ -129,11 +108,6 @@ export function AssistantDetails({
         owner={owner}
       />
       <Page.Separator />
-      <AssistantActionsSection
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-      />
-      <InstructionsSection />
     </div>
   );
 
@@ -156,8 +130,12 @@ export function AssistantDetails({
       variant="side-sm"
     >
       <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
-        <TopSection />
-        <TabsSection />
+        <DescriptionSection />
+        <AssistantActionsSection
+          agentConfiguration={agentConfiguration}
+          owner={owner}
+        />
+        <InstructionsSection />
       </div>
     </ElementModal>
   );

@@ -54,7 +54,7 @@ import {
   useAgentConfigurationHistory,
 } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 const MAX_FEEDBACKS_TO_DISPLAY = 500;
@@ -157,20 +157,20 @@ export default function AssistantBuilderRightPanel({
         </div>
       )}
       <div
-        className={classNames(
-          template !== null
-            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
-            : rightPanelStatus.tab === "Preview"
-              ? "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50"
-              : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200",
-          shouldAnimatePreviewDrawer &&
-            rightPanelStatus.tab === "Preview" &&
-            rightPanelStatus.openedAt != null &&
+        className={cn(
+          "grow-1 mb-5 h-full overflow-y-auto border-structure-200",
+          {
+            "rounded-b-xl border-x border-b pt-5": !!template,
+            "mt-5 rounded-xl border border-structure-200": !template,
+            "bg-structure-50": rightPanelStatus.tab !== "Performance",
             // Only animate the reload if the drawer has been open for at least 1 second.
             // This is to prevent the animation from triggering right after the drawer is opened.
-            Date.now() - rightPanelStatus.openedAt > 1000
-            ? "animate-reload"
-            : ""
+            "animate-reload":
+              shouldAnimatePreviewDrawer &&
+              rightPanelStatus.tab === "Preview" &&
+              rightPanelStatus.openedAt != null &&
+              Date.now() - rightPanelStatus.openedAt > 1000,
+          }
         )}
       >
         {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
@@ -421,13 +421,16 @@ const FeedbacksSection = ({
   assistantId,
 }: {
   owner: LightWorkspaceType;
-  assistantId: string | null;
+  assistantId: string;
 }) => {
+  // Used for pagination
   const [feedbacksExhausted, setFeedbacksExhausted] = useState(false);
   const [
     currentOldestFeedbackCreationDate,
     setCurrentOldestFeedbackCreationDate,
   ] = useState<Date | undefined>(undefined);
+
+  // All retrieved Feedbacks
   const [feedbacks, setFeedbacks] = useState<
     AgentMessageFeedbackWithMetadataType[]
   >([]);
@@ -472,12 +475,12 @@ const FeedbacksSection = ({
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
     useAgentConfigurationHistory({
       workspaceId: owner.sId,
-      agentConfigurationId: assistantId || "",
-      disabled: !assistantId,
+      agentConfigurationId: assistantId,
     });
 
   const handleLoadMoreFeedbacks = useCallback(() => {
     if (agentConfigurationFeedbacks) {
+      // This triggers a re-fetch of the feedbacks.
       setCurrentOldestFeedbackCreationDate(
         new Date(
           agentConfigurationFeedbacks[
@@ -488,50 +491,58 @@ const FeedbacksSection = ({
     }
   }, [agentConfigurationFeedbacks]);
 
-  return isAgentConfigurationFeedbacksLoading ||
-    isAgentConfigurationHistoryLoading ? (
-    <Spinner />
-  ) : (
+  if (
+    isAgentConfigurationFeedbacksLoading ||
+    isAgentConfigurationHistoryLoading
+  ) {
+    return <Spinner />;
+  }
+
+  if (
+    !isAgentConfigurationFeedbacksLoading &&
+    (!feedbacks || feedbacks.length === 0)
+  ) {
+    return <div className="mt-3 text-sm text-element-900">No feedbacks.</div>;
+  }
+
+  if (!agentConfigurationHistory) {
+    return (
+      <div className="mt-3 text-sm text-element-900">
+        Error loading the previous agent versions.
+      </div>
+    );
+  }
+
+  return (
     <div>
-      {(!isAgentConfigurationFeedbacksLoading && feedbacks.length === 0) ||
-      !assistantId ? (
-        <div className="mt-3 text-sm text-element-900">No feedbacks.</div>
-      ) : !agentConfigurationHistory ? (
-        <div className="mt-3 text-sm text-element-900">
-          Error loading the previous agent versions.
-        </div>
-      ) : (
-        <div className="mb-2 flex flex-col gap-2">
-          <AgentConfigurationVersionHeader
-            agentConfiguration={agentConfigurationHistory[0]}
-            agentConfigurationVersion={agentConfigurationHistory[0].version}
-            isLatestVersion={true}
-          />
-          {feedbacks.map((feedback, index) => (
-            <div key={feedback.id} className="animate-fadeIn">
-              {index > 0 &&
-                feedback.agentConfigurationVersion !==
-                  feedbacks[index - 1].agentConfigurationVersion && (
-                  <AgentConfigurationVersionHeader
-                    agentConfiguration={agentConfigurationHistory?.find(
-                      (c) => c.version === feedback.agentConfigurationVersion
-                    )}
-                    agentConfigurationVersion={
-                      feedback.agentConfigurationVersion
-                    }
-                    isLatestVersion={false}
-                  />
-                )}
-              <div className="mr-2">
-                <FeedbackCard
-                  owner={owner}
-                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+      <div className="mb-2 flex flex-col gap-2">
+        <AgentConfigurationVersionHeader
+          agentConfiguration={agentConfigurationHistory[0]}
+          agentConfigurationVersion={agentConfigurationHistory[0].version}
+          isLatestVersion={true}
+        />
+        {feedbacks.map((feedback, index) => (
+          <div key={feedback.id} className="animate-fadeIn">
+            {index > 0 &&
+              feedback.agentConfigurationVersion !==
+                feedbacks[index - 1].agentConfigurationVersion && (
+                <AgentConfigurationVersionHeader
+                  agentConfiguration={agentConfigurationHistory?.find(
+                    (c) => c.version === feedback.agentConfigurationVersion
+                  )}
+                  agentConfigurationVersion={feedback.agentConfigurationVersion}
+                  isLatestVersion={false}
                 />
-              </div>
+              )}
+            <div className="mr-2">
+              <FeedbackCard
+                owner={owner}
+                feedback={feedback as AgentMessageFeedbackWithMetadataType}
+              />
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
       {feedbacks && !feedbacksExhausted && (
         <div className="mb-2 flex justify-center">
           <Button
@@ -557,17 +568,19 @@ function AgentConfigurationVersionHeader({
 }) {
   const getAgentConfigurationVersionString = useCallback(
     (config: LightAgentConfigurationType) => {
-      return isLatestVersion
-        ? "Latest version"
-        : !config.versionCreatedAt
-          ? `v${config.version}`
-          : new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "numeric",
-              minute: "numeric",
-            });
+      if (isLatestVersion) {
+        return "Latest version";
+      }
+      if (!config.versionCreatedAt) {
+        return `v${config.version}`;
+      }
+      return new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+      });
     },
     [isLatestVersion]
   );
@@ -589,14 +602,14 @@ function FeedbackCard({
   feedback: AgentMessageFeedbackWithMetadataType;
 }) {
   const conversationUrl =
-    feedback.conversationId && feedback.messageId
+    feedback.conversationId &&
+    feedback.messageId &&
+    feedback.isConversationShared
       ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#${feedback.messageId}`
       : null;
 
   const timeSinceFeedback = timeAgoFrom(
-    feedback.createdAt instanceof Date
-      ? feedback.createdAt.getTime()
-      : new Date(feedback.createdAt).getTime(),
+    new Date(feedback.createdAt).getTime(),
     {
       useLongFormat: true,
     }
@@ -618,7 +631,7 @@ function FeedbackCard({
           ) : (
             <Spinner size="xs" />
           )}
-          <div className="flex-grow text-sm font-bold text-element-900">
+          <div className="text-md flex-grow font-medium text-element-900">
             {feedback.userName}
           </div>
         </div>
@@ -649,7 +662,7 @@ function FeedbackCard({
         />
       </div>
       {feedback.content && (
-        <div className="my-2 ml-4 flex items-center gap-2">
+        <div className="my-2 ml-4 flex items-center">
           <div className="flex-grow text-sm leading-relaxed text-gray-700">
             {feedback.content}
           </div>
