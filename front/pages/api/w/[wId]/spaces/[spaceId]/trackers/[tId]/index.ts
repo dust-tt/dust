@@ -108,13 +108,13 @@ async function handler(
       const updatedTrackerRes = await tracker.updateConfig(
         auth,
         {
+          status: body.status,
           name: body.name,
           description: body.description,
           prompt: body.prompt,
           modelId: body.modelId,
           providerId: body.providerId,
           temperature: body.temperature,
-          status: "active",
           frequency: body.frequency,
           recipients: body.recipients,
         },
