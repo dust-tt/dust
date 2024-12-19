@@ -105,7 +105,6 @@ export async function getRootNodesToSyncFromResources(
             logger.error(
               {
                 connectorId,
-                dataSourceId: dataSourceConfig.dataSourceId,
                 error,
                 id: resource.internalId,
               },
