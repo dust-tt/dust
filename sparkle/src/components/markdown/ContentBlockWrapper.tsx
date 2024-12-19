@@ -106,7 +106,7 @@ export function ContentBlockWrapper({
         <div className="s-w-full s-table-auto">{children}</div>
       </div>
 
-      <div className="s-absolute s-right-2 s-top-2 s-mx-2 s-flex s-gap-3 s-rounded-xl">
+      <div className="s-absolute s-right-1 s-top-1 s-flex s-gap-1 s-rounded-xl">
         {getContentToDownload && (
           <IconButton
             variant={isDarkMode ? "ghost" : "outline"}
