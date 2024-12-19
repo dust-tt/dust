@@ -541,11 +541,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     internalIds: string[];
   }): Promise<Result<ContentNode[], Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
-    }
     const notionIds = internalIds.map((id) => notionIdFromNodeId(id));
 
     const [pages, dbs] = await Promise.all([
