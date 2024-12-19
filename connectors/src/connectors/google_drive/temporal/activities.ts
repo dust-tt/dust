@@ -162,6 +162,7 @@ export async function syncFiles(
   logger.info(
     {
       connectorId,
+      folderId: driveFolderId,
       dataSourceId: dataSourceConfig.dataSourceId,
     },
     `[SyncFiles] Start sync.`
@@ -179,7 +180,11 @@ export async function syncFiles(
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
     logger.info(
-      { driveFolderId },
+      {
+        connectorId,
+        folderId: driveFolderId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
       `Google Drive Folder unexpectedly not found (got 404)`
     );
     return {
@@ -462,7 +467,7 @@ export async function incrementalSync(
           `Invalid file. File is: ${JSON.stringify(change.file)}`
         );
       }
-      localLogger.info({ file_id: change.file.id }, "will sync file");
+      localLogger.info({ fileId: change.file.id }, "will sync file");
 
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -497,7 +502,7 @@ export async function incrementalSync(
           parentId: file.parent,
           lastSeenTs: new Date(),
         });
-        localLogger.info({ file_id: change.file.id }, "done syncing file");
+        localLogger.info({ fileId: change.file.id }, "done syncing file");
 
         continue;
       }
@@ -509,7 +514,7 @@ export async function incrementalSync(
         driveFile,
         startSyncTs
       );
-      localLogger.info({ file_id: change.file.id }, "done syncing file");
+      localLogger.info({ fileId: change.file.id }, "done syncing file");
     }
 
     nextPageToken = changesRes.data.nextPageToken
