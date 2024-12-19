@@ -15,4 +15,9 @@ RUN npm ci
 
 COPY /resolver .
 
+RUN npm run build
+
+ENV PORT=8080
+EXPOSE 8080
+
 CMD ["npm", "--silent", "run", "start"]
