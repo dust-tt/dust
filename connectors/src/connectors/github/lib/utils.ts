@@ -142,9 +142,9 @@ export function getMimeTypeFromGithubContentNodeType(
     case "REPO_CODE":
       return `${baseMimeType}.code-folder`;
     case "REPO_CODE_DIR":
-      return `${baseMimeType}.code-directory`;
+      return `${baseMimeType}.code.directory`;
     case "REPO_CODE_FILE":
-      return `${baseMimeType}.code-file`;
+      return `${baseMimeType}.code.file`;
     case "REPO_ISSUE":
       return `${baseMimeType}.issue`;
     case "REPO_DISCUSSION":
