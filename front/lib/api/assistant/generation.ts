@@ -83,6 +83,7 @@ export async function constructPromptMultiActions(
 
   // INSTRUCTIONS section
   let instructions = "INSTRUCTIONS:\n";
+
   if (agentConfiguration.instructions) {
     instructions += `${agentConfiguration.instructions}\n`;
   } else if (fallbackPrompt) {
