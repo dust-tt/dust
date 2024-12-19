@@ -31,6 +31,10 @@ async function handler(
         auth,
         agentConfigurationId: req.query.aId,
         withMetadata: req.query.withMetadata === "true",
+        pagination: {
+          // Limit the number of feedbacks to retrieve.
+          limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+        },
       });
 
       if (feedbacksRes.isErr()) {

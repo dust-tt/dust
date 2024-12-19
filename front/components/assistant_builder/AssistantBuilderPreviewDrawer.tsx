@@ -2,6 +2,7 @@ import {
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  cn,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +30,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useCallback, useContext, useEffect, useMemo } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -156,7 +157,9 @@ export default function AssistantBuilderRightPanel({
         className={classNames(
           template !== null
             ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
-            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
+            : rightPanelStatus.tab === "Preview"
+              ? "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50"
+              : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200",
           shouldAnimatePreviewDrawer &&
             rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
@@ -417,12 +420,24 @@ const FeedbacksSection = ({
   owner: LightWorkspaceType;
   assistantId: string | null;
 }) => {
+  const [feedbackQueryLimit, setFeedbackQueryLimit] = useState(5);
+  const [feedbacksExhausted, setFeedbacksExhausted] = useState(false);
   const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
     useAgentConfigurationFeedbacks({
       workspaceId: owner.sId,
       agentConfigurationId: assistantId ?? "",
       withMetadata: true,
+      pagination: {
+        limit: feedbackQueryLimit,
+      },
     });
+  useEffect(() => {
+    if (agentConfigurationFeedbacks) {
+      setFeedbacksExhausted(
+        agentConfigurationFeedbacks.length < feedbackQueryLimit
+      );
+    }
+  }, [agentConfigurationFeedbacks, feedbackQueryLimit]);
 
   const sortedFeedbacks = useMemo(() => {
     if (!agentConfigurationFeedbacks) {
@@ -453,14 +468,14 @@ const FeedbacksSection = ({
           Error loading the previous agent versions.
         </div>
       ) : (
-        <div className="mt-3">
+        <div className="mb-2 flex flex-col gap-2">
           <AgentConfigurationVersionHeader
             agentConfiguration={agentConfigurationHistory[0]}
             agentConfigurationVersion={agentConfigurationHistory[0].version}
             isLatestVersion={true}
           />
           {sortedFeedbacks.map((feedback, index) => (
-            <div key={feedback.id}>
+            <div key={feedback.id} className="animate-fadeIn">
               {index > 0 &&
                 feedback.agentConfigurationVersion !==
                   sortedFeedbacks[index - 1].agentConfigurationVersion && (
@@ -474,12 +489,24 @@ const FeedbacksSection = ({
                     isLatestVersion={false}
                   />
                 )}
-              <FeedbackCard
-                owner={owner}
-                feedback={feedback as AgentMessageFeedbackWithMetadataType}
-              />
+              <div className="mr-2">
+                <FeedbackCard
+                  owner={owner}
+                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                />
+              </div>
             </div>
           ))}
+        </div>
+      )}
+      {sortedFeedbacks && !feedbacksExhausted && (
+        <div className="mb-2 flex justify-center">
+          <Button
+            size="sm"
+            variant="outline"
+            label="Load more feedbacks"
+            onClick={() => setFeedbackQueryLimit((prev) => prev + 50)}
+          />
         </div>
       )}
     </div>
@@ -498,7 +525,7 @@ function AgentConfigurationVersionHeader({
   const getAgentConfigurationVersionString = useCallback(
     (config: LightAgentConfigurationType) => {
       return isLatestVersion
-        ? "Current version"
+        ? "Latest version"
         : !config.versionCreatedAt
           ? `v${config.version}`
           : new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
@@ -513,7 +540,7 @@ function AgentConfigurationVersionHeader({
   );
 
   return (
-    <div className="flex w-fit items-center gap-2 rounded-full bg-sky-100 p-2 text-sm">
+    <div className="mb-2 mt-4 text-sm font-medium">
       {agentConfiguration
         ? getAgentConfigurationVersionString(agentConfiguration)
         : `v${agentConfigurationVersion}`}
@@ -542,52 +569,12 @@ function FeedbackCard({
     }
   );
 
-  if (!feedback.content) {
-    return (
-      <ContentMessage variant="slate" className="mr-2 mt-2 p-2">
-        <div className="justify-content-around flex items-center gap-2">
-          <div className="flex w-full items-center gap-2">
-            {feedback.userImageUrl ? (
-              <Avatar
-                size="xs"
-                visual={feedback.userImageUrl}
-                name={feedback.userName}
-              />
-            ) : (
-              <Spinner size="xs" />
-            )}
-            <div className="flex-grow text-sm font-bold text-element-900">
-              {feedback.userName}
-            </div>
-          </div>
-
-          <div className="flex flex-shrink-0 flex-row items-center gap-2 text-xs text-muted-foreground">
-            {timeSinceFeedback} ago
-            <div className="text-xs text-muted-foreground">
-              {feedback.thumbDirection === "up" ? (
-                <HandThumbUpIcon color="#3B82F6" width={16} height={16} />
-              ) : (
-                <HandThumbDownIcon width={16} height={16} />
-              )}
-            </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="xs"
-            href={conversationUrl ?? ""}
-            icon={ExternalLinkIcon}
-            disabled={!conversationUrl}
-            target="_blank"
-          />
-        </div>
-      </ContentMessage>
-    );
-  }
-
   return (
-    <ContentMessage variant="slate" className="mt-2 p-2">
-      <div className="justify-content-around mb-3 flex items-center gap-2">
+    <ContentMessage
+      variant="slate"
+      className="rounded-lg border border-gray-200 p-2"
+    >
+      <div className="justify-content-around flex items-center gap-2">
         <div className="flex w-full items-center gap-2">
           {feedback.userImageUrl ? (
             <Avatar
@@ -602,28 +589,39 @@ function FeedbackCard({
             {feedback.userName}
           </div>
         </div>
+
         <div className="flex flex-shrink-0 flex-row items-center gap-2 text-xs text-muted-foreground">
           {timeSinceFeedback} ago
-          <div className="text-xs text-muted-foreground">
+          <div
+            className={cn("flex h-8 w-8 items-center justify-center rounded", {
+              "bg-sky-100": feedback.thumbDirection === "up",
+              "bg-pink-100": feedback.thumbDirection === "down",
+            })}
+          >
             {feedback.thumbDirection === "up" ? (
-              <HandThumbUpIcon color="#3B82F6" width={16} height={16} />
+              <HandThumbUpIcon />
             ) : (
-              <HandThumbDownIcon width={16} height={16} />
+              <HandThumbDownIcon />
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="xs"
-            href={conversationUrl ?? ""}
-            icon={ExternalLinkIcon}
-            target="_blank"
-            disabled={!conversationUrl}
-          />
         </div>
+
+        <Button
+          variant="ghost"
+          size="xs"
+          href={conversationUrl ?? ""}
+          icon={ExternalLinkIcon}
+          disabled={!conversationUrl}
+          target="_blank"
+        />
       </div>
-      <div className="ml-4 flex items-center gap-2">
-        <div className="flex-grow">{feedback.content}</div>
-      </div>
+      {feedback.content && (
+        <div className="my-2 ml-4 flex items-center gap-2">
+          <div className="flex-grow text-sm leading-relaxed text-gray-700">
+            {feedback.content}
+          </div>
+        </div>
+      )}
     </ContentMessage>
   );
 }

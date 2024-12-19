@@ -45,9 +45,13 @@ export async function getAgentConfigurationFeedbacks({
   auth,
   agentConfigurationId,
   withMetadata,
+  pagination,
 }: {
   auth: Authenticator;
   agentConfigurationId: string;
+  pagination: {
+    limit: number;
+  };
   withMetadata?: boolean;
 }): Promise<
   Result<
@@ -64,10 +68,11 @@ export async function getAgentConfigurationFeedbacks({
     throw new Error("Unexpected `auth` without `plan`.");
   }
   const feedbacksRes =
-    await AgentMessageFeedbackResource.fetchByAgentConfigurationId(
+    await AgentMessageFeedbackResource.fetchByAgentConfigurationId({
       auth,
-      agentConfigurationId
-    );
+      agentConfigurationId,
+      pagination,
+    });
 
   const feedbacks = feedbacksRes.map(
     (feedback) =>
