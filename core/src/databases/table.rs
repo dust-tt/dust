@@ -221,6 +221,7 @@ impl Table {
     pub async fn update_parents(
         &self,
         store: Box<dyn Store + Sync + Send>,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         parents: Vec<String>,
     ) -> Result<()> {
         store
@@ -231,6 +232,8 @@ impl Table {
                 &parents,
             )
             .await?;
+
+        search_store.index_node(Node::from(self.clone())).await?;
         Ok(())
     }
 }
