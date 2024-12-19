@@ -1988,6 +1988,7 @@ async fn data_sources_documents_delete(
                 .delete_document(
                     state.store.clone(),
                     state.qdrant_clients.clone(),
+                    state.search_store.clone(),
                     &document_id,
                 )
                 .await
@@ -2095,6 +2096,7 @@ async fn data_sources_delete(
                     state.store.clone(),
                     state.databases_store.clone(),
                     state.qdrant_clients.clone(),
+                    state.search_store.clone(),
                 )
                 .await
             {
@@ -2398,7 +2400,11 @@ async fn tables_delete(
         ),
         Ok(Some(table)) => {
             match table
-                .delete(state.store.clone(), state.databases_store.clone())
+                .delete(
+                    state.store.clone(),
+                    state.databases_store.clone(),
+                    Some(state.search_store.clone()),
+                )
                 .await
             {
                 Err(e) => error_response(
@@ -3076,15 +3082,23 @@ async fn folders_delete(
                         Some(e),
                     )
                 }
-                Ok(_) => (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "success": true,
-                        })),
-                    }),
-                ),
+                Ok(_) => match state.search_store.delete_node(folder_id).await {
+                    Ok(_) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "success": true,
+                            })),
+                        }),
+                    ),
+                    Err(e) => error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to delete folder from search index",
+                        Some(e),
+                    ),
+                },
             }
         }
     }
