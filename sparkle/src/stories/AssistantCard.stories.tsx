@@ -48,7 +48,7 @@ export const AssistantCardExample = () => (
       <LargeAssistantCard
         title={"@alesFr"}
         description={
-          "OpenAI's most powerful and recent model (128k context). With a very long description that starts to repeat itself here here here here here here here here here here here"
+          "OpenAI's most powerful and recent model (128k context). With a very long description that starts to repeat itself here here here here here here here here here here here OpenAI's most powerful and recent model (128k context). With a very long description that starts to repeat itself here here here here here here here here here here here"
         }
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
         subtitle={"Stanislas Polu"}

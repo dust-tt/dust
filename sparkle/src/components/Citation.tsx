@@ -205,7 +205,7 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
         ref={ref}
         className={cn(
           "s-z-10",
-          "s-line-clamp-1 s-overflow-hidden s-text-ellipsis",
+          "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
           "s-text-sm s-font-medium s-text-foreground",
           className
         )}
