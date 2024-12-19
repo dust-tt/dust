@@ -11,13 +11,10 @@ makeScript({}, async ({ execute }, logger) => {
   await concurrentExecutor(
     connectors,
     async (connector) => {
-      // this is a strict copy-paste of upsertSharedWithMeFolder, I don't want to export it for a migration script and want the folderId for logging purposes
-      const dataSourceConfig = dataSourceConfigFromConnector(connector);
       const folderId = `notion-unknown`;
-
       if (execute) {
         await upsertDataSourceFolder({
-          dataSourceConfig,
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
           folderId,
           parents: [folderId],
           parentId: null,
