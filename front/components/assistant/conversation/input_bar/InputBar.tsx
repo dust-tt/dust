@@ -168,7 +168,8 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    // When we are creating a new conversation, we will disable the input bar, show a loading spinner and in case of error, re-enable the input bar
+    // When we are creating a new conversation, we will disable the input bar, show a loading
+    // spinner and in case of error, re-enable the input bar
     if (!conversationId) {
       setLoading(true);
       setDisableSendButton(true);
@@ -237,7 +238,7 @@ export function AssistantInputBar({
         }),
       }
     );
-    await mutateConversation();
+    mutateConversation();
   };
 
   useEffect(() => {
