@@ -11,6 +11,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   DataSourceViewSelectionConfiguration,
   DataSourceViewType,
   SpaceType,
@@ -24,9 +25,10 @@ import {
   TRACKER_FREQUENCIES,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 
 import { AdvancedSettings } from "@app/components/assistant_builder/InstructionScreen";
+import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
@@ -53,10 +55,12 @@ export const TrackerBuilder = ({
   initialTrackerId: string | null;
 }) => {
   const router = useRouter();
+  const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
 
   const [edited, setEdited] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showMaintainedDsModal, setShowMaintainedDsModal] = useState(false);
   const [showWatchedDsModal, setShowWatchedDataSourcesModal] = useState(false);
 
@@ -205,6 +209,54 @@ export const TrackerBuilder = ({
     });
   };
 
+  const onDelete = async () => {
+    if (!initialTrackerId) {
+      // Should never happen.
+      sendNotification({
+        title: "Failed to delete tracker",
+        description: "Can't delete a tracker that hasn't been created yet.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (
+      await confirm({
+        title: "This can't be undone",
+        message: "Are you sure you want to delete this tracker?",
+        validateVariant: "warning",
+      })
+    ) {
+      setIsDeleting(true);
+      const res = await fetch(
+        `/api/w/${owner.sId}/spaces/${globalSpace.sId}/trackers/${initialTrackerId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (res.ok) {
+        setIsDeleting(false);
+        void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+        sendNotification({
+          title: "Tracker deleted",
+          description: "Tracker successfully deleted.",
+          type: "success",
+        });
+      } else {
+        setIsDeleting(false);
+        const err = (await res.json()) as { error: APIError };
+        sendNotification({
+          title: "Failed to delete tracker",
+          description: err.error.message,
+          type: "error",
+        });
+      }
+      return true;
+    } else {
+      return false;
+    }
+  };
+
   const trackableDataSourcesViews = useMemo(
     () =>
       dataSourceViews.filter(
@@ -284,7 +336,16 @@ export const TrackerBuilder = ({
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 pb-12">
         <div className="flex">
           <div className="flex flex-grow" />
-          <div className="flex flex-shrink-0 flex-col justify-end">
+          <div className="flex flex-shrink-0 gap-2">
+            {initialTrackerId && (
+              <Button
+                label={"Delete"}
+                variant="warning"
+                onClick={onDelete}
+                isLoading={isDeleting}
+                disabled={isSubmitting || isDeleting}
+              />
+            )}
             <AdvancedSettings
               owner={owner}
               plan={subscription.plan}
