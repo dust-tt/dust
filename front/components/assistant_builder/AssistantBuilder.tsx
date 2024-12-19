@@ -1,12 +1,12 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
+  BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   cn,
-  FilterIcon,
   MagicIcon,
   Tabs,
   TabsList,
@@ -550,7 +550,7 @@ export default function AssistantBuilder({
                   {/* Performance Button */}
                   {!!initialBuilderState && (
                     <Button
-                      icon={FilterIcon}
+                      icon={BarChartIcon}
                       onClick={() => openRightPanelTab("Performance")}
                       size="sm"
                       variant="outline"
