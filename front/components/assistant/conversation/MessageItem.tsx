@@ -109,6 +109,8 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const router = useRouter();
     const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
     const [highlighted, setHighlighted] = useState(false);
+    // Because the prop ref can be undefined
+    const scrollRef = React.useRef<HTMLDivElement>(null);
 
     // Effect: scroll to the message and temporarily highlight if it is the anchor's target
     useEffect(() => {
@@ -116,12 +118,23 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         return;
       }
       const messageIdToScrollTo = router.asPath.split("#")[1];
-      if (messageIdToScrollTo === sId && !hasScrolledToMessage) {
+      if (
+        messageIdToScrollTo === sId &&
+        !hasScrolledToMessage &&
+        (ref || scrollRef)
+      ) {
         setTimeout(() => {
           setHasScrolledToMessage(true);
-          document
-            .getElementById(`message-id-${sId}`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Use ref to scroll to the message
+          const divRef = ref
+            ? (ref as React.RefObject<HTMLDivElement>)
+            : scrollRef;
+          if (divRef.current) {
+            divRef.current.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }
           setHighlighted(true);
 
           // Highlight the message for a short time
@@ -130,7 +143,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           }, 2000);
         }, 100);
       }
-    }, [hasScrolledToMessage, router.asPath, sId, ref]);
+    }, [hasScrolledToMessage, router.asPath, sId, ref, scrollRef]);
 
     if (message.visibility === "deleted") {
       return null;
@@ -185,7 +198,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
         return (
           <div
-            key={`message-id-${sId}`}
             id={`message-id-${sId}`}
             ref={ref}
             className={highlighted ? "bg-blue-100" : ""}
@@ -204,9 +216,8 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "agent_message":
         return (
           <div
-            key={`message-id-${sId}`}
             id={`message-id-${sId}`}
-            ref={ref}
+            ref={ref ?? scrollRef}
             className={highlighted ? "bg-blue-100" : ""}
           >
             <AgentMessage

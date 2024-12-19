@@ -95,11 +95,9 @@ export const FeedbackSelectorPopoverContent = ({
 
   return (
     agentLastAuthor && (
-      <>
-        <div className="mt-4">
-          <Page.P variant="secondary">Your feedback goes to:</Page.P>
-        </div>
-        <div className="mt-2 flex items-center gap-2">
+      <div className="mt-4 flex flex-col gap-2">
+        <Page.P variant="secondary">Your feedback goes to:</Page.P>
+        <div className="flex flex-row items-center gap-2">
           {agentLastAuthor?.image && (
             <img
               src={agentLastAuthor?.image}
@@ -111,7 +109,7 @@ export const FeedbackSelectorPopoverContent = ({
             {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
           </Page.P>
         </div>
-      </>
+      </div>
     )
   );
 };

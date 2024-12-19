@@ -16,7 +16,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export const MessageFeedbackRequestBodySchema = t.type({
-  thumbDirection: t.string,
+  thumbDirection: t.union([t.literal("up"), t.literal("down")]),
   feedbackContent: t.union([t.string, t.undefined, t.null]),
   isConversationShared: t.boolean,
 });
