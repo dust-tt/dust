@@ -670,7 +670,7 @@ export async function syncDeltaForRootNodesInDrive({
         });
 
         if (isMoved) {
-          await updateDescendantsParentsInQdrant({
+          await updateDescendantsParentsInCore({
             dataSourceConfig,
             folder: resource,
             startSyncTs,
@@ -844,7 +844,7 @@ async function isFolderMovedInSameRoot({
   return oldParentId !== newParentId;
 }
 
-async function updateDescendantsParentsInQdrant({
+async function updateDescendantsParentsInCore({
   folder,
   dataSourceConfig,
   startSyncTs,
@@ -856,6 +856,19 @@ async function updateDescendantsParentsInQdrant({
   const children = await folder.fetchChildren();
   const files = children.filter((child) => child.nodeType === "file");
   const folders = children.filter((child) => child.nodeType === "folder");
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: folder.internalId,
+    parents: await getParents({
+      connectorId: folder.connectorId,
+      internalId: folder.internalId,
+      startSyncTs,
+    }),
+    title: folder.name ?? "",
+    mimeType: "application/vnd.dust.microsoft.folder",
+  });
+
   await concurrentExecutor(
     files,
     async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
@@ -864,7 +877,7 @@ async function updateDescendantsParentsInQdrant({
     }
   );
   for (const childFolder of folders) {
-    await updateDescendantsParentsInQdrant({
+    await updateDescendantsParentsInCore({
       dataSourceConfig,
       folder: childFolder,
       startSyncTs,
