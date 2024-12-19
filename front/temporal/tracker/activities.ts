@@ -33,6 +33,18 @@ const TRACKER_TOTAL_TARGET_TOKENS = 8192;
 // we could include content from the next doc in the maintained scope.
 const TRACKER_MAINTAINED_DOCUMENT_TOP_K = 1;
 
+export async function getDebounceMsActivity(
+  dataSourceConnectorProvider: ConnectorProvider | null
+): Promise<number> {
+  if (!dataSourceConnectorProvider) {
+    return 10000;
+  }
+  if (["notion", "google_drive"].includes(dataSourceConnectorProvider)) {
+    return 600000;
+  }
+  return 3600000;
+}
+
 export async function trackersGenerationActivity(
   workspaceId: string,
   dataSourceId: string,
@@ -54,48 +66,7 @@ export async function trackersGenerationActivity(
     throw new Error(`Could not find data source ${dataSourceId}`);
   }
 
-  localLogger.info(
-    "Looking for trackers with watched scope including document."
-  );
-
-  let docParentIds: string[] | null = null;
-
-  if (dataSourceConnectorProvider !== null) {
-    if (dataSource.connectorId === null) {
-      throw new Error(
-        `Data source ${dataSourceId} has no connector but connector provider is set. Cannot find parents.`
-      );
-    }
-
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-    const parentsResult = await connectorsAPI.getContentNodesParents({
-      connectorId: dataSource.connectorId,
-      internalIds: [documentId],
-    });
-    if (parentsResult.isErr()) {
-      localLogger.error(
-        {
-          error: parentsResult.error,
-        },
-        "Failed to get parents of document."
-      );
-      return;
-    }
-
-    docParentIds = [
-      documentId,
-      ...parentsResult.value.nodes.flatMap((node) => node.parents),
-    ];
-  }
-
-  const trackers =
-    await TrackerConfigurationResource.fetchAllWatchedForDocument(auth, {
-      dataSourceId,
-      parentIds: docParentIds,
-    });
+  const trackers = await getTrackersToRun(auth, dataSource, documentId);
 
   if (!trackers.length) {
     localLogger.info("No active trackers found for document.");
@@ -300,6 +271,68 @@ export async function trackersGenerationActivity(
       documentId,
     });
   }
+}
+
+export async function shouldRunTrackersActivity(
+  workspaceId: string,
+  dataSourceId: string,
+  documentId: string
+): Promise<boolean> {
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  if (!dataSource) {
+    throw new Error(`Could not find data source ${dataSourceId}`);
+  }
+  const trackers = await getTrackersToRun(auth, dataSource, documentId);
+  return trackers.length > 0;
+}
+
+async function getTrackersToRun(
+  auth: Authenticator,
+  dataSource: DataSourceResource,
+  documentId: string
+): Promise<TrackerConfigurationResource[]> {
+  const localLogger = logger.child({
+    dataSourceId: dataSource.sId,
+    documentId,
+  });
+
+  localLogger.info(
+    "Looking for trackers with watched scope including document."
+  );
+
+  let docParentIds: string[] | null = null;
+
+  if (dataSource.connectorProvider !== null) {
+    if (dataSource.connectorId === null) {
+      throw new Error(
+        `Data source ${dataSource.sId} has no connector but connector provider is set. Cannot find parents.`
+      );
+    }
+
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+    const parentsResult = await connectorsAPI.getContentNodesParents({
+      connectorId: dataSource.connectorId,
+      internalIds: [documentId],
+    });
+    if (parentsResult.isErr()) {
+      throw parentsResult.error;
+    }
+
+    docParentIds = [
+      documentId,
+      ...parentsResult.value.nodes.flatMap((node) => node.parents),
+    ];
+  }
+
+  return TrackerConfigurationResource.fetchAllWatchedForDocument(auth, {
+    dataSourceId: dataSource.sId,
+    parentIds: docParentIds,
+  });
 }
 
 async function getDataSourceDocument({

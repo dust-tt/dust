@@ -14,7 +14,11 @@ const { trackersGenerationActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minutes",
 });
 
-const { getTrackerIdsToNotifyActivity } = proxyActivities<typeof activities>({
+const {
+  getTrackerIdsToNotifyActivity,
+  shouldRunTrackersActivity,
+  getDebounceMsActivity,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
 
@@ -37,19 +41,21 @@ export async function trackersGenerationWorkflow(
 ) {
   let signaled = true;
 
-  const debounceMs = (() => {
-    if (!dataSourceConnectorProvider) {
-      return 10000;
-    }
-    if (["notion", "google_drive"].includes(dataSourceConnectorProvider)) {
-      return 600000;
-    }
-    return 3600000;
-  })();
-
   setHandler(newUpsertSignal, () => {
     signaled = true;
   });
+
+  const shouldRun = await shouldRunTrackersActivity(
+    workspaceId,
+    dataSourceId,
+    documentId
+  );
+
+  if (!shouldRun) {
+    return;
+  }
+
+  const debounceMs = await getDebounceMsActivity(dataSourceConnectorProvider);
 
   while (signaled) {
     signaled = false;
