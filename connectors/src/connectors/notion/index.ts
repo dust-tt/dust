@@ -40,34 +40,20 @@ import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
 
-export function getNotionUnknownFolderId(dataSourceConfig: DataSourceConfig) {
-  return `notion-unknown-${dataSourceConfig.dataSourceId}`;
-}
-
-function nodeIdFromNotionId(
-  notionId: string,
-  dataSourceConfig: DataSourceConfig
-) {
-  if (notionId === "unknown") {
-    return getNotionUnknownFolderId(dataSourceConfig);
-  }
+function nodeIdFromNotionId(notionId: string) {
   return `notion-${notionId}`;
 }
 
 function notionIdFromNodeId(nodeId: string) {
-  if (nodeId.startsWith("notion-unknown-")) {
-    return "unknown";
-  }
   return _.last(nodeId.split("notion-"))!;
 }
 
 function getNotionResourceParentInternalId(
-  resource: NotionPage | NotionDatabase,
-  dataSourceConfig: DataSourceConfig
+  resource: NotionPage | NotionDatabase
 ): string | null {
   return !resource.parentId || resource.parentId === "workspace"
     ? null
-    : nodeIdFromNotionId(resource.parentId, dataSourceConfig);
+    : nodeIdFromNotionId(resource.parentId);
 }
 
 async function workspaceIdFromConnectionId(connectionId: string) {
@@ -91,7 +77,7 @@ async function workspaceIdFromConnectionId(connectionId: string) {
  */
 async function upsertNotionUnknownFolder(connector: ConnectorResource) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const folderId = getNotionUnknownFolderId(dataSourceConfig);
+  const folderId = nodeIdFromNotionId("unknown");
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId,
@@ -323,7 +309,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteDataSourceFolder({
       dataSourceConfig,
-      folderId: getNotionUnknownFolderId(dataSourceConfig),
+      folderId: nodeIdFromNotionId("unknown"),
     });
 
     const res = await connector.delete();
@@ -464,8 +450,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(new Error("Connector not found"));
     }
-    const dataSourceConfig = dataSourceConfigFromConnector(c);
-
     const notionId =
       (parentInternalId && notionIdFromNodeId(parentInternalId)) || "workspace";
 
@@ -490,17 +474,14 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
       return {
         provider: c.type,
-        internalId: nodeIdFromNotionId(page.notionPageId, dataSourceConfig),
-        parentInternalId: getNotionResourceParentInternalId(
-          page,
-          dataSourceConfig
-        ),
+        internalId: nodeIdFromNotionId(page.notionPageId),
+        parentInternalId: getNotionResourceParentInternalId(page),
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable,
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(page.notionPageId, dataSourceConfig),
+        dustDocumentId: nodeIdFromNotionId(page.notionPageId),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
       };
     };
@@ -514,20 +495,14 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
       return {
         provider: c.type,
-        internalId: nodeIdFromNotionId(db.notionDatabaseId, dataSourceConfig),
-        parentInternalId: getNotionResourceParentInternalId(
-          db,
-          dataSourceConfig
-        ),
+        internalId: nodeIdFromNotionId(db.notionDatabaseId),
+        parentInternalId: getNotionResourceParentInternalId(db),
         type: "database",
         title: db.title || "",
         sourceUrl: db.notionUrl || null,
         expandable: true,
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(
-          `database-${db.notionDatabaseId}`,
-          dataSourceConfig
-        ),
+        dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
       };
     };
@@ -543,9 +518,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         folderNodes.push({
           provider: c.type,
           // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: getNotionUnknownFolderId(
-            dataSourceConfigFromConnector(c)
-          ),
+          internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
           type: "folder",
           title: "Orphaned Resources",
@@ -577,8 +550,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(new Error("Connector not found"));
     }
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
     const notionIds = internalIds.map((id) => notionIdFromNodeId(id));
 
     const [pages, dbs] = await Promise.all([
@@ -600,17 +571,14 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const pageNodes: ContentNode[] = await Promise.all(
       pages.map(async (page) => ({
         provider: "notion",
-        internalId: nodeIdFromNotionId(page.notionPageId, dataSourceConfig),
-        parentInternalId: getNotionResourceParentInternalId(
-          page,
-          dataSourceConfig
-        ),
+        internalId: nodeIdFromNotionId(page.notionPageId),
+        parentInternalId: getNotionResourceParentInternalId(page),
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
         permission: "read",
-        dustDocumentId: nodeIdFromNotionId(page.notionPageId, dataSourceConfig),
+        dustDocumentId: nodeIdFromNotionId(page.notionPageId),
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
         dustTableId: null,
       }))
@@ -618,26 +586,21 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const dbNodes: ContentNode[] = dbs.map((db) => ({
       provider: "notion",
-      internalId: nodeIdFromNotionId(db.notionDatabaseId, dataSourceConfig),
-      parentInternalId: getNotionResourceParentInternalId(db, dataSourceConfig),
+      internalId: nodeIdFromNotionId(db.notionDatabaseId),
+      parentInternalId: getNotionResourceParentInternalId(db),
       type: "database",
       title: db.title || "",
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
-      dustDocumentId: nodeIdFromNotionId(
-        `database-${db.notionDatabaseId}`,
-        dataSourceConfig
-      ),
+      dustDocumentId: nodeIdFromNotionId(`database-${db.notionDatabaseId}`),
       lastUpdatedAt: null,
       dustTableId: getNotionDatabaseTableId(db.notionDatabaseId),
     }));
 
     const contentNodes = pageNodes.concat(dbNodes);
 
-    const notionUnknownFolderId = getNotionUnknownFolderId(
-      dataSourceConfigFromConnector(connector)
-    );
+    const notionUnknownFolderId = nodeIdFromNotionId("unknown");
     if (notionIds.includes(notionUnknownFolderId)) {
       const orphanedCount = await getOrphanedCount(this.connectorId);
       if (orphanedCount > 0) {
@@ -673,7 +636,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(new Error("Connector not found"));
     }
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     const memo = memoizationKey || uuidv4();
 
@@ -686,9 +648,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         undefined
       );
 
-      return new Ok(
-        parents.map((p) => nodeIdFromNotionId(p, dataSourceConfig))
-      );
+      return new Ok(parents.map((p) => nodeIdFromNotionId(p)));
     } catch (e) {
       logger.error(
         { connectorId: this.connectorId, internalId, memoizationKey, error: e },

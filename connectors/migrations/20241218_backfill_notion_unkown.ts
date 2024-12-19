@@ -1,6 +1,5 @@
 import { makeScript } from "scripts/helpers";
 
-import { getNotionUnknownFolderId } from "@connectors/connectors/notion";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -14,7 +13,7 @@ makeScript({}, async ({ execute }, logger) => {
     async (connector) => {
       // this is a strict copy-paste of upsertSharedWithMeFolder, I don't want to export it for a migration script and want the folderId for logging purposes
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
-      const folderId = getNotionUnknownFolderId(dataSourceConfig);
+      const folderId = `notion-unknown`;
 
       if (execute) {
         await upsertDataSourceFolder({
