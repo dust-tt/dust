@@ -3048,59 +3048,34 @@ async fn folders_delete(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
-    match state
-        .store
-        .load_data_source_folder(&project, &data_source_id, &folder_id)
-        .await
-    {
+    let result = async {
+        state
+            .store
+            .load_data_source_folder(&project, &data_source_id, &folder_id)
+            .await?;
+        state
+            .store
+            .delete_data_source_folder(&project, &data_source_id, &folder_id)
+            .await?;
+        state.search_store.delete_node(folder_id).await?;
+        Ok(())
+    }
+    .await;
+
+    match result {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
-            "Failed to load folder",
+            "Failed to delete folder",
             Some(e),
         ),
-        Ok(None) => (
+        Ok(_) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
-                response: Some(json!({
-                    "success": true,
-                })),
+                response: Some(json!({"success": true})),
             }),
         ),
-        Ok(Some(_)) => {
-            match state
-                .store
-                .delete_data_source_folder(&project, &data_source_id, &folder_id)
-                .await
-            {
-                Err(e) => {
-                    return error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "internal_server_error",
-                        "Failed to delete folder",
-                        Some(e),
-                    )
-                }
-                Ok(_) => match state.search_store.delete_node(folder_id).await {
-                    Ok(_) => (
-                        StatusCode::OK,
-                        Json(APIResponse {
-                            error: None,
-                            response: Some(json!({
-                                "success": true,
-                            })),
-                        }),
-                    ),
-                    Err(e) => error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "internal_server_error",
-                        "Failed to delete folder from search index",
-                        Some(e),
-                    ),
-                },
-            }
-        }
     }
 }
 
