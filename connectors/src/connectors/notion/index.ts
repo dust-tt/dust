@@ -68,10 +68,9 @@ async function workspaceIdFromConnectionId(connectionId: string) {
  * Upserts to data_sources_folders (core) a top-level folder for the orphaned resources.
  */
 async function upsertNotionUnknownFolder(connector: ConnectorResource) {
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const folderId = nodeIdFromNotionId("unknown");
   await upsertDataSourceFolder({
-    dataSourceConfig,
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId,
     parents: [folderId],
     parentId: null,
@@ -298,9 +297,8 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     }
 
     // delete the "Orphaned Resources" folder
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteDataSourceFolder({
-      dataSourceConfig,
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
       folderId: nodeIdFromNotionId("unknown"),
     });
 
