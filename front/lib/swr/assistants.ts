@@ -250,9 +250,13 @@ export function useAgentConfigurationFeedbacks({
   workspaceId,
   agentConfigurationId,
   withMetadata,
+  pagination,
 }: {
   workspaceId: string;
   agentConfigurationId: string | null;
+  pagination: {
+    limit: number;
+  };
   withMetadata?: boolean;
 }) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
@@ -262,11 +266,16 @@ export function useAgentConfigurationFeedbacks({
     )[];
   }> = fetcher;
 
-  const queryParams = withMetadata ? "?withMetadata=true" : "";
+  const urlParams = new URLSearchParams({
+    limit: pagination.limit.toString(),
+  });
+  if (withMetadata) {
+    urlParams.append("withMetadata", "true");
+  }
 
   const { data, error, mutate } = useSWRWithDefaults(
     agentConfigurationId
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks${queryParams}`
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks?${urlParams.toString()}`
       : null,
     agentConfigurationFeedbacksFetcher
   );

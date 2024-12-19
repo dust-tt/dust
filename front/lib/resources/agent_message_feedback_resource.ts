@@ -75,15 +75,23 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static async fetchByAgentConfigurationId(
-    auth: Authenticator,
-    agentConfigurationId: string
-  ): Promise<AgentMessageFeedback[]> {
+  static async fetchByAgentConfigurationId({
+    auth,
+    agentConfigurationId,
+    pagination,
+  }: {
+    auth: Authenticator;
+    agentConfigurationId: string;
+    pagination: {
+      limit: number;
+    };
+  }): Promise<AgentMessageFeedback[]> {
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
         agentConfigurationId,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+
       include: [
         {
           model: AgentMessageModel,
@@ -109,6 +117,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
       order: [["agentConfigurationVersion", "DESC"]],
+      limit: pagination.limit,
     });
 
     return agentMessageFeedback;
