@@ -409,7 +409,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         // that are not living in a shared drive.
         nodes.push({
           provider: c.type,
-          internalId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+          internalId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
           parentInternalId: null,
           type: "folder" as const,
           preventSelection: true,
@@ -435,7 +435,10 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         // The "Shared with me" view requires to look for folders
         // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
         let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
-        if (parentInternalId === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID) {
+        if (
+          parentInternalId ===
+          getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID)
+        ) {
           gdriveQuery += ` and sharedWithMe=true`;
         } else {
           gdriveQuery += ` and '${parentDriveId}' in parents`;
