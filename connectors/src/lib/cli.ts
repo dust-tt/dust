@@ -271,6 +271,7 @@ export const batch = async ({
         "intercom",
         "confluence",
         "github",
+        "google_drive",
         "snowflake",
         "zendesk",
       ];
