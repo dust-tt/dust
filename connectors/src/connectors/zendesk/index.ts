@@ -47,6 +47,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -112,6 +113,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       );
       throw result.error;
     }
+
+    // artificially marking the sync as succeeded since we can create the connection without syncing anything
+    await syncSucceeded(connector.id);
 
     return new Ok(connector.id.toString());
   }
