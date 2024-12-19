@@ -7,7 +7,6 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/intercom/temporal/activities";
-import { upsertIntercomTeamsFolderActivity } from "@connectors/connectors/intercom/temporal/activities";
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 
 import { intercomUpdatesSignal } from "./signals";
@@ -35,10 +34,13 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
-const { saveIntercomConnectorStartSync, saveIntercomConnectorSuccessSync } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
-  });
+const {
+  saveIntercomConnectorStartSync,
+  saveIntercomConnectorSuccessSync,
+  upsertIntercomTeamsFolderActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
+});
 
 /**
  * Sync Workflow for Intercom.
