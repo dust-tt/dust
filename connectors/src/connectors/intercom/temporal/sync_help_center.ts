@@ -68,11 +68,11 @@ export async function removeHelpCenter({
       });
     })
   );
-  await helpCenter.destroy();
   await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: getHelpCenterInternalId(connectorId, helpCenter.helpCenterId),
   });
+  await helpCenter.destroy();
 }
 
 /**
@@ -120,11 +120,11 @@ export async function deleteCollectionWithChildren({
   );
 
   // Then we delete the collection
-  await collection.destroy();
   await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: getHelpCenterCollectionInternalId(connectorId, collectionId),
   });
+  await collection.destroy();
   logger.info(
     { ...loggerArgs, collectionId },
     "[Intercom] Collection deleted."
@@ -219,7 +219,6 @@ export async function upsertCollectionWithChildren({
     const collectionParents = await getParentIdsForCollection({
       connectorId,
       collectionId,
-      parentCollectionId: collection.parent_id,
       helpCenterId,
     });
     await upsertDataSourceFolder({

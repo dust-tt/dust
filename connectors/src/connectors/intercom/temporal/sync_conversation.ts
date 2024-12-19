@@ -59,13 +59,13 @@ export async function deleteTeamAndConversations({
     { concurrency: 10 }
   );
 
-  await team.destroy();
-
   // Delete datasource team node
   await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: getTeamInternalId(connectorId, team.teamId),
   });
+
+  await team.destroy();
 }
 
 export async function deleteConversation({
