@@ -40,7 +40,12 @@ makeScript(
     for (const connector of sortedConnectors) {
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
       const connectorId = connector.id;
-
+      logger.info(
+        {
+          connectorId,
+        },
+        "Starting connector backfill"
+      );
       const folders = await WebCrawlerFolder.findAll({
         where: {
           connectorId,
