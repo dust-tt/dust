@@ -50,10 +50,7 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import {
-  deleteDataSourceFolder,
-  upsertDataSourceFolder,
-} from "@connectors/lib/data_sources";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -221,12 +218,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         new Error(`Could not find connector with id ${this.connectorId}`)
       );
     }
-
-    // cleaning up the Shared With Me folder
-    await deleteDataSourceFolder({
-      dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
-    });
 
     // Google revocation requires refresh tokens so would have to happen in `oauth`. But Google
     // Drive does not rely on webhooks anymore so we can just delete the connector.
