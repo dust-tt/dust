@@ -63,20 +63,22 @@ export async function allowSyncTeam({
           connectorId,
           teamOnIntercom.id
         );
-        await upsertDataSourceFolder({
-          dataSourceConfig: dataSourceConfigFromConnector(connector),
-          folderId: teamInternalId,
-          title: team.name,
-          parents: [teamInternalId, getTeamsInternalId(connectorId)],
-          mimeType: getDataSourceNodeMimeType("TEAM"),
-        });
-        await upsertDataSourceFolder({
-          dataSourceConfig: dataSourceConfigFromConnector(connector),
-          folderId: getTeamsInternalId(connectorId),
-          title: "Teams",
-          parents: [getTeamsInternalId(connectorId)],
-          mimeType: getDataSourceNodeMimeType("TEAMS_FOLDER"),
-        });
+        await Promise.all([
+          upsertDataSourceFolder({
+            dataSourceConfig: dataSourceConfigFromConnector(connector),
+            folderId: teamInternalId,
+            title: teamOnIntercom.name,
+            parents: [teamInternalId, getTeamsInternalId(connectorId)],
+            mimeType: getDataSourceNodeMimeType("TEAM"),
+          }),
+          upsertDataSourceFolder({
+            dataSourceConfig: dataSourceConfigFromConnector(connector),
+            folderId: getTeamsInternalId(connectorId),
+            title: "Teams",
+            parents: [getTeamsInternalId(connectorId)],
+            mimeType: getDataSourceNodeMimeType("TEAMS_FOLDER"),
+          }),
+        ]);
       }
     }
   }
