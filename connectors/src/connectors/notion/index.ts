@@ -12,8 +12,10 @@ import type {
   CreateConnectorErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -21,6 +23,7 @@ import {
 } from "@connectors/connectors/notion/temporal/client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   NotionConnectorState,
   NotionDatabase,
@@ -91,6 +94,17 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       },
       {}
     );
+
+    // Upserts to data_sources_folders (core) a top-level folder for the orphaned resources.
+    const folderId = nodeIdFromNotionId("unknown");
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId,
+      parents: [folderId],
+      parentId: null,
+      title: "Orphaned Resources",
+      mimeType: "application/vnd.dust.notion.unknown-folder",
+    });
 
     try {
       await launchNotionSyncWorkflow(connector.id);
