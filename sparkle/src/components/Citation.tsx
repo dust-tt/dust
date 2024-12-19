@@ -2,15 +2,15 @@ import React, { ReactNode } from "react";
 
 import {
   Button,
-  CardButton,
-  CardButtonProps,
+  Card,
+  CardProps,
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-type CitationProps = CardButtonProps & {
+type CitationProps = CardProps & {
   children: React.ReactNode;
   isLoading?: boolean;
   tooltip?: string;
@@ -18,23 +18,30 @@ type CitationProps = CardButtonProps & {
 
 const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
   (
-    { children, variant = "primary", isLoading, className, tooltip, ...props },
+    {
+      children,
+      variant = "secondary",
+      isLoading,
+      className,
+      tooltip,
+      ...props
+    },
     ref
   ) => {
     const cardButton = (
-      <CardButton
+      <Card
         ref={ref}
         variant={variant}
-        size="md"
+        size="sm"
         className={cn(
-          "s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end",
+          "s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end s-overflow-hidden",
           className
         )}
         {...props}
       >
         {children}
         {isLoading && <CitationLoading />}
-      </CardButton>
+      </Card>
     );
 
     if (tooltip) {
@@ -73,7 +80,7 @@ const CitationGrid = React.forwardRef<
 >(({ children, className, ...props }, ref) => {
   return (
     <div ref={ref} className={cn("s-@container", className)} {...props}>
-      <div className="s-grid s-grid-cols-1 s-gap-2 @sm:s-grid-cols-2 @xl:s-grid-cols-3 @2xl:s-grid-cols-4 @3xl:s-grid-cols-5">
+      <div className="s-grid s-grid-cols-1 s-gap-2 @xxs:s-grid-cols-2 @xs:s-grid-cols-3 @sm:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6">
         {children}
       </div>
     </div>
@@ -93,12 +100,8 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
       <Button
         ref={ref}
         variant="ghost"
-        size="xs"
-        className={cn(
-          "s-z-10",
-          "s-absolute s-right-2 s-top-2 s-z-10",
-          className
-        )}
+        size="mini"
+        className={className}
         icon={XMarkIcon}
         onClick={(e) => {
           e.stopPropagation();
@@ -124,6 +127,9 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
         className={cn(
           "s-absolute s-inset-0",
           "s-bg-cover s-bg-center",
+          "s-rounded-xl",
+          "s-overflow-hidden",
+          "[mask-image:radial-gradient(white,black)]",
           className
         )}
         style={{
@@ -131,7 +137,17 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
         }}
         {...props}
       >
-        <div className="s-z-0 s-h-full s-w-full s-bg-primary-100/80 s-transition s-duration-200 group-hover:s-bg-primary-200/70 group-active:s-bg-primary-100/60" />
+        <div
+          className={cn(
+            "s-absolute s-inset-0",
+            "s-z-0 s-h-full s-w-full",
+            "s-bg-primary-100/80",
+            "s-backdrop-blur-sm",
+            "s-transition s-duration-200",
+            "group-hover:s-bg-primary-200/70 group-hover:s-backdrop-blur-none",
+            "group-active:s-bg-primary-100/60"
+          )}
+        />
       </div>
     );
   }
@@ -167,7 +183,7 @@ const CitationLoading = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-primary-100/80",
+        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-rounded-xl s-bg-primary-100/80 s-backdrop-blur-sm",
         className
       )}
       {...props}

@@ -55,7 +55,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
-import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
@@ -528,14 +527,6 @@ export function AgentMessage({
             <div className="text-base font-medium">
               {AssitantName(agentConfiguration, canMention)}
             </div>
-            {!isInModal && (
-              <AssistantDropdownMenu
-                agentConfiguration={agentConfiguration}
-                owner={owner}
-                user={user}
-                showAddRemoveToFavorite
-              />
-            )}
           </div>
         );
       }}

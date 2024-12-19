@@ -31,23 +31,23 @@ import {
 import { cn } from "@sparkle/lib/utils";
 
 // TODO(thomas): use CVA
-const headerColor = "s-text-element-900";
+const headerColor = "s-text-foreground";
 const sizes = {
   sm: {
     p: "s-text-base",
-    h1: "s-text-xl s-font-bold",
+    h1: "s-text-xl s-font-semibold",
     h2: "s-text-xl s-font-regular",
-    h3: "s-text-lg s-font-bold",
-    h4: "s-text-base s-font-bold",
+    h3: "s-text-lg s-font-semibold",
+    h4: "s-text-base s-font-semibold",
     h5: "s-text-base s-font-medium",
     h6: "s-text-base s-font-bold",
   },
   base: {
     p: "s-text-base",
-    h1: "s-text-5xl s-font-semibold",
-    h2: "s-text-4xl s-font-semibold",
+    h1: "s-text-4xl s-font-semibold",
+    h2: "s-text-3xl s-font-semibold",
     h3: "s-text-2xl s-font-semibold",
-    h4: "s-text-lg s-font-bold",
+    h4: "s-text-xl s-font-bold",
     h5: "s-text-lg s-font-medium",
     h6: "s-text-base s-font-bold",
   },
@@ -70,7 +70,7 @@ export function Markdown({
   content,
   isStreaming = false,
   textSize = "base",
-  textColor = "s-text-element-800",
+  textColor = "s-text-foreground",
   isLastMessage = false,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,

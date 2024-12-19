@@ -7,15 +7,15 @@ import { cn } from "@sparkle/lib/utils";
 
 export type ConversationMessageSizeType = "compact" | "normal";
 
-type MessageType = "agent" | "user";
+type ConversationMessageType = "agent" | "user";
 
 const messageSizeClasses: Record<ConversationMessageSizeType, string> = {
   compact: "s-p-3",
   normal: "s-p-4",
 };
 
-const messageTypeClasses: Record<MessageType, string> = {
-  user: "s-bg-structure-50",
+const messageTypeClasses: Record<ConversationMessageType, string> = {
+  user: "s-bg-muted-background",
   agent: "",
 };
 
@@ -28,7 +28,7 @@ type ConversationMessageProps = {
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
   size?: ConversationMessageSizeType;
-  type: MessageType;
+  type: ConversationMessageType;
 };
 
 /**
@@ -67,8 +67,7 @@ export function ConversationMessage({
       <ConversationMessageContent citations={citations} size={size}>
         {children}
       </ConversationMessageContent>
-
-      <div className="s-flex s-justify-end s-gap-2">{buttons}</div>
+      {buttons && <div className="s-flex s-justify-end s-gap-2">{buttons}</div>}
     </div>
   );
 }

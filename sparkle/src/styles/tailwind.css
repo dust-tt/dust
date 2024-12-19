@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-.s-blinking-cursor> :not(pre):last-child::after {
+.s-blinking-cursor > :not(pre):last-child::after {
   content: "";
   width: 8px;
   height: 16px;
@@ -15,7 +15,6 @@
 }
 
 @keyframes bgblink {
-
   0%,
   100% {
     @apply s-bg-structure-0;

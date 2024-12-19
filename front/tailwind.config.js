@@ -3,11 +3,23 @@ const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript
 
 module.exports = {
   theme: {
+    screens: {
+      xxs: "384px",
+      xs: "512px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     fontFamily: {
       sans: ["'darkmode-off-cc'", "sans-serif"],
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      borderRadius: {
+        "4xl": "2rem",
+      },
       maxWidth: {
         48: "12rem",
       },

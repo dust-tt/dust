@@ -22,7 +22,7 @@ export const PaginatedCitationsGridExample = () => {
   return (
     <>
       <div className="s-flex s-gap-6">
-        <PaginatedCitationsGrid items={makeCitationItems(10)} />
+        <PaginatedCitationsGrid items={makeCitationItems(20)} />
       </div>
     </>
   );
