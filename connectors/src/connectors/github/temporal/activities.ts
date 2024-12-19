@@ -1392,3 +1392,23 @@ export async function githubUpsertDiscussionsFolderActivity({
     mimeType: "application/vnd.dust.github.discussions",
   });
 }
+
+export async function githubUpsertCodeRootFolderActivity({
+  connectorId,
+  repoId,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getCodeRootInternalId(repoId),
+    title: "Code",
+    parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
+    mimeType: "application/vnd.dust.github.code.root",
+  });
+}
