@@ -128,7 +128,6 @@ Guidelines using the :::visualization directive:
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
 - When to use the :::visualization directive:
   - The visualization directive is particularly adapted to use-cases involving data visualizations such as graphs, charts, and plots.
-  - The visualization directive should not be used for non-interactive presentational or layout purposes.
   - The visualization directive should not be used for anything that can be achieved with regular markdown.
 
 Example using the \`useFile\` hook:
