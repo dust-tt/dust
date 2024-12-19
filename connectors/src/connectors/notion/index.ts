@@ -440,6 +440,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(new Error("Connector not found"));
     }
+
     const notionId =
       (parentInternalId && notionIdFromNodeId(parentInternalId)) || "workspace";
 
