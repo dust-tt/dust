@@ -23,25 +23,12 @@ import {
   removeNulls,
 } from "@dust-tt/client";
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
+import { DocumentTextStrokeIcon } from "@dust-tt/sparkle";
 import {
-  ConfluenceLogo,
-  DocumentTextIcon,
-  DriveLogo,
-  GithubLogo,
-  ImageIcon,
-  IntercomLogo,
-  MicrosoftLogo,
-  NotionLogo,
-  SlackLogo,
-  SnowflakeLogo,
-  ZendeskLogo,
-} from "@dust-tt/sparkle";
-import {
-  CitationNew,
-  CitationNewIcons,
-  CitationNewIndex,
-  CitationNewTitle,
-  Icon,
+  Citation,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
 } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
@@ -59,12 +46,13 @@ import {
 } from "@dust-tt/sparkle";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
 import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
-import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@extension/components/markdown/CiteBlock";
+import type { MarkdownCitation } from "@extension/components/markdown/MarkdownCitation";
+import { citationIconMap } from "@extension/components/markdown/MarkdownCitation";
 import {
   MentionBlock,
   mentionDirective,
@@ -86,20 +74,6 @@ import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
 
-const typeIcons = {
-  confluence: ConfluenceLogo,
-  document: DocumentTextIcon,
-  github: GithubLogo,
-  google_drive: DriveLogo,
-  intercom: IntercomLogo,
-  microsoft: MicrosoftLogo,
-  zendesk: ZendeskLogo,
-  notion: NotionLogo,
-  slack: SlackLogo,
-  image: ImageIcon,
-  snowflake: SnowflakeLogo,
-};
-
 export function visualizationDirective() {
   return (tree: any) => {
     visit(tree, ["containerDirective"], (node) => {
@@ -117,10 +91,12 @@ export function visualizationDirective() {
 export function makeDocumentCitation(
   document: RetrievalDocumentPublicType
 ): MarkdownCitation {
+  const IconComponent =
+    citationIconMap[getProviderFromRetrievedDocument(document)];
   return {
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
-    type: getProviderFromRetrievedDocument(document),
+    icon: <IconComponent />,
   };
 }
 
@@ -131,7 +107,7 @@ export function makeWebsearchResultsCitation(
     description: result.snippet,
     href: result.link,
     title: result.title,
-    type: "document" as const,
+    icon: <DocumentTextStrokeIcon />,
   };
 }
 
@@ -651,13 +627,13 @@ function getCitations({
   activeReferences.sort((a, b) => a.index - b.index);
   return activeReferences.map(({ document, index }) => {
     return (
-      <CitationNew key={index} href={document.href}>
-        <CitationNewIcons>
-          <CitationNewIndex>{index}</CitationNewIndex>
-          <Icon visual={typeIcons[document.type]} />
-        </CitationNewIcons>
-        <CitationNewTitle>{document.title}</CitationNewTitle>
-      </CitationNew>
+      <Citation key={index} href={document.href}>
+        <CitationIcons>
+          <CitationIndex>{index}</CitationIndex>
+          {document.icon}
+        </CitationIcons>
+        <CitationTitle>{document.title}</CitationTitle>
+      </Citation>
     );
   });
 }

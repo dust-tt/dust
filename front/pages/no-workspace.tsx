@@ -145,7 +145,7 @@ export default function NoWorkspace({
           <div className="items-left justify-left flex flex-row">
             <Icon visual={LogoSquareColorLogo} size="md" />
           </div>
-          <span className="text-2xl font-bold text-element-900">
+          <span className="text-2xl font-bold text-foreground">
             Hello {userFirstName}!
           </span>
         </div>

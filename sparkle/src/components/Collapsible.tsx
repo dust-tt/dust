@@ -65,11 +65,11 @@ Collapsible.Button = function ({
     },
 
     secondary: {
-      base: "s-text-element-900 s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
+      base: "s-text-foreground s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
       hover: "group-hover/col:s-text-action-500",
       active: "active:s-text-action-600",
       dark: {
-        base: "dark:s-text-element-900-dark",
+        base: "dark:s-text-foreground-dark",
         hover: "dark:group-hover/col:s-text-action-400-dark",
         active: "dark:active:s-text-action-600-dark",
         disabled: "dark:s-element-500-dark",

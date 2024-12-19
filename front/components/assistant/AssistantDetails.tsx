@@ -66,7 +66,7 @@ export function AssistantDetails({
         <div className="flex grow flex-col gap-1">
           <div
             className={classNames(
-              "font-bold text-element-900",
+              "font-bold text-foreground",
               agentConfiguration.name.length > 20 ? "text-md" : "text-lg"
             )}
           >{`@${agentConfiguration.name}`}</div>
@@ -100,7 +100,7 @@ export function AssistantDetails({
         </ContentMessage>
       )}
 
-      <div className="text-sm text-element-900">
+      <div className="text-sm text-foreground">
         {agentConfiguration.description}
       </div>
       <AssistantUsageSection

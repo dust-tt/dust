@@ -23,16 +23,18 @@ export function DustAppRunActionDetails({
       visual={CommandLineIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-slate-900">Parameters</span>
-          <div className="text-sm font-normal text-slate-500">
+        <div className="flex flex-col gap-1 text-sm">
+          <span className="font-semibold text-foreground">Parameters</span>
+          <div className="text-muted-foreground">
             <DustAppRunParamsDetails action={action} />
           </div>
         </div>
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
-              <span className="text-sm font-bold text-slate-900">Results</span>
+              <span className="text-sm font-semibold text-foreground">
+                Results
+              </span>
             </Collapsible.Button>
             <Collapsible.Panel>
               <DustAppRunOutputDetails action={action} />

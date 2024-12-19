@@ -150,7 +150,7 @@ export function ProviderManagementModal({
         <SheetContainer>
           <div className="mt-8 divide-y divide-gray-200">
             <div className="flex items-center justify-between px-4 pb-4">
-              <span className="text-left font-bold text-element-900">
+              <span className="text-left font-bold text-foreground">
                 Make all providers available
               </span>
               <SliderToggle

@@ -110,7 +110,7 @@ export const MentionList = forwardRef(function MentionList(
             <button
               className={classNames(
                 "flex-initial text-sm font-semibold",
-                index === selectedIndex ? "text-action-500" : "text-element-900"
+                index === selectedIndex ? "text-action-500" : "text-foreground"
               )}
               key={index}
               onClick={() => selectItem(index)}

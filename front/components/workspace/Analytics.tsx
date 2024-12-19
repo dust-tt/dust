@@ -1,4 +1,4 @@
-import { Card, Page, Spinner } from "@dust-tt/sparkle";
+import { Page, Spinner, ValueCard } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 
 import { useWorkspaceAnalytics } from "@app/lib/swr/workspaces";
@@ -22,64 +22,60 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
         </div>
       ) : (
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <Card
+          <ValueCard
             title="Members"
             subtitle="Total members"
             content={
-              <div className="text-lg font-semibold text-element-900">
+              <div className="text-lg font-semibold text-foreground">
                 {analytics.memberCount}
               </div>
             }
-            size="sm"
             className="w-full"
           />
-          <Card
+          <ValueCard
             title="Daily Active Members"
             subtitle="Average on 7 days"
             content={
               <div className="flex flex-col gap-1">
-                <div className="text-lg font-semibold text-element-900">
+                <div className="text-lg font-semibold text-foreground">
                   {analytics.averageWeeklyDailyActiveUsers.count}
                 </div>
               </div>
             }
-            size="sm"
             className="w-full"
           />
-          <Card
+          <ValueCard
             title="Active Members"
             subtitle="Last 7 days"
             content={
               <div className="grid grid-cols-2">
-                <div className="text-lg font-semibold text-element-900">
+                <div className="text-lg font-semibold text-foreground">
                   {analytics.weeklyActiveUsers.count}
                 </div>
-                <div className="text-lg font-semibold text-element-900">
+                <div className="text-lg font-semibold text-foreground">
                   {`${analytics.weeklyActiveUsers.growth >= 0 ? "+" : ""}${Math.floor(
                     analytics.weeklyActiveUsers.growth
                   )}%`}
                 </div>
               </div>
             }
-            size="sm"
             className="w-full"
           />
-          <Card
+          <ValueCard
             title="Active Members"
             subtitle="Last 30 days"
             content={
               <div className="grid grid-cols-2">
-                <div className="text-lg font-semibold text-element-900">
+                <div className="text-lg font-semibold text-foreground">
                   {analytics.monthlyActiveUsers.count}
                 </div>
-                <div className="text-lg font-semibold text-element-900">
+                <div className="text-lg font-semibold text-foreground">
                   {`${analytics.monthlyActiveUsers.growth >= 0 ? "+" : ""}${Math.floor(
                     analytics.monthlyActiveUsers.growth
                   )}%`}
                 </div>
               </div>
             }
-            size="sm"
             className="w-full"
           />
         </div>

@@ -104,7 +104,7 @@ export function InvitationsList({
                 <Avatar size="xs" />
               </div>
               <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                <div className="font-medium text-element-900">Loading...</div>
+                <div className="font-medium text-foreground">Loading...</div>
                 <div className="grow font-normal text-element-700"></div>
               </div>
               <div>

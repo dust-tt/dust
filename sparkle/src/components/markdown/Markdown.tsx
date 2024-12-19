@@ -164,7 +164,7 @@ export function Markdown({
         </h6>
       ),
       strong: ({ children }) => (
-        <strong className="s-font-semibold s-text-element-900">
+        <strong className="s-font-semibold s-text-foreground">
           {children}
         </strong>
       ),

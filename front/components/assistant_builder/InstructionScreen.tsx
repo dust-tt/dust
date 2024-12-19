@@ -382,7 +382,7 @@ const InstructionsCharacterCount = ({
     <span
       className={classNames(
         "text-end text-xs",
-        count >= maxCount ? "text-red-500" : "text-slate-500"
+        count >= maxCount ? "text-red-500" : "text-muted-foreground"
       )}
     >
       {count} / {maxCount} characters

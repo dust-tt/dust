@@ -153,7 +153,7 @@ export function TablesManager({
               <div>
                 <Button
                   onClick={() => removeTable(index)}
-                  className="text-slate-400 hover:text-slate-500"
+                  className="text-slate-400 hover:text-muted-foreground"
                   icon={XMarkIcon}
                   size="xs"
                   variant="secondary"

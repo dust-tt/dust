@@ -27,8 +27,13 @@ export function InputBarCitations({
         <>
           <Citation
             key={`cf-${blob.id}`}
-            className="w-48"
+            className="w-40"
             isLoading={blob.isUploading}
+            action={
+              <CitationClose
+                onClick={() => fileUploaderService.removeFile(blob.id)}
+              />
+            }
           >
             {isImage ? (
               <>
@@ -43,9 +48,6 @@ export function InputBarCitations({
               </CitationIcons>
             )}
             <CitationTitle>{blob.id}</CitationTitle>
-            <CitationClose
-              onClick={() => fileUploaderService.removeFile(blob.id)}
-            />
           </Citation>
         </>
       );
@@ -59,7 +61,7 @@ export function InputBarCitations({
   }
 
   return (
-    <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
+    <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
       {processContentFragments()}
     </div>
   );

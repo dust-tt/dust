@@ -176,7 +176,7 @@ Tree.Item = function ({
         {checkbox && <Checkbox {...checkbox} size="xs" />}
         <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
         <div
-          className={`s-font-regular s-truncate s-text-sm s-text-element-900 ${labelClassName}`}
+          className={`s-font-regular s-truncate s-text-sm s-text-foreground ${labelClassName}`}
         >
           {label}
         </div>

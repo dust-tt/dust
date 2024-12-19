@@ -1,10 +1,11 @@
 import {
-  AssistantPreview,
+  AssistantCard,
+  AssistantCardMore,
   Button,
+  CardGrid,
   CompanyIcon,
   LockIcon,
   MagnifyingGlassIcon,
-  MoreIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
@@ -195,27 +196,23 @@ export function AssistantBrowser({
       </div>
 
       {!viewTab && (
-        <div className="text-center">
+        <div className="my-12 text-center text-sm text-muted-foreground">
           No assistants found. Try adjusting your search criteria.
         </div>
       )}
 
       {viewTab && (
-        <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
+        <CardGrid className="mb-12">
           {agentsByTab[viewTab].map((agent) => (
-            <AssistantPreview
+            <AssistantCard
               key={agent.sId}
               title={agent.name}
               pictureUrl={agent.pictureUrl}
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
               description={agent.description}
-              variant="minimal"
               onClick={() => handleAssistantClick(agent)}
-              actionElement={
-                <Button
-                  icon={MoreIcon}
-                  variant="outline"
-                  size="sm"
+              action={
+                <AssistantCardMore
                   onClick={(e: Event) => {
                     e.stopPropagation();
                     setQueryParam(router, "assistantDetails", agent.sId);
@@ -224,7 +221,7 @@ export function AssistantBrowser({
               }
             />
           ))}
-        </div>
+        </CardGrid>
       )}
     </>
   );

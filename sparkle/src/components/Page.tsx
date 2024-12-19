@@ -21,7 +21,7 @@ export function Page({ children, variant = "normal" }: PageProps) {
     <main className={mainVariantClasses}>
       <div
         className={classNames(
-          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-element-900",
+          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-foreground",
           divVariantClassNames
         )}
       >
@@ -97,7 +97,7 @@ Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
         PsizeClasses[size],
         variant === "secondary"
           ? "s-text-element-700 dark:s-text-element-600-dark"
-          : "s-text-element-900 dark:s-text-element-900-dark"
+          : "s-text-foreground dark:s-text-foreground-dark"
       )}
     >
       {children}
@@ -125,7 +125,7 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   return (
     <Component
       className={classNames(
-        "s-text-element-900 dark:s-text-element-900-dark",
+        "s-text-foreground dark:s-text-foreground-dark",
         hSizes[variant]
       )}
     >

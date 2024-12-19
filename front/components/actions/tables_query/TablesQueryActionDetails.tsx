@@ -1,8 +1,10 @@
 import {
   Citation,
+  CitationIcons,
   CitationTitle,
   Collapsible,
   ContentMessage,
+  Icon,
   InformationCircleIcon,
   TableIcon,
   useSendNotification,
@@ -47,8 +49,8 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-sm font-bold text-slate-900">Query</span>
-      <div className="text-sm font-normal text-slate-500">
+      <span className="text-sm font-semibold text-foreground">Query</span>
+      <div className="text-sm font-normal text-muted-foreground">
         <ContentBlockWrapper content={query}>
           <CodeBlock
             className="language-sql max-h-60 overflow-y-auto"
@@ -72,8 +74,8 @@ function QueryThinking({ action }: { action: TablesQueryActionType }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-sm font-bold text-slate-900">Reasoning</span>
-      <div className="text-sm font-normal text-slate-500">
+      <span className="text-sm font-semibold text-foreground">Reasoning</span>
+      <div className="text-sm font-normal text-muted-foreground">
         <ContentMessage
           title="Reasoning"
           variant="purple"
@@ -132,7 +134,9 @@ function QueryTablesResults({
     if (typeof output?.error === "string") {
       return (
         <div>
-          <span className="pb-2 text-sm font-bold text-slate-900">Error</span>
+          <span className="pb-2 text-sm font-semibold text-foreground">
+            Error
+          </span>
           <div className="text-sm">{output.error}</div>
         </div>
       );
@@ -142,16 +146,23 @@ function QueryTablesResults({
 
   return (
     <div>
-      <span className="text-sm font-bold text-slate-900">Results</span>
-      <div onClick={handleDownload} className="py-2">
-        <Citation>
-          <CitationTitle>{title}</CitationTitle>
-        </Citation>
-      </div>
+      <span className="text-sm font-semibold text-foreground">Results</span>
+      <Citation
+        className="w-48 min-w-48 max-w-48"
+        containerClassName="my-2"
+        onClick={handleDownload}
+      >
+        <CitationIcons>
+          <Icon visual={TableIcon} />
+        </CitationIcons>
+        <CitationTitle>{title}</CitationTitle>
+      </Citation>
 
       <Collapsible defaultOpen={false}>
         <Collapsible.Button>
-          <span className="text-sm font-bold text-slate-600">Preview</span>
+          <span className="text-sm font-semibold text-muted-foreground">
+            Preview
+          </span>
         </Collapsible.Button>
         <Collapsible.Panel>
           <div className="py-2">

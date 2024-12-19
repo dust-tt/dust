@@ -95,7 +95,7 @@ const ListItem = React.forwardRef<
         >
           <div className="flex h-6 items-center gap-0.5">
             <Icon
-              className="text-slate-600"
+              className="text-muted-foreground"
               visual={ChevronRightIcon}
               size="md"
             />

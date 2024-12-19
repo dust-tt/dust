@@ -1,9 +1,9 @@
 import {
-  CitationNew,
-  CitationNewClose,
-  CitationNewIcons,
-  CitationNewImage,
-  CitationNewTitle,
+  Citation,
+  CitationClose,
+  CitationIcons,
+  CitationImage,
+  CitationTitle,
   DocumentIcon,
   Icon,
   ImageIcon,
@@ -27,7 +27,7 @@ export function InputBarCitations({
 
       nodes.push(
         <>
-          <CitationNew
+          <Citation
             disabled={disabled}
             key={`cf-${blob.id}`}
             className="w-48"
@@ -35,21 +35,21 @@ export function InputBarCitations({
           >
             {isImage ? (
               <>
-                <CitationNewImage imgSrc={blob.preview ?? ""} />
-                <CitationNewIcons>
+                <CitationImage imgSrc={blob.preview ?? ""} />
+                <CitationIcons>
                   <Icon visual={ImageIcon} />
-                </CitationNewIcons>
+                </CitationIcons>
               </>
             ) : (
-              <CitationNewIcons>
+              <CitationIcons>
                 <Icon visual={DocumentIcon} />
-              </CitationNewIcons>
+              </CitationIcons>
             )}
-            <CitationNewTitle>{blob.id}</CitationNewTitle>
-            <CitationNewClose
+            <CitationTitle>{blob.id}</CitationTitle>
+            <CitationClose
               onClick={() => fileUploaderService.removeFile(blob.id)}
             />
-          </CitationNew>
+          </Citation>
         </>
       );
     }
@@ -62,7 +62,7 @@ export function InputBarCitations({
   }
 
   return (
-    <div className="flex gap-2 overflow-auto border-b border-structure-300/50 pb-3">
+    <div className="flex gap-2 overflow-auto border-b border-separator pb-3">
       {processContentFragments()}
     </div>
   );

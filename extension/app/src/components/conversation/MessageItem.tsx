@@ -4,15 +4,14 @@ import type {
 } from "@dust-tt/client";
 import {
   Avatar,
-  CitationNew,
-  CitationNewIcons,
-  CitationNewImage,
-  CitationNewTitle,
+  Citation,
+  CitationIcons,
+  CitationImage,
+  CitationTitle,
   DocumentTextIcon,
   Icon,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import { AgentMessage } from "@extension/components/conversation/AgentMessage";
 import { UserMessage } from "@extension/components/conversation/UserMessage";
 import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
@@ -45,9 +44,9 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const citationType: CitationType = [
-                "dust-application/slack",
-              ].includes(contentFragment.contentType)
+              const citationType = ["dust-application/slack"].includes(
+                contentFragment.contentType
+              )
                 ? "slack"
                 : "document";
 
@@ -55,34 +54,34 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 citationType === "slack" ? SlackLogo : DocumentTextIcon;
 
               return (
-                <CitationNew
+                <Citation
                   key={contentFragment.sId}
                   href={contentFragment.sourceUrl ?? undefined}
                 >
                   <div className="flex gap-2">
                     {contentFragment.context.profilePictureUrl && (
-                      <CitationNewIcons>
+                      <CitationIcons>
                         <Avatar
                           visual={contentFragment.context.profilePictureUrl}
                           size="xs"
                         />
-                      </CitationNewIcons>
+                      </CitationIcons>
                     )}
                     {contentFragment.sourceUrl ? (
                       <>
-                        <CitationNewImage imgSrc={contentFragment.sourceUrl} />
-                        <CitationNewIcons>
+                        <CitationImage imgSrc={contentFragment.sourceUrl} />
+                        <CitationIcons>
                           <Icon visual={icon} />
-                        </CitationNewIcons>
+                        </CitationIcons>
                       </>
                     ) : (
-                      <CitationNewIcons>
+                      <CitationIcons>
                         <Icon visual={icon} />
-                      </CitationNewIcons>
+                      </CitationIcons>
                     )}
                   </div>
-                  <CitationNewTitle>{contentFragment.title}</CitationNewTitle>
-                </CitationNew>
+                  <CitationTitle>{contentFragment.title}</CitationTitle>
+                </Citation>
               );
             })
           : undefined;

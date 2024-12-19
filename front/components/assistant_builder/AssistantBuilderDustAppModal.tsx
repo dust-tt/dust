@@ -132,7 +132,7 @@ function PickDustApp({
                             className={classNames(
                               disabled
                                 ? "s-text-element-500"
-                                : "s-text-element-900"
+                                : "s-text-foreground"
                             )}
                           >
                             {app.name + (disabled ? " (No description)" : "")}

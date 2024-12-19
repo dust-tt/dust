@@ -189,7 +189,7 @@ const CookieBanner = ({
         className || ""
       )}
     >
-      <div className="text-sm font-normal text-element-900">
+      <div className="text-sm font-normal text-foreground">
         We use{" "}
         <A variant="primary">
           <Link

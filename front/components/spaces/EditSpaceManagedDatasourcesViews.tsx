@@ -119,13 +119,13 @@ export function EditSpaceManagedDataSourcesViews({
         validateVariant: "warning",
         alertDialog: true,
         children: (
-          <div className="space-y-4 text-slate-900">
+          <div className="space-y-4 text-foreground">
             <p>The following data sources are currently in use:</p>
 
             {deletedViewsWithUsage.map((view) => (
               <p key={view.sId} className="font-medium">
                 {getDisplayNameForDataSource(view.dataSource)}{" "}
-                <span className="italic text-slate-500">
+                <span className="italic text-muted-foreground">
                   (used by {view.usage.count} assistant
                   {view.usage.count > 1 ? "s" : ""})
                 </span>

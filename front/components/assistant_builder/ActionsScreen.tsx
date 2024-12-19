@@ -1,7 +1,9 @@
 import {
   BookOpenIcon,
   Button,
-  CardButton,
+  Card,
+  CardActionButton,
+  CardGrid,
   Checkbox,
   Chip,
   ContentMessage,
@@ -13,7 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
-  IconButton,
   InformationCircleIcon,
   Input,
   Modal,
@@ -422,26 +423,24 @@ export default function ActionsScreen({
               />
             </div>
           )}
-          <div className="mx-auto grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+          <CardGrid>
             {configurableActions.map((a) => (
-              <div className="flex w-full" key={a.name}>
-                <ActionCard
-                  action={a}
-                  key={a.name}
-                  editAction={() => {
-                    setAction({
-                      type: "edit",
-                      action: a,
-                    });
-                  }}
-                  deleteAction={() => {
-                    deleteAction(a.name);
-                  }}
-                  isLegacyConfig={isLegacyConfig}
-                />
-              </div>
+              <ActionCard
+                action={a}
+                key={a.name}
+                editAction={() => {
+                  setAction({
+                    type: "edit",
+                    action: a,
+                  });
+                }}
+                deleteAction={() => {
+                  deleteAction(a.name);
+                }}
+                isLegacyConfig={isLegacyConfig}
+              />
             ))}
-          </div>
+          </CardGrid>
         </div>
 
         <Capabilities
@@ -631,24 +630,24 @@ function ActionCard({
   }
   const actionError = hasActionError(action);
   return (
-    <CardButton
+    <Card
       variant="primary"
       onClick={editAction}
-      className="mx-auto inline-block w-72"
+      action={
+        <CardActionButton
+          size="mini"
+          icon={XMarkIcon}
+          onClick={(e: any) => {
+            deleteAction();
+            e.stopPropagation();
+          }}
+        />
+      }
     >
       <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full gap-1 font-medium text-element-900">
-          <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
+        <div className="flex w-full gap-1 font-medium text-foreground">
+          <Icon visual={spec.cardIcon} size="sm" className="text-foreground" />
           <div className="w-full truncate">{actionDisplayName(action)}</div>
-          <IconButton
-            icon={XMarkIcon}
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              deleteAction();
-              e.stopPropagation();
-            }}
-          />
         </div>
         {isLegacyConfig ? (
           <div className="mx-auto">
@@ -660,20 +659,16 @@ function ActionCard({
             />
           </div>
         ) : (
-          <>
+          <div className="w-full truncate text-muted-foreground">
             {actionError ? (
-              <div className="w-full truncate text-base text-warning-500">
-                {actionError}
-              </div>
+              <span className="text-warning-500">{actionError}</span>
             ) : (
-              <div className="w-full truncate text-base text-element-700">
-                {action.description}
-              </div>
+              <>{action.description}</>
             )}
-          </>
+          </div>
         )}
       </div>
-    </CardButton>
+    </Card>
   );
 }
 
@@ -1125,7 +1120,7 @@ function Capabilities({
           onCheckedChange={enabled ? onDisable : onEnable}
         />
         <div>
-          <div className="flex text-base font-semibold text-element-900">
+          <div className="flex text-base font-semibold text-foreground">
             {name}
           </div>
           <div className="text-base text-element-700">{description}</div>
