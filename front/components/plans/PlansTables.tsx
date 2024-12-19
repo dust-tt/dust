@@ -121,19 +121,6 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: (
-        <>
-          Unlimited messages (
-          <Hoverable onClick={() => setIsFairUseModalOpened(true)}>
-            Fair use limits apply*
-          </Hoverable>
-          )
-        </>
-      ),
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
       label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
       variant: "check",
       display: ["landing", "subscribe"],
@@ -147,6 +134,19 @@ export function ProPriceTable({
       label: "Privacy and Data Security (SOC2, Zero Data Retention)",
       variant: "check",
       display: ["landing"],
+    },
+    {
+      label: (
+        <>
+          Unlimited messages (
+          <Hoverable onClick={() => setIsFairUseModalOpened(true)}>
+            Fair use limits apply*
+          </Hoverable>
+          )
+        </>
+      ),
+      variant: "check",
+      display: ["landing", "subscribe"],
     },
     {
       label: "Fixed price on programmatic usage (API, GSheet, Zapier)",
