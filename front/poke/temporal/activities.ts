@@ -65,6 +65,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
+import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -506,6 +507,21 @@ export async function deleteRunOnDustAppsActivity({
     );
   }
 }
+
+export const deleteTrackersActivity = async ({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) => {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
+    includeDeleted: true,
+  });
+
+  for (const tracker of trackers) {
+    await tracker.delete(auth, { hardDelete: true });
+  }
+};
 
 export async function deleteMembersActivity({
   workspaceId,

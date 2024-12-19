@@ -10,6 +10,7 @@ const activityProxies = proxyActivities<typeof activities>({
 const {
   deleteAgentsActivity,
   deleteAppsActivity,
+  deleteTrackersActivity,
   deleteConversationsActivity,
   deleteMembersActivity,
   deleteRunOnDustAppsActivity,
@@ -54,6 +55,7 @@ export async function deleteWorkspaceWorkflow({
   await deleteAgentsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
+  await deleteTrackersActivity({ workspaceId });
   await deleteMembersActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
