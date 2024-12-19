@@ -73,12 +73,17 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   {
     label: "(soon) User provisioning",
     variant: "check",
-    display: ["landing", "subscribe"],
+    display: ["landing"],
   },
   {
     label: "(soon) EU data hosting",
     variant: "check",
-    display: ["landing", "subscribe"],
+    display: ["landing"],
+  },
+  {
+    label: "(soon) Salesforce Connection",
+    variant: "check",
+    display: ["landing"],
   }
 ];
 
