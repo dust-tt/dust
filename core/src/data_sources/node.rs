@@ -89,6 +89,12 @@ impl Node {
             self.mime_type,
         )
     }
+
+    // globally unique id for the node
+    // used for elasticsearch
+    pub fn globally_unique_id(&self) -> String {
+        format!("{}-{}", self.data_source_id, self.node_id)
+    }
 }
 
 impl From<serde_json::Value> for Node {

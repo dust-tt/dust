@@ -152,7 +152,10 @@ impl SearchStore for ElasticsearchSearchStore {
         let now = utils::now();
         match self
             .client
-            .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.node_id))
+            .index(IndexParts::IndexId(
+                NODES_INDEX_NAME,
+                &node.globally_unique_id(),
+            ))
             .timeout("200ms")
             .body(node.clone())
             .send()
