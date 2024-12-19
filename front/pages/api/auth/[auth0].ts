@@ -46,9 +46,6 @@ export default handleAuth({
       defaultAuthorizationParams.login_hint = login_hint;
     }
 
-    // defaultAuthorizationParams.redirect_uri =
-    //   "http://localhost:3010/api/auth/callback";
-
     return {
       authorizationParams: defaultAuthorizationParams,
       returnTo: "/api/login", // Note from seb, I think this is not used
