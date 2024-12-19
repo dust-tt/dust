@@ -3,9 +3,11 @@ import type { Transaction } from "sequelize";
 
 import {
   GoogleDriveConfig,
+  GoogleDriveSheet,
+} from "@connectors/lib/models/google_drive";
+import {
   GoogleDriveFiles,
   GoogleDriveFolders,
-  GoogleDriveSheet,
   GoogleDriveSyncToken,
 } from "@connectors/lib/models/google_drive";
 import type {

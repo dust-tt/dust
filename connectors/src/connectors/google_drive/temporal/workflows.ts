@@ -25,7 +25,6 @@ const {
   garbageCollectorFinished,
   markFolderAsVisited,
   shouldGarbageCollect,
-  upsertSharedWithMeFolder,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -104,8 +103,6 @@ export async function googleDriveFullSync({
       }
     }
   });
-
-  await upsertSharedWithMeFolder(connectorId);
 
   // Temp to clean up the running workflows state
   foldersToBrowse = uniq(foldersToBrowse);
