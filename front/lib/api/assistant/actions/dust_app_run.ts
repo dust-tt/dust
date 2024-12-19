@@ -333,7 +333,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         messageId: agentMessage.sId,
         error: {
           code: "dust_app_run_error",
-          message: `Error running Dust app: ${runRes.error.message}`,
+          message: `Dust App ${app.name}: ${runRes.error.message}`,
         },
       };
       return;
