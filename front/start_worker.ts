@@ -51,12 +51,6 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
 const ALL_WORKERS = Object.keys(workerFunctions);
 
 async function runWorkers(workers: WorkerName[]) {
-  // TODO(DOC_TRACKER): remove this.
-  // Disable document_tracker
-  workers = workers.filter(
-    (worker) =>
-      worker !== "document_tracker" && worker !== "tracker_notification"
-  );
   for (const worker of workers) {
     workerFunctions[worker]().catch((err) =>
       logger.error({ error: err }, `Error running ${worker} worker.`)
