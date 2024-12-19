@@ -51,9 +51,11 @@ export class ConversationListFilesAction extends BaseAction {
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     let content =
-      `When a user attaches a file to the conversation, an <attachment> tag marks its position in the conversation history. This tag indicates when the file was attached but does not contain its content. Files attached to the conversation are listed below with their content type and status (includable, queryable, searchable):\n\n` +
+      `When a user attaches a file to the conversation, an <attachment> tag marks its position in the conversation history. ` +
+      `This tag indicates when the file was attached but does not contain its content. ` +
+      `Files attached to the conversation are listed below with their content type and status (includable, queryable, searchable):\n\n` +
       `// includable: full content can be retrieved using \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\`\n` +
-      `// queryable: represents tabular data that can be queried alongside other queryable files using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
+      `// queryable: represents tabular data that can be queried alongside other queryable files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
       `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
       `\n`;
     for (const f of this.files) {
