@@ -1748,7 +1748,9 @@ impl DataSource {
             .await?;
 
         // Delete document from search index.
-        search_store.delete_node(document_id.to_string()).await?;
+        search_store
+            .delete_node(&self.data_source_id, document_id)
+            .await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.
