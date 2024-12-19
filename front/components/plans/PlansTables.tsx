@@ -36,12 +36,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Multiple restricted spaces",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Custom programmatic usage (API, Google Sheet, Zapier)",
+    label: "Multiple private spaces",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -50,9 +45,13 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     variant: "check",
     display: ["landing", "subscribe"],
   },
-
   {
-    label: "Single Sign-On (SSO)",
+    label: "Custom price on programmatic usage (API, GSheet, Zapier)",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -62,12 +61,12 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Priority access to new features",
+    label: "Priority support & dedicated account management",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Enhanced support & dedicated account management",
+    label: "Priority access to new features",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -80,7 +79,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     label: "(soon) EU data hosting",
     variant: "check",
     display: ["landing", "subscribe"],
-  },
+  }
 ];
 
 export function ProPriceTable({
@@ -150,18 +149,17 @@ export function ProPriceTable({
       display: ["landing"],
     },
     {
+      label: "Fixed price on programmatic usage (API, GSheet, Zapier)",
+      variant: "dash",
+      display: ["landing", "subscribe"],
+    },
+    {
       label: "Up to 1Gb/user of data sources",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
-
     {
-      label: "Limited programmatic usage (API, Google Sheet, Zapier)",
-      variant: "dash",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "One restricted space",
+      label: "One private space",
       variant: "dash",
       display: ["landing"],
     },
@@ -184,7 +182,7 @@ export function ProPriceTable({
         title="Pro"
         price={price}
         color="emerald"
-        priceLabel="/ month / user, excl. tax"
+        priceLabel="/ month / user, excl. tax."
         size={size}
         magnified={false}
       >
@@ -230,7 +228,7 @@ function EnterprisePriceTable({
       title="Enterprise"
       price="Custom"
       size={size}
-      priceLabel=" 100+ users, pay-per-use"
+      priceLabel=" pay-per-use, 100+ users"
       magnified={false}
     >
       <PriceTable.ActionContainer position="top">

@@ -102,7 +102,7 @@ export default function LandingLayout({
             <Button
               variant="highlight"
               size="sm"
-              label="Request demo"
+              label="Request a demo"
               href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
               target="_blank"
             />
