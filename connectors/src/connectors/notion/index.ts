@@ -61,21 +61,6 @@ async function workspaceIdFromConnectionId(connectionId: string) {
   );
 }
 
-/**
- * Upserts to data_sources_folders (core) a top-level folder for the orphaned resources.
- */
-async function upsertNotionUnknownFolder(connector: ConnectorResource) {
-  const folderId = nodeIdFromNotionId("unknown");
-  await upsertDataSourceFolder({
-    dataSourceConfig: dataSourceConfigFromConnector(connector),
-    folderId,
-    parents: [folderId],
-    parentId: null,
-    title: "Orphaned Resources",
-    mimeType: "application/vnd.dust.notion.page",
-  });
-}
-
 export class NotionConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,
@@ -110,7 +95,16 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
-    await upsertNotionUnknownFolder(connector);
+    // Upserts to data_sources_folders (core) a top-level folder for the orphaned resources.
+    const folderId = nodeIdFromNotionId("unknown");
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId,
+      parents: [folderId],
+      parentId: null,
+      title: "Orphaned Resources",
+      mimeType: "application/vnd.dust.notion.page",
+    });
 
     try {
       await launchNotionSyncWorkflow(connector.id);
