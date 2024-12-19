@@ -679,6 +679,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    if (/^github-issue-\d+-\d+$/.test(internalId)) {
+      return new Ok([internalId]); // this is incorrect but matches the previous behavior, will fix in a follow-up PR
+    }
+    if (/^github-discussion-\d+-\d+$/.test(internalId)) {
+      return new Ok([internalId]); // this is incorrect but matches the previous behavior, will fix in a follow-up PR
+    }
+
     const { type, repoId } = matchGithubInternalIdType(internalId);
 
     switch (type) {
