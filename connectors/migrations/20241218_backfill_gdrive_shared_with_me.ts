@@ -1,6 +1,7 @@
 import { makeScript } from "scripts/helpers";
 
-import { getSharedWithMeFolderId } from "@connectors/connectors/google_drive/lib/hierarchy";
+import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
+import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -12,13 +13,10 @@ makeScript({}, async ({ execute }, logger) => {
   await concurrentExecutor(
     connectors,
     async (connector) => {
-      // this is a strict copy-paste of upsertSharedWithMeFolder, I don't want to export it for a migration script and want the folderId for logging purposes
-      const dataSourceConfig = dataSourceConfigFromConnector(connector);
-      const folderId = getSharedWithMeFolderId(dataSourceConfig);
-
+      const folderId = getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID);
       if (execute) {
         await upsertDataSourceFolder({
-          dataSourceConfig,
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
           folderId,
           parents: [folderId],
           parentId: null,

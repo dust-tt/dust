@@ -23,8 +23,8 @@ import {
   getLocalParents,
   isDriveObjectExpandable,
 } from "@connectors/connectors/google_drive/lib";
+import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import { getSharedWithMeFolderId } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getGoogleDriveEntityDocumentId,
   getPermissionViewType,
@@ -226,7 +226,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     // cleaning up the Shared With Me folder
     await deleteDataSourceFolder({
       dataSourceConfig,
-      folderId: getSharedWithMeFolderId(dataSourceConfig),
+      folderId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
     });
 
     // Google revocation requires refresh tokens so would have to happen in `oauth`. But Google
@@ -421,10 +421,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         );
         // Adding a fake "Shared with me" node, to allow the user to see their shared files
         // that are not living in a shared drive.
-        const dataSourceConfig = dataSourceConfigFromConnector(c);
         nodes.push({
           provider: c.type,
-          internalId: getSharedWithMeFolderId(dataSourceConfig),
+          internalId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
           parentInternalId: null,
           type: "folder" as const,
           preventSelection: true,
@@ -450,8 +449,10 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         // The "Shared with me" view requires to look for folders
         // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
         let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
-        const dataSourceConfig = dataSourceConfigFromConnector(c);
-        if (parentInternalId === getSharedWithMeFolderId(dataSourceConfig)) {
+        if (
+          parentInternalId ===
+          getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID)
+        ) {
           gdriveQuery += ` and sharedWithMe=true`;
         } else {
           gdriveQuery += ` and '${parentDriveId}' in parents`;
@@ -996,10 +997,9 @@ function getSourceUrlForGoogleDriveFiles(f: GoogleDriveFiles): string {
  * Upserts to data_sources_folders (core) a top-level folder "Shared with me".
  */
 async function upsertSharedWithMeFolder(connector: ConnectorResource) {
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const folderId = getSharedWithMeFolderId(dataSourceConfig);
+  const folderId = getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID);
   await upsertDataSourceFolder({
-    dataSourceConfig,
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId,
     parents: [folderId],
     parentId: null,

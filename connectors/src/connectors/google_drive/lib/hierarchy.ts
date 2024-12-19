@@ -2,15 +2,9 @@ import type { ModelId } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import type { OAuth2Client } from "googleapis-common";
 
-import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import mainLogger from "@connectors/logger/logger";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
-
-export function getSharedWithMeFolderId(dataSourceConfig: DataSourceConfig) {
-  return `gdrive-${GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID}-${dataSourceConfig.dataSourceId}`;
-}
 
 // Please consider using the memoized version getFileParentsMemoized instead of this one.
 async function getFileParents(
