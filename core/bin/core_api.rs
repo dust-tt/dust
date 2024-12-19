@@ -3057,7 +3057,10 @@ async fn folders_delete(
             .store
             .delete_data_source_folder(&project, &data_source_id, &folder_id)
             .await?;
-        state.search_store.delete_node(folder_id).await?;
+        state
+            .search_store
+            .delete_node(&data_source_id, &folder_id)
+            .await?;
         Ok(())
     }
     .await;
