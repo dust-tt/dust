@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
+import { cacheWithRedis, removeNulls } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -79,27 +79,42 @@ export async function getRootNodesToSyncFromResources(
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
-  const rootFolderAndDriveNodes = await Promise.all(
-    rootResources
-      .filter(
-        (resource) =>
-          resource.nodeType === "folder" || resource.nodeType === "drive"
-      )
-      .map(async (resource) => {
-        const item = await getItem(
-          client,
-          typeAndPathFromInternalId(resource.internalId).itemAPIPath
-        );
+  const rootFolderAndDriveNodes = removeNulls(
+    await Promise.all(
+      rootResources
+        .filter(
+          (resource) =>
+            resource.nodeType === "folder" || resource.nodeType === "drive"
+        )
+        .map(async (resource) => {
+          try {
+            const item = await getItem(
+              client,
+              typeAndPathFromInternalId(resource.internalId).itemAPIPath
+            );
 
-        const node = itemToMicrosoftNode(
-          resource.nodeType as "folder" | "drive",
-          item
-        );
-        return {
-          ...node,
-          name: `${node.name} (${extractPath(item)})`,
-        };
-      })
+            const node = itemToMicrosoftNode(
+              resource.nodeType as "folder" | "drive",
+              item
+            );
+            return {
+              ...node,
+              name: `${node.name} (${extractPath(item)})`,
+            };
+          } catch (error) {
+            logger.error(
+              {
+                connectorId,
+                dataSourceId: dataSourceConfig.dataSourceId,
+                error,
+                id: resource.internalId,
+              },
+              "Failed to get item"
+            );
+            return null;
+          }
+        })
+    )
   );
 
   const rootSitePaths: string[] = rootResources
