@@ -1,5 +1,7 @@
 import type { TrackerGenerationToProcess } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 
+import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
@@ -46,6 +48,7 @@ export const processTrackerNotification = async ({
     name: tracker.name,
     recipients: tracker.recipients,
     generations,
+    localLogger,
   });
 
   // Consume the tracker & associated generations.
@@ -64,10 +67,12 @@ const sendTrackerEmail = async ({
   name,
   recipients,
   generations,
+  localLogger,
 }: {
   name: string;
   recipients: string[];
   generations: TrackerGenerationToProcess[];
+  localLogger: Logger;
 }): Promise<void> => {
   const uniqueRecipients = new Set(recipients);
   if (!uniqueRecipients.size) {
@@ -81,7 +86,7 @@ const sendTrackerEmail = async ({
 
   await Promise.all(
     Array.from(recipients).map((recipient) =>
-      sendEmail({ name, recipient, generations })
+      sendEmail({ name, recipient, generations, localLogger })
     )
   );
 };
@@ -111,20 +116,27 @@ const _sendTrackerWithGenerationEmail = async ({
   name,
   recipient,
   generations,
+  localLogger,
 }: {
   name: string;
   recipient: string;
   generations: TrackerGenerationToProcess[];
+  localLogger: Logger;
 }): Promise<void> => {
-  const generationsBody = generations
-    .map(
-      (generation) => `
-        <p>Generation: ${generation.id}.</p>
-        <p>Changes: ${generation.content}.</p>
-        <p>Document: ${generation.documentId}.</p>
-        `
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
+
+  const generationBody = await Promise.all(
+    generations.map((generation) =>
+      _bodyForGeneration(generation, coreAPI, localLogger)
     )
-    .join("");
+  );
+  const body = `
+<p>We have new suggestions for your tracker ${name}:</p>
+<p>${generations.length} recommendations were generated due to changes in watched documents.</p>
+<br />
+<br />
+${generationBody.join("<br />")}
+`;
 
   await sendEmailWithTemplate({
     to: recipient,
@@ -133,11 +145,50 @@ const _sendTrackerWithGenerationEmail = async ({
       email: TRACKER_FROM_EMAIL,
     },
     subject: `[Dust] Tracker ${name} check complete: Updates required.`,
-    body: `
-        <p>Tracker: ${name}.</p>
-        <p>Suggested changes detected in watched documents: ${generations.length}.</p>
-        <p>Changes:</p>
-        ${generationsBody}
-        `,
+    body,
   });
+};
+
+const _bodyForGeneration = async (
+  generation: TrackerGenerationToProcess,
+  coreAPI: CoreAPI,
+  localLogger: Logger
+): Promise<string> => {
+  const { documentId, content, thinking, dataSource } = generation;
+
+  // TODO(DOC_TRACKER) Group per data source to call getDataSourceDocuments instead of getDataSourceDocument.
+  const docResult = await coreAPI.getDataSourceDocument({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.dustAPIDataSourceId,
+    documentId,
+  });
+
+  if (docResult.isErr()) {
+    localLogger.error(
+      {
+        generation,
+        error: docResult.error,
+      },
+      "[Tracker] Failed to get document info for generation."
+    );
+  }
+
+  const doc = {
+    name: docResult.isOk()
+      ? docResult.value.document.title ?? "Unknown document"
+      : "Unknown document",
+    url: docResult.isOk() ? docResult.value.document.source_url ?? null : null,
+  };
+
+  const title = doc.url
+    ? `<a href="${doc.url}" target="_blank">${doc.name}</a>`
+    : `[${doc.name}]`;
+
+  return [
+    `<strong>Changes in document ${title} from ${dataSource.name}:</strong>`,
+    thinking && `<p>${thinking}</p>`,
+    `<p>${content}.</p>`,
+  ]
+    .filter(Boolean)
+    .join("");
 };

@@ -234,6 +234,7 @@ export class TrackerGenerationModel extends SoftDeletableModel<TrackerGeneration
   declare consumedAt: Date | null;
 
   declare trackerConfiguration: NonAttribute<TrackerConfigurationModel>;
+  declare dataSource: NonAttribute<DataSourceModel>;
 }
 
 TrackerGenerationModel.init(
@@ -290,6 +291,7 @@ DataSourceModel.hasMany(TrackerGenerationModel, {
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {
   foreignKey: { allowNull: false },
+  as: "dataSource",
 });
 
 // TODO(DOC_TRACKER) Delete models below this line
