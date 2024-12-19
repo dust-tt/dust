@@ -47,16 +47,16 @@ export function BlogSection() {
               </BlogBlock>
             </CarouselItem>
             <CarouselItem className="basis-full px-12 md:basis-1/2 md:px-6 lg:basis-1/3">
-                <BlogBlock
-                  title="Malt cuts support ticket closing time by 50% with Dust"
-                  content="Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses."
-                  href="https://blog.dust.tt/malt-customer-support/"
-                >
-                  <img
-                    src="https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg"
-                    alt="Blog Image"
-                  />
-                </BlogBlock>
+              <BlogBlock
+                title="Malt cuts support ticket closing time by 50% with Dust"
+                content="Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses."
+                href="https://blog.dust.tt/malt-customer-support/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
             </CarouselItem>
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
