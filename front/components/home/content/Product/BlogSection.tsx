@@ -34,7 +34,7 @@ export function BlogSection() {
           </div>
 
           <CarouselContent>
-            <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
                 title="Qonto partners with Dust to upgrade its customer experience"
                 content="Qonto streamlines operations with Dust's AI assistants, saving 50,000 hours yearly."
@@ -46,7 +46,7 @@ export function BlogSection() {
                 />
               </BlogBlock>
             </CarouselItem>
-            <CarouselItem className="basis-full px-12 md:basis-1/2 md:px-6 lg:basis-1/3">
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
                 title="Malt cuts support ticket closing time by 50% with Dust"
                 content="Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses."
@@ -61,7 +61,7 @@ export function BlogSection() {
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
                 title="How Vincent, Engineer at Alan, reduces project completion time by 20%"
-                content="Discover how Alan's Engineering team built Dust assistants to accelerate their workflows beyond code assistance."
+                content="Discover how Alan's Engineering team built Dust assistants to accelerate their workflows beyond coding."
                 href="https://blog.dust.tt/integrating-ai-workflows-alan/"
               >
                 <img
@@ -72,24 +72,12 @@ export function BlogSection() {
             </CarouselItem>
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
-                title="How Eléonore improved the efficiency of Pennylane's Care team thanks to Dust"
-                content="Discover how Pennylane leveraged Dust's specialized virtual assistants to improve efficiency and optimize workflows."
+                title="Pennylane's journey to deploy Dust for Customer Care teams"
+                content="Dust evolved from a simple support tool into an integral part of Pennylane's operations."
                 href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
               >
                 <img
                   src="https://blog.dust.tt/content/images/size/w2000/2024/07/blog_penny.png"
-                  alt="Blog Image"
-                />
-              </BlogBlock>
-            </CarouselItem>
-            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
-              <BlogBlock
-                title="Navigating Growth and Innovation with November Five's Dario Prskalo"
-                content="Discover how November Five leverages AI with Dust to enhance efficiency and maintain a human touch in their digital solutions."
-                href="https://blog.dust.tt/november-five-ai-transformation-dust/"
-              >
-                <img
-                  src="https://blog.dust.tt/content/images/size/w2000/2024/07/blog_nov.png"
                   alt="Blog Image"
                 />
               </BlogBlock>
