@@ -7,6 +7,7 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/intercom/temporal/activities";
+import { upsertIntercomTeamsFolderActivity } from "@connectors/connectors/intercom/temporal/activities";
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 
 import { intercomUpdatesSignal } from "./signals";
@@ -51,6 +52,11 @@ export async function intercomSyncWorkflow({
   connectorId: ModelId;
 }) {
   await saveIntercomConnectorStartSync({ connectorId });
+
+  // Add folder node for teams
+  await upsertIntercomTeamsFolderActivity({
+    connectorId,
+  });
 
   const uniqueHelpCenterIds = new Set<string>();
   const uniqueTeamIds = new Set<string>();

@@ -54,32 +54,6 @@ export async function allowSyncTeam({
         name: teamOnIntercom.name,
         permission: "read",
       });
-
-      // Update datasource folder node
-      const connector = await ConnectorResource.fetchById(connectorId);
-      if (connector !== null) {
-        // Create folder node for the team
-        const teamInternalId = getTeamInternalId(
-          connectorId,
-          teamOnIntercom.id
-        );
-        await Promise.all([
-          upsertDataSourceFolder({
-            dataSourceConfig: dataSourceConfigFromConnector(connector),
-            folderId: teamInternalId,
-            title: teamOnIntercom.name,
-            parents: [teamInternalId, getTeamsInternalId(connectorId)],
-            mimeType: getDataSourceNodeMimeType("TEAM"),
-          }),
-          upsertDataSourceFolder({
-            dataSourceConfig: dataSourceConfigFromConnector(connector),
-            folderId: getTeamsInternalId(connectorId),
-            title: "Teams",
-            parents: [getTeamsInternalId(connectorId)],
-            mimeType: getDataSourceNodeMimeType("TEAMS_FOLDER"),
-          }),
-        ]);
-      }
     }
   }
 
