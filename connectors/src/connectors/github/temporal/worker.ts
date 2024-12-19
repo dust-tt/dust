@@ -3,7 +3,10 @@ import { Worker } from "@temporalio/worker";
 
 import * as activities from "@connectors/connectors/github/temporal/activities";
 import { GithubCastKnownErrorsInterceptor } from "@connectors/connectors/github/temporal/cast_known_errors";
-import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
+import {
+  OLD_QUEUE_NAME,
+  QUEUE_NAME as NEW_QUEUE_NAME,
+} from "@connectors/connectors/github/temporal/config";
 import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -11,12 +14,17 @@ import {
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
-export async function runGithubWorker() {
-  const { connection, namespace } = await getTemporalWorkerConnection();
+async function runSingleWorker(
+  taskQueue: string,
+  {
+    connection,
+    namespace,
+  }: Awaited<ReturnType<typeof getTemporalWorkerConnection>>
+) {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities,
-    taskQueue: QUEUE_NAME,
+    taskQueue,
     maxConcurrentActivityTaskExecutions: 16,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     connection,
@@ -33,4 +41,13 @@ export async function runGithubWorker() {
   });
 
   await worker.run();
+}
+
+export async function runGithubWorker() {
+  const { connection, namespace } = await getTemporalWorkerConnection();
+
+  await Promise.all([
+    runSingleWorker(OLD_QUEUE_NAME, { connection, namespace }),
+    runSingleWorker(NEW_QUEUE_NAME, { connection, namespace }),
+  ]);
 }
