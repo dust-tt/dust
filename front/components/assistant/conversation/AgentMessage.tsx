@@ -134,7 +134,6 @@ export type AgentStateClassification = "thinking" | "acting" | "done";
  */
 export function AgentMessage({
   conversationId,
-  isInModal,
   isLastMessage,
   message,
   messageFeedback,
