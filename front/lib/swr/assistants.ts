@@ -284,7 +284,8 @@ export function useAgentConfigurationFeedbacks({
       ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks?${urlParams.toString()}`
       : null,
     agentConfigurationFeedbacksFetcher,
-    { disabled }
+    // If agentConfigurationId is null, we don't want to fetch
+    { disabled: disabled || !agentConfigurationId }
   );
 
   return {

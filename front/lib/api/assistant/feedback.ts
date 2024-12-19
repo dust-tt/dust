@@ -294,6 +294,10 @@ export async function deleteMessageFeedback(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  if (!canAccessConversation(auth, conversation)) {
+    throw new Error("User cannot access conversation");
+  }
+
   const message = await Message.findOne({
     where: {
       sId: messageId,
@@ -318,9 +322,7 @@ export async function deleteMessageFeedback(
   });
 
   if (
-    !message ||
-    !message.agentMessage ||
-    !message.agentMessage.feedbacks ||
+    !message?.agentMessage?.feedbacks ||
     message.agentMessage.feedbacks.length === 0
   ) {
     return null;

@@ -245,7 +245,7 @@ export class AgentMessage extends BaseModel<AgentMessage> {
 
   declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
 
-  // Handle to models linked to this agent message
+  // Handles to models linked to this agent message
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 }
@@ -311,10 +311,6 @@ export class AgentMessageFeedback extends BaseModel<AgentMessageFeedback> {
 
   declare agentMessage: NonAttribute<AgentMessage>;
   declare user: NonAttribute<UserModel>;
-
-  // These are shortcuts to avoid having to do a join to get the conversationId and messageId
-  declare conversationId: NonAttribute<Conversation["sId"] | undefined>;
-  declare messageId: NonAttribute<Message["sId"] | undefined>;
 }
 
 AgentMessageFeedback.init(

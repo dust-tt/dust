@@ -90,6 +90,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
         agentConfigurationId,
+        // Necessary for global models who share ids across workspaces
         workspaceId: auth.getNonNullableWorkspace().id,
         ...(pagination.olderThan && {
           createdAt: {

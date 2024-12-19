@@ -121,7 +121,6 @@ export function FeedbackSelector({
     }
   }, [
     onSubmitThumb,
-    feedback?.thumb,
     localFeedbackContent,
     isConversationShared,
     lastSelectedThumb,
@@ -207,7 +206,6 @@ export function FeedbackSelector({
                   onCheckedChange={(value) => {
                     setIsConversationShared(!!value);
                   }}
-                  className="s-text-primary-500"
                 />
                 <Page.P variant="secondary">
                   By clicking, you accept to share your full conversation
@@ -233,7 +231,7 @@ export function FeedbackSelector({
                   onClick={handleSubmit}
                   disabled={
                     !localFeedbackContent ||
-                    localFeedbackContent === "" ||
+                    localFeedbackContent.trim() === "" ||
                     isSubmittingThumb
                   }
                 />
