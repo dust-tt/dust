@@ -353,7 +353,7 @@ export default function CustomerSupport() {
               <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
                 <BlogBlock
                   title="Pennylane's journey to deploy Dust for Customer Care teams"
-                  content="As the deployment matured, Dust evolved from a simple support tool into an integral part of Pennylane's operations"
+                  content="As the deployment matured, Dust evolved from a simple support tool into an integral part of Pennylane's operations."
                   href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
                 >
                   <img
