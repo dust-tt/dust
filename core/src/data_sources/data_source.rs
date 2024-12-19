@@ -460,6 +460,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: String,
         parents: Vec<String>,
     ) -> Result<()> {
@@ -476,6 +477,20 @@ impl DataSource {
 
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
+
+        let document = store
+            .load_data_source_document(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &None,
+            )
+            .await?;
+
+        search_store
+            .index_node(Node::from(document.unwrap()))
+            .await?;
+
         Ok(())
     }
 
@@ -1740,7 +1755,9 @@ impl DataSource {
             .await?;
 
         // Delete document from search index.
-        search_store.delete_node(document_id.to_string()).await?;
+        search_store
+            .delete_node(&self.data_source_id, document_id)
+            .await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.

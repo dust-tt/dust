@@ -1540,6 +1540,7 @@ async fn data_sources_documents_update_parents(
                 .update_parents(
                     state.store.clone(),
                     state.qdrant_clients.clone(),
+                    state.search_store.clone(),
                     document_id,
                     payload.parents,
                 )
@@ -2486,7 +2487,11 @@ async fn tables_update_parents(
             None,
         ),
         Ok(Some(table)) => match table
-            .update_parents(state.store.clone(), payload.parents.clone())
+            .update_parents(
+                state.store.clone(),
+                state.search_store.clone(),
+                payload.parents.clone(),
+            )
             .await
         {
             Err(e) => error_response(
@@ -3057,7 +3062,10 @@ async fn folders_delete(
             .store
             .delete_data_source_folder(&project, &data_source_id, &folder_id)
             .await?;
-        state.search_store.delete_node(folder_id).await?;
+        state
+            .search_store
+            .delete_node(&data_source_id, &folder_id)
+            .await?;
         Ok(())
     }
     .await;
