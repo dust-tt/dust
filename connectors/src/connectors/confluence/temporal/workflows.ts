@@ -41,6 +41,10 @@ const {
   getSpaceIdsToSyncActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
+  retry: {
+    initialInterval: "60 seconds",
+    maximumInterval: "3600 seconds",
+  },
 });
 
 // Set a conservative threshold to start a new workflow and
