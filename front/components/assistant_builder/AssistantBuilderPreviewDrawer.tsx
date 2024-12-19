@@ -30,7 +30,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -56,6 +56,9 @@ import {
 import { useUser } from "@app/lib/swr/user";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+
+const MAX_FEEDBACKS_TO_DISPLAY = 500;
+const FEEDBACKS_BATCH_SIZE = 100;
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -420,34 +423,51 @@ const FeedbacksSection = ({
   owner: LightWorkspaceType;
   assistantId: string | null;
 }) => {
-  const [feedbackQueryLimit, setFeedbackQueryLimit] = useState(5);
   const [feedbacksExhausted, setFeedbacksExhausted] = useState(false);
+  const [
+    currentOldestFeedbackCreationDate,
+    setCurrentOldestFeedbackCreationDate,
+  ] = useState<Date | undefined>(undefined);
+  const [feedbacks, setFeedbacks] = useState<
+    AgentMessageFeedbackWithMetadataType[]
+  >([]);
   const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
     useAgentConfigurationFeedbacks({
       workspaceId: owner.sId,
       agentConfigurationId: assistantId ?? "",
       withMetadata: true,
       pagination: {
-        limit: feedbackQueryLimit,
+        limit: FEEDBACKS_BATCH_SIZE,
+        olderThan: currentOldestFeedbackCreationDate,
       },
     });
-  useEffect(() => {
-    if (agentConfigurationFeedbacks) {
-      setFeedbacksExhausted(
-        agentConfigurationFeedbacks.length < feedbackQueryLimit
-      );
-    }
-  }, [agentConfigurationFeedbacks, feedbackQueryLimit]);
 
-  const sortedFeedbacks = useMemo(() => {
-    if (!agentConfigurationFeedbacks) {
-      return null;
+  // Handle pagination updates.
+  useEffect(() => {
+    if (
+      !!agentConfigurationFeedbacks &&
+      agentConfigurationFeedbacks.length > 0
+    ) {
+      setFeedbacks((prevFeedbacks) => {
+        const newFeedbacks = agentConfigurationFeedbacks.filter(
+          (f) => !prevFeedbacks.some((pf) => pf.id === f.id)
+        ) as AgentMessageFeedbackWithMetadataType[];
+        return [...prevFeedbacks, ...newFeedbacks];
+      });
     }
-    return agentConfigurationFeedbacks.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
   }, [agentConfigurationFeedbacks]);
+
+  // Determine when feedback is exhausted
+  useEffect(() => {
+    if (!agentConfigurationFeedbacks) {
+      return;
+    }
+    setFeedbacksExhausted(
+      agentConfigurationFeedbacks.length === 0 ||
+        // We limit the numbr of feedbacks to prevent the page from becoming too slow.
+        feedbacks.length + FEEDBACKS_BATCH_SIZE > MAX_FEEDBACKS_TO_DISPLAY
+    );
+  }, [agentConfigurationFeedbacks, feedbacks]);
 
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
     useAgentConfigurationHistory({
@@ -456,12 +476,25 @@ const FeedbacksSection = ({
       disabled: !assistantId,
     });
 
+  const handleLoadMoreFeedbacks = useCallback(() => {
+    if (agentConfigurationFeedbacks) {
+      setCurrentOldestFeedbackCreationDate(
+        new Date(
+          agentConfigurationFeedbacks[
+            agentConfigurationFeedbacks.length - 1
+          ].createdAt
+        )
+      );
+    }
+  }, [agentConfigurationFeedbacks]);
+
   return isAgentConfigurationFeedbacksLoading ||
     isAgentConfigurationHistoryLoading ? (
     <Spinner />
   ) : (
     <div>
-      {!sortedFeedbacks || sortedFeedbacks.length === 0 || !assistantId ? (
+      {(!isAgentConfigurationFeedbacksLoading && feedbacks.length === 0) ||
+      !assistantId ? (
         <div className="mt-3 text-sm text-element-900">No feedbacks.</div>
       ) : !agentConfigurationHistory ? (
         <div className="mt-3 text-sm text-element-900">
@@ -474,11 +507,11 @@ const FeedbacksSection = ({
             agentConfigurationVersion={agentConfigurationHistory[0].version}
             isLatestVersion={true}
           />
-          {sortedFeedbacks.map((feedback, index) => (
+          {feedbacks.map((feedback, index) => (
             <div key={feedback.id} className="animate-fadeIn">
               {index > 0 &&
                 feedback.agentConfigurationVersion !==
-                  sortedFeedbacks[index - 1].agentConfigurationVersion && (
+                  feedbacks[index - 1].agentConfigurationVersion && (
                   <AgentConfigurationVersionHeader
                     agentConfiguration={agentConfigurationHistory?.find(
                       (c) => c.version === feedback.agentConfigurationVersion
@@ -499,13 +532,13 @@ const FeedbacksSection = ({
           ))}
         </div>
       )}
-      {sortedFeedbacks && !feedbacksExhausted && (
+      {feedbacks && !feedbacksExhausted && (
         <div className="mb-2 flex justify-center">
           <Button
             size="sm"
             variant="outline"
             label="Load more feedbacks"
-            onClick={() => setFeedbackQueryLimit((prev) => prev + 50)}
+            onClick={handleLoadMoreFeedbacks}
           />
         </div>
       )}

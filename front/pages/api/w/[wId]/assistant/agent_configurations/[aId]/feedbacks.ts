@@ -34,6 +34,9 @@ async function handler(
         pagination: {
           // Limit the number of feedbacks to retrieve.
           limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+          olderThan: req.query.olderThan
+            ? new Date(req.query.olderThan as string)
+            : undefined,
         },
       });
 

@@ -51,6 +51,7 @@ export async function getAgentConfigurationFeedbacks({
   agentConfigurationId: string;
   pagination: {
     limit: number;
+    olderThan?: Date;
   };
   withMetadata?: boolean;
 }): Promise<

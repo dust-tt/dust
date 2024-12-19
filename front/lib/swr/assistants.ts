@@ -256,6 +256,7 @@ export function useAgentConfigurationFeedbacks({
   agentConfigurationId: string | null;
   pagination: {
     limit: number;
+    olderThan?: Date;
   };
   withMetadata?: boolean;
 }) {
@@ -271,6 +272,9 @@ export function useAgentConfigurationFeedbacks({
   });
   if (withMetadata) {
     urlParams.append("withMetadata", "true");
+  }
+  if (pagination.olderThan) {
+    urlParams.append("olderThan", pagination.olderThan.toISOString());
   }
 
   const { data, error, mutate } = useSWRWithDefaults(
