@@ -1,10 +1,16 @@
 import {
+  Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  cn,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ExternalLinkIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   LightbulbIcon,
   MagicIcon,
   Markdown,
@@ -19,10 +25,12 @@ import {
 import type {
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -40,9 +48,17 @@ import type {
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
+import {
+  useAgentConfigurationFeedbacks,
+  useAgentConfigurationHistory,
+} from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+
+const MAX_FEEDBACKS_TO_DISPLAY = 500;
+const FEEDBACKS_BATCH_SIZE = 100;
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -54,6 +70,7 @@ interface AssistantBuilderRightPanelProps {
   rightPanelStatus: AssistantBuilderRightPanelStatus;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
+  agentConfigurationId: string | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
 }
 
@@ -67,6 +84,7 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus,
   openRightPanelTab,
   builderState,
+  agentConfigurationId,
   setAction,
 }: AssistantBuilderRightPanelProps) {
   const {
@@ -104,7 +122,8 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {template && (
+      {/* The agentConfigurationId is truthy iff not a new assistant */}
+      {(!!template || !!agentConfigurationId) && (
         <div className="shrink-0 bg-white pt-5">
           <Tabs
             value={rightPanelStatus.tab ?? "Preview"}
@@ -114,7 +133,20 @@ export default function AssistantBuilderRightPanel({
             className="hidden lg:flex"
           >
             <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
-              <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+              {template && (
+                <TabsTrigger
+                  value="Template"
+                  label="Template"
+                  icon={MagicIcon}
+                />
+              )}
+              {agentConfigurationId && (
+                <TabsTrigger
+                  value="Performance"
+                  label="Performance"
+                  icon={LightbulbIcon}
+                />
+              )}
               <TabsTrigger
                 value="Preview"
                 label="Preview"
@@ -128,7 +160,9 @@ export default function AssistantBuilderRightPanel({
         className={classNames(
           template !== null
             ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
-            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
+            : rightPanelStatus.tab === "Preview"
+              ? "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50"
+              : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200",
           shouldAnimatePreviewDrawer &&
             rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
@@ -263,6 +297,15 @@ export default function AssistantBuilderRightPanel({
               </div>
             </div>
           )}
+        {rightPanelStatus.tab === "Performance" && agentConfigurationId && (
+          <div className="ml-4 mt-4">
+            <Page.SectionHeader title="Feedback" />
+            <FeedbacksSection
+              assistantId={agentConfigurationId}
+              owner={owner}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -372,3 +415,246 @@ const TemplateDropDownMenu = ({
     </DropdownMenu>
   );
 };
+
+const FeedbacksSection = ({
+  owner,
+  assistantId,
+}: {
+  owner: LightWorkspaceType;
+  assistantId: string | null;
+}) => {
+  const [feedbacksExhausted, setFeedbacksExhausted] = useState(false);
+  const [
+    currentOldestFeedbackCreationDate,
+    setCurrentOldestFeedbackCreationDate,
+  ] = useState<Date | undefined>(undefined);
+  const [feedbacks, setFeedbacks] = useState<
+    AgentMessageFeedbackWithMetadataType[]
+  >([]);
+  const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
+    useAgentConfigurationFeedbacks({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId ?? "",
+      withMetadata: true,
+      pagination: {
+        limit: FEEDBACKS_BATCH_SIZE,
+        olderThan: currentOldestFeedbackCreationDate,
+      },
+    });
+
+  // Handle pagination updates.
+  useEffect(() => {
+    if (
+      !!agentConfigurationFeedbacks &&
+      agentConfigurationFeedbacks.length > 0
+    ) {
+      setFeedbacks((prevFeedbacks) => {
+        const newFeedbacks = agentConfigurationFeedbacks.filter(
+          (f) => !prevFeedbacks.some((pf) => pf.id === f.id)
+        ) as AgentMessageFeedbackWithMetadataType[];
+        return [...prevFeedbacks, ...newFeedbacks];
+      });
+    }
+  }, [agentConfigurationFeedbacks]);
+
+  // Determine when feedback is exhausted
+  useEffect(() => {
+    if (!agentConfigurationFeedbacks) {
+      return;
+    }
+    setFeedbacksExhausted(
+      agentConfigurationFeedbacks.length === 0 ||
+        // We limit the numbr of feedbacks to prevent the page from becoming too slow.
+        feedbacks.length + FEEDBACKS_BATCH_SIZE > MAX_FEEDBACKS_TO_DISPLAY
+    );
+  }, [agentConfigurationFeedbacks, feedbacks]);
+
+  const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
+    useAgentConfigurationHistory({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId || "",
+      disabled: !assistantId,
+    });
+
+  const handleLoadMoreFeedbacks = useCallback(() => {
+    if (agentConfigurationFeedbacks) {
+      setCurrentOldestFeedbackCreationDate(
+        new Date(
+          agentConfigurationFeedbacks[
+            agentConfigurationFeedbacks.length - 1
+          ].createdAt
+        )
+      );
+    }
+  }, [agentConfigurationFeedbacks]);
+
+  return isAgentConfigurationFeedbacksLoading ||
+    isAgentConfigurationHistoryLoading ? (
+    <Spinner />
+  ) : (
+    <div>
+      {(!isAgentConfigurationFeedbacksLoading && feedbacks.length === 0) ||
+      !assistantId ? (
+        <div className="mt-3 text-sm text-element-900">No feedbacks.</div>
+      ) : !agentConfigurationHistory ? (
+        <div className="mt-3 text-sm text-element-900">
+          Error loading the previous agent versions.
+        </div>
+      ) : (
+        <div className="mb-2 flex flex-col gap-2">
+          <AgentConfigurationVersionHeader
+            agentConfiguration={agentConfigurationHistory[0]}
+            agentConfigurationVersion={agentConfigurationHistory[0].version}
+            isLatestVersion={true}
+          />
+          {feedbacks.map((feedback, index) => (
+            <div key={feedback.id} className="animate-fadeIn">
+              {index > 0 &&
+                feedback.agentConfigurationVersion !==
+                  feedbacks[index - 1].agentConfigurationVersion && (
+                  <AgentConfigurationVersionHeader
+                    agentConfiguration={agentConfigurationHistory?.find(
+                      (c) => c.version === feedback.agentConfigurationVersion
+                    )}
+                    agentConfigurationVersion={
+                      feedback.agentConfigurationVersion
+                    }
+                    isLatestVersion={false}
+                  />
+                )}
+              <div className="mr-2">
+                <FeedbackCard
+                  owner={owner}
+                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {feedbacks && !feedbacksExhausted && (
+        <div className="mb-2 flex justify-center">
+          <Button
+            size="sm"
+            variant="outline"
+            label="Load more feedbacks"
+            onClick={handleLoadMoreFeedbacks}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+function AgentConfigurationVersionHeader({
+  agentConfigurationVersion,
+  agentConfiguration,
+  isLatestVersion,
+}: {
+  agentConfigurationVersion: number;
+  agentConfiguration: LightAgentConfigurationType | undefined;
+  isLatestVersion: boolean;
+}) {
+  const getAgentConfigurationVersionString = useCallback(
+    (config: LightAgentConfigurationType) => {
+      return isLatestVersion
+        ? "Latest version"
+        : !config.versionCreatedAt
+          ? `v${config.version}`
+          : new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+            });
+    },
+    [isLatestVersion]
+  );
+
+  return (
+    <div className="mb-2 mt-4 text-sm font-medium">
+      {agentConfiguration
+        ? getAgentConfigurationVersionString(agentConfiguration)
+        : `v${agentConfigurationVersion}`}
+    </div>
+  );
+}
+
+function FeedbackCard({
+  owner,
+  feedback,
+}: {
+  owner: LightWorkspaceType;
+  feedback: AgentMessageFeedbackWithMetadataType;
+}) {
+  const conversationUrl =
+    feedback.conversationId && feedback.messageId
+      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#${feedback.messageId}`
+      : null;
+
+  const timeSinceFeedback = timeAgoFrom(
+    feedback.createdAt instanceof Date
+      ? feedback.createdAt.getTime()
+      : new Date(feedback.createdAt).getTime(),
+    {
+      useLongFormat: true,
+    }
+  );
+
+  return (
+    <ContentMessage
+      variant="slate"
+      className="rounded-lg border border-gray-200 p-2"
+    >
+      <div className="justify-content-around flex items-center gap-2">
+        <div className="flex w-full items-center gap-2">
+          {feedback.userImageUrl ? (
+            <Avatar
+              size="xs"
+              visual={feedback.userImageUrl}
+              name={feedback.userName}
+            />
+          ) : (
+            <Spinner size="xs" />
+          )}
+          <div className="flex-grow text-sm font-bold text-element-900">
+            {feedback.userName}
+          </div>
+        </div>
+
+        <div className="flex flex-shrink-0 flex-row items-center gap-2 text-xs text-muted-foreground">
+          {timeSinceFeedback} ago
+          <div
+            className={cn("flex h-8 w-8 items-center justify-center rounded", {
+              "bg-sky-100": feedback.thumbDirection === "up",
+              "bg-pink-100": feedback.thumbDirection === "down",
+            })}
+          >
+            {feedback.thumbDirection === "up" ? (
+              <HandThumbUpIcon />
+            ) : (
+              <HandThumbDownIcon />
+            )}
+          </div>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="xs"
+          href={conversationUrl ?? ""}
+          icon={ExternalLinkIcon}
+          disabled={!conversationUrl}
+          target="_blank"
+        />
+      </div>
+      {feedback.content && (
+        <div className="my-2 ml-4 flex items-center gap-2">
+          <div className="flex-grow text-sm leading-relaxed text-gray-700">
+            {feedback.content}
+          </div>
+        </div>
+      )}
+    </ContentMessage>
+  );
+}

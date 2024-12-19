@@ -1,4 +1,4 @@
-import type { AgentConfigurationType, Result, UserType } from "@dust-tt/types";
+import type { Result, UserType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic } from "sequelize";
 import type { CreationAttributes, Transaction } from "sequelize";
@@ -7,7 +7,12 @@ import { Op } from "sequelize";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage as AgentMessageModel,
+  AgentMessageFeedback,
+  Conversation,
+  Message,
+} from "@app/lib/models/assistant/conversation";
 import type { Workspace } from "@app/lib/models/workspace";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -43,27 +48,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static async listByAgentConfigurationId({
-    agentConfiguration,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-  }): Promise<AgentMessageFeedbackResource[] | null> {
-    const agentMessageFeedback = await AgentMessageFeedback.findAll({
-      where: {
-        agentConfigurationId: agentConfiguration.sId,
-      },
-      order: [["id", "DESC"]],
-    });
-
-    return agentMessageFeedback.map(
-      (feedback) => new this(this.model, feedback.get())
-    );
-  }
-
   static async fetchByUserAndAgentMessage({
+    auth,
     user,
     agentMessage,
   }: {
+    auth: Authenticator;
     user: UserType;
     agentMessage: AgentMessage;
   }): Promise<AgentMessageFeedbackResource | null> {
@@ -71,6 +61,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where: {
         userId: user.id,
         agentMessageId: agentMessage.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
@@ -84,24 +75,62 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static async fetchByUserAndAgentMessages(
-    user: UserType,
-    agentMessages: AgentMessage[]
-  ): Promise<AgentMessageFeedbackResource[]> {
+  static async fetchByAgentConfigurationId({
+    auth,
+    agentConfigurationId,
+    pagination,
+  }: {
+    auth: Authenticator;
+    agentConfigurationId: string;
+    pagination: {
+      limit: number;
+      olderThan?: Date;
+    };
+  }): Promise<AgentMessageFeedback[]> {
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
-        userId: user.id,
-        agentMessageId: {
-          [Op.in]: agentMessages.map((m) => m.id),
-        },
+        agentConfigurationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        ...(pagination.olderThan && {
+          createdAt: {
+            [Op.lt]: pagination.olderThan,
+          },
+        }),
       },
+
+      include: [
+        {
+          model: AgentMessageModel,
+          attributes: ["id"],
+          as: "agentMessage",
+          include: [
+            {
+              model: Message,
+              as: "message",
+              attributes: ["id", "sId"],
+              include: [
+                {
+                  model: Conversation,
+                  as: "conversation",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: UserResource.model,
+          attributes: ["name", "imageUrl"],
+        },
+      ],
+      order: [
+        ["agentConfigurationVersion", "DESC"],
+        ["createdAt", "DESC"],
+      ],
+      limit: pagination.limit,
     });
 
-    return agentMessageFeedback.map(
-      (feedback) => new this(this.model, feedback.get())
-    );
+    return agentMessageFeedback;
   }
-
   static async listByWorkspaceAndDateRange({
     workspace,
     startDate,
@@ -132,13 +161,15 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   async updateContentAndThumbDirection(
     content: string,
-    thumbDirection: AgentMessageFeedbackDirection
+    thumbDirection: AgentMessageFeedbackDirection,
+    isConversationShared: boolean
   ): Promise<Result<undefined, Error>> {
     try {
       await this.model.update(
         {
           content,
           thumbDirection,
+          isConversationShared,
         },
         {
           where: {
@@ -161,6 +192,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
       });

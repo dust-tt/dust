@@ -39,6 +39,7 @@ const ExampleFeedbackComponent = () => {
       feedback: {
         thumb: "up",
         feedbackContent: null,
+        isConversationShared: false,
       },
       onSubmitThumb: async (element) => {
         setMessageFeedback((prev) => ({
@@ -46,6 +47,7 @@ const ExampleFeedbackComponent = () => {
           feedback: {
             thumb: element.thumb,
             feedbackContent: element.feedbackContent,
+            isConversationShared: element.isConversationShared,
           },
         }));
       },
@@ -61,6 +63,7 @@ export const ExamplePicker: Story = {
     feedback: {
       thumb: "up",
       feedbackContent: null,
+      isConversationShared: true,
     },
     onSubmitThumb: async (element) => {
       console.log(element);
