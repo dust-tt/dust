@@ -25,6 +25,7 @@ export async function runTrackerWorker() {
         },
       ],
     },
+    maxConcurrentActivityTaskExecutions: 8,
   });
 
   await worker.run();
