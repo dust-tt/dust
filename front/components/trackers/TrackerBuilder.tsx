@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -8,6 +9,7 @@ import {
   Label,
   Page,
   TextArea,
+  TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
@@ -24,6 +26,8 @@ import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   TRACKER_FREQUENCIES,
 } from "@dust-tt/types";
+import { capitalize } from "lodash";
+import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
 
@@ -66,6 +70,7 @@ export const TrackerBuilder = ({
 
   const [tracker, setTracker] = useState<TrackerConfigurationStateType>(
     initialTrackerState ?? {
+      status: "active",
       name: null,
       nameError: null,
       description: null,
@@ -165,6 +170,7 @@ export const TrackerBuilder = ({
     const res = await fetch(route, {
       method,
       body: JSON.stringify({
+        status: tracker.status,
         name: tracker.name,
         description: tracker.description,
         prompt: tracker.prompt,
@@ -338,13 +344,36 @@ export const TrackerBuilder = ({
           <div className="flex flex-grow" />
           <div className="flex flex-shrink-0 gap-2">
             {initialTrackerId && (
-              <Button
-                label={"Delete"}
-                variant="warning"
-                onClick={onDelete}
-                isLoading={isDeleting}
-                disabled={isSubmitting || isDeleting}
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <Chip
+                    size="sm"
+                    color={tracker.status === "active" ? "emerald" : "warning"}
+                    className="capitalize"
+                    icon={tracker.status === "active" ? undefined : LockIcon}
+                  >
+                    {capitalize(tracker.status)}
+                  </Chip>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    key={tracker.status}
+                    label={
+                      tracker.status === "active" ? "Deactivate" : "Activate"
+                    }
+                    onClick={() => {
+                      setTracker((t) => ({
+                        ...t,
+                        status:
+                          tracker.status === "active" ? "inactive" : "active",
+                      }));
+                      if (!edited) {
+                        setEdited(true);
+                      }
+                    }}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             <AdvancedSettings
               owner={owner}
@@ -371,8 +400,20 @@ export const TrackerBuilder = ({
                 }
               }}
             />
+            {initialTrackerId && (
+              <Button
+                icon={TrashIcon}
+                tooltip="Delete Tracker"
+                variant="outline"
+                onClick={onDelete}
+                isLoading={isDeleting}
+                disabled={isSubmitting || isDeleting}
+              />
+            )}
           </div>
         </div>
+
+        {/* Tracker Settings */}
 
         <div className="flex flex-col gap-8">
           <div>
@@ -400,6 +441,7 @@ export const TrackerBuilder = ({
                 placeholder="Descriptive name."
                 message={tracker.nameError}
                 messageStatus={tracker.nameError ? "error" : undefined}
+                disabled={tracker.status === "inactive"}
               />
             </div>
             <div className="md:col-span-2">
@@ -419,10 +461,13 @@ export const TrackerBuilder = ({
                 placeholder="Brief description of what you're tracking and why."
                 message={tracker.descriptionError}
                 messageStatus={tracker.descriptionError ? "error" : undefined}
+                disabled={tracker.status === "inactive"}
               />
             </div>
           </div>
         </div>
+
+        {/* Notification Settings */}
 
         <div className="flex flex-col gap-8">
           <div>
@@ -447,6 +492,7 @@ export const TrackerBuilder = ({
                       }
                       variant="outline"
                       isSelect
+                      disabled={tracker.status === "inactive"}
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -486,10 +532,14 @@ export const TrackerBuilder = ({
                 }}
                 message={tracker.recipientsError}
                 messageStatus={tracker.recipientsError ? "error" : undefined}
+                disabled={tracker.status === "inactive"}
               />
             </div>
           </div>
         </div>
+
+        {/* DataSource Configurations Settings */}
+
         <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Tracker Settings" />
@@ -516,6 +566,7 @@ export const TrackerBuilder = ({
               }}
               error={tracker.promptError}
               showErrorLabel={!!tracker.promptError}
+              disabled={tracker.status === "inactive"}
             />
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -528,6 +579,7 @@ export const TrackerBuilder = ({
                     setShowMaintainedDsModal(true);
                   }}
                   className="w-fit"
+                  disabled={tracker.status === "inactive"}
                 />
               </div>
             </div>
@@ -558,6 +610,7 @@ export const TrackerBuilder = ({
                     setShowWatchedDataSourcesModal(true);
                   }}
                   className="w-fit"
+                  disabled={tracker.status === "inactive"}
                 />
               </div>
             </div>

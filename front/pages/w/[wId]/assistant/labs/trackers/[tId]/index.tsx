@@ -126,6 +126,7 @@ const initializeTrackerBuilderState = async (
   );
 
   return {
+    status: trackerToEdit.status,
     name: trackerToEdit.name,
     description: trackerToEdit.description,
     prompt: trackerToEdit.prompt,
