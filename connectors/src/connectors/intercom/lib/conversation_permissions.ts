@@ -11,12 +11,9 @@ import {
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
-  getDataSourceNodeMimeType,
   getTeamInternalId,
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   IntercomTeam,
   IntercomWorkspace,
