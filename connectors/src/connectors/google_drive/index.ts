@@ -222,10 +222,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
     // cleaning up the Shared With Me folder
     await deleteDataSourceFolder({
-      dataSourceConfig,
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
       folderId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
     });
 
