@@ -5,6 +5,7 @@ on:
 
 env:
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+  SERVICE: region-resolver
   IMAGE_NAME: region-resolver
   REGION: us-central1
 
@@ -61,6 +62,6 @@ jobs:
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v1
         with:
-          service: ${{ env.IMAGE_NAME }}
+          service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
           image: "${{ env.REGION }}-docker.pkg.dev/${{ env.GCLOUD_PROJECT_ID }}/dust-images/${{ env.IMAGE_NAME }}:${{ steps.short_sha.outputs.short_sha }}"
