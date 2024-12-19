@@ -134,7 +134,6 @@ export function CodeBlock({
           hljs: {
             display: "block",
             overflowX: "auto",
-            background: slate900,
             color: slate50,
             padding: "1em",
           },
@@ -152,7 +151,7 @@ export function CodeBlock({
       </SyntaxHighlighter>
     </Suspense>
   ) : (
-    <code className="s-rounded-lg s-border-structure-200 s-bg-structure-100 s-px-1.5 s-py-1 s-text-sm s-text-amber-600 dark:s-border-structure-200-dark dark:s-bg-structure-100-dark dark:s-text-amber-400">
+    <code className="s-mx-0.5 s-rounded-lg s-border-primary-200 s-bg-primary-100 s-px-1.5 s-py-1 s-text-amber-600">
       {children}
     </code>
   );

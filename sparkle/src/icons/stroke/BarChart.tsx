@@ -11,7 +11,7 @@ const SvgBarChart = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M2.5 3h19c.552 0 .5-.052.5.5v17c0 .552.052.5-.5.5h-19c-.552 0-.5.052-.5-.5v-17c0-.552-.052-.5.5-.5M4 5v14h16V5zm3 8h2v4H7zm4-6h2v10h-2zm4 3h2v7h-2z"
+      d="M2.5 3h19c.552 0 .5-.052.5.5v17c0 .552.052.5-.5.5h-19c-.552 0-.5.052-.5-.5v-17c0-.552-.052-.5.5-.5ZM4 5v14h16V5H4Zm3 8h2v4H7v-4Zm4-6h2v10h-2V7Zm4 3h2v7h-2v-7Z"
     />
   </svg>
 );

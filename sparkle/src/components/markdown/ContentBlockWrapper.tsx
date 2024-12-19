@@ -1,6 +1,6 @@
-import React, { useCallback, useContext } from "react";
+import React, { useCallback } from "react";
 
-import { IconButton } from "@sparkle/components/IconButton";
+import { Button } from "@sparkle/components/";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownOnSquareIcon,
@@ -36,14 +36,6 @@ interface ContentBlockWrapperProps {
   getContentToDownload?: GetContentToDownloadFunction;
 }
 
-export const ContentBlockWrapperContext = React.createContext<{
-  setIsDarkMode: (v: boolean) => void;
-  isDarkMode: boolean;
-}>({
-  setIsDarkMode: () => {},
-  isDarkMode: false,
-});
-
 export function ContentBlockWrapper({
   children,
   className,
@@ -51,7 +43,6 @@ export function ContentBlockWrapper({
   getContentToDownload,
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const { isDarkMode } = useContext(ContentBlockWrapperContext);
   const handleCopyToClipboard = useCallback(() => {
     if (!content) {
       return;
@@ -96,28 +87,26 @@ export function ContentBlockWrapper({
   }, [getContentToDownload]);
 
   return (
-    <div className="s-relative">
-      <div
-        className={cn(
-          "s-relative s-w-auto s-overflow-x-auto s-rounded-lg",
-          className ?? ""
-        )}
-      >
-        <div className="s-w-full s-table-auto">{children}</div>
-      </div>
-
-      <div className="s-absolute s-right-2 s-top-2 s-mx-2 s-flex s-gap-3 s-rounded-xl">
+    <div
+      id="BlockWrapper"
+      className={cn(
+        "s-relative s-w-auto s-overflow-x-auto s-rounded-2xl",
+        className ?? ""
+      )}
+    >
+      <div className="s-w-full s-table-auto">{children}</div>
+      <div className="s-absolute s-right-2 s-top-2 s-flex s-gap-2 s-rounded-xl">
         {getContentToDownload && (
-          <IconButton
-            variant={isDarkMode ? "ghost" : "outline"}
+          <Button
+            variant={"outline"}
             size="xs"
             icon={ArrowDownOnSquareIcon}
             onClick={handleDownload}
           />
         )}
         {content && (
-          <IconButton
-            variant={isDarkMode ? "ghost" : "outline"}
+          <Button
+            variant={"outline"}
             size="xs"
             icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             onClick={handleCopyToClipboard}

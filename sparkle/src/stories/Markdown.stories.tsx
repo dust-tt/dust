@@ -8,7 +8,7 @@ const meta: Meta<typeof Markdown> = {
   component: Markdown,
   decorators: [
     (Story) => (
-      <div className="s-flex s-flex-col s-bg-structure-50 s-p-8">
+      <div className="s-flex s-flex-col s-p-8">
         <Story />
       </div>
     ),
