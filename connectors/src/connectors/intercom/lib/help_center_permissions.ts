@@ -255,7 +255,6 @@ export async function allowSyncCollection({
       const parents = await getParentIdsForCollection({
         connectorId,
         collectionId,
-        parentCollectionId: collection.parentId,
         helpCenterId: collection.helpCenterId,
       });
       await upsertDataSourceFolder({

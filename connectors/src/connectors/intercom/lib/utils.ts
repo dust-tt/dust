@@ -150,38 +150,28 @@ export async function getParentIdsForArticle({
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId: parentCollectionId,
-    parentCollectionId,
     helpCenterId,
   });
 
-  return [...documentId, ...collectionParents];
+  return [documentId, ...collectionParents];
 }
 
 export async function getParentIdsForCollection({
   connectorId,
   collectionId,
-  parentCollectionId,
   helpCenterId,
 }: {
   connectorId: number;
   collectionId: string;
-  parentCollectionId: string | null;
   helpCenterId: string;
 }) {
-  if (parentCollectionId === null) {
-    return [
-      getHelpCenterCollectionInternalId(connectorId, collectionId),
-      getHelpCenterInternalId(connectorId, helpCenterId),
-    ];
-  }
-
   // Initialize the internal IDs array with the collection ID.
   const parentIds = [
     getHelpCenterCollectionInternalId(connectorId, collectionId),
   ];
 
-  // Fetch and add any grandparent collection IDs.
-  let currentParentId = parentCollectionId;
+  // Fetch and add any parent collection Ids.
+  let currentParentId = collectionId;
 
   // There's max 2-levels on Intercom.
   for (let i = 0; i < 2; i++) {
@@ -192,14 +182,14 @@ export async function getParentIdsForCollection({
       },
     });
 
-    if (currentParent && currentParent.parentId) {
-      currentParentId = currentParent.parentId;
-      parentIds.push(
-        getHelpCenterCollectionInternalId(connectorId, currentParentId)
-      );
-    } else {
+    if (!currentParent || !currentParent.parentId) {
       break;
     }
+
+    currentParentId = currentParent.parentId;
+    parentIds.push(
+      getHelpCenterCollectionInternalId(connectorId, currentParentId)
+    );
   }
 
   // Add the help center internal ID.
