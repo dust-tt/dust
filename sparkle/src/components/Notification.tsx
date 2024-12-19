@@ -2,8 +2,7 @@ import { Transition } from "@headlessui/react";
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 
-import { IconButton } from "@sparkle/components/IconButton";
-import { CheckCircleIcon, XCircleIcon, XMarkIcon } from "@sparkle/icons";
+import { CheckCircleIcon, XCircleIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
