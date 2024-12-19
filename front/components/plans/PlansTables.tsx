@@ -84,7 +84,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     label: "(soon) Salesforce Connection",
     variant: "check",
     display: ["landing"],
-  }
+  },
 ];
 
 export function ProPriceTable({
