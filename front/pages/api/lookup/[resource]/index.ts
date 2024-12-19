@@ -6,18 +6,19 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getBearerToken } from "@app/lib/auth";
-import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
-import { fetchUserWithAuth0Sub } from "@app/lib/iam/users";
-import { Workspace } from "@app/lib/models/workspace";
+import {
+  handleLookupUser,
+  handleLookupWorkspace,
+} from "@app/lib/multi_regions/lookup";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type WorkspaceLookupResponse = {
+export type WorkspaceLookupResponse = {
   workspace: {
     sId: string;
   } | null;
 };
 
-type UserLookupResponse = {
+export type UserLookupResponse = {
   user: {
     email: string;
   } | null;
@@ -38,6 +39,12 @@ const UserLookupSchema = t.type({
 const WorkspaceLookupSchema = t.type({
   workspace: t.string,
 });
+
+export type UserLookupRequestBodyType = t.TypeOf<typeof UserLookupSchema>;
+
+export type WorkspaceLookupRequestBodyType = t.TypeOf<
+  typeof WorkspaceLookupSchema
+>;
 
 const ResourceType = t.union([t.literal("user"), t.literal("workspace")]);
 
@@ -116,7 +123,7 @@ async function handler(
             },
           });
         }
-        response = await handleLookupUser(bodyValidation.right);
+        response = await handleLookupUser(bodyValidation.right.user);
       }
       break;
     case "workspace": {
@@ -136,32 +143,6 @@ async function handler(
   }
   res.status(200).json(response);
   return;
-}
-
-async function handleLookupUser(
-  userLookup: t.TypeOf<typeof UserLookupSchema>
-): Promise<UserLookupResponse> {
-  // Check if user exists and for pending invitations
-  const [user, pendingInvite] = await Promise.all([
-    fetchUserWithAuth0Sub(userLookup.user.sub),
-    getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.user.email),
-  ]);
-
-  const isUserKnown = !!user || !!pendingInvite;
-  return {
-    user: isUserKnown ? { email: userLookup.user.email } : null,
-  };
-}
-
-async function handleLookupWorkspace(
-  body: t.TypeOf<typeof WorkspaceLookupSchema>
-): Promise<WorkspaceLookupResponse> {
-  const workspace = await Workspace.findOne({
-    where: { sId: body.workspace },
-  });
-  return {
-    workspace: workspace?.sId ? { sId: workspace.sId } : null,
-  };
 }
 
 export default withLogging(handler);
