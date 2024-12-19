@@ -98,7 +98,7 @@ impl Node {
 }
 
 pub fn globally_unique_id(data_source_id: &str, node_id: &str) -> String {
-    format!("{}-{}", data_source_id, node_id)
+    format!("{}__{}", data_source_id, node_id)
 }
 
 impl From<serde_json::Value> for Node {
