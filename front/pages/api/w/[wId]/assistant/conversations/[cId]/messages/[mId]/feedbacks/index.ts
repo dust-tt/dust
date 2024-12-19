@@ -16,8 +16,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export const MessageFeedbackRequestBodySchema = t.type({
-  thumbDirection: t.string,
+  thumbDirection: t.union([t.literal("up"), t.literal("down")]),
   feedbackContent: t.union([t.string, t.undefined, t.null]),
+  isConversationShared: t.boolean,
 });
 
 async function handler(
@@ -86,6 +87,7 @@ async function handler(
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
         content: bodyValidation.right.feedbackContent || "",
+        isConversationShared: bodyValidation.right.isConversationShared,
       });
 
       if (created) {
@@ -115,8 +117,7 @@ async function handler(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message:
-            "The message you're trying to give feedback to does not exist.",
+          message: "The feedback you're trying to delete does not exist.",
         },
       });
 

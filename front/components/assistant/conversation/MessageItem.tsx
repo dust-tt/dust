@@ -15,7 +15,8 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import React from "react";
+import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
@@ -56,10 +57,12 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           thumb,
           isToRemove,
           feedbackContent,
+          isConversationShared,
         }: {
           thumb: string;
           isToRemove: boolean;
           feedbackContent?: string | null;
+          isConversationShared: boolean;
         }) => {
           const res = await fetch(
             `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
@@ -71,6 +74,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               body: JSON.stringify({
                 thumbDirection: thumb,
                 feedbackContent,
+                isConversationShared,
               }),
             }
           );
@@ -90,20 +94,60 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         }
       );
 
-    if (message.visibility === "deleted") {
-      return null;
-    }
-
     const messageFeedbackWithSubmit: FeedbackSelectorProps = {
       feedback: messageFeedback
         ? {
             thumb: messageFeedback.thumbDirection,
             feedbackContent: messageFeedback.content,
+            isConversationShared: messageFeedback.isConversationShared,
           }
         : null,
       onSubmitThumb,
       isSubmittingThumb,
     };
+
+    const router = useRouter();
+    const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
+    const [highlighted, setHighlighted] = useState(false);
+    // Because the prop ref can be undefined
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+
+    // Effect: scroll to the message and temporarily highlight if it is the anchor's target
+    useEffect(() => {
+      if (!router.asPath.includes("#")) {
+        return;
+      }
+      const messageIdToScrollTo = router.asPath.split("#")[1];
+      if (
+        messageIdToScrollTo === sId &&
+        !hasScrolledToMessage &&
+        (ref || scrollRef)
+      ) {
+        setTimeout(() => {
+          setHasScrolledToMessage(true);
+          // Use ref to scroll to the message
+          const divRef = ref
+            ? (ref as React.RefObject<HTMLDivElement>)
+            : scrollRef;
+          if (divRef.current) {
+            divRef.current.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }
+          setHighlighted(true);
+
+          // Highlight the message for a short time
+          setTimeout(() => {
+            setHighlighted(false);
+          }, 2000);
+        }, 100);
+      }
+    }, [hasScrolledToMessage, router.asPath, sId, ref, scrollRef]);
+
+    if (message.visibility === "deleted") {
+      return null;
+    }
 
     switch (type) {
       case "user_message":
@@ -153,7 +197,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           : undefined;
 
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div
+            id={`message-id-${sId}`}
+            ref={ref}
+            className={highlighted ? "bg-blue-100" : ""}
+          >
             <UserMessage
               citations={citations}
               conversationId={conversationId}
@@ -167,7 +215,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
       case "agent_message":
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div
+            id={`message-id-${sId}`}
+            ref={ref ?? scrollRef}
+            className={highlighted ? "bg-blue-100" : ""}
+          >
             <AgentMessage
               conversationId={conversationId}
               isLastMessage={isLastMessage}

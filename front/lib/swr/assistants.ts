@@ -11,6 +11,10 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
+import type {
+  AgentMessageFeedbackType,
+  AgentMessageFeedbackWithMetadataType,
+} from "@app/lib/api/assistant/feedback";
 import {
   fetcher,
   getErrorFromResponse,
@@ -242,6 +246,56 @@ export function useAgentConfiguration({
   };
 }
 
+export function useAgentConfigurationFeedbacks({
+  workspaceId,
+  agentConfigurationId,
+  withMetadata,
+  pagination,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  pagination: {
+    limit: number;
+    olderThan?: Date;
+  };
+  withMetadata?: boolean;
+  disabled?: boolean;
+}) {
+  const agentConfigurationFeedbacksFetcher: Fetcher<{
+    feedbacks: (
+      | AgentMessageFeedbackType
+      | AgentMessageFeedbackWithMetadataType
+    )[];
+  }> = fetcher;
+
+  const urlParams = new URLSearchParams({
+    limit: pagination.limit.toString(),
+  });
+  if (withMetadata) {
+    urlParams.append("withMetadata", "true");
+  }
+  if (pagination.olderThan) {
+    urlParams.append("olderThan", pagination.olderThan.toISOString());
+  }
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    agentConfigurationId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks?${urlParams.toString()}`
+      : null,
+    agentConfigurationFeedbacksFetcher,
+    // If agentConfigurationId is null, we don't want to fetch
+    { disabled: disabled || !agentConfigurationId }
+  );
+
+  return {
+    agentConfigurationFeedbacks: data ? data.feedbacks : null,
+    isAgentConfigurationFeedbacksLoading: !error && !data,
+    isAgentConfigurationFeedbacksError: error,
+    mutateAgentConfigurationFeedbacks: mutate,
+  };
+}
+
 export function useAgentConfigurationHistory({
   workspaceId,
   agentConfigurationId,
@@ -273,6 +327,7 @@ export function useAgentConfigurationHistory({
     mutateAgentConfigurationHistory: mutate,
   };
 }
+
 export function useAgentConfigurationLastAuthor({
   workspaceId,
   agentConfigurationId,

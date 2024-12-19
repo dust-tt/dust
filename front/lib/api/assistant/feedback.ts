@@ -11,7 +11,10 @@ import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  AgentMessageFeedback,
+} from "@app/lib/models/assistant/conversation";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 
@@ -26,7 +29,81 @@ export type AgentMessageFeedbackType = {
   userId: number;
   thumbDirection: AgentMessageFeedbackDirection;
   content: string | null;
+  isConversationShared: boolean;
+  agentConfigurationVersion: number;
+  agentConfigurationId: string;
+  createdAt: Date;
 };
+
+export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType & {
+  conversationId: string;
+  userName: string;
+  userImageUrl?: string;
+};
+
+export async function getAgentConfigurationFeedbacks({
+  auth,
+  agentConfigurationId,
+  withMetadata,
+  pagination,
+}: {
+  auth: Authenticator;
+  agentConfigurationId: string;
+  pagination: {
+    limit: number;
+    olderThan?: Date;
+  };
+  withMetadata?: boolean;
+}): Promise<
+  Result<
+    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
+    ConversationError
+  >
+> {
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+  const feedbacksRes =
+    await AgentMessageFeedbackResource.fetchByAgentConfigurationId({
+      auth,
+      agentConfigurationId,
+      pagination,
+    });
+
+  const feedbacks = feedbacksRes.map(
+    (feedback) =>
+      ({
+        id: feedback.id,
+        userId: feedback.userId,
+        thumbDirection: feedback.thumbDirection,
+        content: feedback.content,
+        isConversationShared: feedback.isConversationShared,
+        agentConfigurationVersion: feedback.agentConfigurationVersion,
+        agentConfigurationId: feedback.agentConfigurationId,
+        createdAt: feedback.createdAt,
+        userName: withMetadata ? feedback.user.name : undefined,
+        userImageUrl: withMetadata ? feedback.user.imageUrl : undefined,
+        messageId: feedback.agentMessage.message?.sId,
+        // Only return conversationId if the user has access to the conversation
+        conversationId:
+          withMetadata &&
+          feedback.agentMessage.message?.conversation &&
+          feedback.isConversationShared &&
+          canAccessConversation(
+            auth,
+            feedback.agentMessage.message.conversation
+          )
+            ? feedback.agentMessage.message.conversation.sId
+            : undefined,
+      }) as AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType
+  );
+  return new Ok(feedbacks);
+}
 
 export async function getConversationFeedbacksForUser(
   auth: Authenticator,
@@ -41,47 +118,58 @@ export async function getConversationFeedbacksForUser(
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
-  const messages = await Message.findAll({
+  const feedbackForMessages = await Message.findAll({
     where: {
       conversationId: conversation.id,
       agentMessageId: {
         [Op.ne]: null,
       },
     },
-    attributes: ["sId", "agentMessageId"],
-  });
-
-  const agentMessages = await AgentMessage.findAll({
-    where: {
-      id: {
-        [Op.in]: messages
-          .map((m) => m.agentMessageId)
-          .filter((id): id is number => id !== null),
+    attributes: ["id", "sId", "agentMessageId"],
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        include: [
+          {
+            model: AgentMessageFeedbackResource.model,
+            as: "feedbacks",
+            where: {
+              userId: user.id,
+            },
+          },
+        ],
       },
-    },
+    ],
   });
 
-  const feedbacks =
-    await AgentMessageFeedbackResource.fetchByUserAndAgentMessages(
-      user,
-      agentMessages
-    );
-
-  const feedbacksByMessageId = feedbacks.map(
-    (feedback) =>
-      ({
+  const feedbacksWithMessageId = feedbackForMessages
+    // typeguard needed because of TypeScript limitations
+    .filter(
+      (
+        message
+      ): message is Message & {
+        agentMessage: { feedbacks: AgentMessageFeedbackResource[] };
+      } =>
+        !!message.agentMessage &&
+        !!message.agentMessage.feedbacks &&
+        message.agentMessage.feedbacks.length > 0
+    )
+    .map((message) => {
+      // Only one feedback can be associated with a message
+      const feedback = message.agentMessage.feedbacks[0];
+      return {
         id: feedback.id,
-        messageId: messages.find(
-          (m) => m.agentMessageId === feedback.agentMessageId
-        )!.sId,
+        messageId: message.sId,
         agentMessageId: feedback.agentMessageId,
         userId: feedback.userId,
         thumbDirection: feedback.thumbDirection,
         content: feedback.content,
-      }) as AgentMessageFeedbackType
-  );
+        isConversationShared: feedback.isConversationShared,
+      } as AgentMessageFeedbackType;
+    });
 
-  return new Ok(feedbacksByMessageId);
+  return new Ok(feedbacksWithMessageId);
 }
 
 /**
@@ -96,12 +184,14 @@ export async function createOrUpdateMessageFeedback(
     user,
     thumbDirection,
     content,
+    isConversationShared,
   }: {
     messageId: string;
     conversation: ConversationType | ConversationWithoutContentType;
     user: UserType;
     thumbDirection: AgentMessageFeedbackDirection;
     content?: string;
+    isConversationShared: boolean;
   }
 ): Promise<boolean | null> {
   const owner = auth.workspace();
@@ -155,6 +245,7 @@ export async function createOrUpdateMessageFeedback(
 
   const feedback =
     await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
+      auth,
       user,
       agentMessage,
     });
@@ -162,7 +253,8 @@ export async function createOrUpdateMessageFeedback(
   if (feedback) {
     const updatedFeedback = await feedback.updateContentAndThumbDirection(
       content ?? "",
-      thumbDirection
+      thumbDirection,
+      isConversationShared
     );
 
     return updatedFeedback.isOk();
@@ -175,7 +267,7 @@ export async function createOrUpdateMessageFeedback(
       userId: user.id,
       thumbDirection,
       content,
-      isConversationShared: false,
+      isConversationShared,
     });
     return newFeedback !== null;
   }
@@ -202,39 +294,46 @@ export async function deleteMessageFeedback(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  if (!canAccessConversation(auth, conversation)) {
+    throw new Error("User cannot access conversation");
+  }
+
   const message = await Message.findOne({
     where: {
       sId: messageId,
       conversationId: conversation.id,
     },
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        include: [
+          {
+            model: AgentMessageFeedbackResource.model,
+            as: "feedbacks",
+            where: {
+              userId: user.id,
+            },
+          },
+        ],
+      },
+    ],
     attributes: ["agentMessageId"],
   });
 
-  if (!message || !message.agentMessageId) {
+  if (
+    !message?.agentMessage?.feedbacks ||
+    message.agentMessage.feedbacks.length === 0
+  ) {
     return null;
   }
 
-  const agentMessage = await AgentMessage.findOne({
-    where: {
-      id: message.agentMessageId,
-    },
-  });
-
-  if (!agentMessage) {
-    return null;
-  }
-
-  const feedback =
-    await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
-      user,
-      agentMessage,
-    });
-
-  if (!feedback) {
-    return null;
-  }
-
-  const deletedFeedback = await feedback.delete(auth);
+  const feedback = message.agentMessage.feedbacks[0];
+  const feedbackRessource = new AgentMessageFeedbackResource(
+    AgentMessageFeedback,
+    feedback.get()
+  );
+  const deletedFeedback = await feedbackRessource.delete(auth);
 
   return deletedFeedback.isOk();
 }
