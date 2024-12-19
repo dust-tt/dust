@@ -36,8 +36,7 @@ export class State {
           nodeEnv: "production",
         },
         this.credentials,
-        console,
-        { useLocalInDev: false }
+        console
       );
     }
     return this._dustAPI;

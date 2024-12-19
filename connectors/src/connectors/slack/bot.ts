@@ -11,7 +11,13 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok, sectionFullText } from "@dust-tt/types";
+import {
+  Err,
+  getHeaderFromGroupIds,
+  getHeaderFromUserEmail,
+  Ok,
+  sectionFullText,
+} from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import removeMarkdown from "remove-markdown";
@@ -358,14 +364,13 @@ async function answerMessage(
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
-      groupIds: requestedGroups,
-      userEmail: userEmailHeader,
+      extraHeaders: {
+        ...getHeaderFromGroupIds(requestedGroups),
+        ...getHeaderFromUserEmail(userEmailHeader),
+      },
     },
     logger,
-    {
-      useLocalInDev: false,
-      urlOverride: DUST_FRONT_API,
-    }
+    DUST_FRONT_API
   );
 
   const buildContentFragmentRes = await makeContentFragment(

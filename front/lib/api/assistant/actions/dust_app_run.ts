@@ -14,7 +14,7 @@ import type { AgentActionSpecification } from "@dust-tt/types";
 import type { SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { BaseAction } from "@dust-tt/types";
+import { BaseAction, getHeaderFromGroupIds } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
@@ -300,13 +300,15 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       useLocalInDev: true,
     });
     const requestedGroupIds = auth.groups().map((g) => g.sId);
+    const apiConfig = config.getDustAPIConfig();
     const api = new DustAPI(
-      config.getDustAPIConfig(),
-      { ...prodCredentials, groupIds: requestedGroupIds },
-      logger,
+      apiConfig,
       {
-        useLocalInDev: true,
-      }
+        ...prodCredentials,
+        extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+      },
+      logger,
+      apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
     );
 
     // As we run the app (using a system API key here), we do force using the workspace credentials so

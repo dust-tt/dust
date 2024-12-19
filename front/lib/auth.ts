@@ -1,5 +1,4 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
-import type { DustAPICredentials } from "@dust-tt/client";
 import type {
   GroupType,
   LightWorkspaceType,
@@ -977,7 +976,10 @@ export async function prodAPICredentialsForOwner(
   }: {
     useLocalInDev: boolean;
   } = { useLocalInDev: false }
-): Promise<DustAPICredentials> {
+): Promise<{
+  apiKey: string;
+  workspaceId: string;
+}> {
   if (
     isDevelopment() &&
     !config.getDustAPIConfig().url.startsWith("http://localhost") &&

@@ -1,4 +1,3 @@
-import { DustAPI } from "@dust-tt/client";
 import type { Result, WorkspaceDomain } from "@dust-tt/types";
 import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
@@ -7,8 +6,8 @@ import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
-import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { getDustAPI } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -19,15 +18,7 @@ async function getActiveMemberEmails(
   const ds = dataSourceConfigFromConnector(connector);
 
   // List the emails of all active members in the workspace.
-  const dustAPI = new DustAPI(
-    apiConfig.getDustAPIConfig(),
-    {
-      apiKey: ds.workspaceAPIKey,
-      workspaceId: ds.workspaceId,
-    },
-    logger,
-    { useLocalInDev: true }
-  );
+  const dustAPI = getDustAPI(ds);
 
   const activeMemberEmailsRes =
     await dustAPI.getActiveMemberEmailsInWorkspace();
@@ -57,15 +48,7 @@ async function getVerifiedDomainsForWorkspace(
 ): Promise<WorkspaceDomain[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
-  const dustAPI = new DustAPI(
-    apiConfig.getDustAPIConfig(),
-    {
-      apiKey: ds.workspaceAPIKey,
-      workspaceId: ds.workspaceId,
-    },
-    logger,
-    { useLocalInDev: true }
-  );
+  const dustAPI = getDustAPI(ds);
 
   const workspaceVerifiedDomainsRes =
     await dustAPI.getWorkspaceVerifiedDomains();

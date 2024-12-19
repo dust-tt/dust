@@ -1,7 +1,10 @@
-import { DustUserEmailHeader } from "@dust-tt/client";
 import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
+} from "@dust-tt/types";
+import {
+  getGroupIdsFromHeaders,
+  getUserEmailFromHeaders,
 } from "@dust-tt/types";
 import type { TokenExpiredError } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -20,7 +23,6 @@ import {
   getBearerToken,
 } from "@app/lib/auth";
 import { getSession } from "@app/lib/auth";
-import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -310,11 +312,8 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       // This operation is only performed if:
       // 1. The user associated with the email is a member of the current workspace.
       // 2. The system key is being used for authentication.
-      const userEmailFromHeader = req.headers[DustUserEmailHeader];
-      if (
-        typeof userEmailFromHeader === "string" &&
-        !allowUserOutsideCurrentWorkspace
-      ) {
+      const userEmailFromHeader = getUserEmailFromHeaders(req.headers);
+      if (userEmailFromHeader && !allowUserOutsideCurrentWorkspace) {
         workspaceAuth =
           (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
             workspaceAuth,
