@@ -1,5 +1,6 @@
 import type { TrackerGenerationToProcess } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
+import _ from "lodash";
 
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
@@ -124,12 +125,63 @@ const _sendTrackerWithGenerationEmail = async ({
   localLogger: Logger;
 }): Promise<void> => {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
+  const generationsByDataSources = _.groupBy(generations, "dataSource.id");
+  const documentsById = new Map();
 
-  const generationBody = await Promise.all(
-    generations.map((generation) =>
-      _bodyForGeneration(generation, coreAPI, localLogger)
-    )
+  // Fetch documents for each data source in parallel.
+  await concurrentExecutor(
+    Object.entries(generationsByDataSources),
+    async ([, generations]) => {
+      const dataSource = generations[0].dataSource;
+      const documentIds = [...new Set(generations.map((g) => g.documentId))];
+
+      const docsResult = await coreAPI.getDataSourceDocuments({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        documentIds,
+      });
+
+      if (docsResult.isErr()) {
+        localLogger.error(
+          {
+            documentIds,
+            dataSourceId: dataSource.id,
+            error: docsResult.error,
+          },
+          "[Tracker] Failed to get documents info for generation."
+        );
+        return;
+      }
+
+      docsResult.value.documents.forEach((doc) => {
+        documentsById.set(doc.document_id, {
+          name: doc.title ?? "Unknown document",
+          url: doc.source_url ?? null,
+        });
+      });
+    },
+    { concurrency: 5 }
   );
+
+  const generationBody = generations.map((generation) => {
+    const doc = documentsById.get(generation.documentId) ?? {
+      name: "Unknown document",
+      url: null,
+    };
+
+    const title = doc.url
+      ? `<a href="${doc.url}" target="_blank">${doc.name}</a>`
+      : `[${doc.name}]`;
+
+    return [
+      `<strong>Changes in document ${title} from ${generation.dataSource.name}:</strong>`,
+      generation.thinking && `<p${generation.thinking}</p>`,
+      `<p>${generation.content}.</p>`,
+    ]
+      .filter(Boolean)
+      .join("");
+  });
+
   const body = `
 <p>We have new suggestions for your tracker ${name}:</p>
 <p>${generations.length} recommendations were generated due to changes in watched documents.</p>
@@ -147,48 +199,4 @@ ${generationBody.join("<br />")}
     subject: `[Dust] Tracker ${name} check complete: Updates required.`,
     body,
   });
-};
-
-const _bodyForGeneration = async (
-  generation: TrackerGenerationToProcess,
-  coreAPI: CoreAPI,
-  localLogger: Logger
-): Promise<string> => {
-  const { documentId, content, thinking, dataSource } = generation;
-
-  // TODO(DOC_TRACKER) Group per data source to call getDataSourceDocuments instead of getDataSourceDocument.
-  const docResult = await coreAPI.getDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId,
-  });
-
-  if (docResult.isErr()) {
-    localLogger.error(
-      {
-        generation,
-        error: docResult.error,
-      },
-      "[Tracker] Failed to get document info for generation."
-    );
-  }
-
-  const doc = {
-    name: docResult.isOk()
-      ? docResult.value.document.title ?? "Unknown document"
-      : "Unknown document",
-    url: docResult.isOk() ? docResult.value.document.source_url ?? null : null,
-  };
-
-  const title = doc.url
-    ? `<a href="${doc.url}" target="_blank">${doc.name}</a>`
-    : `[${doc.name}]`;
-
-  return [
-    `<strong>Changes in document ${title} from ${dataSource.name}:</strong>`,
-    thinking && `<p>${thinking}</p>`,
-    `<p>${content}.</p>`,
-  ]
-    .filter(Boolean)
-    .join("");
 };
