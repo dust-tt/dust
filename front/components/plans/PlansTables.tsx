@@ -31,72 +31,53 @@ type PriceTableItem = {
 
 const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   {
-    label: "From 100 users",
+    label: "Everything in Pro, plus:",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Multiple workspaces",
+    label: "Multiple restricted spaces",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Privacy and Data Security",
+    label: "Custom programmatic usage (API, Google Sheet, Zapier)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Advanced models (GPT-4, Claude…)",
+    label: "Larger storage and file size limits",
     variant: "check",
     display: ["landing", "subscribe"],
   },
-  {
-    label: "Unlimited custom assistants",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Unlimited messages",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Custom programmatic usage (API)",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Unlimited data sources",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
+
   {
     label: "Single Sign-On (SSO)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Dust Slackbot",
+    label: "Flexible payment options (SEPA, Credit Card)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Assistants can execute actions",
+    label: "Priority access to new features",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited spaces",
+    label: "Enhanced support & dedicated account management",
     variant: "check",
     display: ["landing", "subscribe"],
   },
   {
-    label: "Dedicated account support",
+    label: "(soon) User provisioning",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "(soon) EU data hosting",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -126,22 +107,17 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "One workspace",
-      variant: "dash",
-      display: ["landing"],
-    },
-    {
-      label: "Privacy and Data Security",
-      variant: "check",
-      display: ["landing"],
-    },
-    {
       label: "Advanced models (GPT-4, Claude…)",
       variant: "check",
       display: ["landing", "subscribe"],
     },
     {
-      label: "Unlimited custom assistants",
+      label: "Custom assistants which can execute actions",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Custom actions (Dust Apps)",
       variant: "check",
       display: ["landing", "subscribe"],
     },
@@ -159,37 +135,33 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Limited Programmatic usage (API)",
-      variant: "dash",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "Up to 1Gb/user of data sources",
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
       label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
       variant: "check",
       display: ["landing", "subscribe"],
     },
     {
-      label: "Google & GitHub Authentication",
+      label: "Native integrations (Zendesk, Slack, Chrome Extension)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Privacy and Data Security (SOC2, Zero Data Retention)",
+      variant: "check",
+      display: ["landing"],
+    },
+    {
+      label: "Up to 1Gb/user of data sources",
+      variant: "dash",
+      display: ["landing", "subscribe"],
+    },
+
+    {
+      label: "Limited Programmatic usage (API, Google Sheet, Zapier)",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
     {
-      label: "Dust Slackbot",
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "Assistants can execute actions",
-      variant: "check",
-      display: ["landing", "subscribe"],
-    },
-    {
-      label: "One space",
+      label: "One restricted space",
       variant: "dash",
       display: ["landing"],
     },
@@ -239,20 +211,6 @@ export function ProPriceTable({
             />
           )
         )}
-        {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
-          <PriceTable.ActionContainer>
-            <Button
-              variant="highlight"
-              size={biggerButtonSize}
-              label={
-                display === "landing" ? "Start now, 15 days free" : "Start now"
-              }
-              icon={RocketIcon}
-              disabled={isProcessing}
-              onClick={onClick}
-            />
-          </PriceTable.ActionContainer>
-        )}
       </PriceTable>
     </>
   );
@@ -268,13 +226,19 @@ function EnterprisePriceTable({
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
-    <PriceTable title="Enterprise" price="Custom" size={size} magnified={false}>
+    <PriceTable
+      title="Enterprise"
+      price="Custom"
+      size={size}
+      priceLabel=" 100+ users, pay-per-use"
+      magnified={false}
+    >
       <PriceTable.ActionContainer position="top">
         {onClick && (
           <Button
             variant="highlight"
             size={biggerButtonSize}
-            label="Contact us"
+            label="Contact sales"
             disabled={isProcessing}
             onClick={onClick}
           />
@@ -287,17 +251,6 @@ function EnterprisePriceTable({
           variant={item.variant}
         />
       ))}
-      <PriceTable.ActionContainer>
-        {onClick && (
-          <Button
-            variant="highlight"
-            size={biggerButtonSize}
-            label="Contact us"
-            disabled={isProcessing}
-            onClick={onClick}
-          />
-        )}
-      </PriceTable.ActionContainer>
     </PriceTable>
   );
 }
