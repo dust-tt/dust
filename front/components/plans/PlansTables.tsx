@@ -156,7 +156,7 @@ export function ProPriceTable({
     },
 
     {
-      label: "Limited Programmatic usage (API, Google Sheet, Zapier)",
+      label: "Limited programmatic usage (API, Google Sheet, Zapier)",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
