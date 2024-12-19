@@ -34,11 +34,14 @@ import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -665,6 +668,12 @@ export async function githubRepoGarbageCollectActivity(
     logger
   );
 
+  // deleting the repository folder from data_source_folders (core)
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getRepositoryInternalId(repoId),
+  });
+
   // Finally delete the repository object if it exists.
   await GithubCodeRepository.destroy({
     where: {
@@ -835,6 +844,17 @@ async function garbageCollectCodeSync(
       "GarbageCollectCodeSync: deleting directories"
     );
 
+    await concurrentExecutor(
+      directoriesToDelete,
+      async (d) => {
+        await deleteDataSourceFolder({
+          dataSourceConfig,
+          folderId: d.internalId,
+        });
+      },
+      { concurrency: 10 }
+    );
+
     await GithubCodeDirectory.destroy({
       where: {
         connectorId: connector.id,
@@ -900,6 +920,12 @@ export async function githubCodeSyncActivity({
       logger.child({ task: "garbageCollectCodeSyncDisabled" })
     );
 
+    // deleting the code root folder from data_source_folders (core)
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getCodeRootInternalId(repoId),
+    });
+
     // Finally delete the repository object if it exists.
     await GithubCodeRepository.destroy({
       where: {
@@ -910,6 +936,15 @@ export async function githubCodeSyncActivity({
 
     return;
   }
+
+  // upserting a folder for the code root in data_source_folders (core)
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getCodeRootInternalId(repoId),
+    title: "Code",
+    parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
+    mimeType: "application/vnd.dust.github.code.root",
+  });
 
   let githubCodeRepository = await GithubCodeRepository.findOne({
     where: {
@@ -980,6 +1015,12 @@ export async function githubCodeSyncActivity({
       );
 
       Context.current().heartbeat();
+
+      // deleting the code root folder from data_source_folders (core)
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: getCodeRootInternalId(repoId),
+      });
 
       // Finally delete the repository object if it exists.
       await GithubCodeRepository.destroy({
@@ -1145,6 +1186,18 @@ export async function githubCodeSyncActivity({
         Context.current().heartbeat();
         const parentInternalId = d.parentInternalId || rootInternalId;
 
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: d.internalId,
+          parents: [
+            ...d.parents,
+            getCodeRootInternalId(repoId),
+            getRepositoryInternalId(repoId),
+          ],
+          title: d.dirName,
+          mimeType: "application/vnd.dust.github.code.directory",
+        });
+
         // Find directory or create it.
         let githubCodeDirectory = await GithubCodeDirectory.findOne({
           where: {
@@ -1260,5 +1313,70 @@ export async function githubCodeSyncDailyCronActivity({
     memo: {
       connectorId: connectorId,
     },
+  });
+}
+
+export async function githubUpsertRepositoryFolderActivity({
+  connectorId,
+  repoId,
+  repoName,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+  repoName: string;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getRepositoryInternalId(repoId),
+    title: repoName,
+    parents: [getRepositoryInternalId(repoId)],
+    mimeType: "application/vnd.dust.github.repository",
+  });
+}
+
+export async function githubUpsertIssuesFolderActivity({
+  connectorId,
+  repoId,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getIssuesInternalId(repoId),
+    title: "Issues",
+    parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
+    mimeType: "application/vnd.dust.github.issues",
+  });
+}
+
+export async function githubUpsertDiscussionsFolderActivity({
+  connectorId,
+  repoId,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: getDiscussionsInternalId(repoId),
+    title: "Discussions",
+    parents: [
+      getDiscussionsInternalId(repoId),
+      getRepositoryInternalId(repoId),
+    ],
+    mimeType: "application/vnd.dust.github.discussions",
   });
 }
