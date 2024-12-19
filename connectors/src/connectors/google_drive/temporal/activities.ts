@@ -7,7 +7,10 @@ import StatsD from "hot-shots";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
-import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/consts";
+import {
+  GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+  GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+} from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
@@ -53,6 +56,26 @@ type LightGoogleDrive = {
 };
 
 export const statsDClient = new StatsD();
+
+/**
+ *  Upserts to data_sources_folders (core) a top-level folder "Shared with me".
+ */
+export async function upsertSharedWithMeFolder(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const folderId = getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID);
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId,
+    parents: [folderId],
+    parentId: null,
+    title: "Shared with me",
+    mimeType: "application/vnd.dust.googledrive.folder",
+  });
+}
 
 export async function getDrives(
   connectorId: ModelId
