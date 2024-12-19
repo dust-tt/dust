@@ -15,16 +15,12 @@ import {
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   getCollectionInAppUrl,
-  getDataSourceNodeMimeType,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionIdFromInternalId,
   getHelpCenterCollectionInternalId,
   getHelpCenterIdFromInternalId,
   getHelpCenterInternalId,
-  getParentIdsForCollection,
 } from "@connectors/connectors/intercom/lib/utils";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   IntercomArticle,
   IntercomCollection,
