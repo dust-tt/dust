@@ -93,7 +93,6 @@ export async function githubGetRepoIssuesResultPageActivity(
   connectorId: ModelId,
   repoName: string,
   repoLogin: string,
-  repoId: number,
   pageNumber: number, // 1-indexed
   loggerArgs: Record<string, string | number>
 ): Promise<number[]> {
@@ -507,7 +506,6 @@ export async function githubGetRepoDiscussionsResultPageActivity(
   connectorId: ModelId,
   repoName: string,
   repoLogin: string,
-  repoId: number,
   cursor: string | null,
   loggerArgs: Record<string, string | number>
 ): Promise<{ cursor: string | null; discussionNumbers: number[] }> {
@@ -1337,7 +1335,7 @@ export async function githubCodeSyncDailyCronActivity({
   });
 }
 
-export async function githubUpsertIssuesDirectoryActivity({
+export async function githubUpsertIssuesFolderActivity({
   connectorId,
   repoId,
 }: {
@@ -1359,7 +1357,7 @@ export async function githubUpsertIssuesDirectoryActivity({
   });
 }
 
-export async function githubUpsertDiscussionsDirectoryActivity({
+export async function githubUpsertDiscussionsFolderActivity({
   connectorId,
   repoId,
 }: {
