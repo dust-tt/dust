@@ -1714,6 +1714,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: &str,
     ) -> Result<()> {
         // Delete the document in the main embedder collection.
@@ -1737,6 +1738,9 @@ impl DataSource {
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?;
+
+        // Delete document from search index.
+        search_store.delete_node(document_id.to_string()).await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.
@@ -1959,6 +1963,7 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Result<()> {
         if self.shadow_write_qdrant_cluster().is_some() {
             Err(anyhow!(
@@ -1991,7 +1996,9 @@ impl DataSource {
         try_join_all(
             tables
                 .iter()
-                .map(|t| t.delete(store.clone(), databases_store.clone())),
+                // not deleting from search index here, as it's done more efficiently in the
+                // full-nodes deletion below
+                .map(|t| t.delete(store.clone(), databases_store.clone(), None)),
         )
         .await?;
 
@@ -2001,9 +2008,11 @@ impl DataSource {
             "Deleted tables"
         );
 
+        // Delete folders (concurrently).
         let (folders, total) = store
             .list_data_source_folders(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
+
         try_join_all(folders.iter().map(|f| {
             store.delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
         }))
@@ -2014,6 +2023,11 @@ impl DataSource {
             table_count = total,
             "Deleted folders"
         );
+
+        // Delete all nodes from the search index
+        search_store
+            .delete_data_source_nodes(&self.data_source_id)
+            .await?;
 
         // Delete data source and documents (SQL).
         let deleted_rows = store
