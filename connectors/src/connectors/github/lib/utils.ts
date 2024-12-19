@@ -7,6 +7,8 @@ export const GITHUB_CONTENT_NODE_TYPES = [
   "REPO_CODE",
   "REPO_CODE_DIR",
   "REPO_CODE_FILE",
+  "REPO_ISSUE",
+  "REPO_DISCUSSION",
 ] as const;
 
 export type GithubContentNodeType = (typeof GITHUB_CONTENT_NODE_TYPES)[number];
@@ -17,6 +19,28 @@ export function isGithubCodeDirId(internalId: string): boolean {
 
 export function isGithubCodeFileId(internalId: string): boolean {
   return /^github-code-\d+-file-[a-f0-9]+$/.test(internalId);
+}
+
+export function getGithubIdsFromDiscussionInternalId(internalId: string): {
+  repoId: string;
+  discussionNumber: number;
+} {
+  const pattern = /^github-discussion-(\d+)-(\d+)$/;
+  return {
+    repoId: parseInt(internalId.replace(pattern, "$1"), 10).toString(),
+    discussionNumber: parseInt(internalId.replace(pattern, "$2"), 10),
+  };
+}
+
+export function getGithubIdsFromIssueInternalId(internalId: string): {
+  repoId: string;
+  issueNumber: number;
+} {
+  const pattern = /^github-issue-(\d+)-(\d+)$/;
+  return {
+    repoId: parseInt(internalId.replace(pattern, "$1"), 10).toString(),
+    issueNumber: parseInt(internalId.replace(pattern, "$2"), 10),
+  };
 }
 
 /**
@@ -70,6 +94,24 @@ export function matchGithubInternalIdType(internalId: string): {
       type: "REPO_CODE_FILE",
       repoId: parseInt(
         internalId.replace(/^github-code-(\d+)-file-.*/, "$1"),
+        10
+      ),
+    };
+  }
+  if (/^github-issue-\d+-\d+$/.test(internalId)) {
+    return {
+      type: "REPO_ISSUE",
+      repoId: parseInt(
+        internalId.replace(/^github-issue-(\d+)-\d+$/, "$1"),
+        10
+      ),
+    };
+  }
+  if (/^github-discussion-\d+-\d+$/.test(internalId)) {
+    return {
+      type: "REPO_DISCUSSION",
+      repoId: parseInt(
+        internalId.replace(/^github-discussion-(\d+)-\d+$/, "$1"),
         10
       ),
     };
