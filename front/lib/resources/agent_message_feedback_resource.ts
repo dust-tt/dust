@@ -84,12 +84,18 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     agentConfigurationId: string;
     pagination: {
       limit: number;
+      olderThan?: Date;
     };
   }): Promise<AgentMessageFeedback[]> {
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
         agentConfigurationId,
         workspaceId: auth.getNonNullableWorkspace().id,
+        ...(pagination.olderThan && {
+          createdAt: {
+            [Op.lt]: pagination.olderThan,
+          },
+        }),
       },
 
       include: [
@@ -116,7 +122,10 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           attributes: ["name", "imageUrl"],
         },
       ],
-      order: [["agentConfigurationVersion", "DESC"]],
+      order: [
+        ["agentConfigurationVersion", "DESC"],
+        ["createdAt", "DESC"],
+      ],
       limit: pagination.limit,
     });
 
