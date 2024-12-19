@@ -48,9 +48,7 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -130,17 +128,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       },
       googleDriveConfigurationBlob
     );
-
-    // Upserts to data_sources_folders (core) a top-level folder "Shared with me".
-    const folderId = getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID);
-    await upsertDataSourceFolder({
-      dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId,
-      parents: [folderId],
-      parentId: null,
-      title: "Shared with me",
-      mimeType: "application/vnd.dust.googledrive.folder",
-    });
 
     // We mark it artificially as sync succeeded as google drive is created empty.
     await syncSucceeded(connector.id);
