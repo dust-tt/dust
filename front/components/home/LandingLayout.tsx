@@ -98,7 +98,14 @@ export default function LandingLayout({
             <LogoHorizontalColorLogo className="h-[24px] w-[96px]" />
           </div>
           <MainNavigation />
-          <div className="flex flex-grow justify-end">
+          <div className="flex flex-grow justify-end gap-4">
+            <Button
+              variant="highlight"
+              size="sm"
+              label="Request a demo"
+              href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
+              target="_blank"
+            />
             <Button
               variant="highlight"
               size="sm"
