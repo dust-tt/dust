@@ -28,6 +28,7 @@ import {
   getDiscussionsInternalId,
   getIssueInternalId,
   getIssuesInternalId,
+  getMimeTypeFromGithubContentNodeType,
   getRepositoryInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
@@ -36,9 +37,11 @@ import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/ut
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceDocument,
+  deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -303,7 +306,7 @@ export async function githubUpsertIssueActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: issue.title,
-    mimeType: "application/vnd.dust.github.issue",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_ISSUE"),
     async: true,
   });
 
@@ -487,7 +490,7 @@ export async function githubUpsertDiscussionActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: discussion.title,
-    mimeType: "application/vnd.dust.github.discussion",
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_DISCUSSION"),
     async: true,
   });
 
@@ -634,6 +637,11 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getIssuesInternalId(repoId),
+  });
+
   const discussionsInRepo = await GithubDiscussion.findAll({
     where: {
       repoId,
@@ -655,6 +663,11 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getDiscussionsInternalId(repoId),
+  });
+
   await Promise.all(promises);
 
   await garbageCollectCodeSync(
@@ -671,6 +684,11 @@ export async function githubRepoGarbageCollectActivity(
       connectorId: connector.id,
       repoId: repoId.toString(),
     },
+  });
+
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getRepositoryInternalId(repoId),
   });
 }
 
@@ -844,7 +862,23 @@ async function garbageCollectCodeSync(
         },
       },
     });
+    // Also delete folder nodes
+    const fq = new PQueue({ concurrency: 8 });
+    directoriesToDelete.forEach((d) =>
+      fq.add(async () => {
+        Context.current().heartbeat();
+        await deleteDataSourceFolder({
+          dataSourceConfig,
+          folderId: d.internalId,
+        });
+      })
+    );
   }
+
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getCodeRootInternalId(repoId),
+  });
 }
 
 export async function githubCodeSyncActivity({
@@ -908,6 +942,11 @@ export async function githubCodeSyncActivity({
       },
     });
 
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getRepositoryInternalId(repoId),
+    });
+
     return;
   }
 
@@ -938,6 +977,14 @@ export async function githubCodeSyncActivity({
   githubCodeRepository.sourceUrl = `https://github.com/${repoLogin}/${repoName}`;
   githubCodeRepository.lastSeenAt = codeSyncStartedAt;
   await githubCodeRepository.save();
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getRepositoryInternalId(githubCodeRepository.repoId),
+    title: githubCodeRepository.repoName,
+    parents: [getRepositoryInternalId(githubCodeRepository.repoId)],
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_FULL"),
+  });
 
   logger.info(
     {
@@ -987,6 +1034,11 @@ export async function githubCodeSyncActivity({
           connectorId: connector.id,
           repoId: repoId.toString(),
         },
+      });
+
+      await deleteDataSourceFolder({
+        dataSourceConfig,
+        folderId: getRepositoryInternalId(repoId),
       });
 
       return;
@@ -1112,7 +1164,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: "application/vnd.dust.github.code.file",
+            mimeType: getMimeTypeFromGithubContentNodeType("REPO_CODE_FILE"),
             async: true,
           });
 
@@ -1169,6 +1221,18 @@ export async function githubCodeSyncActivity({
           });
         }
 
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: d.internalId,
+          parents: [
+            ...d.parents,
+            getCodeRootInternalId(repoId),
+            getRepositoryInternalId(repoId),
+          ],
+          title: d.dirName,
+          mimeType: getMimeTypeFromGithubContentNodeType("REPO_CODE_DIR"),
+        });
+
         // If the parents have updated then the internalId gets updated as well so we should never
         // have an udpate to parentInternalId. We check that this is always the case. If the
         // directory is moved (the parents change) then it will trigger the creation of a new
@@ -1207,6 +1271,14 @@ export async function githubCodeSyncActivity({
       codeSyncStartedAt,
       logger.child({ task: "garbageCollectCodeSync" })
     );
+
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: getCodeRootInternalId(repoId),
+      title: "Code",
+      parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
+      mimeType: getMimeTypeFromGithubContentNodeType("REPO_CODE"),
+    });
 
     // Finally we update the repository updatedAt value.
     if (repoUpdatedAt) {
@@ -1260,5 +1332,52 @@ export async function githubCodeSyncDailyCronActivity({
     memo: {
       connectorId: connectorId,
     },
+  });
+}
+
+export async function githubUpsertIssuesFolderActivity({
+  connectorId,
+  repoId,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getIssuesInternalId(repoId),
+    title: "Issues",
+    parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_ISSUES"),
+  });
+}
+
+export async function githubUpsertDiscussionsFolderActivity({
+  connectorId,
+  repoId,
+}: {
+  connectorId: ModelId;
+  repoId: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getDiscussionsInternalId(repoId),
+    title: "Discussions",
+    parents: [
+      getDiscussionsInternalId(repoId),
+      getRepositoryInternalId(repoId),
+    ],
+    mimeType: getMimeTypeFromGithubContentNodeType("REPO_DISCUSSIONS"),
   });
 }

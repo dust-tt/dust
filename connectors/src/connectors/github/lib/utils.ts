@@ -127,3 +127,27 @@ export function getCodeFileInternalId(
     .toString("hex")
     .substring(0, 16)}`;
 }
+
+export function getMimeTypeFromGithubContentNodeType(
+  nodeType: GithubContentNodeType | "REPO_ISSUE" | "REPO_DISCUSSION"
+): string {
+  const baseMimeType = "application/vnd.dust.github";
+  switch (nodeType) {
+    case "REPO_FULL":
+      return `${baseMimeType}.repository-folder`;
+    case "REPO_ISSUES":
+      return `${baseMimeType}.issues-folder`;
+    case "REPO_DISCUSSIONS":
+      return `${baseMimeType}.discussions-folder`;
+    case "REPO_CODE":
+      return `${baseMimeType}.code-folder`;
+    case "REPO_CODE_DIR":
+      return `${baseMimeType}.code-directory`;
+    case "REPO_CODE_FILE":
+      return `${baseMimeType}.code-file`;
+    case "REPO_ISSUE":
+      return `${baseMimeType}.issue`;
+    case "REPO_DISCUSSION":
+      return `${baseMimeType}.discussion`;
+  }
+}
