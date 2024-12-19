@@ -22,12 +22,14 @@ import { classNames } from "@app/lib/utils";
 
 export function ConversationTitle({
   owner,
+  conversationId,
   conversation,
   shareLink,
   onDelete,
 }: {
   owner: WorkspaceType;
-  conversation: ConversationType;
+  conversationId: string;
+  conversation: ConversationType | null;
   shareLink: string;
   onDelete?: (conversationId: string) => void;
 }) {
@@ -52,7 +54,7 @@ export function ConversationTitle({
   const onTitleChange = async (title: string) => {
     try {
       const res = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
         {
           method: "PATCH",
           headers: {
@@ -65,7 +67,7 @@ export function ConversationTitle({
         }
       );
       await mutate(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
       );
       void mutate(`/api/w/${owner.sId}/assistant/conversations`);
       if (!res.ok) {
@@ -86,7 +88,7 @@ export function ConversationTitle({
           onClose={() => setShowDeleteDialog(false)}
           onDelete={() => {
             setShowDeleteDialog(false);
-            onDelete(conversation.sId);
+            onDelete(conversationId);
           }}
         />
       )}
@@ -94,7 +96,7 @@ export function ConversationTitle({
         <div className="flex min-w-0 flex-row items-center gap-4">
           {!isEditingTitle ? (
             <div className="min-w-0 overflow-hidden truncate">
-              <span className="font-bold">{conversation.title || ""}</span>
+              <span className="font-bold">{conversation?.title || ""}</span>
             </div>
           ) : (
             <div className="w-[84%]">
@@ -162,7 +164,7 @@ export function ConversationTitle({
             <IconButton
               icon={PencilSquareIcon}
               onClick={() => {
-                setEditedTitle(conversation.title || "");
+                setEditedTitle(conversation?.title || "");
                 setIsEditingTitle(true);
               }}
               size="sm"
@@ -173,7 +175,7 @@ export function ConversationTitle({
         <div className="flex items-center">
           <div className="hidden pr-6 lg:flex">
             <ConversationParticipants
-              conversationId={conversation.sId}
+              conversationId={conversationId}
               owner={owner}
             />
           </div>
