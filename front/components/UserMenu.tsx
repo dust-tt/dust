@@ -153,7 +153,9 @@ export function UserMenu({
 
         <DropdownMenuLabel label="Account" />
         <DropdownMenuItem
-          href="/api/auth/logout"
+          onClick={() => {
+            void router.push("/api/auth/logout");
+          }}
           icon={LogoutIcon}
           label="Sign&nbsp;out"
         />
