@@ -1307,14 +1307,14 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -1393,6 +1393,7 @@ impl Store for PostgresStore {
                 node_mime_type,
             )) => Ok(Some(Document {
                 data_source_id: data_source_id.clone(),
+                data_source_internal_id: data_source_internal_id.clone(),
                 created: created as u64,
                 timestamp: timestamp as u64,
                 title: node_title.unwrap_or(document_id.clone()),
@@ -1829,14 +1830,14 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -1890,6 +1891,7 @@ impl Store for PostgresStore {
 
         let document = Document {
             data_source_id,
+            data_source_internal_id: data_source_internal_id.to_string(),
             title,
             mime_type,
             created: created as u64,
@@ -1945,14 +1947,14 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -2048,6 +2050,7 @@ impl Store for PostgresStore {
 
                 Ok(Document {
                     data_source_id: data_source_id.clone(),
+                    data_source_internal_id: data_source_internal_id.clone(),
                     created: created as u64,
                     timestamp: timestamp as u64,
                     title: node_title.unwrap_or(document_id.clone()),
@@ -2599,13 +2602,13 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let r = tx
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -2664,6 +2667,7 @@ impl Store for PostgresStore {
         let table = Table::new(
             project,
             data_source_id,
+            data_source_internal_id,
             table_created,
             upsert_params.table_id,
             upsert_params.name,
@@ -2853,13 +2857,13 @@ impl Store for PostgresStore {
         // Get the data source row id.
         let stmt = c
             .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
             )
             .await?;
         let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -2938,6 +2942,7 @@ impl Store for PostgresStore {
                 Ok(Some(Table::new(
                     project.clone(),
                     data_source_id.clone(),
+                    data_source_internal_id.clone(),
                     created as u64,
                     table_id,
                     name,
@@ -2974,14 +2979,14 @@ impl Store for PostgresStore {
         // get the data source row id
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -3080,6 +3085,7 @@ impl Store for PostgresStore {
                 Ok(Table::new(
                     project.clone(),
                     data_source_id.clone(),
+                    data_source_internal_id.clone(),
                     created as u64,
                     table_id,
                     name,
@@ -3181,13 +3187,14 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let r = tx
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
-        let data_source_row_id: i64 = match r.len() {
+
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -3218,6 +3225,7 @@ impl Store for PostgresStore {
 
         let folder = Folder::new(
             data_source_id,
+            data_source_internal_id,
             upsert_params.folder_id,
             created as u64,
             upsert_params.title,
@@ -3299,14 +3307,14 @@ impl Store for PostgresStore {
         // get the data source row id
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -3395,6 +3403,7 @@ impl Store for PostgresStore {
 
                 Ok(Folder::new(
                     data_source_id.clone(),
+                    data_source_internal_id.clone(),
                     node_id,
                     timestamp as u64,
                     title,
@@ -3460,14 +3469,14 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
+        let (data_source_row_id, data_source_internal_id): (i64, String) = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
+            1 => (r[0].get(0), r[0].get(1)),
             _ => unreachable!(),
         };
 
@@ -3500,6 +3509,7 @@ impl Store for PostgresStore {
                 Ok(Some((
                     Node::new(
                         &data_source_id,
+                        &data_source_internal_id,
                         &node_id,
                         node_type,
                         timestamp as u64,
