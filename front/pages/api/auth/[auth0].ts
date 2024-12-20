@@ -48,7 +48,7 @@ export default handleAuth({
 
     return {
       authorizationParams: defaultAuthorizationParams,
-      returnTo: "/api/login",
+      returnTo: "/api/login", // Note from seb, I think this is not used
     };
   }),
   callback: async (req: NextApiRequest, res: NextApiResponse) => {
