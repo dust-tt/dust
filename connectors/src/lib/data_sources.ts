@@ -71,7 +71,7 @@ export type UpsertDataSourceDocumentParams = {
   timestampMs?: number;
   tags?: string[];
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
   title: string;
@@ -108,7 +108,7 @@ async function _upsertDataSourceDocument({
   title,
   mimeType,
   async,
-  parentId = null,
+  parentId,
 }: UpsertDataSourceDocumentParams) {
   return tracer.trace(
     `connectors`,
@@ -1229,7 +1229,7 @@ export async function _upsertDataSourceFolder({
   folderId,
   timestampMs,
   parents,
-  parentId = parents[1] ?? null,
+  parentId,
   title,
   mimeType,
 }: {
@@ -1237,7 +1237,7 @@ export async function _upsertDataSourceFolder({
   folderId: string;
   timestampMs?: number;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   title: string;
   mimeType: string;
 }) {
