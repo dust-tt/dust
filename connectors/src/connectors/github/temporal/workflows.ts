@@ -125,6 +125,10 @@ export async function githubFullSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
+/**
+ * This workflow is used to fetch and sync all the repositories of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
 export async function githubFullSyncWorkflowV2(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
@@ -230,6 +234,10 @@ export async function githubReposSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
+/**
+ * This workflow is used to sync the given repositories of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
 export async function githubReposSyncWorkflowV2(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
@@ -329,6 +337,10 @@ export async function githubRepoIssuesSyncWorkflow({
   return true;
 }
 
+/**
+ * This workflow is used to sync all the issues of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
 export async function githubRepoIssuesSyncWorkflowV2({
   dataSourceConfig,
   connectorId,
@@ -441,6 +453,10 @@ export async function githubRepoDiscussionsSyncWorkflow({
   return cursor;
 }
 
+/**
+ * This workflow is used to sync all the discussions of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
 export async function githubRepoDiscussionsSyncWorkflowV2({
   dataSourceConfig,
   connectorId,
@@ -601,6 +617,10 @@ export async function githubRepoSyncWorkflow({
   });
 }
 
+/**
+ * This workflow is used to sync all the issues, discussions and code of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
 export async function githubRepoSyncWorkflowV2({
   dataSourceConfig,
   connectorId,
