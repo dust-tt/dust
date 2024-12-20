@@ -28,6 +28,10 @@ name = "elasticsearch_create_index"
 path = "bin/elasticsearch/create_index.rs"
 
 [[bin]]
+name = "elasticsearch_backfill_index"
+path = "bin/elasticsearch/backfill_index.rs"
+
+[[bin]]
 name = "qdrant_create_collection"
 path = "bin/qdrant/create_collection.rs"
 
