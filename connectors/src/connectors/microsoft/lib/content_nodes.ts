@@ -43,7 +43,7 @@ export function getTeamsRootAsContentNode(): ContentNode {
     }),
     parentInternalId: null,
     type: "folder",
-    title: "Conversations",
+    title: "Teams",
     sourceUrl: null,
     dustDocumentId: null,
     lastUpdatedAt: null,
