@@ -14,7 +14,7 @@ import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutProps & { userId: string }
+  SpaceLayoutProps & { userId: string; canWriteInSpace: boolean }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
@@ -45,9 +45,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
+  const canWriteInSpace = space.canWrite(auth);
+
   return {
     props: {
       isAdmin,
+      canWriteInSpace,
       owner,
       plan,
       space: space.toJSON(),
@@ -59,6 +62,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function Space({
   isAdmin,
+  canWriteInSpace,
   owner,
   userId,
   space,
@@ -90,6 +94,7 @@ export default function Space({
       )}
       <SpaceCategoriesList
         owner={owner}
+        canWriteInSpace={canWriteInSpace}
         space={space}
         onSelect={(category) => {
           void router.push(
