@@ -1681,6 +1681,15 @@ async fn data_sources_documents_upsert(
     match &payload.parent_id {
         Some(parent_id) => {
             if payload.parents.get(1) != Some(parent_id) {
+                info!(
+                    data_source_id = data_source_id,
+                    node_id = payload.document_id,
+                    parent_id = parent_id,
+                    parents = ?payload.parents,
+                    node_type = "document",
+                    operation = "upsert",
+                    "[KWSEARCH] invariant_parent_id_equal_parent_1"
+                );
                 // TODO(fontanierh): Temporary, as we need to let some jobs go through.
                 // return error_response(
                 //     StatusCode::BAD_REQUEST,
