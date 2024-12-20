@@ -68,6 +68,11 @@ pub struct Chunk {
     pub offset: usize,
     pub vector: Option<Vec<f64>>,
     pub score: Option<f64>,
+    // Empty unless search was ran with `target_document_tokens`
+    // and the chunk's `text` was expanded with content from other chunks.
+    // In this case, this field will contain the offsets of the chunks that
+    // were included to produce the chunk's `text`.
+    pub expanded_offsets: Vec<usize>,
 }
 
 /// Document is used as a data-strucutre for insertion into the SQL store (no
@@ -953,6 +958,7 @@ impl DataSource {
                     offset: i,
                     vector: Some(v.vector.clone()),
                     score: None,
+                    expanded_offsets: vec![],
                 }
             })
             .collect::<Vec<_>>();
@@ -1432,6 +1438,8 @@ impl DataSource {
                                             == chunk.offset
                                     {
                                         let c_offset = parsed_results[counter].1;
+                                        chunk.expanded_offsets.push(c_offset);
+
                                         if chunk.offset < c_offset {
                                             chunk.text.push_str(
                                                 &(" ".to_owned()
@@ -2228,6 +2236,7 @@ fn parse_points_into_chunks(
                     offset: chunk_offset as usize,
                     vector: None,
                     score: maybe_score,
+                    expanded_offsets: vec![],
                 },
             ))
         })
