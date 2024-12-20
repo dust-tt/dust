@@ -40,6 +40,9 @@ impl Folder {
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
     }
+    pub fn data_source_internal_id(&self) -> &str {
+        &self.data_source_internal_id
+    }
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }

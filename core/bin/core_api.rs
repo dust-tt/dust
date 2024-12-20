@@ -3049,17 +3049,21 @@ async fn folders_delete(
     let project = project::Project::new_from_id(project_id);
 
     let result = async {
-        state
+        let folder = match state
             .store
             .load_data_source_folder(&project, &data_source_id, &folder_id)
-            .await?;
+            .await?
+        {
+            Some(folder) => folder,
+            None => return Ok(()),
+        };
         state
             .store
             .delete_data_source_folder(&project, &data_source_id, &folder_id)
             .await?;
         state
             .search_store
-            .delete_node(&data_source_id, &folder_id)
+            .delete_node(&folder.data_source_internal_id(), &folder_id)
             .await?;
         Ok(())
     }

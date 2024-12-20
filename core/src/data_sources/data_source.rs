@@ -75,7 +75,7 @@ pub struct Chunk {
     pub expanded_offsets: Vec<usize>,
 }
 
-/// Document is used as a data-strucutre for insertion into the SQL store (no
+/// Document is used as a data-structure for insertion into the SQL store (no
 /// chunks, they are directly inserted in the vector search db). It is also used
 /// as a result from search (only the retrieved chunks are provided in the
 /// result). `hash` covers both the original document id and text and the
