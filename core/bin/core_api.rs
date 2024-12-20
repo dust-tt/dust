@@ -1508,7 +1508,7 @@ async fn data_sources_documents_update_parents(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check if the log below does not pop
+                // TODO(aubin) - re-enable this check when the log below does not pop
                 // return error_response(
                 //     StatusCode::BAD_REQUEST,
                 //     "invalid_parent_id",
@@ -1710,7 +1710,7 @@ async fn data_sources_documents_upsert(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check if the log below does not pop
+                // TODO(aubin) - re-enable this check when the log below does not pop
                 // return error_response(
                 //     StatusCode::BAD_REQUEST,
                 //     "invalid_parent_id",
@@ -2201,7 +2201,7 @@ async fn tables_upsert(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check if the log below does not pop
+                // TODO(aubin) - re-enable this check when the log below does not pop
                 //     return error_response(
                 //         StatusCode::BAD_REQUEST,
                 //         "invalid_parent_id",
@@ -2494,7 +2494,7 @@ async fn tables_update_parents(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check if the log below does not pop
+                // TODO(aubin) - re-enable this check when the log below does not pop
                 //     return error_response(
                 //         StatusCode::BAD_REQUEST,
                 //         "invalid_parent_id",
@@ -2924,7 +2924,7 @@ async fn folders_upsert(
         }
         None => {
             if payload.parents.len() > 1 {
-                // TODO(aubin) - re-enable this check if the log below does not pop
+                // TODO(aubin) - re-enable this check when the log below does not pop
                 //     return error_response(
                 //         StatusCode::BAD_REQUEST,
                 //         "invalid_parent_id",
