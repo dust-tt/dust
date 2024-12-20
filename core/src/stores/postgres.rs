@@ -1307,7 +1307,7 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
@@ -1830,7 +1830,7 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
@@ -1947,7 +1947,7 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
@@ -2602,7 +2602,7 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let r = tx
             .query(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
@@ -2857,7 +2857,7 @@ impl Store for PostgresStore {
         // Get the data source row id.
         let stmt = c
             .prepare(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
             )
             .await?;
         let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
@@ -2979,7 +2979,7 @@ impl Store for PostgresStore {
         // get the data source row id
         let r = c
             .query(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
@@ -3187,7 +3187,7 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let r = tx
             .query(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
@@ -3307,7 +3307,7 @@ impl Store for PostgresStore {
         // get the data source row id
         let r = c
             .query(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
@@ -3469,7 +3469,7 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id, data_source_internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "select id, internal_id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
