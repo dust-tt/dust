@@ -134,6 +134,7 @@ const initializeTrackerBuilderState = async (
     providerId: trackerToEdit.providerId,
     temperature: trackerToEdit.temperature,
     frequency: trackerToEdit.frequency ?? "daily",
+    skipEmptyEmails: trackerToEdit.skipEmptyEmails,
     recipients: trackerToEdit.recipients?.join(",") || "",
     maintainedDataSources,
     watchedDataSources,

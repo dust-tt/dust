@@ -661,6 +661,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       temperature: this.temperature,
       prompt: this.prompt,
       frequency: this.frequency ?? "daily",
+      skipEmptyEmails: this.skipEmptyEmails,
       recipients: this.recipients ?? [],
       space: this.space.toJSON(),
       maintainedDataSources: this.dataSourceConfigurations

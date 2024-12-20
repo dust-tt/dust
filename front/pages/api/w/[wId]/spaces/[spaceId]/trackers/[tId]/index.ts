@@ -116,6 +116,7 @@ async function handler(
           providerId: body.providerId,
           temperature: body.temperature,
           frequency: body.frequency,
+          skipEmptyEmails: body.skipEmptyEmails,
           recipients: body.recipients,
         },
         body.maintainedDataSources,

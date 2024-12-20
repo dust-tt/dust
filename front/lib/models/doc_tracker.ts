@@ -27,6 +27,7 @@ export class TrackerConfigurationModel extends SoftDeletableModel<TrackerConfigu
 
   declare frequency: string | null;
   declare lastNotifiedAt: Date | null;
+  declare skipEmptyEmails: boolean;
 
   declare recipients: string[] | null;
 
@@ -91,6 +92,11 @@ TrackerConfigurationModel.init(
     frequency: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    skipEmptyEmails: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     lastNotifiedAt: {
       type: DataTypes.DATE,
