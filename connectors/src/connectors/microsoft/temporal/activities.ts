@@ -107,6 +107,7 @@ export async function getRootNodesToSyncFromResources(
                 connectorId,
                 error,
                 id: resource.internalId,
+                panic: true,
               },
               "Failed to get item"
             );
