@@ -37,6 +37,7 @@ const TrackerDataSourcesConfigurationBodySchema = t.array(
 );
 
 export const PostTrackersRequestBodySchema = t.type({
+  status: t.union([t.literal("active"), t.literal("inactive")]),
   name: t.string,
   description: t.union([t.string, t.null]),
   prompt: t.union([t.string, t.null]),
@@ -137,7 +138,7 @@ async function handler(
           modelId: body.modelId,
           providerId: body.providerId,
           temperature: body.temperature,
-          status: "active",
+          status: body.status,
           frequency: body.frequency,
           recipients: body.recipients,
         },
