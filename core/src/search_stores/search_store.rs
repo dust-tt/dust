@@ -138,10 +138,7 @@ impl SearchStore for ElasticsearchSearchStore {
             }
             false => {
                 let error = response.json::<serde_json::Value>().await?;
-                Err(anyhow::anyhow!(
-                    "Failed to search nodes: {}",
-                    serde_json::to_string_pretty(&error)?
-                ))
+                Err(anyhow::anyhow!("Failed to search nodes: {}", error))
             }
         }
     }
@@ -170,7 +167,7 @@ impl SearchStore for ElasticsearchSearchStore {
             false => {
                 let error = response.json::<serde_json::Value>().await?;
                 error!(
-                    error = serde_json::to_string_pretty(&error)?,
+                    error = %error,
                     duration = utils::now() - now,
                     globally_unique_id = node.unique_id(),
                     "[ElasticsearchSearchStore] Failed to index {}",
@@ -191,7 +188,7 @@ impl SearchStore for ElasticsearchSearchStore {
         if !response.status_code().is_success() {
             let error = response.json::<serde_json::Value>().await?;
             error!(
-                error = serde_json::to_string_pretty(&error)?,
+                error = %error,
                 globally_unique_id = node.unique_id(),
                 "[ElasticsearchSearchStore] Failed to delete {}",
                 node.node_type.to_string()
@@ -215,7 +212,7 @@ impl SearchStore for ElasticsearchSearchStore {
         if !response.status_code().is_success() {
             let error = response.json::<serde_json::Value>().await?;
             error!(
-                error = serde_json::to_string_pretty(&error)?,
+                error = %error,
                 data_source_id = data_source_id,
                 "[ElasticsearchSearchStore] Failed to delete data source nodes"
             );
