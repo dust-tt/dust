@@ -213,9 +213,7 @@ impl Table {
 
         // Delete the table node from the search index.
         if let Some(search_store) = search_store {
-            search_store
-                .delete_node(&self.data_source_internal_id, self.table_id())
-                .await?;
+            search_store.delete_node(Node::from(self.clone())).await?;
         }
 
         Ok(())

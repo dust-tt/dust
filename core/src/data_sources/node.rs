@@ -99,12 +99,8 @@ impl Node {
 
     // Computes a globally unique id for the node.
     pub fn unique_id(&self) -> String {
-        globally_unique_id(&self.data_source_internal_id, &self.node_id)
+        format!("{}__{}", self.data_source_internal_id, self.node_id)
     }
-}
-
-pub fn globally_unique_id(data_source_internal_id: &str, node_id: &str) -> String {
-    format!("{}__{}", data_source_internal_id, node_id)
 }
 
 impl From<serde_json::Value> for Node {

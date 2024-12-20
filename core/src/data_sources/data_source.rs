@@ -771,7 +771,7 @@ impl DataSource {
             .await?;
 
         // Upsert document in search index.
-        search_store.index_document(document.clone()).await?;
+        search_store.index_node(Node::from(document)).await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
@@ -1730,6 +1730,14 @@ impl DataSource {
         search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: &str,
     ) -> Result<()> {
+        let document = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .await?
+        {
+            Some(document) => document,
+            None => return Ok(()),
+        };
+
         // Delete the document in the main embedder collection.
         self.delete_document_for_embedder(self.embedder_config(), &qdrant_clients, document_id)
             .await?;
@@ -1753,9 +1761,7 @@ impl DataSource {
             .await?;
 
         // Delete document from search index.
-        search_store
-            .delete_node(&self.internal_id, document_id)
-            .await?;
+        search_store.delete_node(Node::from(document)).await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.
