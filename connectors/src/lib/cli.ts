@@ -29,7 +29,6 @@ import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { Permission } from "@microsoft/microsoft-graph-types";
 
 const { INTERACTIVE_CLI } = process.env;
 
