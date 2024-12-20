@@ -61,12 +61,8 @@ async function handler(
         });
 
       if (!transcriptsConfiguration) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "transcripts_configuration_not_found",
-            message: "The transcripts configuration was not found.",
-          },
+        return res.status(200).json({
+          configuration: null,
         });
       }
 
