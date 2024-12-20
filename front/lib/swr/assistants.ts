@@ -535,8 +535,8 @@ export function useUpdateUserFavorite({
             }`,
             type: "success",
           });
-          await mutateAgentConfigurations();
           await mutateCurrentAgentConfiguration();
+          await mutateAgentConfigurations();
           return true;
         } else {
           const data = await res.json();
