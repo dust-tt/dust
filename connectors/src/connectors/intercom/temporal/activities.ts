@@ -503,17 +503,14 @@ export async function syncTeamOnlyActivity({
   });
 
   // Also make sure a datasource folder node is created for the team
-  if (connector !== null) {
-    // Create folder node for the team
-    const teamInternalId = getTeamInternalId(connectorId, teamOnIntercom.id);
-    await upsertDataSourceFolder({
-      dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId: teamInternalId,
-      title: teamOnIntercom.name,
-      parents: [teamInternalId, getTeamsInternalId(connectorId)],
-      mimeType: getDataSourceNodeMimeType("TEAM"),
-    });
-  }
+  const teamInternalId = getTeamInternalId(connectorId, teamOnDB.teamId);
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: teamInternalId,
+    title: teamOnIntercom.name,
+    parents: [teamInternalId, getTeamsInternalId(connectorId)],
+    mimeType: getDataSourceNodeMimeType("TEAM"),
+  });
 
   return true;
 }
@@ -744,8 +741,8 @@ export async function upsertIntercomTeamsFolderActivity({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: getTeamsInternalId(connectorId),
-    title: "Teams",
+    title: "Conversations",
     parents: [getTeamsInternalId(connectorId)],
-    mimeType: getDataSourceNodeMimeType("TEAMS_FOLDER"),
+    mimeType: getDataSourceNodeMimeType("CONVERSATIONS_FOLDER"),
   });
 }

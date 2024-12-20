@@ -34,8 +34,8 @@ async function createFolderNodes(execute: boolean) {
         dataSourceConfig,
         folderId: getTeamsInternalId(connector.id),
         parents: [getTeamsInternalId(connector.id)],
-        title: "Teams",
-        mimeType: getDataSourceNodeMimeType("TEAMS_FOLDER"),
+        title: "Conversations",
+        mimeType: getDataSourceNodeMimeType("CONVERSATIONS_FOLDER"),
       });
     }
 

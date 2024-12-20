@@ -210,26 +210,27 @@ export async function upsertCollectionWithChildren({
   }
   // Update datasource folder node
   const connector = await ConnectorResource.fetchById(connectorId);
-  if (connector !== null) {
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    const internalCollectionId = getHelpCenterCollectionInternalId(
-      connectorId,
-      collectionId
-    );
-    const collectionParents = await getParentIdsForCollection({
-      connectorId,
-      collectionId,
-      helpCenterId,
-    });
-    await upsertDataSourceFolder({
-      dataSourceConfig,
-      folderId: internalCollectionId,
-      title: collection.name,
-      parents: collectionParents,
-      parentId: collectionParents.length > 2 ? collectionParents[1] : null,
-      mimeType: getDataSourceNodeMimeType("COLLECTION"),
-    });
+  if (connector === null) {
+    throw new Error("Unexpected: connector not found");
   }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const internalCollectionId = getHelpCenterCollectionInternalId(
+    connectorId,
+    collectionId
+  );
+  const collectionParents = await getParentIdsForCollection({
+    connectorId,
+    collectionId,
+    helpCenterId,
+  });
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: internalCollectionId,
+    title: collection.name,
+    parents: collectionParents,
+    parentId: collectionParents.length > 2 ? collectionParents[1] : null,
+    mimeType: getDataSourceNodeMimeType("COLLECTION"),
+  });
 
   // Then we call ourself recursively on the children collections
   const accessToken = await getIntercomAccessToken(connectionId);
