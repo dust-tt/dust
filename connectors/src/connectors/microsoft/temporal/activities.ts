@@ -893,6 +893,7 @@ async function updateParentsField({
     dataSourceConfig,
     documentId: file.internalId,
     parents,
+    parentId: parents[1] || null,
   });
 }
 
