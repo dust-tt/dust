@@ -358,11 +358,12 @@ async function handler(
     // Check if the user should be redirect to another region.
     const regionLookupClient = new RegionLookupClient();
     const r = await regionLookupClient.lookupUser(session.user);
-    r.forEach((result, region) => {
+    for (const [region, result] of r) {
       if (result.reponse.user?.email) {
         if (!result.isCurrentRegion) {
           //TODO(multi-regions): keep the querystring when redirecting
           res.redirect(`${result.regionUrl}/api/login`);
+          // Skip the rest of the handler
           return;
         } else {
           console.log(
@@ -370,7 +371,7 @@ async function handler(
           );
         }
       }
-    });
+    }
   }
 
   const { inviteToken, wId } = req.query;
