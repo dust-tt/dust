@@ -16,7 +16,7 @@ import {
   yellow,
 } from "tailwindcss/colors";
 
-import { Button } from "@sparkle/components";
+import { Button, ContentBlockWrapper } from "@sparkle/components";
 import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { CommandLineIcon, SparklesIcon } from "@sparkle/icons";
@@ -313,30 +313,27 @@ export function CodeBlockWithExtendedSupport({
     validChildrenContent,
   ]);
 
-  if (!inline && isValidMermaid) {
+  if (inline) {
     return (
-      <div className="s-w-full s-gap-2 s-overflow-hidden s-rounded-2xl s-bg-muted-background s-align-bottom">
-        <div className="s-absolute s-left-0 s-top-2 s-mx-2 s-flex s-gap-2">
-          {showMermaid ? (
-            <Button
-              size="xs"
-              variant={"outline"}
-              label="Markdown"
-              icon={CommandLineIcon}
-              onClick={() => setShowMermaid(!showMermaid)}
-              tooltip="Switch to Markdown"
-            />
-          ) : (
-            <Button
-              size="xs"
-              variant={"outline"}
-              label="Mermaid"
-              icon={SparklesIcon}
-              onClick={() => setShowMermaid(!showMermaid)}
-              tooltip="Switch to Mermaid"
-            />
-          )}
-        </div>
+      <CodeBlock className={className} inline={inline}>
+        {children}
+      </CodeBlock>
+    );
+  } else if (!inline && isValidMermaid) {
+    return (
+      <ContentBlockWrapper
+        content={validChildrenContent}
+        actions={
+          <Button
+            size="xs"
+            variant={"outline"}
+            label={showMermaid ? "Markdown" : "Mermaid"}
+            icon={showMermaid ? CommandLineIcon : SparklesIcon}
+            onClick={() => setShowMermaid(!showMermaid)}
+            tooltip={showMermaid ? "Switch to Markdown" : "Switch to Mermaid"}
+          />
+        }
+      >
         {showMermaid ? (
           <MermaidGraph chart={validChildrenContent} />
         ) : (
@@ -344,13 +341,15 @@ export function CodeBlockWithExtendedSupport({
             {children}
           </CodeBlock>
         )}
-      </div>
+      </ContentBlockWrapper>
+    );
+  } else {
+    return (
+      <ContentBlockWrapper content={validChildrenContent}>
+        <CodeBlock className={className} inline={inline}>
+          {children}
+        </CodeBlock>
+      </ContentBlockWrapper>
     );
   }
-
-  return (
-    <CodeBlock className={className} inline={inline}>
-      {children}
-    </CodeBlock>
-  );
 }

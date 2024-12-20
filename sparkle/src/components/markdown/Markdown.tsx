@@ -245,14 +245,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
         "s-my-2 s-w-full s-break-all s-rounded-2xl s-border s-border-border s-bg-muted-background"
       )}
     >
-      <ContentBlockWrapper
-        content={{
-          "text/plain": text,
-        }}
-        getContentToDownload={getContentToDownload}
-      >
-        {validChildrenContent ? children : fallbackData || children}
-      </ContentBlockWrapper>
+      {validChildrenContent ? children : fallbackData || children}
     </pre>
   );
 }
