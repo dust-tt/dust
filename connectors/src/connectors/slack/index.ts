@@ -645,7 +645,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     }
     // This in theory shouldn't happen
     else {
-      logger.warn({ internalId }, "Unknown internal ID for Slack connector");
+      logger.error(
+        { internalId, panic: true },
+        "Unknown internal ID for Slack connector"
+      );
       return new Ok([internalId]);
     }
   }
