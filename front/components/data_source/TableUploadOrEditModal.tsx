@@ -364,7 +364,8 @@ export const TableUploadOrEditModal = ({
       hasChanged={
         table
           ? table.description !== tableState.description ||
-            table.name !== tableState.name
+            table.name !== tableState.name ||
+            !!tableState.content
           : tableState.description.trim() !== "" ||
             tableState.name.trim() !== "" ||
             !!tableState.content
