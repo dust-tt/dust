@@ -287,12 +287,26 @@ export const menuConfig: DocsConfig = {
       href: "/home",
     },
     {
+      title: "Pricing",
+      href: "/home/pricing",
+    },
+    {
       title: SolutionsMenuConfig.title,
       items: SolutionsMenuConfig.items,
     },
     {
       title: DevelopersMenuConfig.title,
       items: DevelopersMenuConfig.items,
+    },
+    {
+      title: BuildMenuConfig.title,
+      items: BuildMenuConfig.items,
+    },{
+      title: ExploreMenuConfig.title,
+      items: ExploreMenuConfig.items,
+    },{
+      title: ConnectMenuConfig.title,
+      items: ConnectMenuConfig.items,
     },
     {
       title: CareersMenuConfig.title,
@@ -306,10 +320,7 @@ export const menuConfig: DocsConfig = {
       title: LegalMenuConfig.title,
       items: LegalMenuConfig.items,
     },
-    {
-      title: "Pricing",
-      href: "/home/pricing",
-    },
+
   ],
   footerNav: [
     {
@@ -349,5 +360,7 @@ export const menuConfig: DocsConfig = {
       title: LegalMenuConfig.title,
       items: LegalMenuConfig.items,
     },
+
+
   ],
 };
