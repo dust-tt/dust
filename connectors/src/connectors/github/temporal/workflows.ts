@@ -125,7 +125,7 @@ export async function githubFullSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
-export async function githubSyncAllReposWorkflow(
+export async function githubFullSyncWorkflowV2(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
   // Used to re-trigger a code-only full-sync after code syncing is enabled/disabled.
@@ -155,7 +155,7 @@ export async function githubSyncAllReposWorkflow(
       const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.id}-syncCodeOnly-${syncCodeOnly}`;
       promises.push(
         queue.add(() =>
-          executeChild(githubSyncRepoWorkflow, {
+          executeChild(githubRepoSyncWorkflowV2, {
             workflowId: childWorkflowId,
             searchAttributes: {
               connectorId: [connectorId],
@@ -230,7 +230,7 @@ export async function githubReposSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
-export async function githubSyncReposWorkflow(
+export async function githubReposSyncWorkflowV2(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
   orgLogin: string,
@@ -244,7 +244,7 @@ export async function githubSyncReposWorkflow(
     const childWorkflowId = `${reposSyncWorkflowId}-repo-${repo.id}`;
     promises.push(
       queue.add(() =>
-        executeChild(githubSyncRepoWorkflow, {
+        executeChild(githubRepoSyncWorkflowV2, {
           workflowId: childWorkflowId,
           searchAttributes: {
             connectorId: [connectorId],
@@ -329,7 +329,7 @@ export async function githubRepoIssuesSyncWorkflow({
   return true;
 }
 
-export async function githubSyncRepoIssuesWorkflow({
+export async function githubRepoIssuesSyncWorkflowV2({
   dataSourceConfig,
   connectorId,
   repoName,
@@ -441,7 +441,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
   return cursor;
 }
 
-export async function githubSyncRepoDiscussionsWorkflow({
+export async function githubRepoDiscussionsSyncWorkflowV2({
   dataSourceConfig,
   connectorId,
   repoName,
@@ -601,7 +601,7 @@ export async function githubRepoSyncWorkflow({
   });
 }
 
-export async function githubSyncRepoWorkflow({
+export async function githubRepoSyncWorkflowV2({
   dataSourceConfig,
   connectorId,
   repoName,
@@ -632,24 +632,27 @@ export async function githubSyncRepoWorkflow({
           : getReposSyncWorkflowId(connectorId)
       }-repo-${repoId}-issues-page-${pageNumber}`;
 
-      const shouldContinue = await executeChild(githubSyncRepoIssuesWorkflow, {
-        workflowId: childWorkflowId,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        args: [
-          {
-            dataSourceConfig,
-            connectorId,
-            repoName,
-            repoId,
-            repoLogin,
-            pageNumber,
+      const shouldContinue = await executeChild(
+        githubRepoIssuesSyncWorkflowV2,
+        {
+          workflowId: childWorkflowId,
+          searchAttributes: {
+            connectorId: [connectorId],
           },
-        ],
-        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-        memo: workflowInfo().memo,
-      });
+          args: [
+            {
+              dataSourceConfig,
+              connectorId,
+              repoName,
+              repoId,
+              repoLogin,
+              pageNumber,
+            },
+          ],
+          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+          memo: workflowInfo().memo,
+        }
+      );
 
       if (!shouldContinue) {
         break;
@@ -666,7 +669,7 @@ export async function githubSyncRepoWorkflow({
           : getReposSyncWorkflowId(connectorId)
       }-repo-${repoId}-issues-page-${cursorIteration}`;
 
-      nextCursor = await executeChild(githubSyncRepoDiscussionsWorkflow, {
+      nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflowV2, {
         workflowId: childWorkflowId,
         searchAttributes: {
           connectorId: [connectorId],
