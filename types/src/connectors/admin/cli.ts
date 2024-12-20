@@ -14,6 +14,7 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("set-error"),
     t.literal("restart"),
     t.literal("get-parents"),
+    t.literal("set-permission"),
   ]),
   args: t.record(
     t.string,
