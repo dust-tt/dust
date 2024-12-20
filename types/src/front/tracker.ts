@@ -16,6 +16,7 @@ export type TrackerConfigurationType = {
   temperature: number;
   prompt: string | null;
   frequency: string;
+  skipEmptyEmails: boolean;
   recipients: string[];
   space: SpaceType;
   maintainedDataSources: TrackerDataSourceConfigurationType[];
@@ -43,6 +44,7 @@ export type TrackerConfigurationStateType = {
   promptError: string | null;
   frequency: string;
   frequencyError: string | null;
+  skipEmptyEmails: boolean;
   recipients: string | null;
   recipientsError: string | null;
   modelId: ModelIdType;

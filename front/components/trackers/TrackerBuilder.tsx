@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -79,6 +80,7 @@ export const TrackerBuilder = ({
       promptError: null,
       frequency: TRACKER_FREQUENCIES[0].value,
       frequencyError: null,
+      skipEmptyEmails: true,
       recipients: "",
       recipientsError: null,
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
@@ -178,6 +180,7 @@ export const TrackerBuilder = ({
         providerId: tracker.providerId,
         temperature: tracker.temperature,
         frequency: tracker.frequency,
+        skipEmptyEmails: tracker.skipEmptyEmails,
         recipients: tracker.recipients ? extractEmails(tracker.recipients) : [],
         maintainedDataSources: Object.values(tracker.maintainedDataSources).map(
           (ds) => dataSourceToPayload(ds, owner.sId)
@@ -534,6 +537,31 @@ export const TrackerBuilder = ({
                 messageStatus={tracker.recipientsError ? "error" : undefined}
                 disabled={tracker.status === "inactive"}
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="flex md:col-span-1">
+              <div className="flex flex-col space-y-2"></div>
+            </div>
+            <div className="md:col-span-2">
+              <div className="flex flex-row gap-2">
+                <Checkbox
+                  label="Send me a copy of the email"
+                  checked={tracker.skipEmptyEmails}
+                  onCheckedChange={() => {
+                    setTracker((t) => ({
+                      ...t,
+                      skipEmptyEmails: !t.skipEmptyEmails,
+                    }));
+                    if (!edited) {
+                      setEdited(true);
+                    }
+                  }}
+                />
+                <div className="text-sm text-element-700">
+                  Don't send emails when there are no updates.
+                </div>
+              </div>
             </div>
           </div>
         </div>
