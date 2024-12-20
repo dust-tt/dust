@@ -139,7 +139,7 @@ async function upsertFoldersForConnector(
   }
 }
 makeScript({}, async ({ execute }, logger) => {
-  const connectors = await ConnectorResource.listByType("zendesk", {});
+  const connectors = await ConnectorResource.listByType("github", {});
 
   for (const connector of connectors) {
     logger.info(`Upserting folders for connector ${connector.id}`);
