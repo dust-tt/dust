@@ -3,6 +3,7 @@ import type {
   AdminSuccessResponseType,
   BatchAllResponseType,
   BatchCommandType,
+  ConnectorPermission,
   ConnectorsCommandType,
   GetParentsResponseType,
   Result,
@@ -28,6 +29,7 @@ import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { Permission } from "@microsoft/microsoft-graph-types";
 
 const { INTERACTIVE_CLI } = process.env;
 
@@ -194,6 +196,31 @@ export const connectors = async ({
       }
 
       return { parents: parents.value };
+    }
+
+    case "set-permission": {
+      const { permissionKey, permissionValue } = args;
+      if (!permissionKey) {
+        throw new Error("Missing --permissionKey argument");
+      }
+      if (!permissionValue) {
+        throw new Error("Missing --permissionValue argument");
+      }
+      if (!["read", "write", "read_write", "none"].includes(permissionValue)) {
+        throw new Error("Invalid permissionValue argument");
+      }
+
+      const setPermissionsRes = await manager.setPermissions({
+        permissions: {
+          [permissionKey as string]: permissionValue as ConnectorPermission,
+        },
+      });
+
+      if (setPermissionsRes.isErr()) {
+        throw new Error(`Cannot set permissions: ${setPermissionsRes.error}`);
+      }
+
+      return { success: true };
     }
 
     default:
