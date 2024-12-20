@@ -4,6 +4,29 @@ import type {
   IntercomArticleType,
   IntercomCollectionType,
 } from "@connectors/connectors/intercom/lib/types";
+import { IntercomCollection } from "@connectors/lib/models/intercom";
+
+/**
+ * Mimetypes
+ */
+export function getDataSourceNodeMimeType(
+  intercomNodeType:
+    | "COLLECTION"
+    | "TEAM"
+    | "CONVERSATIONS_FOLDER"
+    | "HELP_CENTER"
+): string {
+  switch (intercomNodeType) {
+    case "COLLECTION":
+      return "application/vnd.dust.intercom.collection";
+    case "CONVERSATIONS_FOLDER":
+      return "application/vnd.dust.intercom.teams-folder";
+    case "TEAM":
+      return "application/vnd.dust.intercom.team";
+    case "HELP_CENTER":
+      return "application/vnd.dust.intercom.help-center";
+  }
+}
 
 /**
  * From id to internalId
@@ -112,4 +135,69 @@ export function getConversationInAppUrl(
 ): string {
   const domain = getIntercomDomain(region);
   return `${domain}/a/inbox/${workspaceId}/inbox/conversation/${conversationId}`;
+}
+
+// Parents in the Core datasource should map the internal ids that we use in the permission modal
+// Order is important: We want the id of the article, then all parents collection in order, then the help center
+export async function getParentIdsForArticle({
+  documentId,
+  connectorId,
+  parentCollectionId,
+  helpCenterId,
+}: {
+  documentId: string;
+  connectorId: number;
+  parentCollectionId: string;
+  helpCenterId: string;
+}) {
+  // Get collection parents
+  const collectionParents = await getParentIdsForCollection({
+    connectorId,
+    collectionId: parentCollectionId,
+    helpCenterId,
+  });
+
+  return [documentId, ...collectionParents];
+}
+
+export async function getParentIdsForCollection({
+  connectorId,
+  collectionId,
+  helpCenterId,
+}: {
+  connectorId: number;
+  collectionId: string;
+  helpCenterId: string;
+}) {
+  // Initialize the internal IDs array with the collection ID.
+  const parentIds = [
+    getHelpCenterCollectionInternalId(connectorId, collectionId),
+  ];
+
+  // Fetch and add any parent collection Ids.
+  let currentParentId = collectionId;
+
+  // There's max 2-levels on Intercom.
+  for (let i = 0; i < 2; i++) {
+    const currentParent = await IntercomCollection.findOne({
+      where: {
+        connectorId,
+        collectionId: currentParentId,
+      },
+    });
+
+    if (!currentParent || !currentParent.parentId) {
+      break;
+    }
+
+    currentParentId = currentParent.parentId;
+    parentIds.push(
+      getHelpCenterCollectionInternalId(connectorId, currentParentId)
+    );
+  }
+
+  // Add the help center internal ID.
+  parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
+
+  return parentIds;
 }
