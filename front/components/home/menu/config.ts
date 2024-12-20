@@ -301,10 +301,12 @@ export const menuConfig: DocsConfig = {
     {
       title: BuildMenuConfig.title,
       items: BuildMenuConfig.items,
-    },{
+    },
+    {
       title: ExploreMenuConfig.title,
       items: ExploreMenuConfig.items,
-    },{
+    },
+    {
       title: ConnectMenuConfig.title,
       items: ConnectMenuConfig.items,
     },
@@ -320,7 +322,6 @@ export const menuConfig: DocsConfig = {
       title: LegalMenuConfig.title,
       items: LegalMenuConfig.items,
     },
-
   ],
   footerNav: [
     {
@@ -360,7 +361,5 @@ export const menuConfig: DocsConfig = {
       title: LegalMenuConfig.title,
       items: LegalMenuConfig.items,
     },
-
-
   ],
 };
