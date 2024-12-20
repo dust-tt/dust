@@ -1,7 +1,7 @@
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
-import { internalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
+import { slackChannelInternalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -30,7 +30,7 @@ makeScript({}, async ({ execute }, logger) => {
       await concurrentExecutor(
         channels,
         async (channel) => {
-          const internalId = internalIdFromSlackChannelId(
+          const internalId = slackChannelInternalIdFromSlackChannelId(
             channel.slackChannelId
           );
           await upsertDataSourceFolder({

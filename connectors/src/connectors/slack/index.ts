@@ -24,8 +24,13 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import {
-  internalIdFromSlackChannelId,
+  isSlackChannelInternalId,
+  isSlackNonThreadedMessagesInternalId,
+  isSlackThreadInternalId,
   slackChannelIdFromInternalId,
+  slackChannelIdFromSlackNonThreadedMessagesInternalId,
+  slackChannelInternalIdFromSlackChannelId,
+  slackThreadIdentifierFromSlackThreadInternalId,
 } from "@connectors/connectors/slack/lib/utils";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import {
@@ -381,7 +386,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
       const resources: ContentNode[] = slackChannels.map((ch) => ({
         provider: "slack",
-        internalId: internalIdFromSlackChannelId(ch.slackChannelId),
+        internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
         parentInternalId: null,
         type: "channel",
         title: `#${ch.slackChannelName}`,
@@ -596,7 +601,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     const contentNodes: ContentNode[] = channels.map((ch) => ({
       provider: "slack",
-      internalId: internalIdFromSlackChannelId(ch.slackChannelId),
+      internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
       parentInternalId: null,
       type: "channel",
       title: `#${ch.slackChannelName}`,
@@ -617,9 +622,32 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }: {
     internalId: string;
   }): Promise<Result<string[], Error>> {
-    // We only ever return permissions at the slack channel level so the parents are always the
-    // internalId itself.
-    return new Ok([internalId]);
+    // If the internal ID is a Slack channel ID, it has no other parent
+    if (isSlackChannelInternalId(internalId)) {
+      return new Ok([internalId]);
+    }
+    // If it is a slack thread, or a slack "non-threaded" message document, it also
+    // needs the channel internal ID as parent
+    else if (isSlackThreadInternalId(internalId)) {
+      const { channelId } =
+        slackThreadIdentifierFromSlackThreadInternalId(internalId);
+      return new Ok([
+        internalId,
+        slackChannelInternalIdFromSlackChannelId(channelId),
+      ]);
+    } else if (isSlackNonThreadedMessagesInternalId(internalId)) {
+      const channelId =
+        slackChannelIdFromSlackNonThreadedMessagesInternalId(internalId);
+      return new Ok([
+        internalId,
+        slackChannelInternalIdFromSlackChannelId(channelId),
+      ]);
+    }
+    // This in theory shouldn't happen
+    else {
+      logger.warn({ internalId }, "Unknown internal ID for Slack connector");
+      return new Ok([internalId]);
+    }
   }
 
   async setConfigurationKey({
