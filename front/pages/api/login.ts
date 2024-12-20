@@ -361,11 +361,8 @@ async function handler(
     r.forEach((result, region) => {
       if (result.reponse.user?.email) {
         if (!result.isCurrentRegion) {
-          const reqUrl = req.url;
-          const { searchParams } = new URL(reqUrl ?? "");
-          res.redirect(
-            `${result.regionUrl}/api/login?${searchParams.toString()}`
-          );
+          //TODO(multi-regions): keep the querystring when redirecting
+          res.redirect(`${result.regionUrl}/api/login`);
           return;
         } else {
           console.log(
