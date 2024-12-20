@@ -27,7 +27,9 @@ import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
   getWeekEnd,
   getWeekStart,
-  internalIdFromSlackChannelId,
+  slackChannelInternalIdFromSlackChannelId,
+  slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier,
+  slackThreadInternalIdFromSlackThreadIdentifier,
 } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
@@ -248,10 +250,10 @@ export async function syncChannel(
   if (!messagesCursor) {
     await upsertDataSourceFolder({
       dataSourceConfig,
-      folderId: internalIdFromSlackChannelId(channelId),
+      folderId: slackChannelInternalIdFromSlackChannelId(channelId),
       title: `#${channel.name}`,
       parentId: null,
-      parents: [internalIdFromSlackChannelId(channelId)],
+      parents: [slackChannelInternalIdFromSlackChannelId(channelId)],
       mimeType: "application/vnd.dust.slack.channel",
     });
   }
@@ -561,9 +563,12 @@ export async function syncNonThreaded(
 
   const startDate = new Date(startTsMs);
   const endDate = new Date(endTsMs);
-  const startDateStr = `${startDate.getFullYear()}-${startDate.getMonth()}-${startDate.getDate()}`;
-  const endDateStr = `${endDate.getFullYear()}-${endDate.getMonth()}-${endDate.getDate()}`;
-  const documentId = `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
+  const documentId =
+    slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier({
+      channelId,
+      startDate,
+      endDate,
+    });
   const firstMessage = messages[0];
   let sourceUrl: string | undefined = undefined;
 
@@ -621,8 +626,8 @@ export async function syncNonThreaded(
     documentUrl: sourceUrl,
     timestampMs: updatedAt,
     tags,
-    parentId: internalIdFromSlackChannelId(channelId),
-    parents: [documentId, internalIdFromSlackChannelId(channelId)],
+    parentId: slackChannelInternalIdFromSlackChannelId(channelId),
+    parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
@@ -752,7 +757,10 @@ export async function syncThread(
     "syncThread.getRepliesFromThread.done"
   );
 
-  const documentId = `slack-${channelId}-thread-${threadTs}`;
+  const documentId = slackThreadInternalIdFromSlackThreadIdentifier({
+    channelId,
+    threadTs,
+  });
 
   const botUserId = await getBotUserIdMemoized(connectorId);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
@@ -832,8 +840,8 @@ export async function syncThread(
     documentUrl: sourceUrl,
     timestampMs: updatedAt,
     tags,
-    parentId: internalIdFromSlackChannelId(channelId),
-    parents: [documentId, internalIdFromSlackChannelId(channelId)],
+    parentId: slackChannelInternalIdFromSlackChannelId(channelId),
+    parents: [documentId, slackChannelInternalIdFromSlackChannelId(channelId)],
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
@@ -1191,7 +1199,7 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
 
   await deleteDataSourceFolder({
     dataSourceConfig,
-    folderId: internalIdFromSlackChannelId(channelId),
+    folderId: slackChannelInternalIdFromSlackChannelId(channelId),
   });
 
   logger.info(
