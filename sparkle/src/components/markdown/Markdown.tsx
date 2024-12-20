@@ -225,19 +225,19 @@ function PreBlock({ children }: { children: React.ReactNode }) {
         : null;
   }
 
-  const text = validChildrenContent || fallbackData || "";
-  const language = detectLanguage(children);
+  // const text = validChildrenContent || fallbackData || "";
+  // const language = detectLanguage(children);
 
-  const getContentToDownload: GetContentToDownloadFunction | undefined =
-    language === "csv"
-      ? async () => {
-          return {
-            content: text,
-            filename: `dust_output_${Date.now()}`,
-            type: "text/csv",
-          };
-        }
-      : undefined;
+  // const getContentToDownload: GetContentToDownloadFunction | undefined =
+  //   language === "csv"
+  //     ? async () => {
+  //         return {
+  //           content: text,
+  //           filename: `dust_output_${Date.now()}`,
+  //           type: "text/csv",
+  //         };
+  //       }
+  //     : undefined;
 
   return (
     <pre

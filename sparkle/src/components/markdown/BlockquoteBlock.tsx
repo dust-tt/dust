@@ -27,16 +27,16 @@ export function BlockquoteBlock({ children }: BlockquoteBlockProps) {
   };
 
   return (
-    <div className="s-my-2 s-flex s-w-auto s-flex-row s-rounded-3xl s-border s-border-structure-100 s-bg-structure-0 s-py-2 s-pl-5 s-pr-2">
+    <div className="s-my-2 s-flex s-w-auto s-flex-row s-rounded-2xl s-border s-border-border s-bg-white s-p-3">
       <blockquote
-        className={cn("s-w-full s-italic", "s-text-base", "s-text-element-800")}
+        className={cn("s-w-full s-italic", "s-text-base", "s-text-foreground")}
       >
         {children}
       </blockquote>
       {childrenContent && (
         <Button
           size="xs"
-          variant="ghost"
+          variant="outline"
           onClick={async (e) => {
             e.preventDefault();
             await handleCopy();
