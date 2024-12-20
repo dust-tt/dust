@@ -18,7 +18,7 @@ import InputBarContainer, {
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
-import { useProgressiveAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
@@ -82,8 +82,9 @@ export function AssistantInputBar({
     options: { disabled: true }, // We just want to get the mutation function
   });
 
+  // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations: baseAgentConfigurations } =
-    useProgressiveAgentConfigurations({
+    useUnifiedAgentConfigurations({
       workspaceId: owner.sId,
     });
 

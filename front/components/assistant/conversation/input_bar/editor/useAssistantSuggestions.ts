@@ -5,7 +5,7 @@ import type {
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useMemo } from "react";
 
-import { useProgressiveAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 
 function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]
@@ -25,7 +25,8 @@ const useAssistantSuggestions = (
   inListAgentConfigurations: LightAgentConfigurationType[],
   owner: WorkspaceType
 ) => {
-  const { agentConfigurations } = useProgressiveAgentConfigurations({
+  // We use this specific hook because this component is involved in the new conversation page.
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
   });
 

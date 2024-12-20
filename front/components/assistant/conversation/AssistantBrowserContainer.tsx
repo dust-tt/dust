@@ -6,7 +6,7 @@ import type {
 import { useCallback } from "react";
 
 import { AssistantBrowser } from "@app/components/assistant/AssistantBrowser";
-import { useProgressiveAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 
 interface AssistantBrowserContainerProps {
@@ -22,7 +22,8 @@ export function AssistantBrowserContainer({
   isBuilder,
   setAssistantToMention,
 }: AssistantBrowserContainerProps) {
-  const { agentConfigurations, isLoading } = useProgressiveAgentConfigurations({
+  // We use this specific hook because this component is involved in the new conversation page.
+  const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
   });
 
