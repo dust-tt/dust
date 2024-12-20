@@ -3525,6 +3525,59 @@ impl Store for PostgresStore {
         }
     }
 
+    async fn list_data_source_nodes(
+        &self,
+        id_cursor: i64,
+        batch_size: i64,
+    ) -> Result<Vec<(Node, i64)>> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare(
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id \
+                   FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
+                   WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
+            )
+            .await?;
+        let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
+
+        let nodes: Vec<(Node, i64)> = rows
+            .iter()
+            .map(|row| {
+                let timestamp: i64 = row.get::<_, i64>(0);
+                let title: String = row.get::<_, String>(1);
+                let mime_type: String = row.get::<_, String>(2);
+                let parents: Vec<String> = row.get::<_, Vec<String>>(3);
+                let node_id: String = row.get::<_, String>(4);
+                let document_row_id = row.get::<_, Option<i64>>(5);
+                let table_row_id = row.get::<_, Option<i64>>(6);
+                let folder_row_id = row.get::<_, Option<i64>>(7);
+                let data_source_id: String = row.get::<_, String>(8);
+                let (node_type, row_id) = match (document_row_id, table_row_id, folder_row_id) {
+                    (Some(id), None, None) => (NodeType::Document, id),
+                    (None, Some(id), None) => (NodeType::Table, id),
+                    (None, None, Some(id)) => (NodeType::Folder, id),
+                    _ => unreachable!(),
+                };
+                (
+                    Node::new(
+                        &data_source_id,
+                        &node_id,
+                        node_type,
+                        timestamp as u64,
+                        &title,
+                        &mime_type,
+                        parents.get(1).cloned(),
+                        parents,
+                    ),
+                    row_id,
+                )
+            })
+            .collect::<Vec<_>>();
+        Ok(nodes)
+    }
+
     async fn llm_cache_get(
         &self,
         project: &Project,
