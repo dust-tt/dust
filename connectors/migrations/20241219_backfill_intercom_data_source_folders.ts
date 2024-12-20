@@ -4,6 +4,7 @@ import {
   getDataSourceNodeMimeType,
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
+  getParentIdsForCollection,
   getTeamInternalId,
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
@@ -18,20 +19,25 @@ import {
 } from "@connectors/lib/models/intercom";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-async function createFolderNodes() {
+async function createFolderNodes(execute: boolean) {
   const connectors = await ConnectorResource.listByType("intercom", {});
 
   for (const connector of connectors) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     // Create Teams folder
-    await upsertDataSourceFolder({
-      dataSourceConfig,
-      folderId: getTeamsInternalId(connector.id),
-      parents: [getTeamsInternalId(connector.id)],
-      title: "Teams",
-      mimeType: getDataSourceNodeMimeType("TEAMS_FOLDER"),
-    });
+    console.log(
+      `[${connector.id}] -> ${JSON.stringify({ folderId: getTeamsInternalId(connector.id), parents: [getTeamsInternalId(connector.id)] })}`
+    );
+    if (execute) {
+      await upsertDataSourceFolder({
+        dataSourceConfig,
+        folderId: getTeamsInternalId(connector.id),
+        parents: [getTeamsInternalId(connector.id)],
+        title: "Teams",
+        mimeType: getDataSourceNodeMimeType("TEAMS_FOLDER"),
+      });
+    }
 
     const teams = await IntercomTeam.findAll({
       where: {
@@ -43,13 +49,18 @@ async function createFolderNodes() {
       teams,
       async (team) => {
         const teamInternalId = getTeamInternalId(connector.id, team.teamId);
-        await upsertDataSourceFolder({
-          dataSourceConfig,
-          folderId: teamInternalId,
-          parents: [teamInternalId, getTeamsInternalId(connector.id)],
-          title: team.name,
-          mimeType: getDataSourceNodeMimeType("TEAM"),
-        });
+        console.log(
+          `[${connector.id}] -> ${JSON.stringify({ folderId: teamInternalId, parents: [teamInternalId, getTeamsInternalId(connector.id)] })}`
+        );
+        if (execute) {
+          await upsertDataSourceFolder({
+            dataSourceConfig,
+            folderId: teamInternalId,
+            parents: [teamInternalId, getTeamsInternalId(connector.id)],
+            title: team.name,
+            mimeType: getDataSourceNodeMimeType("TEAM"),
+          });
+        }
       },
       { concurrency: 16 }
     );
@@ -76,13 +87,18 @@ async function createFolderNodes() {
           connector.id,
           helpCenter.helpCenterId
         );
-        await upsertDataSourceFolder({
-          dataSourceConfig,
-          folderId: helpCenterInternalId,
-          parents: [helpCenterInternalId],
-          title: helpCenter.name,
-          mimeType: getDataSourceNodeMimeType("HELP_CENTER"),
-        });
+        console.log(
+          `[${connector.id}] -> ${JSON.stringify({ folderId: helpCenterInternalId, parents: [helpCenterInternalId] })}`
+        );
+        if (execute) {
+          await upsertDataSourceFolder({
+            dataSourceConfig,
+            folderId: helpCenterInternalId,
+            parents: [helpCenterInternalId],
+            title: helpCenter.name,
+            mimeType: getDataSourceNodeMimeType("HELP_CENTER"),
+          });
+        }
 
         const collections = await IntercomCollection.findAll({
           where: {
@@ -99,13 +115,23 @@ async function createFolderNodes() {
               connector.id,
               collection.collectionId
             );
-            await upsertDataSourceFolder({
-              dataSourceConfig,
-              folderId: collectionInternalId,
-              parents: [collectionInternalId, helpCenterInternalId],
-              title: collection.name,
-              mimeType: getDataSourceNodeMimeType("COLLECTION"),
+            const collectionParents = await getParentIdsForCollection({
+              connectorId: connector.id,
+              collectionId: collection.collectionId,
+              helpCenterId: helpCenter.helpCenterId,
             });
+            console.log(
+              `[${connector.id}] -> ${JSON.stringify({ folderId: collectionInternalId, parents: collectionParents })}`
+            );
+            if (execute) {
+              await upsertDataSourceFolder({
+                dataSourceConfig,
+                folderId: collectionInternalId,
+                parents: collectionParents,
+                title: collection.name,
+                mimeType: getDataSourceNodeMimeType("COLLECTION"),
+              });
+            }
           },
           { concurrency: 16 }
         );
@@ -114,7 +140,5 @@ async function createFolderNodes() {
   }
 }
 makeScript({}, async ({ execute }) => {
-  if (execute) {
-    await createFolderNodes();
-  }
+  await createFolderNodes(execute);
 });
