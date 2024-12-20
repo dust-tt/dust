@@ -104,6 +104,7 @@ export async function syncCategory({
     dataSourceConfig,
     folderId: parents[0],
     parents,
+    parentId: parents[1],
     title: categoryInDb.name,
     mimeType: "application/vnd.dust.zendesk.category",
   });

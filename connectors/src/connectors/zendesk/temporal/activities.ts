@@ -132,6 +132,7 @@ export async function syncZendeskBrandActivity({
     dataSourceConfig,
     folderId: brandInternalId,
     parents: [brandInternalId],
+    parentId: null,
     title: brandInDb.name,
     mimeType: "application/vnd.dust.zendesk.brand",
   });
@@ -142,6 +143,7 @@ export async function syncZendeskBrandActivity({
     dataSourceConfig,
     folderId: helpCenterNode.internalId,
     parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
+    parentId: helpCenterNode.parentInternalId,
     title: helpCenterNode.title,
     mimeType: "application/vnd.dust.zendesk.helpcenter",
   });
@@ -152,6 +154,7 @@ export async function syncZendeskBrandActivity({
     dataSourceConfig,
     folderId: ticketsNode.internalId,
     parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
+    parentId: ticketsNode.parentInternalId,
     title: ticketsNode.title,
     mimeType: "application/vnd.dust.zendesk.tickets",
   });
@@ -326,6 +329,7 @@ export async function syncZendeskCategoryActivity({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId: parents[0],
     parents,
+    parentId: parents[1],
     title: categoryInDb.name,
     mimeType: "application/vnd.dust.zendesk.category",
   });
