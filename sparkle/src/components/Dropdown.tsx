@@ -199,6 +199,7 @@ const DropdownMenuItem = React.forwardRef<
       asChild,
       replace,
       shallow,
+      prefetch,
       ...props
     },
     ref
@@ -220,6 +221,7 @@ const DropdownMenuItem = React.forwardRef<
           rel={rel}
           replace={replace}
           shallow={shallow}
+          prefetch={prefetch}
         >
           <ItemWithLabelIconAndDescription
             label={label}
