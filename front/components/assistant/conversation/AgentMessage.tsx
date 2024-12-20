@@ -95,19 +95,20 @@ export const FeedbackSelectorPopoverContent = ({
 
   return (
     agentLastAuthor && (
-      <div className="itemcenter mt-4 flex gap-2">
-        {agentLastAuthor?.image && (
-          <img
-            src={agentLastAuthor?.image}
-            alt={agentLastAuthor?.firstName}
-            className="h-8 w-8 rounded-full"
-          />
-        )}
-        <Page.P variant="secondary">
-          Your feedback will be sent to:
-          <br />
-          {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
-        </Page.P>
+      <div className="mt-4 flex flex-col gap-2">
+        <Page.P variant="secondary">Your feedback goes to:</Page.P>
+        <div className="flex flex-row items-center gap-2">
+          {agentLastAuthor.image && (
+            <img
+              src={agentLastAuthor.image}
+              alt={agentLastAuthor.firstName}
+              className="h-8 w-8 rounded-full"
+            />
+          )}
+          <Page.P variant="primary">
+            {agentLastAuthor.firstName} {agentLastAuthor.lastName}
+          </Page.P>
+        </div>
       </div>
     )
   );
@@ -400,44 +401,72 @@ export function AgentMessage({
     [owner, agentMessageToRender]
   );
 
-  const buttons =
-    message.status === "failed"
-      ? []
-      : [
-          <Button
-            key="copy-msg-button"
-            tooltip="Copy to clipboard"
-            variant="ghost"
-            size="xs"
-            onClick={() => {
-              void navigator.clipboard.writeText(
-                cleanUpCitations(agentMessageToRender.content || "")
-              );
-            }}
-            icon={ClipboardIcon}
-            className="text-muted-foreground"
-          />,
-          <Button
-            key="retry-msg-button"
-            tooltip="Retry"
-            variant="ghost"
-            size="xs"
-            onClick={() => {
-              void retryHandler(agentMessageToRender);
-            }}
-            icon={ArrowPathIcon}
-            className="text-muted-foreground"
-            disabled={isRetryHandlerProcessing || shouldStream}
-          />,
-          <div key="separator" className="flex items-center">
-            <div className="h-5 w-px bg-border" />
-          </div>,
-          <FeedbackSelector
-            key="feedback-selector"
-            {...messageFeedback}
-            getPopoverInfo={PopoverContent}
-          />,
-        ];
+  const retryHandler = useCallback(
+    async (agentMessage: AgentMessageType) => {
+      setIsRetryHandlerProcessing(true);
+      await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      setIsRetryHandlerProcessing(false);
+    },
+    [conversationId, owner.sId]
+  );
+
+  const buttons = useMemo(
+    () =>
+      message.status === "failed"
+        ? []
+        : [
+            <Button
+              key="copy-msg-button"
+              tooltip="Copy to clipboard"
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                void navigator.clipboard.writeText(
+                  cleanUpCitations(agentMessageToRender.content || "")
+                );
+              }}
+              icon={ClipboardIcon}
+              className="text-muted-foreground"
+            />,
+            <Button
+              key="retry-msg-button"
+              tooltip="Retry"
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                void retryHandler(agentMessageToRender);
+              }}
+              icon={ArrowPathIcon}
+              className="text-muted-foreground"
+              disabled={isRetryHandlerProcessing || shouldStream}
+            />,
+            <div key="separator" className="flex items-center">
+              <div className="h-5 w-px bg-border" />
+            </div>,
+            <FeedbackSelector
+              key="feedback-selector"
+              {...messageFeedback}
+              getPopoverInfo={PopoverContent}
+            />,
+          ],
+    [
+      message.status,
+      agentMessageToRender,
+      isRetryHandlerProcessing,
+      shouldStream,
+      retryHandler,
+      messageFeedback,
+      PopoverContent,
+    ]
+  );
 
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
@@ -631,20 +660,6 @@ export function AgentMessage({
         )}
       </div>
     );
-  }
-
-  async function retryHandler(agentMessage: AgentMessageType) {
-    setIsRetryHandlerProcessing(true);
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    setIsRetryHandlerProcessing(false);
   }
 }
 
