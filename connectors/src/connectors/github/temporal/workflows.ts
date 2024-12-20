@@ -29,6 +29,9 @@ const {
   githubGetRepoDiscussionsResultPageActivity,
   githubIssueGarbageCollectActivity,
   githubDiscussionGarbageCollectActivity,
+  githubUpsertDiscussionsFolderActivity,
+  githubUpsertIssuesFolderActivity,
+  githubUpsertRepositoryFolderActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minute",
 });
@@ -58,6 +61,10 @@ const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
 const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
+/**
+ * Duplicate of the one belows apart from the child workflow (githubSyncRepoWorkflow vs githubRepoSyncWorkflow).
+ * Kept for backwards compatibility (to avoid non-deterministic errors).
+ */
 export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
@@ -118,6 +125,74 @@ export async function githubFullSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
+/**
+ * This workflow is used to fetch and sync all the repositories of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
+export async function githubFullSyncWorkflowV2(
+  dataSourceConfig: DataSourceConfig,
+  connectorId: ModelId,
+  // Used to re-trigger a code-only full-sync after code syncing is enabled/disabled.
+  syncCodeOnly: boolean,
+  forceCodeResync = false
+) {
+  await githubSaveStartSyncActivity(dataSourceConfig);
+
+  const queue = new PQueue({ concurrency: MAX_CONCURRENT_REPO_SYNC_WORKFLOWS });
+  const promises: Promise<void>[] = [];
+
+  let pageNumber = 1; // 1-indexed
+
+  for (;;) {
+    const resultsPage = await githubGetReposResultPageActivity(
+      connectorId,
+      pageNumber,
+      { syncCodeOnly: syncCodeOnly.toString() }
+    );
+    if (!resultsPage.length) {
+      break;
+    }
+    pageNumber += 1;
+
+    for (const repo of resultsPage) {
+      const fullSyncWorkflowId = getFullSyncWorkflowId(connectorId);
+      const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.id}-syncCodeOnly-${syncCodeOnly}`;
+      promises.push(
+        queue.add(() =>
+          executeChild(githubRepoSyncWorkflowV2, {
+            workflowId: childWorkflowId,
+            searchAttributes: {
+              connectorId: [connectorId],
+            },
+            args: [
+              {
+                dataSourceConfig,
+                connectorId,
+                repoName: repo.name,
+                repoId: repo.id,
+                repoLogin: repo.login,
+                syncCodeOnly,
+                isFullSync: true,
+                forceCodeResync,
+              },
+            ],
+            parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+            memo: workflowInfo().memo,
+          })
+        )
+      );
+    }
+  }
+
+  await Promise.all(promises);
+
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
+}
+
+/**
+ * Duplicate of the one belows apart from the child workflow (githubSyncRepoWorkflow vs githubRepoSyncWorkflow).
+ * Kept for backwards compatibility (to avoid non-deterministic errors).
+ */
 export async function githubReposSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
@@ -159,6 +234,55 @@ export async function githubReposSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
+/**
+ * This workflow is used to sync the given repositories of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
+export async function githubReposSyncWorkflowV2(
+  dataSourceConfig: DataSourceConfig,
+  connectorId: ModelId,
+  orgLogin: string,
+  repos: { name: string; id: number }[]
+) {
+  const queue = new PQueue({ concurrency: MAX_CONCURRENT_REPO_SYNC_WORKFLOWS });
+  const promises: Promise<void>[] = [];
+
+  for (const repo of repos) {
+    const reposSyncWorkflowId = getReposSyncWorkflowId(connectorId);
+    const childWorkflowId = `${reposSyncWorkflowId}-repo-${repo.id}`;
+    promises.push(
+      queue.add(() =>
+        executeChild(githubRepoSyncWorkflowV2, {
+          workflowId: childWorkflowId,
+          searchAttributes: {
+            connectorId: [connectorId],
+          },
+          args: [
+            {
+              dataSourceConfig,
+              connectorId,
+              repoName: repo.name,
+              repoId: repo.id,
+              repoLogin: orgLogin,
+              syncCodeOnly: false,
+              isFullSync: false,
+            },
+          ],
+          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+          memo: workflowInfo().memo,
+        })
+      )
+    );
+  }
+
+  await Promise.all(promises);
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
+}
+
+/**
+ * Duplicate of the one belows apart from the missing activity githubUpsertIssuesFolderActivity.
+ * Kept for backwards compatibility (to avoid non-deterministic errors).
+ */
 export async function githubRepoIssuesSyncWorkflow({
   dataSourceConfig,
   connectorId,
@@ -213,6 +337,71 @@ export async function githubRepoIssuesSyncWorkflow({
   return true;
 }
 
+/**
+ * This workflow is used to sync all the issues of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
+export async function githubRepoIssuesSyncWorkflowV2({
+  dataSourceConfig,
+  connectorId,
+  repoName,
+  repoId,
+  repoLogin,
+  pageNumber,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  connectorId: ModelId;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  pageNumber: number;
+}): Promise<boolean> {
+  // upserting the folder with all the issues
+  await githubUpsertIssuesFolderActivity({ connectorId, repoId });
+
+  const queue = new PQueue({
+    concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
+  });
+  const promises: Promise<void>[] = [];
+
+  const resultsPage = await githubGetRepoIssuesResultPageActivity(
+    connectorId,
+    repoName,
+    repoLogin,
+    pageNumber,
+    { repoId }
+  );
+
+  if (!resultsPage.length) {
+    return false;
+  }
+
+  for (const issueNumber of resultsPage) {
+    promises.push(
+      queue.add(() =>
+        githubUpsertIssueActivity(
+          connectorId,
+          repoName,
+          repoId,
+          repoLogin,
+          issueNumber,
+          dataSourceConfig,
+          {},
+          true // isBatchSync
+        )
+      )
+    );
+  }
+
+  await Promise.all(promises);
+
+  return true;
+}
+
+/**
+ * Duplicate of the one belows apart from the missing activity githubUpsertDiscussionsFolderActivity.
+ * Kept for backwards compatibility (to avoid non-deterministic errors).
+ */
 export async function githubRepoDiscussionsSyncWorkflow({
   dataSourceConfig,
   connectorId,
@@ -264,6 +453,69 @@ export async function githubRepoDiscussionsSyncWorkflow({
   return cursor;
 }
 
+/**
+ * This workflow is used to sync all the discussions of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
+export async function githubRepoDiscussionsSyncWorkflowV2({
+  dataSourceConfig,
+  connectorId,
+  repoName,
+  repoId,
+  repoLogin,
+  nextCursor,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  connectorId: ModelId;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  nextCursor: string | null;
+}): Promise<string | null> {
+  // upserting the folder with all the discussions
+  await githubUpsertDiscussionsFolderActivity({ connectorId, repoId });
+
+  const queue = new PQueue({
+    concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
+  });
+  const promises: Promise<void>[] = [];
+
+  const { cursor, discussionNumbers } =
+    await githubGetRepoDiscussionsResultPageActivity(
+      connectorId,
+      repoName,
+      repoLogin,
+      nextCursor,
+      { repoId }
+    );
+
+  for (const discussionNumber of discussionNumbers) {
+    promises.push(
+      queue.add(() =>
+        githubUpsertDiscussionActivity(
+          connectorId,
+          repoName,
+          repoId,
+          repoLogin,
+          discussionNumber,
+          dataSourceConfig,
+          {},
+          true // isBatchSync
+        )
+      )
+    );
+  }
+
+  await Promise.all(promises);
+
+  return cursor;
+}
+
+/**
+ * Duplicate of the one belows apart from the missing activity githubUpsertRepositoryFolderActivity and the fact
+ * that this one calls the old workflows githubRepoIssuesSyncWorkflow and githubRepoDiscussionsSyncWorkflow.
+ * Kept for backwards compatibility (to avoid non-deterministic errors).
+ */
 export async function githubRepoSyncWorkflow({
   dataSourceConfig,
   connectorId,
@@ -327,6 +579,117 @@ export async function githubRepoSyncWorkflow({
       }-repo-${repoId}-issues-page-${cursorIteration}`;
 
       nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflow, {
+        workflowId: childWorkflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [
+          {
+            dataSourceConfig,
+            connectorId,
+            repoName,
+            repoId,
+            repoLogin,
+            nextCursor,
+          },
+        ],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
+      });
+
+      if (!nextCursor) {
+        break;
+      }
+      cursorIteration += 1;
+    }
+  }
+
+  // Start code syncing activity.
+  await githubCodeSyncActivity({
+    dataSourceConfig,
+    connectorId,
+    repoLogin,
+    repoName,
+    repoId,
+    loggerArgs: { syncCodeOnly: syncCodeOnly ? "true" : "false" },
+    isBatchSync: true,
+    forceResync: forceCodeResync,
+  });
+}
+
+/**
+ * This workflow is used to sync all the issues, discussions and code of a GitHub connector.
+ * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
+ */
+export async function githubRepoSyncWorkflowV2({
+  dataSourceConfig,
+  connectorId,
+  repoName,
+  repoId,
+  repoLogin,
+  syncCodeOnly,
+  isFullSync,
+  forceCodeResync = false,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  connectorId: ModelId;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  syncCodeOnly: boolean;
+  isFullSync: boolean;
+  forceCodeResync?: boolean;
+}) {
+  // upserting the root folder for the repository
+  await githubUpsertRepositoryFolderActivity({ connectorId, repoId, repoName });
+
+  if (!syncCodeOnly) {
+    let pageNumber = 1; // 1-indexed
+    for (;;) {
+      const childWorkflowId = `${
+        isFullSync
+          ? getFullSyncWorkflowId(connectorId)
+          : getReposSyncWorkflowId(connectorId)
+      }-repo-${repoId}-issues-page-${pageNumber}`;
+
+      const shouldContinue = await executeChild(
+        githubRepoIssuesSyncWorkflowV2,
+        {
+          workflowId: childWorkflowId,
+          searchAttributes: {
+            connectorId: [connectorId],
+          },
+          args: [
+            {
+              dataSourceConfig,
+              connectorId,
+              repoName,
+              repoId,
+              repoLogin,
+              pageNumber,
+            },
+          ],
+          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+          memo: workflowInfo().memo,
+        }
+      );
+
+      if (!shouldContinue) {
+        break;
+      }
+      pageNumber += 1;
+    }
+
+    let nextCursor: string | null = null;
+    let cursorIteration = 0;
+    for (;;) {
+      const childWorkflowId = `${
+        isFullSync
+          ? getFullSyncWorkflowId(connectorId)
+          : getReposSyncWorkflowId(connectorId)
+      }-repo-${repoId}-issues-page-${cursorIteration}`;
+
+      nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflowV2, {
         workflowId: childWorkflowId,
         searchAttributes: {
           connectorId: [connectorId],
