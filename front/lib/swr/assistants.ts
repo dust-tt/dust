@@ -142,25 +142,16 @@ export function useAgentConfigurations({
   };
 }
 
-export function useProgressiveAgentConfigurations({
+// This is the call that is required for the new conversation page to load all views on that page.
+// All elements that are involved in that page should rely on it to avoid concurrent calls to
+// getAgentConfigurations at the initial page load.
+export function useUnifiedAgentConfigurations({
   workspaceId,
   disabled,
 }: {
   workspaceId: string;
   disabled?: boolean;
 }) {
-  // const {
-  //   agentConfigurations: initialAgentConfigurations,
-  //   isAgentConfigurationsLoading: isInitialAgentConfigurationsLoading,
-  // } = useAgentConfigurations({
-  //   workspaceId,
-  //   agentsGetView: "list",
-  //   limit: 24,
-  //   includes: ["usage"],
-  //   disabled,
-  //   revalidate: false,
-  // });
-
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
     isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
@@ -172,13 +163,6 @@ export function useProgressiveAgentConfigurations({
     includes: ["authors", "usage"],
     disabled,
   });
-
-  // const isLoading =
-  //   isInitialAgentConfigurationsLoading ||
-  //   isAgentConfigurationsWithAuthorsLoading;
-  // const agentConfigurations = isAgentConfigurationsWithAuthorsLoading
-  //   ? initialAgentConfigurations
-  //   : agentConfigurationsWithAuthors;
 
   return {
     agentConfigurations: agentConfigurationsWithAuthors,
@@ -419,11 +403,10 @@ export function useUpdateAgentScope({
       agentConfigurationId,
       disabled: true,
     });
-  const { mutate: mutateAgentConfigurations } =
-    useProgressiveAgentConfigurations({
-      workspaceId: owner.sId,
-      disabled: true,
-    });
+  const { mutate: mutateAgentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
 
   const doUpdate = useCallback(
     async (scope: Exclude<AgentConfigurationScope, "global">) => {
@@ -500,11 +483,10 @@ export function useUpdateUserFavorite({
       agentConfigurationId,
       disabled: true,
     });
-  const { mutate: mutateAgentConfigurations } =
-    useProgressiveAgentConfigurations({
-      workspaceId: owner.sId,
-      disabled: true,
-    });
+  const { mutate: mutateAgentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
 
   const [isUpdatingFavorite, setIsUpdatingFavorite] = useState(false);
 
