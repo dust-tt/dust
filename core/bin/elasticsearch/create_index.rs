@@ -8,7 +8,7 @@ use http::StatusCode;
 #[derive(Parser, Debug, Clone, ValueEnum)]
 enum Region {
     Local,
-    #[clap(name = "us-central-1")]
+    #[clap(name = "us-central1")]
     UsCentral1,
 }
 
@@ -16,7 +16,7 @@ impl std::fmt::Display for Region {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Region::Local => write!(f, "local"),
-            Region::UsCentral1 => write!(f, "us-central-1"),
+            Region::UsCentral1 => write!(f, "us-central1"),
         }
     }
 }
