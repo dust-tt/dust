@@ -73,7 +73,6 @@ const LegalMenuConfig: MenuConfig = {
   ],
 };
 
-
 const SolutionsMenuConfig: MenuConfig = {
   title: "Solutions",
   items: [
@@ -132,7 +131,6 @@ const DevelopersMenuConfig: MenuConfig = {
   ],
 };
 
-
 const BuildMenuConfig: MenuConfig = {
   title: "Build",
   items: [
@@ -145,10 +143,9 @@ const BuildMenuConfig: MenuConfig = {
       title: "Guides & Tutorials",
       href: "https://dust-tt.notion.site/c3edbbd1a2e8464f9a692e9f7486af95?v=bab4f048e7a942e2b79bf434d83dc527",
       isExternal: true,
-    }
+    },
   ],
 };
-
 
 const ExploreMenuConfig: MenuConfig = {
   title: "Explore",
@@ -172,7 +169,7 @@ const ExploreMenuConfig: MenuConfig = {
       title: "Customer Stories",
       href: "https://blog.dust.tt/tag/customer-stories/",
       isExternal: true,
-    }, 
+    },
   ],
 };
 
@@ -211,7 +208,6 @@ const CompanyMenuConfig: MenuConfig = {
     },
     LegalMenuConfig.items[1],
   ],
-  
 };
 
 const ResourcesMenuConfig: MenuConfig = {
@@ -277,9 +273,9 @@ export const menuConfig: DocsConfig = {
       items: CompanyMenuConfig.items,
     },
     {
-          title: "Security",
-          href: "/home/security",
-        },
+      title: "Security",
+      href: "/home/security",
+    },
     {
       title: "Pricing",
       href: "/home/pricing",
