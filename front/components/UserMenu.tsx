@@ -106,6 +106,25 @@ export function UserMenu({
                 }}
               />
             )}
+            <DropdownMenuItem
+              label="Extension"
+              icon={LightbulbIcon}
+              onClick={() => {
+                if (typeof window !== "undefined" && window.chrome?.runtime) {
+                  chrome.runtime.sendMessage(
+                    "okjldflokifdjecnhbmkdanjjbnmlihg",
+                    {
+                      action: "openSidePanel",
+                      workspaceId: owner.sId,
+                      conversationId: "M1wNSpqgq9",
+                    },
+                    (response) => {
+                      console.log("Message sent:", response);
+                    }
+                  );
+                }
+              }}
+            />
           </>
         )}
 
