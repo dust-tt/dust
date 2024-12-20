@@ -24,10 +24,8 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation } from "@app/lib/models/workspace";
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  isMultiRegions,
-  RegionLookupClient,
-} from "@app/lib/multi_regions/region_lookup_client";
+import { isMultiRegions } from "@app/lib/multi_regions/config";
+import { RegionLookupClient } from "@app/lib/multi_regions/region_lookup_client";
 import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
