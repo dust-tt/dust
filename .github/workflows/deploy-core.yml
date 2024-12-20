@@ -95,8 +95,8 @@ jobs:
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
             --image-name=$IMAGE_NAME \
-            --dockerfile-path=./core/Dockerfile \
-            --working-dir=./ \
+            --dockerfile-path=./Dockerfile \
+            --working-dir=./core/ \
             --region=${{ matrix.region }}
 
   deploy:
