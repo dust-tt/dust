@@ -331,7 +331,7 @@ async function _updateDataSourceDocumentParents({
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -352,6 +352,7 @@ async function _updateDataSourceTableParents({
   dataSourceConfig: DataSourceConfig;
   tableId: string;
   parents: string[];
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -365,14 +366,14 @@ async function _updateDocumentOrTableParentsField({
   dataSourceConfig,
   id,
   parents,
-  parentId = null,
+  parentId,
   loggerArgs = {},
   tableOrDocument,
 }: {
   dataSourceConfig: DataSourceConfig;
   id: string;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
   tableOrDocument: "document" | "table";
 }) {
