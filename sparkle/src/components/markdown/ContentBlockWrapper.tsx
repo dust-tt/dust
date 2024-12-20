@@ -34,12 +34,14 @@ interface ContentBlockWrapperProps {
   className?: string;
   content?: ClipboardContent | string;
   getContentToDownload?: GetContentToDownloadFunction;
+  actions?: React.ReactNode[] | React.ReactNode;
 }
 
 export function ContentBlockWrapper({
   children,
   className,
   content,
+  actions,
   getContentToDownload,
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
@@ -96,12 +98,14 @@ export function ContentBlockWrapper({
     >
       <div className="s-w-full s-table-auto">{children}</div>
       <div className="s-absolute s-right-2 s-top-2 s-flex s-gap-2 s-rounded-xl">
+        {actions && actions}
         {getContentToDownload && (
           <Button
             variant={"outline"}
             size="xs"
             icon={ArrowDownOnSquareIcon}
             onClick={handleDownload}
+            tooltip="Download"
           />
         )}
         {content && (
@@ -110,6 +114,7 @@ export function ContentBlockWrapper({
             size="xs"
             icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             onClick={handleCopyToClipboard}
+            tooltip="Copy"
           />
         )}
       </div>

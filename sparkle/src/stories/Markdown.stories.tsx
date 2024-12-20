@@ -30,6 +30,25 @@ type Story = StoryObj<typeof meta>;
 
 const example = `
 # Level 1 Title
+### Why not a mermaid graph ?
+
+\`\`\`mermaid
+graph TD
+          A[Christmas] -->|Get money| B(Go shopping)
+          B --> C{Let me think}
+          B --> G[/Another/]
+          C ==>|One| D[Laptop]
+          C -->|Two| E[iPhone]
+          C -->|Three| F[fa:fa-car Car]
+          subgraph section
+            C
+            D
+            E
+            F
+            G
+          end
+\`\`\`
+
 
 ## Level 2 Title
 
@@ -132,27 +151,53 @@ const data = [
   { date: "Oct 29", high: 18, low: 12 },
   { date: "Oct 30", high: 19, low: 11 },
 ];
+
+function renderHeader(latitude, longitude) {
+  const container = document.getElementById("dashboard-container");
+  if (!container) {
+    console.error("Dashboard container is missing in the DOM.");
+    return;
+  }
+  let header = document.getElementById("dashboard-header");
+  if (!header) {
+    console.log("Creating new dashboard header.");
+    header = document.createElement("div");
+    header.id = "dashboard-header";
+    container.prepend(header);
+  }
+  console.log("Updating header content.");
+  const currentTime = new Date().toLocaleString("en-US", {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  header.innerHTML = \`
+    <div>
+      <h2>Local Time</h2>
+      <p>\${currentTime}</p>
+    </div>
+    <div>
+      <h2>Location</h2>
+      <p>Lat: \${latitude.toFixed(2)}, Lon: \${longitude.toFixed(2)}</p>
+    </div>
+  \`;
+}
 \`\`\`
 
-### Why not a mermaid graph ?
 
-\`\`\`mermaid
-graph TD;
-    A[October 24] -->|High: 19°C| B[October 25]
-    A -->|Low: 12°C| C[October 26]
-    B -->|High: 20°C| D[October 26]
-    B -->|Low: 12°C| E[October 27]
-    C -->|High: 17°C| F[October 27]
-    C -->|Low: 11°C| G[October 28]
-    D -->|High: 16°C| H[October 28]
-    D -->|Low: 10°C| I[October 29]
-    E -->|High: 17°C| J[October 29]
-    E -->|Low: 11°C| K[October 30]
-    F -->|High: 18°C| L[October 30]
-    F -->|Low: 12°C| M[End]
+
+\`\`\`mermaid2
+pie title Distribution
+    "Category A" : 30
+    "Category B" : 20
+    "Category C" : 15
+    "Category D" : 10
+    "Category E" : 25
 \`\`\`
 
-..End
+.End
 
 `;
 
