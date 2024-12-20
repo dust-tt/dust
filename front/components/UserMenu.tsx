@@ -90,20 +90,14 @@ export function UserMenu({
               <DropdownMenuItem
                 label="Meeting transcripts"
                 icon={BookOpenIcon}
-                onClick={() => {
-                  void router.push(
-                    `/w/${owner.sId}/assistant/labs/transcripts`
-                  );
-                }}
+                href={`/w/${owner.sId}/assistant/labs/transcripts`}
               />
             )}
             {featureFlags.includes("labs_trackers") && (
               <DropdownMenuItem
                 label="Trackers"
                 icon={EyeIcon}
-                onClick={() => {
-                  void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
-                }}
+                href={`/w/${owner.sId}/assistant/labs/trackers`}
               />
             )}
           </>
@@ -153,9 +147,7 @@ export function UserMenu({
 
         <DropdownMenuLabel label="Account" />
         <DropdownMenuItem
-          onClick={() => {
-            void router.push("/api/auth/logout");
-          }}
+          href="/api/auth/logout"
           icon={LogoutIcon}
           label="Sign&nbsp;out"
         />
