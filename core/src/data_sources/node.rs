@@ -23,6 +23,7 @@ impl fmt::Display for NodeType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
     pub data_source_id: String,
+    pub data_source_internal_id: String,
     pub node_id: String,
     pub node_type: NodeType,
     pub timestamp: u64,
@@ -35,6 +36,7 @@ pub struct Node {
 impl Node {
     pub fn new(
         data_source_id: &str,
+        data_source_internal_id: &str,
         node_id: &str,
         node_type: NodeType,
         timestamp: u64,
@@ -45,6 +47,7 @@ impl Node {
     ) -> Self {
         Node {
             data_source_id: data_source_id.to_string(),
+            data_source_internal_id: data_source_internal_id.to_string(),
             node_id: node_id.to_string(),
             node_type,
             timestamp,
@@ -57,6 +60,9 @@ impl Node {
 
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
+    }
+    pub fn data_source_internal_id(&self) -> &str {
+        &self.data_source_internal_id
     }
     pub fn timestamp(&self) -> u64 {
         self.timestamp
@@ -81,6 +87,7 @@ impl Node {
     pub fn into_folder(self) -> Folder {
         Folder::new(
             self.data_source_id,
+            self.data_source_internal_id,
             self.node_id,
             self.timestamp,
             self.title,
@@ -90,15 +97,14 @@ impl Node {
         )
     }
 
-    // globally unique id for the node
-    // used for elasticsearch
+    // Computes a globally unique id for the node.
     pub fn unique_id(&self) -> String {
-        globally_unique_id(&self.data_source_id, &self.node_id)
+        globally_unique_id(&self.data_source_internal_id, &self.node_id)
     }
 }
 
-pub fn globally_unique_id(data_source_id: &str, node_id: &str) -> String {
-    format!("{}__{}", data_source_id, node_id)
+pub fn globally_unique_id(data_source_internal_id: &str, node_id: &str) -> String {
+    format!("{}__{}", data_source_internal_id, node_id)
 }
 
 impl From<serde_json::Value> for Node {

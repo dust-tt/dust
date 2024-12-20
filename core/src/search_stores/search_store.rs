@@ -44,7 +44,7 @@ pub trait SearchStore {
     async fn index_table(&self, table: Table) -> Result<()>;
     async fn index_folder(&self, folder: Folder) -> Result<()>;
 
-    async fn delete_node(&self, data_source_id: &str, node_id: &str) -> Result<()>;
+    async fn delete_node(&self, data_source_internal_id: &str, node_id: &str) -> Result<()>;
     async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
@@ -198,11 +198,11 @@ impl SearchStore for ElasticsearchSearchStore {
         self.index_node(node).await
     }
 
-    async fn delete_node(&self, data_source_id: &str, node_id: &str) -> Result<()> {
+    async fn delete_node(&self, data_source_internal_id: &str, node_id: &str) -> Result<()> {
         self.client
             .delete(DeleteParts::IndexId(
                 NODES_INDEX_NAME,
-                &globally_unique_id(data_source_id, node_id),
+                &globally_unique_id(data_source_internal_id, node_id),
             ))
             .send()
             .await?;
