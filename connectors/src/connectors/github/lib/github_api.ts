@@ -850,13 +850,13 @@ export async function processRepository({
       const fileName = basename(file);
 
       const parents = [];
-      for (let i = 0; i < path.length; i++) {
-        const pathInternalId = getCodeDirInternalId(
-          repoId,
-          path.slice(0, i + 1).join("/")
-        );
+      // we order parents bottom to top, so we take paths in the opposite order
+      for (let i = path.length - 1; i >= 0; i--) {
         parents.push({
-          internalId: pathInternalId,
+          internalId: getCodeDirInternalId(
+            repoId,
+            path.slice(0, i + 1).join("/")
+          ),
           dirName: path[i] as string,
           dirPath: path.slice(0, i),
         });
@@ -867,10 +867,7 @@ export async function processRepository({
         `${path.join("/")}/${fileName}`
       );
 
-      const parentInternalId =
-        parents.length === 0
-          ? null
-          : (parents[parents.length - 1]?.internalId as string);
+      const parentInternalId = parents[0]?.internalId ?? null;
 
       // Files
       files.push({
@@ -883,8 +880,7 @@ export async function processRepository({
         sizeBytes: size,
         documentId,
         parentInternalId,
-        /// we reverse the parents here since the convention is bottom to top
-        parents: [documentId, ...parents.map((p) => p.internalId).reverse()],
+        parents: [documentId, ...parents.map((p) => p.internalId)],
         localFilePath: file,
       });
 
@@ -894,7 +890,7 @@ export async function processRepository({
         if (p && !seenDirs[p.internalId]) {
           seenDirs[p.internalId] = true;
 
-          const dirParent = parents[i - 1];
+          const dirParent = parents[i + 1];
           const dirParentInternalId = dirParent ? dirParent.internalId : null;
 
           directories.push({
@@ -906,7 +902,7 @@ export async function processRepository({
             )}`,
             internalId: p.internalId,
             parentInternalId: dirParentInternalId,
-            parents: parents.slice(0, i).map((p) => p.internalId),
+            parents: parents.slice(i).map((p) => p.internalId),
           });
         }
       }
