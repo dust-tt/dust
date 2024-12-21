@@ -76,7 +76,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
   brandId: number;
   currentSyncDateMs: number;
   startTime: number;
-}): Promise<number | null> {
+}): Promise<{ hasMore: boolean; endTime: number; success: boolean }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
@@ -104,12 +104,20 @@ export async function syncZendeskArticleUpdateBatchActivity({
     brandId,
   });
 
-  const { articles, hasMore, endTime } = await fetchRecentlyUpdatedArticles({
+  const result = await fetchRecentlyUpdatedArticles({
     brandSubdomain,
     accessToken,
     startTime,
   });
+  if (!result) {
+    logger.warn(
+      { brandId, startTime, ...loggerArgs },
+      "[Zendesk] Incremental article sync exited with a 404."
+    );
+    return { hasMore: false, endTime: 0, success: false };
+  }
 
+  const { articles, hasMore, endTime } = result;
   await concurrentExecutor(
     articles,
     async (article) => {
@@ -176,7 +184,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
-  return hasMore ? endTime : null;
+  return { hasMore, endTime, success: true };
 }
 
 /**

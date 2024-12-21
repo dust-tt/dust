@@ -166,7 +166,11 @@ async function fetchFromZendeskWithRetries({
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
-      { rawResponse, endpoint: getEndpointFromZendeskUrl(url) }
+      {
+        rawResponse,
+        endpoint: getEndpointFromZendeskUrl(url),
+        statusText: rawResponse.statusText,
+      }
     );
   }
   if (!rawResponse.ok) {
@@ -174,6 +178,7 @@ async function fetchFromZendeskWithRetries({
       response,
       rawResponse,
       endpoint: getEndpointFromZendeskUrl(url),
+      statusText: rawResponse.statusText,
     });
   }
 
@@ -274,15 +279,22 @@ export async function fetchRecentlyUpdatedArticles({
   articles: ZendeskFetchedArticle[];
   hasMore: boolean;
   endTime: number;
-}> {
+} | null> {
   // this endpoint retrieves changes in content, not only in metadata despite what is mentioned in the documentation.
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`;
-  const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return {
-    articles: response.articles,
-    hasMore: response.next_page !== null && response.articles.length !== 0,
-    endTime: response.end_time,
-  };
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return {
+      articles: response.articles,
+      hasMore: response.next_page !== null && response.articles.length !== 0,
+      endTime: response.end_time,
+    };
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
 }
 
 /**
