@@ -166,7 +166,11 @@ async function fetchFromZendeskWithRetries({
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
-      { rawResponse, endpoint: getEndpointFromZendeskUrl(url) }
+      {
+        rawResponse,
+        endpoint: getEndpointFromZendeskUrl(url),
+        statusText: rawResponse.statusText,
+      }
     );
   }
   if (!rawResponse.ok) {
@@ -174,6 +178,7 @@ async function fetchFromZendeskWithRetries({
       response,
       rawResponse,
       endpoint: getEndpointFromZendeskUrl(url),
+      statusText: rawResponse.statusText,
     });
   }
 
