@@ -100,6 +100,7 @@ export default function LandingLayout({
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
             <Button
+              className="hidden sm:block"
               variant="highlight"
               size="sm"
               label="Request a demo"
