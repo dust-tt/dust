@@ -118,6 +118,8 @@ export function useCreateDataSourceViewDocument(
       disabled: true,
     });
 
+  const sendNotification = useSendNotification();
+
   const doCreate = async (body: PostDataSourceWithNameDocumentRequestBody) => {
     const createUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
     const res = await fetch(createUrl, {
@@ -129,10 +131,20 @@ export function useCreateDataSourceViewDocument(
     });
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      console.error("Error creating document", errorData);
+      sendNotification({
+        type: "error",
+        title: "Failed to create document",
+        description: `Error: ${errorData.message}`,
+      });
       return null;
     } else {
       void mutateContentNodes();
+
+      sendNotification({
+        type: "success",
+        title: "Document created",
+        description: "Document has been created",
+      });
 
       const response: PostDocumentResponseBody = await res.json();
       return response.document;
