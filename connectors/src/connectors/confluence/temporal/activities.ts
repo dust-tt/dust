@@ -219,6 +219,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId: makeSpaceInternalId(spaceId),
     parents: [makeSpaceInternalId(spaceId)],
+    parentId: null,
     title: spaceName,
     mimeType: "application/vnd.dust.confluence.space",
   });
@@ -252,7 +253,7 @@ export async function markPageHasVisited({
 interface ConfluenceUpsertPageInput {
   page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>;
   spaceName: string;
-  parents: string[];
+  parents: [string, ...string[], string];
   confluenceConfig: ConfluenceConfiguration;
   syncType?: UpsertDataSourceDocumentParams["upsertContext"]["sync_type"];
   dataSourceConfig: DataSourceConfig;

@@ -1,5 +1,9 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import type { PageObjectProperties, ParsedNotionBlock } from "@dust-tt/types";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  ModelId,
+  PageObjectProperties,
+  ParsedNotionBlock,
+} from "@dust-tt/types";
 import { assertNever, getNotionDatabaseTableId, slugify } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
@@ -1818,6 +1822,7 @@ export async function renderAndUpsertPageFromCache({
               // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
               truncate: false,
               parents: parents,
+              parentId: parents[1] || null,
               title: parentDb.title ?? "Untitled Notion Database",
               mimeType: "application/vnd.dust.notion.database",
             }),
@@ -2037,7 +2042,7 @@ export async function renderAndUpsertPageFromCache({
         parsedProperties,
       }),
       parents: parentIds,
-      parentId: parentIds.length > 1 ? parentIds[1] : null,
+      parentId: parentIds[1] || null,
       loggerArgs,
       upsertContext: {
         sync_type: isFullSync ? "batch" : "incremental",
@@ -2538,6 +2543,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         // We overwrite the whole table since we just fetched all child pages.
         truncate: true,
         parents: parentIds,
+        parentId: parentIds[1] || null,
         title: dbModel.title ?? "Untitled Notion Database",
         mimeType: "application/vnd.dust.notion.database",
       }),

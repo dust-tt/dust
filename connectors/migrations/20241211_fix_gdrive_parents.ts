@@ -148,6 +148,7 @@ async function migrate({
                   dataSourceConfig,
                   tableId,
                   parents,
+                  parentId: parents[1] || null,
                 });
               }
             }
@@ -210,6 +211,7 @@ async function migrate({
                 dataSourceConfig,
                 tableId,
                 parents,
+                parentId: parents[1] || null,
               });
             }
           }
