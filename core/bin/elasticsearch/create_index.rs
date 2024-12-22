@@ -1,25 +1,9 @@
 use std::collections::HashMap;
 
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use dust::search_stores::search_store::ElasticsearchSearchStore;
 use elasticsearch::indices::{IndicesCreateParts, IndicesDeleteAliasParts, IndicesExistsParts};
 use http::StatusCode;
-
-#[derive(Parser, Debug, Clone, ValueEnum)]
-enum Region {
-    Local,
-    #[clap(name = "us-central-1")]
-    UsCentral1,
-}
-
-impl std::fmt::Display for Region {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Region::Local => write!(f, "local"),
-            Region::UsCentral1 => write!(f, "us-central-1"),
-        }
-    }
-}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
