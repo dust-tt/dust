@@ -469,6 +469,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: String,
         parents: Vec<String>,
     ) -> Result<()> {
@@ -485,6 +486,22 @@ impl DataSource {
 
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
+
+        let document = store
+            .load_data_source_document(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &None,
+            )
+            .await?;
+
+        match document {
+            Some(document) => {
+                search_store.index_node(Node::from(document)).await?;
+            }
+            None => (),
+        }
         Ok(())
     }
 

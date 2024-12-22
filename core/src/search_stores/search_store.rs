@@ -146,6 +146,8 @@ impl SearchStore for ElasticsearchSearchStore {
     async fn index_node(&self, node: Node) -> Result<()> {
         // todo(kw-search): fail on error
         let now = utils::now();
+        // Note: in elasticsearch, the index API updates the document if it
+        // already exists.
         let response = self
             .client
             .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
