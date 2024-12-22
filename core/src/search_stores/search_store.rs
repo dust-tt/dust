@@ -148,7 +148,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let now = utils::now();
         // Note: in elasticsearch, the index API updates the document if it
         // already exists.
-	let response = self
+        let response = self
             .client
             .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
             .timeout("200ms")
