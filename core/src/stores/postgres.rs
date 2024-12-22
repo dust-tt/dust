@@ -3535,7 +3535,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id \
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id \
                    FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                    WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
             )
@@ -3554,6 +3554,7 @@ impl Store for PostgresStore {
                 let table_row_id = row.get::<_, Option<i64>>(6);
                 let folder_row_id = row.get::<_, Option<i64>>(7);
                 let data_source_id: String = row.get::<_, String>(8);
+                let data_source_internal_id: String = row.get::<_, String>(9);
                 let (node_type, row_id) = match (document_row_id, table_row_id, folder_row_id) {
                     (Some(id), None, None) => (NodeType::Document, id),
                     (None, Some(id), None) => (NodeType::Table, id),
@@ -3563,6 +3564,7 @@ impl Store for PostgresStore {
                 (
                     Node::new(
                         &data_source_id,
+                        &data_source_internal_id,
                         &node_id,
                         node_type,
                         timestamp as u64,
