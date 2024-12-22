@@ -347,11 +347,12 @@ pub trait Store {
         data_source_id: &str,
         node_id: &str,
     ) -> Result<Option<(Node, i64)>>;
+    // returns a list of (node, row_id, element_row_id)
     async fn list_data_source_nodes(
         &self,
         id_cursor: i64,
         batch_size: i64,
-    ) -> Result<Vec<(Node, i64)>>;
+    ) -> Result<Vec<(Node, i64, i64)>>;
 
     // LLM Cache
     async fn llm_cache_get(
