@@ -75,7 +75,7 @@ pub struct Chunk {
     pub expanded_offsets: Vec<usize>,
 }
 
-/// Document is used as a data-strucutre for insertion into the SQL store (no
+/// Document is used as a data-structure for insertion into the SQL store (no
 /// chunks, they are directly inserted in the vector search db). It is also used
 /// as a result from search (only the retrieved chunks are provided in the
 /// result). `hash` covers both the original document id and text and the
@@ -142,6 +142,7 @@ pub struct Chunk {
 #[derive(Debug, Serialize, Clone)]
 pub struct Document {
     pub data_source_id: String,
+    pub data_source_internal_id: String,
     pub created: u64,
     pub document_id: String,
     pub timestamp: u64,
@@ -163,6 +164,7 @@ pub struct Document {
 impl Document {
     pub fn new(
         data_source_id: &str,
+        data_source_internal_id: &str,
         document_id: &str,
         timestamp: u64,
         title: &str,
@@ -176,6 +178,7 @@ impl Document {
     ) -> Result<Self> {
         Ok(Document {
             data_source_id: data_source_id.to_string(),
+            data_source_internal_id: data_source_internal_id.to_string(),
             created: utils::now(),
             document_id: document_id.to_string(),
             timestamp,
@@ -220,6 +223,7 @@ impl From<Document> for Node {
     fn from(document: Document) -> Node {
         Node::new(
             &document.data_source_id,
+            &document.data_source_internal_id,
             &document.document_id,
             NodeType::Document,
             document.timestamp,
@@ -692,6 +696,7 @@ impl DataSource {
 
         let document = Document::new(
             &self.data_source_id,
+            &self.internal_id,
             document_id,
             timestamp,
             title.as_deref().unwrap_or(document_id),
@@ -766,7 +771,7 @@ impl DataSource {
             .await?;
 
         // Upsert document in search index.
-        search_store.index_document(document.clone()).await?;
+        search_store.index_node(Node::from(document)).await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
@@ -1725,6 +1730,14 @@ impl DataSource {
         search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: &str,
     ) -> Result<()> {
+        let document = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .await?
+        {
+            Some(document) => document,
+            None => return Ok(()),
+        };
+
         // Delete the document in the main embedder collection.
         self.delete_document_for_embedder(self.embedder_config(), &qdrant_clients, document_id)
             .await?;
@@ -1748,7 +1761,7 @@ impl DataSource {
             .await?;
 
         // Delete document from search index.
-        search_store.delete_node(document_id.to_string()).await?;
+        search_store.delete_node(Node::from(document)).await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.

@@ -8,11 +8,7 @@ use elasticsearch::{
 use serde_json::json;
 use url::Url;
 
-use crate::{data_sources::node::Node, databases::table::Table};
-use crate::{
-    data_sources::{data_source::Document, folder::Folder},
-    utils,
-};
+use crate::{data_sources::node::Node, utils};
 use tracing::{error, info};
 
 #[derive(serde::Deserialize)]
@@ -37,11 +33,7 @@ pub trait SearchStore {
     ) -> Result<Vec<Node>>;
 
     async fn index_node(&self, node: Node) -> Result<()>;
-    async fn index_document(&self, document: Document) -> Result<()>;
-    async fn index_table(&self, table: Table) -> Result<()>;
-    async fn index_folder(&self, folder: Folder) -> Result<()>;
-
-    async fn delete_node(&self, node_id: String) -> Result<()>;
+    async fn delete_node(&self, node: Node) -> Result<()>;
     async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send>;
@@ -152,7 +144,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let now = utils::now();
         match self
             .client
-            .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.node_id))
+            .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
             .timeout("200ms")
             .body(node.clone())
             .send()
@@ -161,7 +153,7 @@ impl SearchStore for ElasticsearchSearchStore {
             Ok(_) => {
                 info!(
                     duration = utils::now() - now,
-                    node_id = node.node_id,
+                    globally_unique_id = node.unique_id(),
                     "[ElasticsearchSearchStore] Indexed {}",
                     node.node_type.to_string()
                 );
@@ -171,7 +163,7 @@ impl SearchStore for ElasticsearchSearchStore {
                 error!(
                     error = %e,
                     duration = utils::now() - now,
-                    node_id = node.node_id,
+                    globally_unique_id = node.unique_id(),
                     "[ElasticsearchSearchStore] Failed to index {}",
                     node.node_type.to_string()
                 );
@@ -180,24 +172,9 @@ impl SearchStore for ElasticsearchSearchStore {
         }
     }
 
-    async fn index_document(&self, document: Document) -> Result<()> {
-        let node = Node::from(document);
-        self.index_node(node).await
-    }
-
-    async fn index_table(&self, table: Table) -> Result<()> {
-        let node = Node::from(table);
-        self.index_node(node).await
-    }
-
-    async fn index_folder(&self, folder: Folder) -> Result<()> {
-        let node = Node::from(folder);
-        self.index_node(node).await
-    }
-
-    async fn delete_node(&self, node_id: String) -> Result<()> {
+    async fn delete_node(&self, node: Node) -> Result<()> {
         self.client
-            .delete(DeleteParts::IndexId(NODES_INDEX_NAME, &node_id))
+            .delete(DeleteParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
             .send()
             .await?;
         Ok(())

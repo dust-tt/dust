@@ -52,6 +52,7 @@ pub fn get_table_type_for_tables(tables: Vec<&Table>) -> Result<TableType> {
 pub struct Table {
     project: Project,
     data_source_id: String,
+    data_source_internal_id: String,
     created: u64,
 
     table_id: String,
@@ -75,6 +76,7 @@ impl Table {
     pub fn new(
         project: Project,
         data_source_id: String,
+        data_source_internal_id: String,
         created: u64,
         table_id: String,
         name: String,
@@ -93,6 +95,7 @@ impl Table {
         Table {
             project,
             data_source_id,
+            data_source_internal_id,
             created,
             table_id,
             name,
@@ -210,9 +213,7 @@ impl Table {
 
         // Delete the table node from the search index.
         if let Some(search_store) = search_store {
-            search_store
-                .delete_node(self.table_id().to_string())
-                .await?;
+            search_store.delete_node(Node::from(self.clone())).await?;
         }
 
         Ok(())
@@ -239,6 +240,7 @@ impl From<Table> for Node {
     fn from(table: Table) -> Node {
         Node::new(
             &table.data_source_id,
+            &table.data_source_internal_id,
             &table.table_id,
             NodeType::Table,
             table.timestamp,
@@ -583,6 +585,7 @@ mod tests {
         let table = Table::new(
             Project::new_from_id(42),
             "data_source_id".to_string(),
+            "data_source_internal_id".to_string(),
             utils::now(),
             "table_id".to_string(),
             "test_dbml".to_string(),
