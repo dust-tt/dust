@@ -30,7 +30,7 @@ import {
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
-  O1_PREVIEW_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
 } from "@dust-tt/types";
 import assert from "assert";
 
@@ -326,16 +326,16 @@ function _getO1PreviewGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o1-preview",
-    description: O1_PREVIEW_MODEL_CONFIG.description,
+    name: "o1",
+    description: O1_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: O1_PREVIEW_MODEL_CONFIG.providerId,
-      modelId: O1_PREVIEW_MODEL_CONFIG.modelId,
+      providerId: O1_MODEL_CONFIG.providerId,
+      modelId: O1_MODEL_CONFIG.modelId,
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
