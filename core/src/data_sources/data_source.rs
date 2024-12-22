@@ -496,10 +496,12 @@ impl DataSource {
             )
             .await?;
 
-        search_store
-            .index_node(Node::from(document.unwrap()))
-            .await?;
-
+        match document {
+            Some(document) => {
+                search_store.index_node(Node::from(document)).await?;
+            }
+            None => (),
+        }
         Ok(())
     }
 
