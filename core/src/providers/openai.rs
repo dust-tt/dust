@@ -208,6 +208,7 @@ pub enum OpenAIChatMessageRole {
     Assistant,
     Function,
     System,
+    Developer,
     Tool,
     User,
 }
@@ -242,6 +243,7 @@ impl From<OpenAIChatMessageRole> for ChatMessageRole {
             OpenAIChatMessageRole::Assistant => ChatMessageRole::Assistant,
             OpenAIChatMessageRole::Function => ChatMessageRole::Function,
             OpenAIChatMessageRole::System => ChatMessageRole::System,
+            OpenAIChatMessageRole::Developer => ChatMessageRole::System,
             OpenAIChatMessageRole::Tool => ChatMessageRole::Function,
             OpenAIChatMessageRole::User => ChatMessageRole::User,
         }
@@ -1719,14 +1721,23 @@ pub fn to_openai_messages(
     messages: &Vec<ChatMessage>,
     model_id: &str,
 ) -> Result<Vec<OpenAIChatMessage>, anyhow::Error> {
-    messages
+    let mut oai_messages = messages
         .iter()
-        .filter_map(|m| match m {
-            // [o1-preview] Hack for OpenAI `o1-*` models to exclude system messages.
-            ChatMessage::System(_) if model_id.starts_with("o1-") => None,
-            _ => Some(OpenAIChatMessage::try_from(m)),
-        })
-        .collect::<Result<Vec<_>>>()
+        .map(|m| OpenAIChatMessage::try_from(m))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        // [o1-mini] O1 mini does not support system messages, so we filter them out.
+        .filter(|m| m.role != OpenAIChatMessageRole::System || !model_id.starts_with("o1-mini"))
+        .collect::<Vec<_>>();
+
+    // [o1] O1 uses `developer` messages instead of `system` messages.
+    for m in oai_messages.iter_mut() {
+        if m.role == OpenAIChatMessageRole::System && model_id.starts_with("o1") {
+            m.role = OpenAIChatMessageRole::Developer;
+        }
+    }
+
+    Ok(oai_messages)
 }
 
 #[async_trait]
@@ -1795,8 +1806,8 @@ impl LLM for OpenAILLM {
             }
         }
 
-        // [o1-preview] Hack for OpenAI `o1-*` models to not use streaming.
-        let model_is_o1 = self.id.as_str().starts_with("o1-");
+        // [o1] Hack for OpenAI `o1*` models to not use streaming.
+        let model_is_o1 = self.id.as_str().starts_with("o1");
         let (c, request_id) = if !model_is_o1 && event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
@@ -2024,9 +2035,9 @@ impl LLM for OpenAILLM {
 
         let openai_messages = to_openai_messages(messages, &self.id)?;
 
-        // [o1-preview] Hack for OpenAI `o1-*` models to simulate streaming.
+        // [o1] Hack for OpenAI `o1*` models to simulate streaming.
         let is_streaming = event_sender.is_some();
-        let model_is_o1 = self.id.as_str().starts_with("o1-");
+        let model_is_o1 = self.id.as_str().starts_with("o1");
 
         let (c, request_id) = if !model_is_o1 && is_streaming {
             streamed_chat_completion(
@@ -2089,7 +2100,7 @@ impl LLM for OpenAILLM {
             .await?
         };
 
-        // [o1-preview] Hack for OpenAI `o1-*` models to simulate streaming.
+        // [o1] Hack for OpenAI `o1*` models to simulate streaming.
         if model_is_o1 && is_streaming {
             let sender = event_sender.as_ref().unwrap();
             for choice in &c.choices {
