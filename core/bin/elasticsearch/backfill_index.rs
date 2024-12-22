@@ -8,7 +8,6 @@ use dust::{
 use elasticsearch::{http::request::JsonBody, indices::IndicesExistsParts, BulkParts};
 use http::StatusCode;
 use serde_json::json;
-use tracing::info;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -19,15 +18,18 @@ struct Args {
     #[arg(long, help = "Skip confirmation")]
     skip_confirmation: bool,
 
-    #[arg(long, help = "The cursor to start from")]
-    start_cursor: Option<i64>,
+    #[arg(long, help = "The cursor to start from", default_value = "0")]
+    start_cursor: i64,
+
+    #[arg(long, help = "The batch size", default_value = "100")]
+    batch_size: i64,
 }
 
 /*
  * Backfills nodes index in Elasticsearch for core using the postgres table `data_sources_nodes`
  *
  * Usage:
- * cargo run --bin elasticsearch_backfill_nodes_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>]
+ * cargo run --bin elasticsearch_backfill_nodes_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
  *
  */
 #[tokio::main]
@@ -36,6 +38,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let index_name = "data_sources_nodes";
     let index_version = args.index_version;
+    let batch_size = args.batch_size;
+    let start_cursor = args.start_cursor;
 
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
     let username =
@@ -79,11 +83,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = PostgresStore::new(&db_uri).await?;
     // loop on all nodes in postgres using id as cursor, stopping when timestamp
     // is greater than now
-    let mut next_cursor = args.start_cursor.unwrap_or(0);
-    let batch_size = 1000;
+    let mut next_cursor = start_cursor;
     let now = utils::now();
     loop {
-        info!("Processing 1000 nodes, starting at id {}", next_cursor);
+        println!(
+            "Processing {} nodes, starting at id {}",
+            batch_size, next_cursor
+        );
         let (nodes, cursor) =
             get_node_batch(next_cursor, batch_size, Box::new(store.clone())).await?;
         if nodes.is_empty() || nodes.first().unwrap().timestamp > now {
@@ -120,6 +126,12 @@ async fn get_node_batch(
     let nodes = store
         .list_data_source_nodes(next_cursor, batch_size)
         .await?;
-    let last_id = nodes.last().unwrap().1;
-    Ok((nodes.into_iter().map(|(node, _)| node).collect(), last_id))
+    let last_node = nodes.last().cloned();
+    match last_node {
+        Some((_, last_row_id, _)) => Ok((
+            nodes.into_iter().map(|(node, _, _)| node).collect(),
+            last_row_id,
+        )),
+        None => Ok((vec![], 0)),
+    }
 }
