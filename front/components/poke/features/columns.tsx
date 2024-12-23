@@ -69,18 +69,15 @@ async function toggleFeatureFlag(
       }),
     });
     if (!r.ok) {
-      throw new Error("Failed to disable feature.");
+      const error: { error: { message: string } } = await r.json();
+      throw new Error(error.error.message);
     }
 
     reload();
   } catch (e) {
     sendNotification({
       title: "Error",
-      description: `An error occurred while toggling feature "${feature}": ${JSON.stringify(
-        e,
-        null,
-        2
-      )}`,
+      description: `An error occurred while toggling feature "${feature}": ${e}`,
       type: "error",
     });
   }
