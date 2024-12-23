@@ -581,11 +581,7 @@ export function AgentMessage({
           />
 
           {agentMessage.chainOfThought?.length ? (
-            <ContentMessage
-              title="Assistant thoughts"
-              variant="slate"
-              icon={ChatBubbleThoughtIcon}
-            >
+            <ContentMessage title="Assistant thoughts" variant="slate">
               {agentMessage.chainOfThought}
             </ContentMessage>
           ) : null}
