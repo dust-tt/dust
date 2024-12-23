@@ -290,6 +290,9 @@ impl Block for Chat {
                 if let Some(Value::String(s)) = v.get("response_format") {
                     extras["response_format"] = json!(s.clone());
                 }
+                if let Some(Value::String(s)) = v.get("reasoning_effort") {
+                    extras["reasoning_effort"] = json!(s.clone());
+                }
 
                 match extras.as_object().unwrap().keys().len() {
                     0 => None,
