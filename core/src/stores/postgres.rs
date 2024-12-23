@@ -1996,7 +1996,7 @@ impl Store for PostgresStore {
 
         let sql = format!(
             "SELECT dsd.id, dsd.created, dsd.document_id, dsd.timestamp, dsd.tags_array, \
-               dsd.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
+               dsn.parents, dsd.source_url, dsd.hash, dsd.text_size, dsd.chunk_count, \
                dsn.title, dsn.mime_type \
                FROM data_sources_documents dsd \
                INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
