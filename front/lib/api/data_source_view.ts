@@ -313,11 +313,11 @@ export async function handlePatchDataSourceView(
     }
   >
 > {
-  if (!dataSourceView.canWrite(auth)) {
+  if (!dataSourceView.canAdministrate(auth)) {
     return new Err({
       name: "dust_error",
       code: "unauthorized",
-      message: "Only admins and builders can update data source views.",
+      message: "Only admins can update data source views.",
     });
   }
 
