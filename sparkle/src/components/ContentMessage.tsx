@@ -71,7 +71,7 @@ const titleVariants = cva("s-text-sm s-font-semibold", {
     variant: {
       emerald: "s-text-emerald-800",
       amber: "s-text-amber-800",
-      slate: "s-text-slate-800",
+      slate: "s-text-foreground",
       purple: "s-text-purple-800",
       warning: "s-text-warning-800",
       sky: "s-text-sky-800",
@@ -87,7 +87,7 @@ const textVariants = cva("s-text-sm", {
     variant: {
       emerald: "s-text-emerald-950",
       amber: "s-text-amber-950",
-      slate: "s-text-slate-950",
+      slate: "s-text-muted-foreground",
       purple: "s-text-purple-950",
       warning: "s-text-warning-950",
       sky: "s-text-sky-950",
