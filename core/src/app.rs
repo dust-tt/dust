@@ -310,7 +310,7 @@ impl App {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
         event_sender: Option<UnboundedSender<Value>>,
-        store_block_result: bool,
+        store_blocks_results: bool,
     ) -> Result<()> {
         assert!(self.run.is_some());
         assert!(self.run_config.is_some());
@@ -732,7 +732,7 @@ impl App {
                     block_idx,
                     &block.block_type(),
                     name,
-                    store_block_result,
+                    store_blocks_results,
                 )
                 .await?;
 

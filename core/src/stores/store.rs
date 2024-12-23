@@ -140,7 +140,7 @@ pub trait Store {
         block_idx: usize,
         block_type: &BlockType,
         block_name: &String,
-        store_block_result: bool,
+        store_blocks_results: bool,
     ) -> Result<()>;
 
     async fn load_run(

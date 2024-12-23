@@ -776,7 +776,7 @@ impl Store for PostgresStore {
         block_idx: usize,
         block_type: &BlockType,
         block_name: &String,
-        store_block_result: bool,
+        store_blocks_results: bool,
     ) -> Result<()> {
         let traces = run
             .traces
@@ -797,7 +797,7 @@ impl Store for PostgresStore {
                             .iter()
                             .enumerate()
                             .map(|(map_idx, execution)| {
-                                let execution_json = match store_block_result {
+                                let execution_json = match store_blocks_results {
                                     true => serde_json::to_string(&execution)?,
                                     false => serde_json::to_string(
                                         &(BlockExecution {
