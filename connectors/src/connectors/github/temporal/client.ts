@@ -23,11 +23,11 @@ import {
   githubCodeSyncWorkflow,
   githubDiscussionGarbageCollectWorkflow,
   githubDiscussionSyncWorkflow,
-  githubFullSyncWorkflowV2,
+  githubFullSyncWorkflow,
   githubIssueGarbageCollectWorkflow,
   githubIssueSyncWorkflow,
   githubRepoGarbageCollectWorkflow,
-  githubReposSyncWorkflowV2,
+  githubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -68,7 +68,7 @@ export async function launchGithubFullSyncWorkflow({
     return;
   }
 
-  await client.workflow.start(githubFullSyncWorkflowV2, {
+  await client.workflow.start(githubFullSyncWorkflow, {
     args: [dataSourceConfig, connectorId, syncCodeOnly, forceCodeResync],
     taskQueue: QUEUE_NAME,
     workflowId: getFullSyncWorkflowId(connectorId),
@@ -87,7 +87,7 @@ export async function getGithubFullSyncWorkflow(connectorId: ModelId): Promise<{
 } | null> {
   const client = await getTemporalClient();
 
-  const handle: WorkflowHandle<typeof githubFullSyncWorkflowV2> =
+  const handle: WorkflowHandle<typeof githubFullSyncWorkflow> =
     client.workflow.getHandle(getFullSyncWorkflowId(connectorId));
 
   try {
@@ -116,7 +116,7 @@ export async function launchGithubReposSyncWorkflow(
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  await client.workflow.start(githubReposSyncWorkflowV2, {
+  await client.workflow.start(githubReposSyncWorkflow, {
     args: [dataSourceConfig, connectorId, orgLogin, repos],
     taskQueue: QUEUE_NAME,
     workflowId: getReposSyncWorkflowId(connectorId),
