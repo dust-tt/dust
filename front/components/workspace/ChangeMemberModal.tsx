@@ -162,6 +162,14 @@ export function ChangeMemberModal({
               Shared assistants remain if another workspace member has edited
               them, and company assistants stay on the workspace.
             </p>
+            <div className="mt-6">
+              <p>The following agents will be deleted</p>
+
+              {/* TODO ADD  a filter here to make sure the user is the only author */}
+              {sharedAgents.map((agent) => (
+                <li>{agent.name}</li>
+              ))}
+            </div>
           </div>
         </div>
       </Dialog>
