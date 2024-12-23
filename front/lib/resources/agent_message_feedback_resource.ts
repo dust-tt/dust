@@ -59,33 +59,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
-  static async fetchByUserAndAgentMessage({
-    auth,
-    user,
-    agentMessage,
-  }: {
-    auth: Authenticator;
-    user: UserType;
-    agentMessage: AgentMessage;
-  }): Promise<AgentMessageFeedbackResource | null> {
-    const agentMessageFeedback = await AgentMessageFeedback.findOne({
-      where: {
-        userId: user.id,
-        agentMessageId: agentMessage.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-
-    if (!agentMessageFeedback) {
-      return null;
-    }
-
-    return new AgentMessageFeedbackResource(
-      AgentMessageFeedback,
-      agentMessageFeedback.get()
-    );
-  }
-
   async updateFields(
     blob: Partial<
       Pick<
