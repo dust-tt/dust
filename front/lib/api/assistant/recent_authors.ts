@@ -143,7 +143,6 @@ export async function fetchAgentVersionAuthor(
         [Op.in]: agentIds,
       },
     },
-    limit: 3, // Limit to the last 3 authors.
   });
 }
 
