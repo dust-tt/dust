@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
+import { cacheWithRedis, removeNulls } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -79,27 +79,42 @@ export async function getRootNodesToSyncFromResources(
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
-  const rootFolderAndDriveNodes = await Promise.all(
-    rootResources
-      .filter(
-        (resource) =>
-          resource.nodeType === "folder" || resource.nodeType === "drive"
-      )
-      .map(async (resource) => {
-        const item = await getItem(
-          client,
-          typeAndPathFromInternalId(resource.internalId).itemAPIPath
-        );
+  const rootFolderAndDriveNodes = removeNulls(
+    await Promise.all(
+      rootResources
+        .filter(
+          (resource) =>
+            resource.nodeType === "folder" || resource.nodeType === "drive"
+        )
+        .map(async (resource) => {
+          try {
+            const item = await getItem(
+              client,
+              typeAndPathFromInternalId(resource.internalId).itemAPIPath
+            );
 
-        const node = itemToMicrosoftNode(
-          resource.nodeType as "folder" | "drive",
-          item
-        );
-        return {
-          ...node,
-          name: `${node.name} (${extractPath(item)})`,
-        };
-      })
+            const node = itemToMicrosoftNode(
+              resource.nodeType as "folder" | "drive",
+              item
+            );
+            return {
+              ...node,
+              name: `${node.name} (${extractPath(item)})`,
+            };
+          } catch (error) {
+            logger.error(
+              {
+                connectorId,
+                error,
+                id: resource.internalId,
+                panic: true,
+              },
+              "Failed to get item"
+            );
+            return null;
+          }
+        })
+    )
   );
 
   const rootSitePaths: string[] = rootResources
@@ -655,7 +670,7 @@ export async function syncDeltaForRootNodesInDrive({
         });
 
         if (isMoved) {
-          await updateDescendantsParentsInQdrant({
+          await updateDescendantsParentsInCore({
             dataSourceConfig,
             folder: resource,
             startSyncTs,
@@ -829,7 +844,7 @@ async function isFolderMovedInSameRoot({
   return oldParentId !== newParentId;
 }
 
-async function updateDescendantsParentsInQdrant({
+async function updateDescendantsParentsInCore({
   folder,
   dataSourceConfig,
   startSyncTs,
@@ -841,6 +856,19 @@ async function updateDescendantsParentsInQdrant({
   const children = await folder.fetchChildren();
   const files = children.filter((child) => child.nodeType === "file");
   const folders = children.filter((child) => child.nodeType === "folder");
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: folder.internalId,
+    parents: await getParents({
+      connectorId: folder.connectorId,
+      internalId: folder.internalId,
+      startSyncTs,
+    }),
+    title: folder.name ?? "",
+    mimeType: "application/vnd.dust.microsoft.folder",
+  });
+
   await concurrentExecutor(
     files,
     async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
@@ -849,7 +877,7 @@ async function updateDescendantsParentsInQdrant({
     }
   );
   for (const childFolder of folders) {
-    await updateDescendantsParentsInQdrant({
+    await updateDescendantsParentsInCore({
       dataSourceConfig,
       folder: childFolder,
       startSyncTs,

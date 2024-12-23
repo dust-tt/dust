@@ -208,6 +208,7 @@ pub enum OpenAIChatMessageRole {
     Assistant,
     Function,
     System,
+    Developer,
     Tool,
     User,
 }
@@ -242,6 +243,7 @@ impl From<OpenAIChatMessageRole> for ChatMessageRole {
             OpenAIChatMessageRole::Assistant => ChatMessageRole::Assistant,
             OpenAIChatMessageRole::Function => ChatMessageRole::Function,
             OpenAIChatMessageRole::System => ChatMessageRole::System,
+            OpenAIChatMessageRole::Developer => ChatMessageRole::System,
             OpenAIChatMessageRole::Tool => ChatMessageRole::Function,
             OpenAIChatMessageRole::User => ChatMessageRole::User,
         }
@@ -1012,6 +1014,7 @@ pub async fn streamed_chat_completion(
     presence_penalty: f32,
     frequency_penalty: f32,
     response_format: Option<String>,
+    reasoning_effort: Option<String>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
@@ -1069,13 +1072,16 @@ pub async fn streamed_chat_completion(
     if tools.len() > 0 {
         body["tools"] = json!(tools);
     }
-    if tool_choice.is_some() {
+    if let Some(tool_choice) = tool_choice {
         body["tool_choice"] = json!(tool_choice);
     }
-    if response_format.is_some() {
+    if let Some(response_format) = response_format {
         body["response_format"] = json!({
-            "type": response_format.unwrap(),
+            "type": response_format,
         });
+    }
+    if let Some(reasoning_effort) = reasoning_effort {
+        body["reasoning_effort"] = json!(reasoning_effort);
     }
 
     let client = builder
@@ -1434,6 +1440,7 @@ pub async fn chat_completion(
     presence_penalty: f32,
     frequency_penalty: f32,
     response_format: Option<String>,
+    reasoning_effort: Option<String>,
     user: Option<String>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let mut body = json!({
@@ -1447,7 +1454,7 @@ pub async fn chat_completion(
     if user.is_some() {
         body["user"] = json!(user);
     }
-    if model_id.is_some() {
+    if let Some(model_id) = model_id {
         body["model"] = json!(model_id);
     }
     if let Some(mt) = max_tokens {
@@ -1457,16 +1464,19 @@ pub async fn chat_completion(
         body["stop"] = json!(stop);
     }
 
-    if response_format.is_some() {
+    if let Some(response_format) = response_format {
         body["response_format"] = json!({
-            "type": response_format.unwrap(),
+            "type": response_format,
         });
     }
     if tools.len() > 0 {
         body["tools"] = json!(tools);
     }
-    if tool_choice.is_some() {
+    if let Some(tool_choice) = tool_choice {
         body["tool_choice"] = json!(tool_choice);
+    }
+    if let Some(reasoning_effort) = reasoning_effort {
+        body["reasoning_effort"] = json!(reasoning_effort);
     }
 
     let mut req = reqwest::Client::new()
@@ -1719,14 +1729,23 @@ pub fn to_openai_messages(
     messages: &Vec<ChatMessage>,
     model_id: &str,
 ) -> Result<Vec<OpenAIChatMessage>, anyhow::Error> {
-    messages
+    let mut oai_messages = messages
         .iter()
-        .filter_map(|m| match m {
-            // [o1-preview] Hack for OpenAI `o1-*` models to exclude system messages.
-            ChatMessage::System(_) if model_id.starts_with("o1-") => None,
-            _ => Some(OpenAIChatMessage::try_from(m)),
-        })
-        .collect::<Result<Vec<_>>>()
+        .map(|m| OpenAIChatMessage::try_from(m))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        // [o1-mini] O1 mini does not support system messages, so we filter them out.
+        .filter(|m| m.role != OpenAIChatMessageRole::System || !model_id.starts_with("o1-mini"))
+        .collect::<Vec<_>>();
+
+    // [o1] O1 uses `developer` messages instead of `system` messages.
+    for m in oai_messages.iter_mut() {
+        if m.role == OpenAIChatMessageRole::System && model_id.starts_with("o1") {
+            m.role = OpenAIChatMessageRole::Developer;
+        }
+    }
+
+    Ok(oai_messages)
 }
 
 #[async_trait]
@@ -1795,8 +1814,8 @@ impl LLM for OpenAILLM {
             }
         }
 
-        // [o1-preview] Hack for OpenAI `o1-*` models to not use streaming.
-        let model_is_o1 = self.id.as_str().starts_with("o1-");
+        // [o1] Hack for OpenAI `o1*` models to not use streaming.
+        let model_is_o1 = self.id.as_str().starts_with("o1");
         let (c, request_id) = if !model_is_o1 && event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
@@ -1994,8 +2013,8 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (openai_org_id, openai_user, response_format) = match &extras {
-            None => (None, None, None),
+        let (openai_org_id, openai_user, response_format, reasoning_effort) = match &extras {
+            None => (None, None, None, None),
             Some(v) => (
                 match v.get("openai_organization_id") {
                     Some(Value::String(o)) => Some(o.to_string()),
@@ -2007,6 +2026,10 @@ impl LLM for OpenAILLM {
                 },
                 match v.get("response_format") {
                     Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+                match v.get("reasoning_effort") {
+                    Some(Value::String(r)) => Some(r.to_string()),
                     _ => None,
                 },
             ),
@@ -2024,9 +2047,9 @@ impl LLM for OpenAILLM {
 
         let openai_messages = to_openai_messages(messages, &self.id)?;
 
-        // [o1-preview] Hack for OpenAI `o1-*` models to simulate streaming.
+        // [o1] Hack for OpenAI `o1*` models to simulate streaming.
         let is_streaming = event_sender.is_some();
-        let model_is_o1 = self.id.as_str().starts_with("o1-");
+        let model_is_o1 = self.id.as_str().starts_with("o1");
 
         let (c, request_id) = if !model_is_o1 && is_streaming {
             streamed_chat_completion(
@@ -2054,6 +2077,7 @@ impl LLM for OpenAILLM {
                     None => 0.0,
                 },
                 response_format,
+                reasoning_effort,
                 openai_user,
                 event_sender.clone(),
             )
@@ -2084,12 +2108,13 @@ impl LLM for OpenAILLM {
                     None => 0.0,
                 },
                 response_format,
+                reasoning_effort,
                 openai_user,
             )
             .await?
         };
 
-        // [o1-preview] Hack for OpenAI `o1-*` models to simulate streaming.
+        // [o1] Hack for OpenAI `o1*` models to simulate streaming.
         if model_is_o1 && is_streaming {
             let sender = event_sender.as_ref().unwrap();
             for choice in &c.choices {

@@ -364,7 +364,8 @@ export const TableUploadOrEditModal = ({
       hasChanged={
         table
           ? table.description !== tableState.description ||
-            table.name !== tableState.name
+            table.name !== tableState.name ||
+            !!tableState.content
           : tableState.description.trim() !== "" ||
             tableState.name.trim() !== "" ||
             !!tableState.content
@@ -402,7 +403,7 @@ export const TableUploadOrEditModal = ({
                   message={
                     editionStatus.name &&
                     (!tableState.name || !isSlugified(tableState.name))
-                      ? "Invalid name: Must be alphanumeric, max 32 characters and no space."
+                      ? "Invalid name: Must be lowercase alphanumeric, max 32 characters and no space."
                       : null
                   }
                   messageStatus="error"

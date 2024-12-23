@@ -45,12 +45,14 @@ export const processTrackerNotification = async ({
 
   // Send the tracker email(s).
   const generations = tracker.generations || [];
-  await sendTrackerEmail({
-    name: tracker.name,
-    recipients: tracker.recipients,
-    generations,
-    localLogger,
-  });
+  if (generations.length > 0 || !tracker.skipEmptyEmails) {
+    await sendTrackerEmail({
+      name: tracker.name,
+      recipients: tracker.recipients,
+      generations,
+      localLogger,
+    });
+  }
 
   // Consume the tracker & associated generations.
   await TrackerConfigurationResource.consumeGenerations({
@@ -108,7 +110,7 @@ const _sendTrackerDefaultEmail = async ({
     subject: `[Dust] Tracker ${name} check complete: No updates required.`,
     body: `
         <p>Tracker: ${name}.</p>
-        <p>No changes detected in watched documents. All maintained documents are current</p>
+        <p>No changes detected in watched documents. All maintained documents are up to date.</p>
       `,
   });
 };

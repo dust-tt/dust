@@ -83,7 +83,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
+        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
         "group transition duration-300 ease-out",
         "hover:bg-white"
       )}
@@ -270,18 +270,25 @@ export const CarousselContentBlock = ({
       <H3 className="text-slate-800">{"Dust for " + title}</H3>
       <div className="flex flex-col gap-2">
         <H2 className="max-w-[600px] text-white">{subtitle}</H2>
-        <P size="md" className="max-w-[720px] text-muted-foreground">
+        <P size="md" className="max-w-[720px] text-slate-700">
           {description}
         </P>
       </div>
       <div className="w-full text-left">
-        <Link href={href} shallow={true} className="inline-block">
+        <Link href={href} shallow={true} className="inline-block max-w-full">
+          <Button
+            label={"Discover Dust"}
+            variant="outline"
+            size="md"
+            icon={ArrowRightIcon}
+            className="flex max-w-full md:hidden"
+          />
           <Button
             label={"Discover Dust for " + title}
             variant="outline"
             size="md"
             icon={ArrowRightIcon}
-            className="max-w-full"
+            className="hidden max-w-full md:flex"
           />
         </Link>
       </div>

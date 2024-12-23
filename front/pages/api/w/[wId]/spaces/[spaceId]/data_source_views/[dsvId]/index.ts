@@ -126,14 +126,13 @@ async function handler(
     }
 
     case "DELETE": {
-      if (!dataSourceView.canWrite(auth)) {
+      if (!dataSourceView.canAdministrate(auth)) {
         // Only admins, or builders who have to the space, can patch.
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` or `builder` can administrate spaces.",
+            message: "Only users that are `admins` can administrate spaces.",
           },
         });
       }

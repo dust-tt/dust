@@ -5,6 +5,7 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -18,7 +19,11 @@ import {
 } from "@connectors/connectors/github/lib/hierarchy";
 import {
   getCodeRootInternalId,
+  getDiscussionInternalId,
   getDiscussionsInternalId,
+  getGithubIdsFromDiscussionInternalId,
+  getGithubIdsFromIssueInternalId,
+  getIssueInternalId,
   getIssuesInternalId,
   getRepositoryInternalId,
   matchGithubInternalIdType,
@@ -436,10 +441,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
           return new Ok(nodes);
         }
-        // we should never be getting issues, discussions or code files as parent
+        // we should never be getting issues, discussions, code files, single issues or discussions as parent
         case "REPO_ISSUES":
         case "REPO_DISCUSSIONS":
         case "REPO_CODE_FILE":
+        case "REPO_DISCUSSION":
+        case "REPO_ISSUE":
           return new Err(new Error("Invalid parent ID."));
         default:
           assertNever(type);
@@ -471,6 +478,10 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     const allIssuesFromRepoIds: number[] = [];
     const allDiscussionsFromRepoIds: number[] = [];
 
+    //  Single issues or discussions
+    const issueIds: { repoId: string; issueNumber: number }[] = [];
+    const discussionIds: { repoId: string; discussionNumber: number }[] = [];
+
     // The full code, or a specific folder or file in the code
     const allCodeFromRepoIds: string[] = [];
     const codeDirectoryIds: string[] = [];
@@ -499,6 +510,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           break;
         case "REPO_CODE_FILE":
           codeFileIds.push(internalId);
+          break;
+        case "REPO_DISCUSSION":
+          discussionIds.push(getGithubIdsFromDiscussionInternalId(internalId));
+          break;
+        case "REPO_ISSUE":
+          issueIds.push(getGithubIdsFromIssueInternalId(internalId));
           break;
         default:
           assertNever(type);
@@ -540,6 +557,22 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         where: {
           connectorId: c.id,
           documentId: codeFileIds,
+        },
+      }),
+    ]);
+
+    // Issues and Discussions are also stored in the db
+    const [issues, discussions] = await Promise.all([
+      GithubIssue.findAll({
+        where: {
+          connectorId: c.id,
+          [Op.or]: issueIds,
+        },
+      }),
+      GithubDiscussion.findAll({
+        where: {
+          connectorId: c.id,
+          [Op.or]: discussionIds,
         },
       }),
     ]);
@@ -602,6 +635,46 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         permission: "read",
         dustDocumentId: null,
         lastUpdatedAt: null,
+      });
+    });
+
+    issues.forEach((issue) => {
+      const { repoId, issueNumber } = issue;
+      const repo = uniqueRepos[parseInt(repoId, 10)];
+      if (!repo) {
+        return;
+      }
+      nodes.push({
+        provider: c.type,
+        internalId: getIssueInternalId(repoId, issueNumber),
+        parentInternalId: getIssuesInternalId(repoId),
+        type: "file",
+        title: `Issue #${issueNumber}`,
+        sourceUrl: repo.url + `/issues/${issueNumber}`,
+        expandable: false,
+        permission: "read",
+        dustDocumentId: getIssueInternalId(repoId, issueNumber),
+        lastUpdatedAt: issue.updatedAt.getTime(),
+      });
+    });
+
+    discussions.forEach((discussion) => {
+      const { repoId, discussionNumber } = discussion;
+      const repo = uniqueRepos[parseInt(repoId, 10)];
+      if (!repo) {
+        return;
+      }
+      nodes.push({
+        provider: c.type,
+        internalId: getDiscussionInternalId(repoId, discussionNumber),
+        parentInternalId: getDiscussionsInternalId(repoId),
+        type: "file",
+        title: `Discussion #${discussionNumber}`,
+        sourceUrl: repo.url + `/discussions/${discussionNumber}`,
+        expandable: false,
+        permission: "read",
+        dustDocumentId: getDiscussionInternalId(repoId, discussionNumber),
+        lastUpdatedAt: discussion.updatedAt.getTime(),
       });
     });
 
@@ -679,13 +752,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    if (/^github-issue-\d+-\d+$/.test(internalId)) {
-      return new Ok([internalId]); // this is incorrect but matches the previous behavior, will fix in a follow-up PR
-    }
-    if (/^github-discussion-\d+-\d+$/.test(internalId)) {
-      return new Ok([internalId]); // this is incorrect but matches the previous behavior, will fix in a follow-up PR
-    }
-
     const { type, repoId } = matchGithubInternalIdType(internalId);
 
     switch (type) {
@@ -715,6 +781,18 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         );
         return new Ok([internalId, ...parents]);
       }
+      case "REPO_ISSUE":
+        return new Ok([
+          internalId,
+          getIssuesInternalId(repoId),
+          getRepositoryInternalId(repoId),
+        ]);
+      case "REPO_DISCUSSION":
+        return new Ok([
+          internalId,
+          getDiscussionsInternalId(repoId),
+          getRepositoryInternalId(repoId),
+        ]);
       default: {
         assertNever(type);
       }

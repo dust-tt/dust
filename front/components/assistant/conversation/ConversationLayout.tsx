@@ -118,9 +118,10 @@ export default function ConversationLayout({
           }
           titleChildren={
             // TODO: Improve so we don't re-render everytime.
-            conversation && (
+            activeConversationId && (
               <ConversationTitle
                 owner={owner}
+                conversationId={activeConversationId}
                 conversation={conversation}
                 shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
                 onDelete={onDeleteConversation}

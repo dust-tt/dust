@@ -29,6 +29,7 @@ import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -89,6 +90,7 @@ export async function scrubWorkspaceData({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
+  await deleteTrackers(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
   await cleanupCustomerio(auth);
@@ -148,6 +150,20 @@ async function archiveAssistants(auth: Authenticator) {
   );
   for (const agentConfiguration of agentConfigurationsToArchive) {
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
+  }
+}
+
+async function deleteTrackers(auth: Authenticator) {
+  const workspace = auth.workspace();
+  if (!workspace) {
+    throw new Error("No workspace found");
+  }
+
+  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
+    includeDeleted: true,
+  });
+  for (const tracker of trackers) {
+    await tracker.delete(auth, { hardDelete: true });
   }
 }
 

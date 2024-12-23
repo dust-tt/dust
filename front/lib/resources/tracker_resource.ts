@@ -377,12 +377,26 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
 
   static async listBySpace(
     auth: Authenticator,
-    space: SpaceResource
+    space: SpaceResource,
+    { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<TrackerConfigurationResource[]> {
     return this.baseFetch(auth, {
       where: {
         vaultId: space.id,
       },
+      includeDeleted,
+    });
+  }
+
+  static async listByWorkspace(
+    auth: Authenticator,
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ): Promise<TrackerConfigurationResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      includeDeleted,
     });
   }
 
@@ -438,6 +452,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
           [Op.not]: null,
         },
         lastNotifiedAt: { [Op.or]: [{ [Op.lt]: new Date(lookBackMs) }, null] },
+        deletedAt: null,
       },
       include: [
         {
@@ -538,7 +553,6 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     dsConfigs = dsConfigs.filter((c) => validDsViewIds.has(c.dataSourceViewId));
 
     // Fetch the associated tracker configurations
-    // Fetch the associated tracker configurations
     const trackerIds = _.uniq(
       dsConfigs.map((config) => config.trackerConfigurationId)
     );
@@ -556,19 +570,28 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   protected async hardDelete(
     auth: Authenticator
   ): Promise<Result<number, Error>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
     const deletedCount = await frontSequelize.transaction(async (t) => {
-      // TODO Daph: Delete all related resources.
-      // await TrackerDataSourceConfigurationResource.deleteAllByTrackerId(this.id, t);
-      // await TrackerGenerationResource.deleteAllByTrackerId(this.id, t);
-
-      return TrackerConfigurationModel.destroy({
+      await TrackerGenerationModel.destroy({
         where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: this.id,
+          trackerConfigurationId: this.id,
         },
         transaction: t,
-        // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-        // bypassing the soft deletion in place.
+        hardDelete: true,
+      });
+      await TrackerDataSourceConfigurationModel.destroy({
+        where: {
+          trackerConfigurationId: this.id,
+        },
+        transaction: t,
+        hardDelete: true,
+      });
+      return TrackerConfigurationModel.destroy({
+        where: {
+          id: this.id,
+          workspaceId,
+        },
+        transaction: t,
         hardDelete: true,
       });
     });
@@ -579,12 +602,30 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
   protected async softDelete(
     auth: Authenticator
   ): Promise<Result<number, Error>> {
-    const deletedCount = await TrackerConfigurationModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        id: this.id,
-      },
-      hardDelete: false,
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const deletedCount = await frontSequelize.transaction(async (t) => {
+      await TrackerGenerationModel.destroy({
+        where: {
+          trackerConfigurationId: this.id,
+        },
+        transaction: t,
+        hardDelete: false,
+      });
+      await TrackerDataSourceConfigurationModel.destroy({
+        where: {
+          trackerConfigurationId: this.id,
+        },
+        transaction: t,
+        hardDelete: false,
+      });
+      return TrackerConfigurationModel.destroy({
+        where: {
+          id: this.id,
+          workspaceId,
+        },
+        transaction: t,
+        hardDelete: false,
+      });
     });
 
     return new Ok(deletedCount);
@@ -620,6 +661,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       temperature: this.temperature,
       prompt: this.prompt,
       frequency: this.frequency ?? "daily",
+      skipEmptyEmails: this.skipEmptyEmails,
       recipients: this.recipients ?? [],
       space: this.space.toJSON(),
       maintainedDataSources: this.dataSourceConfigurations

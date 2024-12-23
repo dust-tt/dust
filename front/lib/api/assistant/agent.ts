@@ -492,6 +492,9 @@ async function* runMultiActionsAgent(
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = agentConfiguration.model.temperature;
+  if (agentConfiguration.model.reasoningEffort) {
+    config.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+  }
 
   const res = await runActionStreamed(
     auth,

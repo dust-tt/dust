@@ -102,7 +102,9 @@ export const LargeAssistantCard = React.forwardRef<
         <Avatar visual={pictureUrl} size="lg" />
         <div className="s-flex s-flex-col s-gap-2 s-text-base s-text-foreground">
           <h3 className="s-font-medium">{title}</h3>
-          <p className="s-text-muted-foreground">{description}</p>
+          <p className="s-line-clamp-5 s-overflow-hidden s-text-ellipsis s-text-muted-foreground">
+            {description}
+          </p>
         </div>
       </div>
     </Card>

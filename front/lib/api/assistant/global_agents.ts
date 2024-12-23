@@ -29,8 +29,9 @@ import {
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
-  O1_PREVIEW_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
 } from "@dust-tt/types";
 import assert from "assert";
 
@@ -308,7 +309,7 @@ function _getGPT4GlobalAgent({
     requestedGroupIds: [],
   };
 }
-function _getO1PreviewGlobalAgent({
+function _getO1GlobalAgent({
   auth,
   settings,
 }: {
@@ -326,16 +327,16 @@ function _getO1PreviewGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o1-preview",
-    description: O1_PREVIEW_MODEL_CONFIG.description,
+    name: "o1",
+    description: O1_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: O1_PREVIEW_MODEL_CONFIG.providerId,
-      modelId: O1_PREVIEW_MODEL_CONFIG.modelId,
+      providerId: O1_MODEL_CONFIG.providerId,
+      modelId: O1_MODEL_CONFIG.modelId,
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
@@ -376,6 +377,47 @@ function _getO1MiniGlobalAgent({
       providerId: O1_MINI_MODEL_CONFIG.providerId,
       modelId: O1_MINI_MODEL_CONFIG.modelId,
       temperature: 1, // 1 is forced for O1
+    },
+    actions: [],
+    maxStepsPerRun: 3,
+    visualizationEnabled: false,
+    templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
+    groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+
+function _getO1HighReasoningGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o1-high-reasoning",
+    description: O1_HIGH_REASONING_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: O1_HIGH_REASONING_MODEL_CONFIG.providerId,
+      modelId: O1_HIGH_REASONING_MODEL_CONFIG.modelId,
+      temperature: 1, // 1 is forced for O1
+      reasoningEffort: O1_HIGH_REASONING_MODEL_CONFIG.reasoningEffort,
     },
     actions: [],
     maxStepsPerRun: 3,
@@ -1228,10 +1270,13 @@ function getGlobalAgent(
       agentConfiguration = _getGPT4GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.O1:
-      agentConfiguration = _getO1PreviewGlobalAgent({ auth, settings });
+      agentConfiguration = _getO1GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.O1_MINI:
       agentConfiguration = _getO1MiniGlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
+      agentConfiguration = _getO1HighReasoningGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
@@ -1386,6 +1431,11 @@ export async function getGlobalAgents(
   if (!flags.includes("openai_o1_mini_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_MINI
+    );
+  }
+  if (!flags.includes("openai_o1_high_reasoning_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
     );
   }
 

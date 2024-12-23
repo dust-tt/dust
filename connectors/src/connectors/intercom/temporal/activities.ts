@@ -11,6 +11,12 @@ import {
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import {
+  getDataSourceNodeMimeType,
+  getHelpCenterInternalId,
+  getTeamInternalId,
+  getTeamsInternalId,
+} from "@connectors/connectors/intercom/lib/utils";
+import {
   deleteConversation,
   deleteTeamAndConversations,
   fetchAndSyncConversation,
@@ -23,6 +29,7 @@ import {
 } from "@connectors/connectors/intercom/temporal/sync_help_center";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
   IntercomConversation,
   IntercomWorkspace,
@@ -159,6 +166,19 @@ export async function syncHelpCenterOnlyActivity({
     });
     return false;
   }
+
+  // Create datasource folder node
+  const helpCenterInternalId = getHelpCenterInternalId(
+    connectorId,
+    helpCenterOnIntercom.id
+  );
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: helpCenterInternalId,
+    title: helpCenterOnIntercom.display_name || "Help Center",
+    parents: [helpCenterInternalId],
+    mimeType: getDataSourceNodeMimeType("HELP_CENTER"),
+  });
 
   // If all children collections are not allowed anymore we delete the Help Center data
   const collectionsWithReadPermission = await IntercomCollection.findAll({
@@ -481,6 +501,17 @@ export async function syncTeamOnlyActivity({
     name: teamOnIntercom.name,
     lastUpsertedTs: new Date(currentSyncMs),
   });
+
+  // Also make sure a datasource folder node is created for the team
+  const teamInternalId = getTeamInternalId(connectorId, teamOnDB.teamId);
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId: teamInternalId,
+    title: teamOnIntercom.name,
+    parents: [teamInternalId, getTeamsInternalId(connectorId)],
+    mimeType: getDataSourceNodeMimeType("TEAM"),
+  });
+
   return true;
 }
 
@@ -697,4 +728,21 @@ export async function getSyncAllConversationsStatusActivity({
   }
 
   return intercomWorkspace.syncAllConversations;
+}
+
+export async function upsertIntercomTeamsFolderActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getTeamsInternalId(connectorId),
+    title: "Conversations",
+    parents: [getTeamsInternalId(connectorId)],
+    mimeType: getDataSourceNodeMimeType("CONVERSATIONS_FOLDER"),
+  });
 }

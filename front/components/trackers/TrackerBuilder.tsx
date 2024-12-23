@@ -1,5 +1,7 @@
 import {
   Button,
+  Checkbox,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -8,9 +10,11 @@ import {
   Label,
   Page,
   TextArea,
+  TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   DataSourceViewSelectionConfiguration,
   DataSourceViewType,
   SpaceType,
@@ -23,10 +27,13 @@ import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   TRACKER_FREQUENCIES,
 } from "@dust-tt/types";
+import { capitalize } from "lodash";
+import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 
 import { AdvancedSettings } from "@app/components/assistant_builder/InstructionScreen";
+import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
@@ -53,15 +60,18 @@ export const TrackerBuilder = ({
   initialTrackerId: string | null;
 }) => {
   const router = useRouter();
+  const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
 
   const [edited, setEdited] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showMaintainedDsModal, setShowMaintainedDsModal] = useState(false);
   const [showWatchedDsModal, setShowWatchedDataSourcesModal] = useState(false);
 
   const [tracker, setTracker] = useState<TrackerConfigurationStateType>(
     initialTrackerState ?? {
+      status: "active",
       name: null,
       nameError: null,
       description: null,
@@ -70,6 +80,7 @@ export const TrackerBuilder = ({
       promptError: null,
       frequency: TRACKER_FREQUENCIES[0].value,
       frequencyError: null,
+      skipEmptyEmails: true,
       recipients: "",
       recipientsError: null,
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
@@ -161,6 +172,7 @@ export const TrackerBuilder = ({
     const res = await fetch(route, {
       method,
       body: JSON.stringify({
+        status: tracker.status,
         name: tracker.name,
         description: tracker.description,
         prompt: tracker.prompt,
@@ -168,6 +180,7 @@ export const TrackerBuilder = ({
         providerId: tracker.providerId,
         temperature: tracker.temperature,
         frequency: tracker.frequency,
+        skipEmptyEmails: tracker.skipEmptyEmails,
         recipients: tracker.recipients ? extractEmails(tracker.recipients) : [],
         maintainedDataSources: Object.values(tracker.maintainedDataSources).map(
           (ds) => dataSourceToPayload(ds, owner.sId)
@@ -203,6 +216,54 @@ export const TrackerBuilder = ({
         : "Tracker created successfully.",
       type: "success",
     });
+  };
+
+  const onDelete = async () => {
+    if (!initialTrackerId) {
+      // Should never happen.
+      sendNotification({
+        title: "Failed to delete tracker",
+        description: "Can't delete a tracker that hasn't been created yet.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (
+      await confirm({
+        title: "This can't be undone",
+        message: "Are you sure you want to delete this tracker?",
+        validateVariant: "warning",
+      })
+    ) {
+      setIsDeleting(true);
+      const res = await fetch(
+        `/api/w/${owner.sId}/spaces/${globalSpace.sId}/trackers/${initialTrackerId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (res.ok) {
+        setIsDeleting(false);
+        void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+        sendNotification({
+          title: "Tracker deleted",
+          description: "Tracker successfully deleted.",
+          type: "success",
+        });
+      } else {
+        setIsDeleting(false);
+        const err = (await res.json()) as { error: APIError };
+        sendNotification({
+          title: "Failed to delete tracker",
+          description: err.error.message,
+          type: "error",
+        });
+      }
+      return true;
+    } else {
+      return false;
+    }
   };
 
   const trackableDataSourcesViews = useMemo(
@@ -284,7 +345,39 @@ export const TrackerBuilder = ({
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 pb-12">
         <div className="flex">
           <div className="flex flex-grow" />
-          <div className="flex flex-shrink-0 flex-col justify-end">
+          <div className="flex flex-shrink-0 gap-2">
+            {initialTrackerId && (
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <Chip
+                    size="sm"
+                    color={tracker.status === "active" ? "emerald" : "warning"}
+                    className="capitalize"
+                    icon={tracker.status === "active" ? undefined : LockIcon}
+                  >
+                    {capitalize(tracker.status)}
+                  </Chip>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    key={tracker.status}
+                    label={
+                      tracker.status === "active" ? "Deactivate" : "Activate"
+                    }
+                    onClick={() => {
+                      setTracker((t) => ({
+                        ...t,
+                        status:
+                          tracker.status === "active" ? "inactive" : "active",
+                      }));
+                      if (!edited) {
+                        setEdited(true);
+                      }
+                    }}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <AdvancedSettings
               owner={owner}
               plan={subscription.plan}
@@ -310,8 +403,20 @@ export const TrackerBuilder = ({
                 }
               }}
             />
+            {initialTrackerId && (
+              <Button
+                icon={TrashIcon}
+                tooltip="Delete Tracker"
+                variant="outline"
+                onClick={onDelete}
+                isLoading={isDeleting}
+                disabled={isSubmitting || isDeleting}
+              />
+            )}
           </div>
         </div>
+
+        {/* Tracker Settings */}
 
         <div className="flex flex-col gap-8">
           <div>
@@ -339,6 +444,7 @@ export const TrackerBuilder = ({
                 placeholder="Descriptive name."
                 message={tracker.nameError}
                 messageStatus={tracker.nameError ? "error" : undefined}
+                disabled={tracker.status === "inactive"}
               />
             </div>
             <div className="md:col-span-2">
@@ -358,10 +464,13 @@ export const TrackerBuilder = ({
                 placeholder="Brief description of what you're tracking and why."
                 message={tracker.descriptionError}
                 messageStatus={tracker.descriptionError ? "error" : undefined}
+                disabled={tracker.status === "inactive"}
               />
             </div>
           </div>
         </div>
+
+        {/* Notification Settings */}
 
         <div className="flex flex-col gap-8">
           <div>
@@ -386,6 +495,7 @@ export const TrackerBuilder = ({
                       }
                       variant="outline"
                       isSelect
+                      disabled={tracker.status === "inactive"}
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -425,10 +535,39 @@ export const TrackerBuilder = ({
                 }}
                 message={tracker.recipientsError}
                 messageStatus={tracker.recipientsError ? "error" : undefined}
+                disabled={tracker.status === "inactive"}
               />
             </div>
           </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="flex md:col-span-1">
+              <div className="flex flex-col space-y-2"></div>
+            </div>
+            <div className="md:col-span-2">
+              <div className="flex flex-row gap-2">
+                <Checkbox
+                  label="Send me a copy of the email"
+                  checked={tracker.skipEmptyEmails}
+                  onCheckedChange={() => {
+                    setTracker((t) => ({
+                      ...t,
+                      skipEmptyEmails: !t.skipEmptyEmails,
+                    }));
+                    if (!edited) {
+                      setEdited(true);
+                    }
+                  }}
+                />
+                <div className="text-sm text-element-700">
+                  Don't send emails when there are no updates.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* DataSource Configurations Settings */}
+
         <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Tracker Settings" />
@@ -455,6 +594,7 @@ export const TrackerBuilder = ({
               }}
               error={tracker.promptError}
               showErrorLabel={!!tracker.promptError}
+              disabled={tracker.status === "inactive"}
             />
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -467,6 +607,7 @@ export const TrackerBuilder = ({
                     setShowMaintainedDsModal(true);
                   }}
                   className="w-fit"
+                  disabled={tracker.status === "inactive"}
                 />
               </div>
             </div>
@@ -497,6 +638,7 @@ export const TrackerBuilder = ({
                     setShowWatchedDataSourcesModal(true);
                   }}
                   className="w-fit"
+                  disabled={tracker.status === "inactive"}
                 />
               </div>
             </div>

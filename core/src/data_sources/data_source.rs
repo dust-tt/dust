@@ -68,9 +68,14 @@ pub struct Chunk {
     pub offset: usize,
     pub vector: Option<Vec<f64>>,
     pub score: Option<f64>,
+    // Empty unless search was ran with `target_document_tokens`
+    // and the chunk's `text` was expanded with content from other chunks.
+    // In this case, this field will contain the offsets of the chunks that
+    // were included to produce the chunk's `text`.
+    pub expanded_offsets: Vec<usize>,
 }
 
-/// Document is used as a data-strucutre for insertion into the SQL store (no
+/// Document is used as a data-structure for insertion into the SQL store (no
 /// chunks, they are directly inserted in the vector search db). It is also used
 /// as a result from search (only the retrieved chunks are provided in the
 /// result). `hash` covers both the original document id and text and the
@@ -137,6 +142,7 @@ pub struct Chunk {
 #[derive(Debug, Serialize, Clone)]
 pub struct Document {
     pub data_source_id: String,
+    pub data_source_internal_id: String,
     pub created: u64,
     pub document_id: String,
     pub timestamp: u64,
@@ -158,6 +164,7 @@ pub struct Document {
 impl Document {
     pub fn new(
         data_source_id: &str,
+        data_source_internal_id: &str,
         document_id: &str,
         timestamp: u64,
         title: &str,
@@ -171,6 +178,7 @@ impl Document {
     ) -> Result<Self> {
         Ok(Document {
             data_source_id: data_source_id.to_string(),
+            data_source_internal_id: data_source_internal_id.to_string(),
             created: utils::now(),
             document_id: document_id.to_string(),
             timestamp,
@@ -215,6 +223,7 @@ impl From<Document> for Node {
     fn from(document: Document) -> Node {
         Node::new(
             &document.data_source_id,
+            &document.data_source_internal_id,
             &document.document_id,
             NodeType::Document,
             document.timestamp,
@@ -460,6 +469,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: String,
         parents: Vec<String>,
     ) -> Result<()> {
@@ -476,6 +486,22 @@ impl DataSource {
 
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
+
+        let document = store
+            .load_data_source_document(
+                &self.project,
+                &self.data_source_id(),
+                &document_id.to_string(),
+                &None,
+            )
+            .await?;
+
+        match document {
+            Some(document) => {
+                search_store.index_node(Node::from(document)).await?;
+            }
+            None => (),
+        }
         Ok(())
     }
 
@@ -687,6 +713,7 @@ impl DataSource {
 
         let document = Document::new(
             &self.data_source_id,
+            &self.internal_id,
             document_id,
             timestamp,
             title.as_deref().unwrap_or(document_id),
@@ -761,7 +788,7 @@ impl DataSource {
             .await?;
 
         // Upsert document in search index.
-        search_store.index_document(document.clone()).await?;
+        search_store.index_node(Node::from(document)).await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
@@ -953,6 +980,7 @@ impl DataSource {
                     offset: i,
                     vector: Some(v.vector.clone()),
                     score: None,
+                    expanded_offsets: vec![],
                 }
             })
             .collect::<Vec<_>>();
@@ -1432,6 +1460,8 @@ impl DataSource {
                                             == chunk.offset
                                     {
                                         let c_offset = parsed_results[counter].1;
+                                        chunk.expanded_offsets.push(c_offset);
+
                                         if chunk.offset < c_offset {
                                             chunk.text.push_str(
                                                 &(" ".to_owned()
@@ -1714,8 +1744,17 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         document_id: &str,
     ) -> Result<()> {
+        let document = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .await?
+        {
+            Some(document) => document,
+            None => return Ok(()),
+        };
+
         // Delete the document in the main embedder collection.
         self.delete_document_for_embedder(self.embedder_config(), &qdrant_clients, document_id)
             .await?;
@@ -1737,6 +1776,9 @@ impl DataSource {
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?;
+
+        // Delete document from search index.
+        search_store.delete_node(Node::from(document)).await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.
@@ -1959,6 +2001,7 @@ impl DataSource {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
+        search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Result<()> {
         if self.shadow_write_qdrant_cluster().is_some() {
             Err(anyhow!(
@@ -1991,7 +2034,9 @@ impl DataSource {
         try_join_all(
             tables
                 .iter()
-                .map(|t| t.delete(store.clone(), databases_store.clone())),
+                // not deleting from search index here, as it's done more efficiently in the
+                // full-nodes deletion below
+                .map(|t| t.delete(store.clone(), databases_store.clone(), None)),
         )
         .await?;
 
@@ -2001,9 +2046,11 @@ impl DataSource {
             "Deleted tables"
         );
 
+        // Delete folders (concurrently).
         let (folders, total) = store
             .list_data_source_folders(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
+
         try_join_all(folders.iter().map(|f| {
             store.delete_data_source_folder(&self.project, &self.data_source_id, &f.folder_id())
         }))
@@ -2014,6 +2061,11 @@ impl DataSource {
             table_count = total,
             "Deleted folders"
         );
+
+        // Delete all nodes from the search index
+        search_store
+            .delete_data_source_nodes(&self.data_source_id)
+            .await?;
 
         // Delete data source and documents (SQL).
         let deleted_rows = store
@@ -2214,6 +2266,7 @@ fn parse_points_into_chunks(
                     offset: chunk_offset as usize,
                     vector: None,
                     score: maybe_score,
+                    expanded_offsets: vec![],
                 },
             ))
         })

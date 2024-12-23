@@ -5,6 +5,7 @@ use super::node::{Node, NodeType};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
     data_source_id: String,
+    data_source_internal_id: String,
     folder_id: String,
     timestamp: u64,
     title: String,
@@ -16,6 +17,7 @@ pub struct Folder {
 impl Folder {
     pub fn new(
         data_source_id: String,
+        data_source_internal_id: String,
         folder_id: String,
         timestamp: u64,
         title: String,
@@ -25,6 +27,7 @@ impl Folder {
     ) -> Self {
         Folder {
             data_source_id,
+            data_source_internal_id,
             folder_id,
             timestamp,
             title,
@@ -36,6 +39,9 @@ impl Folder {
 
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
+    }
+    pub fn data_source_internal_id(&self) -> &str {
+        &self.data_source_internal_id
     }
     pub fn timestamp(&self) -> u64 {
         self.timestamp
@@ -61,6 +67,7 @@ impl From<Folder> for Node {
     fn from(folder: Folder) -> Node {
         Node::new(
             &folder.data_source_id,
+            &folder.data_source_internal_id,
             &folder.folder_id,
             NodeType::Folder,
             folder.timestamp,

@@ -102,6 +102,7 @@ const getTableColumns = () => {
 
 type SpaceCategoriesListProps = {
   isAdmin: boolean;
+  canWriteInSpace: boolean;
   onButtonClick?: () => void;
   onSelect: (category: string) => void;
   owner: WorkspaceType;
@@ -111,6 +112,7 @@ type SpaceCategoriesListProps = {
 export const SpaceCategoriesList = ({
   isAdmin,
   onButtonClick,
+  canWriteInSpace,
   onSelect,
   owner,
   space,
@@ -179,21 +181,25 @@ export const SpaceCategoriesList = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
+                  disabled={!isAdmin && !canWriteInSpace}
                   href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed`}
                   icon={CloudArrowLeftRightIcon}
                   label="Connected Data"
                 />
                 <DropdownMenuItem
+                  disabled={!canWriteInSpace}
                   href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
                   icon={ArrowUpOnSquareIcon}
                   label="Upload Data"
                 />
                 <DropdownMenuItem
+                  disabled={!canWriteInSpace}
                   href={`/w/${owner.sId}/spaces/${space.sId}/categories/website`}
                   icon={GlobeAltIcon}
                   label="Scrape a website"
                 />
                 <DropdownMenuItem
+                  disabled={!canWriteInSpace}
                   href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
                   icon={CommandLineIcon}
                   label="Create a Dust App"

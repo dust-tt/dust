@@ -1,5 +1,6 @@
 import type {
   AgentConfigurationScope,
+  AgentReasoningEffort,
   AgentStatus,
   GlobalAgentStatus,
   ModelIdType,
@@ -34,6 +35,7 @@ export class AgentConfiguration extends BaseModel<AgentConfiguration> {
   declare providerId: ModelProviderIdType;
   declare modelId: ModelIdType;
   declare temperature: number;
+  declare reasoningEffort: AgentReasoningEffort | null;
 
   declare pictureUrl: string;
 
@@ -106,6 +108,10 @@ AgentConfiguration.init(
       type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 0.7,
+    },
+    reasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     maxStepsPerRun: {
       type: DataTypes.INTEGER,

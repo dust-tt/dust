@@ -9,7 +9,10 @@ import type {
   ZendeskFetchedTicket,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
-import { ZendeskApiError } from "@connectors/connectors/zendesk/lib/errors";
+import {
+  isZendeskNotFoundError,
+  ZendeskApiError,
+} from "@connectors/connectors/zendesk/lib/errors";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
@@ -17,6 +20,10 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
+
+function getEndpointFromZendeskUrl(url: string): string {
+  return url.replace(/^https?:\/\/(.*)\.zendesk\.com(.*)/, "$2");
+}
 
 export function createZendeskClient({
   accessToken,
@@ -118,6 +125,7 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
 
 /**
  * Runs a GET request to the Zendesk API with a maximum number of retries before throwing.
+ * TODO(2024-12-20): add some basic io-ts validation here (pass a codec as argument and decode with it)
  */
 async function fetchFromZendeskWithRetries({
   url,
@@ -155,24 +163,18 @@ async function fetchFromZendeskWithRetries({
   try {
     response = await rawResponse.json();
   } catch (e) {
-    if (rawResponse.status === 404) {
-      return null;
-    }
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
-      rawResponse
+      { rawResponse, endpoint: getEndpointFromZendeskUrl(url) }
     );
   }
   if (!rawResponse.ok) {
-    if (rawResponse.status === 404) {
-      return null;
-    }
-    throw new ZendeskApiError(
-      "Zendesk API error.",
-      rawResponse.status,
-      response
-    );
+    throw new ZendeskApiError("Zendesk API error.", rawResponse.status, {
+      response,
+      rawResponse,
+      endpoint: getEndpointFromZendeskUrl(url),
+    });
   }
 
   return response;
@@ -191,8 +193,15 @@ export async function fetchZendeskBrand({
   brandId: number;
 }): Promise<ZendeskFetchedBrand | null> {
   const url = `https://${subdomain}.zendesk.com/api/v2/brands/${brandId}`;
-  const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return response?.brand ?? null;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.brand ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
 }
 
 /**
@@ -208,8 +217,15 @@ export async function fetchZendeskArticle({
   articleId: number;
 }): Promise<ZendeskFetchedArticle | null> {
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`;
-  const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return response?.article ?? null;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.article ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
 }
 
 /**

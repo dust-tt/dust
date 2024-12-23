@@ -2,8 +2,7 @@ import { Transition } from "@headlessui/react";
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 
-import { IconButton } from "@sparkle/components/IconButton";
-import { CheckCircleIcon, XCircleIcon, XMarkIcon } from "@sparkle/icons";
+import { CheckCircleIcon, XCircleIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -40,6 +39,7 @@ export function Notification({
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4 s-shadow-xl",
         className
       )}
+      onClick={onClick}
     >
       {variant === "success" ? (
         <Icon
@@ -59,7 +59,7 @@ export function Notification({
         <div className="s-flex s-grow s-flex-row s-gap-6">
           <div
             className={classNames(
-              "s-text-md s-line-clamp-1 s-grow s-font-semibold",
+              "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
               variant === "success"
                 ? "s-text-success-500"
                 : "s-text-warning-500"
@@ -67,12 +67,6 @@ export function Notification({
           >
             {title || variant}
           </div>
-          <IconButton
-            icon={XMarkIcon}
-            size="sm"
-            variant="ghost"
-            onClick={onClick}
-          />
         </div>
         {description && (
           <div className="s-line-clamp-3 s-pr-2 s-text-sm s-font-normal s-text-element-700">

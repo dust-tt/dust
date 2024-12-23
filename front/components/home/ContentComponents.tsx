@@ -127,7 +127,7 @@ export const P = ({
 }: PProps) => {
   if (dotCSS) {
     return (
-      <div className={classNames(className, "flex gap-2 lg:gap-3")}>
+      <div className={classNames("flex gap-2 lg:gap-3", className)}>
         <Icon
           visual={shapeClasses[shape]}
           className={classNames("mt-0.5 shrink-0", dotCSS)}
@@ -137,7 +137,7 @@ export const P = ({
       </div>
     );
   } else {
-    return <p className={classNames(className, pClasses[size])}>{children}</p>;
+    return <p className={classNames(pClasses[size], className)}>{children}</p>;
   }
 };
 

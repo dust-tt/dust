@@ -15,7 +15,9 @@ import { PostTrackersRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[sp
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetTrackersResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetTrackersResponseBody | { success: true }>
+  >,
   auth: Authenticator,
   space: SpaceResource
 ): Promise<void> {
@@ -45,29 +47,42 @@ async function handler(
       },
     });
   }
+
+  if (!space.canWrite(auth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Missing permission to edit the space's trackers.",
+      },
+    });
+  }
+
+  if (typeof req.query.tId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid tracker id provided.",
+      },
+    });
+  }
+  const trackerId = req.query.tId;
+  const tracker = await TrackerConfigurationResource.fetchById(auth, trackerId);
+
+  if (!tracker) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Tracker not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "PATCH":
-      if (!space.canWrite(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Missing permission to edit the space's trackers.",
-          },
-        });
-      }
-      if (typeof req.query.tId !== "string") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid tracker id provided.",
-          },
-        });
-      }
-      const trackerId = req.query.tId;
       const bodyValidation = PostTrackersRequestBodySchema.decode(req.body);
-
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -75,21 +90,6 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: `Invalid request body: ${pathError}`,
-          },
-        });
-      }
-
-      const tracker = await TrackerConfigurationResource.fetchById(
-        auth,
-        trackerId
-      );
-
-      if (!tracker) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Tracker not found.",
           },
         });
       }
@@ -105,18 +105,18 @@ async function handler(
       }
 
       const body = bodyValidation.right;
-
       const updatedTrackerRes = await tracker.updateConfig(
         auth,
         {
+          status: body.status,
           name: body.name,
           description: body.description,
           prompt: body.prompt,
           modelId: body.modelId,
           providerId: body.providerId,
           temperature: body.temperature,
-          status: "active",
           frequency: body.frequency,
+          skipEmptyEmails: body.skipEmptyEmails,
           recipients: body.recipients,
         },
         body.maintainedDataSources,
@@ -136,12 +136,30 @@ async function handler(
         },
       });
 
+    case "DELETE":
+      const deletedTrackerRes = await tracker.delete(auth, {
+        hardDelete: false,
+      });
+      if (deletedTrackerRes.isOk()) {
+        return res.status(201).json({
+          success: true,
+        });
+      }
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to delete tracker.",
+        },
+      });
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, PATCH is expected.",
+          message:
+            "The method passed is not supported, PATCH or DELETE is expected.",
         },
       });
   }

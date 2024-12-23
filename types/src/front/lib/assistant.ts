@@ -1,4 +1,7 @@
-import { LightAgentConfigurationType } from "../../front/assistant/agent";
+import {
+  AgentReasoningEffort,
+  LightAgentConfigurationType,
+} from "../../front/assistant/agent";
 import { GenerationTokensEvent } from "../../front/assistant/generation";
 import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
@@ -89,7 +92,7 @@ export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
 export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
-export const O1_PREVIEW_MODEL_ID = "o1-preview" as const;
+export const O1_MODEL_ID = "o1" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
@@ -124,7 +127,7 @@ export const MODEL_IDS = [
   GPT_4O_MODEL_ID,
   GPT_4O_20240806_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
-  O1_PREVIEW_MODEL_ID,
+  O1_MODEL_ID,
   O1_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
@@ -190,6 +193,9 @@ export type ModelConfigurationType = {
   toolUseMetaPrompt?: string;
 
   supportsVision: boolean;
+
+  // Only used for O-series OpenAI models.
+  reasoningEffort?: AgentReasoningEffort;
 };
 
 // Should be used for all Open AI models older than gpt-4o-2024-08-06 to prevent issues
@@ -267,11 +273,11 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
 };
-export const O1_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+export const O1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
-  modelId: O1_PREVIEW_MODEL_ID,
-  displayName: "O1 Preview",
-  contextSize: 128_000,
+  modelId: O1_MODEL_ID,
+  displayName: "O1",
+  contextSize: 200_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
@@ -279,7 +285,22 @@ export const O1_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access).",
   shortDescription: "OpenAI's reasoning model.",
   isLegacy: false,
-  supportsVision: false,
+  supportsVision: true,
+};
+export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O1_MODEL_ID,
+  displayName: "O1 (High Reasoning)",
+  contextSize: 200_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access). High reasoning effort.",
+  shortDescription: "OpenAI's reasoning model (high effort).",
+  isLegacy: false,
+  supportsVision: true,
+  reasoningEffort: "high",
 };
 export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -601,7 +622,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4O_MODEL_CONFIG,
   GPT_4O_20240806_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
-  O1_PREVIEW_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
@@ -656,6 +677,7 @@ export enum GLOBAL_AGENTS_SID {
   GPT4 = "gpt-4",
   O1 = "o1",
   O1_MINI = "o1-mini",
+  O1_HIGH_REASONING = "o1_high",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",

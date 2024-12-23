@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
+import React from "react";
 
+import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
@@ -13,6 +15,7 @@ import {
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
+import TrustedBy from "@app/components/home/TrustedBy";
 
 export async function getServerSideProps() {
   return {
@@ -53,6 +56,7 @@ export default function RecruitingPeople() {
         to={pageSettings.to}
         subtitle={pageSettings.description}
       />
+      <TrustedBy />
       <Grid>
         <SolutionSection
           title="Focus on&nbsp;being a&nbsp;business partner, not&nbsp;a&nbsp;help desk."
@@ -178,6 +182,10 @@ export default function RecruitingPeople() {
           ]}
         />
       </Grid>
+      <BlogSection
+        headerColorFrom="from-amber-200"
+        headerColorTo="to-amber-500"
+      />
     </>
   );
 }

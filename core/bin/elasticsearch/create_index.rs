@@ -1,25 +1,9 @@
 use std::collections::HashMap;
 
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use dust::search_stores::search_store::ElasticsearchSearchStore;
-use elasticsearch::indices::{IndicesCreateParts, IndicesExistsParts};
+use elasticsearch::indices::{IndicesCreateParts, IndicesDeleteAliasParts, IndicesExistsParts};
 use http::StatusCode;
-
-#[derive(Parser, Debug, Clone, ValueEnum)]
-enum Region {
-    Local,
-    #[clap(name = "us-central-1")]
-    UsCentral1,
-}
-
-impl std::fmt::Display for Region {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Region::Local => write!(f, "local"),
-            Region::UsCentral1 => write!(f, "us-central-1"),
-        }
-    }
-}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -32,13 +16,16 @@ struct Args {
 
     #[arg(long, help = "Skip confirmation")]
     skip_confirmation: bool,
+
+    #[arg(long, help = "Remove previous alias")]
+    remove_previous_alias: bool,
 }
 
 /*
  * Create an index in Elasticsearch for core
  *
  * Usage:
- * cargo run --bin create_index -- --index-name <index_name> --index-version <version> [--skip-confirmation]
+ * cargo run --bin create_index -- --index-name <index_name> --index-version <version> [--skip-confirmation] [--remove-previous-alias]
  *
  * Look for index settings and mappings in src/search_stores/indices/[index_name]_[version].settings.[region].json
  * Create the index with the given settings and mappings at [index_name]_[version], and set the alias to [index_name]
@@ -49,6 +36,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let index_name = args.index_name;
     let index_version = args.index_version;
+    let remove_previous_alias = args.remove_previous_alias;
+
+    if remove_previous_alias && index_version == 1 {
+        return Err(anyhow::anyhow!("Cannot remove previous alias for version 1").into());
+    }
+    let index_fullname = format!("core.{}_{}", index_name, index_version);
+    let index_alias = format!("core.{}", index_name);
+    let index_previous_fullname = format!("core.{}_{}", index_name, index_version - 1);
 
     let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
     let username =
@@ -60,9 +55,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // create ES client
     let search_store = ElasticsearchSearchStore::new(&url, &username, &password).await?;
-
-    let index_fullname = format!("core.{}_{}", index_name, index_version);
-    let index_alias = format!("core.{}", index_name);
 
     // do not create index if it already exists
     let response = search_store
@@ -114,21 +106,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "settings": settings,
         "mappings": mappings,
         "aliases": {
-            index_alias.clone(): {}
+            index_alias.clone(): {
+                "is_write_index": true,
+            }
         }
     });
 
     // confirm creation
     if !args.skip_confirmation {
         println!(
-            "CHECK: Create index '{}' with alias '{}' in region '{}'? (y to confirm)",
-            index_fullname, index_alias, region
+            "CHECK: Create index '{}' with alias '{}' in region '{}' (remove previous alias: {})? (y to confirm)",
+            index_fullname, index_alias, region, remove_previous_alias
         );
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).unwrap();
         if input.trim() != "y" {
             return Err(anyhow::anyhow!("Aborted").into());
         }
+    }
+
+    // remove alias from old index
+    if remove_previous_alias {
+        search_store
+            .client
+            .indices()
+            .delete_alias(IndicesDeleteAliasParts::IndexName(
+                &[index_previous_fullname.as_str()],
+                &[index_alias.as_str()],
+            ))
+            .send()
+            .await?;
     }
 
     // create index with settings, mappings and alias

@@ -12,6 +12,7 @@ use crate::{
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
+    search_stores::search_store::SearchStore,
     sqlite_workers::client::HEARTBEAT_INTERVAL_MS,
     stores::store::Store,
     utils,
@@ -51,6 +52,7 @@ pub fn get_table_type_for_tables(tables: Vec<&Table>) -> Result<TableType> {
 pub struct Table {
     project: Project,
     data_source_id: String,
+    data_source_internal_id: String,
     created: u64,
 
     table_id: String,
@@ -74,6 +76,7 @@ impl Table {
     pub fn new(
         project: Project,
         data_source_id: String,
+        data_source_internal_id: String,
         created: u64,
         table_id: String,
         name: String,
@@ -92,6 +95,7 @@ impl Table {
         Table {
             project,
             data_source_id,
+            data_source_internal_id,
             created,
             table_id,
             name,
@@ -170,10 +174,12 @@ impl Table {
         self.schema = Some(schema);
     }
 
+    // if search_store is provided, delete the table node from the search index
     pub async fn delete(
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        search_store: Option<Box<dyn SearchStore + Sync + Send>>,
     ) -> Result<()> {
         if self.table_type()? == TableType::Local {
             // Invalidate the databases that use the table.
@@ -205,12 +211,18 @@ impl Table {
             .delete_data_source_table(&self.project, &self.data_source_id, &self.table_id)
             .await?;
 
+        // Delete the table node from the search index.
+        if let Some(search_store) = search_store {
+            search_store.delete_node(Node::from(self.clone())).await?;
+        }
+
         Ok(())
     }
 
     pub async fn update_parents(
         &self,
         store: Box<dyn Store + Sync + Send>,
+        search_store: Box<dyn SearchStore + Sync + Send>,
         parents: Vec<String>,
     ) -> Result<()> {
         store
@@ -221,6 +233,8 @@ impl Table {
                 &parents,
             )
             .await?;
+
+        search_store.index_node(Node::from(self.clone())).await?;
         Ok(())
     }
 }
@@ -229,6 +243,7 @@ impl From<Table> for Node {
     fn from(table: Table) -> Node {
         Node::new(
             &table.data_source_id,
+            &table.data_source_internal_id,
             &table.table_id,
             NodeType::Table,
             table.timestamp,
@@ -573,6 +588,7 @@ mod tests {
         let table = Table::new(
             Project::new_from_id(42),
             "data_source_id".to_string(),
+            "data_source_internal_id".to_string(),
             utils::now(),
             "table_id".to_string(),
             "test_dbml".to_string(),
