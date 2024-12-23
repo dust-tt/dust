@@ -270,7 +270,7 @@ export const CarousselContentBlock = ({
       <H3 className="text-slate-800">{"Dust for " + title}</H3>
       <div className="flex flex-col gap-2">
         <H2 className="max-w-[600px] text-white">{subtitle}</H2>
-        <P size="md" className="max-w-[720px] text-muted-foreground">
+        <P size="md" className="max-w-[720px] text-slate-700">
           {description}
         </P>
       </div>
