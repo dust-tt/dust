@@ -160,7 +160,7 @@ export default function Marketing() {
       </Grid>
       <BlogSection
         headerColorFrom="from-pink-200"
-        headerColorTo="from-pink-500"
+        headerColorTo="from-pink-300"
       />
     </>
   );
