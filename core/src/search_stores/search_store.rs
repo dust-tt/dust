@@ -187,16 +187,21 @@ impl SearchStore for ElasticsearchSearchStore {
             .send()
             .await?;
         // todo(kw-search): fail on error
-        if !response.status_code().is_success() {
-            let error = response.json::<serde_json::Value>().await?;
-            error!(
-                error = %error,
-                globally_unique_id = node.unique_id(),
-                "[ElasticsearchSearchStore] Failed to delete {}",
-                node.node_type.to_string()
-            );
+        match response.status_code().is_success() {
+            true => Ok(()),
+            false => {
+                let error = response.json::<serde_json::Value>().await?;
+                if error["result"] == "not_found" {
+                    info!(
+                        globally_unique_id = node.unique_id(),
+                        "[ElasticsearchSearchStore] Delete node on non-existent document"
+                    );
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!("Failed to delete node {}", error))
+                }
+            }
         }
-        Ok(())
     }
 
     async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()> {
@@ -211,15 +216,16 @@ impl SearchStore for ElasticsearchSearchStore {
             .send()
             .await?;
         // todo(kw-search): fail on error
-        if !response.status_code().is_success() {
-            let error = response.json::<serde_json::Value>().await?;
-            error!(
-                error = %error,
-                data_source_id = data_source_id,
-                "[ElasticsearchSearchStore] Failed to delete data source nodes"
-            );
+        match response.status_code().is_success() {
+            true => Ok(()),
+            false => {
+                let error = response.json::<serde_json::Value>().await?;
+                Err(anyhow::anyhow!(
+                    "Failed to delete data source nodes {}",
+                    error
+                ))
+            }
         }
-        Ok(())
     }
 
     fn clone_box(&self) -> Box<dyn SearchStore + Sync + Send> {
