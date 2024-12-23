@@ -4,17 +4,17 @@ import type {
   CredentialsType,
   ModelIdType,
   ModelProviderIdType,
+  RunType,
   TraceType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
 import {
   assertNever,
+  CoreAPI,
   credentialsFromProviders,
   dustManagedCredentials,
   rateLimiter,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
