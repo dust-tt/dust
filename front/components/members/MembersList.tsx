@@ -6,7 +6,7 @@ import type {
 } from "@dust-tt/types";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import _ from "lodash";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
@@ -50,6 +50,10 @@ export function MembersList({
     pageIndex: 0,
     pageSize: 25,
   });
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: 25 });
+  }, [searchText, setPagination]);
+
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspaces | null>(null);
   const {
