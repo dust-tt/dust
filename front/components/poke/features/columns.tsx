@@ -71,8 +71,6 @@ async function toggleFeatureFlag(
     if (!r.ok) {
       throw new Error("Failed to disable feature.");
     }
-
-    reload();
   } catch (e) {
     sendNotification({
       title: "Error",
@@ -84,4 +82,5 @@ async function toggleFeatureFlag(
       type: "error",
     });
   }
+  reload();
 }
