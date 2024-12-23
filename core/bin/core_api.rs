@@ -66,7 +66,7 @@ static GLOBAL: Jemalloc = Jemalloc;
 /// API State
 
 struct RunManager {
-    pending_apps: Vec<(app::App, run::Credentials, run::Secrets)>,
+    pending_apps: Vec<(app::App, run::Credentials, run::Secrets, bool)>,
     pending_runs: Vec<String>,
 }
 
@@ -97,9 +97,17 @@ impl APIState {
         }
     }
 
-    fn run_app(&self, app: app::App, credentials: run::Credentials, secrets: run::Secrets) {
+    fn run_app(
+        &self,
+        app: app::App,
+        credentials: run::Credentials,
+        secrets: run::Secrets,
+        store_block_result: bool,
+    ) {
         let mut run_manager = self.run_manager.lock();
-        run_manager.pending_apps.push((app, credentials, secrets));
+        run_manager
+            .pending_apps
+            .push((app, credentials, secrets, store_block_result));
     }
 
     async fn stop_loop(&self) {
@@ -123,7 +131,7 @@ impl APIState {
         let mut loop_count = 0;
 
         loop {
-            let apps: Vec<(app::App, run::Credentials, run::Secrets)> = {
+            let apps: Vec<(app::App, run::Credentials, run::Secrets, bool)> = {
                 let mut manager = self.run_manager.lock();
                 let apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
                 apps.iter().for_each(|app| {
@@ -145,7 +153,15 @@ impl APIState {
 
                     match app
                         .0
-                        .run(app.1, app.2, store, databases_store, qdrant_clients, None)
+                        .run(
+                            app.1,
+                            app.2,
+                            store,
+                            databases_store,
+                            qdrant_clients,
+                            None,
+                            app.3,
+                        )
                         .await
                     {
                         Ok(()) => {
@@ -587,6 +603,7 @@ struct RunsCreatePayload {
     config: run::RunConfig,
     credentials: run::Credentials,
     secrets: Vec<Secret>,
+    store_block_result: Option<bool>,
 }
 
 async fn run_helper(
@@ -830,7 +847,12 @@ async fn runs_create(
         Ok(app) => {
             // The run is empty for now, we can clone it for the response.
             let run = app.run_ref().unwrap().clone();
-            state.run_app(app, credentials, secrets);
+            state.run_app(
+                app,
+                credentials,
+                secrets,
+                payload.store_block_result.unwrap_or(true),
+            );
             (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -915,6 +937,7 @@ async fn runs_create_stream(
                         databases_store,
                         qdrant_clients,
                         Some(tx.clone()),
+                        payload.store_block_result.unwrap_or(true),
                     )
                     .await
                 {

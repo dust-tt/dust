@@ -22,7 +22,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags, type Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -276,6 +276,9 @@ async function handler(
         }
       }
 
+      const flags = await getFeatureFlags(owner);
+      const storeBlockResult = !flags.includes("disable_run_logs");
+
       logger.info(
         {
           workspace: {
@@ -299,6 +302,7 @@ async function handler(
           credentials,
           secrets,
           isSystemKey: auth.isSystemKey(),
+          storeBlockResult,
         }
       );
 
