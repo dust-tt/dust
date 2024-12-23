@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { ReactNode, useMemo } from "react";
 
+import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
 
 const getNodeText = (node: ReactNode): string => {
@@ -65,12 +66,13 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <ContentBlockWrapper
-      className="s-my-2 s-border s-border-border"
+      innerClassName="s-relative s-my-2 s-w-full s-border s-border-border s-rounded-2xl"
       content={tableData}
     >
-      <table className="s-w-full s-table-auto s-overflow-hidden s-rounded-2xl">
-        {children}
-      </table>
+      <ScrollArea className="s-z-0 s-w-full s-rounded-2xl">
+        <table className="s-w-full">{children}</table>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </ContentBlockWrapper>
   );
 }
@@ -87,7 +89,7 @@ export function TableBodyBlock({ children }: { children: React.ReactNode }) {
 
 export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className="s-whitespace-nowrap s-px-4 s-py-4 s-text-left s-text-xs s-font-medium s-uppercase s-tracking-wider s-text-muted-foreground">
+    <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-medium s-uppercase s-tracking-wider s-text-muted-foreground">
       {children}
     </th>
   );

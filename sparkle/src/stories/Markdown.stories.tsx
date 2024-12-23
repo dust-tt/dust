@@ -70,18 +70,30 @@ footnote [^1]
 * [ ] to do
 * [x] done
 
+### Short Table
+
+| Date        | High Temperature (°C) | Low Temperature (°C) |
+|-------------|-----------------------|----------------------|
+| October 25  | 19                    | 14                   |
+| October 26  | 17                    | 12                   |
+| October 27  | 16                    | 10                   |
+| October 28  | 16                    | 9                    |
+| October 29  | 17                    | 8                    |
+| October 30  | 19                    | 8                    |
+| October 31  | 19                    | 10                   |
+
 
 ### Table
 
-| Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition             |
-|-------------|-----------------------|----------------------|-------------------------------|
-| October 25  | 19                    | 14                   | Passing showers, cloudy       |
-| October 26  | 17                    | 12                   | Light showers, overcast       |
-| October 27  | 16                    | 10                   | Overcast                      |
-| October 28  | 16                    | 9                    | Increasing cloudiness         |
-| October 29  | 17                    | 8                    | Scattered clouds              |
-| October 30  | 19                    | 8                    | Sunny                         |
-| October 31  | 19                    | 10                   | Sunny                         |
+| Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition             | Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition             | Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition             |
+|-------------|-----------------------|----------------------|-------------------------------|-------------|-----------------------|----------------------|-------------------------------|-------------|-----------------------|----------------------|-------------------------------|
+| October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
+| October 26  | 17                    | 12                   | Light showers, overcast       | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
+| October 27  | 16                    | 10                   | Overcast                      | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
+| October 28  | 16                    | 9                    | Increasing cloudiness         | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
+| October 29  | 17                    | 8                    | Scattered clouds              | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
+| October 30  | 19                    | 8                    | Sunny                         | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
+| October 31  | 19                    | 10                   | Sunny                         | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
 
 
 

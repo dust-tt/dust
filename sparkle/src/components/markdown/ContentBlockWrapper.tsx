@@ -32,6 +32,7 @@ type ClipboardContent = {
 interface ContentBlockWrapperProps {
   children: React.ReactNode;
   className?: string;
+  innerClassName?: string;
   content?: ClipboardContent | string;
   getContentToDownload?: GetContentToDownloadFunction;
   actions?: React.ReactNode[] | React.ReactNode;
@@ -40,6 +41,7 @@ interface ContentBlockWrapperProps {
 export function ContentBlockWrapper({
   children,
   className,
+  innerClassName,
   content,
   actions,
   getContentToDownload,
@@ -92,11 +94,11 @@ export function ContentBlockWrapper({
     <div
       id="BlockWrapper"
       className={cn(
-        "s-relative s-w-auto !s-overflow-visible s-rounded-2xl",
-        className ?? ""
+        "s-relative s-w-full !s-overflow-visible s-rounded-2xl",
+        className
       )}
     >
-      <div className="s-sticky s-top-0 s-w-full">
+      <div className="s-sticky s-top-0 s-z-50 s-w-full">
         <div
           id="BlockActions"
           className="s-flex s-w-full s-justify-end s-gap-1 s-p-2"
@@ -122,7 +124,7 @@ export function ContentBlockWrapper({
           )}
         </div>
       </div>
-      <div className="-s-mt-11 s-w-full s-table-auto">{children}</div>
+      <div className={cn("-s-mt-11 s-w-full", innerClassName)}>{children}</div>
     </div>
   );
 }
