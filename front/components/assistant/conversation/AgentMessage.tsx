@@ -7,7 +7,6 @@ import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
-  ChatBubbleThoughtIcon,
   Chip,
   ClipboardIcon,
   ContentMessage,
