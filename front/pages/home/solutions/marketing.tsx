@@ -13,6 +13,7 @@ import {
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
+import TrustedBy from "@app/components/home/TrustedBy";
 
 export async function getServerSideProps() {
   return {
@@ -58,6 +59,7 @@ export default function Marketing() {
         to={pageSettings.to}
         subtitle={pageSettings.description}
       />
+      <TrustedBy />
       <Grid>
         <SolutionSection
           title={
