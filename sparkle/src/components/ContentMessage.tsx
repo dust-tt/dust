@@ -23,13 +23,13 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
 const contentMessageVariants = cva(
-  "s-flex s-flex-col s-gap-2 s-rounded-2xl s-p-4",
+  "s-flex s-flex-col s-gap-1 s-rounded-2xl s-p-4",
   {
     variants: {
       variant: {
         emerald: "s-bg-emerald-100",
         amber: "s-bg-amber-100",
-        slate: "s-bg-slate-100",
+        slate: "s-bg-muted-background s-border s-border-border",
         purple: "s-bg-purple-100",
         warning: "s-bg-warning-100",
         sky: "s-bg-sky-100",
@@ -66,7 +66,7 @@ const iconVariants = cva("s-shrink-0", {
   },
 });
 
-const titleVariants = cva("s-text-base s-font-semibold", {
+const titleVariants = cva("s-text-sm s-font-semibold", {
   variants: {
     variant: {
       emerald: "s-text-emerald-800",
@@ -121,7 +121,7 @@ export function ContentMessage({
         <div className="s-flex s-items-center s-gap-1.5">
           {icon && (
             <Icon
-              size="sm"
+              size="xs"
               visual={icon}
               className={iconVariants({ variant })}
             />
