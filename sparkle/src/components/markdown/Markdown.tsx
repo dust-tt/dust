@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useMemo } from "react";
+import React, { InputHTMLAttributes, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -9,12 +8,9 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
+import { Checkbox } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import {
-  ContentBlockWrapper,
-  GetContentToDownloadFunction,
-} from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import {
   TableBlock,
@@ -150,6 +146,43 @@ export function Markdown({
           {children}
         </strong>
       ),
+      input: React.forwardRef<
+        HTMLInputElement,
+        InputHTMLAttributes<HTMLInputElement>
+      >(({ type, checked, className, ...props }, ref) => {
+        if (type === "checkbox") {
+          return (
+            <div className="s-inline-flex s-items-center">
+              <Checkbox
+                ref={ref as React.Ref<HTMLButtonElement>}
+                size={"xs"}
+                checked={checked}
+                className="s-translate-y-[3px]"
+                onCheckedChange={(isChecked) => {
+                  if (props.onChange) {
+                    const event = {
+                      target: {
+                        type: "checkbox",
+                        checked: isChecked,
+                      },
+                    } as React.ChangeEvent<HTMLInputElement>;
+                    props.onChange(event);
+                  }
+                }}
+              />
+            </div>
+          );
+        }
+        return (
+          <input
+            ref={ref}
+            type={type}
+            checked={checked}
+            className={className}
+            {...props}
+          />
+        );
+      }),
       blockquote: BlockquoteBlock,
       hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
       code: CodeBlockWithExtendedSupport,

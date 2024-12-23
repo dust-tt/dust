@@ -248,8 +248,7 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         className={cn(
           "mermaid",
           "s-w-full",
-          "s-transition-all s-duration-200",
-          "hover:s-shadow-lg"
+          "s-rounded-2xl s-transition-all s-duration-200"
         )}
       />
     </>

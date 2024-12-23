@@ -92,32 +92,37 @@ export function ContentBlockWrapper({
     <div
       id="BlockWrapper"
       className={cn(
-        "s-relative s-w-auto s-overflow-x-auto s-rounded-2xl",
+        "s-relative s-w-auto !s-overflow-visible s-rounded-2xl",
         className ?? ""
       )}
     >
-      <div className="s-w-full s-table-auto">{children}</div>
-      <div className="s-absolute s-right-2 s-top-2 s-flex s-gap-2 s-rounded-xl">
-        {actions && actions}
-        {getContentToDownload && (
-          <Button
-            variant={"outline"}
-            size="xs"
-            icon={ArrowDownOnSquareIcon}
-            onClick={handleDownload}
-            tooltip="Download"
-          />
-        )}
-        {content && (
-          <Button
-            variant={"outline"}
-            size="xs"
-            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-            onClick={handleCopyToClipboard}
-            tooltip="Copy"
-          />
-        )}
+      <div className="s-sticky s-top-0 s-w-full">
+        <div
+          id="BlockActions"
+          className="s-flex s-w-full s-justify-end s-gap-1 s-p-2"
+        >
+          {actions && actions}
+          {getContentToDownload && (
+            <Button
+              variant={"outline"}
+              size="xs"
+              icon={ArrowDownOnSquareIcon}
+              onClick={handleDownload}
+              tooltip="Download"
+            />
+          )}
+          {content && (
+            <Button
+              variant={"outline"}
+              size="xs"
+              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+              onClick={handleCopyToClipboard}
+              tooltip="Copy"
+            />
+          )}
+        </div>
       </div>
+      <div className="-s-mt-11 s-w-full s-table-auto">{children}</div>
     </div>
   );
 }

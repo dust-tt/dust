@@ -6,13 +6,7 @@ import { Markdown } from "../index_with_tw_base";
 const meta: Meta<typeof Markdown> = {
   title: "Components/Markdown",
   component: Markdown,
-  decorators: [
-    (Story) => (
-      <div className="s-flex s-flex-col s-p-8">
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: [(Story) => <Story />],
   argTypes: {
     textColor: {
       options: [
@@ -30,25 +24,6 @@ type Story = StoryObj<typeof meta>;
 
 const example = `
 # Level 1 Title
-### Why not a mermaid graph ?
-
-\`\`\`mermaid
-graph TD
-          A[Christmas] -->|Get money| B(Go shopping)
-          B --> C{Let me think}
-          B --> G[/Another/]
-          C ==>|One| D[Laptop]
-          C -->|Two| E[iPhone]
-          C -->|Three| F[fa:fa-car Car]
-          subgraph section
-            C
-            D
-            E
-            F
-            G
-          end
-\`\`\`
-
 
 ## Level 2 Title
 
@@ -186,9 +161,24 @@ function renderHeader(latitude, longitude) {
 }
 \`\`\`
 
+\`\`\`mermaid
+graph TD
+          A[Christmas] -->|Get money| B(Go shopping)
+          B --> C{Let me think}
+          B --> G[/Another/]
+          C ==>|One| D[Laptop]
+          C -->|Two| E[iPhone]
+          C -->|Three| F[fa:fa-car Car]
+          subgraph section
+            C
+            D
+            E
+            F
+            G
+          end
+\`\`\`
 
-
-\`\`\`mermaid2
+\`\`\`mermaid pie chart
 pie title Distribution
     "Category A" : 30
     "Category B" : 20
@@ -197,14 +187,12 @@ pie title Distribution
     "Category E" : 25
 \`\`\`
 
-.End
-
 `;
 
 export const ExtendedMarkdownStory: Story = {
   args: {
     content: example,
     textSize: "base",
-    textColor: "s-text-element-800",
+    textColor: "s-text-foreground",
   },
 };
