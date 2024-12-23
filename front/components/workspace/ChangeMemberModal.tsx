@@ -19,7 +19,6 @@ import {
   useAgentsVersionAuthor,
   useUnifiedAgentConfigurations,
 } from "@app/lib/swr/assistants";
-import { cons } from "fp-ts/lib/ReadonlyNonEmptyArray";
 
 export function ChangeMemberModal({
   onClose,
