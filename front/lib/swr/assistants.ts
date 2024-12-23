@@ -23,7 +23,6 @@ import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
-import { strong } from "fp-ts";
 
 export function useAssistantTemplates({
   workspaceId,
