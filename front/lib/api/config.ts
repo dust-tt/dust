@@ -1,4 +1,5 @@
-import { EnvironmentConfig, QdrantCluster } from "@dust-tt/types";
+import type { QdrantCluster } from "@dust-tt/types";
+import { EnvironmentConfig } from "@dust-tt/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
