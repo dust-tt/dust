@@ -9,18 +9,21 @@ makeScript({}, async ({ execute }) => {
     const regularSpaces = allSpaces.filter(
       (s) => s.kind === "regular" || s.kind === "public"
     );
+    console.log(
+      `Found ${regularSpaces.length} regular spaces for workspace ${w.name}`
+    );
     for (const space of regularSpaces) {
       const regularGroups = space.groups.filter((g) => g.isRegular());
       if (regularGroups.length === 1) {
         const group = regularGroups[0];
         if (execute) {
           await group.updateName(auth, `Group for space ${space.name}`);
-        } else {
-          console.log(
-            `Would update group ${group.id} to "Group for space ${space.name}"`
-          );
         }
+        console.log(
+          `[Execute: ${execute}] Updating group ${group.id} to "Group for space ${space.name}"`
+        );
       }
     }
+    console.log(`Done for workspace ${w.name}`);
   });
 });
