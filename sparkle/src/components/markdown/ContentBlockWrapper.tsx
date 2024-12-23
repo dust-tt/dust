@@ -9,7 +9,7 @@ import {
 } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-type SupportedContentType = "application/json" | "text/csv";
+export type SupportedContentType = "application/json" | "text/csv";
 
 const contentTypeExtensions: Record<SupportedContentType, string> = {
   "application/json": ".json",

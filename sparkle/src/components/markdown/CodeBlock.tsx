@@ -24,6 +24,7 @@ export function CodeBlock({
   const languageOverrides: { [key: string]: string } = {
     jsx: "javascript",
     tsx: "typescript",
+    py: "python",
   };
 
   const languageToUse = languageOverrides[language] || language;
@@ -35,6 +36,7 @@ export function CodeBlock({
       padding: "1em",
       color: slate[900], // Base text color
       backgroundColor: "transparent",
+      fontSize: "0.875rem",
     },
     "hljs-keyword": {
       // function, const, let, if, return
@@ -128,7 +130,7 @@ export function CodeBlock({
       </SyntaxHighlighter>
     </Suspense>
   ) : (
-    <code className="s-mx-0.5 s-rounded-lg s-border-primary-200 s-bg-primary-100 s-px-1.5 s-py-1 s-text-amber-600">
+    <code className="s-mx-0.5 s-rounded-lg s-border s-border-border-dark s-bg-muted s-px-1.5 s-py-1 s-text-amber-600">
       {children}
     </code>
   );

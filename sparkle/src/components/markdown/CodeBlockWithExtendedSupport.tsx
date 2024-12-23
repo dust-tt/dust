@@ -16,7 +16,11 @@ import {
   yellow,
 } from "tailwindcss/colors";
 
-import { Button, ContentBlockWrapper } from "@sparkle/components";
+import {
+  Button,
+  ContentBlockWrapper,
+  GetContentToDownloadFunction,
+} from "@sparkle/components";
 import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { CommandLineIcon, SparklesIcon } from "@sparkle/icons";
@@ -281,10 +285,25 @@ export function CodeBlockWithExtendedSupport({
   inline?: boolean;
 }) {
   const validChildrenContent = String(children).trim();
-
   const [showMermaid, setShowMermaid] = useState<boolean>(false);
   const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
   const { isStreaming } = useContext(MarkdownContentContext);
+
+  // Detect language from className
+  const language = className?.split("-")[1];
+  console.log(className?.split("-")[1]);
+
+  // Only create getContentToDownload when we actually want to enable downloads
+  const getContentToDownload: GetContentToDownloadFunction | undefined =
+    !inline &&
+    validChildrenContent &&
+    (language === "csv" || language === "json")
+      ? async () => ({
+          content: validChildrenContent,
+          filename: `dust_output_${Date.now()}`,
+          type: language === "csv" ? "text/csv" : "application/json",
+        })
+      : undefined;
 
   useEffect(() => {
     if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
@@ -322,6 +341,7 @@ export function CodeBlockWithExtendedSupport({
     return (
       <ContentBlockWrapper
         content={validChildrenContent}
+        getContentToDownload={getContentToDownload}
         actions={
           <Button
             size="xs"
@@ -344,7 +364,10 @@ export function CodeBlockWithExtendedSupport({
     );
   } else {
     return (
-      <ContentBlockWrapper content={validChildrenContent}>
+      <ContentBlockWrapper
+        content={validChildrenContent}
+        getContentToDownload={getContentToDownload}
+      >
         <CodeBlock className={className} inline={inline}>
           {children}
         </CodeBlock>

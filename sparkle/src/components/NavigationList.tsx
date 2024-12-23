@@ -1,7 +1,14 @@
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon, LinkWrapper, LinkWrapperProps } from "@sparkle/components/";
+import {
+  Icon,
+  LinkWrapper,
+  LinkWrapperProps,
+  ScrollArea,
+  ScrollBar,
+} from "@sparkle/components/";
 import { Button } from "@sparkle/components/Button";
 import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
@@ -9,7 +16,7 @@ import { cn } from "@sparkle/lib/utils";
 const listStyles = cva("s-flex", {
   variants: {
     layout: {
-      container: "s-gap-1 s-flex-col s-overflow-hidden",
+      container: "s-gap-1 s-relative s-flex-col s-overflow-hidden",
       item: cn(
         "s-box-border s-items-center s-w-full s-flex s-gap-1.5 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300",
         "data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground",
@@ -33,15 +40,30 @@ const labelStyles = cva(
 );
 
 const NavigationList = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(listStyles({ layout: "container" }), className)}
-    {...props}
-  />
-));
+  React.ElementRef<typeof ScrollAreaPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
+    isScrolling?: boolean;
+  }
+>(({ className, children, isScrolling = false, ...props }, ref) =>
+  !isScrolling ? (
+    <div
+      ref={ref as React.Ref<HTMLDivElement>}
+      className={cn(listStyles({ layout: "container" }), className)}
+      {...props}
+    >
+      {children}
+    </div>
+  ) : (
+    <ScrollArea
+      ref={ref}
+      className={cn(listStyles({ layout: "container" }), className)}
+      {...props}
+    >
+      {children}
+      <ScrollBar />
+    </ScrollArea>
+  )
+);
 NavigationList.displayName = "NavigationList";
 
 interface NavigationListItemProps
@@ -171,15 +193,22 @@ interface NavigationListLabelProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof variantStyles> {
   label: string;
+  isSticky?: boolean;
 }
 
 const NavigationListLabel = React.forwardRef<
   HTMLDivElement,
   NavigationListLabelProps
->(({ className, variant, label, ...props }, ref) => (
+>(({ className, variant, label, isSticky = false, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(labelStyles(), variantStyles({ variant }), className)}
+    className={cn(
+      labelStyles(),
+      variantStyles({ variant }),
+      isSticky &&
+        "s-sticky s-top-0 s-z-50 s-border-b s-border-border-dark/80 s-bg-structure-100/90 s-backdrop-blur-sm",
+      className
+    )}
     {...props}
   >
     {label}

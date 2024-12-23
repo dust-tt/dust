@@ -19,10 +19,7 @@ import {
   TableHeadBlock,
   TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
-import {
-  detectLanguage,
-  sanitizeContent,
-} from "@sparkle/components/markdown/utils";
+import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
 const headerColor = "s-text-foreground";
@@ -257,20 +254,6 @@ function PreBlock({ children }: { children: React.ReactNode }) {
         ? children[0].props?.node?.data?.meta
         : null;
   }
-
-  // const text = validChildrenContent || fallbackData || "";
-  // const language = detectLanguage(children);
-
-  // const getContentToDownload: GetContentToDownloadFunction | undefined =
-  //   language === "csv"
-  //     ? async () => {
-  //         return {
-  //           content: text,
-  //           filename: `dust_output_${Date.now()}`,
-  //           type: "text/csv",
-  //         };
-  //       }
-  //     : undefined;
 
   return (
     <pre

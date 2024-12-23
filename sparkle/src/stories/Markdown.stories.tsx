@@ -102,7 +102,7 @@ October 29,18,12
 October 30,19,11
 \`\`\`
 
-### Some js code :
+### Some js code:
 
 \`\`\`javascript
 import React from "react";
@@ -160,6 +160,121 @@ function renderHeader(latitude, longitude) {
   \`;
 }
 \`\`\`
+
+### Some python code:
+
+\`\`\`python
+import datetime
+import pytz
+from typing import List, Dict, Union
+import tkinter as tk
+from tkinter import ttk
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+# Data structure similar to the JavaScript example
+data = [
+    {"date": "Oct 24", "high": 19, "low": 12},
+    {"date": "Oct 25", "high": 20, "low": 12},
+    {"date": "Oct 26", "high": 17, "low": 11},
+    {"date": "Oct 27", "high": 16, "low": 10},
+    {"date": "Oct 28", "high": 17, "low": 11},
+    {"date": "Oct 29", "high": 18, "low": 12},
+    {"date": "Oct 30", "high": 19, "low": 11},
+]
+
+class WeatherDashboard:
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        self.root.title("Weather Dashboard")
+        
+        # Create header frame
+        self.header_frame = ttk.Frame(root, padding="10")
+        self.header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        
+        # Create chart frame
+        self.chart_frame = ttk.Frame(root, padding="10")
+        self.chart_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+    def render_header(self, latitude: float, longitude: float) -> None:
+        """
+        Render the dashboard header with time and location information
+        """
+        # Clear existing widgets
+        for widget in self.header_frame.winfo_children():
+            widget.destroy()
+            
+        # Get current time in local timezone
+        current_time = datetime.datetime.now()
+        local_tz = datetime.datetime.now(pytz.timezone('UTC')).astimezone().tzinfo
+        formatted_time = current_time.strftime('%A, %I:%M:%S %p')
+        
+        # Create time section
+        time_frame = ttk.LabelFrame(self.header_frame, text="Local Time")
+        time_frame.grid(row=0, column=0, padx=5, pady=5, sticky=(tk.W))
+        ttk.Label(time_frame, text=formatted_time).grid(row=0, column=0, padx=5, pady=2)
+        
+        # Create location section
+        location_frame = ttk.LabelFrame(self.header_frame, text="Location")
+        location_frame.grid(row=0, column=1, padx=5, pady=5, sticky=(tk.W))
+        ttk.Label(
+            location_frame, 
+            text=f"Lat: {latitude:.2f}, Lon: {longitude:.2f}"
+        ).grid(row=0, column=0, padx=5, pady=2)
+        
+    def create_chart(self) -> None:
+        """
+        Create a line chart using matplotlib
+        """
+        # Create figure and axis
+        fig = Figure(figsize=(8, 4))
+        ax = fig.add_subplot(111)
+        
+        # Extract data for plotting
+        dates = [d['date'] for d in data]
+        highs = [d['high'] for d in data]
+        lows = [d['low'] for d in data]
+        
+        # Plot lines
+        ax.plot(dates, highs, marker='o', label='High', color='red')
+        ax.plot(dates, lows, marker='o', label='Low', color='blue')
+        
+        # Customize chart
+        ax.grid(True)
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Temperature')
+        ax.legend()
+        
+        # Rotate x-axis labels for better readability
+        plt.setp(ax.get_xticklabels(), rotation=45)
+        
+        # Create canvas and add to frame
+        canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
+        canvas.draw()
+        canvas.get_tk_widget().grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+def main():
+    root = tk.Tk()
+    dashboard = WeatherDashboard(root)
+    
+    # Example coordinates (Paris)
+    dashboard.render_header(48.8566, 2.3522)
+    dashboard.create_chart()
+    
+    # Configure grid weights
+    root.columnconfigure(0, weight=1)
+    root.rowconfigure(1, weight=1)
+    
+    # Start the application
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
+
+\`\`\`
+
+### And some mermaids:
 
 \`\`\`mermaid
 graph TD
