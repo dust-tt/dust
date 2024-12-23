@@ -10,14 +10,22 @@ import {
 import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
 
-export function BlogSection() {
+interface BlogSectionProps {
+  headerColorFrom?: string;
+  headerColorTo?: string;
+}
+
+export function BlogSection({
+  headerColorFrom = "from-green-200",
+  headerColorTo = "to-emerald-400",
+}: BlogSectionProps) {
   return (
     <Grid gap="gap-8">
       <div className="col-span-12">
         <Carousel className="w-full">
           <div className="mb-6 flex items-end justify-between">
             <div>
-              <H2 from="from-green-200" to="to-emerald-400">
+              <H2 from={headerColorFrom} to={headerColorTo}>
                 Dust in Action:
                 <br />
                 Customer Stories
