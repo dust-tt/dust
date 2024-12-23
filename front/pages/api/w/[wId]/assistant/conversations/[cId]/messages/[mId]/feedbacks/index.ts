@@ -8,8 +8,8 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import {
-  createOrUpdateMessageFeedback,
   deleteMessageFeedback,
+  upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -79,7 +79,7 @@ async function handler(
         });
       }
 
-      const created = await createOrUpdateMessageFeedback(auth, {
+      const created = await upsertMessageFeedback(auth, {
         messageId,
         conversation,
         user,

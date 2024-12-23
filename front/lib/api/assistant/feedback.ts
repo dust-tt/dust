@@ -4,15 +4,11 @@ import type {
   Result,
 } from "@dust-tt/types";
 import type { UserType } from "@dust-tt/types";
-import { ConversationError, Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
-import { Op } from "sequelize";
+import { ConversationError, Err, Ok } from "@dust-tt/types";
 
 import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 
 /**
@@ -41,54 +37,24 @@ export async function getConversationFeedbacksForUser(
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
-  const messages = await Message.findAll({
-    where: {
-      conversationId: conversation.id,
-      agentMessageId: {
-        [Op.ne]: null,
-      },
-    },
-    attributes: ["sId", "agentMessageId"],
-  });
-
-  const agentMessages = await AgentMessage.findAll({
-    where: {
-      id: {
-        [Op.in]: messages
-          .map((m) => m.agentMessageId)
-          .filter((id): id is number => id !== null),
-      },
-    },
-  });
-
   const feedbacks =
-    await AgentMessageFeedbackResource.fetchByUserAndAgentMessages(
-      user,
-      agentMessages
+    await AgentMessageFeedbackResource.getConversationFeedbacksForUser(
+      auth,
+      conversation
     );
 
-  const feedbacksByMessageId = feedbacks.map(
-    (feedback) =>
-      ({
-        id: feedback.id,
-        messageId: messages.find(
-          (m) => m.agentMessageId === feedback.agentMessageId
-        )!.sId,
-        agentMessageId: feedback.agentMessageId,
-        userId: feedback.userId,
-        thumbDirection: feedback.thumbDirection,
-        content: feedback.content,
-      }) as AgentMessageFeedbackType
-  );
+  if (feedbacks.isErr()) {
+    return new Err(feedbacks.error);
+  }
 
-  return new Ok(feedbacksByMessageId);
+  return new Ok(feedbacks.value);
 }
 
 /**
  * We create a feedback for a single message.
  * As user can be null (user from Slack), we also store the user context, as we do for messages.
  */
-export async function createOrUpdateMessageFeedback(
+export async function upsertMessageFeedback(
   auth: Authenticator,
   {
     messageId,
@@ -96,94 +62,71 @@ export async function createOrUpdateMessageFeedback(
     user,
     thumbDirection,
     content,
+    isConversationShared,
   }: {
     messageId: string;
     conversation: ConversationType | ConversationWithoutContentType;
     user: UserType;
     thumbDirection: AgentMessageFeedbackDirection;
     content?: string;
+    isConversationShared?: boolean;
   }
-): Promise<boolean | null> {
+) {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const message = await Message.findOne({
-    where: {
-      sId: messageId,
-      conversationId: conversation.id,
-    },
-  });
-
-  if (!message || !message.agentMessageId) {
-    return null;
-  }
-
-  const agentMessage = await AgentMessage.findOne({
-    where: {
-      id: message.agentMessageId,
-    },
-  });
-
-  if (!agentMessage) {
-    return null;
-  }
-
-  let isGlobalAgent = false;
-  let agentConfigurationId = agentMessage.agentConfigurationId;
-  if (
-    Object.values(GLOBAL_AGENTS_SID).includes(
-      agentMessage.agentConfigurationId as GLOBAL_AGENTS_SID
-    )
-  ) {
-    isGlobalAgent = true;
-  }
-
-  if (!isGlobalAgent) {
-    const agentConfiguration = await AgentConfiguration.findOne({
-      where: {
-        sId: agentMessage.agentConfigurationId,
-      },
+    return new Err({
+      type: "workspace_not_found",
+      message: "The workspace you're trying to access was not found.",
     });
-
-    if (!agentConfiguration) {
-      return null;
-    }
-    agentConfigurationId = agentConfiguration.sId;
   }
-
-  const feedback =
-    await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
+  const feedbackWithConversationContext =
+    await AgentMessageFeedbackResource.getFeedbackWithConversationContext({
+      auth,
+      messageId,
+      conversation,
       user,
-      agentMessage,
     });
+
+  if (feedbackWithConversationContext.isErr()) {
+    return feedbackWithConversationContext;
+  }
+
+  const { agentMessage, feedback, agentConfiguration, isGlobalAgent } =
+    feedbackWithConversationContext.value;
 
   if (feedback) {
-    const updatedFeedback = await feedback.updateContentAndThumbDirection(
-      content ?? "",
-      thumbDirection
-    );
+    await feedback.updateFields({
+      content: content ?? "",
+      thumbDirection,
+      isConversationShared: false,
+    });
+    return new Ok(undefined);
+  }
 
-    return updatedFeedback.isOk();
-  } else {
-    const newFeedback = await AgentMessageFeedbackResource.makeNew({
-      workspaceId: owner.id,
-      agentConfigurationId: agentConfigurationId,
+  try {
+    await AgentMessageFeedbackResource.makeNew({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      // If the agent is global, we use the agent configuration id from the agent message
+      // Otherwise, we use the agent configuration id from the agent configuration
+      agentConfigurationId: isGlobalAgent
+        ? agentMessage.agentConfigurationId
+        : agentConfiguration.sId,
       agentConfigurationVersion: agentMessage.agentConfigurationVersion,
       agentMessageId: agentMessage.id,
       userId: user.id,
       thumbDirection,
       content,
-      isConversationShared: false,
+      isConversationShared: isConversationShared ?? false,
     });
-    return newFeedback !== null;
+  } catch (e) {
+    return new Err(e as Error);
   }
+  return new Ok(undefined);
 }
 
 /**
- * The id of a reaction is not exposed on the API so we need to find it from the message id and the user context.
- * We destroy reactions, no point in soft-deleting them.
+ * The id of a feedback is not exposed on the API so we need to find it from the message id and the user context.
+ * We destroy feedbacks, no point in soft-deleting them.
  */
 export async function deleteMessageFeedback(
   auth: Authenticator,
@@ -196,45 +139,45 @@ export async function deleteMessageFeedback(
     conversation: ConversationType | ConversationWithoutContentType;
     user: UserType;
   }
-): Promise<boolean | null> {
+) {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
+    return new Err({
+      type: "workspace_not_found",
+      message: "The workspace you're trying to access was not found.",
+    });
   }
 
-  const message = await Message.findOne({
-    where: {
-      sId: messageId,
-      conversationId: conversation.id,
-    },
-    attributes: ["agentMessageId"],
-  });
-
-  if (!message || !message.agentMessageId) {
-    return null;
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err({
+      type: "conversation_access_restricted",
+      message: "You don't have access to this conversation.",
+    });
   }
 
-  const agentMessage = await AgentMessage.findOne({
-    where: {
-      id: message.agentMessageId,
-    },
-  });
-
-  if (!agentMessage) {
-    return null;
-  }
-
-  const feedback =
-    await AgentMessageFeedbackResource.fetchByUserAndAgentMessage({
+  const feedbackWithContext =
+    await AgentMessageFeedbackResource.getFeedbackWithConversationContext({
+      auth,
+      messageId,
+      conversation,
       user,
-      agentMessage,
     });
 
-  if (!feedback) {
-    return null;
+  if (feedbackWithContext.isErr()) {
+    return feedbackWithContext;
   }
 
-  const deletedFeedback = await feedback.delete(auth);
+  const { feedback } = feedbackWithContext.value;
 
-  return deletedFeedback.isOk();
+  if (!feedback) {
+    return new Ok(undefined);
+  }
+
+  const deleteRes = await feedback.delete(auth, {});
+
+  if (deleteRes.isErr()) {
+    return deleteRes;
+  }
+
+  return new Ok(undefined);
 }
