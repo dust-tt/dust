@@ -541,13 +541,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Default Workspace space and Conversations space.
+    // Global Workspace space and Conversations space.
     if (this.isGlobal() || this.isConversations()) {
       return [
         {
           workspaceId: this.workspaceId,
           roles: [
-            { role: "admin", permissions: ["read", "write"] },
+            { role: "admin", permissions: ["admin", "read", "write"] },
             { role: "builder", permissions: ["read", "write"] },
           ],
           groups: this.groups.map((group) => ({
