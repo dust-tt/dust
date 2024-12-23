@@ -1,6 +1,9 @@
-import React, { InputHTMLAttributes, useMemo } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import React, { DetailedHTMLProps, InputHTMLAttributes, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
+import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
@@ -49,6 +52,7 @@ function showUnsupportedDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.type === "textDirective") {
+        // it's not a valid directive, so we'll leave it as plain text
         node.type = "text";
         node.value = `:${node.name}${node.children ? node.children.map((c: any) => c.value).join("") : ""}`;
       }
@@ -75,6 +79,21 @@ export function Markdown({
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
+  // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
+  // AST parsing rounds (happening at each token being streamed).
+  //
+  // When adding a new directive and associated component that depends on external data (eg
+  // workspace or message), you can use the customRenderer.visualization pattern. It is essential
+  // for the customRenderer argument to be memoized to avoid re-renderings through the
+  // markdownComponents memoization dependency on `customRenderer`.
+  //
+  // Make sure to spend some time understanding the re-rendering or lack thereof through the parser
+  // rounds.
+  //
+  // Minimal test whenever editing this code: ensure that code block content of a streaming message
+  // can be selected without blinking.
+
+  // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(() => {
     return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
@@ -145,14 +164,21 @@ export function Markdown({
       ),
       input: React.forwardRef<
         HTMLInputElement,
-        InputHTMLAttributes<HTMLInputElement>
+        Omit<
+          DetailedHTMLProps<
+            InputHTMLAttributes<HTMLInputElement>,
+            HTMLInputElement
+          >,
+          "ref"
+        > &
+          ReactMarkdownProps
       >(({ type, checked, className, ...props }, ref) => {
         if (type === "checkbox") {
           return (
             <div className="s-inline-flex s-items-center">
               <Checkbox
                 ref={ref as React.Ref<HTMLButtonElement>}
-                size={"xs"}
+                size="xs"
                 checked={checked}
                 className="s-translate-y-[3px]"
                 onCheckedChange={(isChecked) => {
