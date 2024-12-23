@@ -21,6 +21,10 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 
+function getEndpointFromZendeskUrl(url: string): string {
+  return url.replace(/^https?:\/\/(.*)\.zendesk\.com(.*)/, "$2");
+}
+
 export function createZendeskClient({
   accessToken,
   subdomain,
@@ -162,15 +166,15 @@ async function fetchFromZendeskWithRetries({
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
-      rawResponse
+      { rawResponse, endpoint: getEndpointFromZendeskUrl(url) }
     );
   }
   if (!rawResponse.ok) {
-    throw new ZendeskApiError(
-      "Zendesk API error.",
-      rawResponse.status,
-      response
-    );
+    throw new ZendeskApiError("Zendesk API error.", rawResponse.status, {
+      response,
+      rawResponse,
+      endpoint: getEndpointFromZendeskUrl(url),
+    });
   }
 
   return response;

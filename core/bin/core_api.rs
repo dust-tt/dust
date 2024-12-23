@@ -35,6 +35,7 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
+        node::Node,
         qdrant::QdrantClients,
     },
     databases::{
@@ -1507,14 +1508,23 @@ async fn data_sources_documents_update_parents(
             }
         }
         None => {
-            info!(
-                data_source_id = data_source_id,
-                node_id = document_id,
-                parents = ?payload.parents,
-                node_type = "document",
-                operation = "update_parents",
-                "[KWSEARCH] invariant_parent_id_not_none"
-            );
+            if payload.parents.len() > 1 {
+                // TODO(aubin) - re-enable this check when the log below does not pop
+                // return error_response(
+                //     StatusCode::BAD_REQUEST,
+                //     "invalid_parent_id",
+                //     "Failed to update document parents - parent_id should not be null if parents[1] is defined",
+                //     None,
+                // );
+                info!(
+                    data_source_id = data_source_id,
+                    node_id = document_id,
+                    parents = ?payload.parents,
+                    node_type = "document",
+                    operation = "update_parents",
+                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
+                );
+            }
         }
     }
 
@@ -1540,6 +1550,7 @@ async fn data_sources_documents_update_parents(
                 .update_parents(
                     state.store.clone(),
                     state.qdrant_clients.clone(),
+                    state.search_store.clone(),
                     document_id,
                     payload.parents,
                 )
@@ -1681,6 +1692,15 @@ async fn data_sources_documents_upsert(
     match &payload.parent_id {
         Some(parent_id) => {
             if payload.parents.get(1) != Some(parent_id) {
+                info!(
+                    data_source_id = data_source_id,
+                    node_id = payload.document_id,
+                    parent_id = parent_id,
+                    parents = ?payload.parents,
+                    node_type = "document",
+                    operation = "upsert",
+                    "[KWSEARCH] invariant_parent_id_equal_parent_1"
+                );
                 // TODO(fontanierh): Temporary, as we need to let some jobs go through.
                 // return error_response(
                 //     StatusCode::BAD_REQUEST,
@@ -1691,14 +1711,23 @@ async fn data_sources_documents_upsert(
             }
         }
         None => {
-            info!(
-                data_source_id = data_source_id,
-                node_id = payload.document_id,
-                parents = ?payload.parents,
-                node_type = "document",
-                operation = "upsert",
-                "[KWSEARCH] invariant_parent_id_not_none"
-            );
+            if payload.parents.len() > 1 {
+                // TODO(aubin) - re-enable this check when the log below does not pop
+                // return error_response(
+                //     StatusCode::BAD_REQUEST,
+                //     "invalid_parent_id",
+                //     "Failed to upsert document - parent_id should not be null if parents[1] is defined",
+                //     None,
+                // );
+                info!(
+                    data_source_id = data_source_id,
+                    node_id = payload.document_id,
+                    parents = ?payload.parents,
+                    node_type = "document",
+                    operation = "upsert",
+                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
+                );
+            }
         }
     }
 
@@ -2173,14 +2202,23 @@ async fn tables_upsert(
             }
         }
         None => {
-            info!(
-                data_source_id = data_source_id,
-                node_id = payload.table_id,
-                parents = ?payload.parents,
-                node_type = "table",
-                operation = "upsert",
-                "[KWSEARCH] invariant_parent_id_not_none"
-            );
+            if payload.parents.len() > 1 {
+                // TODO(aubin) - re-enable this check when the log below does not pop
+                //     return error_response(
+                //         StatusCode::BAD_REQUEST,
+                //         "invalid_parent_id",
+                //         "Failed to upsert table - parent_id should not be null if parents[1] is defined",
+                //         None,
+                //     );
+                info!(
+                    data_source_id = data_source_id,
+                    node_id = payload.table_id,
+                    parents = ?payload.parents,
+                    node_type = "table",
+                    operation = "upsert",
+                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
+                );
+            }
         }
     }
 
@@ -2204,7 +2242,11 @@ async fn tables_upsert(
         )
         .await
     {
-        Ok(table) => match state.search_store.index_table(table.clone()).await {
+        Ok(table) => match state
+            .search_store
+            .index_node(Node::from(table.clone()))
+            .await
+        {
             Ok(_) => (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -2457,14 +2499,23 @@ async fn tables_update_parents(
             }
         }
         None => {
-            info!(
-                data_source_id = data_source_id,
-                node_id = table_id,
-                parents = ?payload.parents,
-                node_type = "table",
-                operation = "update_parents",
-                "[KWSEARCH] invariant_parent_id_not_none"
-            );
+            if payload.parents.len() > 1 {
+                // TODO(aubin) - re-enable this check when the log below does not pop
+                //     return error_response(
+                //         StatusCode::BAD_REQUEST,
+                //         "invalid_parent_id",
+                //         "Failed to update table parents - parent_id should not be null if parents[1] is defined",
+                //         None,
+                //     );
+                info!(
+                    data_source_id = data_source_id,
+                    node_id = table_id,
+                    parents = ?payload.parents,
+                    node_type = "table",
+                    operation = "update_parents",
+                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
+                );
+            }
         }
     }
 
@@ -2486,7 +2537,11 @@ async fn tables_update_parents(
             None,
         ),
         Ok(Some(table)) => match table
-            .update_parents(state.store.clone(), payload.parents.clone())
+            .update_parents(
+                state.store.clone(),
+                state.search_store.clone(),
+                payload.parents.clone(),
+            )
             .await
         {
             Err(e) => error_response(
@@ -2878,14 +2933,23 @@ async fn folders_upsert(
             }
         }
         None => {
-            info!(
-                data_source_id = data_source_id,
-                node_id = payload.folder_id,
-                parents = ?payload.parents,
-                node_type = "folder",
-                operation = "upsert",
-                "[KWSEARCH] invariant_parent_id_not_none"
-            );
+            if payload.parents.len() > 1 {
+                // TODO(aubin) - re-enable this check when the log below does not pop
+                //     return error_response(
+                //         StatusCode::BAD_REQUEST,
+                //         "invalid_parent_id",
+                //         "Failed to upsert folder - parent_id should not be null if parents[1] is defined",
+                //         None,
+                //     );
+                info!(
+                    data_source_id = data_source_id,
+                    node_id = payload.folder_id,
+                    parents = ?payload.parents,
+                    node_type = "folder",
+                    operation = "upsert",
+                    "[KWSEARCH] invariant_parent_id_incorrectly_none"
+                );
+            }
         }
     }
 
@@ -2910,7 +2974,11 @@ async fn folders_upsert(
             "Failed to upsert folder",
             Some(e),
         ),
-        Ok(folder) => match state.search_store.index_folder(folder.clone()).await {
+        Ok(folder) => match state
+            .search_store
+            .index_node(Node::from(folder.clone()))
+            .await
+        {
             Ok(_) => (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -3049,15 +3117,19 @@ async fn folders_delete(
     let project = project::Project::new_from_id(project_id);
 
     let result = async {
-        state
+        let folder = match state
             .store
             .load_data_source_folder(&project, &data_source_id, &folder_id)
-            .await?;
+            .await?
+        {
+            Some(folder) => folder,
+            None => return Ok(()),
+        };
         state
             .store
             .delete_data_source_folder(&project, &data_source_id, &folder_id)
             .await?;
-        state.search_store.delete_node(folder_id).await?;
+        state.search_store.delete_node(Node::from(folder)).await?;
         Ok(())
     }
     .await;

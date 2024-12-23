@@ -83,7 +83,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
+        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
         "group transition duration-300 ease-out",
         "hover:bg-white"
       )}

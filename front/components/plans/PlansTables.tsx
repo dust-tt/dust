@@ -71,12 +71,12 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "(soon) User provisioning",
+    label: "US / EU data hosting",
     variant: "check",
     display: ["landing"],
   },
   {
-    label: "(soon) EU data hosting",
+    label: "(soon) User provisioning",
     variant: "check",
     display: ["landing"],
   },

@@ -31,24 +31,9 @@ const CareersMenuConfig: MenuConfig = {
   ],
 };
 
-const AboutMenuConfig: MenuConfig = {
-  title: "About",
+const SocialMenuConfig: MenuConfig = {
+  title: "Social",
   items: [
-    {
-      title: "Blog",
-      href: "https://blog.dust.tt/",
-      isExternal: true,
-    },
-    {
-      title: "Contact Support",
-      href: "mailto:support@dust.tt",
-      isExternal: true,
-    },
-    {
-      title: "Community Support",
-      href: "https://bit.ly/dust-slack",
-      isExternal: true,
-    },
     {
       title: "X",
       href: "https://x.com/dust4ai",
@@ -64,54 +49,27 @@ const AboutMenuConfig: MenuConfig = {
 
 // If you change this, make sure to update the links in the extension as well.
 const LegalMenuConfig: MenuConfig = {
-  title: "Legal",
+  title: "Legal & Security",
   items: [
+    {
+      title: "Security",
+      href: "/home/security",
+    },
+    {
+      title: "Terms & Policies",
+      href: "https://dust-tt.notion.site/17bb854ffc674e1ba729d1a10837e50d?v=de92d1770a344beeafe9f701e78ad8f3",
+      isExternal: true,
+    },
+    {
+      title: "Trust Center",
+      href: "https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto",
+      isExternal: true,
+    },
     {
       title: "Privacy Policy",
-      href: "https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084",
+      href: "https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084?pvs=74",
       isExternal: true,
     },
-    {
-      title: "Terms of Use",
-      href: "https://dust-tt.notion.site/Website-Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb",
-      isExternal: true,
-    },
-    {
-      title: "Legal Notice",
-      href: "https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1",
-      isExternal: true,
-    },
-    {
-      title: "Cookie Notice",
-      href: "https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec",
-      isExternal: true,
-    },
-  ],
-};
-
-const MoreMenuConfig: MenuConfig = {
-  title: "More",
-  items: [
-    {
-      title: CareersMenuConfig.title,
-    },
-    CareersMenuConfig.items[0],
-    CareersMenuConfig.items[1],
-    {
-      title: AboutMenuConfig.title,
-    },
-    AboutMenuConfig.items[0],
-    AboutMenuConfig.items[1],
-    {
-      title: LegalMenuConfig.title,
-    },
-    LegalMenuConfig.items[0],
-    LegalMenuConfig.items[1],
-    {
-      title: " ",
-    },
-    LegalMenuConfig.items[2],
-    LegalMenuConfig.items[3],
   ],
 };
 
@@ -173,6 +131,111 @@ const DevelopersMenuConfig: MenuConfig = {
   ],
 };
 
+const BuildMenuConfig: MenuConfig = {
+  title: "Build",
+  items: [
+    {
+      title: "Get Started ",
+      href: "https://docs.dust.tt/docs/intro",
+      isExternal: true,
+    },
+    {
+      title: "Guides & Tutorials",
+      href: "https://dust-tt.notion.site/c3edbbd1a2e8464f9a692e9f7486af95?v=bab4f048e7a942e2b79bf434d83dc527",
+      isExternal: true,
+    },
+  ],
+};
+
+const ExploreMenuConfig: MenuConfig = {
+  title: "Explore",
+  items: [
+    {
+      title: "Blog",
+      href: "https://blog.dust.tt/",
+      isExternal: true,
+    },
+    {
+      title: "Webinars",
+      href: "https://app.getcontrast.io/dust",
+      isExternal: true,
+    },
+    {
+      title: "Events",
+      href: "https://www.youtube.com/playlist?list=PLv-ZZddHqz5B7ORswb588oAtRHMYAMVDb",
+      isExternal: true,
+    },
+    {
+      title: "Customer Stories",
+      href: "https://blog.dust.tt/tag/customer-stories/",
+      isExternal: true,
+    },
+  ],
+};
+
+const ConnectMenuConfig: MenuConfig = {
+  title: "Connect",
+  items: [
+    {
+      title: "Slack Community",
+      href: "https://bit.ly/dust-slack",
+      isExternal: true,
+    },
+
+    {
+      title: "Contact Support",
+      href: "mailto:support@dust.tt",
+      isExternal: true,
+    },
+  ],
+};
+
+const CompanyMenuConfig: MenuConfig = {
+  title: "Company",
+  items: [
+    {
+      title: CareersMenuConfig.title,
+    },
+    CareersMenuConfig.items[0],
+    CareersMenuConfig.items[1],
+    {
+      title: SocialMenuConfig.title,
+    },
+    SocialMenuConfig.items[0],
+    SocialMenuConfig.items[1],
+    {
+      title: "Legal",
+    },
+    LegalMenuConfig.items[1],
+  ],
+};
+
+const ResourcesMenuConfig: MenuConfig = {
+  title: "Resources",
+  items: [
+    {
+      title: BuildMenuConfig.title,
+    },
+    BuildMenuConfig.items[0],
+    BuildMenuConfig.items[1],
+    {
+      title: ExploreMenuConfig.title,
+    },
+    ExploreMenuConfig.items[0],
+    ExploreMenuConfig.items[1],
+    {
+      title: "",
+    },
+    ExploreMenuConfig.items[2],
+    ExploreMenuConfig.items[3],
+    {
+      title: ConnectMenuConfig.title,
+    },
+    ConnectMenuConfig.items[0],
+    ConnectMenuConfig.items[1],
+  ],
+};
+
 interface DocsConfig {
   mainNav: NavItemWithChildren[];
   mobileNav: NavItemWithChildren[];
@@ -198,18 +261,24 @@ export const menuConfig: DocsConfig = {
       items: DevelopersMenuConfig.items,
     },
     {
-      title: "Pricing",
-      href: "/home/pricing",
+      title: ResourcesMenuConfig.title,
+      label: "Resources",
+      rows: 3,
+      items: ResourcesMenuConfig.items,
+    },
+    {
+      title: CompanyMenuConfig.title,
+      label: "All about Dust",
+      rows: 3,
+      items: CompanyMenuConfig.items,
     },
     {
       title: "Security",
       href: "/home/security",
     },
     {
-      title: MoreMenuConfig.title,
-      label: "All about Dust",
-      rows: 3,
-      items: MoreMenuConfig.items,
+      title: "Pricing",
+      href: "/home/pricing",
     },
   ],
   mobileNav: [
@@ -222,10 +291,6 @@ export const menuConfig: DocsConfig = {
       href: "/home/pricing",
     },
     {
-      title: "Security",
-      href: "/home/security",
-    },
-    {
       title: SolutionsMenuConfig.title,
       items: SolutionsMenuConfig.items,
     },
@@ -234,12 +299,24 @@ export const menuConfig: DocsConfig = {
       items: DevelopersMenuConfig.items,
     },
     {
+      title: BuildMenuConfig.title,
+      items: BuildMenuConfig.items,
+    },
+    {
+      title: ExploreMenuConfig.title,
+      items: ExploreMenuConfig.items,
+    },
+    {
+      title: ConnectMenuConfig.title,
+      items: ConnectMenuConfig.items,
+    },
+    {
       title: CareersMenuConfig.title,
       items: CareersMenuConfig.items,
     },
     {
-      title: AboutMenuConfig.title,
-      items: AboutMenuConfig.items,
+      title: SocialMenuConfig.title,
+      items: SocialMenuConfig.items,
     },
     {
       title: LegalMenuConfig.title,
@@ -277,8 +354,8 @@ export const menuConfig: DocsConfig = {
       items: CareersMenuConfig.items,
     },
     {
-      title: AboutMenuConfig.title,
-      items: AboutMenuConfig.items,
+      title: SocialMenuConfig.title,
+      items: SocialMenuConfig.items,
     },
     {
       title: LegalMenuConfig.title,
