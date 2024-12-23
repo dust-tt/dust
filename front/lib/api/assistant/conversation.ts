@@ -66,7 +66,8 @@ import {
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
-import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/assistant";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -711,6 +712,8 @@ export async function* postUserMessage(
     return;
   }
 
+  const featureFlags = await getFeatureFlags(owner);
+
   if (!canAccessConversation(auth, conversation)) {
     yield {
       type: "user_message_error",
@@ -770,6 +773,22 @@ export async function* postUserMessage(
         },
       };
       return; // Stop processing if any agent uses a disabled provider
+    }
+    const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
+    if (
+      supportedModelConfig.featureFlag &&
+      !featureFlags.includes(supportedModelConfig.featureFlag)
+    ) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "model_not_supported",
+          message: "The model is not supported.",
+        },
+      };
+      return;
     }
   }
 

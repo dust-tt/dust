@@ -9,6 +9,8 @@ export const WHITELISTABLE_FEATURES = [
   "openai_o1_feature",
   "openai_o1_mini_feature",
   "openai_o1_high_reasoning_feature",
+  "openai_o1_custom_assistants_feature",
+  "openai_o1_high_reasoning_custom_assistants_feature",
   "index_private_slack_channel",
   "conversations_jit_actions",
   "labs_trackers",

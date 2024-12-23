@@ -380,7 +380,6 @@ export const TrackerBuilder = ({
             )}
             <AdvancedSettings
               owner={owner}
-              plan={subscription.plan}
               generationSettings={{
                 modelSettings: {
                   modelId: tracker.modelId,

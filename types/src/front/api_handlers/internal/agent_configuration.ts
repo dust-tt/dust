@@ -177,6 +177,13 @@ const ModelConfigurationSchema = t.intersection([
   }),
   // TODO(2024-11-04 flav) Clean up this legacy type.
   t.partial(multiActionsCommonFields),
+  t.partial({
+    reasoningEffort: t.union([
+      t.literal("low"),
+      t.literal("medium"),
+      t.literal("high"),
+    ]),
+  }),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(
   "SupportedModel",
