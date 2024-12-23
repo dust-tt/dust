@@ -382,7 +382,6 @@ UserModel.hasMany(AgentMessageFeedback, {
 AgentMessageFeedback.belongsTo(UserModel);
 AgentMessageFeedback.belongsTo(AgentMessage, {
   as: "agentMessage",
-  foreignKey: { allowNull: false },
 });
 
 export class Message extends BaseModel<Message> {
