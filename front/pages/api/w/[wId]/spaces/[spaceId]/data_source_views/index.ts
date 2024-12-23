@@ -144,14 +144,13 @@ async function handler(
     }
 
     case "POST": {
-      if (!space.canWrite(auth)) {
+      if (!space.canAdministrate(auth)) {
         // Only admins, or builders who have to the space, can create a new view
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` or `builder` can administrate spaces.",
+            message: "Only users that are `admins` can administrate spaces.",
           },
         });
       }
