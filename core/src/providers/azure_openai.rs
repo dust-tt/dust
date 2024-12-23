@@ -447,8 +447,8 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
-        let (openai_user, response_format) = match &extras {
-            None => (None, None),
+        let (openai_user, response_format, reasoning_effort) = match &extras {
+            None => (None, None, None),
             Some(v) => (
                 match v.get("openai_user") {
                     Some(Value::String(u)) => Some(u.to_string()),
@@ -456,6 +456,10 @@ impl LLM for AzureOpenAILLM {
                 },
                 match v.get("response_format") {
                     Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+                match v.get("reasoning_effort") {
+                    Some(Value::String(r)) => Some(r.to_string()),
                     _ => None,
                 },
             ),
@@ -501,6 +505,7 @@ impl LLM for AzureOpenAILLM {
                     },
                     response_format,
                     openai_user,
+                    reasoning_effort,
                     event_sender,
                 )
                 .await?
@@ -531,6 +536,7 @@ impl LLM for AzureOpenAILLM {
                         None => 0.0,
                     },
                     response_format,
+                    reasoning_effort,
                     openai_user,
                 )
                 .await?

@@ -176,10 +176,13 @@ export type AgentUsageType = {
 
 export type AgentRecentAuthors = readonly string[];
 
+export type AgentReasoningEffort = "low" | "medium" | "high";
+
 export type AgentModelConfigurationType = {
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
   temperature: number;
+  reasoningEffort?: AgentReasoningEffort;
 };
 
 export type LightAgentConfigurationType = {
@@ -228,6 +231,8 @@ export type LightAgentConfigurationType = {
   //
   // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
   requestedGroupIds: string[][];
+
+  reasoningEffort?: AgentReasoningEffort;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {

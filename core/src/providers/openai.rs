@@ -1014,6 +1014,7 @@ pub async fn streamed_chat_completion(
     presence_penalty: f32,
     frequency_penalty: f32,
     response_format: Option<String>,
+    reasoning_effort: Option<String>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
@@ -1071,13 +1072,16 @@ pub async fn streamed_chat_completion(
     if tools.len() > 0 {
         body["tools"] = json!(tools);
     }
-    if tool_choice.is_some() {
+    if let Some(tool_choice) = tool_choice {
         body["tool_choice"] = json!(tool_choice);
     }
-    if response_format.is_some() {
+    if let Some(response_format) = response_format {
         body["response_format"] = json!({
-            "type": response_format.unwrap(),
+            "type": response_format,
         });
+    }
+    if let Some(reasoning_effort) = reasoning_effort {
+        body["reasoning_effort"] = json!(reasoning_effort);
     }
 
     let client = builder
@@ -1436,6 +1440,7 @@ pub async fn chat_completion(
     presence_penalty: f32,
     frequency_penalty: f32,
     response_format: Option<String>,
+    reasoning_effort: Option<String>,
     user: Option<String>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let mut body = json!({
@@ -1449,7 +1454,7 @@ pub async fn chat_completion(
     if user.is_some() {
         body["user"] = json!(user);
     }
-    if model_id.is_some() {
+    if let Some(model_id) = model_id {
         body["model"] = json!(model_id);
     }
     if let Some(mt) = max_tokens {
@@ -1459,16 +1464,19 @@ pub async fn chat_completion(
         body["stop"] = json!(stop);
     }
 
-    if response_format.is_some() {
+    if let Some(response_format) = response_format {
         body["response_format"] = json!({
-            "type": response_format.unwrap(),
+            "type": response_format,
         });
     }
     if tools.len() > 0 {
         body["tools"] = json!(tools);
     }
-    if tool_choice.is_some() {
+    if let Some(tool_choice) = tool_choice {
         body["tool_choice"] = json!(tool_choice);
+    }
+    if let Some(reasoning_effort) = reasoning_effort {
+        body["reasoning_effort"] = json!(reasoning_effort);
     }
 
     let mut req = reqwest::Client::new()
@@ -2005,8 +2013,8 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (openai_org_id, openai_user, response_format) = match &extras {
-            None => (None, None, None),
+        let (openai_org_id, openai_user, response_format, reasoning_effort) = match &extras {
+            None => (None, None, None, None),
             Some(v) => (
                 match v.get("openai_organization_id") {
                     Some(Value::String(o)) => Some(o.to_string()),
@@ -2018,6 +2026,10 @@ impl LLM for OpenAILLM {
                 },
                 match v.get("response_format") {
                     Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+                match v.get("reasoning_effort") {
+                    Some(Value::String(r)) => Some(r.to_string()),
                     _ => None,
                 },
             ),
@@ -2065,6 +2077,7 @@ impl LLM for OpenAILLM {
                     None => 0.0,
                 },
                 response_format,
+                reasoning_effort,
                 openai_user,
                 event_sender.clone(),
             )
@@ -2095,6 +2108,7 @@ impl LLM for OpenAILLM {
                     None => 0.0,
                 },
                 response_format,
+                reasoning_effort,
                 openai_user,
             )
             .await?
