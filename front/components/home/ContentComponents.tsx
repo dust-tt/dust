@@ -98,7 +98,7 @@ const pClasses = {
   xxs: "font-objektiv text-xs text-muted-foreground md:text-sm leading-relaxed",
   xs: "font-objektiv text-sm text-slate-400 md:text-base leading-relaxed",
   sm: "font-objektiv text-base text-slate-400 md:text-lg leading-relaxed",
-  md: "font-objektiv text-lg md:text-lg text-slate-700 lg:text-xl leading-relaxed",
+  md: "font-objektiv text-lg md:text-lg text-slate-300 lg:text-xl leading-relaxed",
   lg: "font-objektiv text-lg md:text-xl text-slate-300 lg:text-2xl drop-shadow leading-relaxed",
 };
 
@@ -127,7 +127,7 @@ export const P = ({
 }: PProps) => {
   if (dotCSS) {
     return (
-      <div className={classNames(className, "flex gap-2 lg:gap-3")}>
+      <div className={classNames("flex gap-2 lg:gap-3", className)}>
         <Icon
           visual={shapeClasses[shape]}
           className={classNames("mt-0.5 shrink-0", dotCSS)}
@@ -137,7 +137,7 @@ export const P = ({
       </div>
     );
   } else {
-    return <p className={classNames(className, pClasses[size])}>{children}</p>;
+    return <p className={classNames(pClasses[size], className)}>{children}</p>;
   }
 };
 
