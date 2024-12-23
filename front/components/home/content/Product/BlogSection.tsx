@@ -90,6 +90,42 @@ export function BlogSection({
                 />
               </BlogBlock>
             </CarouselItem>
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+              <BlogBlock
+                title="Lifen uses Dust AI assistants to boost team productivity"
+                content="Lifen uses Dust AI assistants to boost team productivity and save hours of work each week."
+                href="https://blog.dust.tt/customer-story-lifen/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
+            </CarouselItem>
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+              <BlogBlock
+                title="PayFit Accelerates Content Creation and Knowledge Sharing with Dust"
+                content="PayFit boosts efficiency with instant AI assistants for knowledge sharing."
+                href="https://blog.dust.tt/dust-ai-payfit-efficiency/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/12/payfit_dust_customer_story.png"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
+            </CarouselItem>
+            <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+              <BlogBlock
+                title="Kyriba accelerates innovation with Dust"
+                content="Kyriba saves thousands of hours by turning AI assistants into innovation catalysts."
+                href="https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/"
+              >
+                <img
+                  src="https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg"
+                  alt="Blog Image"
+                />
+              </BlogBlock>
+            </CarouselItem>
           </CarouselContent>
         </Carousel>
       </div>
