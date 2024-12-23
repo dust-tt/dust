@@ -797,6 +797,7 @@ export async function createAgentConfiguration(
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
+            reasoningEffort: model.reasoningEffort,
             maxStepsPerRun,
             visualizationEnabled,
             pictureUrl,

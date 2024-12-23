@@ -19,7 +19,6 @@ import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
   ModelIdType,
-  PlanType,
   Result,
   SupportedModel,
   WorkspaceType,
@@ -29,7 +28,6 @@ import {
   GPT_4O_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
 } from "@dust-tt/types";
-import { isProviderWhitelisted } from "@dust-tt/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
@@ -53,18 +51,15 @@ import React, {
 } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import {
-  MODEL_PROVIDER_LOGOS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/types";
+import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
+import { useModels } from "@app/lib/swr/models";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -111,7 +106,6 @@ const useInstructionEditorService = (editor: Editor | null) => {
 
 export function InstructionScreen({
   owner,
-  plan,
   builderState,
   setBuilderState,
   setEdited,
@@ -123,7 +117,6 @@ export function InstructionScreen({
   agentConfigurationId,
 }: {
   owner: WorkspaceType;
-  plan: PlanType;
   builderState: AssistantBuilderState;
   setBuilderState: (
     statefn: (state: AssistantBuilderState) => AssistantBuilderState
@@ -325,7 +318,6 @@ export function InstructionScreen({
         <div className="mt-2 self-end">
           <AdvancedSettings
             owner={owner}
-            plan={plan}
             generationSettings={builderState.generationSettings}
             setGenerationSettings={(generationSettings) => {
               setEdited(true);
@@ -400,6 +392,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
     onClick({
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
+      reasoningEffort: modelConfig.reasoningEffort,
     });
   };
 
@@ -420,17 +413,21 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
 
 export function AdvancedSettings({
   owner,
-  plan,
   generationSettings,
   setGenerationSettings,
 }: {
   owner: WorkspaceType;
-  plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
 }) {
+  const { models, isModelsLoading } = useModels({ owner });
+
+  if (isModelsLoading) {
+    return null;
+  }
+
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
   );
@@ -441,13 +438,7 @@ export function AdvancedSettings({
 
   const bestPerformingModelConfigs: ModelConfigurationType[] = [];
   const otherModelConfigs: ModelConfigurationType[] = [];
-  for (const modelConfig of USED_MODEL_CONFIGS) {
-    if (
-      !isProviderWhitelisted(owner, modelConfig.providerId) ||
-      (modelConfig.largeModel && !isUpgraded(plan))
-    ) {
-      continue;
-    }
+  for (const modelConfig of models) {
     if (isBestPerformingModel(modelConfig.modelId)) {
       bestPerformingModelConfigs.push(modelConfig);
     } else {

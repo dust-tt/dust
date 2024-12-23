@@ -4,6 +4,7 @@ import {
 } from "../../front/assistant/agent";
 import { GenerationTokensEvent } from "../../front/assistant/generation";
 import { WorkspaceType } from "../../front/user";
+import { WhitelistableFeature } from "../../shared/feature_flags";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
 
@@ -196,6 +197,9 @@ export type ModelConfigurationType = {
 
   // Only used for O-series OpenAI models.
   reasoningEffort?: AgentReasoningEffort;
+
+  featureFlag?: WhitelistableFeature;
+  customAssistantFeatureFlag?: WhitelistableFeature;
 };
 
 // Should be used for all Open AI models older than gpt-4o-2024-08-06 to prevent issues
@@ -286,6 +290,8 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's reasoning model.",
   isLegacy: false,
   supportsVision: true,
+  featureFlag: "openai_o1_feature",
+  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
 };
 export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -301,6 +307,9 @@ export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   supportsVision: true,
   reasoningEffort: "high",
+  featureFlag: "openai_o1_high_reasoning_feature",
+  customAssistantFeatureFlag:
+    "openai_o1_high_reasoning_custom_assistants_feature",
 };
 export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -315,6 +324,8 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fast reasoning model.",
   isLegacy: false,
   supportsVision: false,
+  featureFlag: "openai_o1_mini_feature",
+  customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -623,6 +634,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4O_20240806_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
+  O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
@@ -649,7 +661,7 @@ export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
 // pairs that are in SUPPORTED_MODELS
 export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
-  "providerId" | "modelId"
+  "providerId" | "modelId" | "reasoningEffort"
 >;
 
 export function isSupportedModel(model: unknown): model is SupportedModel {

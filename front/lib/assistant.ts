@@ -23,6 +23,7 @@ export function getSupportedModelConfig(
   return SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
       m.modelId === supportedModel.modelId &&
-      m.providerId === supportedModel.providerId
+      m.providerId === supportedModel.providerId &&
+      m.reasoningEffort === supportedModel.reasoningEffort
   ) as (typeof SUPPORTED_MODEL_CONFIGS)[number];
 }

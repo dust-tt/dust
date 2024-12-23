@@ -454,7 +454,6 @@ export default function AssistantBuilder({
                     return (
                       <InstructionScreen
                         owner={owner}
-                        plan={plan}
                         builderState={builderState}
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}

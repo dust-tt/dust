@@ -1835,7 +1835,8 @@ impl LLM for OpenAILLM {
                 Some(self.id.clone()),
                 prompt,
                 max_tokens,
-                temperature,
+                // [o1] O1 models do not support custom temperature.
+                if !model_is_o1 { temperature } else { 1.0 },
                 n,
                 match top_logprobs {
                     Some(l) => Some(l),
@@ -1879,7 +1880,8 @@ impl LLM for OpenAILLM {
                 Some(self.id.clone()),
                 prompt,
                 max_tokens,
-                temperature,
+                // [o1] O1 models do not support custom temperature.
+                if !model_is_o1 { temperature } else { 1.0 },
                 n,
                 match top_logprobs {
                     Some(l) => Some(l),
@@ -2060,7 +2062,8 @@ impl LLM for OpenAILLM {
                 &openai_messages,
                 tools,
                 tool_choice,
-                temperature,
+                // [o1] O1 models do not support custom temperature.
+                if !model_is_o1 { temperature } else { 1.0 },
                 match top_p {
                     Some(t) => t,
                     None => 1.0,
@@ -2091,7 +2094,8 @@ impl LLM for OpenAILLM {
                 &openai_messages,
                 tools,
                 tool_choice,
-                temperature,
+                // [o1] O1 models do not support custom temperature.
+                if !model_is_o1 { temperature } else { 1.0 },
                 match top_p {
                     Some(t) => t,
                     None => 1.0,
