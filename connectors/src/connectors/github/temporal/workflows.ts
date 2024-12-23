@@ -63,9 +63,8 @@ const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 /**
  * This workflow is used to fetch and sync all the repositories of a GitHub connector.
- * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
  */
-export async function githubFullSyncWorkflowV2(
+export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
   // Used to re-trigger a code-only full-sync after code syncing is enabled/disabled.
@@ -95,7 +94,7 @@ export async function githubFullSyncWorkflowV2(
       const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.id}-syncCodeOnly-${syncCodeOnly}`;
       promises.push(
         queue.add(() =>
-          executeChild(githubRepoSyncWorkflowV2, {
+          executeChild(githubRepoSyncWorkflow, {
             workflowId: childWorkflowId,
             searchAttributes: {
               connectorId: [connectorId],
@@ -127,9 +126,8 @@ export async function githubFullSyncWorkflowV2(
 
 /**
  * This workflow is used to sync the given repositories of a GitHub connector.
- * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
  */
-export async function githubReposSyncWorkflowV2(
+export async function githubReposSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
   orgLogin: string,
@@ -143,7 +141,7 @@ export async function githubReposSyncWorkflowV2(
     const childWorkflowId = `${reposSyncWorkflowId}-repo-${repo.id}`;
     promises.push(
       queue.add(() =>
-        executeChild(githubRepoSyncWorkflowV2, {
+        executeChild(githubRepoSyncWorkflow, {
           workflowId: childWorkflowId,
           searchAttributes: {
             connectorId: [connectorId],
@@ -172,9 +170,8 @@ export async function githubReposSyncWorkflowV2(
 
 /**
  * This workflow is used to sync all the issues of a GitHub connector.
- * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
  */
-export async function githubRepoIssuesSyncWorkflowV2({
+export async function githubRepoIssuesSyncWorkflow({
   dataSourceConfig,
   connectorId,
   repoName,
@@ -233,9 +230,8 @@ export async function githubRepoIssuesSyncWorkflowV2({
 
 /**
  * This workflow is used to sync all the discussions of a GitHub connector.
- * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
  */
-export async function githubRepoDiscussionsSyncWorkflowV2({
+export async function githubRepoDiscussionsSyncWorkflow({
   dataSourceConfig,
   connectorId,
   repoName,
@@ -291,9 +287,8 @@ export async function githubRepoDiscussionsSyncWorkflowV2({
 
 /**
  * This workflow is used to sync all the issues, discussions and code of a GitHub connector.
- * It's called v2 because we had to add it when there was already a workflow without the v2 to avoid non-deterministic errors.
  */
-export async function githubRepoSyncWorkflowV2({
+export async function githubRepoSyncWorkflow({
   dataSourceConfig,
   connectorId,
   repoName,
@@ -324,27 +319,24 @@ export async function githubRepoSyncWorkflowV2({
           : getReposSyncWorkflowId(connectorId)
       }-repo-${repoId}-issues-page-${pageNumber}`;
 
-      const shouldContinue = await executeChild(
-        githubRepoIssuesSyncWorkflowV2,
-        {
-          workflowId: childWorkflowId,
-          searchAttributes: {
-            connectorId: [connectorId],
+      const shouldContinue = await executeChild(githubRepoIssuesSyncWorkflow, {
+        workflowId: childWorkflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [
+          {
+            dataSourceConfig,
+            connectorId,
+            repoName,
+            repoId,
+            repoLogin,
+            pageNumber,
           },
-          args: [
-            {
-              dataSourceConfig,
-              connectorId,
-              repoName,
-              repoId,
-              repoLogin,
-              pageNumber,
-            },
-          ],
-          parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-          memo: workflowInfo().memo,
-        }
-      );
+        ],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
+      });
 
       if (!shouldContinue) {
         break;
@@ -361,7 +353,7 @@ export async function githubRepoSyncWorkflowV2({
           : getReposSyncWorkflowId(connectorId)
       }-repo-${repoId}-issues-page-${cursorIteration}`;
 
-      nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflowV2, {
+      nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflow, {
         workflowId: childWorkflowId,
         searchAttributes: {
           connectorId: [connectorId],
