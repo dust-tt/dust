@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
+import React from "react";
 
+import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
@@ -144,6 +146,10 @@ export default function DataAnalytics() {
           ]}
         />
       </Grid>
+      <BlogSection
+        headerColorFrom="from-amber-200"
+        headerColorTo="to-amber-500"
+      />
     </>
   );
 }

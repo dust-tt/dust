@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
+import React from "react";
 
+import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
@@ -142,6 +144,10 @@ export default function Knowledge() {
           ]}
         />
       </Grid>
+      <BlogSection
+        headerColorFrom="gradient from-sky-200"
+        headerColorTo="to-sky-500"
+      />
     </>
   );
 }
