@@ -277,7 +277,7 @@ async function handler(
       }
 
       const flags = await getFeatureFlags(owner);
-      const storeBocksResultst = !flags.includes("disable_run_logs");
+      const storeBlocksResults = !flags.includes("disable_run_logs");
 
       logger.info(
         {
@@ -302,7 +302,7 @@ async function handler(
           credentials,
           secrets,
           isSystemKey: auth.isSystemKey(),
-          storeBocksResultst,
+          storeBlocksResults,
         }
       );
 

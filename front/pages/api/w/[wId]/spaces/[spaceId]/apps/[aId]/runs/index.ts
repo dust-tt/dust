@@ -124,7 +124,7 @@ async function handler(
       const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
 
       const flags = await getFeatureFlags(owner);
-      const storeBocksResultst = !flags.includes("disable_run_logs");
+      const storeBlocksResults = !flags.includes("disable_run_logs");
 
       const dustRun = await coreAPI.createRun(owner, auth.groups(), {
         projectId: app.dustAPIProjectId,
@@ -137,7 +137,7 @@ async function handler(
         config: { blocks: config },
         credentials: credentialsFromProviders(providers),
         secrets,
-        storeBocksResultst,
+        storeBlocksResults,
       });
 
       if (dustRun.isErr()) {

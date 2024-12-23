@@ -102,12 +102,12 @@ impl APIState {
         app: app::App,
         credentials: run::Credentials,
         secrets: run::Secrets,
-        store_block_result: bool,
+        store_blocks_results: bool,
     ) {
         let mut run_manager = self.run_manager.lock();
         run_manager
             .pending_apps
-            .push((app, credentials, secrets, store_block_result));
+            .push((app, credentials, secrets, store_blocks_results));
     }
 
     async fn stop_loop(&self) {
@@ -603,7 +603,7 @@ struct RunsCreatePayload {
     config: run::RunConfig,
     credentials: run::Credentials,
     secrets: Vec<Secret>,
-    store_block_result: Option<bool>,
+    store_blocks_results: Option<bool>,
 }
 
 async fn run_helper(
@@ -851,7 +851,7 @@ async fn runs_create(
                 app,
                 credentials,
                 secrets,
-                payload.store_block_result.unwrap_or(true),
+                payload.store_blocks_results.unwrap_or(true),
             );
             (
                 StatusCode::OK,
@@ -937,7 +937,7 @@ async fn runs_create_stream(
                         databases_store,
                         qdrant_clients,
                         Some(tx.clone()),
-                        payload.store_block_result.unwrap_or(true),
+                        payload.store_blocks_results.unwrap_or(true),
                     )
                     .await
                 {
