@@ -210,7 +210,7 @@ export function useAgentConfiguration({
     agentConfiguration: AgentConfigurationType;
   }> = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
     agentConfigurationId
       ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}`
       : null,
@@ -222,6 +222,7 @@ export function useAgentConfiguration({
     agentConfiguration: data ? data.agentConfiguration : null,
     isAgentConfigurationLoading: !error && !data,
     isAgentConfigurationError: error,
+    isAgentConfigurationValidating: isValidating,
     mutateAgentConfiguration: mutate,
   };
 }
