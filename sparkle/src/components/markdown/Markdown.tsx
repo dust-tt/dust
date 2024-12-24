@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-import React, { DetailedHTMLProps, InputHTMLAttributes, useMemo } from "react";
+import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
@@ -162,50 +161,7 @@ export function Markdown({
           {children}
         </strong>
       ),
-      input: React.forwardRef<
-        HTMLInputElement,
-        Omit<
-          DetailedHTMLProps<
-            InputHTMLAttributes<HTMLInputElement>,
-            HTMLInputElement
-          >,
-          "ref"
-        > &
-          ReactMarkdownProps
-      >(({ type, checked, className, ...props }, ref) => {
-        if (type === "checkbox") {
-          return (
-            <div className="s-inline-flex s-items-center">
-              <Checkbox
-                ref={ref as React.Ref<HTMLButtonElement>}
-                size="xs"
-                checked={checked}
-                className="s-translate-y-[3px]"
-                onCheckedChange={(isChecked) => {
-                  if (props.onChange) {
-                    const event = {
-                      target: {
-                        type: "checkbox",
-                        checked: isChecked,
-                      },
-                    } as React.ChangeEvent<HTMLInputElement>;
-                    props.onChange(event);
-                  }
-                }}
-              />
-            </div>
-          );
-        }
-        return (
-          <input
-            ref={ref}
-            type={type}
-            checked={checked}
-            className={className}
-            {...props}
-          />
-        );
-      }),
+      input: Input,
       blockquote: BlockquoteBlock,
       hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
       code: CodeBlockWithExtendedSupport,
@@ -381,6 +337,35 @@ function ParagraphBlock({
       )}
     >
       {children}
+    </div>
+  );
+}
+
+type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'ref'> & ReactMarkdownProps & {
+  ref?: React.Ref<HTMLInputElement>;
+};
+
+function Input({ type, checked, className, onChange, ref, ...props }: InputProps) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  React.useImperativeHandle(ref, () => inputRef.current!);
+
+  if (type !== "checkbox") {
+    return <input ref={inputRef} type={type} checked={checked} className={className} {...props} />;
+  }
+
+  const handleCheckedChange = (isChecked: boolean) => {
+    onChange?.({ target: { type: "checkbox", checked: isChecked } } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  return (
+    <div className="s-inline-flex s-items-center">
+      <Checkbox
+        ref={inputRef as React.Ref<HTMLButtonElement>}
+        size="xs"
+        checked={checked}
+        className="s-translate-y-[3px]"
+        onCheckedChange={handleCheckedChange}
+      />
     </div>
   );
 }
