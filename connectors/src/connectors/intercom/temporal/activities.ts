@@ -31,13 +31,11 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
-  IntercomConversation,
-  IntercomWorkspace,
-} from "@connectors/lib/models/intercom";
-import {
   IntercomCollection,
+  IntercomConversation,
   IntercomHelpCenter,
   IntercomTeam,
+  IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
@@ -177,6 +175,7 @@ export async function syncHelpCenterOnlyActivity({
     folderId: helpCenterInternalId,
     title: helpCenterOnIntercom.display_name || "Help Center",
     parents: [helpCenterInternalId],
+    parentId: null,
     mimeType: getDataSourceNodeMimeType("HELP_CENTER"),
   });
 
@@ -509,6 +508,7 @@ export async function syncTeamOnlyActivity({
     folderId: teamInternalId,
     title: teamOnIntercom.name,
     parents: [teamInternalId, getTeamsInternalId(connectorId)],
+    parentId: getTeamsInternalId(connectorId),
     mimeType: getDataSourceNodeMimeType("TEAM"),
   });
 
@@ -743,6 +743,7 @@ export async function upsertIntercomTeamsFolderActivity({
     folderId: getTeamsInternalId(connectorId),
     title: "Conversations",
     parents: [getTeamsInternalId(connectorId)],
+    parentId: null,
     mimeType: getDataSourceNodeMimeType("CONVERSATIONS_FOLDER"),
   });
 }

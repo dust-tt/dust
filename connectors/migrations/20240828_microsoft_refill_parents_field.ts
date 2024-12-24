@@ -80,6 +80,7 @@ async function updateParentsFieldForConnector(
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: node.internalId,
           parents,
+          parentId: parents[1] || null,
         });
       },
       { concurrency: 8 }

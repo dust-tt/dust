@@ -147,6 +147,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
               dataSourceConfig,
               folderId: parents[0],
               parents,
+              parentId: parents[1],
               title: category.name,
               mimeType: "application/vnd.dust.zendesk.category",
             });

@@ -512,6 +512,7 @@ export async function incrementalSync(
           dataSourceConfig,
           folderId: getInternalId(driveFile.id),
           parents,
+          parentId: parents[1] || null,
           title: driveFile.name ?? "",
           mimeType: "application/vnd.dust.googledrive.folder",
         });
@@ -856,6 +857,7 @@ export async function markFolderAsVisited(
     dataSourceConfig,
     folderId: getInternalId(file.id),
     parents,
+    parentId: parents[1] || null,
     title: file.name ?? "",
     mimeType: "application/vnd.dust.googledrive.folder",
   });

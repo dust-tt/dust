@@ -155,6 +155,7 @@ async function updateParentsFieldForConnector(
                 dataSourceConfig: dataSourceConfigFromConnector(connector),
                 documentId,
                 parents,
+                parentId: parents[1] || null,
                 retries: 3,
               });
             }
@@ -163,6 +164,7 @@ async function updateParentsFieldForConnector(
                 dataSourceConfig: dataSourceConfigFromConnector(connector),
                 tableId,
                 parents,
+                parentId: parents[1] || null,
                 retries: 3,
               });
             }

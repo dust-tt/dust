@@ -207,6 +207,7 @@ export async function getRootNodesToSyncFromResources(
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId],
+        parentId: null,
         title: createdOrUpdatedResource.name ?? "",
         mimeType: "application/vnd.dust.microsoft.folder",
       }),
@@ -478,6 +479,7 @@ export async function syncFiles({
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId, ...parents],
+        parentId: parents[0],
         title: createdOrUpdatedResource.name ?? "",
         mimeType: "application/vnd.dust.microsoft.folder",
       }),
@@ -651,6 +653,7 @@ export async function syncDeltaForRootNodesInDrive({
           dataSourceConfig,
           folderId: blob.internalId,
           parents: [blob.internalId],
+          parentId: null,
           title: blob.name ?? "",
           mimeType: "application/vnd.dust.microsoft.folder",
         });
@@ -904,6 +907,7 @@ async function updateParentsField({
     dataSourceConfig,
     documentId: file.internalId,
     parents,
+    parentId: parents[1] || null,
   });
 }
 

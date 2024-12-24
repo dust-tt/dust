@@ -209,6 +209,7 @@ ${comments
       ticketId: ticket.id,
     });
 
+    const parents = ticketInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
@@ -221,7 +222,8 @@ ${comments
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
       ],
-      parents: ticketInDb.getParentInternalIds(connectorId),
+      parents,
+      parentId: parents[1],
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
       title: ticket.subject,

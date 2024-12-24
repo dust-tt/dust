@@ -10,9 +10,10 @@ import {
   isTextExtractionSupportedContentType,
   Ok,
   pagePrefixesPerMimeType,
+  parseAndStringifyCsv,
+  slugify,
   TextExtraction,
 } from "@dust-tt/types";
-import { parseAndStringifyCsv, slugify } from "@dust-tt/types";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import { upsertDataSourceTableFromCsv } from "@connectors/lib/data_sources";
@@ -78,6 +79,7 @@ export async function handleCsvFile({
       },
       truncate: true,
       parents,
+      parentId: parents[1] || null,
       title: fileName,
       mimeType: "text/csv",
     });

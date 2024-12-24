@@ -228,7 +228,7 @@ export async function upsertCollectionWithChildren({
     folderId: internalCollectionId,
     title: collection.name,
     parents: collectionParents,
-    parentId: collectionParents.length > 2 ? collectionParents[1] : null,
+    parentId: collectionParents[1],
     mimeType: getDataSourceNodeMimeType("COLLECTION"),
   });
 
@@ -420,6 +420,7 @@ export async function upsertArticle({
         `updatedAt:${updatedAtDate.getTime()}`,
       ],
       parents,
+      parentId: parents[1],
       loggerArgs: {
         ...loggerArgs,
         articleId: article.id,

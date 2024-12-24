@@ -306,6 +306,7 @@ export async function syncOneFile({
           timestampMs: upsertTimestampMs,
           tags,
           parents,
+          parentId: parents[1] || null,
           upsertContext: {
             sync_type: isBatchSync ? "batch" : "incremental",
           },
@@ -352,7 +353,7 @@ export async function getParents({
   connectorId: ModelId;
   internalId: string;
   startSyncTs: number;
-}): Promise<string[]> {
+}): Promise<[string, ...string[]]> {
   const parentInternalId = await getParentId(
     connectorId,
     internalId,
