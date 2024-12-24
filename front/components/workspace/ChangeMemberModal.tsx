@@ -15,6 +15,10 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import {
+  useAgentsVersionAuthor,
+  useUnifiedAgentConfigurations,
+} from "@app/lib/swr/assistants";
 
 export function ChangeMemberModal({
   onClose,
@@ -25,7 +29,24 @@ export function ChangeMemberModal({
   member: UserTypeWithWorkspaces | null;
   mutateMembers: KeyedMutator<SearchMembersResponseBody>;
 }) {
-  const { role = null } = member?.workspaces[0] ?? {};
+  // TODO: Return spinning loader instead of nothing.
+  if (!member) return <></>;
+  const { role = null } = member.workspaces[0];
+
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: member.workspaces[0].sId,
+    authorId: member.id.toString(),
+  });
+
+  const sharedAgents = agentConfigurations.filter(
+    (agent) => agent.scope === "published"
+  );
+  const authorsList = useAgentsVersionAuthor({
+    agentsGetView: {
+      agentIds: sharedAgents.map((agent) => agent.sId),
+    },
+    workspaceId: member.workspaces[0].sId,
+  });
 
   const sendNotification = useSendNotification();
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
@@ -126,8 +147,29 @@ export function ChangeMemberModal({
         isSaving={isSaving}
       >
         <div>
-          Revoke access for user{" "}
-          <span className="font-bold">{member.fullName}</span>?
+          <div>
+            Revoke access for user{" "}
+            <span className="font-bold">{member.fullName}</span>?
+          </div>
+          <div className="mt-6">
+            <p>
+              {" "}
+              When a member account is deleted, all their personal assistants
+              are removed from the workspace.
+            </p>
+            <p>
+              Shared assistants remain if another workspace member has edited
+              them, and company assistants stay on the workspace.
+            </p>
+            <div className="mt-6">
+              <p>The following agents will be deleted</p>
+
+              {/* TODO ADD  a filter here to make sure the user is the only author */}
+              {sharedAgents.map((agent) => (
+                <li>{agent.name}</li>
+              ))}
+            </div>
+          </div>
         </div>
       </Dialog>
     </ElementModal>

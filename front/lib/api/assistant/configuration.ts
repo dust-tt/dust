@@ -544,6 +544,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   variant,
   limit,
   sort,
+  authorId,
   dangerouslySkipPermissionFiltering,
 }: {
   auth: Authenticator;

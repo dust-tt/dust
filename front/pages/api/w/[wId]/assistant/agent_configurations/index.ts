@@ -79,7 +79,7 @@ async function handler(
         });
       }
 
-      const { view, limit, withUsage, withAuthors, sort } =
+      const { view, limit, withUsage, withAuthors, sort, authorId } =
         queryValidation.right;
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
@@ -93,6 +93,7 @@ async function handler(
           },
         });
       }
+
       let agentConfigurations = await getAgentConfigurations({
         auth,
         agentsGetView: viewParam,
@@ -131,6 +132,7 @@ async function handler(
         const recentAuthors = await getAgentsRecentAuthors({
           auth,
           agents: agentConfigurations,
+          authorId,
         });
         agentConfigurations = await Promise.all(
           agentConfigurations.map(
@@ -144,6 +146,12 @@ async function handler(
               };
             }
           )
+        );
+      }
+
+      if (authorId) {
+        agentConfigurations = agentConfigurations.filter(
+          (agent) => agent.lastAuthors && agent.lastAuthors.length > 0
         );
       }
 

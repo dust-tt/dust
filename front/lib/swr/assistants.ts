@@ -70,6 +70,58 @@ export function useAssistantTemplate({
   };
 }
 
+export function useAgentsVersionAuthor({
+  agentsGetView,
+  workspaceId,
+  limit,
+  disabled,
+  revalidate,
+}: {
+  agentsGetView: AgentsGetViewType | null;
+  workspaceId: string;
+  limit?: number;
+  disabled?: boolean;
+  revalidate?: boolean;
+}) {
+  const agentVersionAuthorFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
+    fetcher;
+
+  // Function to generate query parameters.
+  function getQueryString() {
+    const params = new URLSearchParams();
+
+    if (limit) {
+      params.append("limit", limit.toString());
+    }
+
+    return params.toString();
+  }
+
+  const queryString = getQueryString();
+
+  const key = `/api/w/${workspaceId}/assistant/agent_version_author?${queryString}`;
+  const { cache } = useSWRConfig();
+  const inCache = typeof cache.get(key) !== "undefined";
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(agentsGetView ? key : null, agentVersionAuthorFetcher, {
+      disabled,
+      revalidateOnMount: !inCache || revalidate,
+      revalidateOnFocus: !inCache || revalidate,
+    });
+
+  return {
+    agentConfigurations: useMemo(
+      () => (data ? data.agentConfigurations : []),
+      [data]
+    ),
+    isAgentConfigurationsLoading: !error && !data,
+    isAgentConfigurationsError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
+  };
+}
+
 /*
  * Agent configurations. A null agentsGetView means no fetching
  */
@@ -79,6 +131,7 @@ export function useAgentConfigurations({
   includes = [],
   limit,
   sort,
+  authorId,
   disabled,
   revalidate,
 }: {
@@ -87,6 +140,7 @@ export function useAgentConfigurations({
   includes?: ("authors" | "usage")[];
   limit?: number;
   sort?: "alphabetical" | "priority";
+  authorId?: string;
   disabled?: boolean;
   revalidate?: boolean;
 }) {
@@ -104,6 +158,10 @@ export function useAgentConfigurations({
     }
     if (includes.includes("authors")) {
       params.append("withAuthors", "true");
+    }
+
+    if (authorId) {
+      params.append("authorId", authorId);
     }
 
     if (limit) {
@@ -148,8 +206,10 @@ export function useAgentConfigurations({
 export function useUnifiedAgentConfigurations({
   workspaceId,
   disabled,
+  authorId,
 }: {
   workspaceId: string;
+  authorId?: string;
   disabled?: boolean;
 }) {
   const {
@@ -162,6 +222,7 @@ export function useUnifiedAgentConfigurations({
     agentsGetView: "list",
     includes: ["authors", "usage"],
     disabled,
+    authorId,
   });
 
   return {

@@ -800,6 +800,11 @@ const LightAgentConfigurationSchema = z.object({
   requestedGroupIds: z.array(z.array(z.string())),
 });
 
+const LightAgentVersionAuthorSchema = z.object({
+  name: z.string(),
+  lastAuthors: AgentRecentAuthorsSchema.optional(),
+});
+
 export type LightAgentConfigurationType = z.infer<
   typeof LightAgentConfigurationSchema
 >;
@@ -1489,6 +1494,14 @@ export const GetAgentConfigurationsResponseSchema = z.object({
 
 export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
+>;
+
+export const GetAgentVersionAuthorResponseSchema = z.object({
+  agentConfigurations: LightAgentVersionAuthorSchema.array(),
+});
+
+export type GetAgentVersionAuthorResponseType = z.infer<
+  typeof GetAgentVersionAuthorResponseSchema
 >;
 
 export const PostContentFragmentResponseSchema = z.object({

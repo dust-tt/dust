@@ -24,6 +24,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.undefined,
   ]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
+  authorId: t.union([t.string, t.undefined]),
   withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   limit: t.union([LimitCodec, t.undefined]),
   sort: t.union([
