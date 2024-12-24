@@ -4,17 +4,17 @@ import type {
   CredentialsType,
   ModelIdType,
   ModelProviderIdType,
+  RunType,
   TraceType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
 import {
   assertNever,
+  CoreAPI,
   credentialsFromProviders,
   dustManagedCredentials,
   rateLimiter,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -23,6 +23,7 @@ import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -276,6 +277,9 @@ async function handler(
         }
       }
 
+      const flags = await getFeatureFlags(owner);
+      const storeBlocksResults = !flags.includes("disable_run_logs");
+
       logger.info(
         {
           workspace: {
@@ -299,6 +303,7 @@ async function handler(
           credentials,
           secrets,
           isSystemKey: auth.isSystemKey(),
+          storeBlocksResults,
         }
       );
 
