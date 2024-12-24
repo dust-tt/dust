@@ -30,7 +30,8 @@ pub enum QdrantCluster {
 // See: https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
 pub const SHARD_KEY_COUNT: u64 = 24;
 
-static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[QdrantCluster::Cluster0];
+static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] =
+    &[QdrantCluster::Cluster0, QdrantCluster::EUCluster0];
 
 impl fmt::Display for QdrantCluster {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
