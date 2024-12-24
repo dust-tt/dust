@@ -100,7 +100,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     agentConfiguration,
     filters,
   }: {
-    workspaceId: string;
+    workspaceId: number;
     withMetadata: boolean;
     agentConfiguration?: AgentConfigurationType;
     filters?: {
@@ -132,9 +132,11 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
         // Necessary for global models who share ids across workspaces
-        workspaceId,
+        workspaceId: workspaceId.toString(),
         // These clauses are optional
-        agentConfigurationId: agentConfiguration?.id,
+        agentConfigurationId: agentConfiguration?.sId
+          ? agentConfiguration.sId.toString()
+          : undefined,
         ...createdAtClause,
       },
 
