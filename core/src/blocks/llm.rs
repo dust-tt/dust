@@ -215,7 +215,7 @@ impl LLM {
     fn prompt(&self, env: &Env) -> Result<String> {
         let mut prompt = String::new();
 
-        // If there is a `few_shot_preprompt`, reaplce variables and add it to the prompt.
+        // If there is a `few_shot_preprompt`, replace variables and add it to the prompt.
         if let Some(few_shot_preprompt) = &self.few_shot_preprompt {
             prompt.push_str(Self::replace_prompt_variables(few_shot_preprompt, env)?.as_str());
         }
