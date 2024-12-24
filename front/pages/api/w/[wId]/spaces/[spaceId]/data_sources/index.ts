@@ -11,7 +11,6 @@ import {
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
@@ -364,7 +363,7 @@ const handleDataSourceWithProvider = async ({
         },
       },
       qdrant_config: {
-        cluster: DEFAULT_QDRANT_CLUSTER,
+        cluster: config.getQdrantCluster(),
         shadow_write_cluster: null,
       },
     },

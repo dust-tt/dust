@@ -23,6 +23,8 @@ use super::data_source::EmbedderConfig;
 pub enum QdrantCluster {
     #[serde(rename = "cluster-0")]
     Cluster0,
+    #[serde(rename = "eu-cluster-0")]
+    EUCluster0,
 }
 
 // See: https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
@@ -34,6 +36,7 @@ impl fmt::Display for QdrantCluster {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             QdrantCluster::Cluster0 => write!(f, "cluster-0"),
+            QdrantCluster::EUCluster0 => write!(f, "eu-cluster-0"),
         }
     }
 }
@@ -43,6 +46,7 @@ impl FromStr for QdrantCluster {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "cluster-0" => Ok(QdrantCluster::Cluster0),
+            "eu-cluster-0" => Ok(QdrantCluster::EUCluster0),
             _ => Err(ParseError::with_message("Unknown QdrantCluster"))?,
         }
     }
@@ -51,6 +55,7 @@ impl FromStr for QdrantCluster {
 pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
     match cluster {
         QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
+        QdrantCluster::EUCluster0 => "QDRANT_EU_CLUSTER_0",
     }
 }
 
