@@ -106,7 +106,7 @@ const InputBarContainer = ({
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 flex-col sm:flex-row"
+      className="relative flex flex-1 flex-col pt-3 sm:flex-row sm:pt-0"
     >
       <EditorContent
         editor={editor}
