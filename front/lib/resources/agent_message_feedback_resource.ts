@@ -134,9 +134,11 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         // Necessary for global models who share ids across workspaces
         workspaceId: workspaceId.toString(),
         // These clauses are optional
-        agentConfigurationId: agentConfiguration?.sId
-          ? agentConfiguration.sId.toString()
-          : undefined,
+        ...(agentConfiguration
+          ? {
+              agentConfigurationId: agentConfiguration.sId.toString(),
+            }
+          : {}),
         ...createdAtClause,
       },
 
