@@ -41,29 +41,17 @@ const labelStyles = cva(
 
 const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
-    isScrolling?: boolean;
-  }
->(({ className, children, isScrolling = false, ...props }, ref) =>
-  !isScrolling ? (
-    <div
-      ref={ref as React.Ref<HTMLDivElement>}
-      className={cn(listStyles({ layout: "container" }), className)}
-      {...props}
-    >
-      {children}
-    </div>
-  ) : (
-    <ScrollArea
-      ref={ref}
-      className={cn(listStyles({ layout: "container" }), className)}
-      {...props}
-    >
-      {children}
-      <ScrollBar />
-    </ScrollArea>
-  )
-);
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
+>(({ className, children, ...props }, ref) => (
+  <ScrollArea
+    ref={ref}
+    className={cn(listStyles({ layout: "container" }), className)}
+    {...props}
+  >
+    {children}
+    <ScrollBar />
+  </ScrollArea>
+));
 NavigationList.displayName = "NavigationList";
 
 interface NavigationListItemProps
@@ -183,9 +171,13 @@ const variantStyles = cva("", {
       primary: "s-text-foreground",
       secondary: "s-text-muted-foreground",
     },
+    isSticky: {
+      true: "s-sticky s-top-0 s-z-50 s-border-b s-border-border-dark/80 s-bg-structure-100/90 s-backdrop-blur-sm",
+    },
   },
   defaultVariants: {
     variant: "primary",
+    isSticky: false,
   },
 });
 
@@ -193,20 +185,17 @@ interface NavigationListLabelProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof variantStyles> {
   label: string;
-  isSticky?: boolean;
 }
 
 const NavigationListLabel = React.forwardRef<
   HTMLDivElement,
   NavigationListLabelProps
->(({ className, variant, label, isSticky = false, ...props }, ref) => (
+>(({ className, variant, label, isSticky, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
       labelStyles(),
-      variantStyles({ variant }),
-      isSticky &&
-        "s-sticky s-top-0 s-z-50 s-border-b s-border-border-dark/80 s-bg-structure-100/90 s-backdrop-blur-sm",
+      variantStyles({ variant, isSticky }),
       className
     )}
     {...props}

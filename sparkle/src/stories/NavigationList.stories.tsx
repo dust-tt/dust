@@ -73,10 +73,7 @@ export const Demo = () => {
   return (
     <div className="s-flex s-h-[400px] s-w-full s-flex-row s-gap-12">
       <div className="s-h-[400px] s-w-[240px] s-bg-muted">
-        <NavigationList
-          className="s-relative s-h-full s-w-full s-px-3"
-          isScrolling
-        >
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <div className="s-relative s-flex s-flex-col s-gap-1">
@@ -108,10 +105,7 @@ export const Demo = () => {
         </NavigationList>
       </div>
       <div className="s-h-[400px] s-w-[240px] s-bg-muted">
-        <NavigationList
-          className="s-relative s-h-full s-w-full s-px-3"
-          isScrolling
-        >
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <div className="s-relative s-flex s-flex-col s-gap-1">
