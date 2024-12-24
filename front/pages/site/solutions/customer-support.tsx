@@ -102,7 +102,7 @@ export default function CustomerSupport() {
           ]}
         />
         <SolutionSection
-          title="Elevated team collaboration."
+          title="Elevate team collaboration."
           blocks={[
             {
               color: "sky",
