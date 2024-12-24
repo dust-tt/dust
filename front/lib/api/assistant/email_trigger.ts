@@ -506,5 +506,5 @@ export async function replyToEmail({
     html,
   };
 
-  await sendEmail(email.envelope.from, msg);
+  await sendEmail([email.envelope.from], msg);
 }

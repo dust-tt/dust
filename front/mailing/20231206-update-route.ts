@@ -68,7 +68,7 @@ Best speed,
 -stan
 `,
   };
-  return sendEmail(email, cancelMessage);
+  return sendEmail([email], cancelMessage);
 }
 
 void main().then(() => {

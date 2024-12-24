@@ -82,27 +82,27 @@ const sendTrackerEmail = async ({
     throw new Error("No recipients found for tracker");
   }
 
-  const sendEmail =
-    generations.length > 0
-      ? _sendTrackerWithGenerationEmail
-      : _sendTrackerDefaultEmail;
-
-  await Promise.all(
-    Array.from(recipients).map((recipient) =>
-      sendEmail({ name, recipient, generations, localLogger })
-    )
-  );
+  if (generations.length) {
+    await _sendTrackerWithGenerationEmails({
+      name,
+      recipients,
+      generations,
+      localLogger,
+    });
+  } else {
+    await _sendTrackerDefaultEmails({ name, recipients });
+  }
 };
 
-const _sendTrackerDefaultEmail = async ({
+const _sendTrackerDefaultEmails = async ({
   name,
-  recipient,
+  recipients,
 }: {
   name: string;
-  recipient: string;
+  recipients: string[];
 }): Promise<void> => {
   await sendEmailWithTemplate({
-    to: recipient,
+    to: recipients,
     from: {
       name: TRACKER_FROM_NAME,
       email: TRACKER_FROM_EMAIL,
@@ -115,14 +115,14 @@ const _sendTrackerDefaultEmail = async ({
   });
 };
 
-const _sendTrackerWithGenerationEmail = async ({
+const _sendTrackerWithGenerationEmails = async ({
   name,
-  recipient,
+  recipients,
   generations,
   localLogger,
 }: {
   name: string;
-  recipient: string;
+  recipients: string[];
   generations: TrackerGenerationToProcess[];
   localLogger: Logger;
 }): Promise<void> => {
@@ -193,7 +193,7 @@ ${generationBody.join("<br />")}
 `;
 
   await sendEmailWithTemplate({
-    to: recipient,
+    to: recipients,
     from: {
       name: TRACKER_FROM_NAME,
       email: TRACKER_FROM_EMAIL,

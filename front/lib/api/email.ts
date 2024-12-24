@@ -22,7 +22,7 @@ export function getSgMailClient(): any {
 
 export async function sendGithubDeletionEmail(email: string): Promise<void> {
   await sendEmailWithTemplate({
-    to: email,
+    to: [email],
     from: {
       name: "Dust team",
       email: "support@dust.help",
@@ -49,7 +49,7 @@ export async function sendCancelSubscriptionEmail(
   const formattedDate = date.toLocaleDateString("en-US", options);
 
   await sendEmailWithTemplate({
-    to: email,
+    to: [email],
     from: {
       name: "Dust team",
       email: "support@dust.help",
@@ -73,7 +73,7 @@ export async function sendReactivateSubscriptionEmail(
   email: string
 ): Promise<void> {
   await sendEmailWithTemplate({
-    to: email,
+    to: [email],
     from: {
       name: "Dust team",
       email: "support@dust.help",
@@ -91,7 +91,7 @@ export async function sendAdminSubscriptionPaymentFailedEmail(
   customerPortailUrl: string | null
 ): Promise<void> {
   await sendEmailWithTemplate({
-    to: email,
+    to: [email],
     from: {
       name: "Dust team",
       email: "support@dust.help",
@@ -118,7 +118,7 @@ export async function sendAdminDataDeletionEmail({
   isLast: boolean;
 }): Promise<void> {
   await sendEmailWithTemplate({
-    to: email,
+    to: [email],
     from: {
       name: "Dust team",
       email: "support@dust.help",
@@ -139,7 +139,7 @@ export async function sendProactiveTrialCancelledEmail(
   email: string
 ): Promise<void> {
   await sendEmailWithTemplate({
-    to: email,
+    to: [email],
     from: {
       name: "Gabriel Hubert",
       email: "gabriel@dust.tt",
@@ -158,14 +158,14 @@ export async function sendProactiveTrialCancelledEmail(
 }
 
 // Avoid using this function directly, use sendEmailWithTemplate instead.
-export async function sendEmail(email: string, message: any) {
-  const msg = { ...message, to: email };
+export async function sendEmail(to: string[], message: any) {
+  const msg = { ...message, to };
 
   // In dev we want to make sure we don't send emails to real users.
   // We prevent sending an email if it's not to a @dust.tt address.
-  if (isDevelopment() && !email.endsWith("@dust.tt")) {
+  if (isDevelopment() && !to.every((email) => email.endsWith("@dust.tt"))) {
     logger.error(
-      { email, subject: message.subject },
+      { emails: to, subject: message.subject },
       "Prevented sending email in development mode to an external email."
     );
     return;
@@ -173,17 +173,17 @@ export async function sendEmail(email: string, message: any) {
 
   try {
     await getSgMailClient().send(msg);
-    logger.info({ email, subject: message.subject }, "Sending email");
+    logger.info({ emails: to, subject: message.subject }, "Sending email");
   } catch (error) {
     logger.error(
-      { error, email, subject: message.subject },
+      { error, emails: to, subject: message.subject },
       "Error sending email."
     );
   }
 }
 
 interface sendEmailWithTemplateParams {
-  to: string;
+  to: string[];
   from: {
     email: string;
     name: string;
@@ -219,7 +219,7 @@ export async function sendEmailWithTemplate({
     logger.error(
       {
         error: e,
-        to,
+        emails: to,
         subject,
       },
       "Error sending email."
