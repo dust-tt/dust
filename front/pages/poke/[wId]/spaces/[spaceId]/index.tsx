@@ -14,6 +14,7 @@ import { spaceToPokeJSON } from "@app/lib/poke/utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import PokeLayout from "@app/pages/poke/PokeLayout";
+import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   members: UserTypeWithWorkspaces[];
@@ -67,7 +68,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function DataSourceViewPage({
+export default function SpacePage({
   members,
   owner,
   space,
@@ -77,11 +78,12 @@ export default function DataSourceViewPage({
       <ViewSpaceViewTable space={space} />
       <div className="flex grow flex-col">
         <MembersDataTable members={members} owner={owner} readonly />
+        <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
       </div>
     </div>
   );
 }
 
-DataSourceViewPage.getLayout = (page: ReactElement) => {
+SpacePage.getLayout = (page: ReactElement) => {
   return <PokeLayout>{page}</PokeLayout>;
 };
