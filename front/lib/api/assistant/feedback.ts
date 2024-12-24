@@ -39,10 +39,10 @@ export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType & {
 export async function getConversationFeedbacksForUser(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
-): Promise<Result<AgentMessageFeedbackType[], ConversationError>> {
+): Promise<Result<AgentMessageFeedbackType[], ConversationError | Error>> {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
+    return new Err(new Error("workspace_not_found"));
   }
   const user = auth.user();
   if (!canAccessConversation(auth, conversation) || !user) {
@@ -55,11 +55,7 @@ export async function getConversationFeedbacksForUser(
       conversation
     );
 
-  if (feedbacks.isErr()) {
-    return new Err(feedbacks.error);
-  }
-
-  return new Ok(feedbacks.value);
+  return feedbacks;
 }
 
 /**
@@ -108,7 +104,7 @@ export async function upsertMessageFeedback(
 
   if (feedback) {
     await feedback.updateFields({
-      content: content ?? "",
+      content,
       thumbDirection,
       isConversationShared: false,
     });
@@ -216,11 +212,11 @@ export async function fetchAgentFeedbacks({
 > {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
-    throw new Error("Unexpected `auth` without `workspace`.");
+    return new Err(new Error("workspace_not_found"));
   }
   const plan = auth.plan();
   if (!plan) {
-    throw new Error("Unexpected `auth` without `plan`.");
+    return new Err(new Error("plan_not_found"));
   }
 
   // Make sure the user has access to the agent

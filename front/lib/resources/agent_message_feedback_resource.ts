@@ -187,7 +187,9 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
             agentMessageId: feedback.agentMessageId,
             userId: feedback.userId,
             thumbDirection: feedback.thumbDirection,
-            content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
+            content: feedback.content
+              ? feedback.content.replace(/\r?\n/g, "\\n")
+              : null,
             isConversationShared: feedback.isConversationShared,
             createdAt: feedback.createdAt,
             agentConfigurationId: feedback.agentConfigurationId,
@@ -198,8 +200,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
               conversationId: feedback.isConversationShared
                 ? feedback.agentMessage.message.conversation.sId
                 : null,
-              userName: feedback.user.name || "",
-              userEmail: feedback.user.email || "",
+              userName: feedback.user.name,
+              userEmail: feedback.user.email,
               userImageUrl: feedback.user.imageUrl,
             }),
           };
@@ -210,14 +212,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   static async getConversationFeedbacksForUser(
     auth: Authenticator,
     conversation: ConversationType | ConversationWithoutContentType
-  ): Promise<Result<AgentMessageFeedbackType[], ConversationError>> {
+  ): Promise<Result<AgentMessageFeedbackType[], ConversationError | Error>> {
     const owner = auth.workspace();
     if (!owner) {
-      throw new Error("Unexpected `auth` without `workspace`.");
+      return new Err(new Error("workspace_not_found"));
     }
     const user = auth.user();
     if (!user) {
-      throw new Error("Unexpected `auth` without `user`.");
+      return new Err(new Error("user_not_found"));
     }
 
     const feedbackForMessages = await Message.findAll({
