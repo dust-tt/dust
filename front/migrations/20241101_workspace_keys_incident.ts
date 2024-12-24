@@ -43,7 +43,9 @@ const sendIncidentEmailToAdmins = async (
   const adminEmails = admins.map((u) => u.email);
 
   return Promise.all(
-    adminEmails.map((email) => sendEmailWithTemplate({ ...message, to: email }))
+    adminEmails.map((email) =>
+      sendEmailWithTemplate({ ...message, to: [email] })
+    )
   );
 };
 
