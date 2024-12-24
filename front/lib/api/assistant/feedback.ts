@@ -190,7 +190,7 @@ export async function deleteMessageFeedback(
   return new Ok(undefined);
 }
 
-export async function fetchAgentFeedbacks({
+export async function getAgentFeedbacks({
   auth,
   agentConfigurationId,
   withMetadata,
