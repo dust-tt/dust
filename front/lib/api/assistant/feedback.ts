@@ -6,6 +6,7 @@ import type {
 import type { UserType } from "@dust-tt/types";
 import { ConversationError, Err, Ok } from "@dust-tt/types";
 
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
@@ -22,6 +23,17 @@ export type AgentMessageFeedbackType = {
   userId: number;
   thumbDirection: AgentMessageFeedbackDirection;
   content: string | null;
+  createdAt: Date;
+  agentConfigurationId: string;
+  agentConfigurationVersion: number;
+  isConversationShared: boolean;
+};
+
+export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType & {
+  conversationId: string | null;
+  userName: string;
+  userEmail: string;
+  userImageUrl: string | null;
 };
 
 export async function getConversationFeedbacksForUser(
@@ -180,4 +192,65 @@ export async function deleteMessageFeedback(
   }
 
   return new Ok(undefined);
+}
+
+export async function fetchAgentFeedbacks({
+  auth,
+  agentConfigurationId,
+  withMetadata,
+  filters,
+}: {
+  auth: Authenticator;
+  withMetadata: boolean;
+  agentConfigurationId: string;
+  filters?: {
+    limit?: number;
+    olderThan?: Date;
+    earlierThan?: Date;
+  };
+}): Promise<
+  Result<
+    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
+    Error
+  >
+> {
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+
+  // Make sure the user has access to the agent
+  const agentConfiguration = await getAgentConfiguration(
+    auth,
+    agentConfigurationId
+  );
+  if (!agentConfiguration) {
+    return new Err(new Error("agent_configuration_not_found"));
+  }
+
+  const feedbacksRes = await AgentMessageFeedbackResource.fetch({
+    workspaceId: owner.sId,
+    agentConfiguration,
+    filters,
+    withMetadata,
+  });
+
+  if (!withMetadata) {
+    return new Ok(feedbacksRes);
+  }
+
+  const feedbacks = (
+    feedbacksRes as AgentMessageFeedbackWithMetadataType[]
+  ).map((feedback) => ({
+    ...feedback,
+    // Only display conversationId if the feedback was shared
+    conversationId: feedback.isConversationShared
+      ? feedback.conversationId
+      : null,
+  }));
+  return new Ok(feedbacks);
 }

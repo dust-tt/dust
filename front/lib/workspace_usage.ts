@@ -3,6 +3,7 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
@@ -74,7 +75,7 @@ interface AgentUsageQueryResult {
 
 interface FeedbackQueryResult {
   id: ModelId;
-  created_at: Date;
+  createdAt: Date;
   userName: string;
   userEmail: string;
   agentConfigurationId: string;
@@ -440,25 +441,27 @@ export async function getFeedbacksUsageData(
   endDate: Date,
   workspace: WorkspaceType
 ): Promise<string> {
-  const feedbacks =
-    await AgentMessageFeedbackResource.listByWorkspaceAndDateRange({
-      workspace: workspace,
-      startDate,
-      endDate,
-    });
+  const feedbacks = (await AgentMessageFeedbackResource.fetch({
+    workspace,
+    withMetadata: true,
+    filters: {
+      olderThan: startDate,
+      earlierThan: endDate,
+    },
+  })) as AgentMessageFeedbackWithMetadataType[];
 
   if (!feedbacks.length) {
     return "No data available for the selected period.";
   }
 
   const feedbackResults: FeedbackQueryResult[] = await Promise.all(
+    // IMPORTANT: Do not disclose the conversationId field
     feedbacks.map(async (feedback) => {
-      const user = await feedback.fetchUser();
       return {
         id: feedback.id,
-        created_at: feedback.createdAt,
-        userName: user?.fullName() || "",
-        userEmail: user?.email || "",
+        createdAt: feedback.createdAt,
+        userName: feedback.userName,
+        userEmail: feedback.userEmail,
         agentConfigurationId: feedback.agentConfigurationId,
         agentConfigurationVersion: feedback.agentConfigurationVersion,
         thumb: feedback.thumbDirection,

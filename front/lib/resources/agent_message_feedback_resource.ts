@@ -15,7 +15,10 @@ import type { Attributes, ModelStatic } from "sequelize";
 import type { CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import type {
+  AgentMessageFeedbackType,
+  AgentMessageFeedbackWithMetadataType,
+} from "@app/lib/api/assistant/feedback";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -59,6 +62,23 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     );
   }
 
+  async delete(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    try {
+      await this.model.destroy({
+        where: {
+          id: this.id,
+        },
+        transaction,
+      });
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
+  }
+
   async updateFields(
     blob: Partial<
       Pick<
@@ -67,31 +87,55 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       >
     >
   ) {
-    return this.update(blob);
+    return this.update({
+      content: blob.content,
+      thumbDirection: blob.thumbDirection,
+      isConversationShared: blob.isConversationShared,
+    });
   }
 
-  static async fetchByAgentConfigurationId({
-    auth,
-    agentConfigurationId,
-    pagination,
+  static async fetch({
+    workspaceId,
+    withMetadata,
+    agentConfiguration,
+    filters,
   }: {
-    auth: Authenticator;
-    agentConfigurationId: string;
-    pagination: {
-      limit: number;
+    workspaceId: string;
+    withMetadata: boolean;
+    agentConfiguration?: AgentConfigurationType;
+    filters?: {
+      limit?: number;
       olderThan?: Date;
+      earlierThan?: Date;
     };
-  }): Promise<AgentMessageFeedback[]> {
+  }): Promise<
+    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[]
+  > {
+    const createdAtClause =
+      !filters || (!filters.olderThan && !filters.earlierThan)
+        ? {}
+        : {
+            createdAt: {
+              [Op.and]: [
+                filters.olderThan && filters.earlierThan
+                  ? [
+                      { [Op.lt]: filters.olderThan },
+                      { [Op.gt]: filters.earlierThan },
+                    ]
+                  : filters.olderThan
+                    ? { [Op.lt]: filters.olderThan }
+                    : { [Op.gt]: filters.earlierThan },
+              ],
+            },
+          };
+
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
-        agentConfigurationId,
         // Necessary for global models who share ids across workspaces
-        workspaceId: auth.getNonNullableWorkspace().id,
-        ...(pagination.olderThan && {
-          createdAt: {
-            [Op.lt]: pagination.olderThan,
-          },
-        }),
+        workspaceId,
+        // These clauses are optional
+        agentConfigurationId: agentConfiguration?.id,
+        ...createdAtClause,
       },
 
       include: [
@@ -108,6 +152,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
                 {
                   model: Conversation,
                   as: "conversation",
+                  attributes: ["id", "sId"],
                 },
               ],
             },
@@ -115,39 +160,51 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
         {
           model: UserResource.model,
-          attributes: ["name", "imageUrl"],
+          attributes: ["name", "imageUrl", "email"],
         },
       ],
       order: [
         ["agentConfigurationVersion", "DESC"],
         ["createdAt", "DESC"],
       ],
-      limit: pagination.limit,
+      limit: filters?.limit,
     });
 
-    return agentMessageFeedback;
-  }
-  static async listByWorkspaceAndDateRange({
-    workspace,
-    startDate,
-    endDate,
-  }: {
-    workspace: WorkspaceType;
-    startDate: Date;
-    endDate: Date;
-  }): Promise<AgentMessageFeedbackResource[]> {
-    const feedbacks = await AgentMessageFeedback.findAll({
-      where: {
-        workspaceId: workspace.id,
-        createdAt: {
-          [Op.and]: [{ [Op.gte]: startDate }, { [Op.lte]: endDate }],
-        },
-      },
-    }).then((feedbacks) =>
-      feedbacks.map((feedback) => new this(this.model, feedback.get()))
-    );
+    return (
+      agentMessageFeedback
+        // Typeguard needed because of TypeScript limitations
+        .filter(
+          (
+            feedback
+          ): feedback is AgentMessageFeedback & {
+            agentMessage: { message: Message & { conversation: Conversation } };
+          } => !!feedback.agentMessage?.message?.conversation
+        )
+        .map((feedback) => {
+          return {
+            id: feedback.id,
+            messageId: feedback.agentMessage.message.sId,
+            agentMessageId: feedback.agentMessageId,
+            userId: feedback.userId,
+            thumbDirection: feedback.thumbDirection,
+            content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
+            isConversationShared: feedback.isConversationShared,
+            createdAt: feedback.createdAt,
+            agentConfigurationId: feedback.agentConfigurationId,
+            agentConfigurationVersion: feedback.agentConfigurationVersion,
 
-    return feedbacks;
+            ...(withMetadata && {
+              // This field is sensitive, it allows accessing the conversation
+              conversationId: feedback.isConversationShared
+                ? feedback.agentMessage.message.conversation.sId
+                : null,
+              userName: feedback.user.name || "",
+              userEmail: feedback.user.email || "",
+              userImageUrl: feedback.user.imageUrl,
+            }),
+          };
+        })
+    );
   }
 
   static async getConversationFeedbacksForUser(
@@ -210,15 +267,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           thumbDirection: feedback.thumbDirection,
           content: feedback.content,
           isConversationShared: feedback.isConversationShared,
+          createdAt: feedback.createdAt,
+          agentConfigurationId: feedback.agentConfigurationId,
+          agentConfigurationVersion: feedback.agentConfigurationVersion,
         } as AgentMessageFeedbackType;
       });
 
     return new Ok(feedbacksWithMessageId);
-  }
-
-  async fetchUser(): Promise<UserResource | null> {
-    const users = await UserResource.fetchByModelIds([this.userId]);
-    return users[0] ?? null;
   }
 
   static async getFeedbackWithConversationContext({
@@ -353,22 +408,5 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       },
       isGlobalAgent,
     });
-  }
-
-  async delete(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
   }
 }
