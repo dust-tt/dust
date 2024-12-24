@@ -12,8 +12,6 @@ import {
   NavigationListItemAction,
   NavigationListLabel,
   PencilSquareIcon,
-  ScrollArea,
-  ScrollBar,
   TrashIcon,
 } from "../index_with_tw_base";
 
@@ -73,12 +71,12 @@ export const Demo = () => {
   );
 
   return (
-    <div className="s-h-[400px] s-w-[240px] s-bg-muted s-py-3">
-      <ScrollArea className="s-h-full s-w-full">
-        <div className="s-px-3">
-          <NavigationList className="s-w-full">
-            {conversationTitles.map((section, sectionIndex) => (
-              <React.Fragment key={sectionIndex}>
+    <div className="s-flex s-h-[400px] s-w-full s-flex-row s-gap-12">
+      <div className="s-h-[400px] s-w-[240px] s-bg-muted">
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3">
+          {conversationTitles.map((section, sectionIndex) => (
+            <React.Fragment key={sectionIndex}>
+              <div className="s-relative s-flex s-flex-col s-gap-1">
                 <NavigationListLabel label={section.label} />
                 {section.items.map((title, index) => {
                   const itemIndex = allItems.indexOf(title);
@@ -101,12 +99,43 @@ export const Demo = () => {
                     />
                   );
                 })}
-              </React.Fragment>
-            ))}
-          </NavigationList>
-        </div>
-        <ScrollBar />
-      </ScrollArea>
+              </div>
+            </React.Fragment>
+          ))}
+        </NavigationList>
+      </div>
+      <div className="s-h-[400px] s-w-[240px] s-bg-muted">
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3">
+          {conversationTitles.map((section, sectionIndex) => (
+            <React.Fragment key={sectionIndex}>
+              <div className="s-relative s-flex s-flex-col s-gap-1">
+                <NavigationListLabel label={section.label} isSticky />
+                {section.items.map((title, index) => {
+                  const itemIndex = allItems.indexOf(title);
+                  return (
+                    <NavigationListItem
+                      key={index}
+                      href={index % 2 === 0 ? "#" : undefined}
+                      selected={itemIndex === selectedIndex}
+                      onClick={(e) => {
+                        // Prevent default only if it's not coming from the more menu
+                        if (!e.defaultPrevented) {
+                          e.preventDefault();
+                          setSelectedIndex(itemIndex);
+                        }
+                      }}
+                      label={title}
+                      className="s-w-full"
+                      moreMenu={getMoreMenu(title)}
+                      icon={LockIcon}
+                    />
+                  );
+                })}
+              </div>
+            </React.Fragment>
+          ))}
+        </NavigationList>
+      </div>
     </div>
   );
 };

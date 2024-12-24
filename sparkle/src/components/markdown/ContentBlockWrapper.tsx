@@ -1,6 +1,6 @@
-import React, { useCallback, useContext } from "react";
+import React, { useCallback } from "react";
 
-import { IconButton } from "@sparkle/components/IconButton";
+import { Button } from "@sparkle/components/";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownOnSquareIcon,
@@ -9,7 +9,7 @@ import {
 } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-type SupportedContentType = "application/json" | "text/csv";
+export type SupportedContentType = "application/json" | "text/csv";
 
 const contentTypeExtensions: Record<SupportedContentType, string> = {
   "application/json": ".json",
@@ -32,26 +32,21 @@ type ClipboardContent = {
 interface ContentBlockWrapperProps {
   children: React.ReactNode;
   className?: string;
+  innerClassName?: string;
   content?: ClipboardContent | string;
   getContentToDownload?: GetContentToDownloadFunction;
+  actions?: React.ReactNode[] | React.ReactNode;
 }
-
-export const ContentBlockWrapperContext = React.createContext<{
-  setIsDarkMode: (v: boolean) => void;
-  isDarkMode: boolean;
-}>({
-  setIsDarkMode: () => {},
-  isDarkMode: false,
-});
 
 export function ContentBlockWrapper({
   children,
   className,
+  innerClassName,
   content,
+  actions,
   getContentToDownload,
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const { isDarkMode } = useContext(ContentBlockWrapperContext);
   const handleCopyToClipboard = useCallback(() => {
     if (!content) {
       return;
@@ -96,34 +91,40 @@ export function ContentBlockWrapper({
   }, [getContentToDownload]);
 
   return (
-    <div className="s-relative">
-      <div
-        className={cn(
-          "s-relative s-w-auto s-overflow-x-auto s-rounded-lg",
-          className ?? ""
-        )}
-      >
-        <div className="s-w-full s-table-auto">{children}</div>
+    <div
+      id="BlockWrapper"
+      className={cn(
+        "s-relative s-w-full !s-overflow-visible s-rounded-2xl",
+        className
+      )}
+    >
+      <div className="s-sticky s-top-0 s-z-50 s-w-full">
+        <div
+          id="BlockActions"
+          className="s-flex s-w-full s-justify-end s-gap-1 s-p-2"
+        >
+          {actions && actions}
+          {getContentToDownload && (
+            <Button
+              variant={"outline"}
+              size="xs"
+              icon={ArrowDownOnSquareIcon}
+              onClick={handleDownload}
+              tooltip="Download"
+            />
+          )}
+          {content && (
+            <Button
+              variant={"outline"}
+              size="xs"
+              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+              onClick={handleCopyToClipboard}
+              tooltip="Copy"
+            />
+          )}
+        </div>
       </div>
-
-      <div className="s-absolute s-right-1 s-top-1 s-flex s-gap-1 s-rounded-xl">
-        {getContentToDownload && (
-          <IconButton
-            variant={isDarkMode ? "ghost" : "outline"}
-            size="xs"
-            icon={ArrowDownOnSquareIcon}
-            onClick={handleDownload}
-          />
-        )}
-        {content && (
-          <IconButton
-            variant={isDarkMode ? "ghost" : "outline"}
-            size="xs"
-            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-            onClick={handleCopyToClipboard}
-          />
-        )}
-      </div>
+      <div className={cn("-s-mt-11 s-w-full", innerClassName)}>{children}</div>
     </div>
   );
 }
