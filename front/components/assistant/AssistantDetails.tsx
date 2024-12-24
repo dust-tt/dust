@@ -32,10 +32,11 @@ export function AssistantDetails({
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: assistantId,
-  });
+  const { agentConfiguration, isAgentConfigurationValidating } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId,
+    });
 
   const doUpdateScope = useUpdateAgentScope({
     owner,
@@ -86,6 +87,7 @@ export function AssistantDetails({
         <AssistantDetailsButtonBar
           owner={owner}
           agentConfiguration={agentConfiguration}
+          isAgentConfigurationValidating={isAgentConfigurationValidating}
         />
       )}
 

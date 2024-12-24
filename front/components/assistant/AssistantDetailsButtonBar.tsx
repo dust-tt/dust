@@ -31,10 +31,12 @@ interface AssistantDetailsButtonBarProps {
   canDelete?: boolean;
   isMoreInfoVisible?: boolean;
   showAddRemoveToFavorite?: boolean;
+  isAgentConfigurationValidating: boolean;
 }
 
 export function AssistantDetailsButtonBar({
   agentConfiguration,
+  isAgentConfigurationValidating,
   owner,
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
@@ -118,19 +120,22 @@ export function AssistantDetailsButtonBar({
     // builders can all edit, non-builders can only edit personal/shared assistants
     isBuilder(owner) || !(agentConfiguration.scope === "workspace");
 
+  const isFavoriteDisabled =
+    isAgentConfigurationValidating || isUpdatingFavorite;
+
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
       <div className="group">
         <Button
           icon={
-            agentConfiguration.userFavorite || isUpdatingFavorite
+            agentConfiguration.userFavorite || isFavoriteDisabled
               ? StarIcon
               : StarStrokeIcon
           }
           size="sm"
           className="group-hover:hidden"
           variant="outline"
-          disabled={isUpdatingFavorite}
+          disabled={isFavoriteDisabled}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
 
@@ -139,7 +144,7 @@ export function AssistantDetailsButtonBar({
           size="sm"
           className="hidden group-hover:block"
           variant="outline"
-          disabled={isUpdatingFavorite}
+          disabled={isFavoriteDisabled}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
       </div>
