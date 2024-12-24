@@ -6,6 +6,7 @@ import type {
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
+import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { getMembers } from "@app/lib/api/workspace";
@@ -67,7 +68,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function DataSourceViewPage({
+export default function SpacePage({
   members,
   owner,
   space,
@@ -77,11 +78,12 @@ export default function DataSourceViewPage({
       <ViewSpaceViewTable space={space} />
       <div className="flex grow flex-col">
         <MembersDataTable members={members} owner={owner} readonly />
+        <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
       </div>
     </div>
   );
 }
 
-DataSourceViewPage.getLayout = (page: ReactElement) => {
+SpacePage.getLayout = (page: ReactElement) => {
   return <PokeLayout>{page}</PokeLayout>;
 };
