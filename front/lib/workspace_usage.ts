@@ -473,7 +473,7 @@ export async function getFeedbacksUsageData(
   }
 
   const feedbacks = (await AgentMessageFeedbackResource.fetch({
-    workspaceId,
+    workspaceId: workspace.id,
     withMetadata: true,
     filters: {
       olderThan: startDate,

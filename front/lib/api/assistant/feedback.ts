@@ -229,7 +229,7 @@ export async function getAgentFeedbacks({
   }
 
   const feedbacksRes = await AgentMessageFeedbackResource.fetch({
-    workspaceId: owner.sId,
+    workspaceId: owner.id,
     agentConfiguration,
     filters,
     withMetadata,
