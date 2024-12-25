@@ -25,6 +25,7 @@ import {
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   Err,
@@ -849,7 +850,7 @@ export async function createDataSourceWithoutProvider(
     projectId: dustProject.value.project.project_id.toString(),
     config: {
       qdrant_config: {
-        cluster: config.getQdrantCluster(),
+        cluster: DEFAULT_QDRANT_CLUSTER,
         shadow_write_cluster: null,
       },
       embedder_config: {

@@ -1,4 +1,3 @@
-import type { QdrantCluster } from "@dust-tt/types";
 import { EnvironmentConfig } from "@dust-tt/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
@@ -161,9 +160,6 @@ const config = {
   },
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");
-  },
-  getQdrantCluster: (): QdrantCluster => {
-    return EnvironmentConfig.getEnvVariable("QDRANT_CLUSTER") as QdrantCluster;
   },
 };
 
