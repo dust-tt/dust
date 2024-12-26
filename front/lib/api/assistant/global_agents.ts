@@ -599,7 +599,10 @@ function _getClaude3GlobalAgent({
     versionAuthorId: null,
     name: "claude-3",
     description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions: null,
+    instructions:
+      "Only use visualization if it is strictly necessary to visualize " +
+      "data or if it was explicitly requested by the user. " +
+      "Do not use visualization if markdown is sufficient.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
