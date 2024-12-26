@@ -1,4 +1,5 @@
-export type QdrantCluster = "cluster-0" | "eu-cluster-0";
+export type QdrantCluster = "cluster-0";
+export const DEFAULT_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
 
 export interface EmbedderType {
   provider_id: string;
