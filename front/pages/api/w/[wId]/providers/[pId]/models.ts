@@ -258,6 +258,15 @@ async function handler(
             ],
           });
 
+        case "deepseek":
+          if (embed) {
+            res.status(200).json({ models: [] });
+            return;
+          }
+          return res.status(200).json({
+            models: [{ id: "deepseek-chat" }],
+          });
+
         default:
           return apiError(req, res, {
             status_code: 404,

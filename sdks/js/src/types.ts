@@ -14,7 +14,12 @@ const FlexibleEnumSchema = <T extends string>() =>
   });
 
 const ModelProviderIdSchema = FlexibleEnumSchema<
-  "openai" | "anthropic" | "mistral" | "google_ai_studio" | "togetherai"
+  | "openai"
+  | "anthropic"
+  | "mistral"
+  | "google_ai_studio"
+  | "togetherai"
+  | "deepseek"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -42,6 +47,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "Qwen/Qwen2.5-Coder-32B-Instruct"
   | "Qwen/QwQ-32B-Preview"
   | "Qwen/Qwen2-72B-Instruct"
+  | "deepseek-chat"
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();

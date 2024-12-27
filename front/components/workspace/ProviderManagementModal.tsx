@@ -33,6 +33,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   mistral: "Mistral AI",
   google_ai_studio: "Google",
   togetherai: "TogetherAI",
+  deepseek: "Deepseek",
 };
 
 const modelProviders: Record<ModelProviderIdType, string[]> =

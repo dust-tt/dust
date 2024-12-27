@@ -258,6 +258,22 @@ async function handler(
           }
           return;
 
+        case "deepseek":
+          const testDeepseek = await fetch(`https://api.deepseek.com/models`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${config.api_key}`,
+            },
+          });
+          if (!testDeepseek.ok) {
+            const err = await testDeepseek.json();
+            res.status(400).json({ ok: false, error: err.error });
+          } else {
+            await testDeepseek.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
+
         default:
           return apiError(req, res, {
             status_code: 404,

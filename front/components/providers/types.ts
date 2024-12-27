@@ -35,6 +35,7 @@ export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
   mistral: MistralLogo,
   google_ai_studio: GoogleLogo,
   togetherai: PlanetIcon,
+  deepseek: PlanetIcon,
 };
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [

@@ -54,6 +54,7 @@ pub mod providers {
         pub mod sentencepiece;
     }
     pub mod anthropic;
+    pub mod deepseek;
     pub mod google_ai_studio;
     pub mod togetherai;
 }
