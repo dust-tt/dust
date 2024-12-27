@@ -17,4 +17,5 @@ export type CredentialsType = {
   BROWSERLESS_API_KEY?: string;
   GOOGLE_AI_STUDIO_API_KEY?: string;
   TOGETHERAI_API_KEY?: string;
+  DEEPSEEK_API_KEY?: string;
 };

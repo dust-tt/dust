@@ -57,6 +57,7 @@ impl FromStr for ProviderID {
             "mistral" => Ok(ProviderID::Mistral),
             "google_ai_studio" => Ok(ProviderID::GoogleAiStudio),
             "togetherai" => Ok(ProviderID::TogetherAI),
+            "deepseek" => Ok(ProviderID::Deepseek),
             _ => Err(ParseError::with_message(
                 "Unknown provider ID \
                  (possible values: openai, azure_openai, anthropic, mistral, google_ai_studio)",

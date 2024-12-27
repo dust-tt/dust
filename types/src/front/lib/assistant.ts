@@ -18,6 +18,7 @@ export const MODEL_PROVIDER_IDS = [
   "mistral",
   "google_ai_studio",
   "togetherai",
+  "deepseek",
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
@@ -121,6 +122,7 @@ export const TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID =
   "Qwen/QwQ-32B-Preview" as const;
 export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID =
   "Qwen/Qwen2-72B-Instruct" as const;
+export const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
 
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
@@ -147,6 +149,7 @@ export const MODEL_IDS = [
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_32B_PREVIEW_MODEL_ID,
   TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
+  DEEPSEEK_CHAT_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 

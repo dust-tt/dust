@@ -9,6 +9,7 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
 import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
+import DeepseekSetup from "@app/components/providers/DeepseekSetup";
 import GoogleAiStudioSetup from "@app/components/providers/GoogleAiStudioSetup";
 import MistralAISetup from "@app/components/providers/MistralAISetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
@@ -58,7 +59,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
   const [togetherAiOpen, setTogetherAiOpen] = useState(false);
-
+  const [deepseekOpen, setDeepseekOpen] = useState(false);
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
     owner,
   });
@@ -138,6 +139,13 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         setOpen={setTogetherAiOpen}
         enabled={!!configs["togetherai"]}
         config={configs["togetherai"] ?? null}
+      />
+      <DeepseekSetup
+        owner={owner}
+        open={deepseekOpen}
+        setOpen={setDeepseekOpen}
+        enabled={!!configs["deepseek"]}
+        config={configs["deepseek"] ?? null}
       />
       <SerpAPISetup
         owner={owner}
@@ -225,6 +233,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                           break;
                         case "togetherai":
                           setTogetherAiOpen(true);
+                          break;
+                        case "deepseek":
+                          setDeepseekOpen(true);
                           break;
                       }
                     }}
