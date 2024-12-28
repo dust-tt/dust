@@ -1,6 +1,5 @@
 import type {
   ConnectorProvider,
-  ConversationType,
   ConversationWithoutContentType,
   DataSourceType,
   ModelId,
