@@ -18,6 +18,7 @@ import { Writable } from "stream";
 import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import config from "@app/lib/api/config";
 import {
@@ -27,14 +28,12 @@ import {
 } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { Conversation } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import { getConversationWithoutContent } from "../assistant/conversation";
 
 const ENABLE_LLM_SNIPPETS = false;
 
