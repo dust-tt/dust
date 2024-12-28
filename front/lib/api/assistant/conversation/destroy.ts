@@ -2,6 +2,7 @@ import type { LightWorkspaceType, ModelId } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
+import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
@@ -21,7 +22,10 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
+
+import { getConversationWithoutContent } from "./without_content";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -122,6 +126,33 @@ async function destroyContentFragments(
   }
 }
 
+async function destroyConversationDataSource({
+  workspaceId,
+  conversationId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+}) {
+  // We need an authenticator to interact with the data source resource.
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const conversation = await getConversationWithoutContent(
+    auth,
+    conversationId
+  );
+  if (conversation.isErr()) {
+    throw conversation.error;
+  }
+
+  const dataSource = await DataSourceResource.fetchByConversation(
+    auth,
+    conversation.value
+  );
+
+  if (dataSource) {
+    await dataSource.delete(auth, { hardDelete: true });
+  }
+}
+
 // This belongs to the ConversationResource.
 export async function destroyConversation(
   workspace: LightWorkspaceType,
@@ -172,8 +203,8 @@ export async function destroyConversation(
     });
 
     await destroyContentFragments(messageAndContentFragmentIds, {
-      conversationId: conversation.sId,
       workspaceId: workspace.sId,
+      conversationId: conversation.sId,
     });
 
     await destroyMessageRelatedResources(messageIds);
@@ -181,6 +212,11 @@ export async function destroyConversation(
 
   await ConversationParticipant.destroy({
     where: { conversationId: conversationId },
+  });
+
+  await destroyConversationDataSource({
+    workspaceId: workspace.sId,
+    conversationId: conversation.sId,
   });
 
   await conversation.destroy();
