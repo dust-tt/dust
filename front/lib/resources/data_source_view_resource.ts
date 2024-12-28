@@ -375,9 +375,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     conversation: ConversationType
   ): Promise<DataSourceViewResource | null> {
     // Fetch the data source view associated with the datasource that is associated with the conversation.
-    const dataSource = await DataSourceResource.fetchByConversationId(
+    const dataSource = await DataSourceResource.fetchByConversation(
       auth,
-      conversation.id
+      conversation
     );
     if (!dataSource) {
       return null;

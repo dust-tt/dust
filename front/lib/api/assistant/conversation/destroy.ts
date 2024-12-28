@@ -1,4 +1,8 @@
-import type { LightWorkspaceType, ModelId } from "@dust-tt/types";
+import type {
+  ConversationType,
+  LightWorkspaceType,
+  ModelId,
+} from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 

@@ -34,6 +34,7 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import { getConversationWithoutContent } from "../assistant/conversation";
 
 const ENABLE_LLM_SNIPPETS = false;
 
@@ -481,16 +482,12 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  const workspace = auth.getNonNullableWorkspace();
+  const cRes = await getConversationWithoutContent(
+    auth,
+    file.useCaseMetadata.conversationId
+  );
 
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: file.useCaseMetadata.conversationId,
-      workspaceId: workspace.id,
-    },
-  });
-
-  if (conversation === null) {
+  if (cRes.isErr()) {
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
@@ -499,9 +496,9 @@ export async function processAndUpsertToDataSource(
   }
 
   // Fetch the datasource linked to the conversation...
-  let dataSource = await DataSourceResource.fetchByConversationId(
+  let dataSource = await DataSourceResource.fetchByConversation(
     auth,
-    conversation.id
+    cRes.value
   );
 
   if (!dataSource) {
@@ -517,7 +514,7 @@ export async function processAndUpsertToDataSource(
       space: conversationsSpace,
       name: generateRandomModelSId("conv"),
       description: "Files uploaded to conversation",
-      conversationId: conversation.id,
+      conversation: cRes.value,
     });
 
     if (r.isErr()) {

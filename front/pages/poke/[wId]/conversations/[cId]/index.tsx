@@ -33,16 +33,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const conversation = await getConversationWithoutContent(auth, cId);
-  if (conversation.isErr()) {
+  const cRes = await getConversationWithoutContent(auth, cId);
+  if (cRes.isErr()) {
     return {
       notFound: true,
     };
   }
 
-  const conversationDataSource = await DataSourceResource.fetchByConversationId(
+  const conversationDataSource = await DataSourceResource.fetchByConversation(
     auth,
-    conversation.value.id
+    cRes.value
   );
 
   return {
