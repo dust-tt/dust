@@ -72,7 +72,7 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type { Authenticator} from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
