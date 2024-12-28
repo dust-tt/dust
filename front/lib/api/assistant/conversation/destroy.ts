@@ -3,6 +3,7 @@ import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
+import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
@@ -54,6 +55,9 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
     where: { agentMessageId: agentMessageIds },
   });
   await AgentBrowseAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+  await AgentConversationIncludeFileAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 }
