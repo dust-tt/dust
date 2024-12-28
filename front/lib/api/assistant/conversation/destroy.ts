@@ -137,7 +137,8 @@ async function destroyConversationDataSource({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const conversation = await getConversationWithoutContent(
     auth,
-    conversationId
+    conversationId,
+    true
   );
   if (conversation.isErr()) {
     throw conversation.error;
