@@ -8,7 +8,7 @@ import type {
 import type { UserType } from "@dust-tt/types";
 import { ConversationError, Err, Ok } from "@dust-tt/types";
 
-import { canAccessConversation } from "@app/lib/api/assistant/conversation";
+import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { Authenticator } from "@app/lib/auth";
 import {
   Message,

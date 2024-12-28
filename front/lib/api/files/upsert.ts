@@ -18,6 +18,7 @@ import { Writable } from "stream";
 import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import config from "@app/lib/api/config";
 import {
@@ -27,7 +28,6 @@ import {
 } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { Conversation } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -481,16 +481,12 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  const workspace = auth.getNonNullableWorkspace();
+  const cRes = await getConversationWithoutContent(
+    auth,
+    file.useCaseMetadata.conversationId
+  );
 
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: file.useCaseMetadata.conversationId,
-      workspaceId: workspace.id,
-    },
-  });
-
-  if (conversation === null) {
+  if (cRes.isErr()) {
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
@@ -499,9 +495,9 @@ export async function processAndUpsertToDataSource(
   }
 
   // Fetch the datasource linked to the conversation...
-  let dataSource = await DataSourceResource.fetchByConversationId(
+  let dataSource = await DataSourceResource.fetchByConversation(
     auth,
-    conversation.id
+    cRes.value
   );
 
   if (!dataSource) {
@@ -517,7 +513,7 @@ export async function processAndUpsertToDataSource(
       space: conversationsSpace,
       name: generateRandomModelSId("conv"),
       description: "Files uploaded to conversation",
-      conversationId: conversation.id,
+      conversation: cRes.value,
     });
 
     if (r.isErr()) {

@@ -7,7 +7,7 @@ import type { UserType } from "@dust-tt/types";
 import { ConversationError, Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import { canAccessConversation } from "@app/lib/api/assistant/conversation";
+import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";

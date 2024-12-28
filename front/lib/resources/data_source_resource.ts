@@ -1,5 +1,6 @@
 import type {
   ConnectorProvider,
+  ConversationWithoutContentType,
   DataSourceType,
   ModelId,
   Result,
@@ -262,14 +263,14 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return dataSource ?? null;
   }
 
-  static async fetchByConversationId(
+  static async fetchByConversation(
     auth: Authenticator,
-    conversationId: number,
+    conversation: ConversationWithoutContentType,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource | null> {
     const [dataSource] = await this.baseFetch(auth, options, {
       where: {
-        conversationId,
+        conversationId: conversation.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });

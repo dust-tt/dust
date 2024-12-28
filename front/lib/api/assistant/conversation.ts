@@ -55,6 +55,11 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  canAccessConversation,
+  getConversationGroupIdsFromModel,
+  getConversationRequestedGroupIdsFromModel,
+} from "@app/lib/api/assistant/conversation/auth";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
@@ -67,7 +72,8 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -80,7 +86,6 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -405,48 +410,6 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
-    // TODO(2024-11-04 flav) `group-id` clean-up.
-    groupIds: getConversationGroupIdsFromModel(owner, conversation),
-    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
-      owner,
-      conversation
-    ),
-  });
-}
-
-export async function getConversationWithoutContent(
-  auth: Authenticator,
-  conversationId: string,
-  includeDeleted?: boolean
-): Promise<Result<ConversationWithoutContentType, ConversationError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: conversationId,
-      workspaceId: owner.id,
-      ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
-    },
-  });
-
-  if (!conversation) {
-    return new Err(new ConversationError("conversation_not_found"));
-  }
-
-  if (!canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
-
-  return new Ok({
-    id: conversation.id,
-    created: conversation.createdAt.getTime(),
-    sId: conversation.sId,
-    owner,
-    title: conversation.title,
-    visibility: conversation.visibility,
     // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
@@ -2178,48 +2141,5 @@ export async function updateConversationRequestedGroupIds(
       },
       transaction: t,
     }
-  );
-}
-
-// TODO(2024-11-04 flav) `group-id` clean-up.
-function getConversationGroupIdsFromModel(
-  owner: WorkspaceType,
-  conversation: Conversation
-): string[] {
-  return conversation.groupIds.map((g) =>
-    GroupResource.modelIdToSId({
-      id: g,
-      workspaceId: owner.id,
-    })
-  );
-}
-
-function getConversationRequestedGroupIdsFromModel(
-  owner: WorkspaceType,
-  conversation: Conversation
-): string[][] {
-  return conversation.requestedGroupIds.map((groups) =>
-    groups.map((g) =>
-      GroupResource.modelIdToSId({
-        id: g,
-        workspaceId: owner.id,
-      })
-    )
-  );
-}
-
-export function canAccessConversation(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType | ConversationType | Conversation
-): boolean {
-  const owner = auth.getNonNullableWorkspace();
-
-  const requestedGroupIds =
-    conversation instanceof Conversation
-      ? getConversationRequestedGroupIdsFromModel(owner, conversation)
-      : conversation.requestedGroupIds;
-
-  return auth.canRead(
-    Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
   );
 }

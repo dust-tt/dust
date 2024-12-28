@@ -8,7 +8,7 @@ import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -33,16 +33,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const conversation = await getConversationWithoutContent(auth, cId);
-  if (conversation.isErr()) {
+  const cRes = await getConversationWithoutContent(auth, cId);
+  if (cRes.isErr()) {
     return {
       notFound: true,
     };
   }
 
-  const conversationDataSource = await DataSourceResource.fetchByConversationId(
+  const conversationDataSource = await DataSourceResource.fetchByConversation(
     auth,
-    conversation.value.id
+    cRes.value
   );
 
   return {
