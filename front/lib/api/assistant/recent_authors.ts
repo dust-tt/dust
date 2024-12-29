@@ -4,12 +4,13 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import { getGlobalAgentAuthorName, removeNulls } from "@dust-tt/types";
-import { Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { cons } from "fp-ts/lib/ReadonlyNonEmptyArray";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
@@ -27,7 +28,10 @@ function _getRecentAuthorIdsKey({
   return `agent_recent_author_ids_${workspaceId}_${agentId}`;
 }
 
-async function fetchRecentAuthorIdsWithVersion(agentId: string) {
+async function fetchRecentAuthorIdsWithVersion(
+  agentId: string,
+  authorId?: string
+) {
   return AgentConfiguration.findAll({
     attributes: [
       "authorId",
@@ -36,6 +40,7 @@ async function fetchRecentAuthorIdsWithVersion(agentId: string) {
     group: "authorId",
     where: {
       sId: agentId,
+      authorId: authorId ? parseInt(authorId, 10) : undefined,
     },
     order: [
       ["version", "DESC"], // Order by version descending.
@@ -76,12 +81,16 @@ async function setAuthorIdsWithVersionInRedis(
 async function populateAuthorIdsFromDb({
   agentId,
   workspaceId,
+  authorId,
 }: {
   agentId: string;
   workspaceId: string;
+  authorId?: string;
 }) {
-  const recentAuthorIdsWithVersion =
-    await fetchRecentAuthorIdsWithVersion(agentId);
+  const recentAuthorIdsWithVersion = await fetchRecentAuthorIdsWithVersion(
+    agentId,
+    authorId
+  );
 
   if (recentAuthorIdsWithVersion.length === 0) {
     return [];
@@ -122,12 +131,29 @@ function renderAuthors(
   );
 }
 
+export async function fetchAgentVersionAuthor(
+  workspaceId: string,
+  agentIds: string[]
+) {
+  return AgentConfiguration.findAll({
+    attributes: ["name", "authorId"],
+    where: {
+      workspaceId,
+      sId: {
+        [Op.in]: agentIds,
+      },
+    },
+  });
+}
+
 export async function getAgentsRecentAuthors({
   agents,
   auth,
+  authorId,
 }: {
   agents: LightAgentConfigurationType[];
   auth: Authenticator;
+  authorId?: string;
 }): Promise<AgentRecentAuthors[]> {
   const owner = auth.workspace();
   if (!owner) {
@@ -153,11 +179,13 @@ export async function getAgentsRecentAuthors({
           async (redis) =>
             redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
         );
-        if (recentAuthorIds.length === 0) {
+        // I should add a filter based on the authorId on the redis method
+        if (authorId || recentAuthorIds.length === 0) {
           // Populate from the database and store in Redis if the entry is not already present.
           recentAuthorIds = await populateAuthorIdsFromDb({
             agentId,
             workspaceId,
+            authorId,
           });
         }
         return [agentId, recentAuthorIds.map((id) => parseInt(id, 10))];
