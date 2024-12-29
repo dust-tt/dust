@@ -137,7 +137,10 @@ export const zendesk = async ({
         connectorId: connector.id,
         ticketId,
       });
-      return { ticket, isTicketOnDb: ticketOnDb !== null };
+      return {
+        ticket: ticket as { [key: string]: unknown } | null,
+        isTicketOnDb: ticketOnDb !== null,
+      };
     }
   }
 };
