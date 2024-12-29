@@ -8,13 +8,17 @@ import type {
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskCurrentUser,
+  fetchZendeskTicket,
   fetchZendeskTicketCount,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { launchZendeskTicketReSyncWorkflow } from "@connectors/connectors/zendesk/temporal/client";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
+import {
+  ZendeskConfigurationResource,
+  ZendeskTicketResource,
+} from "@connectors/resources/zendesk_resources";
 
 export const zendesk = async ({
   command,
@@ -100,6 +104,38 @@ export const zendesk = async ({
         throw result.error;
       }
       return { success: true };
+    }
+    case "fetch-ticket": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      const brandId = args.brandId ? Number(args.brandId) : null;
+      if (!brandId) {
+        throw new Error(`Missing --brandId argument`);
+      }
+      const ticketId = args.ticketId ? Number(args.ticketId) : null;
+      if (!ticketId) {
+        throw new Error(`Missing --ticketId argument`);
+      }
+      const { accessToken, subdomain } =
+        await getZendeskSubdomainAndAccessToken(connector.connectionId);
+      const brandSubdomain = await getZendeskBrandSubdomain({
+        connectorId: connector.id,
+        brandId,
+        subdomain,
+        accessToken,
+      });
+
+      const ticket = await fetchZendeskTicket({
+        accessToken,
+        ticketId,
+        brandSubdomain,
+      });
+      const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
+        connectorId: connector.id,
+        ticketId,
+      });
+      return { ticket, isTicketOnDb: ticketOnDb !== null };
     }
   }
 };
