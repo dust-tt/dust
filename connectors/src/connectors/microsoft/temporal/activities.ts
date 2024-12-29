@@ -465,7 +465,7 @@ export async function syncFiles({
         )
     );
 
-  const parents = await getParents({
+  const parentsOfParent = await getParents({
     connectorId: parent.connectorId,
     internalId: parent.internalId,
     startSyncTs,
@@ -477,8 +477,8 @@ export async function syncFiles({
       upsertDataSourceFolder({
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
-        parents: [createdOrUpdatedResource.internalId, ...parents],
-        parentId: parents[0],
+        parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
+        parentId: parentsOfParent[0],
         title: createdOrUpdatedResource.name ?? "",
         mimeType: "application/vnd.dust.microsoft.folder",
       }),
