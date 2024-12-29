@@ -2,6 +2,7 @@ import type {
   ZendeskCheckIsAdminResponseType,
   ZendeskCommandType,
   ZendeskCountTicketsResponseType,
+  ZendeskFetchTicketResponseType,
   ZendeskResyncTicketsResponseType,
 } from "@dust-tt/types";
 
@@ -27,6 +28,7 @@ export const zendesk = async ({
   | ZendeskCheckIsAdminResponseType
   | ZendeskCountTicketsResponseType
   | ZendeskResyncTicketsResponseType
+  | ZendeskFetchTicketResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
