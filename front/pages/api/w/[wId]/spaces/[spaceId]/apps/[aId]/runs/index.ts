@@ -7,7 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -123,6 +123,9 @@ async function handler(
       );
       const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
 
+      const flags = await getFeatureFlags(owner);
+      const storeBlocksResults = !flags.includes("disable_run_logs");
+
       const dustRun = await coreAPI.createRun(owner, auth.groups(), {
         projectId: app.dustAPIProjectId,
         runType: "local",
@@ -134,6 +137,7 @@ async function handler(
         config: { blocks: config },
         credentials: credentialsFromProviders(providers),
         secrets,
+        storeBlocksResults,
       });
 
       if (dustRun.isErr()) {

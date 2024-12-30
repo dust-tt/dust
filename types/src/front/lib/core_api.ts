@@ -103,6 +103,7 @@ type CoreAPICreateRunParams = {
   credentials: CredentialsType;
   secrets: DustAppSecretType[];
   isSystemKey?: boolean;
+  storeBlocksResults?: boolean;
 };
 
 type GetDatasetResponse = {
@@ -306,6 +307,7 @@ export class CoreAPI {
       credentials,
       secrets,
       isSystemKey,
+      storeBlocksResults = true,
     }: CoreAPICreateRunParams
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await this._fetchWithError(
@@ -327,6 +329,7 @@ export class CoreAPI {
           config: config,
           credentials: credentials,
           secrets: secrets,
+          store_blocks_results: storeBlocksResults,
         }),
       }
     );
@@ -348,6 +351,7 @@ export class CoreAPI {
       credentials,
       secrets,
       isSystemKey,
+      storeBlocksResults = true,
     }: CoreAPICreateRunParams
   ): Promise<
     CoreAPIResponse<{
@@ -374,6 +378,7 @@ export class CoreAPI {
           config: config,
           credentials: credentials,
           secrets: secrets,
+          store_blocks_results: storeBlocksResults,
         }),
       }
     );
