@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { ReactNode, useMemo } from "react";
 
+import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
 
 const getNodeText = (node: ReactNode): string => {
@@ -65,19 +66,20 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <ContentBlockWrapper
-      className="s-border s-border-structure-200 dark:s-border-structure-200-dark"
+      innerClassName="s-relative s-my-2 s-w-full s-border s-border-border s-rounded-2xl"
       content={tableData}
     >
-      <table className="s-w-full s-table-auto">{children}</table>
+      <ScrollArea className="s-z-0 s-w-full s-rounded-2xl">
+        <table className="s-w-full">{children}</table>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </ContentBlockWrapper>
   );
 }
 
 export function TableHeadBlock({ children }: { children: React.ReactNode }) {
   return (
-    <thead className="s-bg-structure-50 s-px-2 s-py-2 dark:s-bg-structure-50-dark">
-      {children}
-    </thead>
+    <thead className="s-bg-muted-background s-px-2 s-py-2">{children}</thead>
   );
 }
 
@@ -87,7 +89,7 @@ export function TableBodyBlock({ children }: { children: React.ReactNode }) {
 
 export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className="s-whitespace-nowrap s-px-6 s-py-3 s-text-left s-text-xs s-font-semibold s-uppercase s-tracking-wider s-text-element-700 dark:s-text-element-700-dark">
+    <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-medium s-uppercase s-tracking-wider s-text-muted-foreground">
       {children}
     </th>
   );
@@ -95,7 +97,7 @@ export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
 
 export function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
-    <td className="s-px-6 s-py-4 s-text-sm s-text-element-800 dark:s-text-element-800-dark">
+    <td className="s-px-4 s-py-3 s-text-sm s-text-foreground">
       {Array.isArray(children) ? (
         children.map((child: any, i) => {
           if (child === "<br>") {

@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
+import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
@@ -9,13 +10,9 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
+import { Checkbox } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import {
-  ContentBlockWrapper,
-  ContentBlockWrapperContext,
-  GetContentToDownloadFunction,
-} from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import {
   TableBlock,
@@ -24,13 +21,9 @@ import {
   TableHeadBlock,
   TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
-import {
-  detectLanguage,
-  sanitizeContent,
-} from "@sparkle/components/markdown/utils";
+import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
-// TODO(thomas): use CVA
 const headerColor = "s-text-foreground";
 const sizes = {
   sm: {
@@ -168,6 +161,7 @@ export function Markdown({
           {children}
         </strong>
       ),
+      input: Input,
       blockquote: BlockquoteBlock,
       hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
       code: CodeBlockWithExtendedSupport,
@@ -222,7 +216,7 @@ function LinkBlock({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="s-break-all s-font-semibold s-text-action-500 s-transition-all s-duration-200 s-ease-in-out hover:s-text-action-400 hover:s-underline active:s-text-action-600"
+      className="s-break-all s-font-semibold s-text-highlight s-transition-all s-duration-200 s-ease-in-out hover:s-text-action-400 hover:s-underline active:s-text-highlight-dark"
     >
       {children}
     </a>
@@ -234,8 +228,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
     Array.isArray(children) && children[0]
       ? children[0].props.children[0]
       : null;
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  // Sometimes the children are not valid, but the meta data is
+
   let fallbackData: string | null = null;
   if (!validChildrenContent) {
     fallbackData =
@@ -244,43 +237,14 @@ function PreBlock({ children }: { children: React.ReactNode }) {
         : null;
   }
 
-  const text = validChildrenContent || fallbackData || "";
-  const language = detectLanguage(children);
-
-  // If the output file is a CSV let the user download it.
-  const getContentToDownload: GetContentToDownloadFunction | undefined =
-    language === "csv"
-      ? async () => {
-          return {
-            content: text,
-            filename: `dust_output_${Date.now()}`,
-            type: "text/csv",
-          };
-        }
-      : undefined;
-
   return (
-    <ContentBlockWrapperContext.Provider value={{ isDarkMode, setIsDarkMode }}>
-      <pre
-        className={cn(
-          "s-my-2 s-w-full s-break-all s-rounded-lg",
-          isDarkMode ? "s-bg-slate-800" : "s-bg-slate-100"
-        )}
-      >
-        <div className="relative">
-          <ContentBlockWrapper
-            content={{
-              "text/plain": text,
-            }}
-            getContentToDownload={getContentToDownload}
-          >
-            <div className="s-overflow-auto s-pt-8 s-text-sm">
-              {validChildrenContent ? children : fallbackData || children}
-            </div>
-          </ContentBlockWrapper>
-        </div>
-      </pre>
-    </ContentBlockWrapperContext.Provider>
+    <pre
+      className={cn(
+        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border s-border-border s-bg-muted-background"
+      )}
+    >
+      {validChildrenContent ? children : fallbackData || children}
+    </pre>
   );
 }
 
@@ -373,6 +337,35 @@ function ParagraphBlock({
       )}
     >
       {children}
+    </div>
+  );
+}
+
+type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'ref'> & ReactMarkdownProps & {
+  ref?: React.Ref<HTMLInputElement>;
+};
+
+function Input({ type, checked, className, onChange, ref, ...props }: InputProps) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  React.useImperativeHandle(ref, () => inputRef.current!);
+
+  if (type !== "checkbox") {
+    return <input ref={inputRef} type={type} checked={checked} className={className} {...props} />;
+  }
+
+  const handleCheckedChange = (isChecked: boolean) => {
+    onChange?.({ target: { type: "checkbox", checked: isChecked } } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  return (
+    <div className="s-inline-flex s-items-center">
+      <Checkbox
+        ref={inputRef as React.Ref<HTMLButtonElement>}
+        size="xs"
+        checked={checked}
+        className="s-translate-y-[3px]"
+        onCheckedChange={handleCheckedChange}
+      />
     </div>
   );
 }
