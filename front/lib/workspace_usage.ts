@@ -3,7 +3,6 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
-import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
@@ -441,36 +440,16 @@ export async function getFeedbacksUsageData(
   endDate: Date,
   workspace: WorkspaceType
 ): Promise<string> {
-  const feedbacks = (await AgentMessageFeedbackResource.fetch({
-    workspace,
-    withMetadata: true,
-    filters: {
-      olderThan: startDate,
-      earlierThan: endDate,
-    },
-  })) as AgentMessageFeedbackWithMetadataType[];
-
+  const feedbacks =
+    (await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
+      startDate,
+      endDate,
+      workspace,
+    })) as FeedbackQueryResult[];
   if (!feedbacks.length) {
     return "No data available for the selected period.";
   }
-
-  const feedbackResults: FeedbackQueryResult[] = await Promise.all(
-    // IMPORTANT: Do not disclose the conversationId field
-    feedbacks.map(async (feedback) => {
-      return {
-        id: feedback.id,
-        createdAt: feedback.createdAt,
-        userName: feedback.userName,
-        userEmail: feedback.userEmail,
-        agentConfigurationId: feedback.agentConfigurationId,
-        agentConfigurationVersion: feedback.agentConfigurationVersion,
-        thumb: feedback.thumbDirection,
-        content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
-      };
-    })
-  );
-
-  return generateCsvFromQueryResult(feedbackResults);
+  return generateCsvFromQueryResult(feedbacks);
 }
 
 function generateCsvFromQueryResult(

@@ -101,33 +101,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     agentConfiguration?: AgentConfigurationType;
     filters?: {
       limit?: number;
-      olderThan?: Date;
-      earlierThan?: Date;
     };
   }): Promise<
     (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[]
   > {
-    const createdAtClause =
-      !filters || (!filters.olderThan && !filters.earlierThan)
-        ? {}
-        : {
-            createdAt: {
-              [Op.and]: [
-                filters.olderThan && filters.earlierThan
-                  ? [
-                      { [Op.lt]: filters.olderThan },
-                      { [Op.gt]: filters.earlierThan },
-                    ]
-                  : filters.olderThan
-                    ? { [Op.lt]: filters.olderThan }
-                    : { [Op.gt]: filters.earlierThan },
-              ],
-            },
-          };
-
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
-        // Necessary for global models who share ids across workspaces
+        // IMPORTANT: Necessary for global models who share ids across workspaces.
         workspaceId: workspace.id,
         // These clauses are optional
         ...(agentConfiguration
@@ -135,7 +115,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
               agentConfigurationId: agentConfiguration.sId.toString(),
             }
           : {}),
-        ...createdAtClause,
       },
 
       include: [
@@ -146,7 +125,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           include: [
             {
               model: Message,
-              as: "agentMessage",
+              as: "message",
               attributes: ["id", "sId"],
               include: [
                 {
@@ -178,14 +157,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
             feedback
           ): feedback is AgentMessageFeedback & {
             agentMessage: {
-              agentMessage: Message & { conversation: Conversation };
+              message: Message & { conversation: Conversation };
             };
-          } => !!feedback.agentMessage?.agentMessage?.conversation
+          } => !!feedback.agentMessage?.message?.conversation
         )
         .map((feedback) => {
           return {
             id: feedback.id,
-            messageId: feedback.agentMessage.agentMessage.sId,
+            messageId: feedback.agentMessage.message.sId,
             agentMessageId: feedback.agentMessageId,
             userId: feedback.userId,
             thumbDirection: feedback.thumbDirection,
@@ -200,7 +179,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
             ...(withMetadata && {
               // This field is sensitive, it allows accessing the conversation
               conversationId: feedback.isConversationShared
-                ? feedback.agentMessage.agentMessage.conversation.sId
+                ? feedback.agentMessage.message.conversation.sId
                 : null,
               userName: feedback.user.name,
               userEmail: feedback.user.email,
@@ -209,6 +188,52 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           };
         })
     );
+  }
+
+  static async getFeedbackUsageDataForWorkspace({
+    startDate,
+    endDate,
+    workspace,
+  }: {
+    startDate: Date;
+    endDate: Date;
+    workspace: WorkspaceType;
+  }) {
+    const agentMessageFeedback = await AgentMessageFeedback.findAll({
+      where: {
+        // IMPORTANT: Necessary for global models who share ids across workspaces.
+        workspaceId: workspace.id,
+        createdAt: {
+          [Op.and]: [{ [Op.lt]: endDate }, { [Op.gt]: startDate }],
+        },
+      },
+
+      include: [
+        {
+          model: AgentMessageModel,
+          attributes: ["id"],
+          as: "agentMessage",
+        },
+        {
+          model: UserResource.model,
+          attributes: ["name", "email"],
+        },
+      ],
+      order: [["id", "ASC"]],
+    });
+
+    return agentMessageFeedback.map((feedback) => {
+      return {
+        id: feedback.id,
+        createdAt: feedback.createdAt,
+        userName: feedback.user.name,
+        userEmail: feedback.user.email,
+        agentConfigurationId: feedback.agentConfigurationId,
+        agentConfigurationVersion: feedback.agentConfigurationVersion,
+        thumb: feedback.thumbDirection,
+        content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
+      };
+    });
   }
 
   static async getConversationFeedbacksForUser(
