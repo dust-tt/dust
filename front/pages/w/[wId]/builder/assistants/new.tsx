@@ -40,7 +40,6 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  isAdmin: boolean;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -124,7 +123,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
       flow,
-      isAdmin: auth.isAdmin(),
       owner,
       plan,
       subscription,
@@ -142,7 +140,6 @@ export default function CreateAssistant({
   dataSourceViews,
   dustApps,
   flow,
-  isAdmin,
   owner,
   plan,
   subscription,
@@ -203,7 +200,6 @@ export default function CreateAssistant({
             : null
         }
         agentConfigurationId={null}
-        isAdmin={isAdmin}
         defaultIsEdited={assistantTemplate !== null}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}

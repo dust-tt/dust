@@ -26,7 +26,7 @@ import type {
   LightWorkspaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
+import { isAdmin, isBuilder } from "@dust-tt/types";
 import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
@@ -109,7 +109,6 @@ interface SharingButtonProps {
   agentConfigurationId: string | null;
   baseUrl: string;
   initialScope: NonGlobalScope;
-  isAdmin: boolean;
   newScope: NonGlobalScope;
   owner: WorkspaceType;
   setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
@@ -123,7 +122,6 @@ export function SharingButton({
   agentConfigurationId,
   baseUrl,
   initialScope,
-  isAdmin,
   newScope,
   owner,
   setNewLinkedSlackChannels,
@@ -167,7 +165,6 @@ export function SharingButton({
             setNewLinkedSlackChannels(slackChannels);
           }}
           assistantHandle="@Dust"
-          isAdmin={isAdmin}
           show={slackDrawerOpened}
           slackDataSource={slackDataSource}
           onClose={() => setSlackDrawerOpened(false)}
@@ -244,7 +241,7 @@ export function SharingButton({
                       // If not admins, but there are channels selected, prevent from removing.
                       disabled={
                         !slackDataSource ||
-                        (slackChannelSelected.length > 0 && !isAdmin)
+                        (slackChannelSelected.length > 0 && !isAdmin(owner))
                       }
                       onClick={() => {
                         if (slackChannelSelected.length > 0) {

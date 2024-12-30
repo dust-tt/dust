@@ -32,7 +32,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   flow: BuilderFlow;
-  isAdmin: boolean;
   owner: WorkspaceType;
   plan: PlanType;
   spaces: SpaceType[];
@@ -91,7 +90,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
       flow,
-      isAdmin: auth.isAdmin(),
       owner,
       plan,
       subscription,
@@ -108,7 +106,6 @@ export default function EditAssistant({
   dataSourceViews,
   dustApps,
   flow,
-  isAdmin,
   owner,
   plan,
   subscription,
@@ -154,7 +151,6 @@ export default function EditAssistant({
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}
-        isAdmin={isAdmin}
         defaultTemplate={null}
       />
     </AssistantBuilderProvider>
