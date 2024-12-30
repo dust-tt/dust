@@ -4,7 +4,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import {
+  getOrCreateJitDataSourceForFile,
+  processAndUpsertToDataSource,
+} from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -143,20 +146,37 @@ async function handler(
 
       // Only upsert immediately in case of conversation
       if (file.useCase === "conversation") {
-        const rUpsert = await processAndUpsertToDataSource(auth, { file });
+        const jitDataSource = await getOrCreateJitDataSourceForFile(auth, file);
+        if (jitDataSource.isErr()) {
+          logger.warn({
+            fileModelId: file.id,
+            workspaceId: auth.workspace()?.sId,
+            contentType: file.contentType,
+            useCase: file.useCase,
+            useCaseMetadata: file.useCaseMetadata,
+            message: "Failed to get or create JIT data source.",
+            error: jitDataSource.error,
+          });
+        } else {
+          const rUpsert = await processAndUpsertToDataSource(
+            auth,
+            jitDataSource.value,
+            { file }
+          );
 
-        // For now, silently log the error
-        if (rUpsert.isErr()) {
-          {
-            logger.warn({
-              fileModelId: file.id,
-              workspaceId: auth.workspace()?.sId,
-              contentType: file.contentType,
-              useCase: file.useCase,
-              useCaseMetadata: file.useCaseMetadata,
-              message: "Failed to upsert the file.",
-              error: rUpsert.error,
-            });
+          // For now, silently log the error
+          if (rUpsert.isErr()) {
+            {
+              logger.warn({
+                fileModelId: file.id,
+                workspaceId: auth.workspace()?.sId,
+                contentType: file.contentType,
+                useCase: file.useCase,
+                useCaseMetadata: file.useCaseMetadata,
+                message: "Failed to upsert the file.",
+                error: rUpsert.error,
+              });
+            }
           }
         }
       }

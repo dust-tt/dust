@@ -221,7 +221,21 @@ export async function augmentDataSourceWithConnectorDetails(
     fetchConnectorErrorMessage,
   };
 }
-
+export type UpsertDocumentArgs = {
+  name: string;
+  source_url?: string | null;
+  text?: string | null;
+  section?: FrontDataSourceDocumentSectionType | null;
+  tags?: string[] | null;
+  parent_id?: string | null;
+  parents?: string[] | null;
+  timestamp?: number | null;
+  light_document_output?: boolean;
+  dataSource: DataSourceResource;
+  auth: Authenticator;
+  mime_type?: string;
+  title?: string;
+};
 export async function upsertDocument({
   name,
   source_url,
@@ -236,21 +250,7 @@ export async function upsertDocument({
   auth,
   mime_type,
   title,
-}: {
-  name: string;
-  source_url?: string | null;
-  text?: string | null;
-  section?: FrontDataSourceDocumentSectionType | null;
-  tags?: string[] | null;
-  parent_id?: string | null;
-  parents?: string[] | null;
-  timestamp?: number | null;
-  light_document_output?: boolean;
-  dataSource: DataSourceResource;
-  auth: Authenticator;
-  mime_type?: string;
-  title?: string;
-}): Promise<
+}: UpsertDocumentArgs): Promise<
   Result<
     {
       document:
@@ -421,6 +421,23 @@ export async function upsertDocument({
   return new Ok(upsertRes.value);
 }
 
+export type UpsertTableArgs = {
+  tableId?: string | null;
+  name: string;
+  description: string;
+  truncate: boolean;
+  csv?: string | null;
+  tags?: string[] | null;
+  parentId?: string | null;
+  parents?: string[] | null;
+  timestamp?: number | null;
+  async: boolean;
+  dataSource: DataSourceResource;
+  auth: Authenticator;
+  useAppForHeaderDetection?: boolean;
+  title?: string;
+  mimeType?: string;
+};
 export async function upsertTable({
   tableId,
   name,
@@ -437,23 +454,7 @@ export async function upsertTable({
   useAppForHeaderDetection,
   title,
   mimeType,
-}: {
-  tableId?: string | null;
-  name: string;
-  description: string;
-  truncate: boolean;
-  csv?: string | null;
-  tags?: string[] | null;
-  parentId?: string | null;
-  parents?: string[] | null;
-  timestamp?: number | null;
-  async: boolean;
-  dataSource: DataSourceResource;
-  auth: Authenticator;
-  useAppForHeaderDetection?: boolean;
-  title?: string;
-  mimeType?: string;
-}) {
+}: UpsertTableArgs) {
   const nonNullTableId = tableId ?? generateRandomModelSId();
   const tableParents: string[] = parents ?? [];
 

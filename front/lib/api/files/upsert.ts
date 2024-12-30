@@ -229,6 +229,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   file,
   content,
   dataSource,
+  upsertArgs,
 }) => {
   // Use the file id as the document id to make it easy to track the document back to the file.
   const documentId = file.sId;
@@ -245,6 +246,9 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
     auth,
     mime_type: file.contentType,
     title: file.fileName,
+
+    // Used to override defaults.
+    ...(upsertArgs ?? {}),
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -264,6 +268,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   file,
   content,
   dataSource,
+  upsertArgs,
 }) => {
   const tableId = file.sId; // Use the file sId as the table id to make it easy to track the table back to the file.
   const upsertTableRes = await upsertTable({
@@ -280,6 +285,9 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     useAppForHeaderDetection: true,
     title: file.fileName,
     mimeType: file.contentType,
+
+    // Used to override defaults.
+    ...(upsertArgs ?? {}),
   });
 
   if (upsertTableRes.isErr()) {
@@ -295,7 +303,6 @@ const upsertTableToDatasource: ProcessingFunction = async ({
 };
 
 // Processing for datasource upserts.
-
 type ProcessingFunction = ({
   auth,
   file,
@@ -306,6 +313,7 @@ type ProcessingFunction = ({
   file: FileResource;
   content: string;
   dataSource: DataSourceResource;
+  upsertArgs?: Record<string, string>;
 }) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
@@ -382,17 +390,16 @@ const maybeApplyProcessing: ProcessingFunction = async ({
     const res = await processing({ auth, file, content, dataSource });
     if (res.isErr()) {
       return res;
-    } else {
-      const endTime = Date.now();
-      logger.info(
-        {
-          workspaceId: auth.workspace()?.sId,
-          fileId: file.sId,
-        },
-        `Processing took ${endTime - startTime}ms`
-      );
-      return new Ok(undefined);
     }
+
+    const endTime = Date.now();
+    logger.info(
+      {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+      },
+      `Processing took ${endTime - startTime}ms`
+    );
   }
 
   return new Ok(undefined);
@@ -414,31 +421,31 @@ async function getFileContent(
   const content = writableStream.getContent();
 
   if (!content) {
-    throw new Error("No content extracted from file for JIT processing.");
+    throw new Error("No content extracted from file.");
   }
 
   return content;
 }
 
-export async function processAndUpsertToDataSource(
+export async function getOrCreateJitDataSourceForFile(
   auth: Authenticator,
-  { file, optionalContent }: { file: FileResource; optionalContent?: string }
+  file: FileResource
 ): Promise<
   Result<
-    FileResource,
+    DataSourceResource,
     Omit<DustError, "code"> & {
-      code:
-        | "internal_server_error"
-        | "invalid_request_error"
-        | "file_too_large"
-        | "file_type_not_supported";
+      code: "internal_server_error" | "invalid_request_error";
     }
   >
 > {
   const jitEnabled = isJITActionsEnabled(auth);
 
   if (!jitEnabled || !isUpsertSupported(file)) {
-    return new Ok(file);
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "JIT processing is not enabled for this file.",
+    });
   }
 
   // Note: this assume that if we don't have useCaseMetadata, the file is fine.
@@ -450,34 +457,6 @@ export async function processAndUpsertToDataSource(
       name: "dust_error",
       code: "invalid_request_error",
       message: "File is missing required metadata for JIT processing.",
-    });
-  }
-
-  if (file.status !== "ready") {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "File is not ready for post processing.",
-    });
-  }
-
-  const content = optionalContent
-    ? optionalContent
-    : await getFileContent(auth, file);
-
-  if (!content) {
-    logger.error(
-      {
-        fileId: file.sId,
-        workspaceId: auth.workspace()?.sId,
-        contentSupplied: !!optionalContent,
-      },
-      "No content extracted from file for JIT processing."
-    );
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: "No content extracted from file for JIT processing.",
     });
   }
 
@@ -527,12 +506,68 @@ export async function processAndUpsertToDataSource(
     dataSource = r.value.dataSource;
   }
 
+  return new Ok(dataSource);
+}
+
+export async function processAndUpsertToDataSource(
+  auth: Authenticator,
+  dataSource: DataSourceResource,
+  {
+    file,
+    optionalContent,
+    upsertArgs,
+  }: {
+    file: FileResource;
+    optionalContent?: string;
+    upsertArgs?: Record<string, string>;
+  }
+): Promise<
+  Result<
+    FileResource,
+    Omit<DustError, "code"> & {
+      code:
+        | "internal_server_error"
+        | "invalid_request_error"
+        | "file_too_large"
+        | "file_type_not_supported";
+    }
+  >
+> {
+  if (file.status !== "ready") {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File is not ready for post processing.",
+    });
+  }
+
+  const content = optionalContent
+    ? optionalContent
+    : await getFileContent(auth, file);
+
+  if (!content) {
+    logger.error(
+      {
+        fileId: file.sId,
+        workspaceId: auth.workspace()?.sId,
+        contentSupplied: !!optionalContent,
+      },
+      "No content extracted from file for JIT processing."
+    );
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "No content extracted from file for JIT processing.",
+    });
+  }
+
   const [processingRes, snippetRes] = await Promise.all([
     maybeApplyProcessing({
       auth,
       file,
       content,
       dataSource,
+      upsertArgs,
     }),
     generateSnippet(auth, file, content),
   ]);
