@@ -36,6 +36,7 @@ export default function AppLayout({
   pageTitle,
   navChildren,
   titleChildren,
+  hasTopPadding,
   children,
 }: {
   owner: WorkspaceType;
@@ -47,6 +48,7 @@ export default function AppLayout({
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
+  hasTopPadding?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
 
@@ -124,7 +126,10 @@ export default function AppLayout({
         <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden">
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
-            className="flex h-full w-full flex-col items-center"
+            className={classNames(
+              "flex h-full w-full flex-col items-center overflow-y-auto",
+              hasTopPadding ?? !titleChildren ? "lg:pt-8" : ""
+            )}
           >
             <div
               className={classNames(
