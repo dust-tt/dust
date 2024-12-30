@@ -74,7 +74,7 @@ interface AgentUsageQueryResult {
 
 interface FeedbackQueryResult {
   id: ModelId;
-  createdAt: Date;
+  created_at: Date;
   userName: string;
   userEmail: string;
   agentConfigurationId: string;
@@ -441,15 +441,33 @@ export async function getFeedbacksUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const feedbacks =
-    (await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
+    await AgentMessageFeedbackResource.listByWorkspaceAndDateRange({
+      workspace: workspace,
       startDate,
       endDate,
-      workspace,
-    })) as FeedbackQueryResult[];
+    });
+
   if (!feedbacks.length) {
     return "No data available for the selected period.";
   }
-  return generateCsvFromQueryResult(feedbacks);
+
+  const feedbackResults: FeedbackQueryResult[] = await Promise.all(
+    feedbacks.map(async (feedback) => {
+      const user = await feedback.fetchUser();
+      return {
+        id: feedback.id,
+        created_at: feedback.createdAt,
+        userName: user?.fullName() || "",
+        userEmail: user?.email || "",
+        agentConfigurationId: feedback.agentConfigurationId,
+        agentConfigurationVersion: feedback.agentConfigurationVersion,
+        thumb: feedback.thumbDirection,
+        content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
+      };
+    })
+  );
+
+  return generateCsvFromQueryResult(feedbackResults);
 }
 
 function generateCsvFromQueryResult(
