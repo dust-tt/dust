@@ -10,12 +10,11 @@ import {
 } from "@app/lib/api/assistant/conversation/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { Conversation } from "@app/lib/models/assistant/conversation";
-import logger from "@app/logger/logger";
 
 export async function getConversationWithoutContent(
   auth: Authenticator,
   conversationId: string,
-  includeDeleted?: boolean
+  options?: { includeDeleted?: boolean; dangerouslySkipAccessCheck?: boolean }
 ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -23,7 +22,9 @@ export async function getConversationWithoutContent(
     where: {
       sId: conversationId,
       workspaceId: owner.id,
-      ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
+      ...(options?.includeDeleted
+        ? {}
+        : { visibility: { [Op.ne]: "deleted" } }),
     },
   });
 
@@ -31,17 +32,10 @@ export async function getConversationWithoutContent(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  if (!canAccessConversation(auth, conversation)) {
-    logger.info(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        conversationId,
-        authRole: auth.role(),
-        authGroups: auth.groups(),
-        converationRequestedGroupIds: conversation.requestedGroupIds,
-      },
-      "getConversationWithoutContent: conversation_access_restricted"
-    );
+  if (
+    !options?.dangerouslySkipAccessCheck &&
+    !canAccessConversation(auth, conversation)
+  ) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
