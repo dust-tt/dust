@@ -1,4 +1,8 @@
-import type { WorkspaceDomain, WorkspaceType } from "@dust-tt/types";
+import type {
+  ExtensionConfigurationType,
+  WorkspaceDomain,
+  WorkspaceType,
+} from "@dust-tt/types";
 
 import {
   PokeTable,
@@ -12,10 +16,12 @@ export function WorkspaceInfoTable({
   owner,
   workspaceVerifiedDomain,
   worspaceCreationDay,
+  extensionConfig,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomain: WorkspaceDomain | null;
   worspaceCreationDay: string;
+  extensionConfig: ExtensionConfigurationType | null;
 }) {
   return (
     <div className="flex justify-between gap-3">
@@ -47,6 +53,14 @@ export function WorkspaceInfoTable({
                 {workspaceVerifiedDomain?.domainAutoJoinEnabled ? "✅" : "❌"}
               </PokeTableCell>
               <PokeTableCell>{workspaceVerifiedDomain?.domain}</PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Extension blacklisted domains</PokeTableCell>
+              <PokeTableCell>
+                {extensionConfig?.blacklistedDomains.length
+                  ? extensionConfig.blacklistedDomains.join(", ")
+                  : "None"}
+              </PokeTableCell>
             </PokeTableRow>
           </PokeTableBody>
         </PokeTable>
