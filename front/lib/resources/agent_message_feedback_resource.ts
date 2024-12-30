@@ -146,7 +146,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           include: [
             {
               model: Message,
-              as: "message",
+              as: "agentMessage",
               attributes: ["id", "sId"],
               include: [
                 {
@@ -177,13 +177,15 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           (
             feedback
           ): feedback is AgentMessageFeedback & {
-            agentMessage: { message: Message & { conversation: Conversation } };
-          } => !!feedback.agentMessage?.message?.conversation
+            agentMessage: {
+              agentMessage: Message & { conversation: Conversation };
+            };
+          } => !!feedback.agentMessage?.agentMessage?.conversation
         )
         .map((feedback) => {
           return {
             id: feedback.id,
-            messageId: feedback.agentMessage.message.sId,
+            messageId: feedback.agentMessage.agentMessage.sId,
             agentMessageId: feedback.agentMessageId,
             userId: feedback.userId,
             thumbDirection: feedback.thumbDirection,
@@ -198,7 +200,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
             ...(withMetadata && {
               // This field is sensitive, it allows accessing the conversation
               conversationId: feedback.isConversationShared
-                ? feedback.agentMessage.message.conversation.sId
+                ? feedback.agentMessage.agentMessage.conversation.sId
                 : null,
               userName: feedback.user.name,
               userEmail: feedback.user.email,
@@ -290,20 +292,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           agentConfigurationVersion: number;
         };
         feedback: AgentMessageFeedbackResource | null;
-      } & ( // Either the agent is not global and has a configuration
-        | {
-            agentConfiguration: Pick<
-              AgentConfigurationType,
-              "id" | "sId" | "version"
-            >;
-            isGlobalAgent: false;
-          }
-        // Or the agent is global and has no configuration
-        | {
-            agentConfiguration: null;
-            isGlobalAgent: true;
-          }
-      ),
+        agentConfiguration: Pick<
+          AgentConfigurationType,
+          "id" | "sId" | "version"
+        >;
+        isGlobalAgent: boolean;
+      },
       Error
     >
   > {
@@ -368,7 +362,11 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
             message.agentMessage.agentConfigurationVersion,
         },
         feedback: agentMessageFeedbackResource,
-        agentConfiguration: null,
+        agentConfiguration: {
+          id: -1,
+          sId: message.agentMessage.agentConfigurationId,
+          version: message.agentMessage.agentConfigurationVersion,
+        },
         isGlobalAgent: true,
       });
     }

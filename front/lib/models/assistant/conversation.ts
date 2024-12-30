@@ -244,8 +244,8 @@ export class AgentMessage extends BaseModel<AgentMessage> {
   declare agentConfigurationVersion: number;
 
   declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
-
-  declare message?: NonAttribute<Message>;
+  // This points to the message associated with the agent message
+  declare agentMessage?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 }
 
@@ -379,7 +379,9 @@ AgentMessage.hasMany(AgentMessageFeedback, {
 UserModel.hasMany(AgentMessageFeedback, {
   onDelete: "SET NULL",
 });
-AgentMessageFeedback.belongsTo(UserModel);
+AgentMessageFeedback.belongsTo(UserModel, {
+  as: "user",
+});
 AgentMessageFeedback.belongsTo(AgentMessage, {
   as: "agentMessage",
 });
@@ -505,7 +507,7 @@ Message.belongsTo(UserMessage, {
 });
 
 AgentMessage.hasOne(Message, {
-  as: "message",
+  as: "agentMessage",
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 Message.belongsTo(AgentMessage, {
