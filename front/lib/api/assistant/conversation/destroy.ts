@@ -127,14 +127,14 @@ async function destroyContentFragments(
 }
 
 async function destroyConversationDataSource({
-  workspaceId,
+  workspace,
   conversationId,
 }: {
-  workspaceId: string;
+  workspace: LightWorkspaceType;
   conversationId: string;
 }) {
   // We need an authenticator to interact with the data source resource.
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const conversation = await getConversationWithoutContent(
     auth,
     conversationId,
@@ -216,7 +216,7 @@ export async function destroyConversation(
   });
 
   await destroyConversationDataSource({
-    workspaceId: workspace.sId,
+    workspace: workspace,
     conversationId: conversation.sId,
   });
 

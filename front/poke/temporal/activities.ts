@@ -69,6 +69,7 @@ import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resourc
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -172,7 +173,7 @@ export async function isWorkflowDeletableActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = await auth.getNonNullableWorkspace();
+  const workspace = auth.getNonNullableWorkspace();
 
   return areAllSubscriptionsCanceled(renderLightWorkspaceType({ workspace }));
 }
@@ -183,146 +184,7 @@ export async function deleteConversationsActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-
-  if (!workspace) {
-    throw new Error("Could not find the workspace.");
-  }
-
-  const conversations = await Conversation.findAll({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-  const chunkSize = 8;
-  const chunks: Conversation[][] = [];
-  for (let i = 0; i < conversations.length; i += chunkSize) {
-    chunks.push(conversations.slice(i, i + chunkSize));
-  }
-
-  await frontSequelize.transaction(async (t) => {
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      if (!chunk) {
-        continue;
-      }
-      await Promise.all(
-        chunk.map((c) => {
-          return (async (): Promise<void> => {
-            const messages = await Message.findAll({
-              where: { conversationId: c.id },
-              transaction: t,
-            });
-            for (const msg of messages) {
-              if (msg.userMessageId) {
-                await UserMessage.destroy({
-                  where: { id: msg.userMessageId },
-                  transaction: t,
-                });
-              }
-              if (msg.agentMessageId) {
-                const agentMessage = await AgentMessage.findOne({
-                  where: { id: msg.agentMessageId },
-                  transaction: t,
-                });
-                if (agentMessage) {
-                  const retrievalAction = await AgentRetrievalAction.findOne({
-                    where: {
-                      agentMessageId: agentMessage.id,
-                    },
-                    transaction: t,
-                  });
-                  if (retrievalAction) {
-                    await RetrievalDocumentResource.deleteAllForActions([
-                      retrievalAction.id,
-                    ]);
-
-                    await AgentRetrievalAction.destroy({
-                      where: { id: retrievalAction.id },
-                      transaction: t,
-                    });
-                  }
-
-                  await AgentMessageContent.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentMessageFeedback.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  // Delete associated actions.
-
-                  await AgentBrowseAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentProcessAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentTablesQueryAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await AgentWebsearchAction.destroy({
-                    where: { agentMessageId: agentMessage.id },
-                    transaction: t,
-                  });
-
-                  await agentMessage.destroy({ transaction: t });
-                }
-              }
-              if (msg.contentFragmentId) {
-                const contentFragment =
-                  await ContentFragmentResource.fetchByModelId(
-                    msg.contentFragmentId,
-                    t
-                  );
-                if (contentFragment) {
-                  await contentFragment.destroy(
-                    {
-                      conversationId: c.sId,
-                      messageId: msg.sId,
-                      workspaceId: workspace.sId,
-                    },
-                    t
-                  );
-                }
-              }
-              await MessageReaction.destroy({
-                where: { messageId: msg.id },
-                transaction: t,
-              });
-              await Mention.destroy({
-                where: { messageId: msg.id },
-                transaction: t,
-              });
-              await msg.destroy({ transaction: t });
-            }
-            await ConversationParticipant.destroy({
-              where: { conversationId: c.id },
-              transaction: t,
-            });
-
-            hardDeleteLogger.info(
-              {
-                conversationId: c.sId,
-              },
-              "Deleting conversation"
-            );
-
-            await c.destroy({ transaction: t });
-          })();
-        })
-      );
-    }
-  });
+  await deleteAllConversations(auth);
 }
 
 export async function deleteAgentsActivity({
