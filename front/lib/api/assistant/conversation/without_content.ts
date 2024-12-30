@@ -10,6 +10,7 @@ import {
 } from "@app/lib/api/assistant/conversation/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { Conversation } from "@app/lib/models/assistant/conversation";
+import logger from "@app/logger/logger";
 
 export async function getConversationWithoutContent(
   auth: Authenticator,
@@ -31,6 +32,16 @@ export async function getConversationWithoutContent(
   }
 
   if (!canAccessConversation(auth, conversation)) {
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        conversationId,
+        authRole: auth.role(),
+        authGroups: auth.groups(),
+        converationRequestedGroupIds: conversation.requestedGroupIds,
+      },
+      "getConversationWithoutContent: conversation_access_restricted"
+    );
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
