@@ -91,12 +91,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }
 
   static async fetch({
-    workspaceId,
+    workspace,
     withMetadata,
     agentConfiguration,
     filters,
   }: {
-    workspaceId: number;
+    workspace: WorkspaceType;
     withMetadata: boolean;
     agentConfiguration?: AgentConfigurationType;
     filters?: {
@@ -128,7 +128,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
         // Necessary for global models who share ids across workspaces
-        workspaceId: workspaceId.toString(),
+        workspaceId: workspace.id,
         // These clauses are optional
         ...(agentConfiguration
           ? {
