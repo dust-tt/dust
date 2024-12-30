@@ -173,6 +173,9 @@ export function ProviderManagementModal({
             <ContextItem.List>
               {MODEL_PROVIDER_IDS.map((provider) => {
                 const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
+                if (!modelProviders[provider]) {
+                  return null;
+                }
                 return (
                   <ContextItem
                     key={provider}
