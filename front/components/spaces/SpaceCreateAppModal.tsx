@@ -1,5 +1,5 @@
 import {
-  ExclamationCircleStrokeIcon,
+  ExclamationCircleIcon,
   Input,
   Modal,
   Page,
@@ -135,7 +135,7 @@ export const SpaceCreateAppModal = ({
                 messageStatus="error"
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                <ExclamationCircleStrokeIcon /> Must be unique and only use
+                <ExclamationCircleIcon /> Must be unique and only use
                 alphanumeric, - or _ characters.
               </p>
             </div>
