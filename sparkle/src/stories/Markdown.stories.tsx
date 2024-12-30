@@ -319,7 +319,5 @@ pie title Distribution
 export const ExtendedMarkdownStory: Story = {
   args: {
     content: example,
-    textSize: "base",
-    textColor: "s-text-foreground",
   },
 };
