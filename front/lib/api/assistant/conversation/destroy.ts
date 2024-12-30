@@ -1,6 +1,5 @@
 import type {
   ConversationWithoutContentType,
-  LightWorkspaceType,
   ModelId,
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
