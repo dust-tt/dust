@@ -298,7 +298,7 @@ export type ZendeskResyncTicketsResponseType = t.TypeOf<
 
 export const ZendeskFetchTicketResponseSchema = t.type({
   ticket: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
-  isTicketOnDB: t.boolean,
+  isTicketOnDb: t.boolean,
 });
 export type ZendeskFetchTicketResponseType = t.TypeOf<
   typeof ZendeskFetchTicketResponseSchema
