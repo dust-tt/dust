@@ -9,8 +9,9 @@ import {
   ConversationContainer,
   ConversationMessage,
   GithubIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   Icon,
-  MagnifyingGlassIcon,
   Markdown,
   SlackLogo,
   TableIcon,
@@ -50,9 +51,16 @@ export const ConversationExample = () => {
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
               <Button
-                icon={MagnifyingGlassIcon}
-                label="Search details"
+                icon={HandThumbUpIcon}
                 onClick={() => {}}
+                size="xs"
+                variant={"outline"}
+              />,
+              <Button
+                icon={HandThumbDownIcon}
+                onClick={() => {}}
+                size="xs"
+                variant={"outline"}
               />,
             ]}
             citations={[
