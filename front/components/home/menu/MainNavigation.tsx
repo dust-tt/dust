@@ -17,7 +17,7 @@ import { classNames } from "@app/lib/utils";
 
 export function MainNavigation() {
   return (
-    <NavigationMenu className="mr-4 hidden md:flex">
+    <NavigationMenu className="mr-4 hidden xl:flex">
       <NavigationMenuList>
         {menuConfig.mainNav.map((item, index) => {
           return (
