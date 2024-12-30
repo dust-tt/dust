@@ -128,7 +128,7 @@ export default function AppLayout({
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "flex h-full w-full flex-col items-center overflow-y-auto",
-              titleChildren ? "" : hasTopPadding ? "lg:pt-8" : ""
+              (hasTopPadding ?? !titleChildren) ? "lg:pt-8" : ""
             )}
           >
             <div
