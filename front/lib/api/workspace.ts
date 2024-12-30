@@ -17,6 +17,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { Subscription } from "@app/lib/models/plan";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -376,6 +377,24 @@ export async function disableSSOEnforcement(
 
   if (affectedCount === 0) {
     return new Err(new Error("SSO enforcement is already disabled."));
+  }
+
+  return new Ok(undefined);
+}
+
+export async function updateExtensionConfiguration(
+  auth: Authenticator,
+  blacklistedDomains: string[]
+): Promise<Result<void, Error>> {
+  const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
+
+  if (config) {
+    await config.updateBlacklistedDomains(auth, { blacklistedDomains });
+  } else {
+    await ExtensionConfigurationResource.makeNew(
+      { blacklistedDomains },
+      auth.getNonNullableWorkspace().id
+    );
   }
 
   return new Ok(undefined);

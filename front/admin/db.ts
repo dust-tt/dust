@@ -53,6 +53,7 @@ import {
   TrackerDataSourceConfigurationModel,
   TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
+import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
@@ -132,6 +133,8 @@ async function main() {
   await TrackerConfigurationModel.sync({ alter: true });
   await TrackerDataSourceConfigurationModel.sync({ alter: true });
   await TrackerGenerationModel.sync({ alter: true });
+
+  await ExtensionConfigurationModel.sync({ alter: true });
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });

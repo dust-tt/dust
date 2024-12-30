@@ -27,6 +27,7 @@ const RESOURCES_PREFIX = {
   data_source_view: "dsv",
   tracker: "trk",
   template: "tpl",
+  extension: "ext",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
