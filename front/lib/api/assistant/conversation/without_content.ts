@@ -16,10 +16,7 @@ export async function getConversationWithoutContent(
   conversationId: string,
   includeDeleted?: boolean
 ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.findOne({
     where: {

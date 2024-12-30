@@ -227,7 +227,7 @@ export class Authenticator {
     if (workspace) {
       [groups, subscription] = await Promise.all([
         user?.isDustSuperUser
-          ? GroupResource.superAdminFetchWorkspaceGroups(user, workspace.id)
+          ? GroupResource.internalFetchAllWorkspaceGroups(workspace.id)
           : [],
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
       ]);
@@ -524,9 +524,11 @@ export class Authenticator {
     });
   }
 
-  /* As above, with role `admin` */
+  /* As above, with role `admin`. Use requestAllGroups with care as it gives access to all groups
+   * within the workpsace. */
   static async internalAdminForWorkspace(
-    workspaceId: string
+    workspaceId: string,
+    options?: { dangerouslyRequestAllGroups: boolean }
   ): Promise<Authenticator> {
     const workspace = await Workspace.findOne({
       where: {
@@ -537,18 +539,23 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
-    let globalGroup: GroupResource | null = null;
-    let subscription: SubscriptionType | null = null;
-
-    [globalGroup, subscription] = await Promise.all([
-      GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
+    const [groups, subscription] = await Promise.all([
+      (async () => {
+        if (options?.dangerouslyRequestAllGroups) {
+          return GroupResource.internalFetchAllWorkspaceGroups(workspace.id);
+        } else {
+          const globalGroup =
+            await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);
+          return globalGroup ? [globalGroup] : [];
+        }
+      })(),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
     ]);
 
     return new Authenticator({
       workspace,
       role: "admin",
-      groups: globalGroup ? [globalGroup] : [],
+      groups,
       subscription,
     });
   }

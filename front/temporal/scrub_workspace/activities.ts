@@ -87,7 +87,9 @@ export async function scrubWorkspaceData({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
+  });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
   await deleteTrackers(auth);
@@ -129,7 +131,7 @@ export async function deleteAllConversations(auth: Authenticator) {
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {
-        await destroyConversation(workspace, c);
+        await destroyConversation(auth, { conversationId: c.sId });
       })
     );
   }

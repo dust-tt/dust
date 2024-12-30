@@ -1,8 +1,8 @@
-import type { LightWorkspaceType, ModelId } from "@dust-tt/types";
+import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
@@ -11,10 +11,10 @@ import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieva
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
   AgentMessageFeedback,
+  Conversation,
   ConversationParticipant,
   Mention,
   Message,
@@ -126,27 +126,17 @@ async function destroyContentFragments(
   }
 }
 
-async function destroyConversationDataSource({
-  workspace,
-  conversationId,
-}: {
-  workspace: LightWorkspaceType;
-  conversationId: string;
-}) {
-  // We need an authenticator to interact with the data source resource.
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const conversation = await getConversationWithoutContent(
-    auth,
-    conversationId,
-    true
-  );
-  if (conversation.isErr()) {
-    throw conversation.error;
+async function destroyConversationDataSource(
+  auth: Authenticator,
+  {
+    conversation,
+  }: {
+    conversation: ConversationWithoutContentType;
   }
-
+) {
   const dataSource = await DataSourceResource.fetchByConversation(
     auth,
-    conversation.value
+    conversation
   );
 
   if (dataSource) {
@@ -154,12 +144,26 @@ async function destroyConversationDataSource({
   }
 }
 
-// This belongs to the ConversationResource.
+// This belongs to the ConversationResource. The authenticator is expected to have access to the
+// groups involved in the conversation.
 export async function destroyConversation(
-  workspace: LightWorkspaceType,
-  conversation: Conversation
+  auth: Authenticator,
+  {
+    conversationId,
+  }: {
+    conversationId: string;
+  }
 ) {
-  const { id: conversationId } = conversation;
+  const workspace = auth.getNonNullableWorkspace();
+  const conversationRes = await getConversationWithoutContent(
+    auth,
+    conversationId,
+    true
+  );
+  if (conversationRes.isErr()) {
+    throw conversationRes.error;
+  }
+  const conversation = conversationRes.value;
 
   const messages = await Message.findAll({
     attributes: [
@@ -215,10 +219,12 @@ export async function destroyConversation(
     where: { conversationId: conversationId },
   });
 
-  await destroyConversationDataSource({
-    workspace,
-    conversationId: conversation.sId,
-  });
+  await destroyConversationDataSource(auth, { conversation });
 
-  await conversation.destroy();
+  const c = await Conversation.findOne({
+    where: { id: conversation.id },
+  });
+  if (c) {
+    await c.destroy();
+  }
 }
