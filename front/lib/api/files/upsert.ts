@@ -464,7 +464,6 @@ export async function getOrCreateJitDataSourceForFile(
     auth,
     file.useCaseMetadata.conversationId
   );
-
   if (cRes.isErr()) {
     return new Err({
       name: "dust_error",
