@@ -115,11 +115,8 @@ export async function pauseAllConnectors({
   }
 }
 
-async function deleteAllConversations(auth: Authenticator) {
-  const workspace = auth.workspace();
-  if (!workspace) {
-    throw new Error("No workspace found");
-  }
+export async function deleteAllConversations(auth: Authenticator) {
+  const workspace = auth.getNonNullableWorkspace();
   const conversations = await Conversation.findAll({
     where: { workspaceId: workspace.id },
   });
