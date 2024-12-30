@@ -244,6 +244,8 @@ export class AgentMessage extends BaseModel<AgentMessage> {
   declare agentConfigurationVersion: number;
 
   declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
+  declare message?: NonAttribute<Message>;
+  declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 }
 
 AgentMessage.init(
@@ -304,6 +306,9 @@ export class AgentMessageFeedback extends BaseModel<AgentMessageFeedback> {
 
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
+
+  declare agentMessage: NonAttribute<AgentMessage>;
+  declare user: NonAttribute<UserModel>;
 }
 
 AgentMessageFeedback.init(
@@ -367,10 +372,17 @@ Workspace.hasMany(AgentMessageFeedback, {
   onDelete: "RESTRICT",
 });
 AgentMessage.hasMany(AgentMessageFeedback, {
+  as: "feedbacks",
   onDelete: "RESTRICT",
 });
 UserModel.hasMany(AgentMessageFeedback, {
   onDelete: "SET NULL",
+});
+AgentMessageFeedback.belongsTo(UserModel, {
+  as: "user",
+});
+AgentMessageFeedback.belongsTo(AgentMessage, {
+  as: "agentMessage",
 });
 
 export class Message extends BaseModel<Message> {
@@ -394,6 +406,8 @@ export class Message extends BaseModel<Message> {
   declare agentMessage?: NonAttribute<AgentMessage>;
   declare contentFragment?: NonAttribute<ContentFragmentModel>;
   declare reactions?: NonAttribute<MessageReaction[]>;
+
+  declare conversation?: NonAttribute<Conversation>;
 }
 
 Message.init(
@@ -483,7 +497,7 @@ Message.belongsTo(Conversation, {
 });
 
 UserMessage.hasOne(Message, {
-  as: "userMessage",
+  as: "message",
   foreignKey: { name: "userMessageId", allowNull: true },
 });
 Message.belongsTo(UserMessage, {
@@ -492,7 +506,7 @@ Message.belongsTo(UserMessage, {
 });
 
 AgentMessage.hasOne(Message, {
-  as: "agentMessage",
+  as: "message",
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 Message.belongsTo(AgentMessage, {
@@ -504,7 +518,7 @@ Message.belongsTo(Message, {
   foreignKey: { name: "parentId", allowNull: true },
 });
 ContentFragmentModel.hasOne(Message, {
-  as: "contentFragment",
+  as: "message",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
 Message.belongsTo(ContentFragmentModel, {
