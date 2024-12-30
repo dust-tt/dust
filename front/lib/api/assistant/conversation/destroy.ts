@@ -2,6 +2,7 @@ import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
@@ -24,8 +25,6 @@ import {
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
-
-import { getConversationWithoutContent } from "./without_content";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -158,7 +157,9 @@ export async function destroyConversation(
   const conversationRes = await getConversationWithoutContent(
     auth,
     conversationId,
-    true
+    // We skip access checks as some conversations associated with deleted spaces may have become
+    // inaccessible, yet we want to be able to delete them here.
+    { includeDeleted: true, dangerouslySkipAccessCheck: true }
   );
   if (conversationRes.isErr()) {
     throw conversationRes.error;
