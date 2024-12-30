@@ -1,4 +1,9 @@
-import type { AgentConfigurationType, Result, UserType } from "@dust-tt/types";
+import type {
+  AgentConfigurationType,
+  Result,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic } from "sequelize";
 import type { CreationAttributes, Transaction } from "sequelize";
@@ -8,7 +13,6 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
-import type { Workspace } from "@app/lib/models/workspace";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -107,7 +111,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     startDate,
     endDate,
   }: {
-    workspace: Workspace;
+    workspace: WorkspaceType;
     startDate: Date;
     endDate: Date;
   }): Promise<AgentMessageFeedbackResource[]> {
