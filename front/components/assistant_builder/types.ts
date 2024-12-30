@@ -353,7 +353,6 @@ export type AssistantBuilderProps = {
   defaultTemplate: FetchAssistantTemplateResponse | null;
   flow: BuilderFlow;
   initialBuilderState: AssistantBuilderInitialState | null;
-  isAdmin: boolean;
   owner: WorkspaceType;
   plan: PlanType;
   subscription: SubscriptionType;

@@ -81,7 +81,6 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  isAdmin,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -426,7 +425,6 @@ export default function AssistantBuilder({
                         initialScope={
                           initialBuilderState?.scope ?? defaultScope
                         }
-                        isAdmin={isAdmin}
                         newScope={builderState.scope}
                         owner={owner}
                         showSlackIntegration={showSlackIntegration}

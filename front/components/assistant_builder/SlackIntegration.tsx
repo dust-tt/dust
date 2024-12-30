@@ -10,6 +10,7 @@ import type {
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isAdmin } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
@@ -127,7 +128,6 @@ export function SlackIntegration({
 interface SlackAssistantDefaultManagerProps {
   assistantHandle?: string;
   existingSelection: SlackChannel[];
-  isAdmin: boolean;
   onClose: () => void;
   onSave: (channels: SlackChannel[]) => void;
   owner: WorkspaceType;
@@ -138,7 +138,6 @@ interface SlackAssistantDefaultManagerProps {
 export function SlackAssistantDefaultManager({
   assistantHandle,
   existingSelection,
-  isAdmin,
   onClose,
   onSave,
   owner,
@@ -184,7 +183,7 @@ export function SlackAssistantDefaultManager({
                 is mentionned in these channels.
               </div>
 
-              {!isAdmin && (
+              {!isAdmin(owner) && (
                 <ContentMessage
                   size="md"
                   variant="pink"
@@ -198,7 +197,7 @@ export function SlackAssistantDefaultManager({
                 </ContentMessage>
               )}
 
-              {isAdmin && (
+              {isAdmin(owner) && (
                 <SlackIntegration
                   existingSelection={existingSelection}
                   onSelectionChange={handleSelectionChange}

@@ -65,7 +65,7 @@ export function useSlackChannel({
 
   return {
     slackDataSource,
-    showSlackIntegration: !isPrivateAssistant,
+    showSlackIntegration: !isPrivateAssistant && isBuilder,
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
