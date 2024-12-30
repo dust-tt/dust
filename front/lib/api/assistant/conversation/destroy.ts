@@ -159,7 +159,7 @@ export async function destroyConversation(
     conversationId,
     // We skip access checks as some conversations associated with deleted spaces may have become
     // inaccessible, yet we want to be able to delete them here.
-    { includeDeleted: true, dangerouslySkipAccessCheck: true }
+    { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
   );
   if (conversationRes.isErr()) {
     throw conversationRes.error;
@@ -174,7 +174,7 @@ export async function destroyConversation(
       "agentMessageId",
       "contentFragmentId",
     ],
-    where: { conversationId },
+    where: { conversationId: conversation.id },
   });
 
   // To preserve the DB, we delete messages in batches.
@@ -217,7 +217,7 @@ export async function destroyConversation(
   }
 
   await ConversationParticipant.destroy({
-    where: { conversationId: conversationId },
+    where: { conversationId: conversation.id },
   });
 
   await destroyConversationDataSource(auth, { conversation });

@@ -14,7 +14,10 @@ import { Conversation } from "@app/lib/models/assistant/conversation";
 export async function getConversationWithoutContent(
   auth: Authenticator,
   conversationId: string,
-  options?: { includeDeleted?: boolean; dangerouslySkipAccessCheck?: boolean }
+  options?: {
+    includeDeleted?: boolean;
+    dangerouslySkipPermissionFiltering?: boolean;
+  }
 ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -33,7 +36,7 @@ export async function getConversationWithoutContent(
   }
 
   if (
-    !options?.dangerouslySkipAccessCheck &&
+    !options?.dangerouslySkipPermissionFiltering &&
     !canAccessConversation(auth, conversation)
   ) {
     return new Err(new ConversationError("conversation_access_restricted"));
