@@ -26,6 +26,10 @@ import {
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
+  AgentWebsearchAction,
+  AgentWebsearchConfiguration,
+} from "@app/lib/models/assistant/actions/websearch";
+import {
   AgentConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
@@ -291,6 +295,28 @@ export async function deleteAgentsActivity({
         transaction: t,
       });
       await AgentBrowseConfiguration.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+        transaction: t,
+      });
+
+      const agentWebsearchConfigurations =
+        await AgentWebsearchConfiguration.findAll({
+          where: {
+            agentConfigurationId: agent.id,
+          },
+          transaction: t,
+        });
+      await AgentWebsearchAction.destroy({
+        where: {
+          websearchConfigurationId: {
+            [Op.in]: agentWebsearchConfigurations.map((r) => r.sId),
+          },
+        },
+        transaction: t,
+      });
+      await AgentWebsearchConfiguration.destroy({
         where: {
           agentConfigurationId: agent.id,
         },
