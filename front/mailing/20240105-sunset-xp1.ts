@@ -42,7 +42,7 @@ Best speed,
 [0] all your data (usage statistics and account information) will be deleted.
 `,
   };
-  await sendEmail(email, message);
+  await sendEmail([email], message);
 }
 
 // void main().then(() => {
