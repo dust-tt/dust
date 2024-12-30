@@ -11,7 +11,7 @@ import type {
 } from "@dust-tt/types";
 import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic } from "sequelize";
+import type { Attributes, ModelStatic, WhereOptions } from "sequelize";
 import type { CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -19,6 +19,7 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -94,29 +95,32 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     workspace,
     withMetadata,
     agentConfiguration,
-    filters,
+    paginationParams,
   }: {
     workspace: WorkspaceType;
     withMetadata: boolean;
     agentConfiguration?: AgentConfigurationType;
-    filters?: {
-      limit?: number;
-    };
+    paginationParams: PaginationParams;
   }): Promise<
     (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[]
   > {
-    const agentMessageFeedback = await AgentMessageFeedback.findAll({
-      where: {
-        // IMPORTANT: Necessary for global models who share ids across workspaces.
-        workspaceId: workspace.id,
-        // These clauses are optional
-        ...(agentConfiguration
-          ? {
-              agentConfigurationId: agentConfiguration.sId.toString(),
-            }
-          : {}),
-      },
+    const where: WhereOptions<AgentMessageFeedback> = {
+      // IMPORTANT: Necessary for global models who share ids across workspaces.
+      workspaceId: workspace.id,
+    };
 
+    if (paginationParams.lastValue) {
+      const op = paginationParams.orderDirection === "desc" ? Op.lt : Op.gt;
+      where[paginationParams.orderColumn as any] = {
+        [op]: paginationParams.lastValue,
+      };
+    }
+    if (agentConfiguration) {
+      where.agentConfigurationId = agentConfiguration.sId.toString();
+    }
+
+    const agentMessageFeedback = await AgentMessageFeedback.findAll({
+      where,
       include: [
         {
           model: AgentMessageModel,
@@ -143,10 +147,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
       order: [
-        ["agentConfigurationVersion", "DESC"],
-        ["createdAt", "DESC"],
+        [
+          paginationParams.orderColumn,
+          paginationParams.orderDirection === "desc" ? "DESC" : "ASC",
+        ],
       ],
-      limit: filters?.limit,
+      limit: paginationParams.limit,
     });
 
     return (

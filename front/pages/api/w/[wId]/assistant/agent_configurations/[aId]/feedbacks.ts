@@ -6,6 +6,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -16,7 +17,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { aId, limit } = req.query;
+  const { aId } = req.query;
 
   if (typeof aId !== "string") {
     return apiError(req, res, {
@@ -42,17 +43,32 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      // asc id is equivalent to desc createdAt
+      const paginationRes = getPaginationParams(req, {
+        defaultLimit: 50,
+        defaultOrderColumn: "id",
+        defaultOrderDirection: "asc",
+        supportedOrderColumn: ["id"],
+      });
+      if (paginationRes.isErr()) {
+        return apiError(
+          req,
+          res,
+          {
+            status_code: 400,
+            api_error: {
+              type: "invalid_pagination_parameters",
+              message: "Invalid pagination parameters",
+            },
+          },
+          paginationRes.error
+        );
+      }
       const feedbacksRes = await getAgentFeedbacks({
         auth,
         agentConfigurationId: aId,
         withMetadata: req.query.withMetadata === "true",
-        filters: {
-          // Limit the number of feedbacks to retrieve.
-          limit: limit ? parseInt(limit as string) : 50,
-          olderThan: req.query.olderThan
-            ? new Date(req.query.olderThan as string)
-            : undefined,
-        },
+        paginationParams: paginationRes.value,
       });
 
       if (feedbacksRes.isErr()) {

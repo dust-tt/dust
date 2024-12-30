@@ -9,6 +9,7 @@ import { ConversationError, Err, Ok } from "@dust-tt/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 
@@ -174,16 +175,12 @@ export async function getAgentFeedbacks({
   auth,
   agentConfigurationId,
   withMetadata,
-  filters,
+  paginationParams,
 }: {
   auth: Authenticator;
   withMetadata: boolean;
   agentConfigurationId: string;
-  filters?: {
-    limit?: number;
-    olderThan?: Date;
-    earlierThan?: Date;
-  };
+  paginationParams: PaginationParams;
 }): Promise<
   Result<
     (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
@@ -204,7 +201,7 @@ export async function getAgentFeedbacks({
   const feedbacksRes = await AgentMessageFeedbackResource.fetch({
     workspace: owner,
     agentConfiguration,
-    filters,
+    paginationParams,
     withMetadata,
   });
 
