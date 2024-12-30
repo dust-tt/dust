@@ -66,17 +66,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    await this.model.destroy({
+      where: {
+        id: this.id,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
   }
 
   async updateFields(
@@ -217,14 +213,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     auth: Authenticator,
     conversation: ConversationType | ConversationWithoutContentType
   ): Promise<Result<AgentMessageFeedbackType[], ConversationError | Error>> {
-    const owner = auth.workspace();
-    if (!owner) {
-      return new Err(new Error("workspace_not_found"));
-    }
-    const user = auth.user();
-    if (!user) {
-      return new Err(new Error("user_not_found"));
-    }
+    const user = auth.getNonNullableUser();
 
     const feedbackForMessages = await Message.findAll({
       where: {

@@ -40,12 +40,7 @@ export async function getConversationFeedbacksForUser(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
 ): Promise<Result<AgentMessageFeedbackType[], ConversationError | Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return new Err(new Error("workspace_not_found"));
-  }
-  const user = auth.user();
-  if (!canAccessConversation(auth, conversation) || !user) {
+  if (!canAccessConversation(auth, conversation)) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
@@ -80,13 +75,6 @@ export async function upsertMessageFeedback(
     isConversationShared?: boolean;
   }
 ) {
-  const owner = auth.workspace();
-  if (!owner) {
-    return new Err({
-      type: "workspace_not_found",
-      message: "The workspace you're trying to access was not found.",
-    });
-  }
   const feedbackWithConversationContext =
     await AgentMessageFeedbackResource.getFeedbackWithConversationContext({
       auth,
@@ -106,7 +94,7 @@ export async function upsertMessageFeedback(
     await feedback.updateFields({
       content,
       thumbDirection,
-      isConversationShared: false,
+      isConversationShared,
     });
     return new Ok(undefined);
   }
@@ -148,14 +136,6 @@ export async function deleteMessageFeedback(
     user: UserType;
   }
 ) {
-  const owner = auth.workspace();
-  if (!owner) {
-    return new Err({
-      type: "workspace_not_found",
-      message: "The workspace you're trying to access was not found.",
-    });
-  }
-
   if (!canAccessConversation(auth, conversation)) {
     return new Err({
       type: "conversation_access_restricted",
@@ -210,14 +190,7 @@ export async function getAgentFeedbacks({
     Error
   >
 > {
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    return new Err(new Error("workspace_not_found"));
-  }
-  const plan = auth.plan();
-  if (!plan) {
-    return new Err(new Error("plan_not_found"));
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   // Make sure the user has access to the agent
   const agentConfiguration = await getAgentConfiguration(

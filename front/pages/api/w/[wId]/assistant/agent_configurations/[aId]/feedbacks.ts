@@ -28,7 +28,7 @@ async function handler(
     });
   }
 
-  // Make sure the agent configuration is accessible by the user
+  // IMPORTANT: make sure the agent configuration is accessible by the user.
   const agentConfiguration = await getAgentConfiguration(auth, aId);
   if (!agentConfiguration) {
     return apiError(req, res, {
