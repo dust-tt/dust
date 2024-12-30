@@ -11,35 +11,20 @@ export interface ScrollAreaProps
 
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  ScrollAreaProps
->(({ className, children, hideScrollBar = false, ...props }, ref) => {
-  const hasCustomScrollBar = useMemo(
-    () =>
-      React.Children.toArray(children).some(
-        (child) =>
-          React.isValidElement(child) &&
-          (child.type as typeof ScrollBar).displayName === ScrollBar.displayName
-      ),
-    [children]
-  );
-
-  const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
-
-  return (
-    <ScrollAreaPrimitive.Root
-      ref={ref}
-      className={cn("s-relative s-z-20 s-overflow-hidden", className)}
-      {...props}
-    >
-      <ScrollAreaPrimitive.Viewport className="s-h-full s-w-full s-rounded-[inherit]">
-        {children}
-      </ScrollAreaPrimitive.Viewport>
-      {!shouldHideDefaultScrollBar && <ScrollBar />}
-      <ScrollAreaPrimitive.Corner />
-    </ScrollAreaPrimitive.Root>
-  );
-});
-
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
+>(({ className, children, ...props }, ref) => (
+  <ScrollAreaPrimitive.Root
+    ref={ref}
+    className={cn("s-relative s-z-20 s-overflow-hidden", className)}
+    {...props}
+  >
+    <ScrollAreaPrimitive.Viewport className="s-h-full s-w-full s-rounded-[inherit]">
+      {children}
+    </ScrollAreaPrimitive.Viewport>
+    <ScrollBar />
+    <ScrollAreaPrimitive.Corner />
+  </ScrollAreaPrimitive.Root>
+));
 ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
 
 const scrollBarSizes = {
@@ -86,9 +71,9 @@ const ScrollBar = React.forwardRef<
     className={cn(
       "s-flex s-touch-none s-select-none s-transition-colors",
       orientation === "vertical" &&
-        "s-h-full s-w-3 s-border-l s-border-l-transparent s-px-[3px] s-py-[16px]",
+        "s-h-full s-w-3 s-border-l s-border-l-transparent s-px-[3px] s-py-3",
       orientation === "horizontal" &&
-        "s-h-3 s-flex-col s-border-t s-border-t-transparent s-px-[16px] s-py-[3px]",
+        "s-h-3 s-flex-col s-border-t s-border-t-transparent s-px-3 s-py-[3px]",
       className
     )}
     {...props}
