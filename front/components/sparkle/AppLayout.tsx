@@ -36,7 +36,7 @@ export default function AppLayout({
   pageTitle,
   navChildren,
   titleChildren,
-  hasTopPadding = true,
+  hasTopPadding,
   children,
 }: {
   owner: WorkspaceType;
@@ -128,7 +128,7 @@ export default function AppLayout({
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "flex h-full w-full flex-col items-center overflow-y-auto",
-              (hasTopPadding ?? !titleChildren) ? "lg:pt-8" : ""
+              hasTopPadding ?? !titleChildren ? "lg:pt-8" : ""
             )}
           >
             <div
