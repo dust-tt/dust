@@ -16,7 +16,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { aId } = req.query;
+  const { aId, limit } = req.query;
 
   if (typeof aId !== "string") {
     return apiError(req, res, {
@@ -42,13 +42,26 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (
+        limit !== undefined &&
+        (typeof limit !== "string" || isNaN(parseInt(limit)))
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The request query is invalid, expects { limit: number }.",
+          },
+        });
+      }
+
       const feedbacksRes = await getAgentFeedbacks({
         auth,
         agentConfigurationId: aId,
         withMetadata: req.query.withMetadata === "true",
         filters: {
           // Limit the number of feedbacks to retrieve.
-          limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+          limit: limit ? parseInt(limit as string) : 50,
           olderThan: req.query.olderThan
             ? new Date(req.query.olderThan as string)
             : undefined,
