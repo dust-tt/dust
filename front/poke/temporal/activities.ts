@@ -19,6 +19,10 @@ import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
+import {
+  AgentProcessAction,
+  AgentProcessConfiguration,
+} from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryAction,
@@ -317,6 +321,28 @@ export async function deleteAgentsActivity({
         transaction: t,
       });
       await AgentWebsearchConfiguration.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+        transaction: t,
+      });
+
+      const agentProcessConfigurations =
+        await AgentProcessConfiguration.findAll({
+          where: {
+            agentConfigurationId: agent.id,
+          },
+          transaction: t,
+        });
+      await AgentProcessAction.destroy({
+        where: {
+          processConfigurationId: {
+            [Op.in]: agentProcessConfigurations.map((r) => r.sId),
+          },
+        },
+        transaction: t,
+      });
+      await AgentProcessConfiguration.destroy({
         where: {
           agentConfigurationId: agent.id,
         },
