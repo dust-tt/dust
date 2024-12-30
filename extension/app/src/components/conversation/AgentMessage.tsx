@@ -543,22 +543,19 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <AgentMessageActions
-          agentMessage={agentMessage}
-          size={size}
-          owner={owner}
-        />
+        <div className="flex flex-col gap-2">
+          <AgentMessageActions
+            agentMessage={agentMessage}
+            size={size}
+            owner={owner}
+          />
 
-        {agentMessage.chainOfThought?.length ? (
-          <ContentMessage
-            title="Assistant thoughts"
-            variant="slate"
-            icon={ChatBubbleThoughtIcon}
-          >
-            {agentMessage.chainOfThought}
-          </ContentMessage>
-        ) : null}
-
+          {agentMessage.chainOfThought?.length ? (
+            <ContentMessage title="Assistant thoughts" variant="slate">
+              {agentMessage.chainOfThought}
+            </ContentMessage>
+          ) : null}
+        </div>
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&
