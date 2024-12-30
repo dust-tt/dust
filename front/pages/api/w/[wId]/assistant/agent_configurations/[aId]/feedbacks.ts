@@ -42,19 +42,6 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      if (
-        limit !== undefined &&
-        (typeof limit !== "string" || isNaN(parseInt(limit)))
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The request query is invalid, expects { limit: number }.",
-          },
-        });
-      }
-
       const feedbacksRes = await getAgentFeedbacks({
         auth,
         agentConfigurationId: aId,
