@@ -84,6 +84,24 @@ export class ExtensionConfigurationResource extends BaseResource<ExtensionConfig
     }
   }
 
+  static async deleteForWorkspace(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction }
+  ): Promise<Result<undefined, Error>> {
+    try {
+      await ExtensionConfigurationModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      });
+
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
+  }
+
   static async fetchForWorkspace(
     auth: Authenticator
   ): Promise<ExtensionConfigurationResource | null> {

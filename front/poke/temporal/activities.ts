@@ -34,6 +34,7 @@ import {
 } from "@app/lib/models/workspace";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -477,6 +478,9 @@ export async function deleteWorkspaceActivity({
     });
     await AgentUserRelation.destroy({
       where: { workspaceId: workspace.id },
+      transaction: t,
+    });
+    await ExtensionConfigurationResource.deleteForWorkspace(auth, {
       transaction: t,
     });
 
