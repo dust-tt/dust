@@ -528,7 +528,7 @@ export class Authenticator {
    * within the workpsace. */
   static async internalAdminForWorkspace(
     workspaceId: string,
-    unsafeRequestAllGroups = false
+    options?: { dangerouslyRequestAllGroups: boolean }
   ): Promise<Authenticator> {
     const workspace = await Workspace.findOne({
       where: {
@@ -541,7 +541,7 @@ export class Authenticator {
 
     const [groups, subscription] = await Promise.all([
       (async () => {
-        if (unsafeRequestAllGroups) {
+        if (options?.dangerouslyRequestAllGroups) {
           return GroupResource.internalFetchAllWorkspaceGroups(workspace.id);
         } else {
           const globalGroup =

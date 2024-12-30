@@ -1,7 +1,4 @@
-import type {
-  ConversationWithoutContentType,
-  ModelId,
-} from "@dust-tt/types";
+import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 

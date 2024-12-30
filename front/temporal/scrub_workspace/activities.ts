@@ -87,7 +87,9 @@ export async function scrubWorkspaceData({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, true);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
+  });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
   await deleteTrackers(auth);

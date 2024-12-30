@@ -164,7 +164,9 @@ export async function deleteConversationsActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, true);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
+  });
   await deleteAllConversations(auth);
 }
 
