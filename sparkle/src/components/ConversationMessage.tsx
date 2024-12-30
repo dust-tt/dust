@@ -6,7 +6,7 @@ import { cn } from "@sparkle/lib/utils";
 type ConversationMessageType = "agent" | "user";
 
 const messageTypeClasses: Record<ConversationMessageType, string> = {
-  user: "s-bg-muted-background",
+  user: "s-bg-muted-background s-w-full @md:s-w-[calc(100%-8rem)] @md:s-ml-[8rem]",
   agent: "",
 };
 
@@ -113,7 +113,9 @@ export const ConversationMessageContent = React.forwardRef<
       )}
       {...props}
     >
-      <div className={cn("s-px-2 s-text-sm s-text-foreground @sm:s-text-base")}>
+      <div
+        className={cn("s-text-sm s-text-foreground @sm:s-text-base @md:s-px-4")}
+      >
         {children}
       </div>
       {citations && citations.length > 0 && (
@@ -143,7 +145,7 @@ export const ConversationMessageHeader = React.forwardRef<
       className={cn("s-flex s-items-center s-gap-2", className)}
       {...props}
     >
-      <Avatar name={name} visual={avatarUrl} busy={isBusy} size="md" />
+      <Avatar name={name} visual={avatarUrl} busy={isBusy} size="sm" />
       <div className="flex items-center gap-2">
         <div
           className={cn("s-pb-1 s-text-base s-font-medium s-text-foreground")}
