@@ -17,7 +17,7 @@ export function MobileNavigation() {
   const [open, setOpen] = React.useState(false);
 
   return (
-    <div className="flex md:hidden">
+    <div className="flex xl:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <IconButton size="md" icon={MenuIcon} className="text-slate-100" />
