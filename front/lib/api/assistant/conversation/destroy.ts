@@ -216,7 +216,7 @@ export async function destroyConversation(
   });
 
   await destroyConversationDataSource({
-    workspace: workspace,
+    workspace,
     conversationId: conversation.sId,
   });
 
