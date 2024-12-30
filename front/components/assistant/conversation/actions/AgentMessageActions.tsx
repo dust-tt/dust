@@ -101,7 +101,7 @@ function ActionDetails({
       <Chip size="sm" color="slate" isBusy>
         <div
           className={classNames(
-            "flex flex-row items-center gap-x-2",
+            "flex flex-row items-center gap-x-2 py-2",
             hasActions ? "cursor-pointer" : ""
           )}
           onClick={hasActions ? onClick : undefined}
@@ -110,9 +110,9 @@ function ActionDetails({
           {label === "Thinking" ? (
             <span>{label}</span>
           ) : (
-            <>
-              Thinking <span className="text-regular">{label}</span>
-            </>
+            <span>
+              Thinking <span className="text-regular pl-1">{label}</span>
+            </span>
           )}
         </div>
       </Chip>
