@@ -143,6 +143,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
         {
           model: UserResource.model,
+          as: "user",
           attributes: ["name", "imageUrl", "email"],
         },
       ],
@@ -222,6 +223,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
         {
           model: UserResource.model,
+          as: "user",
           attributes: ["name", "email"],
         },
       ],
