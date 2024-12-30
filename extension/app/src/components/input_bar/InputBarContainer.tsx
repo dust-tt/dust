@@ -101,7 +101,10 @@ export const InputBarContainer = ({
   };
 
   return (
-    <div id="InputBarContainer" className="relative flex flex-col w-full">
+    <div
+      id="InputBarContainer"
+      className="relative flex flex-1 flex-col pt-3 sm:flex-row sm:pt-0"
+    >
       <div className="flex space-x-2">
         <EditorContent
           editor={editor}
