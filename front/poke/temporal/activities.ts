@@ -10,6 +10,10 @@ import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import {
+  AgentBrowseAction,
+  AgentBrowseConfiguration,
+} from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -219,6 +223,7 @@ export async function deleteAgentsActivity({
         },
         transaction: t,
       });
+
       const dustAppRunConfigurations =
         await AgentDustAppRunConfiguration.findAll({
           where: {
@@ -240,6 +245,7 @@ export async function deleteAgentsActivity({
         },
         transaction: t,
       });
+
       const tablesQueryConfigurations =
         await AgentTablesQueryConfiguration.findAll({
           where: {
@@ -269,6 +275,28 @@ export async function deleteAgentsActivity({
         },
         transaction: t,
       });
+
+      const agentBrowseConfigurations = await AgentBrowseConfiguration.findAll({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+        transaction: t,
+      });
+      await AgentBrowseAction.destroy({
+        where: {
+          browseConfigurationId: {
+            [Op.in]: agentBrowseConfigurations.map((r) => r.sId),
+          },
+        },
+        transaction: t,
+      });
+      await AgentBrowseConfiguration.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+        transaction: t,
+      });
+
       await AgentUserRelation.destroy({
         where: {
           agentConfiguration: agent.sId,
