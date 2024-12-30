@@ -518,7 +518,7 @@ Message.belongsTo(Message, {
   foreignKey: { name: "parentId", allowNull: true },
 });
 ContentFragmentModel.hasOne(Message, {
-  as: "contentFragment",
+  as: "message",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
 Message.belongsTo(ContentFragmentModel, {
