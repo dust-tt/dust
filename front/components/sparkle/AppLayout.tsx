@@ -124,12 +124,8 @@ export default function AppLayout({
         <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden">
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
-            className={classNames(
-              "flex h-full w-full flex-col items-center",
-              titleChildren ? "" : "lg:pt-8"
-            )}
+            className="flex h-full w-full flex-col items-center"
           >
-            {/* TODO: This should be moved to a TopBar component. */}
             <div
               className={classNames(
                 "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
