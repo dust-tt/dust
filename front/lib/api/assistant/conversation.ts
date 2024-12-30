@@ -344,6 +344,10 @@ export async function getConversation(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationError("conversation_access_restricted"));
+  }
+
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,

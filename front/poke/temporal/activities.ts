@@ -10,39 +10,22 @@ import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import {
-  AgentRetrievalAction,
-  AgentRetrievalConfiguration,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import {
-  AgentMessage,
-  AgentMessageFeedback,
-  Conversation,
-  ConversationParticipant,
-  Mention,
-  Message,
-  MessageReaction,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
 import { Subscription } from "@app/lib/models/plan";
 import {
   MembershipInvitation,
@@ -50,12 +33,10 @@ import {
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -183,7 +164,7 @@ export async function deleteConversationsActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, true);
   await deleteAllConversations(auth);
 }
 

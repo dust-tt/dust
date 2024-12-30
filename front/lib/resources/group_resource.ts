@@ -101,14 +101,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Internal fetcher for Authenticator only
 
-  static async superAdminFetchWorkspaceGroups(
-    userResource: UserResource,
+  // Use with care as this gives access to all groups in the workspace.
+  static async internalFetchAllWorkspaceGroups(
     workspaceId: ModelId
   ): Promise<GroupResource[]> {
-    if (!userResource.isDustSuperUser) {
-      throw new Error("User is not a super admin.");
-    }
-
     const groups = await this.model.findAll({
       where: {
         workspaceId,
