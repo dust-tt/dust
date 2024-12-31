@@ -350,6 +350,39 @@ async function upsertConfluencePageInDb(
   });
 }
 
+/**
+ * Time window configuration for permission checks.
+ * We check permissions for each connector once every CYCLE_DURATION_MS (4 hours),
+ * with connectors distributed across BUCKET_COUNT (4) time windows.
+ * This means each connector gets a 1-hour window to check all its pages' permissions.
+ */
+const PERMISSION_CHECK = {
+  // Total duration of a full permission check cycle
+  CYCLE_DURATION_MS: 4 * 60 * 60 * 1000, // 4 hours
+  // Number of buckets to distribute connectors across
+  BUCKET_COUNT: 4, // This gives 1-hour window per connector
+} as const;
+
+/**
+ * Determines if a connector should check page permissions at a given timestamp.
+ *
+ * Each connector is assigned to one of BUCKET_COUNT buckets based on its ID.
+ * During a CYCLE_DURATION_MS cycle, each bucket gets CYCLE_DURATION_MS/BUCKET_COUNT (1 hour)
+ * to check all its connectors' page permissions.
+ */
+function shouldCheckPageRestrictions(
+  connector: ConnectorResource,
+  timestampMs: number
+): boolean {
+  const cycleNumber = Math.floor(
+    timestampMs / PERMISSION_CHECK.CYCLE_DURATION_MS
+  );
+  const currentBucket = cycleNumber % PERMISSION_CHECK.BUCKET_COUNT;
+  const connectorBucket = connector.id % PERMISSION_CHECK.BUCKET_COUNT;
+
+  return connectorBucket === currentBucket;
+}
+
 interface ConfluenceCheckAndUpsertPageActivityInput {
   connectorId: ModelId;
   isBatchSync: boolean;
@@ -414,11 +447,20 @@ export async function confluenceCheckAndUpsertPageActivity({
     connector
   );
 
-  // Check restrictions.
-  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
-  if (hasReadRestrictions) {
-    localLogger.info("Skipping restricted Confluence page.");
-    return false;
+  // Check if we should verify restrictions for this connector in this time window.
+  if (shouldCheckPageRestrictions(connector, visitedAtMs)) {
+    localLogger.debug(
+      {
+        visitedAtMs: new Date(visitedAtMs).toISOString(),
+      },
+      "Checking page restrictions in connector's time window"
+    );
+
+    const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
+    if (hasReadRestrictions) {
+      localLogger.info("Skipping restricted Confluence page.");
+      return false;
+    }
   }
 
   // Check the version.
