@@ -116,7 +116,7 @@ export class RunResource extends BaseResource<RunModel> {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
             // `appId` cannot be user provided + assert above.
-            `(SELECT id FROM runs WHERE appId = '${appId}')`
+            `(SELECT id FROM runs WHERE "appId" = '${appId}')`
           ),
         },
       },
@@ -142,7 +142,7 @@ export class RunResource extends BaseResource<RunModel> {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
             // `workspace.id` cannot cannot be user provided + assert above.
-            `(SELECT id FROM runs WHERE workspaceId = '${workspace.id}')`
+            `(SELECT id FROM runs WHERE "workspaceId" = '${workspace.id}')`
           ),
         },
       },
