@@ -36,17 +36,17 @@ type Story = StoryObj<typeof meta>;
 const ExampleFeedbackComponent = () => {
   const [messageFeedback, setMessageFeedback] =
     React.useState<FeedbackSelectorProps>({
-      feedback: {
-        thumb: "up",
-        feedbackContent: null,
-      },
+      feedback: null,
       onSubmitThumb: async (element) => {
         setMessageFeedback((prev) => ({
           ...prev,
-          feedback: {
-            thumb: element.thumb,
-            feedbackContent: element.feedbackContent,
-          },
+          feedback: element.isToRemove
+            ? null
+            : {
+                thumb: element.thumb,
+                feedbackContent: element.feedbackContent,
+                isConversationShared: element.isConversationShared,
+              },
         }));
       },
       isSubmittingThumb: false,
@@ -61,6 +61,7 @@ export const ExamplePicker: Story = {
     feedback: {
       thumb: "up",
       feedbackContent: null,
+      isConversationShared: true,
     },
     onSubmitThumb: async (element) => {
       console.log(element);
