@@ -262,6 +262,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         {
           model: AgentMessage,
           as: "agentMessage",
+          attributes: ["id"],
           include: [
             {
               model: AgentMessageFeedbackResource.model,
@@ -346,7 +347,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           as: "agentMessage",
           attributes: [
             "id",
-            "sId",
             "agentConfigurationId",
             "agentConfigurationVersion",
           ],
@@ -354,7 +354,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       ],
     });
 
-    if (!message || !message.agentMessageId) {
+    if (!message || !message.agentMessage) {
       return new Err(
         new Error("Message not found or not associated with an agent message")
       );

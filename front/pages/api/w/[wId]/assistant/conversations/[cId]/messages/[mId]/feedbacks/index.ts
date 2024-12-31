@@ -88,18 +88,17 @@ async function handler(
         content: bodyValidation.right.feedbackContent || "",
       });
 
-      if (created) {
-        res.status(200).json({ success: true });
-        return;
+      if (created.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to upsert feedback",
+          },
+        });
       }
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "The message you're trying to give feedback to does not exist.",
-        },
-      });
+      res.status(200).json({ success: true });
+      return;
 
     case "DELETE":
       const deleted = await deleteMessageFeedback(auth, {
