@@ -1,6 +1,7 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
+  BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ChevronLeftIcon,
@@ -500,6 +501,7 @@ export default function AssistantBuilder({
           }
           buttonsRightPanel={
             <>
+              {/* Chevron button */}
               <Button
                 size="sm"
                 variant="ghost"
@@ -511,39 +513,41 @@ export default function AssistantBuilder({
                 disabled={isBuilderStateEmpty}
                 onClick={toggleRightPanel}
               />
-              {rightPanelStatus.tab === null && template === null && (
-                <Button
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  onClick={() => openRightPanelTab("Preview")}
-                  size="md"
-                  tooltip={
-                    isBuilderStateEmpty
-                      ? "Add instructions or tools to Preview"
-                      : "Preview"
-                  }
-                  variant="highlight"
-                  disabled={isBuilderStateEmpty}
-                  className={cn(
-                    isPreviewButtonAnimating && "animate-breathing-scale"
-                  )}
-                />
-              )}
-              {rightPanelStatus.tab === null && template !== null && (
+              {rightPanelStatus.tab === null && (
                 <div className="flex flex-col gap-3">
+                  {/* Preview Button */}
                   <Button
                     icon={ChatBubbleBottomCenterTextIcon}
                     onClick={() => openRightPanelTab("Preview")}
                     size="sm"
                     variant="outline"
                     tooltip="Preview your assistant"
+                    className={cn(
+                      isPreviewButtonAnimating && "animate-breathing-scale"
+                    )}
+                    disabled={isBuilderStateEmpty}
                   />
-                  <Button
-                    icon={MagicIcon}
-                    onClick={() => openRightPanelTab("Template")}
-                    size="sm"
-                    variant="outline"
-                    tooltip="Template instructions"
-                  />
+                  {/* Performance Button */}
+                  {!!agentConfigurationId && (
+                    <Button
+                      icon={BarChartIcon}
+                      onClick={() => openRightPanelTab("Performance")}
+                      size="sm"
+                      variant="outline"
+                      tooltip="Inspect feedback and performance"
+                      disabled={!agentConfigurationId}
+                    />
+                  )}
+                  {/* Template Button */}
+                  {template !== null && (
+                    <Button
+                      icon={MagicIcon}
+                      onClick={() => openRightPanelTab("Template")}
+                      size="sm"
+                      variant="outline"
+                      tooltip="Template instructions"
+                    />
+                  )}
                 </div>
               )}
             </>
@@ -565,6 +569,7 @@ export default function AssistantBuilder({
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
+              agentConfigurationId={agentConfigurationId}
               setAction={setAction}
             />
           }

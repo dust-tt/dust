@@ -20,7 +20,7 @@ export function PrevNextButtons({
         <Button
           label="Previous"
           size="md"
-          variant="highlight"
+          variant="primary"
           onClick={() => {
             const newScreen = screen === "actions" ? "instructions" : "actions";
             setScreen(newScreen);
@@ -33,7 +33,7 @@ export function PrevNextButtons({
         <Button
           label="Next"
           size="md"
-          variant="highlight"
+          variant="primary"
           onClick={() => {
             const newScreen = screen === "instructions" ? "actions" : "naming";
             setScreen(newScreen);
