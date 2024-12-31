@@ -87,7 +87,7 @@ AgentDataSourceConfiguration.init(
 // Retrieval config <> Data source config
 AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true },
@@ -96,7 +96,7 @@ AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
 // Process config <> Data source config
 AgentProcessConfiguration.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { name: "processConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentDataSourceConfiguration.belongsTo(AgentProcessConfiguration, {
   foreignKey: { name: "processConfigurationId", allowNull: true },

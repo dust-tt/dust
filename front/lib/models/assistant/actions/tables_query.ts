@@ -118,11 +118,11 @@ AgentTablesQueryConfigurationTable.init(
 
 AgentTablesQueryConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 // Config <> Data source.

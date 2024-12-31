@@ -131,5 +131,5 @@ UserMetadataModel.init(
 );
 UserModel.hasMany(UserMetadataModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });

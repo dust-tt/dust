@@ -398,5 +398,5 @@ TrackedDocument.hasMany(DocumentTrackerChangeSuggestion, {
 });
 DataSourceModel.hasMany(DocumentTrackerChangeSuggestion, {
   foreignKey: { allowNull: false, name: "sourceDataSourceId" },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });

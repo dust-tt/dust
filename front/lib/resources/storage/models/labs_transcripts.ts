@@ -83,7 +83,7 @@ LabsTranscriptsConfigurationModel.belongsTo(UserModel, {
 
 Workspace.hasMany(LabsTranscriptsConfigurationModel, {
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 LabsTranscriptsConfigurationModel.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },

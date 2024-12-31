@@ -92,7 +92,7 @@ AppModel.init(
 
 Workspace.hasMany(AppModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AppModel.belongsTo(Workspace);
 
@@ -142,7 +142,7 @@ Provider.init(
 );
 Workspace.hasMany(Provider, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 export class Dataset extends BaseModel<Dataset> {
@@ -195,13 +195,13 @@ Dataset.init(
 
 AppModel.hasMany(Dataset, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Dataset.belongsTo(AppModel);
 
 Workspace.hasMany(Dataset, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 export class Clone extends BaseModel<Clone> {
@@ -247,9 +247,9 @@ Clone.init(
 );
 Clone.belongsTo(AppModel, {
   foreignKey: { name: "fromId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Clone.belongsTo(AppModel, {
   foreignKey: { name: "toId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
