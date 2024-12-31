@@ -115,7 +115,7 @@ export class RunResource extends BaseResource<RunModel> {
         runId: {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
-            // `appId` cannot cannot be user provided + assert above.
+            // `appId` cannot be user provided + assert above.
             `(SELECT id FROM runs WHERE appId = '${appId}')`
           ),
         },
