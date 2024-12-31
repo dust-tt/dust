@@ -182,9 +182,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async listWorkspaceSpaces(
     auth: Authenticator,
-    options?: { includeConversationsSpace?: boolean }
+    options?: { includeConversationsSpace?: boolean; includeDeleted?: boolean }
   ): Promise<SpaceResource[]> {
-    const spaces = await this.baseFetch(auth);
+    const spaces = await this.baseFetch(auth, {
+      includeDeleted: options?.includeDeleted,
+    });
 
     if (!options?.includeConversationsSpace) {
       return spaces.filter((s) => !s.isConversations());

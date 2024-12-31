@@ -494,6 +494,7 @@ export async function deleteSpacesActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeConversationsSpace: true,
+    includeDeleted: true,
   });
 
   for (const space of spaces) {
