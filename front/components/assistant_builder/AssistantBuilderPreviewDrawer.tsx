@@ -442,7 +442,7 @@ const FeedbacksSection = ({
         limit: FEEDBACKS_BATCH_SIZE,
         lastValue: currentOldestFeedbackId,
         orderColumn: "id",
-        orderDirection: "asc",
+        orderDirection: "desc",
       },
     });
 
@@ -512,17 +512,21 @@ const FeedbacksSection = ({
 
   return (
     <div>
-      <div className="mb-2 flex flex-col gap-2">
+      <div className="mb-2 flex flex-col">
         <AgentConfigurationVersionHeader
           agentConfiguration={agentConfigurationHistory[0]}
           agentConfigurationVersion={agentConfigurationHistory[0].version}
           isLatestVersion={true}
         />
-        {feedbacks.map((feedback, index) => (
-          <div key={feedback.id} className="animate-fadeIn">
-            {index > 0 &&
-              feedback.agentConfigurationVersion !==
-                feedbacks[index - 1].agentConfigurationVersion && (
+        {feedbacks.map((feedback, index) => {
+          const isFirstFeedback = index === 0;
+          const isNewVersion =
+            !isFirstFeedback &&
+            feedback.agentConfigurationVersion !==
+              feedbacks[index - 1].agentConfigurationVersion;
+          return (
+            <div key={feedback.id} className="animate-fadeIn">
+              {isNewVersion && (
                 <AgentConfigurationVersionHeader
                   agentConfiguration={agentConfigurationHistory?.find(
                     (c) => c.version === feedback.agentConfigurationVersion
@@ -531,14 +535,20 @@ const FeedbacksSection = ({
                   isLatestVersion={false}
                 />
               )}
-            <div className="mr-2">
-              <FeedbackCard
-                owner={owner}
-                feedback={feedback as AgentMessageFeedbackWithMetadataType}
-              />
+              {!isNewVersion && !isFirstFeedback && (
+                <div className="mx-4">
+                  <Page.Separator />
+                </div>
+              )}
+              <div className="mr-2">
+                <FeedbackCard
+                  owner={owner}
+                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {feedbacks && !feedbacksExhausted && (
         <div className="mb-2 flex justify-center">
@@ -613,11 +623,8 @@ function FeedbackCard({
   );
 
   return (
-    <ContentMessage
-      variant="slate"
-      className="rounded-lg border border-gray-200 p-2"
-    >
-      <div className="justify-content-around flex items-center gap-2">
+    <div className="rounded-lg p-2">
+      <div className="justify-content-around flex items-center">
         <div className="flex w-full items-center gap-2">
           {feedback.userImageUrl ? (
             <Avatar
@@ -628,19 +635,14 @@ function FeedbackCard({
           ) : (
             <Spinner size="xs" />
           )}
-          <div className="text-md flex-grow font-medium text-element-900">
+          <div className="flex-grow text-sm font-medium text-element-900">
             {feedback.userName}
           </div>
         </div>
 
-        <div className="flex flex-shrink-0 flex-row items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-shrink-0 flex-row items-center text-xs text-muted-foreground">
           {timeSinceFeedback} ago
-          <div
-            className={cn("flex h-8 w-8 items-center justify-center rounded", {
-              "bg-sky-100": feedback.thumbDirection === "up",
-              "bg-pink-100": feedback.thumbDirection === "down",
-            })}
-          >
+          <div className="flex h-8 w-8 items-center justify-center rounded">
             {feedback.thumbDirection === "up" ? (
               <HandThumbUpIcon />
             ) : (
@@ -665,6 +667,6 @@ function FeedbackCard({
           </div>
         </div>
       )}
-    </ContentMessage>
+    </div>
   );
 }
