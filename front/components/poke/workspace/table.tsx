@@ -48,7 +48,7 @@ export function WorkspaceInfoTable({
                        className="text-xs text-action-400"
                   > Metabase
                   </Link>
-                  </PokeTableCell>
+              </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Creation</PokeTableCell>
