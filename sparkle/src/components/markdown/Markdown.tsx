@@ -51,7 +51,6 @@ function showUnsupportedDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.type === "textDirective") {
-        // it's not a valid directive, so we'll leave it as plain text
         node.type = "text";
         node.value = `:${node.name}${node.children ? node.children.map((c: any) => c.value).join("") : ""}`;
       }
@@ -78,21 +77,6 @@ export function Markdown({
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
-  // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
-  // AST parsing rounds (happening at each token being streamed).
-  //
-  // When adding a new directive and associated component that depends on external data (eg
-  // workspace or message), you can use the customRenderer.visualization pattern. It is essential
-  // for the customRenderer argument to be memoized to avoid re-renderings through the
-  // markdownComponents memoization dependency on `customRenderer`.
-  //
-  // Make sure to spend some time understanding the re-rendering or lack thereof through the parser
-  // rounds.
-  //
-  // Minimal test whenever editing this code: ensure that code block content of a streaming message
-  // can be selected without blinking.
-
-  // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(() => {
     return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
@@ -164,7 +148,13 @@ export function Markdown({
       input: Input,
       blockquote: BlockquoteBlock,
       hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
-      code: CodeBlockWithExtendedSupport,
+      code: ({ inline, className, children }) => (
+        <div className="s-cursor-text">
+          <CodeBlockWithExtendedSupport inline={inline} className={className}>
+            {children}
+          </CodeBlockWithExtendedSupport>
+        </div>
+      ),
       ...additionalMarkdownComponents,
     };
   }, [textSize, textColor, additionalMarkdownComponents]);
@@ -240,7 +230,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   return (
     <pre
       className={cn(
-        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border s-border-border s-bg-muted-background"
+        "s-my-2 s-w-full s-cursor-text s-break-all s-rounded-2xl s-border s-border-border s-bg-muted-background"
       )}
     >
       {validChildrenContent ? children : fallbackData || children}
@@ -269,6 +259,7 @@ function UlBlock({
     </ul>
   );
 }
+
 function OlBlock({
   children,
   start,
@@ -293,6 +284,7 @@ function OlBlock({
     </ol>
   );
 }
+
 function LiBlock({
   children,
   textColor,
@@ -318,6 +310,7 @@ function LiBlock({
     </li>
   );
 }
+
 function ParagraphBlock({
   children,
   textColor,
@@ -341,20 +334,38 @@ function ParagraphBlock({
   );
 }
 
-type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'ref'> & ReactMarkdownProps & {
-  ref?: React.Ref<HTMLInputElement>;
-};
+type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
+  ReactMarkdownProps & {
+    ref?: React.Ref<HTMLInputElement>;
+  };
 
-function Input({ type, checked, className, onChange, ref, ...props }: InputProps) {
+function Input({
+  type,
+  checked,
+  className,
+  onChange,
+  ref,
+  ...props
+}: InputProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   React.useImperativeHandle(ref, () => inputRef.current!);
 
   if (type !== "checkbox") {
-    return <input ref={inputRef} type={type} checked={checked} className={className} {...props} />;
+    return (
+      <input
+        ref={inputRef}
+        type={type}
+        checked={checked}
+        className={className}
+        {...props}
+      />
+    );
   }
 
   const handleCheckedChange = (isChecked: boolean) => {
-    onChange?.({ target: { type: "checkbox", checked: isChecked } } as React.ChangeEvent<HTMLInputElement>);
+    onChange?.({
+      target: { type: "checkbox", checked: isChecked },
+    } as React.ChangeEvent<HTMLInputElement>);
   };
 
   return (
