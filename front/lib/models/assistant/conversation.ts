@@ -86,7 +86,7 @@ Conversation.init(
 
 Workspace.hasMany(Conversation, {
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 Conversation.belongsTo(Workspace, {
@@ -146,14 +146,14 @@ ConversationParticipant.init(
 );
 Conversation.hasMany(ConversationParticipant, {
   foreignKey: { name: "conversationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 ConversationParticipant.belongsTo(Conversation, {
   foreignKey: { name: "conversationId", allowNull: false },
 });
 UserModel.hasMany(ConversationParticipant, {
   foreignKey: { name: "userId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 ConversationParticipant.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
@@ -475,7 +475,7 @@ Message.init(
 
 Conversation.hasMany(Message, {
   foreignKey: { name: "conversationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Message.belongsTo(Conversation, {
   as: "conversation",
@@ -571,7 +571,7 @@ MessageReaction.init(
 Message.hasMany(MessageReaction, {
   as: "reactions",
   foreignKey: { name: "messageId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 MessageReaction.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },
@@ -626,7 +626,7 @@ Mention.init(
 
 Message.hasMany(Mention, {
   foreignKey: { name: "messageId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Mention.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },

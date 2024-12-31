@@ -52,7 +52,7 @@ RunModel.init(
 );
 AppModel.hasMany(RunModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 RunModel.belongsTo(AppModel, {
   as: "app",
@@ -60,7 +60,7 @@ RunModel.belongsTo(AppModel, {
 });
 Workspace.hasMany(RunModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 export class RunUsageModel extends BaseModel<RunUsageModel> {
@@ -101,5 +101,5 @@ RunUsageModel.init(
 
 RunModel.hasMany(RunUsageModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });

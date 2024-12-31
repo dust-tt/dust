@@ -101,7 +101,7 @@ DataSourceModel.init(
 Workspace.hasMany(DataSourceModel, {
   as: "workspace",
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Conversation.hasMany(DataSourceModel, {
   as: "conversation",

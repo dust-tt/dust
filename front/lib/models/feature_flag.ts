@@ -49,6 +49,6 @@ FeatureFlag.init(
 
 Workspace.hasMany(FeatureFlag, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 FeatureFlag.belongsTo(Workspace);

@@ -171,7 +171,7 @@ AgentConfiguration.init(
 //  Agent config <> Workspace
 Workspace.hasMany(AgentConfiguration, {
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentConfiguration.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
@@ -180,7 +180,7 @@ AgentConfiguration.belongsTo(Workspace, {
 // Agent config <> Author
 UserModel.hasMany(AgentConfiguration, {
   foreignKey: { name: "authorId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentConfiguration.belongsTo(UserModel, {
   foreignKey: { name: "authorId", allowNull: false },
@@ -232,7 +232,7 @@ GlobalAgentSettings.init(
 //  Global Agent config <> Workspace
 Workspace.hasMany(GlobalAgentSettings, {
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 GlobalAgentSettings.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
@@ -298,11 +298,11 @@ AgentUserRelation.init(
 
 UserModel.hasMany(AgentUserRelation, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Workspace.hasMany(AgentUserRelation, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentUserRelation.belongsTo(UserModel, {
   foreignKey: { allowNull: false },

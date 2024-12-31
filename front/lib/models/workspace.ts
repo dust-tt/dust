@@ -125,7 +125,7 @@ WorkspaceHasDomain.init(
 );
 Workspace.hasMany(WorkspaceHasDomain, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 WorkspaceHasDomain.belongsTo(Workspace);
 
@@ -193,7 +193,7 @@ MembershipInvitation.init(
 );
 Workspace.hasMany(MembershipInvitation, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 MembershipInvitation.belongsTo(Workspace);
 
@@ -236,7 +236,7 @@ DustAppSecret.init(
 );
 Workspace.hasMany(DustAppSecret, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 // We don't want to delete keys when a user gets deleted.
 UserModel.hasMany(DustAppSecret, {
