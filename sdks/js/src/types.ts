@@ -691,6 +691,7 @@ export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
 
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
+  extensionBlacklistedDomains: z.array(z.string()).optional(),
 });
 
 const ExtensionWorkspaceSchema = WorkspaceSchema.extend({

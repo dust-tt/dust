@@ -44,6 +44,7 @@ export type LightWorkspaceType = {
 
 export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
+  extensionBlacklistedDomains?: string[];
 };
 
 export type ExtensionWorkspaceType = WorkspaceType & {
