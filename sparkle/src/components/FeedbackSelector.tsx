@@ -25,7 +25,7 @@ export interface FeedbackSelectorProps {
   feedback: FeedbackType | null;
   onSubmitThumb: (
     p: FeedbackType & {
-      isToRemove: boolean;
+      shouldRemoveExistingFeedback: boolean;
     }
   ) => Promise<void>;
   isSubmittingThumb: boolean;
@@ -72,23 +72,23 @@ export function FeedbackSelector({
   const selectThumb = useCallback(
     async (thumb: ThumbReaction) => {
       // Whether to remove the thumb reaction
-      const isToRemove = feedback?.thumb === thumb;
-      setIsPopoverOpen(!isToRemove);
-      setLastSelectedThumb(isToRemove ? null : thumb);
+      const shouldRemoveExistingFeedback = feedback?.thumb === thumb;
+      setIsPopoverOpen(!shouldRemoveExistingFeedback);
+      setLastSelectedThumb(shouldRemoveExistingFeedback ? null : thumb);
 
       // Checkbox ticked by default only for new thumbs down
       setIsConversationShared(thumb === "down");
 
       // We enforce written feedback for thumbs down.
       // -> Not saving the reaction until then.
-      if (thumb === "down" && !isToRemove) {
+      if (thumb === "down" && !shouldRemoveExistingFeedback) {
         return;
       }
 
       await onSubmitThumb({
         feedbackContent: localFeedbackContent,
         thumb,
-        isToRemove,
+        shouldRemoveExistingFeedback,
         // The sharing option was never displayed so far -> Opt out of sharing.
         isConversationShared: false,
       });
@@ -120,7 +120,7 @@ export function FeedbackSelector({
     if (lastSelectedThumb) {
       await onSubmitThumb({
         thumb: lastSelectedThumb,
-        isToRemove: false,
+        shouldRemoveExistingFeedback: false,
         feedbackContent: localFeedbackContent,
         isConversationShared,
       });

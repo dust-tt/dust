@@ -40,7 +40,7 @@ const ExampleFeedbackComponent = () => {
       onSubmitThumb: async (element) => {
         setMessageFeedback((prev) => ({
           ...prev,
-          feedback: element.isToRemove
+          feedback: element.shouldRemoveExistingFeedback
             ? null
             : {
                 thumb: element.thumb,
