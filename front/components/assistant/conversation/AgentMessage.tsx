@@ -436,7 +436,7 @@ export function AgentMessage({
             className="text-muted-foreground"
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
-          // One can not leave feedback on global agents.
+          // One cannot leave feedback on global agents.
           ...(isGlobalAgent
             ? []
             : [
