@@ -29,7 +29,6 @@ const {
   confluenceUpdatePagesParentIdsActivity,
   confluenceCheckAndUpsertPageActivity,
   confluenceGetActiveChildPageRefsActivity,
-  confluenceGetRootPageRefsActivity,
   fetchConfluenceSpaceIdsForConnectorActivity,
   confluenceUpsertPageWithFullParentsActivity,
 
@@ -38,6 +37,9 @@ const {
 
   fetchConfluenceConfigurationActivity,
   confluenceUpsertSpaceFolderActivity,
+
+  fetchAndUpsertRootPagesActivity,
+
   getSpaceIdsToSyncActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
@@ -161,39 +163,16 @@ export async function confluenceSpaceSyncWorkflow(
     spaceName,
   });
 
-  // Get the root level pages for the space.
-  const rootPageRefs = await confluenceGetRootPageRefsActivity({
-    connectorId,
+  const allowedRootPageIds = await fetchAndUpsertRootPagesActivity({
+    ...params,
     confluenceCloudId,
-    spaceId,
+    spaceName,
+    visitedAtMs,
   });
-  if (rootPageRefs.length === 0) {
-    return;
-  }
-
-  const allowedRootPageRefs = new Map<string, ConfluencePageRef>(
-    rootPageRefs.map((r) => [r.id, r])
-  );
-
-  // Upsert the root pages.
-  for (const rootPageRef of allowedRootPageRefs.values()) {
-    const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
-      ...params,
-      spaceName,
-      pageRef: rootPageRef,
-      visitedAtMs,
-    });
-
-    // If the page fails the upsert operation, it indicates the page is restricted.
-    // Such pages should be excluded from the list of allowed pages.
-    if (!successfullyUpsert) {
-      allowedRootPageRefs.delete(rootPageRef.id);
-    }
-  }
 
   // Fetch all top-level pages within a specified space. Top-level pages
   // refer to those directly nested under the space's root pages.
-  for (const allowedRootPageId of allowedRootPageRefs.keys()) {
+  for (const allowedRootPageId of allowedRootPageIds) {
     let nextPageCursor: string | null = "";
     do {
       const { topLevelPageRefs, nextPageCursor: nextCursor } =
