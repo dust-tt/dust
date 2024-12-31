@@ -13,7 +13,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -108,7 +108,18 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   static async deleteAllByAppId(appId: ModelId, transaction?: Transaction) {
-    // TODO: First, delete the run_usage before deleting the run.
+    await RunUsageModel.destroy({
+      where: {
+        runId: {
+          [Op.in]: Sequelize.literal(
+            // Sequelize prevents other safer constructs due to typing with the destroy method.
+            // `appId` cannot cannot be user provided.
+            `(SELECT id FROM runs WHERE appId = '${appId}')`
+          ),
+        },
+      },
+      transaction,
+    });
 
     return this.model.destroy({
       where: {
@@ -122,6 +133,19 @@ export class RunResource extends BaseResource<RunModel> {
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
+    await RunUsageModel.destroy({
+      where: {
+        runId: {
+          [Op.in]: Sequelize.literal(
+            // Sequelize prevents other safer constructs due to typing with the destroy method.
+            // `workspace.id` cannot cannot be user provided.
+            `(SELECT id FROM runs WHERE workspaceId = '${workspace.id}')`
+          ),
+        },
+      },
+      transaction,
+    });
+
     return this.model.destroy({
       where: { workspaceId: workspace.id },
       transaction,

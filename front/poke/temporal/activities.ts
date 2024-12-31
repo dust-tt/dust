@@ -40,6 +40,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { Subscription } from "@app/lib/models/plan";
 import {
+  DustAppSecret,
   MembershipInvitation,
   Workspace,
   WorkspaceHasDomain,
@@ -527,6 +528,11 @@ export async function deleteSpacesActivity({
   });
 
   for (const space of spaces) {
+    const res = await space.delete(auth, { hardDelete: false });
+    if (res.isErr()) {
+      throw res.error;
+    }
+
     await scrubSpaceActivity({
       spaceId: space.sId,
       workspaceId,
@@ -561,6 +567,12 @@ export async function deleteWorkspaceActivity({
       transaction: t,
     });
     await ExtensionConfigurationResource.deleteForWorkspace(auth, {
+      transaction: t,
+    });
+    await DustAppSecret.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
       transaction: t,
     });
 
