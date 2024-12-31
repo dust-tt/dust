@@ -148,13 +148,27 @@ export function Markdown({
       input: Input,
       blockquote: BlockquoteBlock,
       hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
-      code: ({ inline, className, children }) => (
-        <div className="s-cursor-text">
-          <CodeBlockWithExtendedSupport inline={inline} className={className}>
-            {children}
-          </CodeBlockWithExtendedSupport>
-        </div>
-      ),
+      code: ({ inline, className, children }) => {
+        // Check if it's a special block (mermaid, visualization, etc)
+        const isSpecialBlock =
+          className &&
+          (className.includes("mermaid") ||
+            className.includes("visualization") ||
+            className.includes("chart"));
+
+        return (
+          <div
+            className={cn(
+              "s-w-full s-rounded-2xl",
+              !isSpecialBlock && "s-cursor-text"
+            )}
+          >
+            <CodeBlockWithExtendedSupport inline={inline} className={className}>
+              {children}
+            </CodeBlockWithExtendedSupport>
+          </div>
+        );
+      },
       ...additionalMarkdownComponents,
     };
   }, [textSize, textColor, additionalMarkdownComponents]);
@@ -228,11 +242,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <pre
-      className={cn(
-        "s-my-2 s-w-full s-cursor-text s-break-all s-rounded-2xl s-border s-border-border s-bg-muted-background"
-      )}
-    >
+    <pre className="s-my-2 s-w-full s-break-all s-rounded-2xl s-border s-border-border s-bg-muted-background">
       {validChildrenContent ? children : fallbackData || children}
     </pre>
   );
