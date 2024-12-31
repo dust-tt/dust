@@ -77,6 +77,21 @@ export function Markdown({
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
+  // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
+  // AST parsing rounds (happening at each token being streamed).
+  //
+  // When adding a new directive and associated component that depends on external data (eg
+  // workspace or message), you can use the customRenderer.visualization pattern. It is essential
+  // for the customRenderer argument to be memoized to avoid re-renderings through the
+  // markdownComponents memoization dependency on `customRenderer`.
+  //
+  // Make sure to spend some time understanding the re-rendering or lack thereof through the parser
+  // rounds.
+  //
+  // Minimal test whenever editing this code: ensure that code block content of a streaming message
+  // can be selected without blinking.
+
+  // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(() => {
     return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
