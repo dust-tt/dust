@@ -11,7 +11,7 @@ import type {
 } from "@app/pages/api/w/[wId]/enterprise-connection";
 
 function makeEnterpriseConnectionName(workspaceId: string) {
-  return `workspace-${workspaceId}`;
+  return `workspace-${workspaceId}-saml`;
 }
 
 export function makeEnterpriseConnectionInitiateLoginUrl(workspaceId: string) {
