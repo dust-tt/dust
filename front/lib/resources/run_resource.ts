@@ -6,6 +6,7 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -24,7 +25,6 @@ import {
 } from "@app/lib/resources/storage/models/runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
-import assert from "assert";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
