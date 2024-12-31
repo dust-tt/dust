@@ -1,9 +1,9 @@
 import {
   ConfluenceLogo,
-  DocumentTextStrokeIcon,
+  DocumentTextIcon,
   DriveLogo,
   GithubLogo,
-  ImageStrokeIcon,
+  ImageIcon,
   IntercomLogo,
   MicrosoftLogo,
   NotionLogo,
@@ -34,7 +34,7 @@ export const citationIconMap: Record<
   (props: SVGProps<SVGSVGElement>) => React.JSX.Element
 > = {
   confluence: ConfluenceLogo,
-  document: DocumentTextStrokeIcon,
+  document: DocumentTextIcon,
   github: GithubLogo,
   google_drive: DriveLogo,
   intercom: IntercomLogo,
@@ -42,7 +42,7 @@ export const citationIconMap: Record<
   zendesk: ZendeskLogo,
   notion: NotionLogo,
   slack: SlackLogo,
-  image: ImageStrokeIcon,
+  image: ImageIcon,
   snowflake: SnowflakeLogo,
 };
 

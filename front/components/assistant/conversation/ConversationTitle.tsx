@@ -5,7 +5,7 @@ import {
   ClipboardCheckIcon,
   Dialog,
   IconButton,
-  LinkStrokeIcon,
+  LinkIcon,
   PencilSquareIcon,
   Popover,
   TrashIcon,
@@ -224,9 +224,7 @@ export function ConversationTitle({
                       variant="primary"
                       size="sm"
                       label={copyLinkSuccess ? "Copied!" : "Copy the link"}
-                      icon={
-                        copyLinkSuccess ? ClipboardCheckIcon : LinkStrokeIcon
-                      }
+                      icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
                       onClick={handleClick}
                     />
                   </div>
