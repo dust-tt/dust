@@ -1,10 +1,16 @@
 import {
+  Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  cn,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ExternalLinkIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   LightbulbIcon,
   MagicIcon,
   Markdown,
@@ -19,10 +25,12 @@ import {
 import type {
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -40,9 +48,17 @@ import type {
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
+import {
+  useAgentConfigurationFeedbacks,
+  useAgentConfigurationHistory,
+} from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+
+const MAX_FEEDBACKS_TO_DISPLAY = 500;
+const FEEDBACKS_BATCH_SIZE = 50;
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -54,6 +70,7 @@ interface AssistantBuilderRightPanelProps {
   rightPanelStatus: AssistantBuilderRightPanelStatus;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
+  agentConfigurationId: string | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
 }
 
@@ -67,6 +84,7 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus,
   openRightPanelTab,
   builderState,
+  agentConfigurationId,
   setAction,
 }: AssistantBuilderRightPanelProps) {
   const {
@@ -104,7 +122,8 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {template && (
+      {/* The agentConfigurationId is truthy iff not a new assistant */}
+      {(template || agentConfigurationId) && (
         <div className="shrink-0 bg-white pt-5">
           <Tabs
             value={rightPanelStatus.tab ?? "Preview"}
@@ -114,7 +133,20 @@ export default function AssistantBuilderRightPanel({
             className="hidden lg:flex"
           >
             <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
-              <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+              {template && (
+                <TabsTrigger
+                  value="Template"
+                  label="Template"
+                  icon={MagicIcon}
+                />
+              )}
+              {agentConfigurationId && (
+                <TabsTrigger
+                  value="Performance"
+                  label="Performance"
+                  icon={LightbulbIcon}
+                />
+              )}
               <TabsTrigger
                 value="Preview"
                 label="Preview"
@@ -125,18 +157,20 @@ export default function AssistantBuilderRightPanel({
         </div>
       )}
       <div
-        className={classNames(
-          template !== null
-            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
-            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
-          shouldAnimatePreviewDrawer &&
-            rightPanelStatus.tab === "Preview" &&
-            rightPanelStatus.openedAt != null &&
+        className={cn(
+          "grow-1 mb-5 h-full overflow-y-auto border-structure-200",
+          {
+            "rounded-b-xl border-x border-b pt-5": !!template,
+            "mt-5 rounded-xl border border-structure-200": !template,
+            "bg-structure-50": rightPanelStatus.tab !== "Performance",
             // Only animate the reload if the drawer has been open for at least 1 second.
             // This is to prevent the animation from triggering right after the drawer is opened.
-            Date.now() - rightPanelStatus.openedAt > 1000
-            ? "animate-reload"
-            : ""
+            "animate-reload":
+              shouldAnimatePreviewDrawer &&
+              rightPanelStatus.tab === "Preview" &&
+              rightPanelStatus.openedAt != null &&
+              Date.now() - rightPanelStatus.openedAt > 1000,
+          }
         )}
       >
         {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
@@ -263,6 +297,15 @@ export default function AssistantBuilderRightPanel({
               </div>
             </div>
           )}
+        {rightPanelStatus.tab === "Performance" && agentConfigurationId && (
+          <div className="ml-4 mt-4">
+            <Page.SectionHeader title="Feedback" />
+            <FeedbacksSection
+              owner={owner}
+              assistantId={agentConfigurationId}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -372,3 +415,256 @@ const TemplateDropDownMenu = ({
     </DropdownMenu>
   );
 };
+
+const FeedbacksSection = ({
+  owner,
+  assistantId,
+}: {
+  owner: LightWorkspaceType;
+  assistantId: string;
+}) => {
+  // Used for pagination
+  const [feedbacksExhausted, setFeedbacksExhausted] = useState(false);
+  const [currentOldestFeedbackId, setCurrentOldestFeedbackId] = useState<
+    number | undefined
+  >(undefined);
+
+  // All retrieved Feedbacks
+  const [feedbacks, setFeedbacks] = useState<
+    AgentMessageFeedbackWithMetadataType[]
+  >([]);
+  const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
+    useAgentConfigurationFeedbacks({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId ?? "",
+      withMetadata: true,
+      paginationParams: {
+        limit: FEEDBACKS_BATCH_SIZE,
+        lastValue: currentOldestFeedbackId,
+        orderColumn: "id",
+        orderDirection: "asc",
+      },
+    });
+
+  // Handle pagination updates.
+  useEffect(() => {
+    if (
+      !!agentConfigurationFeedbacks &&
+      agentConfigurationFeedbacks.length > 0
+    ) {
+      setFeedbacks((prevFeedbacks) => {
+        const newFeedbacks = agentConfigurationFeedbacks.filter(
+          (f) => !prevFeedbacks.some((pf) => pf.id === f.id)
+        ) as AgentMessageFeedbackWithMetadataType[];
+        return [...prevFeedbacks, ...newFeedbacks];
+      });
+    }
+  }, [agentConfigurationFeedbacks]);
+
+  // Determine when feedback is exhausted
+  useEffect(() => {
+    if (!agentConfigurationFeedbacks) {
+      return;
+    }
+    setFeedbacksExhausted(
+      agentConfigurationFeedbacks.length === 0 ||
+        // We limit the number of feedbacks to prevent the page from becoming too slow.
+        feedbacks.length + FEEDBACKS_BATCH_SIZE > MAX_FEEDBACKS_TO_DISPLAY
+    );
+  }, [agentConfigurationFeedbacks, feedbacks]);
+
+  const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
+    useAgentConfigurationHistory({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId,
+    });
+
+  const handleLoadMoreFeedbacks = useCallback(() => {
+    if (agentConfigurationFeedbacks && agentConfigurationFeedbacks.length > 0) {
+      // This triggers a re-fetch of the feedbacks.
+      setCurrentOldestFeedbackId(
+        agentConfigurationFeedbacks[agentConfigurationFeedbacks.length - 1].id
+      );
+    }
+  }, [agentConfigurationFeedbacks]);
+
+  if (
+    isAgentConfigurationFeedbacksLoading ||
+    isAgentConfigurationHistoryLoading
+  ) {
+    return <Spinner />;
+  }
+
+  if (
+    !isAgentConfigurationFeedbacksLoading &&
+    (!feedbacks || feedbacks.length === 0)
+  ) {
+    return <div className="mt-3 text-sm text-element-900">No feedbacks.</div>;
+  }
+
+  if (!agentConfigurationHistory) {
+    return (
+      <div className="mt-3 text-sm text-element-900">
+        Error loading the previous agent versions.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex flex-col gap-2">
+        <AgentConfigurationVersionHeader
+          agentConfiguration={agentConfigurationHistory[0]}
+          agentConfigurationVersion={agentConfigurationHistory[0].version}
+          isLatestVersion={true}
+        />
+        {feedbacks.map((feedback, index) => (
+          <div key={feedback.id} className="animate-fadeIn">
+            {index > 0 &&
+              feedback.agentConfigurationVersion !==
+                feedbacks[index - 1].agentConfigurationVersion && (
+                <AgentConfigurationVersionHeader
+                  agentConfiguration={agentConfigurationHistory?.find(
+                    (c) => c.version === feedback.agentConfigurationVersion
+                  )}
+                  agentConfigurationVersion={feedback.agentConfigurationVersion}
+                  isLatestVersion={false}
+                />
+              )}
+            <div className="mr-2">
+              <FeedbackCard
+                owner={owner}
+                feedback={feedback as AgentMessageFeedbackWithMetadataType}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {feedbacks && !feedbacksExhausted && (
+        <div className="mb-2 flex justify-center">
+          <Button
+            size="sm"
+            variant="outline"
+            label="Load more feedbacks"
+            onClick={handleLoadMoreFeedbacks}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+function AgentConfigurationVersionHeader({
+  agentConfigurationVersion,
+  agentConfiguration,
+  isLatestVersion,
+}: {
+  agentConfigurationVersion: number;
+  agentConfiguration: LightAgentConfigurationType | undefined;
+  isLatestVersion: boolean;
+}) {
+  const getAgentConfigurationVersionString = useCallback(
+    (config: LightAgentConfigurationType) => {
+      if (isLatestVersion) {
+        return "Latest version";
+      }
+      if (!config.versionCreatedAt) {
+        return `v${config.version}`;
+      }
+      return new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+      });
+    },
+    [isLatestVersion]
+  );
+
+  return (
+    <div className="mb-2 mt-4 text-sm font-medium">
+      {agentConfiguration
+        ? getAgentConfigurationVersionString(agentConfiguration)
+        : `v${agentConfigurationVersion}`}
+    </div>
+  );
+}
+
+function FeedbackCard({
+  owner,
+  feedback,
+}: {
+  owner: LightWorkspaceType;
+  feedback: AgentMessageFeedbackWithMetadataType;
+}) {
+  const conversationUrl =
+    feedback.conversationId &&
+    feedback.messageId &&
+    feedback.isConversationShared
+      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#${feedback.messageId}`
+      : null;
+
+  const timeSinceFeedback = timeAgoFrom(
+    new Date(feedback.createdAt).getTime(),
+    {
+      useLongFormat: true,
+    }
+  );
+
+  return (
+    <ContentMessage
+      variant="slate"
+      className="rounded-lg border border-gray-200 p-2"
+    >
+      <div className="justify-content-around flex items-center gap-2">
+        <div className="flex w-full items-center gap-2">
+          {feedback.userImageUrl ? (
+            <Avatar
+              size="xs"
+              visual={feedback.userImageUrl}
+              name={feedback.userName}
+            />
+          ) : (
+            <Spinner size="xs" />
+          )}
+          <div className="text-md flex-grow font-medium text-element-900">
+            {feedback.userName}
+          </div>
+        </div>
+
+        <div className="flex flex-shrink-0 flex-row items-center gap-2 text-xs text-muted-foreground">
+          {timeSinceFeedback} ago
+          <div
+            className={cn("flex h-8 w-8 items-center justify-center rounded", {
+              "bg-sky-100": feedback.thumbDirection === "up",
+              "bg-pink-100": feedback.thumbDirection === "down",
+            })}
+          >
+            {feedback.thumbDirection === "up" ? (
+              <HandThumbUpIcon />
+            ) : (
+              <HandThumbDownIcon />
+            )}
+          </div>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="xs"
+          href={conversationUrl ?? ""}
+          icon={ExternalLinkIcon}
+          disabled={!conversationUrl}
+          target="_blank"
+        />
+      </div>
+      {feedback.content && (
+        <div className="my-2 ml-4 flex items-center">
+          <div className="flex-grow text-sm leading-relaxed text-gray-700">
+            {feedback.content}
+          </div>
+        </div>
+      )}
+    </ContentMessage>
+  );
+}

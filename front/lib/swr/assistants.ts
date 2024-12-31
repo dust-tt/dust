@@ -11,6 +11,11 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
+import type {
+  AgentMessageFeedbackType,
+  AgentMessageFeedbackWithMetadataType,
+} from "@app/lib/api/assistant/feedback";
+import type { PaginationParams } from "@app/lib/api/pagination";
 import {
   fetcher,
   getErrorFromResponse,
@@ -224,6 +229,55 @@ export function useAgentConfiguration({
     isAgentConfigurationError: error,
     isAgentConfigurationValidating: isValidating,
     mutateAgentConfiguration: mutate,
+  };
+}
+
+export function useAgentConfigurationFeedbacks({
+  workspaceId,
+  agentConfigurationId,
+  withMetadata,
+  paginationParams,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  paginationParams: PaginationParams;
+  withMetadata?: boolean;
+  disabled?: boolean;
+}) {
+  const agentConfigurationFeedbacksFetcher: Fetcher<{
+    feedbacks: (
+      | AgentMessageFeedbackType
+      | AgentMessageFeedbackWithMetadataType
+    )[];
+  }> = fetcher;
+
+  const urlParams = new URLSearchParams({
+    limit: paginationParams.limit.toString(),
+    orderColumn: paginationParams.orderColumn,
+    orderDirection: paginationParams.orderDirection,
+  });
+  if (withMetadata) {
+    urlParams.append("withMetadata", "true");
+  }
+  if (paginationParams.lastValue) {
+    urlParams.append("lastValue", paginationParams.lastValue.toString());
+  }
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    agentConfigurationId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks?${urlParams.toString()}`
+      : null,
+    agentConfigurationFeedbacksFetcher,
+    // If agentConfigurationId is null, we don't want to fetch
+    { disabled: disabled || !agentConfigurationId }
+  );
+
+  return {
+    agentConfigurationFeedbacks: data ? data.feedbacks : null,
+    isAgentConfigurationFeedbacksLoading: !error && !data,
+    isAgentConfigurationFeedbacksError: error,
+    mutateAgentConfigurationFeedbacks: mutate,
   };
 }
 
