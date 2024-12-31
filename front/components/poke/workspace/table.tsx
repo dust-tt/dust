@@ -3,7 +3,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@dust-tt/types";
-
+import Link from "next/link";
 import {
   PokeTable,
   PokeTableBody,
@@ -11,7 +11,6 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import Link from "next/link";
 
 export function WorkspaceInfoTable({
   owner,
