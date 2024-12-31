@@ -24,6 +24,7 @@ import {
 } from "@app/lib/resources/storage/models/runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
+import assert from "assert";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
@@ -108,12 +109,13 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   static async deleteAllByAppId(appId: ModelId, transaction?: Transaction) {
+    assert(typeof appId === "number");
     await RunUsageModel.destroy({
       where: {
         runId: {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
-            // `appId` cannot cannot be user provided.
+            // `appId` cannot cannot be user provided + assert above.
             `(SELECT id FROM runs WHERE appId = '${appId}')`
           ),
         },
@@ -133,12 +135,13 @@ export class RunResource extends BaseResource<RunModel> {
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
+    assert(typeof workspace.id === "number");
     await RunUsageModel.destroy({
       where: {
         runId: {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
-            // `workspace.id` cannot cannot be user provided.
+            // `workspace.id` cannot cannot be user provided + assert above.
             `(SELECT id FROM runs WHERE workspaceId = '${workspace.id}')`
           ),
         },
