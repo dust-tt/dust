@@ -44,6 +44,7 @@ export type LightWorkspaceType = {
 
 export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
+  extensionBlacklistedDomains?: string[];
 };
 
 export type UserProviderType =
@@ -69,7 +70,7 @@ export type UserType = {
 };
 
 export type UserTypeWithWorkspaces = UserType & {
-  workspaces: LightWorkspaceType[];
+  workspaces: WorkspaceType[];
 };
 
 export type UserMetadataType = {
