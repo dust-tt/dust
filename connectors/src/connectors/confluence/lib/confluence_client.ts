@@ -8,6 +8,7 @@ import {
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
@@ -208,6 +209,11 @@ export class ConfluenceClient {
           signal: AbortSignal.timeout(30000),
         });
       } catch (e) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:error",
+        ]);
+
         if (
           e instanceof DOMException &&
           (e.name === "TimeoutError" || e.name === "AbortError")
@@ -238,6 +244,11 @@ export class ConfluenceClient {
     })();
 
     if (!response.ok) {
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:error",
+      ]);
+
       // If the token is invalid, the API will return a 403 Forbidden response.
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
@@ -275,6 +286,11 @@ export class ConfluenceClient {
       );
     }
 
+    statsDClient.increment("external.api.calls", 1, [
+      "provider:confluence",
+      "status:success",
+    ]);
+
     const responseBody = await response.json();
     const result = codec.decode(responseBody);
 
@@ -305,6 +321,11 @@ export class ConfluenceClient {
           signal: AbortSignal.timeout(30000),
         });
       } catch (e) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:error",
+        ]);
+
         if (
           e instanceof DOMException &&
           (e.name === "TimeoutError" || e.name === "AbortError")
@@ -335,6 +356,11 @@ export class ConfluenceClient {
     })();
 
     if (!response.ok) {
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:error",
+      ]);
+
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
         {
@@ -344,6 +370,11 @@ export class ConfluenceClient {
         }
       );
     }
+
+    statsDClient.increment("external.api.calls", 1, [
+      "provider:confluence",
+      "status:success",
+    ]);
 
     if (response.status === 204) {
       return undefined; // Return undefined for 204 No Content.
