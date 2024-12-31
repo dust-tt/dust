@@ -291,7 +291,6 @@ export function CodeBlockWithExtendedSupport({
 
   // Detect language from className
   const language = className?.split("-")[1];
-  console.log(className?.split("-")[1]);
 
   // Only create getContentToDownload when we actually want to enable downloads
   const getContentToDownload: GetContentToDownloadFunction | undefined =
