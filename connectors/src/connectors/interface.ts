@@ -15,6 +15,11 @@ export type UpdateConnectorErrorCode =
   | "INVALID_CONFIGURATION"
   | "CONNECTOR_OAUTH_TARGET_MISMATCH";
 
+export type RetrievePermissionsErrorCode =
+  | "INVALID_PARENT_INTERNAL_ID"
+  | "EXTERNAL_OAUTH_TOKEN_ERROR"
+  | "CONNECTOR_NOT_FOUND";
+
 export class ConnectorManagerError<T extends string> extends Error {
   code: T;
 

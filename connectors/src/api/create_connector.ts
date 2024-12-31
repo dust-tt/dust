@@ -152,9 +152,8 @@ const _createConnectorAPIHandler = async (
     }
 
     if (connectorRes.isErr()) {
-      // Error result means this is an "expected" error, so not
-      // an internal server error.
-      // We return a 4xx status code for expected errors.
+      // Error result means this is an "expected" error, so not an internal server error. We return
+      // a 4xx status code for expected errors.
       switch (connectorRes.error.code) {
         case "INVALID_CONFIGURATION":
           return apiError(req, res, {
