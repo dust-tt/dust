@@ -56,10 +56,12 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           thumb,
           isToRemove,
           feedbackContent,
+          isConversationShared,
         }: {
           thumb: string;
           isToRemove: boolean;
-          feedbackContent?: string | null;
+          feedbackContent: string | null;
+          isConversationShared: boolean;
         }) => {
           const res = await fetch(
             `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
@@ -71,6 +73,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               body: JSON.stringify({
                 thumbDirection: thumb,
                 feedbackContent,
+                isConversationShared,
               }),
             }
           );
@@ -99,6 +102,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         ? {
             thumb: messageFeedback.thumbDirection,
             feedbackContent: messageFeedback.content,
+            isConversationShared: messageFeedback.isConversationShared,
           }
         : null,
       onSubmitThumb,
