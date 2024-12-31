@@ -344,7 +344,9 @@ export async function deleteAppsActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
 
-  const apps = await AppResource.listByWorkspace(auth);
+  const apps = await AppResource.listByWorkspace(auth, {
+    includeDeleted: true,
+  });
 
   for (const app of apps) {
     const res = await hardDeleteApp(auth, app);
