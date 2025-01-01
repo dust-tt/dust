@@ -3,10 +3,7 @@ import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
-import {
-  ExternalOAuthTokenError,
-  ProviderWorkflowError,
-} from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
@@ -288,11 +285,11 @@ export class ConfluenceClient {
         }
 
         // Otherwise throw regular error to use Temporal's backoff.
-        throw new ProviderWorkflowError(
-          "confluence",
-          "Rate limit",
-          "rate_limit_error"
-        );
+        throw new ConfluenceClientError("Confluence API rate limit exceeded", {
+          type: "http_response_error",
+          status: response.status,
+          data: { url: `${this.apiUrl}${endpoint}`, response },
+        });
       }
 
       statsDClient.increment("external.api.calls", 1, [
