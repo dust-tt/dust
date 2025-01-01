@@ -149,7 +149,7 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
 
 // If Confluence does not provide a retry-after header, we use this constant to signal no delay.
 const NO_RETRY_AFTER_DELAY = -1;
-// Number of times we retry when rate limited (429).
+// Number of times we retry when rate limited and Confluence does provide a retry-after header.
 const MAX_RATE_LIMIT_RETRY_COUNT = 10;
 
 // Space types that we support indexing in Dust.
@@ -174,7 +174,8 @@ function getRetryAfterDuration(response: Response): number {
   const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
   if (retryAfter) {
     const delay = parseInt(retryAfter, 10);
-    return !Number.isNaN(delay) ? delay * 1000 : -1;
+
+    return !Number.isNaN(delay) ? delay * 1000 : NO_RETRY_AFTER_DELAY;
   }
 
   return NO_RETRY_AFTER_DELAY;
@@ -289,8 +290,8 @@ export class ConfluenceClient {
         // Otherwise throw regular error to use Temporal's backoff.
         throw new ProviderWorkflowError(
           "confluence",
-          "Rate limit exceeded",
-          "transient_upstream_activity_error"
+          "Rate limit",
+          "rate_limit_error"
         );
       }
 
