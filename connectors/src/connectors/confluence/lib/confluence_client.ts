@@ -245,11 +245,6 @@ export class ConfluenceClient {
     })();
 
     if (!response.ok) {
-      statsDClient.increment("external.api.calls", 1, [
-        "provider:confluence",
-        "status:error",
-      ]);
-
       // If the token is invalid, the API will return a 403 Forbidden response.
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
@@ -270,6 +265,11 @@ export class ConfluenceClient {
       // - Use ApplicationFailure.create() with nextRetryDelay
       // - See: https://docs.temporal.io/develop/typescript/failure-detection#activity-next-retry-delay
       if (response.status === 429) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:ratelimited",
+        ]);
+
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
           logger.warn(
@@ -280,7 +280,7 @@ export class ConfluenceClient {
             "[Confluence] Rate limit hit"
           );
 
-          // Only create rate limit error if we have a retry-after.
+          // Only retry rate-limited requests when the server provides a Retry-After delay
           if (delayMs !== NO_RETRY_AFTER_DELAY) {
             await setTimeoutAsync(delayMs);
             return this.request(endpoint, codec, retryCount + 1);
@@ -294,6 +294,11 @@ export class ConfluenceClient {
           "rate_limit_error"
         );
       }
+
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:error",
+      ]);
 
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
