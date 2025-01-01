@@ -152,35 +152,9 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<DataSourceViewsResponseType>>,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  { dataSourceView }: { dataSourceView: DataSourceViewResource }
 ): Promise<void> {
-  const { dsvId } = req.query;
-  if (typeof dsvId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
-  if (!dataSourceView || dataSourceView.space.sId !== space.sId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_view_not_found",
-        message: "The data source view you requested was not found.",
-      },
-    });
-  }
-
-  if (
-    !dataSourceView ||
-    req.query.vId !== dataSourceView.space.sId ||
-    !dataSourceView.canList(auth)
-  ) {
+  if (!dataSourceView.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -255,5 +229,7 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, { space: true })
+  withResourceFetchingFromRoute(handler, {
+    dataSourceView: { requireCanList: true },
+  })
 );

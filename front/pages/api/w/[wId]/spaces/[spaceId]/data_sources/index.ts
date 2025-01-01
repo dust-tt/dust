@@ -502,5 +502,5 @@ const handleDataSourceWithProvider = async ({
 };
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: true })
+  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
 );

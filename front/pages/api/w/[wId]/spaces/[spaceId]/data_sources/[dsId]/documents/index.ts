@@ -180,5 +180,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: true })
+  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
 );

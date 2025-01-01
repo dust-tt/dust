@@ -6,11 +6,13 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 // This is a type that represents the resources that can be extracted from an API route
 type KeyToResource = {
   space: SpaceResource;
   dataSource: DataSourceResource;
+  dataSourceView: DataSourceViewResource;
 };
 
 type ResourceMap<U extends ResourceKey> = {
@@ -23,7 +25,12 @@ type OptionsMap<U extends ResourceKey> = {
 
 type ResourceKey = keyof KeyToResource;
 
-const resolvers = [withSpaceFromRoute, withDataSourceFromRoute];
+// Resolvers must be in reverse order : last one is applied first.
+const resolvers = [
+  withDataSourceViewFromRoute,
+  withDataSourceFromRoute,
+  withSpaceFromRoute,
+];
 
 type SessionOrKeyAuthType = Authenticator | SessionWithUser | null;
 
@@ -98,13 +105,13 @@ export function withResourceFetchingFromRoute<
       );
     }
   );
-  const resources = {} as ResourceMap<U>;
+
   return (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
     sessionOrKeyAuth: A
-  ) => wrappedHandler(req, res, auth, resources, options, sessionOrKeyAuth);
+  ) => wrappedHandler(req, res, auth, {}, options, sessionOrKeyAuth);
 }
 
 /**
@@ -147,7 +154,7 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
             // possibility of `spaceId` being undefined
             await SpaceResource.fetchById(auth, spaceId as string);
 
-      if (!space || !space.canList(auth) || space.isConversations()) {
+      if (!space || space.isConversations()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -155,6 +162,22 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
             message: "The space you requested was not found.",
           },
         });
+      }
+
+      const opts = options.space;
+      if (typeof opts === "object") {
+        if (
+          (opts.requireCanRead === true && !space.canRead(auth)) ||
+          (opts.requireCanList === true && !space.canList(auth))
+        ) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: "The space you requested was not found.",
+            },
+          });
+        }
       }
 
       resources.space = space;
@@ -248,13 +271,107 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "space_not_found",
-            message: "The space you requested was not found.",
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
           },
         });
       }
 
+      const opts = options.dataSource;
+      if (typeof opts === "object") {
+        if (
+          (opts.requireCanRead === true && !dataSource.canRead(auth)) ||
+          (opts.requireCanList === true && !dataSource.canList(auth))
+        ) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "data_source_not_found",
+              message: "The data source you requested was not found.",
+            },
+          });
+        }
+      }
+
       resources.dataSource = dataSource;
+    }
+
+    return handler(req, res, auth, resources, options, sessionOrKeyAuth);
+  };
+}
+
+/**
+ * for /w/[wId]/spaces/[spaceId]/data_source_view/[dsvId]/ => check the data source exists,
+ * that it's not in a conversation space, etc. and provide the data source resource to the handler.
+ * also supports the legacy usage of connectors with /w/[wId]/data_source/[dsId]/
+ */
+function withDataSourceViewFromRoute<T, A extends SessionOrKeyAuthType>(
+  handler: ResourceHandler<T, A>
+): ResourceHandler<T, A> {
+  return async (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator,
+    resources: Partial<ResourceMap<ResourceKey>>,
+    options: Partial<OptionsMap<ResourceKey>>,
+    sessionOrKeyAuth: A
+  ) => {
+    const { dsvId } = req.query;
+
+    if (dsvId) {
+      if (typeof dsvId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid path parameters.",
+          },
+        });
+      }
+
+      const dataSourceView = await DataSourceViewResource.fetchById(
+        auth,
+        dsvId
+      );
+
+      let { space } = resources;
+      if (!space) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid space id.",
+          },
+        });
+      }
+
+      if (!dataSourceView || dataSourceView.space.sId !== space.sId) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_view_not_found",
+            message: "The data source view you requested was not found.",
+          },
+        });
+      }
+
+      const opts = options.dataSourceView;
+      if (typeof opts === "object") {
+        if (
+          (opts.requireCanRead === true && !dataSourceView.canRead(auth)) ||
+          (opts.requireCanList === true && !dataSourceView.canList(auth))
+        ) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "data_source_view_not_found",
+              message: "The data source view you requested was not found.",
+            },
+          });
+        }
+      }
+
+      resources.dataSourceView = dataSourceView;
     }
 
     return handler(req, res, auth, resources, options, sessionOrKeyAuth);

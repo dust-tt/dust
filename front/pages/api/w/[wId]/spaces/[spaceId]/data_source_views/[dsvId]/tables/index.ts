@@ -20,28 +20,10 @@ export type ListTablesResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ListTablesResponseBody>>,
-
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  { dataSourceView }: { dataSourceView: DataSourceViewResource }
 ): Promise<void> {
-  const { dsvId } = req.query;
-  if (typeof dsvId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
-
-  if (
-    !dataSourceView ||
-    space.sId !== dataSourceView.space.sId ||
-    !dataSourceView.canList(auth)
-  ) {
+  if (!dataSourceView.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -100,5 +82,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: true })
+  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
 );

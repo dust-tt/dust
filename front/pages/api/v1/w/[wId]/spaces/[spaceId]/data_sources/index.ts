@@ -87,5 +87,5 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, { space: true })
+  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
 );
