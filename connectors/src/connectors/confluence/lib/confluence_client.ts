@@ -277,14 +277,14 @@ export class ConfluenceClient {
             "[Confluence] Rate limit hit"
           );
 
-          // Only retry rate-limited requests when the server provides a Retry-After delay
+          // Only retry rate-limited requests when the server provides a Retry-After delay.
           if (delayMs !== NO_RETRY_AFTER_DELAY) {
             await setTimeoutAsync(delayMs);
             return this.request(endpoint, codec, retryCount + 1);
           }
         }
 
-        // Otherwise throw regular error to use Temporal's backoff.
+        // Otherwise throw regular error to let downstream handle retries (e.g: Temporal).
         throw new ConfluenceClientError("Confluence API rate limit exceeded", {
           type: "http_response_error",
           status: response.status,
