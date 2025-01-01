@@ -147,10 +147,11 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
-// default number of ms we wait before retrying after a rate limit hit.
-const DEFAULT_RETRY_AFTER_DURATION_MS = 10 * 1000;
+// If Confluence does not provide a retry-after header, we use this constant to signal no delay.
+const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited (429).
 const MAX_RATE_LIMIT_RETRY_COUNT = 10;
+
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
   "global",
@@ -173,11 +174,10 @@ function getRetryAfterDuration(response: Response): number {
   const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
   if (retryAfter) {
     const delay = parseInt(retryAfter, 10);
-    return !Number.isNaN(delay)
-      ? delay * 1000
-      : DEFAULT_RETRY_AFTER_DURATION_MS;
+    return !Number.isNaN(delay) ? delay * 1000 : -1;
   }
-  return DEFAULT_RETRY_AFTER_DURATION_MS;
+
+  return NO_RETRY_AFTER_DELAY;
 }
 
 export class ConfluenceClient {
@@ -253,27 +253,45 @@ export class ConfluenceClient {
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
       }
-      // retry the request after a delay: https://developer.atlassian.com/cloud/confluence/rate-limiting/
+
+      // Handle rate limiting from Confluence API
+      // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+      //
+      // Current strategy:
+      // 1. If Confluence provides a retry-after header, we honor it immediately
+      //    by sleeping in the client. This is not ideal but provides the most
+      //    accurate rate limit handling until we can use Temporal's nextRetryDelay.
+      // 2. If no retry-after header is provided, we throw a transient error and
+      //    let Temporal handle the retry with exponential backoff.
+      //
+      // Once we upgrade to Temporal SDK >= X.Y.Z, we should:
+      // - Remove the client-side sleep
+      // - Use ApplicationFailure.create() with nextRetryDelay
+      // - See: https://docs.temporal.io/develop/typescript/failure-detection#activity-next-retry-delay
       if (response.status === 429) {
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
           logger.warn(
             {
               endpoint,
-              retryCount,
               delayMs,
             },
-            "[Confluence] Rate limit hit, retrying after delay"
+            "[Confluence] Rate limit hit"
           );
-          await setTimeoutAsync(delayMs);
-          return this.request(endpoint, codec, retryCount + 1);
-        } else {
-          throw new ProviderWorkflowError(
-            "confluence",
-            "Rate limit hit on confluence API more than 10 times.",
-            "rate_limit_error"
-          );
+
+          // Only create rate limit error if we have a retry-after.
+          if (delayMs !== NO_RETRY_AFTER_DELAY) {
+            await setTimeoutAsync(delayMs);
+            return this.request(endpoint, codec, retryCount + 1);
+          }
         }
+
+        // Otherwise throw regular error to use Temporal's backoff.
+        throw new ProviderWorkflowError(
+          "confluence",
+          "Rate limit exceeded",
+          "transient_upstream_activity_error"
+        );
       }
 
       throw new ConfluenceClientError(
