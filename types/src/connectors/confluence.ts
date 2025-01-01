@@ -5,17 +5,13 @@ export function makeConfluenceSyncWorkflowId(connectorId: ModelId) {
 }
 
 export class ConfluenceClientError extends Error {
-  readonly type:
-    | "http_response_error"
-    | "rate_limit_error"
-    | "validation_error";
+  readonly type: "validation_error" | "http_response_error";
   readonly status?: number;
   readonly data?: object;
   constructor(
     message: string,
     error_data: (
       | { type: "http_response_error"; status: number }
-      | { type: "rate_limit_error" }
       | { type: "validation_error" }
     ) & { data?: object }
   ) {
