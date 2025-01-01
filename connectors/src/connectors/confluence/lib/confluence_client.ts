@@ -267,7 +267,7 @@ export class ConfluenceClient {
       if (response.status === 429) {
         statsDClient.increment("external.api.calls", 1, [
           "provider:confluence",
-          "status:ratelimited",
+          "status:rate_limited",
         ]);
 
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
