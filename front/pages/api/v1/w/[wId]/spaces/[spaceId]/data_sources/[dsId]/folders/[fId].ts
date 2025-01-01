@@ -31,7 +31,7 @@ async function handler(
     >
   >,
   auth: Authenticator,
-  dataSource: DataSourceResource
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   const { fId } = req.query;
 
@@ -190,5 +190,5 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, "dataSource")
+  withResourceFetchingFromRoute(handler, { dataSource: true })
 );

@@ -24,9 +24,8 @@ export type GetDataSourceViewResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewResponseBody>>,
-
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const { dsvId } = req.query;
   if (typeof dsvId !== "string") {
@@ -173,5 +172,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, { space: true })
 );

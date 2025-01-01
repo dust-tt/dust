@@ -50,9 +50,8 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetDatasetsResponseBody | PostDatasetResponseBody>
   >,
-
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const { aId } = req.query;
   if (typeof aId !== "string") {
@@ -212,5 +211,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, { space: true })
 );

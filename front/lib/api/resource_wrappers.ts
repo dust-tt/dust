@@ -13,37 +13,35 @@ type KeyToResource = {
   dataSource: DataSourceResource;
 };
 
-type ResourceMap = { [K in ResourceKey]: KeyToResource[K] };
+type ResourceMap<U extends ResourceKey> = {
+  [K in U]: KeyToResource[K];
+};
+
+type OptionsMap<U extends ResourceKey> = {
+  [K in U]: Record<string, string | boolean | number> | boolean;
+};
 
 type ResourceKey = keyof KeyToResource;
 
-const resolver: {
-  [K in ResourceKey]: <T, A extends SessionOrKeyAuthType>(
-    handler: ResourceHandler<T, K, A>
-  ) => (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>,
-    auth: Authenticator,
-    sessionOrKeyAuthType: A
-  ) => Promise<void> | void;
-} = {
-  space: withSpaceFromRoute,
-  dataSource: withDataSourceFromRoute,
-};
+const resolvers = [withSpaceFromRoute, withDataSourceFromRoute];
 
 type SessionOrKeyAuthType = Authenticator | SessionWithUser | null;
 
-type ResourceHandler<
-  T,
-  U extends ResourceKey,
-  A extends SessionOrKeyAuthType,
-> = (
+type ResourceHandler<T, A extends SessionOrKeyAuthType> = (
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<T>>,
   auth: Authenticator,
-  routeResource: ResourceMap[U],
+  resources: Partial<ResourceMap<ResourceKey>>,
+  options: Partial<OptionsMap<ResourceKey>>,
   sessionOrKeyAuth: A
 ) => Promise<void> | void;
+
+function isResourceMap<U extends ResourceKey>(
+  obj: any,
+  keys: ResourceKey[]
+): obj is ResourceMap<U> {
+  return keys.every((key) => key in obj);
+}
 
 /*
  *  API routes containing resource strings that require some handling logic can
@@ -56,8 +54,57 @@ export function withResourceFetchingFromRoute<
   T,
   U extends ResourceKey,
   A extends SessionOrKeyAuthType,
->(handler: ResourceHandler<T, U, A>, resource: U) {
-  return resolver[resource](handler);
+>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator,
+    resources: ResourceMap<U>,
+    sessionOrKeyAuth: A
+  ) => Promise<void> | void,
+  options: OptionsMap<U>
+): (
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  auth: Authenticator,
+  sessionOrKeyAuth: A
+) => Promise<void> | void {
+  const wrappedHandler = resolvers.reduce(
+    (acc, resolver) => resolver(acc),
+    (
+      req: NextApiRequest,
+      res: NextApiResponse<WithAPIErrorResponse<T>>,
+      auth: Authenticator,
+      resources: Partial<ResourceMap<ResourceKey>>,
+      _: Partial<OptionsMap<ResourceKey>>,
+      sessionOrKeyAuth: A
+    ) => {
+      const keys = Object.keys(options) as ResourceKey[];
+      if (!isResourceMap<U>(resources, keys)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid parameters.",
+          },
+        });
+      }
+      return handler(
+        req,
+        res,
+        auth,
+        resources as ResourceMap<U>,
+        sessionOrKeyAuth
+      );
+    }
+  );
+  const resources = {} as ResourceMap<U>;
+  return (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator,
+    sessionOrKeyAuth: A
+  ) => wrappedHandler(req, res, auth, resources, options, sessionOrKeyAuth);
 }
 
 /**
@@ -65,48 +112,55 @@ export function withResourceFetchingFromRoute<
  *  not a conversation space, etc. and provide the space resource to the handler.
  */
 function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
-  handler: ResourceHandler<T, "space", A>
-) {
+  handler: ResourceHandler<T, A>
+): ResourceHandler<T, A> {
   return async (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
+    resources: Partial<ResourceMap<ResourceKey>>,
+    options: Partial<OptionsMap<ResourceKey>>,
     sessionOrKeyAuth: A
   ) => {
     const { spaceId } = req.query;
 
-    // Handling the case where `spaceId` is undefined to keep support for the
-    // legacy endpoint for v1 routes (global space assumed in that case).
-    const shouldKeepLegacyEndpointSupport =
-      sessionOrKeyAuth === null || sessionOrKeyAuth instanceof Authenticator;
+    if (spaceId) {
+      // Handling the case where `spaceId` is undefined to keep support for the
+      // legacy endpoint for v1 routes (global space assumed in that case).
+      const shouldKeepLegacyEndpointSupport =
+        sessionOrKeyAuth === null || sessionOrKeyAuth instanceof Authenticator;
 
-    if (typeof spaceId !== "string" && !shouldKeepLegacyEndpointSupport) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid space id.",
-        },
-      });
+      if (typeof spaceId !== "string" && !shouldKeepLegacyEndpointSupport) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid space id.",
+          },
+        });
+      }
+
+      const space =
+        shouldKeepLegacyEndpointSupport && typeof spaceId !== "string"
+          ? await SpaceResource.fetchWorkspaceGlobalSpace(auth)
+          : // casting is fine since conditions checked above exclude
+            // possibility of `spaceId` being undefined
+            await SpaceResource.fetchById(auth, spaceId as string);
+
+      if (!space || !space.canList(auth) || space.isConversations()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "space_not_found",
+            message: "The space you requested was not found.",
+          },
+        });
+      }
+
+      resources.space = space;
     }
 
-    const space =
-      shouldKeepLegacyEndpointSupport && typeof spaceId !== "string"
-        ? await SpaceResource.fetchWorkspaceGlobalSpace(auth)
-        : // casting is fine since conditions checked above exclude
-          // possibility of `spaceId` being undefined
-          await SpaceResource.fetchById(auth, spaceId as string);
-
-    if (!space || !space.canList(auth) || space.isConversations()) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "space_not_found",
-          message: "The space you requested was not found.",
-        },
-      });
-    }
-    return handler(req, res, auth, space, sessionOrKeyAuth);
+    return handler(req, res, auth, resources, options, sessionOrKeyAuth);
   };
 }
 
@@ -116,74 +170,93 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
  * also supports the legacy usage of connectors with /w/[wId]/data_source/[dsId]/
  */
 function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
-  handler: ResourceHandler<T, "dataSource", A>
-) {
+  handler: ResourceHandler<T, A>
+): ResourceHandler<T, A> {
   return async (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
+    resources: Partial<ResourceMap<ResourceKey>>,
+    options: Partial<OptionsMap<ResourceKey>>,
     sessionOrKeyAuth: A
   ) => {
     const { dsId } = req.query;
-    const { wId } = req.query;
-    if (typeof dsId !== "string" || typeof wId !== "string") {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
 
-    const dataSource = await DataSourceResource.fetchById(auth, dsId);
-
-    const shouldKeepLegacyEndpointSupport =
-      sessionOrKeyAuth === null || sessionOrKeyAuth instanceof Authenticator;
-
-    let { spaceId } = req.query;
-
-    if (typeof spaceId !== "string") {
-      if (shouldKeepLegacyEndpointSupport) {
-        if (auth.isSystemKey()) {
-          // We also handle the legacy usage of connectors that taps into connected data sources which
-          // are not in the global space. If this is a system key we trust it and set the `spaceId` to the
-          // dataSource.space.sId.
-          spaceId = dataSource?.space.sId;
-        } else {
-          spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
-        }
-      } else {
+    if (dsId) {
+      const { wId } = req.query;
+      if (typeof dsId !== "string" || typeof wId !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid space id.",
+            message: "Invalid path parameters.",
           },
         });
       }
+
+      const dataSource = await DataSourceResource.fetchById(auth, dsId);
+
+      const shouldKeepLegacyEndpointSupport =
+        sessionOrKeyAuth === null || sessionOrKeyAuth instanceof Authenticator;
+
+      if (!dataSource) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+      }
+
+      let { space } = resources;
+
+      if (!space) {
+        if (shouldKeepLegacyEndpointSupport) {
+          if (auth.isSystemKey()) {
+            // We also handle the legacy usage of connectors that taps into connected data sources which
+            // are not in the global space. If this is a system key we trust it and set the `spaceId` to the
+            // dataSource.space.sId.
+            space = dataSource.space;
+          } else {
+            space = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+          }
+        } else {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid space id.",
+            },
+          });
+        }
+
+        resources.space = space;
+      }
+
+      if (dataSource.space.sId !== space.sId) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+      }
+
+      if (!dataSource.space || dataSource.space.isConversations()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "space_not_found",
+            message: "The space you requested was not found.",
+          },
+        });
+      }
+
+      resources.dataSource = dataSource;
     }
 
-    if (!dataSource || dataSource.space.sId !== spaceId) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
-      });
-    }
-
-    if (!dataSource.space || dataSource.space.isConversations()) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "space_not_found",
-          message: "The space you requested was not found.",
-        },
-      });
-    }
-
-    return handler(req, res, auth, dataSource, sessionOrKeyAuth);
+    return handler(req, res, auth, resources, options, sessionOrKeyAuth);
   };
 }

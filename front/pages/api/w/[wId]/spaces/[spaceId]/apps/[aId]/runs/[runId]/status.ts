@@ -18,9 +18,8 @@ export type GetRunStatusResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetRunStatusResponseBody>>,
-
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ) {
   const { aId } = req.query;
   if (typeof aId !== "string") {
@@ -109,5 +108,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, { space: true })
 );

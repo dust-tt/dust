@@ -19,7 +19,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetFoldersResponseType>>,
   auth: Authenticator,
-  dataSource: DataSourceResource
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   if (!auth.isSystemKey()) {
@@ -77,5 +77,5 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, "dataSource")
+  withResourceFetchingFromRoute(handler, { dataSource: true })
 );
