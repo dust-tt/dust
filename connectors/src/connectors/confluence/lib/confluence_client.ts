@@ -150,7 +150,7 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
 // If Confluence does not provide a retry-after header, we use this constant to signal no delay.
 const NO_RETRY_AFTER_DELAY = -1;
 // Number of times we retry when rate limited and Confluence does provide a retry-after header.
-const MAX_RATE_LIMIT_RETRY_COUNT = 10;
+const MAX_RATE_LIMIT_RETRY_COUNT = 5;
 
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
