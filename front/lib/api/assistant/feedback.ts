@@ -198,12 +198,15 @@ export async function getAgentFeedbacks({
     return new Err(new Error("agent_configuration_not_found"));
   }
 
-  const feedbacksRes = await AgentMessageFeedbackResource.fetch({
-    workspace: owner,
-    agentConfiguration,
-    paginationParams,
-    withMetadata,
-  });
+  const feedbacksRes =
+    await AgentMessageFeedbackResource.getAgentConfigurationFeedbacksByDescVersion(
+      {
+        workspace: owner,
+        agentConfiguration,
+        paginationParams,
+        withMetadata,
+      }
+    );
 
   if (!withMetadata) {
     return new Ok(feedbacksRes);

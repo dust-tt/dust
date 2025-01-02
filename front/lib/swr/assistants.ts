@@ -232,7 +232,7 @@ export function useAgentConfiguration({
   };
 }
 
-export function useAgentConfigurationFeedbacks({
+export function useAgentConfigurationFeedbacksByDescVersion({
   workspaceId,
   agentConfigurationId,
   withMetadata,

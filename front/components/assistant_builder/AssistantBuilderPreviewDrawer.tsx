@@ -3,7 +3,6 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   cn,
-  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -50,7 +49,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
-  useAgentConfigurationFeedbacks,
+  useAgentConfigurationFeedbacksByDescVersion,
   useAgentConfigurationHistory,
 } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
@@ -58,7 +57,7 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 const MAX_FEEDBACKS_TO_DISPLAY = 500;
-const FEEDBACKS_BATCH_SIZE = 50;
+const FEEDBACKS_BATCH_SIZE = 100;
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -433,8 +432,9 @@ const FeedbacksSection = ({
   const [feedbacks, setFeedbacks] = useState<
     AgentMessageFeedbackWithMetadataType[]
   >([]);
+  // Decreasing version, paginated decreasing id.
   const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
-    useAgentConfigurationFeedbacks({
+    useAgentConfigurationFeedbacksByDescVersion({
       workspaceId: owner.sId,
       agentConfigurationId: assistantId ?? "",
       withMetadata: true,
@@ -536,7 +536,7 @@ const FeedbacksSection = ({
                 />
               )}
               {!isNewVersion && !isFirstFeedback && (
-                <div className="mx-4">
+                <div className="mx-4 my-1">
                   <Page.Separator />
                 </div>
               )}
