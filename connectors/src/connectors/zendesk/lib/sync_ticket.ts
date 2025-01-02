@@ -211,7 +211,7 @@ ${comments
       connectorId,
       ticketId: ticket.id,
     });
-    // TODO(2025-01-02 aubin): stop upserting documents x2 once the migration of internal IDs is done.
+    // TODO(2025-01-02 aubin): stop deleting old documents once the migration of internal IDs is done.
     await deleteDataSourceDocument(dataSourceConfig, oldDocumentId, {
       ...loggerArgs,
       ticketId: ticket.id,
