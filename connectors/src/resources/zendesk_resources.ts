@@ -724,7 +724,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     const { brandId, ticketId } = this;
     return {
       provider: "zendesk",
-      internalId: getTicketInternalId({ connectorId, ticketId }),
+      internalId: getTicketInternalId({ connectorId, brandId, ticketId }),
       parentInternalId: getTicketsInternalId({ connectorId, brandId }),
       type: "file",
       title: this.subject,
