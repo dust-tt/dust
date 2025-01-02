@@ -13,42 +13,28 @@ import { Button } from "@sparkle/components/Button";
 import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-const listStyles = cva("s-flex", {
-  variants: {
-    layout: {
-      container: "s-gap-1 s-relative s-flex-col s-overflow-hidden",
-      item: cn(
-        "s-box-border s-items-center s-w-full s-flex s-gap-1.5 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300",
-        "data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground",
-        "hover:s-text-foreground hover:s-bg-structure-150"
-      ),
+const NavigationListItemStyles = cva(
+  "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground hover:s-text-foreground hover:s-bg-structure-150",
+  {
+    variants: {
+      state: {
+        active: "active:s-bg-structure-200",
+        selected: "s-text-foreground s-font-medium s-bg-structure-150",
+        unselected: "s-text-muted-foreground",
+      },
     },
-    state: {
-      active: "active:s-bg-structure-200",
-      selected: "s-text-foreground s-font-medium s-bg-structure-150",
-      unselected: "s-text-muted-foreground",
+    defaultVariants: {
+      state: "unselected",
     },
-  },
-  defaultVariants: {
-    layout: "container",
-    state: "unselected",
-  },
-});
-
-const labelStyles = cva(
-  "s-font-semibold s-pt-6 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+  }
 );
 
 const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
 >(({ className, children, ...props }, ref) => (
-  <ScrollArea
-    ref={ref}
-    className={cn(listStyles({ layout: "container" }), className)}
-    {...props}
-  >
-    {children}
+  <ScrollArea ref={ref} className={className} {...props}>
+    <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
     <ScrollBar />
   </ScrollArea>
 ));
@@ -109,8 +95,7 @@ const NavigationListItem = React.forwardRef<
           <div
             className={cn(
               "s-peer/menu-button",
-              listStyles({
-                layout: "item",
+              NavigationListItemStyles({
                 state: selected
                   ? "selected"
                   : isPressed
@@ -180,6 +165,10 @@ const variantStyles = cva("", {
     isSticky: false,
   },
 });
+
+const labelStyles = cva(
+  "s-font-semibold s-pt-4 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+);
 
 interface NavigationListLabelProps
   extends React.HTMLAttributes<HTMLDivElement>,

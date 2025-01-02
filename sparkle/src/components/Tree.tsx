@@ -1,12 +1,11 @@
 import React, { ComponentType, ReactNode, useState } from "react";
 
-import Spinner from "@sparkle/components/Spinner";
+import { Button, Spinner } from "@sparkle/components/";
 import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";
 import { Icon } from "./Icon";
-import { IconButton } from "./IconButton";
 
 export interface TreeProps {
   children?: ReactNode;
@@ -64,9 +63,9 @@ export function Tree({
 }
 
 const treeItemStyleClasses = {
-  base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-py-2",
+  base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-h-9",
   isNavigatableBase:
-    "s-rounded-xl s-pl-1.5 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
+    "s-rounded-xl s-pl-1 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
   isNavigatableUnselected: "s-bg-structure-150/0 hover:s-bg-structure-150",
   isNavigatableSelected: "s-font-medium s-bg-structure-150",
 };
@@ -160,10 +159,10 @@ Tree.Item = function ({
         onClick={onItemClick}
       >
         {type === "node" && (
-          <IconButton
+          <Button
             icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
             size="xs"
-            variant="outline"
+            variant="ghost-secondary"
             onClick={(e) => {
               e.stopPropagation();
               if (effectiveOnChevronClick) {
