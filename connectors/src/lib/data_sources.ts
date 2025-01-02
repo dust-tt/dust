@@ -631,6 +631,7 @@ export async function upsertDataSourceRemoteTable({
   remoteDatabaseSecretId,
   loggerArgs,
   parents,
+  parentId,
   title,
   mimeType,
 }: {
@@ -642,6 +643,7 @@ export async function upsertDataSourceRemoteTable({
   remoteDatabaseSecretId: string | null;
   loggerArgs?: Record<string, string | number>;
   parents: string[];
+  parentId: string | null;
   title: string;
   mimeType: string;
 }) {
@@ -666,6 +668,7 @@ export async function upsertDataSourceRemoteTable({
   const dustRequestPayload: UpsertDatabaseTableRequestType = {
     name: tableName,
     parents,
+    parent_id: parentId,
     description: tableDescription,
     table_id: tableId,
     remote_database_table_id: remoteDatabaseTableId,
