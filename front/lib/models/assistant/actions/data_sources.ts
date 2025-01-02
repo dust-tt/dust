@@ -57,18 +57,10 @@ AgentDataSourceConfiguration.init(
   {
     modelName: "agent_data_source_configuration",
     indexes: [
-      {
-        fields: ["retrievalConfigurationId"],
-      },
-      {
-        fields: ["processConfigurationId"],
-      },
-      {
-        fields: ["dataSourceId"],
-      },
-      {
-        fields: ["dataSourceViewId"],
-      },
+      { fields: ["retrievalConfigurationId"] },
+      { fields: ["processConfigurationId"] },
+      { fields: ["dataSourceId"] },
+      { fields: ["dataSourceViewId"] },
     ],
     sequelize: frontSequelize,
     hooks: {

@@ -70,6 +70,7 @@ LabsTranscriptsConfigurationModel.init(
     indexes: [
       { fields: ["userId"] },
       { fields: ["userId", "workspaceId"], unique: true },
+      { fields: ["dataSourceViewId"] },
     ],
   }
 );

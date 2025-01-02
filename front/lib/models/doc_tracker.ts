@@ -197,6 +197,8 @@ TrackerDataSourceConfigurationModel.init(
         using: "gin",
         name: "tracker_data_source_configuration_parent_ids_gin_idx",
       },
+      { fields: ["dataSourceId"] },
+      { fields: ["dataSourceViewId"] },
     ],
   }
 );
