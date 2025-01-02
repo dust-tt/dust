@@ -6,7 +6,12 @@ import type {
   SlackConfigurationType,
 } from "@dust-tt/types";
 import type { ContentNodesViewType } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import {
+  Err,
+  isSlackAutoReadPatterns,
+  Ok,
+  safeParseJSON,
+} from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
@@ -85,9 +90,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         dataSourceId: dataSourceConfig.dataSourceId,
       },
       {
-        slackTeamId: teamInfo.team.id,
-        botEnabled: configuration.botEnabled,
         autoReadChannelPattern: configuration.autoReadChannelPattern,
+        autoReadChannelPatterns: configuration.autoReadChannelPatterns,
+        botEnabled: configuration.botEnabled,
+        slackTeamId: teamInfo.team.id,
         whitelistedDomains: configuration.whitelistedDomains,
       }
     );
@@ -683,36 +689,52 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       );
     }
 
+    const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (!slackConfig) {
+      return new Err(
+        new Error(
+          `Slack configuration not found for connector ${this.connectorId}`
+        )
+      );
+    }
+
     switch (configKey) {
       case "botEnabled": {
-        const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
-          this.connectorId
-        );
-        if (!slackConfig) {
-          return new Err(
-            new Error(
-              `Slack configuration not found for connector ${this.connectorId}`
-            )
-          );
-        }
         if (configValue === "true") {
           return slackConfig.enableBot();
         } else {
           return slackConfig.disableBot();
         }
       }
+
       case "autoReadChannelPattern": {
-        const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
-          this.connectorId
-        );
-        if (!slackConfig) {
+        return new Err(new Error("autoReadChannelPattern is not deprecated"));
+      }
+
+      case "autoReadChannelPatterns": {
+        const parsedConfig = safeParseJSON(configValue);
+        if (parsedConfig.isErr()) {
+          return new Err(parsedConfig.error);
+        }
+
+        const autoReadChannelPatterns = parsedConfig.value;
+        if (!Array.isArray(autoReadChannelPatterns)) {
+          return new Err(
+            new Error("autoReadChannelPatterns must be an array of objects")
+          );
+        }
+
+        if (!isSlackAutoReadPatterns(autoReadChannelPatterns)) {
           return new Err(
             new Error(
-              `Slack configuration not found for connector ${this.connectorId}`
+              "autoReadChannelPatterns must be an array of objects with pattern and spaceId"
             )
           );
         }
-        return slackConfig.setAutoReadChannelPattern(configValue || null);
+
+        return slackConfig.setAutoReadChannelPatterns(autoReadChannelPatterns);
       }
 
       default: {
@@ -741,12 +763,23 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         }
         return new Ok(botEnabledRes.value.toString());
       }
+
       case "autoReadChannelPattern": {
         const autoReadChannelPattern = await getAutoReadChannelPattern(
           this.connectorId
         );
+
         return autoReadChannelPattern;
       }
+
+      case "autoReadChannelPatterns": {
+        const autoReadChannelPatterns = await getAutoReadChannelPatterns(
+          this.connectorId
+        );
+
+        return autoReadChannelPatterns;
+      }
+
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -861,4 +894,24 @@ export async function getAutoReadChannelPattern(
     return new Ok(null);
   }
   return new Ok(slackConfiguration.autoReadChannelPattern);
+}
+
+export async function getAutoReadChannelPatterns(
+  connectorId: ModelId
+): Promise<Result<string | null, Error>> {
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+
+  if (!slackConfiguration.autoReadChannelPatterns) {
+    return new Ok(null);
+  }
+
+  return new Ok(JSON.stringify(slackConfiguration.autoReadChannelPatterns));
 }

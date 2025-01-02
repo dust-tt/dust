@@ -1,16 +1,36 @@
 import * as t from "io-ts";
 
-export type SlackConfigurationType = t.TypeOf<
-  typeof SlackConfigurationTypeSchema
->;
+// Auto-read patterns.
+
+const SlackAutoReadPatternSchema = t.type({
+  pattern: t.string,
+  spaceId: t.string,
+});
+const SlackAutoReadPatternsSchema = t.array(SlackAutoReadPatternSchema);
+
+export type SlackAutoReadPattern = t.TypeOf<typeof SlackAutoReadPatternSchema>;
+
+export function isSlackAutoReadPatterns(
+  v: unknown[]
+): v is SlackAutoReadPattern[] {
+  return SlackAutoReadPatternsSchema.is(v);
+}
+
+// Configuration.
 
 export const SlackConfigurationTypeSchema = t.type({
   botEnabled: t.boolean,
   whitelistedDomains: t.union([t.array(t.string), t.undefined]),
+  // TODO(2025-01-02 AutoReadCleanUp) Remove once fully migrated to `autoReadChannelPatterns`.
   autoReadChannelPattern: t.union([t.string, t.null, t.undefined]),
+  autoReadChannelPatterns: SlackAutoReadPatternsSchema,
 });
 
-export type SlackConfiguration = t.TypeOf<typeof SlackConfigurationTypeSchema>;
+export type SlackConfigurationType = t.TypeOf<
+  typeof SlackConfigurationTypeSchema
+>;
+
+// Whitelist.
 
 export type SlackbotWhitelistType = "summon_agent" | "index_messages";
 
