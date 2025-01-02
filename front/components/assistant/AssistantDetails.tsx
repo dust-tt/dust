@@ -1,12 +1,16 @@
 import {
   Avatar,
   ContentMessage,
-  ElementModal,
   InformationCircleIcon,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
@@ -30,6 +34,7 @@ export function AssistantDetails({
   onClose,
   owner,
 }: AssistantDetailsProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
   const { agentConfiguration, isAgentConfigurationValidating } =
@@ -37,6 +42,12 @@ export function AssistantDetails({
       workspaceId: owner.sId,
       agentConfigurationId: assistantId,
     });
+
+  useEffect(() => {
+    if (assistantId) {
+      setIsOpen(true);
+    }
+  }, [assistantId]);
 
   const doUpdateScope = useUpdateAgentScope({
     owner,
@@ -124,21 +135,22 @@ export function AssistantDetails({
     );
 
   return (
-    <ElementModal
-      openOnElement={agentConfiguration}
-      title=""
-      onClose={() => onClose()}
-      hasChanged={false}
-      variant="side-sm"
-    >
-      <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
-        <DescriptionSection />
-        <AssistantActionsSection
-          agentConfiguration={agentConfiguration}
-          owner={owner}
-        />
-        <InstructionsSection />
-      </div>
-    </ElementModal>
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle></SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
+            <DescriptionSection />
+            <AssistantActionsSection
+              agentConfiguration={agentConfiguration}
+              owner={owner}
+            />
+            <InstructionsSection />
+          </div>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
