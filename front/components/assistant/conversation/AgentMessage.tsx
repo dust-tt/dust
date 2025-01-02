@@ -97,7 +97,8 @@ export const FeedbackSelectorPopoverContent = ({
     agentLastAuthor && (
       <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Your feedback is publicly available. The last assistant author is:
+          Your feedback is publicly available within the workspace. The last
+          assistant author is:
         </Page.P>
         <div className="flex flex-row items-center gap-2">
           {agentLastAuthor.image && (
