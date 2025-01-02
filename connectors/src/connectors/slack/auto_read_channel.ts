@@ -112,7 +112,6 @@ export async function autoReadChannel(
       matchingPatterns,
       async (p) => {
         const searchParams = new URLSearchParams({
-          kind: "custom",
           vaultId: p.spaceId,
           dataSourceId: connector.dataSourceId,
         });
