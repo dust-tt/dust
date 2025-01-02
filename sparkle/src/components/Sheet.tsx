@@ -1,4 +1,5 @@
 import * as SheetPrimitive from "@radix-ui/react-dialog";
+import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
@@ -54,21 +55,24 @@ const sheetVariants = cva(
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
   size?: SheetSizeType;
+  trapFocusScope?: boolean;
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ className, children, size, ...props }, ref) => (
+>(({ className, children, size, trapFocusScope, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ size }), className)}
-      {...props}
-    >
-      {children}
-    </SheetPrimitive.Content>
+    <FocusScope trapped={trapFocusScope}>
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ size }), className)}
+        {...props}
+      >
+        {children}
+      </SheetPrimitive.Content>
+    </FocusScope>
   </SheetPortal>
 ));
 SheetContent.displayName = SheetPrimitive.Content.displayName;
