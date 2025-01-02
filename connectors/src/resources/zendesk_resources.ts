@@ -490,13 +490,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   static async fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   }: {
     connectorId: number;
+    brandId: number;
     categoryId: number;
   }): Promise<ZendeskCategoryResource | null> {
     const category = await ZendeskCategory.findOne({
-      where: { connectorId, categoryId },
+      where: { connectorId, brandId, categoryId },
     });
     return category && new this(this.model, category.get());
   }
@@ -763,13 +765,15 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
 
   static async fetchByTicketId({
     connectorId,
+    brandId,
     ticketId,
   }: {
     connectorId: number;
+    brandId: number;
     ticketId: number;
   }): Promise<ZendeskTicketResource | null> {
     const ticket = await ZendeskTicket.findOne({
-      where: { connectorId, ticketId },
+      where: { connectorId, brandId, ticketId },
     });
     return ticket && new this(this.model, ticket.get());
   }
@@ -819,12 +823,14 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
 
   static async deleteByTicketId({
     connectorId,
+    brandId,
     ticketId,
   }: {
     connectorId: number;
+    brandId: number;
     ticketId: number;
   }): Promise<void> {
-    await ZendeskTicket.destroy({ where: { connectorId, ticketId } });
+    await ZendeskTicket.destroy({ where: { connectorId, brandId, ticketId } });
   }
 
   static async deleteByTicketIds({
@@ -981,13 +987,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   static async fetchByArticleId({
     connectorId,
+    brandId,
     articleId,
   }: {
     connectorId: number;
+    brandId: number;
     articleId: number;
   }): Promise<ZendeskArticleResource | null> {
     const article = await ZendeskArticle.findOne({
-      where: { connectorId, articleId },
+      where: { connectorId, brandId, articleId },
     });
     return article && new this(this.model, article.get());
   }
@@ -1020,13 +1028,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   static async fetchByCategoryIdReadOnly({
     connectorId,
+    brandId,
     categoryId,
   }: {
     connectorId: number;
+    brandId: number;
     categoryId: number;
   }): Promise<ZendeskArticleResource[]> {
     const articles = await ZendeskArticle.findAll({
-      where: { connectorId, categoryId, permission: "read" },
+      where: { connectorId, brandId, categoryId, permission: "read" },
     });
     return articles.map((article) => new this(this.model, article.get()));
   }
