@@ -19,8 +19,7 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
   ZendeskBrandResource,
