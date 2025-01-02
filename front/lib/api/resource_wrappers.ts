@@ -372,6 +372,7 @@ function withDataSourceViewFromRoute<T, A extends SessionOrKeyAuthType>(
       }
 
       resources.dataSourceView = dataSourceView;
+      resources.dataSource = dataSourceView.dataSource;
     }
 
     return handler(req, res, auth, resources, options, sessionOrKeyAuth);
