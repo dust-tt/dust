@@ -125,13 +125,12 @@ export function CodeBlock({
         style={codeStyle}
         language={languageToUse}
         PreTag="div"
-        className="s-cursor-text"
       >
         {String(children).replace(/\n$/, "")}
       </SyntaxHighlighter>
     </Suspense>
   ) : (
-    <code className="s-mx-0.5 s-cursor-text s-rounded-lg s-border s-border-border-dark s-bg-muted s-px-1.5 s-py-1 s-text-amber-600">
+    <code className="s-mx-0.5 s-rounded-lg s-border s-border-border-dark s-bg-muted s-px-1.5 s-py-1 s-text-amber-600">
       {children}
     </code>
   );
