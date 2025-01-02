@@ -162,13 +162,12 @@ ZendeskBrand.init(
     sequelize: sequelizeConnection,
     modelName: "zendesk_brands",
     indexes: [
-      { fields: ["connectorId"] },
       {
         fields: ["connectorId", "brandId"],
         unique: true,
-        name: "zendesk_connector_brand_idx",
+        name: "zendesk_brands_connector_brand_idx",
       },
-      { fields: ["brandId"] },
+      { fields: ["connectorId"] },
     ],
   }
 );
@@ -242,11 +241,14 @@ ZendeskCategory.init(
     modelName: "zendesk_categories",
     indexes: [
       {
-        fields: ["connectorId", "categoryId"],
+        fields: ["connectorId", "brandId", "categoryId"],
         unique: true,
-        name: "zendesk_connector_category_idx",
+        name: "zendesk_categories_connector_brand_category_idx",
       },
-      { fields: ["categoryId"] },
+      {
+        fields: ["connectorId", "brandId"],
+        name: "zendesk_categories_connector_brand_idx",
+      },
       { fields: ["connectorId"] },
     ],
   }
@@ -322,11 +324,18 @@ ZendeskArticle.init(
     modelName: "zendesk_articles",
     indexes: [
       {
-        fields: ["connectorId", "articleId"],
+        fields: ["connectorId", "brandId", "articleId"],
         unique: true,
-        name: "zendesk_connector_article_idx",
+        name: "zendesk_articles_connector_brand_article_idx",
       },
-      { fields: ["articleId"] },
+      {
+        fields: ["connectorId", "brandId", "categoryId"],
+        name: "zendesk_articles_connector_brand_category_idx",
+      },
+      {
+        fields: ["connectorId", "brandId"],
+        name: "zendesk_articles_connector_brand_idx",
+      },
       { fields: ["connectorId"] },
     ],
   }
@@ -401,11 +410,14 @@ ZendeskTicket.init(
     modelName: "zendesk_tickets",
     indexes: [
       {
-        fields: ["connectorId", "ticketId"],
+        fields: ["connectorId", "brandId", "ticketId"],
         unique: true,
-        name: "zendesk_connector_ticket_idx",
+        name: "zendesk_tickets_connector_brand_ticket_idx",
       },
-      { fields: ["ticketId"] },
+      {
+        fields: ["connectorId", "brandId"],
+        name: "zendesk_tickets_connector_brand_idx",
+      },
       { fields: ["connectorId"] },
     ],
   }
