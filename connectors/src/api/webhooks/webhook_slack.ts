@@ -14,6 +14,7 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
@@ -198,32 +199,253 @@ const _webhookSlackAPIHandler = async (
       "Processing webhook event"
     );
 
-    switch (event.type) {
-      case "app_mention": {
-        await handleChatBot(req, res, logger);
-        break;
-      }
-      /**
-       * `message` handler.
-       */
-      case "message": {
-        if (!teamId) {
-          return apiError(req, res, {
-            api_error: {
-              type: "invalid_request_error",
-              message: "Missing team_id in request body for message event",
-            },
-            status_code: 400,
-          });
+    try {
+      switch (event.type) {
+        case "app_mention": {
+          await handleChatBot(req, res, logger);
+          break;
         }
-        if (event.channel_type === "im") {
-          //Got a private message
-          if (event.subtype === "message_changed") {
-            // Ignore message_changed events in private messages
-            return res.status(200).send();
+        /**
+         * `message` handler.
+         */
+        case "message": {
+          if (!teamId) {
+            return apiError(req, res, {
+              api_error: {
+                type: "invalid_request_error",
+                message: "Missing team_id in request body for message event",
+              },
+              status_code: 400,
+            });
           }
+          if (event.channel_type === "im") {
+            //Got a private message
+            if (event.subtype === "message_changed") {
+              // Ignore message_changed events in private messages
+              return res.status(200).send();
+            }
+            const slackConfig =
+              await SlackConfigurationResource.fetchByActiveBot(teamId);
+            if (!slackConfig) {
+              return apiError(req, res, {
+                api_error: {
+                  type: "connector_configuration_not_found",
+                  message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
+                },
+                status_code: 404,
+              });
+            }
+            const connector = await ConnectorResource.fetchById(
+              slackConfig.connectorId
+            );
+            if (!connector) {
+              return apiError(req, res, {
+                api_error: {
+                  type: "connector_not_found",
+                  message: `Connector ${slackConfig.connectorId} not found`,
+                },
+                status_code: 404,
+              });
+            }
+
+            const myUserId = await getBotUserIdMemoized(
+              slackConfig.connectorId
+            );
+            if (event.user === myUserId) {
+              // Message sent from the bot itself.
+              return res.status(200).send();
+            }
+            // Message from an actual user (a human)
+            await handleChatBot(req, res, logger);
+            break;
+          } else if (event.channel_type === "channel") {
+            if (!event.channel) {
+              return apiError(req, res, {
+                api_error: {
+                  type: "invalid_request_error",
+                  message: "Missing channel in request body for message event",
+                },
+                status_code: 400,
+              });
+            }
+
+            const channel = event.channel;
+            let err: Error | null = null;
+
+            if (event.thread_ts) {
+              const thread_ts = event.thread_ts;
+              const results = await Promise.all(
+                slackConfigurations.map(async (c) => {
+                  const slackChannel = await SlackChannel.findOne({
+                    where: {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                    },
+                  });
+                  if (!slackChannel) {
+                    logger.info(
+                      {
+                        connectorId: c.connectorId,
+                        slackChannelId: channel,
+                      },
+                      "Skipping wehbook: Slack channel not yet in DB"
+                    );
+                    return new Ok(undefined);
+                  }
+                  if (
+                    !["read", "read_write"].includes(slackChannel.permission)
+                  ) {
+                    logger.info(
+                      {
+                        connectorId: c.connectorId,
+                        slackChannelId: channel,
+                        permission: slackChannel.permission,
+                      },
+                      "Ignoring message because channel permission is not read or read_write"
+                    );
+                    return new Ok(undefined);
+                  }
+                  return launchSlackSyncOneThreadWorkflow(
+                    c.connectorId,
+                    channel,
+                    thread_ts
+                  );
+                })
+              );
+              for (const r of results) {
+                if (r.isErr()) {
+                  err = r.error;
+                }
+              }
+            } else if (event.ts) {
+              const ts = event.ts;
+              const results = await Promise.all(
+                slackConfigurations.map(async (c) => {
+                  const slackChannel = await SlackChannel.findOne({
+                    where: {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                    },
+                  });
+                  if (!slackChannel) {
+                    logger.info(
+                      {
+                        connectorId: c.connectorId,
+                        slackChannelId: channel,
+                      },
+                      "Skipping wehbook: Slack channel not yet in DB"
+                    );
+                    return new Ok(undefined);
+                  }
+                  if (
+                    !["read", "read_write"].includes(slackChannel.permission)
+                  ) {
+                    logger.info(
+                      {
+                        connectorId: c.connectorId,
+                        slackChannelId: channel,
+                        permission: slackChannel.permission,
+                      },
+                      "Ignoring message because channel permission is not read or read_write"
+                    );
+                    return new Ok(undefined);
+                  }
+                  return launchSlackSyncOneMessageWorkflow(
+                    c.connectorId,
+                    channel,
+                    ts
+                  );
+                })
+              );
+              for (const r of results) {
+                if (r.isErr()) {
+                  err = r.error;
+                }
+              }
+            } else {
+              return apiError(req, res, {
+                api_error: {
+                  type: "invalid_request_error",
+                  message: `Webhook message without 'thread_ts' or message 'ts'.`,
+                },
+                status_code: 400,
+              });
+            }
+
+            if (err) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message: err.message,
+                },
+              });
+            } else {
+              logger.info(
+                {
+                  type: event.type,
+                  channel: event.channel,
+                  ts: event.ts,
+                  thread_ts: event.thread_ts,
+                  user: event.user,
+                  slackTeamId: teamId,
+                },
+                `Successfully processed Slack Webhook`
+              );
+              return res.status(200).send();
+            }
+          }
+          break;
+        }
+        case "channel_created": {
+          if (isChannelCreatedEvent(event)) {
+            const onChannelCreationRes = await onChannelCreation({
+              event,
+              logger,
+            });
+            if (onChannelCreationRes.isErr()) {
+              return apiError(req, res, {
+                api_error: {
+                  type: "internal_server_error",
+                  message: onChannelCreationRes.error.message,
+                },
+                status_code: 500,
+              });
+            } else {
+              return res.status(200).send();
+            }
+          } else {
+            logger.error(
+              {
+                eventChannel: event.channel,
+              },
+              "Invalid channel object"
+            );
+            return apiError(req, res, {
+              api_error: {
+                type: "unexpected_response_format",
+                message: `Invalid channel object: ${event.channel} `,
+              },
+              status_code: 400,
+            });
+          }
+        }
+        // message on private channels to draw attention on data sensitivity
+        case "member_joined_channel": {
+          if (!event.channel) {
+            return apiError(req, res, {
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Missing channel in request body for channel_joined event",
+              },
+              status_code: 400,
+            });
+          }
+
           const slackConfig =
             await SlackConfigurationResource.fetchByActiveBot(teamId);
+
           if (!slackConfig) {
             return apiError(req, res, {
               api_error: {
@@ -233,135 +455,55 @@ const _webhookSlackAPIHandler = async (
               status_code: 404,
             });
           }
-          const connector = await ConnectorResource.fetchById(
-            slackConfig.connectorId
-          );
-          if (!connector) {
-            return apiError(req, res, {
-              api_error: {
-                type: "connector_not_found",
-                message: `Connector ${slackConfig.connectorId} not found`,
-              },
-              status_code: 404,
+          const myUserId = await getBotUserIdMemoized(slackConfig.connectorId);
+
+          // if the bot is not the one joining the channel, ignore
+          if (event.user !== myUserId) {
+            return res.status(200).send();
+          }
+
+          const slackClient = await getSlackClient(slackConfig.connectorId);
+
+          const channelInfo = await slackClient.conversations.info({
+            channel: event.channel,
+          });
+
+          if (channelInfo?.channel?.is_private) {
+            await slackClient.chat.postMessage({
+              channel: event.channel,
+              text: "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
             });
           }
 
-          const myUserId = await getBotUserIdMemoized(slackConfig.connectorId);
-          if (event.user === myUserId) {
-            // Message sent from the bot itself.
-            return res.status(200).send();
-          }
-          // Message from an actual user (a human)
-          await handleChatBot(req, res, logger);
-          break;
-        } else if (event.channel_type === "channel") {
+          return res.status(200).send();
+        }
+        /**
+         * `channel_left`, `channel_deleted` handler.
+         */
+        case "channel_left":
+        case "channel_deleted": {
           if (!event.channel) {
             return apiError(req, res, {
               api_error: {
                 type: "invalid_request_error",
-                message: "Missing channel in request body for message event",
+                message:
+                  "Missing channel in request body for [channel_left, channel_deleted] event",
               },
               status_code: 400,
             });
           }
 
-          const channel = event.channel;
           let err: Error | null = null;
 
-          if (event.thread_ts) {
-            const thread_ts = event.thread_ts;
-            const results = await Promise.all(
-              slackConfigurations.map(async (c) => {
-                const slackChannel = await SlackChannel.findOne({
-                  where: {
-                    connectorId: c.connectorId,
-                    slackChannelId: channel,
-                  },
-                });
-                if (!slackChannel) {
-                  logger.info(
-                    {
-                      connectorId: c.connectorId,
-                      slackChannelId: channel,
-                    },
-                    "Skipping wehbook: Slack channel not yet in DB"
-                  );
-                  return new Ok(undefined);
-                }
-                if (!["read", "read_write"].includes(slackChannel.permission)) {
-                  logger.info(
-                    {
-                      connectorId: c.connectorId,
-                      slackChannelId: channel,
-                      permission: slackChannel.permission,
-                    },
-                    "Ignoring message because channel permission is not read or read_write"
-                  );
-                  return new Ok(undefined);
-                }
-                return launchSlackSyncOneThreadWorkflow(
-                  c.connectorId,
-                  channel,
-                  thread_ts
-                );
-              })
-            );
-            for (const r of results) {
-              if (r.isErr()) {
-                err = r.error;
-              }
+          const results = await Promise.all(
+            slackConfigurations.map((c) => {
+              return launchSlackGarbageCollectWorkflow(c.connectorId);
+            })
+          );
+          for (const r of results) {
+            if (r.isErr()) {
+              err = r.error;
             }
-          } else if (event.ts) {
-            const ts = event.ts;
-            const results = await Promise.all(
-              slackConfigurations.map(async (c) => {
-                const slackChannel = await SlackChannel.findOne({
-                  where: {
-                    connectorId: c.connectorId,
-                    slackChannelId: channel,
-                  },
-                });
-                if (!slackChannel) {
-                  logger.info(
-                    {
-                      connectorId: c.connectorId,
-                      slackChannelId: channel,
-                    },
-                    "Skipping wehbook: Slack channel not yet in DB"
-                  );
-                  return new Ok(undefined);
-                }
-                if (!["read", "read_write"].includes(slackChannel.permission)) {
-                  logger.info(
-                    {
-                      connectorId: c.connectorId,
-                      slackChannelId: channel,
-                      permission: slackChannel.permission,
-                    },
-                    "Ignoring message because channel permission is not read or read_write"
-                  );
-                  return new Ok(undefined);
-                }
-                return launchSlackSyncOneMessageWorkflow(
-                  c.connectorId,
-                  channel,
-                  ts
-                );
-              })
-            );
-            for (const r of results) {
-              if (r.isErr()) {
-                err = r.error;
-              }
-            }
-          } else {
-            return apiError(req, res, {
-              api_error: {
-                type: "invalid_request_error",
-                message: `Webhook message without 'thread_ts' or message 'ts'.`,
-              },
-              status_code: 400,
-            });
           }
 
           if (err) {
@@ -376,146 +518,26 @@ const _webhookSlackAPIHandler = async (
             logger.info(
               {
                 type: event.type,
-                channel: event.channel,
-                ts: event.ts,
-                thread_ts: event.thread_ts,
-                user: event.user,
-                slackTeamId: teamId,
               },
               `Successfully processed Slack Webhook`
             );
             return res.status(200).send();
           }
         }
-        break;
       }
-      case "channel_created": {
-        if (isChannelCreatedEvent(event)) {
-          const onChannelCreationRes = await onChannelCreation({
-            event,
-            logger,
-          });
-          if (onChannelCreationRes.isErr()) {
-            return apiError(req, res, {
-              api_error: {
-                type: "internal_server_error",
-                message: onChannelCreationRes.error.message,
-              },
-              status_code: 500,
-            });
-          } else {
-            return res.status(200).send();
-          }
-        } else {
-          logger.error(
-            {
-              eventChannel: event.channel,
-            },
-            "Invalid channel object"
-          );
-          return apiError(req, res, {
-            api_error: {
-              type: "unexpected_response_format",
-              message: `Invalid channel object: ${event.channel} `,
-            },
-            status_code: 400,
-          });
-        }
-      }
-      // message on private channels to draw attention on data sensitivity
-      case "member_joined_channel": {
-        if (!event.channel) {
-          return apiError(req, res, {
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Missing channel in request body for channel_joined event",
-            },
-            status_code: 400,
-          });
-        }
-
-        const slackConfig =
-          await SlackConfigurationResource.fetchByActiveBot(teamId);
-
-        if (!slackConfig) {
-          return apiError(req, res, {
-            api_error: {
-              type: "connector_configuration_not_found",
-              message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
-            },
-            status_code: 404,
-          });
-        }
-        const myUserId = await getBotUserIdMemoized(slackConfig.connectorId);
-
-        // if the bot is not the one joining the channel, ignore
-        if (event.user !== myUserId) {
-          return res.status(200).send();
-        }
-
-        const slackClient = await getSlackClient(slackConfig.connectorId);
-
-        const channelInfo = await slackClient.conversations.info({
-          channel: event.channel,
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        // Prevent 500 when we receive webhooks after a de-auth which can happen at times.
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "connector_oauth_error",
+            message: e.message,
+          },
         });
-
-        if (channelInfo?.channel?.is_private) {
-          await slackClient.chat.postMessage({
-            channel: event.channel,
-            text: "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
-          });
-        }
-
-        return res.status(200).send();
       }
-      /**
-       * `channel_left`, `channel_deleted` handler.
-       */
-      case "channel_left":
-      case "channel_deleted": {
-        if (!event.channel) {
-          return apiError(req, res, {
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Missing channel in request body for [channel_left, channel_deleted] event",
-            },
-            status_code: 400,
-          });
-        }
-
-        let err: Error | null = null;
-
-        const results = await Promise.all(
-          slackConfigurations.map((c) => {
-            return launchSlackGarbageCollectWorkflow(c.connectorId);
-          })
-        );
-        for (const r of results) {
-          if (r.isErr()) {
-            err = r.error;
-          }
-        }
-
-        if (err) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: err.message,
-            },
-          });
-        } else {
-          logger.info(
-            {
-              type: event.type,
-            },
-            `Successfully processed Slack Webhook`
-          );
-          return res.status(200).send();
-        }
-      }
+      // Unexpected error
+      throw e;
     }
 
     // returns 200 on all non supported messages types because slack will retry
