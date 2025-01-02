@@ -754,13 +754,16 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     connectorId: number;
     expirationDate: Date;
     batchSize: number;
-  }): Promise<number[]> {
+  }): Promise<{ brandId: number; ticketId: number }[]> {
     const tickets = await ZendeskTicket.findAll({
-      attributes: ["ticketId"],
+      attributes: ["ticketId", "brandId"],
       where: { connectorId, ticketUpdatedAt: { [Op.lt]: expirationDate } },
       limit: batchSize,
     });
-    return tickets.map((ticket) => Number(ticket.get().ticketId));
+    return tickets.map((ticket) => {
+      const { ticketId, brandId } = ticket.get();
+      return { ticketId, brandId };
+    });
   }
 
   static async fetchByTicketId({
