@@ -535,7 +535,6 @@ export default function AssistantBuilder({
                       size="sm"
                       variant="outline"
                       tooltip="Inspect feedback and performance"
-                      disabled={!agentConfigurationId}
                     />
                   )}
                   {/* Template Button */}

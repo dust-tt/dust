@@ -55,10 +55,10 @@ import {
   useAgentConfigurationHistory,
 } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
-import { timeAgoFrom } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
-const FEEDBACKS_BATCH_SIZE = 50;
+const FEEDBACKS_PAGE_SIZE = 50;
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -122,40 +122,35 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {/* The agentConfigurationId is truthy iff not a new assistant */}
-      {(template || agentConfigurationId) && (
-        <div className="shrink-0 bg-white pt-5">
-          <Tabs
-            value={rightPanelStatus.tab ?? "Preview"}
-            onValueChange={(t) =>
-              openRightPanelTab(t as AssistantBuilderRightPanelTab)
-            }
-            className="hidden lg:flex"
-          >
-            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
-              {template && (
-                <TabsTrigger
-                  value="Template"
-                  label="Template"
-                  icon={MagicIcon}
-                />
-              )}
-              {agentConfigurationId && (
-                <TabsTrigger
-                  value="Performance"
-                  label="Performance"
-                  icon={LightbulbIcon}
-                />
-              )}
+      <div className="shrink-0 bg-white pt-5">
+        <Tabs
+          value={rightPanelStatus.tab ?? "Preview"}
+          onValueChange={(t) =>
+            openRightPanelTab(t as AssistantBuilderRightPanelTab)
+          }
+          className="hidden lg:flex"
+        >
+          <TabsList className="inline-flex items-center gap-2 border-b border-separator">
+            {template && (
+              <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+            )}
+            {/* The agentConfigurationId is truthy iff not a new assistant */}
+            {agentConfigurationId && (
               <TabsTrigger
-                value="Preview"
-                label="Preview"
-                icon={ChatBubbleBottomCenterTextIcon}
+                value="Performance"
+                label="Performance"
+                icon={LightbulbIcon}
               />
-            </TabsList>
-          </Tabs>
-        </div>
-      )}
+            )}
+            <TabsTrigger
+              value="Preview"
+              label="Preview"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+          </TabsList>
+        </Tabs>
+      </div>
+
       <div
         className={cn(
           "grow-1 mb-5 h-full overflow-y-auto border-structure-200",
@@ -302,7 +297,7 @@ export default function AssistantBuilderRightPanel({
             <Page.SectionHeader title="Feedback" />
             <FeedbacksSection
               owner={owner}
-              assistantId={agentConfigurationId}
+              agentConfigurationId={agentConfigurationId}
             />
           </div>
         )}
@@ -418,42 +413,44 @@ const TemplateDropDownMenu = ({
 
 const FeedbacksSection = ({
   owner,
-  assistantId,
+  agentConfigurationId,
 }: {
   owner: LightWorkspaceType;
-  assistantId: string;
+  agentConfigurationId: string;
 }) => {
-  // Used for pagination's lastValue: BatchId -> LastFeedbackId
-  const [lastIdForBatches, setLastIdForBatches] = useState<
-    Record<number, number>
-  >({});
+  // Used for pagination's lastValue: page index -> last feedback id in page
+  const [lastIdForPage, setLastIdForPage] = useState<Record<number, number>>(
+    {}
+  );
 
   const [paginationState, setPaginationState] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: FEEDBACKS_BATCH_SIZE,
+    pageSize: FEEDBACKS_PAGE_SIZE,
   });
 
   // Decreasing version, paginated decreasing id.
   const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
     useAgentConfigurationFeedbacksByDescVersion({
       workspaceId: owner.sId,
-      agentConfigurationId: assistantId ?? "",
+      agentConfigurationId: agentConfigurationId ?? "",
       withMetadata: true,
       paginationParams: {
-        limit: FEEDBACKS_BATCH_SIZE,
+        limit: FEEDBACKS_PAGE_SIZE,
         lastValue:
           paginationState.pageIndex === 0
             ? undefined
-            : lastIdForBatches[paginationState.pageIndex - 1],
+            : lastIdForPage[paginationState.pageIndex - 1],
         orderColumn: "id",
         orderDirection: "desc",
       },
+      disabled: !agentConfigurationId,
     });
 
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
     useAgentConfigurationHistory({
       workspaceId: owner.sId,
-      agentConfigurationId: assistantId,
+      agentConfigurationId: agentConfigurationId,
+      disabled: !agentConfigurationId,
     });
 
   const handleSetPagination = useCallback(
@@ -465,7 +462,7 @@ const FeedbacksSection = ({
       ) {
         return;
       }
-      setLastIdForBatches((prev) => ({
+      setLastIdForPage((prev) => ({
         ...prev,
         ...{
           [paginationState.pageIndex]:
@@ -479,7 +476,7 @@ const FeedbacksSection = ({
     [agentConfigurationFeedbacks, paginationState.pageIndex]
   );
 
-  const firstAgentConfigurationInBatch = useMemo(
+  const firstAgentConfigurationInPage = useMemo(
     () =>
       agentConfigurationHistory?.find(
         (c) =>
@@ -504,7 +501,7 @@ const FeedbacksSection = ({
     return <div className="mt-3 text-sm text-element-900">No feedbacks.</div>;
   }
 
-  if (!agentConfigurationHistory || !firstAgentConfigurationInBatch) {
+  if (!agentConfigurationHistory || !firstAgentConfigurationInPage) {
     return (
       <div className="mt-3 text-sm text-element-900">
         Error loading the previous agent versions.
@@ -516,10 +513,10 @@ const FeedbacksSection = ({
     <div>
       <div className="mb-2 flex flex-col">
         <AgentConfigurationVersionHeader
-          agentConfiguration={firstAgentConfigurationInBatch}
-          agentConfigurationVersion={firstAgentConfigurationInBatch?.version}
+          agentConfiguration={firstAgentConfigurationInPage}
+          agentConfigurationVersion={firstAgentConfigurationInPage?.version}
           isLatestVersion={
-            firstAgentConfigurationInBatch?.version ===
+            firstAgentConfigurationInPage?.version ===
             agentConfigurationHistory[0].version
           }
         />
@@ -591,13 +588,8 @@ function AgentConfigurationVersionHeader({
       if (!config.versionCreatedAt) {
         return `v${config.version}`;
       }
-      return new Date(config.versionCreatedAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-      });
+      const versionDate = new Date(config.versionCreatedAt);
+      return formatTimestampToFriendlyDate(versionDate.getTime(), "long");
     },
     [isLatestVersion]
   );
@@ -621,6 +613,8 @@ function FeedbackCard({
   const conversationUrl =
     feedback.conversationId &&
     feedback.messageId &&
+    // IMPORTANT: We need to check if the conversation is shared before displaying it.
+    // This check is redundant: the conversationId is null if the conversation is not shared.
     feedback.isConversationShared
       ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#${feedback.messageId}`
       : null;
