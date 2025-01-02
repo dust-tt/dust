@@ -8,6 +8,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
+const RESOURCE_KEYS = ["space", "dataSource", "dataSourceView"] as const;
+
+type ResourceKey = (typeof RESOURCE_KEYS)[number];
+
 // This is a type that represents the resources that can be extracted from an API route
 type KeyToResource = {
   space: SpaceResource;
@@ -27,8 +31,6 @@ type OptionsMap<U extends ResourceKey> = {
     requireCanWrite?: boolean;
   };
 };
-
-type ResourceKey = keyof KeyToResource;
 
 // Resolvers must be in reverse order : last one is applied first.
 const resolvers = [
@@ -128,7 +130,7 @@ export function withResourceFetchingFromRoute<
       options: Partial<OptionsMap<ResourceKey>>,
       sessionOrKeyAuth: A
     ) => {
-      const keys = Object.keys(options) as ResourceKey[];
+      const keys = RESOURCE_KEYS.filter((key) => key in options);
       if (!isResourceMap<U>(resources, keys)) {
         return apiError(req, res, {
           status_code: 400,
@@ -138,13 +140,7 @@ export function withResourceFetchingFromRoute<
           },
         });
       }
-      return handler(
-        req,
-        res,
-        auth,
-        resources as ResourceMap<U>,
-        sessionOrKeyAuth
-      );
+      return handler(req, res, auth, resources, sessionOrKeyAuth);
     }
   );
 
