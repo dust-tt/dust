@@ -4,9 +4,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 // This is a type that represents the resources that can be extracted from an API route
 type KeyToResource = {
@@ -25,7 +25,7 @@ type OptionsMap<U extends ResourceKey> = {
         requireCanRead?: boolean;
         requireCanList?: boolean;
       }
-    | boolean;
+    | true;
 };
 
 type ResourceKey = keyof KeyToResource;
@@ -339,7 +339,7 @@ function withDataSourceViewFromRoute<T, A extends SessionOrKeyAuthType>(
         dsvId
       );
 
-      let { space } = resources;
+      const { space } = resources;
       if (!space) {
         return apiError(req, res, {
           status_code: 400,
