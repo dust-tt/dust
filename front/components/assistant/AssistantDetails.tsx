@@ -1,9 +1,13 @@
 import {
   Avatar,
   ContentMessage,
-  ElementModal,
   InformationCircleIcon,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
@@ -52,26 +56,24 @@ export function AssistantDetails({
     [doUpdateScope]
   );
 
-  if (!agentConfiguration) {
-    return <></>;
-  }
-
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
         <Avatar
           name="Assistant avatar"
-          visual={agentConfiguration.pictureUrl}
+          visual={agentConfiguration?.pictureUrl}
           size="lg"
         />
         <div className="flex grow flex-col gap-1">
           <div
             className={classNames(
               "font-bold text-foreground",
-              agentConfiguration.name.length > 20 ? "text-md" : "text-lg"
+              agentConfiguration?.name && agentConfiguration.name.length > 20
+                ? "text-md"
+                : "text-lg"
             )}
-          >{`@${agentConfiguration.name}`}</div>
-          {agentConfiguration.status === "active" && (
+          >{`@${agentConfiguration?.name ?? ""}`}</div>
+          {agentConfiguration?.status === "active" && (
             <SharingDropdown
               owner={owner}
               agentConfiguration={agentConfiguration}
@@ -83,7 +85,7 @@ export function AssistantDetails({
           )}
         </div>
       </div>
-      {agentConfiguration.status === "active" && (
+      {agentConfiguration?.status === "active" && (
         <AssistantDetailsButtonBar
           owner={owner}
           agentConfiguration={agentConfiguration}
@@ -91,7 +93,7 @@ export function AssistantDetails({
         />
       )}
 
-      {agentConfiguration.status === "archived" && (
+      {agentConfiguration?.status === "archived" && (
         <ContentMessage
           variant="amber"
           title="This assistant has been deleted."
@@ -103,18 +105,20 @@ export function AssistantDetails({
       )}
 
       <div className="text-sm text-foreground">
-        {agentConfiguration.description}
+        {agentConfiguration?.description}
       </div>
-      <AssistantUsageSection
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-      />
+      {agentConfiguration && (
+        <AssistantUsageSection
+          agentConfiguration={agentConfiguration}
+          owner={owner}
+        />
+      )}
       <Page.Separator />
     </div>
   );
 
   const InstructionsSection = () =>
-    agentConfiguration.instructions ? (
+    agentConfiguration?.instructions ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
         <ReadOnlyTextArea content={agentConfiguration.instructions} />
@@ -124,21 +128,24 @@ export function AssistantDetails({
     );
 
   return (
-    <ElementModal
-      openOnElement={agentConfiguration}
-      title=""
-      onClose={() => onClose()}
-      hasChanged={false}
-      variant="side-sm"
-    >
-      <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
-        <DescriptionSection />
-        <AssistantActionsSection
-          agentConfiguration={agentConfiguration}
-          owner={owner}
-        />
-        <InstructionsSection />
-      </div>
-    </ElementModal>
+    <Sheet open={!!assistantId} onOpenChange={onClose}>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle />
+        </SheetHeader>
+        <SheetContainer>
+          {agentConfiguration && (
+            <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
+              <DescriptionSection />
+              <AssistantActionsSection
+                agentConfiguration={agentConfiguration}
+                owner={owner}
+              />
+              <InstructionsSection />
+            </div>
+          )}
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
