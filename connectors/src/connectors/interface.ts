@@ -18,7 +18,8 @@ export type UpdateConnectorErrorCode =
 export type RetrievePermissionsErrorCode =
   | "INVALID_PARENT_INTERNAL_ID"
   | "EXTERNAL_OAUTH_TOKEN_ERROR"
-  | "CONNECTOR_NOT_FOUND";
+  | "CONNECTOR_NOT_FOUND"
+  | "RATE_LIMIT_ERROR";
 
 export class ConnectorManagerError<T extends string> extends Error {
   code: T;
