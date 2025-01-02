@@ -115,18 +115,19 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
-  static async fetch({
+  static async getAgentConfigurationFeedbacksByDescVersion({
     workspace,
     agentConfiguration,
     paginationParams,
   }: {
     workspace: WorkspaceType;
-    agentConfiguration?: LightAgentConfigurationType;
+    agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
   }) {
     const where: WhereOptions<AgentMessageFeedback> = {
       // IMPORTANT: Necessary for global models who share ids across workspaces.
       workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.sId.toString(),
     };
 
     if (paginationParams.lastValue) {
@@ -134,9 +135,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where[paginationParams.orderColumn as any] = {
         [op]: paginationParams.lastValue,
       };
-    }
-    if (agentConfiguration) {
-      where.agentConfigurationId = agentConfiguration.sId.toString();
     }
 
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
@@ -168,6 +166,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
       order: [
+        ["agentConfigurationVersion", "DESC"],
         [
           paginationParams.orderColumn,
           paginationParams.orderDirection === "desc" ? "DESC" : "ASC",
