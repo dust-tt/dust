@@ -230,6 +230,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
       if (ticket.status === "deleted") {
         return deleteTicket({
           connectorId,
+          brandId,
           ticketId: ticket.id,
           dataSourceConfig,
           loggerArgs,
