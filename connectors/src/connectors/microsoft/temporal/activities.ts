@@ -860,14 +860,16 @@ async function updateDescendantsParentsInCore({
   const files = children.filter((child) => child.nodeType === "file");
   const folders = children.filter((child) => child.nodeType === "folder");
 
+  const parents = await getParents({
+    connectorId: folder.connectorId,
+    internalId: folder.internalId,
+    startSyncTs,
+  });
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: folder.internalId,
-    parents: await getParents({
-      connectorId: folder.connectorId,
-      internalId: folder.internalId,
-      startSyncTs,
-    }),
+    parents,
+    parentId: parents[1] || null,
     title: folder.name ?? "",
     mimeType: "application/vnd.dust.microsoft.folder",
   });
