@@ -107,13 +107,14 @@ export async function autoReadChannel(
       DUST_FRONT_API
     );
 
+    // Loop through all the matching patterns. Swallow errors and continue.
     const results = await concurrentExecutor(
       matchingPatterns,
       async (p) => {
         const searchParams = new URLSearchParams({
           kind: "custom",
           vaultId: p.spaceId,
-          datasourceId: connector.dataSourceId,
+          dataSourceId: connector.dataSourceId,
         });
 
         const searchRes = await dustAPI.searchDataSourceViews(searchParams);
