@@ -65,7 +65,9 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>>;
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  >;
 
   abstract setPermissions(params: {
     permissions: Record<string, ConnectorPermission>;
