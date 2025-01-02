@@ -244,7 +244,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => Number(brand.get().brandId));
+    return brands.map((brand) => brand.get().brandId);
   }
 
   static async fetchHelpCenterReadAllowedBrandIds(
@@ -254,7 +254,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, helpCenterPermission: "read" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => Number(brand.get().brandId));
+    return brands.map((brand) => brand.get().brandId);
   }
 
   static async fetchHelpCenterReadForbiddenBrandIds(
@@ -264,7 +264,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, helpCenterPermission: "none" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => Number(brand.get().brandId));
+    return brands.map((brand) => brand.get().brandId);
   }
 
   static async fetchHelpCenterReadAllowedBrands(
@@ -284,7 +284,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, ticketsPermission: "read" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => Number(brand.get().brandId));
+    return brands.map((brand) => brand.get().brandId);
   }
 
   static async fetchTicketsReadForbiddenBrandIds(
@@ -294,7 +294,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, ticketsPermission: "none" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => Number(brand.get().brandId));
+    return brands.map((brand) => brand.get().brandId);
   }
 
   static async fetchBrandsWithNoPermission(
@@ -304,7 +304,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId, ticketsPermission: "none" },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => Number(brand.get().brandId));
+    return brands.map((brand) => brand.get().brandId);
   }
 
   static async deleteBrandsWithNoPermission(
