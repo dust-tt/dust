@@ -1,13 +1,13 @@
 import type {
   ModelId,
   Result,
+  SlackAutoReadPattern,
   SlackbotWhitelistType,
   SlackConfigurationType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import type { SlackAutoReadPattern } from "@connectors/lib/models/slack";
 import {
   SlackBotWhitelistModel,
   SlackChannel,
@@ -60,9 +60,10 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     await SlackConfigurationModel.create(
       {
-        slackTeamId,
+        autoReadChannelPatterns: [],
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
-        connectorId: connectorId,
+        connectorId,
+        slackTeamId,
       },
       { transaction }
     );

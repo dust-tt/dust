@@ -1,10 +1,9 @@
 import { DustAPI } from "@dust-tt/client";
-import type { Result } from "@dust-tt/types";
+import type { Result, SlackAutoReadPattern } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
-import type { SlackAutoReadPattern } from "@connectors/connectors/slack/types";
 import { apiConfig } from "@connectors/lib/api/config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
