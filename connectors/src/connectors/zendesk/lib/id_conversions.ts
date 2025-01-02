@@ -39,6 +39,16 @@ export function getCategoryInternalId({
 
 export function getArticleInternalId({
   connectorId,
+  articleId,
+}: {
+  connectorId: ModelId;
+  articleId: number;
+}): string {
+  return `zendesk-article-${connectorId}-${articleId}`;
+}
+
+export function getArticleNewInternalId({
+  connectorId,
   brandId,
   articleId,
 }: {
@@ -61,6 +71,16 @@ export function getTicketsInternalId({
 
 export function getTicketInternalId({
   connectorId,
+  ticketId,
+}: {
+  connectorId: ModelId;
+  ticketId: number;
+}): string {
+  return `zendesk-ticket-${connectorId}-${ticketId}`;
+}
+
+export function getTicketNewInternalId({
+  connectorId,
   brandId,
   ticketId,
 }: {
@@ -80,63 +100,51 @@ function _getIdFromInternal(internalId: string, prefix: string): number | null {
     : null;
 }
 
-/**
- * Conversion from an internalId to a pair of IDs.
- */
-function _getIdsFromInternal(
-  internalId: string,
-  prefix: string
-): [number, number] | null {
-  if (!internalId.startsWith(prefix)) {
-    return null;
-  }
-  const ids = internalId
-    .replace(prefix, "")
-    .split("-")
-    .map((id) => parseInt(id, 10));
-  if (ids.length !== 2) {
-    return null;
-  }
-  return ids as [number, number];
-}
+export type InternalIdType =
+  | "brand"
+  | "help-center"
+  | "tickets"
+  | "article"
+  | "ticket";
 
-export function getIdsFromInternalId(
+export function getIdFromInternalId(
   connectorId: ModelId,
   internalId: string
 ):
+  | { type: InternalIdType; objectId: number }
   | {
-      type: "brand" | "help-center" | "tickets";
-      objectIds: { brandId: number };
-    }
-  | { type: "category"; objectIds: { brandId: number; categoryId: number } }
-  | { type: "article"; objectIds: { brandId: number; articleId: number } }
-  | { type: "ticket"; objectIds: { brandId: number; ticketId: number } } {
+      type: "category";
+      objectId: {
+        categoryId: number;
+        brandId: number;
+      };
+    } {
   let objectId = getBrandIdFromInternalId(connectorId, internalId);
   if (objectId) {
-    return { type: "brand", objectIds: { brandId: objectId } };
+    return { type: "brand", objectId };
   }
   objectId = getBrandIdFromHelpCenterId(connectorId, internalId);
   if (objectId) {
-    return { type: "help-center", objectIds: { brandId: objectId } };
+    return { type: "help-center", objectId };
   }
   objectId = getBrandIdFromTicketsId(connectorId, internalId);
   if (objectId) {
-    return { type: "tickets", objectIds: { brandId: objectId } };
+    return { type: "tickets", objectId };
   }
-  const categoryObjectIds = getCategoryIdFromInternalId(
+  const { categoryId, brandId } = getCategoryIdFromInternalId(
     connectorId,
     internalId
   );
-  if (categoryObjectIds) {
-    return { type: "category", objectIds: categoryObjectIds };
+  if (categoryId && brandId) {
+    return { type: "category", objectId: { categoryId, brandId } };
   }
-  const articleObjectIds = getArticleIdFromInternalId(connectorId, internalId);
-  if (articleObjectIds) {
-    return { type: "article", objectIds: articleObjectIds };
+  objectId = getArticleIdFromInternalId(connectorId, internalId);
+  if (objectId) {
+    return { type: "article", objectId };
   }
-  const ticketObjectIds = getTicketIdFromInternalId(connectorId, internalId);
-  if (ticketObjectIds) {
-    return { type: "ticket", objectIds: ticketObjectIds };
+  objectId = getTicketIdFromInternalId(connectorId, internalId);
+  if (objectId) {
+    return { type: "ticket", objectId };
   }
   logger.error(
     { connectorId, internalId },
@@ -165,19 +173,23 @@ function getBrandIdFromHelpCenterId(
 function getCategoryIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): { brandId: number; categoryId: number } | null {
+): { categoryId: number | null; brandId: number | null } {
   const prefix = `zendesk-category-${connectorId}-`;
-  const ids = _getIdsFromInternal(internalId, prefix);
-  return ids && { brandId: ids[0], categoryId: ids[1] };
+  if (!internalId.startsWith(prefix)) {
+    return { categoryId: null, brandId: null };
+  }
+  const [firstId, secondId] = internalId.replace(prefix, "").split("-");
+  if (firstId === undefined || secondId === undefined) {
+    return { categoryId: null, brandId: null };
+  }
+  return { brandId: parseInt(firstId), categoryId: parseInt(secondId) };
 }
 
 function getArticleIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): { brandId: number; articleId: number } | null {
-  const prefix = `zendesk-article-${connectorId}-`;
-  const ids = _getIdsFromInternal(internalId, prefix);
-  return ids && { brandId: ids[0], articleId: ids[1] };
+): number | null {
+  return _getIdFromInternal(internalId, `zendesk-article-${connectorId}-`);
 }
 
 function getBrandIdFromTicketsId(
@@ -193,8 +205,6 @@ function getBrandIdFromTicketsId(
 function getTicketIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): { brandId: number; ticketId: number } | null {
-  const prefix = `zendesk-ticket-${connectorId}-`;
-  const ids = _getIdsFromInternal(internalId, prefix);
-  return ids && { brandId: ids[0], ticketId: ids[1] };
+): number | null {
+  return _getIdFromInternal(internalId, `zendesk-ticket-${connectorId}-`);
 }

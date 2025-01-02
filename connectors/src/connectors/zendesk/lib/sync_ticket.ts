@@ -6,7 +6,10 @@ import type {
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
-import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import {
+  getTicketInternalId,
+  getTicketNewInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   deleteDataSourceDocument,
   renderDocumentTitleAndContent,
@@ -24,13 +27,11 @@ const turndownService = new TurndownService();
  */
 export async function deleteTicket({
   connectorId,
-  brandId,
   ticketId,
   dataSourceConfig,
   loggerArgs,
 }: {
   connectorId: ModelId;
-  brandId: number;
   ticketId: number;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
@@ -41,7 +42,7 @@ export async function deleteTicket({
   );
   await deleteDataSourceDocument(
     dataSourceConfig,
-    getTicketInternalId({ connectorId, brandId, ticketId })
+    getTicketInternalId({ connectorId, ticketId })
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
@@ -206,16 +207,26 @@ ${comments
       updatedAt: updatedAtDate,
     });
 
-    const documentId = getTicketInternalId({
+    const oldDocumentId = getTicketInternalId({
+      connectorId,
+      ticketId: ticket.id,
+    });
+    // TODO(2025-01-02 aubin): stop deleting old documents once the migration of internal IDs is done.
+    await deleteDataSourceDocument(dataSourceConfig, oldDocumentId, {
+      ...loggerArgs,
+      ticketId: ticket.id,
+    });
+
+    const parents = ticketInDb.getParentInternalIds(connectorId);
+    const newDocumentId = getTicketNewInternalId({
       connectorId,
       brandId,
       ticketId: ticket.id,
     });
 
-    const parents = ticketInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
-      documentId,
+      documentId: newDocumentId,
       documentContent,
       documentUrl: ticket.url,
       timestampMs: updatedAtDate.getTime(),
@@ -225,7 +236,7 @@ ${comments
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
       ],
-      parents,
+      parents: [newDocumentId, ...parents.slice(1)],
       parentId: parents[1],
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
@@ -233,6 +244,7 @@ ${comments
       mimeType: "application/vnd.dust.zendesk.ticket",
       async: true,
     });
+
     await ticketInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });
   } else {
     logger.warn(

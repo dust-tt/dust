@@ -27,7 +27,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import {
   getBrandInternalId,
-  getIdsFromInternalId,
+  getIdFromInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   retrieveAllSelectedNodes,
@@ -359,27 +359,26 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         );
       }
 
-      const { type, objectIds } = getIdsFromInternalId(connectorId, id);
-      const { brandId } = objectIds;
+      const { type, objectId } = getIdFromInternalId(connectorId, id);
       switch (type) {
         case "brand": {
           if (permission === "none") {
             const updatedBrand = await forbidSyncZendeskBrand({
               connectorId,
-              brandId,
+              brandId: objectId,
             });
             if (updatedBrand) {
-              toBeSignaledBrandIds.add(brandId);
+              toBeSignaledBrandIds.add(objectId);
             }
           }
           if (permission === "read") {
             const wasBrandUpdated = await allowSyncZendeskBrand({
               connectorId,
               connectionId,
-              brandId,
+              brandId: objectId,
             });
             if (wasBrandUpdated) {
-              toBeSignaledBrandIds.add(brandId);
+              toBeSignaledBrandIds.add(objectId);
             }
           }
           break;
@@ -388,20 +387,20 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           if (permission === "none") {
             const updatedBrandHelpCenter = await forbidSyncZendeskHelpCenter({
               connectorId,
-              brandId,
+              brandId: objectId,
             });
             if (updatedBrandHelpCenter) {
-              toBeSignaledHelpCenterIds.add(brandId);
+              toBeSignaledHelpCenterIds.add(updatedBrandHelpCenter.brandId);
             }
           }
           if (permission === "read") {
             const wasBrandUpdated = await allowSyncZendeskHelpCenter({
               connectorId,
               connectionId,
-              brandId,
+              brandId: objectId,
             });
             if (wasBrandUpdated) {
-              toBeSignaledHelpCenterIds.add(brandId);
+              toBeSignaledHelpCenterIds.add(objectId);
             }
           }
           break;
@@ -410,46 +409,46 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           if (permission === "none") {
             const updatedBrandTickets = await forbidSyncZendeskTickets({
               connectorId,
-              brandId,
+              brandId: objectId,
             });
             if (updatedBrandTickets) {
-              toBeSignaledTicketsIds.add(brandId);
+              toBeSignaledTicketsIds.add(updatedBrandTickets.brandId);
             }
           }
           if (permission === "read") {
             const wasBrandUpdated = await allowSyncZendeskTickets({
               connectorId,
               connectionId,
-              brandId,
+              brandId: objectId,
             });
             if (wasBrandUpdated) {
-              toBeSignaledTicketsIds.add(brandId);
+              toBeSignaledTicketsIds.add(objectId);
             }
           }
           break;
         }
         case "category": {
-          const { categoryId } = objectIds;
           if (permission === "none") {
             const updatedCategory = await forbidSyncZendeskCategory({
               connectorId,
-              categoryId,
+              categoryId: objectId.categoryId,
             });
             if (updatedCategory) {
-              toBeSignaledCategoryIds.add(categoryId);
-              categoryBrandIds[categoryId] = brandId;
+              toBeSignaledCategoryIds.add(updatedCategory.categoryId);
+              categoryBrandIds[updatedCategory.categoryId] =
+                updatedCategory.brandId;
             }
           }
           if (permission === "read") {
             const newCategory = await allowSyncZendeskCategory({
               connectorId,
               connectionId,
-              categoryId,
-              brandId,
+              categoryId: objectId.categoryId,
+              brandId: objectId.brandId,
             });
             if (newCategory) {
-              toBeSignaledCategoryIds.add(categoryId);
-              categoryBrandIds[categoryId] = brandId;
+              toBeSignaledCategoryIds.add(newCategory.categoryId);
+              categoryBrandIds[newCategory.categoryId] = newCategory.brandId;
             }
           }
           break;
@@ -458,7 +457,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         case "article":
         case "ticket":
           logger.error(
-            { connectorId, objectIds, type },
+            { connectorId, objectId },
             "[Zendesk] Cannot set permissions for a single article or ticket"
           );
           return new Err(
@@ -505,33 +504,33 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const articleIds: number[] = [];
     const ticketIds: number[] = [];
     internalIds.forEach((internalId) => {
-      const { type, objectIds } = getIdsFromInternalId(
+      const { type, objectId } = getIdFromInternalId(
         this.connectorId,
         internalId
       );
       switch (type) {
         case "brand": {
-          brandIds.push(objectIds.brandId);
+          brandIds.push(objectId);
           return;
         }
         case "tickets": {
-          brandTicketsIds.push(objectIds.brandId);
+          brandTicketsIds.push(objectId);
           return;
         }
         case "help-center": {
-          brandHelpCenterIds.push(objectIds.brandId);
+          brandHelpCenterIds.push(objectId);
           return;
         }
         case "category": {
-          categoryIds.push(objectIds.categoryId);
+          categoryIds.push(objectId.categoryId);
           return;
         }
         case "article": {
-          articleIds.push(objectIds.articleId);
+          articleIds.push(objectId);
           return;
         }
         case "ticket": {
-          ticketIds.push(objectIds.ticketId);
+          ticketIds.push(objectId);
           return;
         }
         default: {
@@ -598,8 +597,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string[], Error>> {
     const { connectorId } = this;
 
-    const { type, objectIds } = getIdsFromInternalId(connectorId, internalId);
-    const { brandId } = objectIds;
+    const { type, objectId } = getIdFromInternalId(connectorId, internalId);
     switch (type) {
       case "brand": {
         return new Ok([internalId]);
@@ -609,19 +607,20 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "tickets": {
         return new Ok([
           internalId,
-          getBrandInternalId({ connectorId, brandId }),
+          getBrandInternalId({ connectorId, brandId: objectId }),
         ]);
       }
       case "category": {
         const category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
-          categoryId: objectIds.categoryId,
+          categoryId: objectId.categoryId,
         });
         if (category) {
           return new Ok(category.getParentInternalIds(connectorId));
         } else {
+          const { brandId, categoryId } = objectId;
           logger.error(
-            { connectorId, ...objectIds },
+            { connectorId, categoryId, brandId },
             "[Zendesk] Category not found"
           );
           return new Err(new Error("Category not found"));
@@ -630,13 +629,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "article": {
         const article = await ZendeskArticleResource.fetchByArticleId({
           connectorId,
-          articleId: objectIds.articleId,
+          articleId: objectId,
         });
         if (article) {
           return new Ok(article.getParentInternalIds(connectorId));
         } else {
           logger.error(
-            { connectorId, ...objectIds },
+            { connectorId, articleId: objectId },
             "[Zendesk] Article not found"
           );
           return new Err(new Error("Article not found"));
@@ -645,13 +644,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "ticket": {
         const ticket = await ZendeskTicketResource.fetchByTicketId({
           connectorId,
-          ticketId: objectIds.ticketId,
+          ticketId: objectId,
         });
         if (ticket) {
           return new Ok(ticket.getParentInternalIds(connectorId));
         } else {
           logger.error(
-            { connectorId, ...objectIds },
+            { connectorId, ticketId: objectId },
             "[Zendesk] Ticket not found"
           );
           return new Err(new Error("Ticket not found"));
