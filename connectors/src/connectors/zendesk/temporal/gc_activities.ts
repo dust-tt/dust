@@ -260,6 +260,7 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
     async ({ categoryId, brandId }) => {
       const articles = await ZendeskArticleResource.fetchByCategoryIdReadOnly({
         connectorId,
+        brandId,
         categoryId,
       });
       if (articles.length === 0) {
@@ -369,7 +370,7 @@ export async function deleteTicketBatchActivity({
     (ticketId) =>
       deleteDataSourceDocument(
         dataSourceConfig,
-        getTicketInternalId({ connectorId, ticketId })
+        getTicketInternalId({ connectorId, brandId, ticketId })
       ),
     { concurrency: 10 }
   );
@@ -419,7 +420,7 @@ export async function deleteArticleBatchActivity({
     (articleId) =>
       deleteDataSourceDocument(
         dataSourceConfig,
-        getArticleInternalId({ connectorId, articleId })
+        getArticleInternalId({ connectorId, brandId, articleId })
       ),
     { concurrency: 10 }
   );

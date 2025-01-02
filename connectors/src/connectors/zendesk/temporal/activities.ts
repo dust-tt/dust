@@ -294,6 +294,7 @@ export async function syncZendeskCategoryActivity({
   }
   const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   if (!categoryInDb) {
@@ -350,12 +351,14 @@ export async function syncZendeskCategoryActivity({
  */
 export async function syncZendeskArticleBatchActivity({
   connectorId,
+  brandId,
   categoryId,
   currentSyncDateMs,
   forceResync,
   url,
 }: {
   connectorId: ModelId;
+  brandId: number;
   categoryId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
@@ -374,6 +377,7 @@ export async function syncZendeskArticleBatchActivity({
   };
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   if (!category) {

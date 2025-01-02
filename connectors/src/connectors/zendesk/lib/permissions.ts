@@ -297,7 +297,7 @@ export async function retrieveChildrenNodes({
         const articlesInDb =
           await ZendeskArticleResource.fetchByCategoryIdReadOnly({
             connectorId,
-            categoryId: objectIds.categoryId,
+            ...objectIds,
           });
         return articlesInDb.map((article) =>
           article.toContentNode(connectorId)

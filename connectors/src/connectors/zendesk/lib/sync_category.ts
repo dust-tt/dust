@@ -75,6 +75,7 @@ export async function syncCategory({
 }): Promise<void> {
   let categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId: category.id,
   });
   if (!categoryInDb) {

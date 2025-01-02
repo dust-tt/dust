@@ -135,6 +135,7 @@ export const zendesk = async ({
       });
       const ticketOnDb = await ZendeskTicketResource.fetchByTicketId({
         connectorId: connector.id,
+        brandId,
         ticketId,
       });
       return {

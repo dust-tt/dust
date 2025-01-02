@@ -142,6 +142,7 @@ export async function allowSyncZendeskCategory({
 }): Promise<ZendeskCategoryResource | null> {
   let category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
 
@@ -215,14 +216,17 @@ export async function allowSyncZendeskCategory({
  */
 export async function forbidSyncZendeskCategory({
   connectorId,
+  brandId,
   categoryId,
 }: {
   connectorId: ModelId;
+  brandId: number;
   categoryId: number;
 }): Promise<ZendeskCategoryResource | null> {
   // revoking the permissions for the category
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   if (!category) {

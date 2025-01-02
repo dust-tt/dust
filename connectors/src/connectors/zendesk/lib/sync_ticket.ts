@@ -24,11 +24,13 @@ const turndownService = new TurndownService();
  */
 export async function deleteTicket({
   connectorId,
+  brandId,
   ticketId,
   dataSourceConfig,
   loggerArgs,
 }: {
   connectorId: ModelId;
+  brandId: number;
   ticketId: number;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
@@ -39,10 +41,11 @@ export async function deleteTicket({
   );
   await deleteDataSourceDocument(
     dataSourceConfig,
-    getTicketInternalId({ connectorId, ticketId })
+    getTicketInternalId({ connectorId, brandId, ticketId })
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
+    brandId,
     ticketId,
   });
 }
@@ -73,6 +76,7 @@ export async function syncTicket({
 }) {
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
+    brandId,
     ticketId: ticket.id,
   });
 
@@ -206,6 +210,7 @@ ${comments
 
     const documentId = getTicketInternalId({
       connectorId,
+      brandId,
       ticketId: ticket.id,
     });
 

@@ -412,6 +412,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           if (permission === "none") {
             const updatedCategory = await forbidSyncZendeskCategory({
               connectorId,
+              brandId,
               categoryId,
             });
             if (updatedCategory) {
@@ -578,6 +579,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const { connectorId } = this;
 
     const { type, objectIds } = getIdFromInternalId(connectorId, internalId);
+    const { brandId } = objectIds;
     switch (type) {
       case "brand": {
         return new Ok([internalId]);
@@ -587,20 +589,19 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "tickets": {
         return new Ok([
           internalId,
-          getBrandInternalId({ connectorId, brandId: objectIds.brandId }),
+          getBrandInternalId({ connectorId, brandId }),
         ]);
       }
       case "category": {
         const category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
-          categoryId: objectIds.categoryId,
+          ...objectIds,
         });
         if (category) {
           return new Ok(category.getParentInternalIds(connectorId));
         } else {
-          const { brandId, categoryId } = objectIds;
           logger.error(
-            { connectorId, categoryId, brandId },
+            { connectorId, ...objectIds },
             "[Zendesk] Category not found"
           );
           return new Err(new Error("Category not found"));
@@ -609,7 +610,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "article": {
         const article = await ZendeskArticleResource.fetchByArticleId({
           connectorId,
-          articleId: objectIds.articleId,
+          ...objectIds,
         });
         if (article) {
           return new Ok(article.getParentInternalIds(connectorId));
@@ -624,7 +625,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "ticket": {
         const ticket = await ZendeskTicketResource.fetchByTicketId({
           connectorId,
-          ticketId: objectIds.ticketId,
+          ...objectIds,
         });
         if (ticket) {
           return new Ok(ticket.getParentInternalIds(connectorId));
