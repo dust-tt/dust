@@ -259,12 +259,15 @@ export async function retrieveChildrenNodes({
       isReadPermissionsOnly,
     });
   }
-  const { type, objectId } = getIdFromInternalId(connectorId, parentInternalId);
+  const { type, objectIds } = getIdFromInternalId(
+    connectorId,
+    parentInternalId
+  );
   switch (type) {
     case "brand": {
       return getBrandChildren(zendeskApiClient, {
         connectorId,
-        brandId: objectId,
+        brandId: objectIds.brandId,
         isReadPermissionsOnly,
         parentInternalId,
       });
@@ -272,7 +275,7 @@ export async function retrieveChildrenNodes({
     case "help-center": {
       return getHelpCenterChildren(zendeskApiClient, {
         connectorId,
-        brandId: objectId,
+        brandId: objectIds.brandId,
         isReadPermissionsOnly,
         parentInternalId,
       });
@@ -282,7 +285,7 @@ export async function retrieveChildrenNodes({
       if (isReadPermissionsOnly) {
         const ticketsInDb = await ZendeskTicketResource.fetchByBrandIdReadOnly({
           connectorId,
-          brandId: objectId,
+          brandId: objectIds.brandId,
         });
         return ticketsInDb.map((ticket) => ticket.toContentNode(connectorId));
       }
@@ -294,7 +297,7 @@ export async function retrieveChildrenNodes({
         const articlesInDb =
           await ZendeskArticleResource.fetchByCategoryIdReadOnly({
             connectorId,
-            categoryId: objectId.categoryId,
+            categoryId: objectIds.categoryId,
           });
         return articlesInDb.map((article) =>
           article.toContentNode(connectorId)

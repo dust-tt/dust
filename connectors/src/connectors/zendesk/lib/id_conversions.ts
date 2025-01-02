@@ -76,51 +76,43 @@ function _getIdFromInternal(internalId: string, prefix: string): number | null {
     : null;
 }
 
-export type InternalIdType =
-  | "brand"
-  | "help-center"
-  | "tickets"
-  | "article"
-  | "ticket";
-
 export function getIdFromInternalId(
   connectorId: ModelId,
   internalId: string
 ):
-  | { type: InternalIdType; objectId: number }
   | {
-      type: "category";
-      objectId: {
-        categoryId: number;
-        brandId: number;
-      };
-    } {
+      type: "brand" | "help-center" | "tickets";
+      objectIds: { brandId: number };
+    }
+  | { type: "category"; objectIds: { brandId: number; categoryId: number } }
+  | { type: "article"; objectIds: { articleId: number } }
+  | { type: "ticket"; objectIds: { ticketId: number } } {
   let objectId = getBrandIdFromInternalId(connectorId, internalId);
   if (objectId) {
-    return { type: "brand", objectId };
+    return { type: "brand", objectIds: { brandId: objectId } };
   }
   objectId = getBrandIdFromHelpCenterId(connectorId, internalId);
   if (objectId) {
-    return { type: "help-center", objectId };
+    return { type: "help-center", objectIds: { brandId: objectId } };
   }
   objectId = getBrandIdFromTicketsId(connectorId, internalId);
   if (objectId) {
-    return { type: "tickets", objectId };
+    return { type: "tickets", objectIds: { brandId: objectId } };
   }
   const { categoryId, brandId } = getCategoryIdFromInternalId(
     connectorId,
     internalId
   );
   if (categoryId && brandId) {
-    return { type: "category", objectId: { categoryId, brandId } };
+    return { type: "category", objectIds: { categoryId, brandId } };
   }
   objectId = getArticleIdFromInternalId(connectorId, internalId);
   if (objectId) {
-    return { type: "article", objectId };
+    return { type: "article", objectIds: { articleId: objectId } };
   }
   objectId = getTicketIdFromInternalId(connectorId, internalId);
   if (objectId) {
-    return { type: "ticket", objectId };
+    return { type: "ticket", objectIds: { ticketId: objectId } };
   }
   logger.error(
     { connectorId, internalId },
