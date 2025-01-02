@@ -317,9 +317,11 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   toJSON(): SlackConfigurationType {
     return {
+      // TODO(2025-01-02 AutoReadCleanUp) Remove once fully migrated to `autoReadChannelPatterns`.
+      autoReadChannelPattern: this.autoReadChannelPattern,
+      autoReadChannelPatterns: this.autoReadChannelPatterns,
       botEnabled: this.botEnabled,
       whitelistedDomains: this.whitelistedDomains?.map((d) => d),
-      autoReadChannelPattern: this.autoReadChannelPattern,
     };
   }
 }

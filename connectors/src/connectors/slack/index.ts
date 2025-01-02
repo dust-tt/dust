@@ -6,7 +6,12 @@ import type {
   SlackConfigurationType,
 } from "@dust-tt/types";
 import type { ContentNodesViewType } from "@dust-tt/types";
-import { Err, Ok, safeParseJSON } from "@dust-tt/types";
+import {
+  Err,
+  isSlackAutoReadPatterns,
+  Ok,
+  safeParseJSON,
+} from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
@@ -33,7 +38,6 @@ import {
   slackThreadIdentifierFromSlackThreadInternalId,
 } from "@connectors/connectors/slack/lib/utils";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import { isSlackAutoReadPatterns } from "@connectors/connectors/slack/types";
 import {
   ExternalOAuthTokenError,
   ProviderWorkflowError,
@@ -85,9 +89,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         dataSourceId: dataSourceConfig.dataSourceId,
       },
       {
-        slackTeamId: teamInfo.team.id,
-        botEnabled: configuration.botEnabled,
         autoReadChannelPattern: configuration.autoReadChannelPattern,
+        autoReadChannelPatterns: configuration.autoReadChannelPatterns,
+        botEnabled: configuration.botEnabled,
+        slackTeamId: teamInfo.team.id,
         whitelistedDomains: configuration.whitelistedDomains,
       }
     );
@@ -747,7 +752,16 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         const autoReadChannelPattern = await getAutoReadChannelPattern(
           this.connectorId
         );
+
         return autoReadChannelPattern;
+      }
+
+      case "autoReadChannelPatterns": {
+        const autoReadChannelPatterns = await getAutoReadChannelPatterns(
+          this.connectorId
+        );
+
+        return autoReadChannelPatterns;
       }
 
       default:
@@ -864,4 +878,24 @@ export async function getAutoReadChannelPattern(
     return new Ok(null);
   }
   return new Ok(slackConfiguration.autoReadChannelPattern);
+}
+
+export async function getAutoReadChannelPatterns(
+  connectorId: ModelId
+): Promise<Result<string | null, Error>> {
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+
+  if (!slackConfiguration.autoReadChannelPatterns) {
+    return new Ok(null);
+  }
+
+  return new Ok(JSON.stringify(slackConfiguration.autoReadChannelPatterns));
 }
