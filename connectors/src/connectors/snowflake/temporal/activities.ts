@@ -170,6 +170,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
             `${table.databaseName}.${table.schemaName}`,
             table.databaseName,
           ],
+          parentId: `${table.databaseName}.${table.schemaName}`,
           title: table.name,
           mimeType: "application/vnd.snowflake.table",
         });

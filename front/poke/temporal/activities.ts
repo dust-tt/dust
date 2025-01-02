@@ -38,6 +38,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Subscription } from "@app/lib/models/plan";
 import {
   DustAppSecret,
@@ -493,6 +494,7 @@ export async function deleteSpacesActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeConversationsSpace: true,
+    includeDeleted: true,
   });
 
   for (const space of spaces) {
@@ -532,6 +534,11 @@ export async function deleteWorkspaceActivity({
   });
   await ExtensionConfigurationResource.deleteForWorkspace(auth, {});
   await DustAppSecret.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+  await FeatureFlag.destroy({
     where: {
       workspaceId: workspace.id,
     },

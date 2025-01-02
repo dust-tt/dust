@@ -91,7 +91,6 @@ export function UserMenu({
                 label="Meeting transcripts"
                 icon={BookOpenIcon}
                 href={`/w/${owner.sId}/assistant/labs/transcripts`}
-                prefetch={false}
               />
             )}
             {featureFlags.includes("labs_trackers") && (
@@ -99,7 +98,6 @@ export function UserMenu({
                 label="Trackers"
                 icon={EyeIcon}
                 href={`/w/${owner.sId}/assistant/labs/trackers`}
-                prefetch={false}
               />
             )}
           </>
@@ -149,10 +147,11 @@ export function UserMenu({
 
         <DropdownMenuLabel label="Account" />
         <DropdownMenuItem
-          href="/api/auth/logout"
+          onClick={() => {
+            void router.push("/api/auth/logout");
+          }}
           icon={LogoutIcon}
           label="Sign&nbsp;out"
-          prefetch={false}
         />
       </DropdownMenuContent>
     </DropdownMenu>

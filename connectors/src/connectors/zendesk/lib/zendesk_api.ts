@@ -350,6 +350,30 @@ export async function fetchZendeskTickets(
 }
 
 /**
+ * Fetches a single ticket from the Zendesk API.
+ */
+export async function fetchZendeskTicket({
+  accessToken,
+  brandSubdomain,
+  ticketId,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  ticketId: number;
+}): Promise<ZendeskFetchedTicket | null> {
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.ticket ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/**
  * Fetches the number of tickets in a Brand from the Zendesk API.
  * Only counts tickets that have been solved, and that were updated within the retention period.
  */

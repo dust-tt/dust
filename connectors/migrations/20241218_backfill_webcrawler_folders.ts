@@ -76,11 +76,13 @@ makeScript(
             execute,
           });
           if (execute) {
+            const parents = getParents(folder);
             const result = await upsertDataSourceFolder({
               dataSourceConfig,
               folderId: folder.internalId,
               timestampMs: folder.updatedAt.getTime(),
-              parents: getParents(folder),
+              parents,
+              parentId: parents[1] || null,
               title: folder.url,
               mimeType: "application/vnd.dust.webcrawler.folder",
             });

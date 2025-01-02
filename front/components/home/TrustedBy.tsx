@@ -5,25 +5,20 @@ import { classNames } from "@app/lib/utils";
 
 export default function TrustedBy() {
   return (
-    <>
-      <div
-        className={classNames(
-          "col-span-12 flex flex-col items-center py-8",
-          "lg:col-span-12 lg:col-start-1",
-          "xl:col-span-10 xl:col-start-2"
-        )}
-      >
-        <H3 className="w-full text-center text-white">
-          Trusted by 500+ organizations
-        </H3>
-        <div
-          className={classNames(
-            "mt-8 w-full",
-            "grid grid-cols-2 place-items-center gap-1",
-            "sm:grid-cols-3 sm:gap-0",
-            "md:grid-cols-4 md:gap-0"
-          )}
-        >
+    <div
+      className={classNames(
+        "col-span-12 flex flex-col items-center py-4",
+        "lg:col-span-12 lg:col-start-1",
+        "xl:col-span-10 xl:col-start-2"
+      )}
+    >
+      <H3 className="w-full text-center text-white">
+        Trusted by 1000+ organizations
+      </H3>
+
+      <div className="mx-auto mt-8 w-full max-w-screen-2xl px-8">
+        <div className="grid grid-cols-1 place-items-center gap-8 md:grid-cols-2 lg:grid-cols-4">
+          {" "}
           <Image
             alt="alan"
             src="/static/landing/logos/alan.png"
@@ -72,8 +67,16 @@ export default function TrustedBy() {
             width={250}
             height={100}
           />
+          <div className="col-span-1 md:col-span-2 lg:col-span-2 lg:col-start-2">
+            <Image
+              alt="clay"
+              src="/static/landing/logos/clay.png"
+              width={250}
+              height={100}
+            />
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

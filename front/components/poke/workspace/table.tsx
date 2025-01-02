@@ -3,6 +3,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@dust-tt/types";
+import Link from "next/link";
 
 import {
   PokeTable,
@@ -38,6 +39,18 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>sId</PokeTableCell>
               <PokeTableCellWithCopy label={owner.sId} />
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Workspace Health</PokeTableCell>
+              <PokeTableCell>
+                <Link
+                  href={`https://metabase.dust.tt/dashboard/34-snowflake-workspace-health?end_date=2030-12-31&start_date=2024-01-01&tab=30-executive-summary&workspace_size_difference_margin=0.2&workspacesid=${owner.sId}`}
+                  target="_blank"
+                  className="text-xs text-action-400"
+                >
+                  Metabase
+                </Link>
+              </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Creation</PokeTableCell>

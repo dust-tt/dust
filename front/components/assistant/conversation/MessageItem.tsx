@@ -54,28 +54,31 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       useSubmitFunction(
         async ({
           thumb,
-          isToRemove,
+          shouldRemoveExistingFeedback,
           feedbackContent,
+          isConversationShared,
         }: {
           thumb: string;
-          isToRemove: boolean;
-          feedbackContent?: string | null;
+          shouldRemoveExistingFeedback: boolean;
+          feedbackContent: string | null;
+          isConversationShared: boolean;
         }) => {
           const res = await fetch(
             `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
             {
-              method: isToRemove ? "DELETE" : "POST",
+              method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
                 thumbDirection: thumb,
                 feedbackContent,
+                isConversationShared,
               }),
             }
           );
           if (res.ok) {
-            if (feedbackContent && !isToRemove) {
+            if (feedbackContent && !shouldRemoveExistingFeedback) {
               sendNotification({
                 title: "Feedback submitted",
                 description:
@@ -99,6 +102,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         ? {
             thumb: messageFeedback.thumbDirection,
             feedbackContent: messageFeedback.content,
+            isConversationShared: messageFeedback.isConversationShared,
           }
         : null,
       onSubmitThumb,

@@ -109,7 +109,12 @@ async function getContentNodesForManagedDataSourceView(
     });
 
     if (connectorsRes.isErr()) {
-      if (connectorsRes.error.type === "connector_rate_limit_error") {
+      if (
+        [
+          "connector_rate_limit_error",
+          "connector_authorization_error",
+        ].includes(connectorsRes.error.type)
+      ) {
         return new Err(new Error(connectorsRes.error.message));
       }
       return new Err(

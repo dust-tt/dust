@@ -35,6 +35,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  GLOBAL_AGENTS_SID,
   isRetrievalActionType,
   isWebsearchActionType,
   removeNulls,
@@ -94,19 +95,23 @@ export const FeedbackSelectorPopoverContent = ({
 
   return (
     agentLastAuthor && (
-      <div className="itemcenter mt-4 flex gap-2">
-        {agentLastAuthor?.image && (
-          <img
-            src={agentLastAuthor?.image}
-            alt={agentLastAuthor?.firstName}
-            className="h-8 w-8 rounded-full"
-          />
-        )}
+      <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Your feedback will be sent to:
-          <br />
-          {agentLastAuthor?.firstName} {agentLastAuthor?.lastName}
+          Your feedback is available to editors of the assistant. The last
+          assistant editor is:
         </Page.P>
+        <div className="flex flex-row items-center gap-2">
+          {agentLastAuthor.image && (
+            <img
+              src={agentLastAuthor.image}
+              alt={agentLastAuthor.firstName}
+              className="h-8 w-8 rounded-full"
+            />
+          )}
+          <Page.P variant="primary">
+            {agentLastAuthor.firstName} {agentLastAuthor.lastName}
+          </Page.P>
+        </div>
       </div>
     )
   );
@@ -152,6 +157,12 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+
+  const isGlobalAgent = useMemo(() => {
+    return Object.values(GLOBAL_AGENTS_SID).includes(
+      message.configuration.sId as GLOBAL_AGENTS_SID
+    );
+  }, [message.configuration.sId]);
 
   const shouldStream = (() => {
     if (message.status !== "created") {
@@ -428,14 +439,19 @@ export function AgentMessage({
             className="text-muted-foreground"
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
-          <div key="separator" className="flex items-center">
-            <div className="h-5 w-px bg-border" />
-          </div>,
-          <FeedbackSelector
-            key="feedback-selector"
-            {...messageFeedback}
-            getPopoverInfo={PopoverContent}
-          />,
+          // One cannot leave feedback on global agents.
+          ...(isGlobalAgent
+            ? []
+            : [
+                <div key="separator" className="flex items-center">
+                  <div className="h-5 w-px bg-border" />
+                </div>,
+                <FeedbackSelector
+                  key="feedback-selector"
+                  {...messageFeedback}
+                  getPopoverInfo={PopoverContent}
+                />,
+              ]),
         ];
 
   // References logic.

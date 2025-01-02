@@ -342,7 +342,7 @@ export const TrackerBuilder = ({
         viewType="documents"
       />
 
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 pb-12">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 pb-12 pt-2">
         <div className="flex">
           <div className="flex flex-grow" />
           <div className="flex flex-shrink-0 gap-2">

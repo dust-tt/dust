@@ -149,7 +149,7 @@ export async function getParentIdsForArticle({
   connectorId: number;
   parentCollectionId: string;
   helpCenterId: string;
-}) {
+}): Promise<[string, string, ...string[], string]> {
   // Get collection parents
   const collectionParents = await getParentIdsForCollection({
     connectorId,
@@ -168,11 +168,8 @@ export async function getParentIdsForCollection({
   connectorId: number;
   collectionId: string;
   helpCenterId: string;
-}) {
-  // Initialize the internal IDs array with the collection ID.
-  const parentIds = [
-    getHelpCenterCollectionInternalId(connectorId, collectionId),
-  ];
+}): Promise<[string, ...string[], string]> {
+  const parentIds = [];
 
   // Fetch and add any parent collection Ids.
   let currentParentId = collectionId;
@@ -196,8 +193,10 @@ export async function getParentIdsForCollection({
     );
   }
 
-  // Add the help center internal ID.
-  parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
-
-  return parentIds;
+  // Add the collection ID and the help center internal ID.
+  return [
+    getHelpCenterCollectionInternalId(connectorId, collectionId),
+    ...parentIds,
+    getHelpCenterInternalId(connectorId, helpCenterId),
+  ];
 }

@@ -41,7 +41,7 @@ export async function getConfluencePageParentIds(
   connectorId: ModelId,
   page: RawConfluencePage,
   cachedHierarchy?: Record<string, string | null>
-) {
+): Promise<[string, ...string[], string]> {
   const pageIdToParentIdMap =
     cachedHierarchy ?? (await getSpaceHierarchy(connectorId, page.spaceId));
 

@@ -693,6 +693,10 @@ const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });
 
+const ExtensionWorkspaceSchema = WorkspaceSchema.extend({
+  blacklistedDomains: z.array(z.string()).nullable(),
+});
+
 const UserProviderSchema = FlexibleEnumSchema<
   "auth0" | "github" | "google" | "okta" | "samlp" | "waad"
 >().nullable();
@@ -2199,7 +2203,11 @@ export type FileUploadedRequestResponseType = z.infer<
 >;
 
 export const MeResponseSchema = z.object({
-  user: UserSchema.and(z.object({ workspaces: LightWorkspaceSchema.array() })),
+  user: UserSchema.and(
+    z.object({
+      workspaces: WorkspaceSchema.array().or(ExtensionWorkspaceSchema.array()),
+    })
+  ),
 });
 
 export type MeResponseType = z.infer<typeof MeResponseSchema>;

@@ -8,6 +8,7 @@ import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import {
@@ -282,15 +283,28 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     if (filterPermission === "read" && parentInternalId === null) {
       // retrieving all the selected nodes despite the hierarchy
       return new Ok(await retrieveAllSelectedNodes(this.connectorId));
     }
 
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      logger.error(
+        { connectorId: this.connectorId },
+        "[Zendesk] Connector not found."
+      );
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
+    }
+
     try {
       const nodes = await retrieveChildrenNodes({
-        connectorId: this.connectorId,
+        connector,
         parentInternalId,
         filterPermission,
         viewType: "documents",
@@ -298,7 +312,16 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       nodes.sort((a, b) => a.title.localeCompare(b.title));
       return new Ok(nodes);
     } catch (e) {
-      return new Err(e as Error);
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Authorization erorr, please re-authorize Zendesk."
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
   }
 

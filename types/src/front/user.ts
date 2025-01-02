@@ -46,6 +46,10 @@ export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
 };
 
+export type ExtensionWorkspaceType = WorkspaceType & {
+  blacklistedDomains: string[] | null;
+};
+
 export type UserProviderType =
   | "auth0"
   | "github"
@@ -69,7 +73,11 @@ export type UserType = {
 };
 
 export type UserTypeWithWorkspaces = UserType & {
-  workspaces: LightWorkspaceType[];
+  workspaces: WorkspaceType[];
+};
+
+export type UserTypeWithExtensionWorkspaces = UserType & {
+  workspaces: ExtensionWorkspaceType[];
 };
 
 export type UserMetadataType = {

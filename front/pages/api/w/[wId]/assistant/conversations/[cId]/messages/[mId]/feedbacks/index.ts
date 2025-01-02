@@ -18,6 +18,7 @@ import { apiError } from "@app/logger/withlogging";
 export const MessageFeedbackRequestBodySchema = t.type({
   thumbDirection: t.string,
   feedbackContent: t.union([t.string, t.undefined, t.null]),
+  isConversationShared: t.union([t.boolean, t.undefined]),
 });
 
 async function handler(
@@ -86,6 +87,7 @@ async function handler(
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
         content: bodyValidation.right.feedbackContent || "",
+        isConversationShared: bodyValidation.right.isConversationShared,
       });
 
       if (created.isErr()) {
