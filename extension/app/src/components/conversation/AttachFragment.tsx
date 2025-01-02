@@ -1,4 +1,4 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import { Button, CameraIcon, DocumentPlusIcon } from "@dust-tt/sparkle";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useCurrentDomain } from "@extension/hooks/useCurrentDomain";
@@ -6,7 +6,7 @@ import type { FileUploaderService } from "@extension/hooks/useFileUploaderServic
 import { useContext, useEffect } from "react";
 
 type AttachFragmentProps = {
-  owner: LightWorkspaceType;
+  owner: ExtensionWorkspaceType;
   fileUploaderService: FileUploaderService;
   isLoading: boolean;
 };
