@@ -140,9 +140,9 @@ export async function fetchRevokedWorkspace(
   return new Ok(workspace);
 }
 
-export async function getUserWithWorkspaces<T extends boolean>(
+export async function getUserWithWorkspaces<T extends boolean = false>(
   user: UserResource,
-  populateExtensionConfig: T = false as T
+  populateExtensionConfig: T
 ): Promise<
   T extends true ? UserTypeWithExtensionWorkspaces : UserTypeWithWorkspaces
 > {
