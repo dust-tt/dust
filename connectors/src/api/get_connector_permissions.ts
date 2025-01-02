@@ -8,7 +8,6 @@ import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { augmentContentNodesWithParentIds } from "@connectors/lib/api/content_nodes";
-import { ProviderWorkflowError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
