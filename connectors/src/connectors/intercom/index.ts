@@ -353,7 +353,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
-            "Authorization erorr, please re-authorize Intercom."
+            "Authorization error, please re-authorize Intercom."
           )
         );
       }
