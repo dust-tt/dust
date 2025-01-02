@@ -17,6 +17,7 @@ export type UpdateConnectorErrorCode =
 
 export type RetrievePermissionsErrorCode =
   | "INVALID_PARENT_INTERNAL_ID"
+  | "INVALID_FILTER_PERMISSION"
   | "EXTERNAL_OAUTH_TOKEN_ERROR"
   | "CONNECTOR_NOT_FOUND"
   | "RATE_LIMIT_ERROR";

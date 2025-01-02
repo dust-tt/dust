@@ -89,11 +89,12 @@ const _getConnectorPermissions = async (
   if (pRes.isErr()) {
     switch (pRes.error.code) {
       case "INVALID_PARENT_INTERNAL_ID":
+      case "INVALID_FILTER_PERMISSION":
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid parentInternalId",
+            message: pRes.error.message,
           },
         });
       case "CONNECTOR_NOT_FOUND":
@@ -101,7 +102,7 @@ const _getConnectorPermissions = async (
           status_code: 404,
           api_error: {
             type: "connector_not_found",
-            message: "Connector not found",
+            message: pRes.error.message,
           },
         });
       case "EXTERNAL_OAUTH_TOKEN_ERROR":

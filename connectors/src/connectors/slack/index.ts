@@ -433,6 +433,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           )
         );
       }
+      // Unanhdled error, throwing to get a 500.
       throw e;
     }
   }
