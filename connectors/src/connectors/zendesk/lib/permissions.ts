@@ -11,7 +11,7 @@ import {
   getBrandInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
-  getIdsFromInternalId,
+  getIdFromInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -98,12 +98,13 @@ async function getRootLevelContentNodes(
  */
 async function getBrandChildren(
   zendeskApiClient: Client,
-  connector: ConnectorResource,
   {
+    connectorId,
     brandId,
     isReadPermissionsOnly,
     parentInternalId,
   }: {
+    connectorId: ModelId;
     brandId: number;
     parentInternalId: string;
     isReadPermissionsOnly: boolean;
@@ -111,27 +112,27 @@ async function getBrandChildren(
 ): Promise<ContentNode[]> {
   const nodes = [];
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
-    connectorId: connector.id,
+    connectorId,
     brandId,
   });
   if (isReadPermissionsOnly) {
     if (brandInDb?.ticketsPermission === "read") {
       nodes.push(
-        brandInDb.getTicketsContentNode(connector.id, { expandable: true })
+        brandInDb.getTicketsContentNode(connectorId, { expandable: true })
       );
     }
     if (
       brandInDb?.hasHelpCenter &&
       brandInDb?.helpCenterPermission === "read"
     ) {
-      nodes.push(brandInDb.getHelpCenterContentNode(connector.id));
+      nodes.push(brandInDb.getHelpCenterContentNode(connectorId));
     }
   } else {
     const ticketsNode: ContentNode = brandInDb?.getTicketsContentNode(
-      connector.id
+      connectorId
     ) ?? {
       provider: "zendesk",
-      internalId: getTicketsInternalId({ connectorId: connector.id, brandId }),
+      internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: parentInternalId,
       type: "folder",
       title: "Tickets",
@@ -149,13 +150,10 @@ async function getBrandChildren(
 
     if (hasHelpCenter) {
       const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
-        connector.id
+        connectorId
       ) ?? {
         provider: "zendesk",
-        internalId: getHelpCenterInternalId({
-          connectorId: connector.id,
-          brandId,
-        }),
+        internalId: getHelpCenterInternalId({ connectorId, brandId }),
         parentInternalId: parentInternalId,
         type: "folder",
         title: "Help Center",
@@ -255,14 +253,15 @@ export async function retrieveChildrenNodes({
       isReadPermissionsOnly,
     });
   }
-  const { type, objectIds } = getIdsFromInternalId(
+  const { type, objectId } = getIdFromInternalId(
     connector.id,
     parentInternalId
   );
   switch (type) {
     case "brand": {
-      return getBrandChildren(zendeskApiClient, connector, {
-        brandId: objectIds.brandId,
+      return getBrandChildren(zendeskApiClient, {
+        connectorId: connector.id,
+        brandId: objectId,
         isReadPermissionsOnly,
         parentInternalId,
       });
@@ -270,7 +269,7 @@ export async function retrieveChildrenNodes({
     case "help-center": {
       return getHelpCenterChildren(zendeskApiClient, {
         connectorId: connector.id,
-        brandId: objectIds.brandId,
+        brandId: objectId,
         isReadPermissionsOnly,
         parentInternalId,
       });
@@ -280,7 +279,7 @@ export async function retrieveChildrenNodes({
       if (isReadPermissionsOnly) {
         const ticketsInDb = await ZendeskTicketResource.fetchByBrandIdReadOnly({
           connectorId: connector.id,
-          brandId: objectIds.brandId,
+          brandId: objectId,
         });
         return ticketsInDb.map((ticket) => ticket.toContentNode(connector.id));
       }
@@ -292,7 +291,7 @@ export async function retrieveChildrenNodes({
         const articlesInDb =
           await ZendeskArticleResource.fetchByCategoryIdReadOnly({
             connectorId: connector.id,
-            categoryId: objectIds.categoryId,
+            categoryId: objectId.categoryId,
           });
         return articlesInDb.map((article) =>
           article.toContentNode(connector.id)

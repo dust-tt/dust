@@ -6,7 +6,10 @@ import type {
   ZendeskFetchedSection,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
-import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import {
+  getArticleInternalId,
+  getArticleNewInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   deleteDataSourceDocument,
   renderDocumentTitleAndContent,
@@ -25,7 +28,6 @@ const turndownService = new TurndownService();
  */
 export async function deleteArticle(
   connectorId: ModelId,
-  brandId: number,
   articleId: number,
   dataSourceConfig: DataSourceConfig,
   loggerArgs: Record<string, string | number | null>
@@ -36,7 +38,7 @@ export async function deleteArticle(
   );
   await deleteDataSourceDocument(
     dataSourceConfig,
-    getArticleInternalId({ connectorId, brandId, articleId })
+    getArticleInternalId({ connectorId, articleId })
   );
   await ZendeskArticleResource.deleteByArticleId({ connectorId, articleId });
 }
@@ -147,16 +149,27 @@ export async function syncArticle({
       updatedAt,
     });
 
-    const documentId = getArticleInternalId({
+    const oldDocumentId = getArticleInternalId({
+      connectorId,
+      articleId: article.id,
+    });
+
+    // TODO(2025-01-02 aubin): stop deleting old documents once the migration of internal IDs is done.
+    await deleteDataSourceDocument(dataSourceConfig, oldDocumentId, {
+      ...loggerArgs,
+      articleId: article.id,
+    });
+
+    const parents = articleInDb.getParentInternalIds(connectorId);
+    const newDocumentId = getArticleNewInternalId({
       connectorId,
       brandId: category.brandId,
       articleId: article.id,
     });
 
-    const parents = articleInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
-      documentId,
+      documentId: newDocumentId,
       documentContent,
       documentUrl: article.html_url,
       timestampMs: updatedAt.getTime(),
@@ -165,7 +178,7 @@ export async function syncArticle({
         `createdAt:${createdAt.getTime()}`,
         `updatedAt:${updatedAt.getTime()}`,
       ],
-      parents,
+      parents: [newDocumentId, ...parents.slice(1)],
       parentId: parents[1],
       loggerArgs: { ...loggerArgs, articleId: article.id },
       upsertContext: { sync_type: "batch" },
@@ -173,6 +186,7 @@ export async function syncArticle({
       mimeType: "application/vnd.dust.zendesk.article",
       async: true,
     });
+
     await articleInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });
   } else {
     logger.warn(

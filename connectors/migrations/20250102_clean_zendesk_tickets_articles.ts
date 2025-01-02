@@ -1,6 +1,10 @@
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
+import {
+  getArticleInternalId,
+  getTicketInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
@@ -35,7 +39,10 @@ async function cleanTickets(
           return deleteDataSourceDocument(
             dataSourceConfigFromConnector(connector),
             // this is the old internal ID
-            `zendesk-ticket-${connector.id}-${ticket.ticketId}`
+            getTicketInternalId({
+              connectorId: connector.id,
+              ticketId: ticket.ticketId,
+            })
           );
         },
         { concurrency: DOCUMENT_CONCURRENCY }
@@ -82,7 +89,10 @@ async function cleanArticles(
           return deleteDataSourceDocument(
             dataSourceConfigFromConnector(connector),
             // this is the old internal ID
-            `zendesk-article-${connector.id}-${article.articleId}`
+            getArticleInternalId({
+              connectorId: connector.id,
+              articleId: article.articleId,
+            })
           );
         },
         { concurrency: DOCUMENT_CONCURRENCY }

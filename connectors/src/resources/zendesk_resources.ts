@@ -722,7 +722,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     const { brandId, ticketId } = this;
     return {
       provider: "zendesk",
-      internalId: getTicketInternalId({ connectorId, brandId, ticketId }),
+      internalId: getTicketInternalId({ connectorId, ticketId }),
       parentInternalId: getTicketsInternalId({ connectorId, brandId }),
       type: "file",
       title: this.subject,
@@ -738,7 +738,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     const { brandId, ticketId } = this;
     /// Tickets have two parents: the Tickets and the Brand.
     return [
-      getTicketInternalId({ connectorId, brandId, ticketId }),
+      getTicketInternalId({ connectorId, ticketId }),
       getTicketsInternalId({ connectorId, brandId }),
       getBrandInternalId({ connectorId, brandId }),
     ];
@@ -752,16 +752,13 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     connectorId: number;
     expirationDate: Date;
     batchSize: number;
-  }): Promise<{ brandId: number; ticketId: number }[]> {
+  }): Promise<number[]> {
     const tickets = await ZendeskTicket.findAll({
-      attributes: ["brandId", "ticketId"],
+      attributes: ["ticketId"],
       where: { connectorId, ticketUpdatedAt: { [Op.lt]: expirationDate } },
       limit: batchSize,
     });
-    return tickets.map((ticket) => {
-      const { ticketId, brandId } = ticket.get();
-      return { ticketId, brandId };
-    });
+    return tickets.map((ticket) => Number(ticket.get().ticketId));
   }
 
   static async fetchByTicketId({
@@ -926,7 +923,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     const { brandId, categoryId, articleId } = this;
     return {
       provider: "zendesk",
-      internalId: getArticleInternalId({ connectorId, brandId, articleId }),
+      internalId: getArticleInternalId({ connectorId, articleId }),
       parentInternalId: getCategoryInternalId({
         connectorId,
         brandId,
@@ -946,7 +943,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     const { brandId, categoryId, articleId } = this;
     /// Articles have three parents: the Category, the Help Center and the Brand.
     return [
-      getArticleInternalId({ connectorId, brandId, articleId }),
+      getArticleInternalId({ connectorId, articleId }),
       getCategoryInternalId({ connectorId, brandId, categoryId }),
       getHelpCenterInternalId({ connectorId, brandId }),
       getBrandInternalId({ connectorId, brandId }),

@@ -41,11 +41,7 @@ export async function deleteCategory({
     (article) =>
       deleteDataSourceDocument(
         dataSourceConfig,
-        getArticleInternalId({
-          connectorId,
-          brandId,
-          articleId: article.articleId,
-        })
+        getArticleInternalId({ connectorId, articleId: article.articleId })
       ),
     { concurrency: 10 }
   );
