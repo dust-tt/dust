@@ -234,20 +234,15 @@ async function getHelpCenterChildren(
  * Retrieves the children nodes of a node identified by its internal ID.
  */
 export async function retrieveChildrenNodes({
-  connectorId,
+  connector,
   parentInternalId,
   filterPermission,
 }: {
-  connectorId: ModelId;
+  connector: ConnectorResource;
   parentInternalId: string | null;
   filterPermission: ConnectorPermission | null;
   viewType: ContentNodesViewType;
 }): Promise<ContentNode[]> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    logger.error({ connectorId }, "[Zendesk] Connector not found.");
-    throw new Error("Connector not found");
-  }
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
@@ -255,15 +250,18 @@ export async function retrieveChildrenNodes({
 
   if (!parentInternalId) {
     return getRootLevelContentNodes(zendeskApiClient, {
-      connectorId,
+      connectorId: connector.id,
       isReadPermissionsOnly,
     });
   }
-  const { type, objectId } = getIdFromInternalId(connectorId, parentInternalId);
+  const { type, objectId } = getIdFromInternalId(
+    connector.id,
+    parentInternalId
+  );
   switch (type) {
     case "brand": {
       return getBrandChildren(zendeskApiClient, {
-        connectorId,
+        connectorId: connector.id,
         brandId: objectId,
         isReadPermissionsOnly,
         parentInternalId,
@@ -271,7 +269,7 @@ export async function retrieveChildrenNodes({
     }
     case "help-center": {
       return getHelpCenterChildren(zendeskApiClient, {
-        connectorId,
+        connectorId: connector.id,
         brandId: objectId,
         isReadPermissionsOnly,
         parentInternalId,
@@ -281,10 +279,10 @@ export async function retrieveChildrenNodes({
     case "tickets": {
       if (isReadPermissionsOnly) {
         const ticketsInDb = await ZendeskTicketResource.fetchByBrandIdReadOnly({
-          connectorId,
+          connectorId: connector.id,
           brandId: objectId,
         });
-        return ticketsInDb.map((ticket) => ticket.toContentNode(connectorId));
+        return ticketsInDb.map((ticket) => ticket.toContentNode(connector.id));
       }
       return [];
     }
@@ -293,11 +291,11 @@ export async function retrieveChildrenNodes({
       if (isReadPermissionsOnly) {
         const articlesInDb =
           await ZendeskArticleResource.fetchByCategoryIdReadOnly({
-            connectorId,
+            connectorId: connector.id,
             categoryId: objectId.categoryId,
           });
         return articlesInDb.map((article) =>
-          article.toContentNode(connectorId)
+          article.toContentNode(connector.id)
         );
       }
       return [];

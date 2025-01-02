@@ -8,6 +8,7 @@ import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import {
@@ -282,24 +283,34 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     if (filterPermission === "read" && parentInternalId === null) {
       // retrieving all the selected nodes despite the hierarchy
       return new Ok(await retrieveAllSelectedNodes(this.connectorId));
     }
 
-    try {
-      const nodes = await retrieveChildrenNodes({
-        connectorId: this.connectorId,
-        parentInternalId,
-        filterPermission,
-        viewType: "documents",
-      });
-      nodes.sort((a, b) => a.title.localeCompare(b.title));
-      return new Ok(nodes);
-    } catch (e) {
-      return new Err(e as Error);
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      logger.error(
+        { connectorId: this.connectorId },
+        "[Zendesk] Connector not found."
+      );
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
+
+    const nodes = await retrieveChildrenNodes({
+      connector,
+      parentInternalId,
+      filterPermission,
+      viewType: "documents",
+    });
+
+    nodes.sort((a, b) => a.title.localeCompare(b.title));
+    return new Ok(nodes);
   }
 
   /**
