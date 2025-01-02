@@ -28,6 +28,7 @@ export { default as CollapseButton } from "./CollapseButton";
 export { Collapsible } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
+export { Container } from "./Container";
 export { ContentMessage } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
 export {
