@@ -6,7 +6,10 @@ import type {
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
-import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import {
+  getTicketInternalId,
+  getTicketNewInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   deleteDataSourceDocument,
   renderDocumentTitleAndContent,
@@ -230,6 +233,35 @@ ${comments
       mimeType: "application/vnd.dust.zendesk.ticket",
       async: true,
     });
+
+    // TODO(2025-01-02 aubin): stop upserting documents x2 once the migration of internal IDs is done.
+    const newDocumentId = getTicketNewInternalId({
+      connectorId,
+      brandId,
+      ticketId: ticket.id,
+    });
+
+    await upsertDataSourceDocument({
+      dataSourceConfig,
+      documentId: newDocumentId,
+      documentContent,
+      documentUrl: ticket.url,
+      timestampMs: updatedAtDate.getTime(),
+      tags: [
+        ...ticket.tags,
+        `title:${ticket.subject}`,
+        `updatedAt:${updatedAtDate.getTime()}`,
+        `createdAt:${createdAtDate.getTime()}`,
+      ],
+      parents: [newDocumentId, ...parents.slice(1)],
+      parentId: parents[1],
+      loggerArgs: { ...loggerArgs, ticketId: ticket.id },
+      upsertContext: { sync_type: "batch" },
+      title: ticket.subject,
+      mimeType: "application/vnd.dust.zendesk.ticket",
+      async: true,
+    });
+
     await ticketInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });
   } else {
     logger.warn(

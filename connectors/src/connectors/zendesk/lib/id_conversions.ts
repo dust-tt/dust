@@ -47,6 +47,18 @@ export function getArticleInternalId({
   return `zendesk-article-${connectorId}-${articleId}`;
 }
 
+export function getArticleNewInternalId({
+  connectorId,
+  brandId,
+  articleId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  articleId: number;
+}): string {
+  return `zendesk-article-${connectorId}-${brandId}-${articleId}`;
+}
+
 export function getTicketsInternalId({
   connectorId,
   brandId,
@@ -65,6 +77,18 @@ export function getTicketInternalId({
   ticketId: number;
 }): string {
   return `zendesk-ticket-${connectorId}-${ticketId}`;
+}
+
+export function getTicketNewInternalId({
+  connectorId,
+  brandId,
+  ticketId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  ticketId: number;
+}): string {
+  return `zendesk-ticket-${connectorId}-${brandId}-${ticketId}`;
 }
 
 /**
