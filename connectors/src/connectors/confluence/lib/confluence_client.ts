@@ -3,11 +3,9 @@ import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
-import {
-  ExternalOAuthTokenError,
-  ProviderWorkflowError,
-} from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
@@ -146,10 +144,11 @@ const ConfluenceReadOperationRestrictionsCodec = t.type({
   restrictions: RestrictionsCodec,
 });
 
-// default number of ms we wait before retrying after a rate limit hit.
-const DEFAULT_RETRY_AFTER_DURATION_MS = 10 * 1000;
-// Number of times we retry when rate limited (429).
-const MAX_RATE_LIMIT_RETRY_COUNT = 10;
+// If Confluence does not provide a retry-after header, we use this constant to signal no delay.
+const NO_RETRY_AFTER_DELAY = -1;
+// Number of times we retry when rate limited and Confluence does provide a retry-after header.
+const MAX_RATE_LIMIT_RETRY_COUNT = 5;
+
 // Space types that we support indexing in Dust.
 export const CONFLUENCE_SUPPORTED_SPACE_TYPES = [
   "global",
@@ -172,11 +171,11 @@ function getRetryAfterDuration(response: Response): number {
   const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
   if (retryAfter) {
     const delay = parseInt(retryAfter, 10);
-    return !Number.isNaN(delay)
-      ? delay * 1000
-      : DEFAULT_RETRY_AFTER_DURATION_MS;
+
+    return !Number.isNaN(delay) ? delay * 1000 : NO_RETRY_AFTER_DELAY;
   }
-  return DEFAULT_RETRY_AFTER_DURATION_MS;
+
+  return NO_RETRY_AFTER_DELAY;
 }
 
 export class ConfluenceClient {
@@ -208,6 +207,11 @@ export class ConfluenceClient {
           signal: AbortSignal.timeout(30000),
         });
       } catch (e) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:error",
+        ]);
+
         if (
           e instanceof DOMException &&
           (e.name === "TimeoutError" || e.name === "AbortError")
@@ -242,28 +246,56 @@ export class ConfluenceClient {
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
       }
-      // retry the request after a delay: https://developer.atlassian.com/cloud/confluence/rate-limiting/
+
+      // Handle rate limiting from Confluence API
+      // https://developer.atlassian.com/cloud/confluence/rate-limiting/
+      //
+      // Current strategy:
+      // 1. If Confluence provides a retry-after header, we honor it immediately
+      //    by sleeping in the client. This is not ideal but provides the most
+      //    accurate rate limit handling until we can use Temporal's nextRetryDelay.
+      // 2. If no retry-after header is provided, we throw a transient error and
+      //    let Temporal handle the retry with exponential backoff.
+      //
+      // Once we upgrade to Temporal SDK >= X.Y.Z, we should:
+      // - Remove the client-side sleep
+      // - Use ApplicationFailure.create() with nextRetryDelay
+      // - See: https://docs.temporal.io/develop/typescript/failure-detection#activity-next-retry-delay
       if (response.status === 429) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:rate_limited",
+        ]);
+
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
           logger.warn(
             {
               endpoint,
-              retryCount,
               delayMs,
             },
-            "[Confluence] Rate limit hit, retrying after delay"
+            "[Confluence] Rate limit hit"
           );
-          await setTimeoutAsync(delayMs);
-          return this.request(endpoint, codec, retryCount + 1);
-        } else {
-          throw new ProviderWorkflowError(
-            "confluence",
-            "Rate limit hit on confluence API more than 10 times.",
-            "rate_limit_error"
-          );
+
+          // Only retry rate-limited requests when the server provides a Retry-After delay.
+          if (delayMs !== NO_RETRY_AFTER_DELAY) {
+            await setTimeoutAsync(delayMs);
+            return this.request(endpoint, codec, retryCount + 1);
+          }
         }
+
+        // Otherwise throw regular error to let downstream handle retries (e.g: Temporal).
+        throw new ConfluenceClientError("Confluence API rate limit exceeded", {
+          type: "http_response_error",
+          status: response.status,
+          data: { url: `${this.apiUrl}${endpoint}`, response },
+        });
       }
+
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:error",
+      ]);
 
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
@@ -274,6 +306,11 @@ export class ConfluenceClient {
         }
       );
     }
+
+    statsDClient.increment("external.api.calls", 1, [
+      "provider:confluence",
+      "status:success",
+    ]);
 
     const responseBody = await response.json();
     const result = codec.decode(responseBody);
@@ -305,6 +342,11 @@ export class ConfluenceClient {
           signal: AbortSignal.timeout(30000),
         });
       } catch (e) {
+        statsDClient.increment("external.api.calls", 1, [
+          "provider:confluence",
+          "status:error",
+        ]);
+
         if (
           e instanceof DOMException &&
           (e.name === "TimeoutError" || e.name === "AbortError")
@@ -335,6 +377,11 @@ export class ConfluenceClient {
     })();
 
     if (!response.ok) {
+      statsDClient.increment("external.api.calls", 1, [
+        "provider:confluence",
+        "status:error",
+      ]);
+
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
         {
@@ -344,6 +391,11 @@ export class ConfluenceClient {
         }
       );
     }
+
+    statsDClient.increment("external.api.calls", 1, [
+      "provider:confluence",
+      "status:success",
+    ]);
 
     if (response.status === 204) {
       return undefined; // Return undefined for 204 No Content.

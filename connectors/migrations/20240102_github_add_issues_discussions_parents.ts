@@ -48,6 +48,7 @@ async function updateParents(connector: ConnectorModel) {
             dataSourceConfig: connector,
             documentId,
             parents,
+            parentId: `${d.repoId}-discussions`,
           });
           console.log(`Updated discussion ${documentId} with: ${parents}`);
         } else {
@@ -78,6 +79,7 @@ async function updateParents(connector: ConnectorModel) {
             dataSourceConfig: connector,
             documentId,
             parents,
+            parentId: `${i.repoId}-issues`,
           });
           console.log(`Updated issue ${documentId} with: ${parents}`);
         } else {

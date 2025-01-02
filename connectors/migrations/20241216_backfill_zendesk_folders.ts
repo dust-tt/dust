@@ -33,6 +33,7 @@ makeScript({}, async ({ execute }, logger) => {
             dataSourceConfig,
             folderId: brandInternalId,
             parents: [brandInternalId],
+            parentId: null,
             title: brand.name,
             mimeType: "application/vnd.dust.zendesk.brand",
           });
@@ -45,6 +46,7 @@ makeScript({}, async ({ execute }, logger) => {
               helpCenterNode.internalId,
               helpCenterNode.parentInternalId,
             ],
+            parentId: helpCenterNode.parentInternalId,
             title: helpCenterNode.title,
             mimeType: "application/vnd.dust.zendesk.helpcenter",
           });
@@ -54,6 +56,7 @@ makeScript({}, async ({ execute }, logger) => {
             dataSourceConfig,
             folderId: ticketsNode.internalId,
             parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
+            parentId: ticketsNode.parentInternalId,
             title: ticketsNode.title,
             mimeType: "application/vnd.dust.zendesk.tickets",
           });
@@ -81,6 +84,7 @@ makeScript({}, async ({ execute }, logger) => {
             dataSourceConfig: dataSourceConfigFromConnector(connector),
             folderId: parents[0],
             parents,
+            parentId: parents[1],
             title: category.name,
             mimeType: "application/vnd.dust.zendesk.category",
           });

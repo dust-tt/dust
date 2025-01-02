@@ -288,6 +288,11 @@ export async function githubUpsertIssueActivity(
     tags.push(`author:${issueAuthor}`);
   }
 
+  const parents: [string, string, string] = [
+    documentId,
+    getIssuesInternalId(repoId),
+    getRepositoryInternalId(repoId),
+  ];
   // TODO: last commentor, last comment date, issue labels (as tags)
   await upsertDataSourceDocument({
     dataSourceConfig,
@@ -296,11 +301,8 @@ export async function githubUpsertIssueActivity(
     documentUrl: issue.url,
     timestampMs: updatedAtTimestamp,
     tags: tags,
-    parents: [
-      documentId,
-      getIssuesInternalId(repoId),
-      getRepositoryInternalId(repoId),
-    ],
+    parents,
+    parentId: parents[1],
     loggerArgs: logger.bindings(),
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
@@ -473,6 +475,11 @@ export async function githubUpsertDiscussionActivity(
     `updatedAt:${new Date(discussion.updatedAt).getTime()}`,
   ];
 
+  const parents: [string, string, string] = [
+    documentId,
+    getDiscussionsInternalId(repoId),
+    getRepositoryInternalId(repoId),
+  ];
   await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
@@ -480,11 +487,8 @@ export async function githubUpsertDiscussionActivity(
     documentUrl: discussion.url,
     timestampMs: new Date(discussion.createdAt).getTime(),
     tags,
-    parents: [
-      documentId,
-      getDiscussionsInternalId(repoId),
-      getRepositoryInternalId(repoId),
-    ],
+    parents,
+    parentId: parents[1],
     loggerArgs: logger.bindings(),
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
@@ -955,6 +959,7 @@ export async function githubCodeSyncActivity({
     folderId: getCodeRootInternalId(repoId),
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
+    parentId: getRepositoryInternalId(repoId),
     mimeType: "application/vnd.dust.github.code.root",
   });
 
@@ -1147,6 +1152,11 @@ export async function githubCodeSyncActivity({
             `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
           ];
 
+          const parents: [...string[], string, string] = [
+            ...f.parents,
+            rootInternalId,
+            getRepositoryInternalId(repoId),
+          ];
           // Time to upload the file to the data source.
           await upsertDataSourceDocument({
             dataSourceConfig,
@@ -1155,11 +1165,8 @@ export async function githubCodeSyncActivity({
             documentUrl: f.sourceUrl,
             timestampMs: codeSyncStartedAt.getTime(),
             tags,
-            parents: [
-              ...f.parents,
-              rootInternalId,
-              getRepositoryInternalId(repoId),
-            ],
+            parents,
+            parentId: parents[1],
             loggerArgs: logger.bindings(),
             upsertContext: {
               sync_type: isBatchSync ? "batch" : "incremental",
@@ -1198,14 +1205,16 @@ export async function githubCodeSyncActivity({
         Context.current().heartbeat();
         const parentInternalId = d.parentInternalId || rootInternalId;
 
+        const parents: [...string[], string, string] = [
+          ...d.parents,
+          getCodeRootInternalId(repoId),
+          getRepositoryInternalId(repoId),
+        ];
         await upsertDataSourceFolder({
           dataSourceConfig,
           folderId: d.internalId,
-          parents: [
-            ...d.parents,
-            getCodeRootInternalId(repoId),
-            getRepositoryInternalId(repoId),
-          ],
+          parents,
+          parentId: parents[1],
           title: d.dirName,
           mimeType: "application/vnd.dust.github.code.directory",
         });
@@ -1346,6 +1355,7 @@ export async function githubUpsertRepositoryFolderActivity({
     folderId: getRepositoryInternalId(repoId),
     title: repoName,
     parents: [getRepositoryInternalId(repoId)],
+    parentId: null,
     mimeType: "application/vnd.dust.github.repository",
   });
 }
@@ -1366,6 +1376,7 @@ export async function githubUpsertIssuesFolderActivity({
     folderId: getIssuesInternalId(repoId),
     title: "Issues",
     parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
+    parentId: getRepositoryInternalId(repoId),
     mimeType: "application/vnd.dust.github.issues",
   });
 }
@@ -1389,6 +1400,7 @@ export async function githubUpsertDiscussionsFolderActivity({
       getDiscussionsInternalId(repoId),
       getRepositoryInternalId(repoId),
     ],
+    parentId: getRepositoryInternalId(repoId),
     mimeType: "application/vnd.dust.github.discussions",
   });
 }
@@ -1409,6 +1421,7 @@ export async function githubUpsertCodeRootFolderActivity({
     folderId: getCodeRootInternalId(repoId),
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
+    parentId: getRepositoryInternalId(repoId),
     mimeType: "application/vnd.dust.github.code.root",
   });
 }

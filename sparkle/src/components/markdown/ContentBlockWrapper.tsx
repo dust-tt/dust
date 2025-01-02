@@ -98,10 +98,10 @@ export function ContentBlockWrapper({
         className
       )}
     >
-      <div className="s-sticky s-top-0 s-z-50 s-w-full">
+      <div className="s-sticky s-top-0 s-z-[1] s-w-full">
         <div
           id="BlockActions"
-          className="s-flex s-w-full s-justify-end s-gap-1 s-p-2"
+          className="s-absolute s-right-2 s-top-2 s-z-50 s-flex s-gap-2"
         >
           {actions && actions}
           {getContentToDownload && (
@@ -124,7 +124,7 @@ export function ContentBlockWrapper({
           )}
         </div>
       </div>
-      <div className={cn("-s-mt-11 s-w-full", innerClassName)}>{children}</div>
+      <div className={cn("s-z-0 s-w-full", innerClassName)}>{children}</div>
     </div>
   );
 }

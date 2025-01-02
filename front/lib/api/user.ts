@@ -1,14 +1,15 @@
 import type {
   Result,
-  RoleType,
   UserMetadataType,
   UserType,
+  UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -139,42 +140,44 @@ export async function fetchRevokedWorkspace(
   return new Ok(workspace);
 }
 
-export async function getUserWithWorkspaces(
-  user: UserResource
-): Promise<UserTypeWithWorkspaces> {
+export async function getUserWithWorkspaces<T extends boolean>(
+  user: UserResource,
+  populateExtensionConfig: T = false as T
+): Promise<
+  T extends true ? UserTypeWithExtensionWorkspaces : UserTypeWithWorkspaces
+> {
   const { memberships } = await MembershipResource.getActiveMemberships({
     users: [user],
   });
+  const workspaceIds = memberships.map((m) => m.workspaceId);
   const workspaces = await Workspace.findAll({
     where: {
-      id: memberships.map((m) => m.workspaceId),
+      id: workspaceIds,
     },
   });
+
+  const configs = populateExtensionConfig
+    ? await ExtensionConfigurationResource.internalFetchForWorkspaces(
+        workspaceIds
+      )
+    : [];
 
   return {
     ...user.toJSON(),
     workspaces: workspaces.map((w) => {
-      const m = memberships.find((m) => m.workspaceId === w.id);
-      let role = "none" as RoleType;
-      if (m) {
-        switch (m.role) {
-          case "admin":
-          case "builder":
-          case "user":
-            role = m.role;
-            break;
-          default:
-            role = "none";
-        }
-      }
       return {
         id: w.id,
         sId: w.sId,
         name: w.name,
-        role,
+        role: memberships.find((m) => m.workspaceId === w.id)?.role ?? "none",
         segmentation: w.segmentation || null,
         whiteListedProviders: w.whiteListedProviders,
         defaultEmbeddingProvider: w.defaultEmbeddingProvider,
+        ...(populateExtensionConfig && {
+          blacklistedDomains:
+            configs.find((c) => c.workspaceId === w.id)?.blacklistedDomains ??
+            null,
+        }),
       };
     }),
   };

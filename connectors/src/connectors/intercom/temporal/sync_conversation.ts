@@ -306,11 +306,13 @@ export async function syncConversation({
   // parents in the Core datasource map the internal ids that are used in the permission system
   // they self reference the document id
   const documentId = getConversationInternalId(connectorId, conversation.id);
-  const parents = [documentId];
-  if (conversationTeamId) {
-    parents.push(getTeamInternalId(connectorId, conversationTeamId));
-  }
-  parents.push(getTeamsInternalId(connectorId));
+  const parents: [string, ...string[], string] = [
+    documentId,
+    ...(conversationTeamId
+      ? [getTeamInternalId(connectorId, conversationTeamId)]
+      : []),
+    getTeamsInternalId(connectorId),
+  ];
 
   await upsertDataSourceDocument({
     dataSourceConfig,
@@ -320,6 +322,7 @@ export async function syncConversation({
     timestampMs: updatedAtDate.getTime(),
     tags: datasourceTags,
     parents,
+    parentId: parents[1],
     loggerArgs: {
       ...loggerArgs,
       conversationId: conversation.id,

@@ -207,6 +207,7 @@ export async function getRootNodesToSyncFromResources(
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId],
+        parentId: null,
         title: createdOrUpdatedResource.name ?? "",
         mimeType: "application/vnd.dust.microsoft.folder",
       }),
@@ -465,7 +466,7 @@ export async function syncFiles({
         )
     );
 
-  const parents = await getParents({
+  const parentsOfParent = await getParents({
     connectorId: parent.connectorId,
     internalId: parent.internalId,
     startSyncTs,
@@ -477,7 +478,8 @@ export async function syncFiles({
       upsertDataSourceFolder({
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
-        parents: [createdOrUpdatedResource.internalId, ...parents],
+        parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
+        parentId: parentsOfParent[0],
         title: createdOrUpdatedResource.name ?? "",
         mimeType: "application/vnd.dust.microsoft.folder",
       }),
@@ -651,6 +653,7 @@ export async function syncDeltaForRootNodesInDrive({
           dataSourceConfig,
           folderId: blob.internalId,
           parents: [blob.internalId],
+          parentId: null,
           title: blob.name ?? "",
           mimeType: "application/vnd.dust.microsoft.folder",
         });
@@ -857,14 +860,16 @@ async function updateDescendantsParentsInCore({
   const files = children.filter((child) => child.nodeType === "file");
   const folders = children.filter((child) => child.nodeType === "folder");
 
+  const parents = await getParents({
+    connectorId: folder.connectorId,
+    internalId: folder.internalId,
+    startSyncTs,
+  });
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: folder.internalId,
-    parents: await getParents({
-      connectorId: folder.connectorId,
-      internalId: folder.internalId,
-      startSyncTs,
-    }),
+    parents,
+    parentId: parents[1] || null,
     title: folder.name ?? "",
     mimeType: "application/vnd.dust.microsoft.folder",
   });
@@ -904,6 +909,7 @@ async function updateParentsField({
     dataSourceConfig,
     documentId: file.internalId,
     parents,
+    parentId: parents[1] || null,
   });
 }
 

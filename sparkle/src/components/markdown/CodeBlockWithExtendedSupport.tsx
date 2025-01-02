@@ -104,7 +104,14 @@ const mermaidStyles = `
   /* Base diagram styles */
   .mermaid {
     background: ${palette.slate[50]};
+    cursor: default;
   }
+    
+  .mermaid text,
+  .mermaid .nodeLabel,
+  .mermaid .edgeLabel,
+  .mermaid .label {
+    cursor: text;
 
   /* Cluster styles */
   .mermaid .cluster rect {
@@ -291,7 +298,6 @@ export function CodeBlockWithExtendedSupport({
 
   // Detect language from className
   const language = className?.split("-")[1];
-  console.log(className?.split("-")[1]);
 
   // Only create getContentToDownload when we actually want to enable downloads
   const getContentToDownload: GetContentToDownloadFunction | undefined =

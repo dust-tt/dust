@@ -428,7 +428,11 @@ export function withAuth0TokenAuthentication<T>(
         });
       }
 
-      const userWithWorkspaces = await getUserWithWorkspaces(user);
+      const isFromExtension = req.headers["x-request-origin"] === "extension";
+      const userWithWorkspaces = await getUserWithWorkspaces(
+        user,
+        isFromExtension
+      );
 
       return handler(req, res, userWithWorkspaces);
     }
