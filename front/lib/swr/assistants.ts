@@ -232,19 +232,20 @@ export function useAgentConfiguration({
   };
 }
 
-export function useAgentConfigurationFeedbacksByDescVersion({
-  workspaceId,
-  agentConfigurationId,
-  withMetadata,
-  paginationParams,
-  disabled,
-}: {
+interface AgentConfigurationFeedbacksByDescVersionProps {
   workspaceId: string;
   agentConfigurationId: string | null;
   paginationParams: PaginationParams;
   withMetadata?: boolean;
   disabled?: boolean;
-}) {
+}
+export function useAgentConfigurationFeedbacksByDescVersion({
+  workspaceId,
+  agentConfigurationId,
+  paginationParams,
+  withMetadata,
+  disabled,
+}: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
       | AgentMessageFeedbackType
