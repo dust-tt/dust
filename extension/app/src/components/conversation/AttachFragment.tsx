@@ -32,9 +32,9 @@ export const AttachFragment = ({
   // Blacklisting logic to disable share buttons.
   const currentDomain = useCurrentDomain();
   const blacklistedDomains: string[] = owner.blacklistedDomains ?? [];
-  const isBlacklisted = blacklistedDomains.some((d) =>
-    currentDomain.endsWith(d)
-  );
+  const isBlacklisted =
+    currentDomain === "chrome" ||
+    blacklistedDomains.some((d) => currentDomain.endsWith(d));
 
   return (
     <>

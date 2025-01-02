@@ -12,6 +12,9 @@ export const useCurrentDomain = () => {
           if (url.protocol.startsWith("http")) {
             setCurrentDomain(url.hostname);
           }
+          if (url.protocol.startsWith("chrome")) {
+            setCurrentDomain("chrome");
+          }
         } catch (e) {
           console.error("Invalid URL:", e);
           setCurrentDomain("");
