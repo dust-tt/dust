@@ -80,12 +80,15 @@ export const getConnectorAndCredentials = async ({
       connector: ConnectorResource;
       credentials: ConnectionCredentials;
     },
-    Error
+    { code: "connector_not_found" | "invalid_credentials"; error: Error }
   >
 > => {
   const connectorRes = await getConnector({ connectorId, logger });
   if (connectorRes.isErr()) {
-    return connectorRes;
+    return new Err({
+      code: "connector_not_found",
+      error: connectorRes.error,
+    });
   }
   const connector = connectorRes.value.connector;
 
@@ -96,7 +99,10 @@ export const getConnectorAndCredentials = async ({
   });
   if (credentialsRes.isErr()) {
     logger.error({ connectorId }, "Failed to retrieve credentials");
-    return new Err(Error("Failed to retrieve credentials"));
+    return new Err({
+      code: "invalid_credentials",
+      error: Error("Failed to retrieve credentials"),
+    });
   }
   // Narrow the type of credentials to just the username/password variant
   const credentials = credentialsRes.value.credential.content;
