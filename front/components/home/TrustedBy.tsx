@@ -17,7 +17,7 @@ export default function TrustedBy() {
       </H3>
 
       <div className="mx-auto mt-8 w-full max-w-screen-2xl px-8">
-        <div className="grid grid-cols-2 place-items-center gap-8 sm:gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-2 place-items-center gap-8 sm:grid-cols-5 sm:gap-2">
           {" "}
           <Image
             alt="alan"
@@ -68,14 +68,14 @@ export default function TrustedBy() {
             height={80}
           />
           <Image
-              alt="clay"
-              src="/static/landing/logos/clay.png"
+            alt="clay"
+            src="/static/landing/logos/clay.png"
             width={200}
             height={80}
           />
           <Image
-              alt="photoroom"
-              src="/static/landing/logos/photoroom.png"
+            alt="photoroom"
+            src="/static/landing/logos/photoroom.png"
             width={200}
             height={80}
           />
