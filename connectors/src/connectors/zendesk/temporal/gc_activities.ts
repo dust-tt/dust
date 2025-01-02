@@ -101,30 +101,37 @@ export async function removeOutdatedTicketBatchActivity(
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const ticketIds = await ZendeskTicketResource.fetchOutdatedTicketIds({
-    connectorId,
-    expirationDate: new Date(
-      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
-    ),
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
+  const ticketIdsWithBrandIds =
+    await ZendeskTicketResource.fetchOutdatedTicketIds({
+      connectorId,
+      expirationDate: new Date(
+        Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
+      ),
+      batchSize: ZENDESK_BATCH_SIZE,
+    });
   logger.info(
-    { ...loggerArgs, ticketCount: ticketIds.length },
+    { ...loggerArgs, ticketCount: ticketIdsWithBrandIds.length },
     "[Zendesk] Removing outdated tickets."
   );
 
-  if (ticketIds.length === 0) {
+  if (ticketIdsWithBrandIds.length === 0) {
     return { hasMore: false };
   }
 
   await concurrentExecutor(
-    ticketIds,
-    (ticketId) =>
-      deleteTicket({ connectorId, ticketId, dataSourceConfig, loggerArgs }),
+    ticketIdsWithBrandIds,
+    ({ brandId, ticketId }) =>
+      deleteTicket({
+        connectorId,
+        brandId,
+        ticketId,
+        dataSourceConfig,
+        loggerArgs,
+      }),
     { concurrency: 10 }
   );
 
-  return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE }; // true iff there are more tickets to process
+  return { hasMore: ticketIdsWithBrandIds.length === ZENDESK_BATCH_SIZE }; // true iff there are more tickets to process
 }
 
 /**
@@ -187,6 +194,7 @@ export async function removeMissingArticleBatchActivity({
       if (!article) {
         await deleteArticle(
           connectorId,
+          brandId,
           articleId,
           dataSourceConfig,
           loggerArgs
@@ -369,7 +377,7 @@ export async function deleteTicketBatchActivity({
     (ticketId) =>
       deleteDataSourceDocument(
         dataSourceConfig,
-        getTicketInternalId({ connectorId, ticketId })
+        getTicketInternalId({ connectorId, brandId, ticketId })
       ),
     { concurrency: 10 }
   );
@@ -419,7 +427,7 @@ export async function deleteArticleBatchActivity({
     (articleId) =>
       deleteDataSourceDocument(
         dataSourceConfig,
-        getArticleInternalId({ connectorId, articleId })
+        getArticleInternalId({ connectorId, brandId, articleId })
       ),
     { concurrency: 10 }
   );
