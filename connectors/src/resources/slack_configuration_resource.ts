@@ -7,6 +7,7 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
+import type { SlackAutoReadPattern } from "@connectors/lib/models/slack";
 import {
   SlackBotWhitelistModel,
   SlackChannel,
@@ -250,6 +251,18 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   async setAutoReadChannelPattern(pattern: string | null) {
     await this.model.update(
       { autoReadChannelPattern: pattern },
+      {
+        where: {
+          id: this.id,
+        },
+      }
+    );
+    return new Ok(undefined);
+  }
+
+  async setAutoReadChannelPatterns(patterns: SlackAutoReadPattern[]) {
+    await this.model.update(
+      { autoReadChannelPatterns: patterns },
       {
         where: {
           id: this.id,
