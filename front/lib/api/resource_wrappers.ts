@@ -22,8 +22,10 @@ type ResourceMap<U extends ResourceKey> = {
 type OptionsMap<U extends ResourceKey> = {
   [K in U]:
     | {
-        requireCanRead?: boolean;
+        requireCanAdministrate?: boolean;
         requireCanList?: boolean;
+        requireCanRead?: boolean;
+        requireCanWrite?: boolean;
       }
     | true;
 };
@@ -172,8 +174,11 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
       const opts = options.space;
       if (typeof opts === "object") {
         if (
+          (opts.requireCanAdministrate === true &&
+            !space.canAdministrate(auth)) ||
+          (opts.requireCanList === true && !space.canList(auth)) ||
           (opts.requireCanRead === true && !space.canRead(auth)) ||
-          (opts.requireCanList === true && !space.canList(auth))
+          (opts.requireCanWrite === true && !space.canWrite(auth))
         ) {
           return apiError(req, res, {
             status_code: 404,
@@ -211,8 +216,7 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
     const { dsId } = req.query;
 
     if (dsId) {
-      const { wId } = req.query;
-      if (typeof dsId !== "string" || typeof wId !== "string") {
+      if (typeof dsId !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -285,8 +289,11 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
       const opts = options.dataSource;
       if (typeof opts === "object") {
         if (
+          (opts.requireCanAdministrate === true &&
+            !dataSource.canAdministrate(auth)) ||
+          (opts.requireCanList === true && !dataSource.canList(auth)) ||
           (opts.requireCanRead === true && !dataSource.canRead(auth)) ||
-          (opts.requireCanList === true && !dataSource.canList(auth))
+          (opts.requireCanWrite === true && !dataSource.canWrite(auth))
         ) {
           return apiError(req, res, {
             status_code: 404,
@@ -363,8 +370,11 @@ function withDataSourceViewFromRoute<T, A extends SessionOrKeyAuthType>(
       const opts = options.dataSourceView;
       if (typeof opts === "object") {
         if (
+          (opts.requireCanAdministrate === true &&
+            !dataSourceView.canAdministrate(auth)) ||
+          (opts.requireCanList === true && !dataSourceView.canList(auth)) ||
           (opts.requireCanRead === true && !dataSourceView.canRead(auth)) ||
-          (opts.requireCanList === true && !dataSourceView.canList(auth))
+          (opts.requireCanWrite === true && !dataSourceView.canWrite(auth))
         ) {
           return apiError(req, res, {
             status_code: 404,
