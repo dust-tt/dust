@@ -39,12 +39,14 @@ export function getCategoryInternalId({
 
 export function getArticleInternalId({
   connectorId,
+  brandId,
   articleId,
 }: {
   connectorId: ModelId;
+  brandId: number;
   articleId: number;
 }): string {
-  return `zendesk-article-${connectorId}-${articleId}`;
+  return `zendesk-article-${connectorId}-${brandId}-${articleId}`;
 }
 
 export function getTicketsInternalId({
@@ -59,12 +61,14 @@ export function getTicketsInternalId({
 
 export function getTicketInternalId({
   connectorId,
+  brandId,
   ticketId,
 }: {
   connectorId: ModelId;
+  brandId: number;
   ticketId: number;
 }): string {
-  return `zendesk-ticket-${connectorId}-${ticketId}`;
+  return `zendesk-ticket-${connectorId}-${brandId}-${ticketId}`;
 }
 
 /**
@@ -76,6 +80,26 @@ function _getIdFromInternal(internalId: string, prefix: string): number | null {
     : null;
 }
 
+/**
+ * Conversion from an internalId to a pair of IDs.
+ */
+function _getIdsFromInternal(
+  internalId: string,
+  prefix: string
+): [number, number] | null {
+  if (!internalId.startsWith(prefix)) {
+    return null;
+  }
+  const ids = internalId
+    .replace(prefix, "")
+    .split("-")
+    .map((id) => parseInt(id, 10));
+  if (ids.length !== 2) {
+    return null;
+  }
+  return ids as [number, number];
+}
+
 export function getIdFromInternalId(
   connectorId: ModelId,
   internalId: string
@@ -85,8 +109,8 @@ export function getIdFromInternalId(
       objectIds: { brandId: number };
     }
   | { type: "category"; objectIds: { brandId: number; categoryId: number } }
-  | { type: "article"; objectIds: { articleId: number } }
-  | { type: "ticket"; objectIds: { ticketId: number } } {
+  | { type: "article"; objectIds: { brandId: number; articleId: number } }
+  | { type: "ticket"; objectIds: { brandId: number; ticketId: number } } {
   let objectId = getBrandIdFromInternalId(connectorId, internalId);
   if (objectId) {
     return { type: "brand", objectIds: { brandId: objectId } };
@@ -99,20 +123,20 @@ export function getIdFromInternalId(
   if (objectId) {
     return { type: "tickets", objectIds: { brandId: objectId } };
   }
-  const { categoryId, brandId } = getCategoryIdFromInternalId(
+  const categoryObjectIds = getCategoryIdFromInternalId(
     connectorId,
     internalId
   );
-  if (categoryId && brandId) {
-    return { type: "category", objectIds: { categoryId, brandId } };
+  if (categoryObjectIds) {
+    return { type: "category", objectIds: categoryObjectIds };
   }
-  objectId = getArticleIdFromInternalId(connectorId, internalId);
-  if (objectId) {
-    return { type: "article", objectIds: { articleId: objectId } };
+  const articleObjectIds = getArticleIdFromInternalId(connectorId, internalId);
+  if (articleObjectIds) {
+    return { type: "article", objectIds: articleObjectIds };
   }
-  objectId = getTicketIdFromInternalId(connectorId, internalId);
-  if (objectId) {
-    return { type: "ticket", objectIds: { ticketId: objectId } };
+  const ticketObjectIds = getTicketIdFromInternalId(connectorId, internalId);
+  if (ticketObjectIds) {
+    return { type: "ticket", objectIds: ticketObjectIds };
   }
   logger.error(
     { connectorId, internalId },
@@ -141,23 +165,19 @@ function getBrandIdFromHelpCenterId(
 function getCategoryIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): { categoryId: number | null; brandId: number | null } {
+): { brandId: number; categoryId: number } | null {
   const prefix = `zendesk-category-${connectorId}-`;
-  if (!internalId.startsWith(prefix)) {
-    return { categoryId: null, brandId: null };
-  }
-  const [firstId, secondId] = internalId.replace(prefix, "").split("-");
-  if (firstId === undefined || secondId === undefined) {
-    return { categoryId: null, brandId: null };
-  }
-  return { brandId: parseInt(firstId), categoryId: parseInt(secondId) };
+  const ids = _getIdsFromInternal(internalId, prefix);
+  return ids && { brandId: ids[0], categoryId: ids[1] };
 }
 
 function getArticleIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): number | null {
-  return _getIdFromInternal(internalId, `zendesk-article-${connectorId}-`);
+): { brandId: number; articleId: number } | null {
+  const prefix = `zendesk-article-${connectorId}-`;
+  const ids = _getIdsFromInternal(internalId, prefix);
+  return ids && { brandId: ids[0], articleId: ids[1] };
 }
 
 function getBrandIdFromTicketsId(
@@ -173,6 +193,8 @@ function getBrandIdFromTicketsId(
 function getTicketIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): number | null {
-  return _getIdFromInternal(internalId, `zendesk-ticket-${connectorId}-`);
+): { brandId: number; ticketId: number } | null {
+  const prefix = `zendesk-ticket-${connectorId}-`;
+  const ids = _getIdsFromInternal(internalId, prefix);
+  return ids && { brandId: ids[0], ticketId: ids[1] };
 }
