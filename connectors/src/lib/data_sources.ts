@@ -71,7 +71,7 @@ export type UpsertDataSourceDocumentParams = {
   timestampMs?: number;
   tags?: string[];
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
   title: string;
@@ -108,7 +108,7 @@ async function _upsertDataSourceDocument({
   title,
   mimeType,
   async,
-  parentId = null,
+  parentId,
 }: UpsertDataSourceDocumentParams) {
   return tracer.trace(
     `connectors`,
@@ -331,7 +331,7 @@ async function _updateDataSourceDocumentParents({
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -352,6 +352,7 @@ async function _updateDataSourceTableParents({
   dataSourceConfig: DataSourceConfig;
   tableId: string;
   parents: string[];
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -365,14 +366,14 @@ async function _updateDocumentOrTableParentsField({
   dataSourceConfig,
   id,
   parents,
-  parentId = null,
+  parentId,
   loggerArgs = {},
   tableOrDocument,
 }: {
   dataSourceConfig: DataSourceConfig;
   id: string;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
   tableOrDocument: "document" | "table";
 }) {
@@ -778,7 +779,7 @@ export async function upsertDataSourceTableFromCsv({
   loggerArgs,
   truncate,
   parents,
-  parentId = null,
+  parentId,
   useAppForHeaderDetection,
   title,
   mimeType,
@@ -791,7 +792,7 @@ export async function upsertDataSourceTableFromCsv({
   loggerArgs?: Record<string, string | number>;
   truncate: boolean;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
@@ -1229,7 +1230,7 @@ export async function _upsertDataSourceFolder({
   folderId,
   timestampMs,
   parents,
-  parentId = parents[1] ?? null,
+  parentId,
   title,
   mimeType,
 }: {
@@ -1237,7 +1238,7 @@ export async function _upsertDataSourceFolder({
   folderId: string;
   timestampMs?: number;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   title: string;
   mimeType: string;
 }) {

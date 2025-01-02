@@ -279,15 +279,16 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             lastSeenAt: new Date(),
           });
 
+          // parent folder ids of the page are in hierarchy order from the
+          // page to the root so for the current folder, its parents start at
+          // index+1 (including itself as first parent) and end at the root
+          const parents = parentFolderIds.slice(index + 1);
           await upsertDataSourceFolder({
             dataSourceConfig,
             folderId: webCrawlerFolder.internalId,
             timestampMs: webCrawlerFolder.updatedAt.getTime(),
-
-            // parent folder ids of the page are in hierarchy order from the
-            // page to the root so for the current folder, its parents start at
-            // index+1 (including itself as first parent) and end at the root
-            parents: parentFolderIds.slice(index + 1),
+            parents,
+            parentId: parents[1] || null,
             title: folder,
             mimeType: "application/vnd.dust.webcrawler.folder",
           });
@@ -363,6 +364,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               timestampMs: new Date().getTime(),
               tags: [`title:${stripNullBytes(pageTitle)}`],
               parents: parentFolderIds,
+              parentId: parentFolderIds[1] || null,
               upsertContext: {
                 sync_type: "batch",
               },

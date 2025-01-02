@@ -42,6 +42,7 @@ async function upsertFoldersForConnector(
         dataSourceConfig,
         folderId: repoInternalId,
         parents: [repoInternalId],
+        parentId: null,
         title: repoName,
         mimeType: "application/vnd.dust.github.repository",
       });
@@ -61,6 +62,7 @@ async function upsertFoldersForConnector(
         dataSourceConfig,
         folderId: issuesInternalId,
         parents: [issuesInternalId, repoInternalId],
+        parentId: repoInternalId,
         title: "Issues",
         mimeType: "application/vnd.dust.github.issues",
       });
@@ -76,6 +78,7 @@ async function upsertFoldersForConnector(
         dataSourceConfig,
         folderId: discussionsInternalId,
         parents: [discussionsInternalId, repoInternalId],
+        parentId: repoInternalId,
         title: "Discussions",
         mimeType: "application/vnd.dust.github.discussions",
       });
@@ -96,6 +99,7 @@ async function upsertFoldersForConnector(
           folderId: codeRootInternalId,
           title: "Code",
           parents: [codeRootInternalId, repoInternalId],
+          parentId: repoInternalId,
           mimeType: "application/vnd.dust.github.code.root",
         });
         logger.info(`Upserted code root folder ${codeRootInternalId}`);
@@ -121,6 +125,7 @@ async function upsertFoldersForConnector(
               dataSourceConfig,
               folderId: directory.internalId,
               parents: [directory.internalId, ...dirParents],
+              parentId: dirParents[0] || null,
               title: directory.dirName,
               mimeType: "application/vnd.dust.github.code.directory",
             });

@@ -151,6 +151,7 @@ export async function syncArticle({
       articleId: article.id,
     });
 
+    const parents = articleInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
@@ -162,7 +163,8 @@ export async function syncArticle({
         `createdAt:${createdAt.getTime()}`,
         `updatedAt:${updatedAt.getTime()}`,
       ],
-      parents: articleInDb.getParentInternalIds(connectorId),
+      parents,
+      parentId: parents[1],
       loggerArgs: { ...loggerArgs, articleId: article.id },
       upsertContext: { sync_type: "batch" },
       title: article.title,
