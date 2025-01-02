@@ -2,6 +2,7 @@ import type {
   Result,
   UserMetadataType,
   UserType,
+  UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -139,10 +140,12 @@ export async function fetchRevokedWorkspace(
   return new Ok(workspace);
 }
 
-export async function getUserWithWorkspaces(
+export async function getUserWithWorkspaces<T extends boolean>(
   user: UserResource,
-  populateExtensionConfig = false
-): Promise<UserTypeWithWorkspaces> {
+  populateExtensionConfig: T = false as T
+): Promise<
+  T extends true ? UserTypeWithExtensionWorkspaces : UserTypeWithWorkspaces
+> {
   const { memberships } = await MembershipResource.getActiveMemberships({
     users: [user],
   });
@@ -170,9 +173,11 @@ export async function getUserWithWorkspaces(
         segmentation: w.segmentation || null,
         whiteListedProviders: w.whiteListedProviders,
         defaultEmbeddingProvider: w.defaultEmbeddingProvider,
-        extensionBlacklistedDomains:
-          configs.find((c) => c.workspaceId === w.id)?.blacklistedDomains ??
-          undefined,
+        ...(populateExtensionConfig && {
+          blacklistedDomains:
+            configs.find((c) => c.workspaceId === w.id)?.blacklistedDomains ??
+            null,
+        }),
       };
     }),
   };
