@@ -30,6 +30,15 @@ import {
   getPermissionViewType,
 } from "@connectors/connectors/google_drive/lib/permissions";
 import {
+  folderHasChildren,
+  getDrives,
+} from "@connectors/connectors/google_drive/temporal/activities";
+import {
+  launchGoogleDriveFullSyncWorkflow,
+  launchGoogleDriveIncrementalSyncWorkflow,
+  launchGoogleGarbageCollector,
+} from "@connectors/connectors/google_drive/temporal/client";
+import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
@@ -63,13 +72,6 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
-
-import { folderHasChildren, getDrives } from "./temporal/activities";
-import {
-  launchGoogleDriveFullSyncWorkflow,
-  launchGoogleDriveIncrementalSyncWorkflow,
-  launchGoogleGarbageCollector,
-} from "./temporal/client";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -537,6 +539,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
   }
 

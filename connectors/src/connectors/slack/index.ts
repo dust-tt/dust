@@ -417,7 +417,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
-            "Slack token invalid, please re-authorize Slack."
+            "Slack authorization error, please re-authorize."
           )
         );
       }
