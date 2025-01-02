@@ -194,7 +194,13 @@ export async function getAgentFeedbacks({
   paginationParams: PaginationParams;
 }): Promise<
   Result<
-    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
+    {
+      feedbacks: (
+        | AgentMessageFeedbackType
+        | AgentMessageFeedbackWithMetadataType
+      )[];
+      totalFeedbackCount: number;
+    },
     Error
   >
 > {
@@ -226,7 +232,7 @@ export async function getAgentFeedbacks({
 
   const feedbacksWithHiddenConversationId = feedbacks.map((feedback) => ({
     ...feedback,
-    // Only display conversationId if the feedback was shared
+    // Redact the conversationId if user did not share the conversation.
     conversationId: feedback.isConversationShared
       ? feedback.conversationId
       : null,

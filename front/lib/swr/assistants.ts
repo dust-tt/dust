@@ -250,6 +250,7 @@ export function useAgentConfigurationFeedbacksByDescVersion({
       | AgentMessageFeedbackType
       | AgentMessageFeedbackWithMetadataType
     )[];
+    totalFeedbackCount: number;
   }> = fetcher;
 
   const urlParams = new URLSearchParams({
@@ -274,7 +275,7 @@ export function useAgentConfigurationFeedbacksByDescVersion({
   );
 
   return {
-    agentConfigurationFeedbacks: data ? data.feedbacks : null,
+    agentConfigurationFeedbacks: data ? data : null,
     isAgentConfigurationFeedbacksLoading: !error && !data,
     isAgentConfigurationFeedbacksError: error,
     mutateAgentConfigurationFeedbacks: mutate,
