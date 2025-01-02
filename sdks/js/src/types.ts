@@ -688,6 +688,8 @@ const LightWorkspaceSchema = z.object({
 });
 
 export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
+export type WorkspaceType = z.infer<typeof WorkspaceSchema>;
+export type ExtensionWorkspaceType = z.infer<typeof ExtensionWorkspaceSchema>;
 
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
