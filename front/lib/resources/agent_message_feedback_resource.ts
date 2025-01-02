@@ -171,6 +171,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
       order: [
+        // Necessary because a feedback can be given at any time on a  message linked to an old version.
         ["agentConfigurationVersion", "DESC"],
         [
           paginationParams.orderColumn,
