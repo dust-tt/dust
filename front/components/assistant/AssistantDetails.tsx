@@ -10,7 +10,7 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
@@ -34,7 +34,6 @@ export function AssistantDetails({
   onClose,
   owner,
 }: AssistantDetailsProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
   const { agentConfiguration, isAgentConfigurationValidating } =
@@ -42,12 +41,6 @@ export function AssistantDetails({
       workspaceId: owner.sId,
       agentConfigurationId: assistantId,
     });
-
-  useEffect(() => {
-    if (assistantId) {
-      setIsOpen(true);
-    }
-  }, [assistantId]);
 
   const doUpdateScope = useUpdateAgentScope({
     owner,
@@ -63,26 +56,24 @@ export function AssistantDetails({
     [doUpdateScope]
   );
 
-  if (!agentConfiguration) {
-    return <></>;
-  }
-
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
         <Avatar
           name="Assistant avatar"
-          visual={agentConfiguration.pictureUrl}
+          visual={agentConfiguration?.pictureUrl}
           size="lg"
         />
         <div className="flex grow flex-col gap-1">
           <div
             className={classNames(
               "font-bold text-foreground",
-              agentConfiguration.name.length > 20 ? "text-md" : "text-lg"
+              agentConfiguration?.name && agentConfiguration.name.length > 20
+                ? "text-md"
+                : "text-lg"
             )}
-          >{`@${agentConfiguration.name}`}</div>
-          {agentConfiguration.status === "active" && (
+          >{`@${agentConfiguration?.name ?? ""}`}</div>
+          {agentConfiguration?.status === "active" && (
             <SharingDropdown
               owner={owner}
               agentConfiguration={agentConfiguration}
@@ -94,7 +85,7 @@ export function AssistantDetails({
           )}
         </div>
       </div>
-      {agentConfiguration.status === "active" && (
+      {agentConfiguration?.status === "active" && (
         <AssistantDetailsButtonBar
           owner={owner}
           agentConfiguration={agentConfiguration}
@@ -102,7 +93,7 @@ export function AssistantDetails({
         />
       )}
 
-      {agentConfiguration.status === "archived" && (
+      {agentConfiguration?.status === "archived" && (
         <ContentMessage
           variant="amber"
           title="This assistant has been deleted."
@@ -114,18 +105,20 @@ export function AssistantDetails({
       )}
 
       <div className="text-sm text-foreground">
-        {agentConfiguration.description}
+        {agentConfiguration?.description}
       </div>
-      <AssistantUsageSection
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-      />
+      {agentConfiguration && (
+        <AssistantUsageSection
+          agentConfiguration={agentConfiguration}
+          owner={owner}
+        />
+      )}
       <Page.Separator />
     </div>
   );
 
   const InstructionsSection = () =>
-    agentConfiguration.instructions ? (
+    agentConfiguration?.instructions ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
         <ReadOnlyTextArea content={agentConfiguration.instructions} />
@@ -135,20 +128,22 @@ export function AssistantDetails({
     );
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle></SheetTitle>
+          <SheetTitle />
         </SheetHeader>
         <SheetContainer>
-          <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
-            <DescriptionSection />
-            <AssistantActionsSection
-              agentConfiguration={agentConfiguration}
-              owner={owner}
-            />
-            <InstructionsSection />
-          </div>
+          {agentConfiguration && (
+            <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
+              <DescriptionSection />
+              <AssistantActionsSection
+                agentConfiguration={agentConfiguration}
+                owner={owner}
+              />
+              <InstructionsSection />
+            </div>
+          )}
         </SheetContainer>
       </SheetContent>
     </Sheet>
