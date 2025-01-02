@@ -18,6 +18,7 @@ export default function TrustedBy() {
 
       <div className="mx-auto mt-8 w-full max-w-screen-2xl px-8">
         <div className="grid grid-cols-2 place-items-center gap-8 sm:gap-2 sm:grid-cols-5">
+          {" "}
           <Image
             alt="alan"
             src="/static/landing/logos/alan.png"
