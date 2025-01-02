@@ -50,10 +50,6 @@ export type ExtensionWorkspaceType = WorkspaceType & {
   blacklistedDomains: string[] | null;
 };
 
-export type ExtensionWorkspaceType = WorkspaceType & {
-  blacklistedDomains: string[] | null;
-};
-
 export type UserProviderType =
   | "auth0"
   | "github"

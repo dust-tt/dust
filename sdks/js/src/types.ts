@@ -697,10 +697,6 @@ const ExtensionWorkspaceSchema = WorkspaceSchema.extend({
   blacklistedDomains: z.array(z.string()).nullable(),
 });
 
-const ExtensionWorkspaceSchema = WorkspaceSchema.extend({
-  blacklistedDomains: z.array(z.string()).nullable(),
-});
-
 const UserProviderSchema = FlexibleEnumSchema<
   "auth0" | "github" | "google" | "okta" | "samlp" | "waad"
 >().nullable();
