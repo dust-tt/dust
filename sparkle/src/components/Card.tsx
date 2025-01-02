@@ -156,7 +156,10 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
         className={cn("s-group/card s-relative", containerClassName)}
         ref={ref}
       >
-        <InnerCard className={cn("s-h-full s-w-full", className)} {...props} />
+        <InnerCard
+          className={cn("s-z-0 s-h-full s-w-full", className)}
+          {...props}
+        />
         {action && <CardActions>{action}</CardActions>}
       </div>
     );
@@ -174,7 +177,7 @@ const CardActions = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-right-3 s-top-3 s-opacity-0 s-transition-opacity",
+        "s-absolute s-right-2 s-top-2 s-opacity-0 s-transition-opacity",
         "s-opacity-0 group-focus-within/card:s-opacity-100 group-hover/card:s-opacity-100"
       )}
       {...props}

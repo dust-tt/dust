@@ -114,7 +114,9 @@ export const ConversationMessageContent = React.forwardRef<
       {...props}
     >
       <div
-        className={cn("s-text-sm s-text-foreground @sm:s-text-base @md:s-px-4")}
+        className={cn(
+          "s-px-2 s-text-sm s-text-foreground @sm:s-text-base @md:s-px-4"
+        )}
       >
         {children}
       </div>
@@ -142,13 +144,28 @@ export const ConversationMessageHeader = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-items-center s-gap-2", className)}
+      className={cn("s-flex s-items-center s-gap-2 s-p-1 @md:s-p-0", className)}
       {...props}
     >
-      <Avatar name={name} visual={avatarUrl} busy={isBusy} size="sm" />
+      <Avatar
+        className="@md:s-hidden"
+        name={name}
+        visual={avatarUrl}
+        busy={isBusy}
+        size="xs"
+      />
+      <Avatar
+        className="s-hidden @md:s-flex"
+        name={name}
+        visual={avatarUrl}
+        busy={isBusy}
+        size="sm"
+      />
       <div className="flex items-center gap-2">
         <div
-          className={cn("s-pb-1 s-text-base s-font-medium s-text-foreground")}
+          className={cn(
+            "s-text-sm s-font-medium s-text-foreground @md:s-pb-1 @md:s-text-base"
+          )}
         >
           {renderName(name)}
         </div>
