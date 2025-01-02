@@ -98,33 +98,43 @@ export function ContentBlockWrapper({
         className
       )}
     >
-      <div className="s-sticky s-top-0 s-z-50 s-w-full">
-        <div
-          id="BlockActions"
-          className="s-flex s-w-full s-justify-end s-gap-1 s-p-2"
-        >
-          {actions && actions}
+      <div
+        id="BlockActions"
+        className="s-absolute s-right-2 s-top-2 s-z-50"
+        style={{ pointerEvents: "none" }}
+      >
+        <div className="s-flex s-flex-row s-space-x-2">
+          {actions && <div style={{ pointerEvents: "auto" }}>{actions}</div>}
           {getContentToDownload && (
-            <Button
-              variant={"outline"}
-              size="xs"
-              icon={ArrowDownOnSquareIcon}
-              onClick={handleDownload}
-              tooltip="Download"
-            />
+            <div style={{ pointerEvents: "auto" }}>
+              <Button
+                variant={"outline"}
+                size="xs"
+                icon={ArrowDownOnSquareIcon}
+                onClick={handleDownload}
+                tooltip="Download"
+              />
+            </div>
           )}
           {content && (
-            <Button
-              variant={"outline"}
-              size="xs"
-              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-              onClick={handleCopyToClipboard}
-              tooltip="Copy"
-            />
+            <div style={{ pointerEvents: "auto" }}>
+              <Button
+                variant={"outline"}
+                size="xs"
+                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                onClick={handleCopyToClipboard}
+                tooltip="Copy"
+              />
+            </div>
           )}
         </div>
       </div>
-      <div className={cn("-s-mt-11 s-w-full", innerClassName)}>{children}</div>
+      <div
+        className={cn("s-w-full", innerClassName)}
+        style={{ cursor: "text" }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
