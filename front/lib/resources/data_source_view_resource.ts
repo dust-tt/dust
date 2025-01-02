@@ -415,7 +415,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     for (const [key, value] of Object.entries(searchParams)) {
       if (value && key !== "vaultKind") {
         whereClause[key] = value;
-      } else {
+      } else if (value) {
         whereClause["$space.kind$"] = searchParams.vaultKind;
       }
     }
