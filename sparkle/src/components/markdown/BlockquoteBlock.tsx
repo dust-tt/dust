@@ -27,7 +27,7 @@ export function BlockquoteBlock({ children }: BlockquoteBlockProps) {
       <blockquote
         className={cn(
           "s-w-full s-text-base s-italic s-text-foreground",
-          "s-rounded-2xl s-border s-border-border s-bg-white s-py-3 s-pl-5 s-pr-12"
+          "s-rounded-2xl s-bg-muted-background s-py-3 s-pl-5 s-pr-12"
         )}
       >
         {children}

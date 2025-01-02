@@ -240,7 +240,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   return (
     <pre
       className={cn(
-        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border s-border-border s-bg-muted-background"
+        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border s-border-border-dark s-bg-muted-background"
       )}
     >
       {validChildrenContent ? children : fallbackData || children}
@@ -341,20 +341,38 @@ function ParagraphBlock({
   );
 }
 
-type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'ref'> & ReactMarkdownProps & {
-  ref?: React.Ref<HTMLInputElement>;
-};
+type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
+  ReactMarkdownProps & {
+    ref?: React.Ref<HTMLInputElement>;
+  };
 
-function Input({ type, checked, className, onChange, ref, ...props }: InputProps) {
+function Input({
+  type,
+  checked,
+  className,
+  onChange,
+  ref,
+  ...props
+}: InputProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   React.useImperativeHandle(ref, () => inputRef.current!);
 
   if (type !== "checkbox") {
-    return <input ref={inputRef} type={type} checked={checked} className={className} {...props} />;
+    return (
+      <input
+        ref={inputRef}
+        type={type}
+        checked={checked}
+        className={className}
+        {...props}
+      />
+    );
   }
 
   const handleCheckedChange = (isChecked: boolean) => {
-    onChange?.({ target: { type: "checkbox", checked: isChecked } } as React.ChangeEvent<HTMLInputElement>);
+    onChange?.({
+      target: { type: "checkbox", checked: isChecked },
+    } as React.ChangeEvent<HTMLInputElement>);
   };
 
   return (
