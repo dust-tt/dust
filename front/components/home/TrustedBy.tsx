@@ -17,64 +17,67 @@ export default function TrustedBy() {
       </H3>
 
       <div className="mx-auto mt-8 w-full max-w-screen-2xl px-8">
-        <div className="grid grid-cols-1 place-items-center gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {" "}
+        <div className="grid grid-cols-2 place-items-center gap-8 sm:gap-2 sm:grid-cols-5">
           <Image
             alt="alan"
             src="/static/landing/logos/alan.png"
-            width={250}
-            height={100}
+            width={200}
+            height={80}
           />
           <Image
             alt="watershed"
             src="/static/landing/logos/watershed.png"
-            width={250}
-            height={100}
+            width={200}
+            height={80}
           />
           <Image
             alt="qonto"
             src="/static/landing/logos/qonto.png"
-            width={250}
-            height={100}
+            width={200}
+            height={80}
           />
           <Image
             alt="pennylane"
             src="/static/landing/logos/pennylane.png"
-            width={250}
-            height={100}
+            width={200}
+            height={80}
           />
           <Image
             alt="payfit"
             src="/static/landing/logos/payfit.png"
-            width={250}
-            height={100}
+            width={200}
+            height={80}
           />
           <Image
             alt="malt"
             src="/static/landing/logos/malt.png"
-            width={250}
-            height={100}
+            width={200}
+            height={80}
           />
           <Image
             alt="hivebrite"
             src="/static/landing/logos/hivebrite.png"
-            width={250}
-            height={100}
+            width={200}
+            height={80}
           />
           <Image
             alt="blueground"
             src="/static/landing/logos/blueground.png"
-            width={250}
-            height={100}
+            width={200}
+            height={80}
           />
-          <div className="col-span-1 md:col-span-2 lg:col-span-2 lg:col-start-2">
-            <Image
+          <Image
               alt="clay"
               src="/static/landing/logos/clay.png"
-              width={250}
-              height={100}
-            />
-          </div>
+            width={200}
+            height={80}
+          />
+          <Image
+              alt="photoroom"
+              src="/static/landing/logos/photoroom.png"
+            width={200}
+            height={80}
+          />
         </div>
       </div>
     </div>
