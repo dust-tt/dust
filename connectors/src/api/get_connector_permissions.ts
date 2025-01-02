@@ -108,7 +108,7 @@ const _getConnectorPermissions = async (
         return apiError(req, res, {
           status_code: 401,
           api_error: {
-            type: "connector_oauth_error",
+            type: "connector_authorization_error",
             message: pRes.error.message,
           },
         });
