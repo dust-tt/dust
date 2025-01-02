@@ -505,13 +505,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   static async fetchByCategoryIds({
     connectorId,
+    brandId,
     categoryIds,
   }: {
     connectorId: number;
+    brandId: number;
     categoryIds: number[];
   }): Promise<ZendeskCategoryResource[]> {
     const categories = await ZendeskCategory.findAll({
-      where: { connectorId, categoryId: { [Op.in]: categoryIds } },
+      where: { connectorId, brandId, categoryId: { [Op.in]: categoryIds } },
     });
     return categories.map(
       (category) => category && new this(this.model, category.get())
@@ -783,13 +785,15 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
 
   static async fetchByTicketIds({
     connectorId,
+    brandId,
     ticketIds,
   }: {
     connectorId: number;
+    brandId: number;
     ticketIds: number[];
   }): Promise<ZendeskTicketResource[]> {
     const tickets = await ZendeskTicket.findAll({
-      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+      where: { connectorId, brandId, ticketId: { [Op.in]: ticketIds } },
     });
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
@@ -1005,13 +1009,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   static async fetchByArticleIds({
     connectorId,
+    brandId,
     articleIds,
   }: {
     connectorId: number;
+    brandId: number;
     articleIds: number[];
   }): Promise<ZendeskArticleResource[]> {
     const articles = await ZendeskArticle.findAll({
-      where: { connectorId, articleId: { [Op.in]: articleIds } },
+      where: { connectorId, brandId, articleId: { [Op.in]: articleIds } },
     });
     return articles.map((article) => new this(this.model, article.get()));
   }
