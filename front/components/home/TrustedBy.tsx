@@ -16,10 +16,9 @@ export default function TrustedBy() {
         Trusted by 1000+ organizations
       </H3>
 
-      <div className="mx-auto mt-8 w-full max-w-[1600px] px-8">
+      <div className="mx-auto mt-8 w-full max-w-screen-2xl px-8">
         <div className="grid grid-cols-1 place-items-center gap-8 md:grid-cols-2 lg:grid-cols-4">
           {" "}
-          {/* Reduced from gap-16 to gap-8 */}
           <Image
             alt="alan"
             src="/static/landing/logos/alan.png"
