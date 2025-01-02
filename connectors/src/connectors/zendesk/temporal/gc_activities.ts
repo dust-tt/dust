@@ -194,6 +194,7 @@ export async function removeMissingArticleBatchActivity({
       if (!article) {
         await deleteArticle(
           connectorId,
+          brandId,
           articleId,
           dataSourceConfig,
           loggerArgs
