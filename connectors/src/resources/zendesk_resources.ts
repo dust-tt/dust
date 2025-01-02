@@ -738,7 +738,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     const { brandId, ticketId } = this;
     /// Tickets have two parents: the Tickets and the Brand.
     return [
-      getTicketInternalId({ connectorId, ticketId }),
+      getTicketInternalId({ connectorId, brandId, ticketId }),
       getTicketsInternalId({ connectorId, brandId }),
       getBrandInternalId({ connectorId, brandId }),
     ];
@@ -923,7 +923,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     const { brandId, categoryId, articleId } = this;
     return {
       provider: "zendesk",
-      internalId: getArticleInternalId({ connectorId, articleId }),
+      internalId: getArticleInternalId({ connectorId, brandId, articleId }),
       parentInternalId: getCategoryInternalId({
         connectorId,
         brandId,
@@ -943,7 +943,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     const { brandId, categoryId, articleId } = this;
     /// Articles have three parents: the Category, the Help Center and the Brand.
     return [
-      getArticleInternalId({ connectorId, articleId }),
+      getArticleInternalId({ connectorId, brandId, articleId }),
       getCategoryInternalId({ connectorId, brandId, categoryId }),
       getHelpCenterInternalId({ connectorId, brandId }),
       getBrandInternalId({ connectorId, brandId }),
