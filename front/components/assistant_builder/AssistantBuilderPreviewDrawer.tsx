@@ -163,7 +163,7 @@ export default function AssistantBuilderRightPanel({
             "animate-reload":
               shouldAnimatePreviewDrawer &&
               rightPanelStatus.tab === "Preview" &&
-              rightPanelStatus.openedAt != null &&
+              rightPanelStatus.openedAt !== null &&
               Date.now() - rightPanelStatus.openedAt > 1000,
           }
         )}
