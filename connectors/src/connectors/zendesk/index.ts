@@ -302,15 +302,27 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const nodes = await retrieveChildrenNodes({
-      connector,
-      parentInternalId,
-      filterPermission,
-      viewType: "documents",
-    });
-
-    nodes.sort((a, b) => a.title.localeCompare(b.title));
-    return new Ok(nodes);
+    try {
+      const nodes = await retrieveChildrenNodes({
+        connector,
+        parentInternalId,
+        filterPermission,
+        viewType: "documents",
+      });
+      nodes.sort((a, b) => a.title.localeCompare(b.title));
+      return new Ok(nodes);
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Authorization erorr, please re-authorize Zendesk."
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
+    }
   }
 
   /**
