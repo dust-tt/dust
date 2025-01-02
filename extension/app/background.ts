@@ -88,6 +88,36 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
+chrome.runtime.onMessageExternal.addListener((request) => {
+  console.log("Message received:", request);
+  if (request.action === "openSidePanel" && request.conversationId) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      console.log("Active tab:", tabs[0]);
+      if (tabs[0]) {
+        void chrome.sidePanel
+          .open({
+            windowId: tabs[0].windowId,
+          })
+          .then(() => {
+            // Set a timeout to ensure it's loaded. Ugly but works.
+            setTimeout(() => {
+              const params = JSON.stringify({
+                conversationId: request.conversationId,
+              });
+              void chrome.runtime.sendMessage({
+                type: "EXT_ROUTE_CHANGE",
+                pathname: "/run",
+                search: `?${params}`,
+              });
+            }, 1000);
+          })
+          .catch((err) => console.error("Error opening side panel:", err));
+      }
+    });
+  }
+  return true;
+});
+
 const getActionHandler = (menuItemId: string | number) => {
   switch (menuItemId) {
     case "ask_dust":
