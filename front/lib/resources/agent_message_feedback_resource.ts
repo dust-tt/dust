@@ -110,9 +110,9 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     totalFeedbackCount: number;
   }> {
     const where: WhereOptions<AgentMessageFeedback> = {
-      // IMPORTANT: Necessary for global models who share ids across workspaces.
+      // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.sId.toString(),
+      agentConfigurationId: agentConfiguration.sId,
     };
 
     // Get the total feedback count, because needed for pagination
