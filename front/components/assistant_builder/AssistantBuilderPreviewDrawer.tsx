@@ -15,6 +15,7 @@ import {
   Markdown,
   MoreIcon,
   Page,
+  Pagination,
   Spinner,
   Tabs,
   TabsList,
@@ -29,7 +30,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useCallback, useContext, useEffect, useState } from "react";
+import type { PaginationState } from "@tanstack/react-table";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -56,8 +58,7 @@ import { useUser } from "@app/lib/swr/user";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
-const MAX_FEEDBACKS_TO_DISPLAY = 500;
-const FEEDBACKS_BATCH_SIZE = 100;
+const FEEDBACKS_BATCH_SIZE = 50;
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -422,16 +423,16 @@ const FeedbacksSection = ({
   owner: LightWorkspaceType;
   assistantId: string;
 }) => {
-  // Used for pagination
-  const [feedbacksExhausted, setFeedbacksExhausted] = useState(false);
-  const [currentOldestFeedbackId, setCurrentOldestFeedbackId] = useState<
-    number | undefined
-  >(undefined);
+  // Used for pagination's lastValue: BatchId -> LastFeedbackId
+  const [lastIdForBatches, setLastIdForBatches] = useState<
+    Record<number, number>
+  >({});
 
-  // All retrieved Feedbacks
-  const [feedbacks, setFeedbacks] = useState<
-    AgentMessageFeedbackWithMetadataType[]
-  >([]);
+  const [paginationState, setPaginationState] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: FEEDBACKS_BATCH_SIZE,
+  });
+
   // Decreasing version, paginated decreasing id.
   const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
     useAgentConfigurationFeedbacksByDescVersion({
@@ -440,38 +441,14 @@ const FeedbacksSection = ({
       withMetadata: true,
       paginationParams: {
         limit: FEEDBACKS_BATCH_SIZE,
-        lastValue: currentOldestFeedbackId,
+        lastValue:
+          paginationState.pageIndex === 0
+            ? undefined
+            : lastIdForBatches[paginationState.pageIndex - 1],
         orderColumn: "id",
         orderDirection: "desc",
       },
     });
-
-  // Handle pagination updates.
-  useEffect(() => {
-    if (
-      !!agentConfigurationFeedbacks &&
-      agentConfigurationFeedbacks.length > 0
-    ) {
-      setFeedbacks((prevFeedbacks) => {
-        const newFeedbacks = agentConfigurationFeedbacks.filter(
-          (f) => !prevFeedbacks.some((pf) => pf.id === f.id)
-        ) as AgentMessageFeedbackWithMetadataType[];
-        return [...prevFeedbacks, ...newFeedbacks];
-      });
-    }
-  }, [agentConfigurationFeedbacks]);
-
-  // Determine when feedback is exhausted
-  useEffect(() => {
-    if (!agentConfigurationFeedbacks) {
-      return;
-    }
-    setFeedbacksExhausted(
-      agentConfigurationFeedbacks.length === 0 ||
-        // We limit the number of feedbacks to prevent the page from becoming too slow.
-        feedbacks.length + FEEDBACKS_BATCH_SIZE > MAX_FEEDBACKS_TO_DISPLAY
-    );
-  }, [agentConfigurationFeedbacks, feedbacks]);
 
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
     useAgentConfigurationHistory({
@@ -479,14 +456,38 @@ const FeedbacksSection = ({
       agentConfigurationId: assistantId,
     });
 
-  const handleLoadMoreFeedbacks = useCallback(() => {
-    if (agentConfigurationFeedbacks && agentConfigurationFeedbacks.length > 0) {
-      // This triggers a re-fetch of the feedbacks.
-      setCurrentOldestFeedbackId(
-        agentConfigurationFeedbacks[agentConfigurationFeedbacks.length - 1].id
-      );
-    }
-  }, [agentConfigurationFeedbacks]);
+  const handleSetPagination = useCallback(
+    (pagination: PaginationState) => {
+      // Pagination is not displayed if there are no feedbacks.
+      if (
+        !agentConfigurationFeedbacks ||
+        agentConfigurationFeedbacks.feedbacks.length === 0
+      ) {
+        return;
+      }
+      setLastIdForBatches((prev) => ({
+        ...prev,
+        ...{
+          [paginationState.pageIndex]:
+            agentConfigurationFeedbacks.feedbacks[
+              agentConfigurationFeedbacks.feedbacks.length - 1
+            ].id,
+        },
+      }));
+      setPaginationState(pagination);
+    },
+    [agentConfigurationFeedbacks, paginationState.pageIndex]
+  );
+
+  const firstAgentConfigurationInBatch = useMemo(
+    () =>
+      agentConfigurationHistory?.find(
+        (c) =>
+          c.version ===
+          agentConfigurationFeedbacks?.feedbacks[0].agentConfigurationVersion
+      ),
+    [agentConfigurationHistory, agentConfigurationFeedbacks]
+  );
 
   if (
     isAgentConfigurationFeedbacksLoading ||
@@ -497,12 +498,13 @@ const FeedbacksSection = ({
 
   if (
     !isAgentConfigurationFeedbacksLoading &&
-    (!feedbacks || feedbacks.length === 0)
+    (!agentConfigurationFeedbacks ||
+      agentConfigurationFeedbacks.feedbacks.length === 0)
   ) {
     return <div className="mt-3 text-sm text-element-900">No feedbacks.</div>;
   }
 
-  if (!agentConfigurationHistory) {
+  if (!agentConfigurationHistory || !firstAgentConfigurationInBatch) {
     return (
       <div className="mt-3 text-sm text-element-900">
         Error loading the previous agent versions.
@@ -514,16 +516,20 @@ const FeedbacksSection = ({
     <div>
       <div className="mb-2 flex flex-col">
         <AgentConfigurationVersionHeader
-          agentConfiguration={agentConfigurationHistory[0]}
-          agentConfigurationVersion={agentConfigurationHistory[0].version}
-          isLatestVersion={true}
+          agentConfiguration={firstAgentConfigurationInBatch}
+          agentConfigurationVersion={firstAgentConfigurationInBatch?.version}
+          isLatestVersion={
+            firstAgentConfigurationInBatch?.version ===
+            agentConfigurationHistory[0].version
+          }
         />
-        {feedbacks.map((feedback, index) => {
+        {agentConfigurationFeedbacks?.feedbacks.map((feedback, index) => {
           const isFirstFeedback = index === 0;
           const isNewVersion =
             !isFirstFeedback &&
             feedback.agentConfigurationVersion !==
-              feedbacks[index - 1].agentConfigurationVersion;
+              agentConfigurationFeedbacks.feedbacks[index - 1]
+                .agentConfigurationVersion;
           return (
             <div key={feedback.id} className="animate-fadeIn">
               {isNewVersion && (
@@ -550,16 +556,20 @@ const FeedbacksSection = ({
           );
         })}
       </div>
-      {feedbacks && !feedbacksExhausted && (
-        <div className="mb-2 flex justify-center">
-          <Button
-            size="sm"
-            variant="outline"
-            label="Load more feedbacks"
-            onClick={handleLoadMoreFeedbacks}
-          />
-        </div>
-      )}
+      {agentConfigurationFeedbacks &&
+        agentConfigurationFeedbacks.totalFeedbackCount > 0 && (
+          <div className="my-2 mr-2">
+            <Pagination
+              rowCount={agentConfigurationFeedbacks.totalFeedbackCount}
+              pagination={paginationState}
+              setPagination={handleSetPagination}
+              size="xs"
+              showDetails={true}
+              // Important: We need to go page by page to keep track of last cursor id.
+              showPageButtons={false}
+            />
+          </div>
+        )}
     </div>
   );
 };
