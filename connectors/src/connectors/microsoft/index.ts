@@ -9,6 +9,7 @@ import { Client } from "@microsoft/microsoft-graph-client";
 
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
@@ -46,6 +47,7 @@ import {
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -203,11 +205,13 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
-        new Error(`Could not find connector with id ${this.connectorId}`)
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
       );
     }
 
@@ -227,11 +231,19 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
       if (!node) {
         return new Err(
-          new Error(`Could not find node with id ${parentInternalId}`)
+          new ConnectorManagerError(
+            "INVALID_PARENT_INTERNAL_ID",
+            `Could not find node with id ${parentInternalId}`
+          )
         );
       }
-      return retrieveChildrenNodes(node, isTablesView);
+      const nRes = await retrieveChildrenNodes(node, isTablesView);
+      if (nRes.isErr()) {
+        throw nRes.error;
+      }
+      return new Ok(nRes.value);
     }
+
     const client = await getClient(connector.connectionId);
     const nodes = [];
 
@@ -251,84 +263,97 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const { nodeType } = typeAndPathFromInternalId(parentInternalId);
 
-    switch (nodeType) {
-      case "sites-root": {
-        const sites = await getAllPaginatedEntities((nextLink) =>
-          getSites(client, nextLink)
-        );
-        nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
-        break;
+    try {
+      switch (nodeType) {
+        case "sites-root": {
+          const sites = await getAllPaginatedEntities((nextLink) =>
+            getSites(client, nextLink)
+          );
+          nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
+          break;
+        }
+        case "teams-root": {
+          const teams = await getAllPaginatedEntities((nextLink) =>
+            getTeams(client, nextLink)
+          );
+          nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
+          break;
+        }
+        case "team": {
+          const channels = await getAllPaginatedEntities((nextLink) =>
+            getChannels(client, parentInternalId, nextLink)
+          );
+          nodes.push(
+            ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
+          );
+          break;
+        }
+        case "site": {
+          const subSites = await getAllPaginatedEntities((nextLink) =>
+            getSubSites(client, parentInternalId, nextLink)
+          );
+          const drives = await getAllPaginatedEntities((nextLink) =>
+            getDrives(client, parentInternalId, nextLink)
+          );
+          nodes.push(
+            ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
+            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
+          );
+          break;
+        }
+        case "drive":
+        case "folder": {
+          const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
+            getFilesAndFolders(client, parentInternalId, nextLink)
+          );
+          const folders = filesAndFolders.filter((n) => n.folder);
+          nodes.push(
+            ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
+          );
+          break;
+        }
+        case "channel":
+        case "file":
+        case "page":
+        case "message":
+        case "worksheet":
+          throw new Error(
+            `Unexpected node type ${nodeType} for retrievePermissions`
+          );
+        default: {
+          assertNever(nodeType);
+        }
       }
-      case "teams-root": {
-        const teams = await getAllPaginatedEntities((nextLink) =>
-          getTeams(client, nextLink)
-        );
-        nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
-        break;
-      }
-      case "team": {
-        const channels = await getAllPaginatedEntities((nextLink) =>
-          getChannels(client, parentInternalId, nextLink)
-        );
-        nodes.push(
-          ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
-        );
-        break;
-      }
-      case "site": {
-        const subSites = await getAllPaginatedEntities((nextLink) =>
-          getSubSites(client, parentInternalId, nextLink)
-        );
-        const drives = await getAllPaginatedEntities((nextLink) =>
-          getDrives(client, parentInternalId, nextLink)
-        );
-        nodes.push(
-          ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
-          ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
-        );
-        break;
-      }
-      case "drive":
-      case "folder": {
-        const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
-          getFilesAndFolders(client, parentInternalId, nextLink)
-        );
-        const folders = filesAndFolders.filter((n) => n.folder);
-        nodes.push(
-          ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
-        );
-        break;
-      }
-      case "channel":
-      case "file":
-      case "page":
-      case "message":
-      case "worksheet":
-        throw new Error(
-          `Unexpected node type ${nodeType} for retrievePermissions`
-        );
-      default: {
-        assertNever(nodeType);
-      }
-    }
 
-    const nodesWithPermissions = nodes.map((res) => {
-      return {
-        ...res,
-        permission: (selectedResources.includes(res.internalId) ||
-        (res.parentInternalId &&
-          selectedResources.includes(res.parentInternalId))
-          ? "read"
-          : "none") as ConnectorPermission,
-      };
-    });
+      const nodesWithPermissions = nodes.map((res) => {
+        return {
+          ...res,
+          permission: (selectedResources.includes(res.internalId) ||
+          (res.parentInternalId &&
+            selectedResources.includes(res.parentInternalId))
+            ? "read"
+            : "none") as ConnectorPermission,
+        };
+      });
 
-    if (filterPermission) {
-      return new Ok(
-        nodesWithPermissions.filter((n) => n.permission === filterPermission)
-      );
+      if (filterPermission) {
+        return new Ok(
+          nodesWithPermissions.filter((n) => n.permission === filterPermission)
+        );
+      }
+      return new Ok(nodesWithPermissions);
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Microsoft authorization error, please re-authorize."
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
-    return new Ok(nodesWithPermissions);
   }
 
   async setPermissions({

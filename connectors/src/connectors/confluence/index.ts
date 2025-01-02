@@ -4,7 +4,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
+import { cacheWithRedis, ConfluenceClientError, Err, Ok } from "@dust-tt/types";
 
 import {
   getConfluenceAccessToken,
@@ -38,6 +38,7 @@ import {
 } from "@connectors/connectors/confluence/temporal/client";
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import {
@@ -45,6 +46,7 @@ import {
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -265,11 +267,15 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     const confluenceConfig = await ConfluenceConfiguration.findOne({
@@ -282,32 +288,55 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         { connectorId: this.connectorId },
         "Confluence configuration not found"
       );
-      return new Err(new Error("Confluence configuration not found"));
+      throw new Error("Confluence configuration not found");
     }
 
-    // When the filter permission is set to 'read', the full hierarchy of spaces
-    // and pages that Dust can access is displayed to the user.
-    if (filterPermission === "read") {
-      const data = await retrieveHierarchyForParent(
-        connector,
-        confluenceConfig,
-        parentInternalId
-      );
+    try {
+      // When the filter permission is set to 'read', the full hierarchy of spaces
+      // and pages that Dust can access is displayed to the user.
+      if (filterPermission === "read") {
+        const data = await retrieveHierarchyForParent(
+          connector,
+          confluenceConfig,
+          parentInternalId
+        );
+        if (data.isErr()) {
+          throw data.error;
+        }
 
-      if (data.isErr()) {
-        return new Err(data.error);
+        return new Ok(data.value);
+      } else {
+        // If the permission is not set to 'read', users are limited to selecting only
+        // spaces for synchronization with Dust.
+        const allSpacesRes = await retrieveAvailableSpaces(
+          connector,
+          confluenceConfig
+        );
+        if (allSpacesRes.isErr()) {
+          throw allSpacesRes.error;
+        }
+
+        return allSpacesRes;
       }
-
-      return new Ok(data.value);
-    } else {
-      // If the permission is not set to 'read', users are limited to selecting only
-      // spaces for synchronization with Dust.
-      const allSpacesRes = await retrieveAvailableSpaces(
-        connector,
-        confluenceConfig
-      );
-
-      return allSpacesRes;
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Confluence authorization error, please re-authorize."
+          )
+        );
+      }
+      if (e instanceof ConfluenceClientError && e.status === 429) {
+        return new Err(
+          new ConnectorManagerError(
+            "RATE_LIMIT_ERROR",
+            `Confluence rate limit error when retrieving content nodes.`
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
   }
 

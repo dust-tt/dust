@@ -12,6 +12,7 @@ import PQueue from "p-queue";
 
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
@@ -281,11 +282,14 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     if (parentInternalId) {
       return new Err(
-        new Error(
-          "Slack connector does not support permission retrieval with `parentInternalId`"
+        new ConnectorManagerError(
+          "INVALID_PARENT_INTERNAL_ID",
+          "Slack connector does not support permission retrieval with non null `parentInternalId`"
         )
       );
     }
@@ -293,7 +297,9 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
     const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
       this.connectorId
@@ -303,7 +309,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         { connectorId: this.connectorId },
         "Slack configuration not found"
       );
-      return new Err(new Error("Slack configuration not found"));
+      // This is unexpected let's throw to return a 500.
+      throw new Error("Slack configuration not found");
     }
 
     let permissionToFilter: ConnectorPermission[] = [];
@@ -408,7 +415,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       if (e instanceof ExternalOAuthTokenError) {
         logger.error({ connectorId: this.connectorId }, "Slack token invalid");
         return new Err(
-          new Error("Slack token invalid. Please re-authorize Slack.")
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Slack authorization error, please re-authorize."
+          )
         );
       }
       if (e instanceof ProviderWorkflowError && e.type === "rate_limit_error") {
@@ -416,8 +426,14 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           { connectorId: this.connectorId, error: e },
           "Slack rate limit when retrieving permissions."
         );
-        return new Err(e);
+        return new Err(
+          new ConnectorManagerError(
+            "RATE_LIMIT_ERROR",
+            `Slack rate limit error when retrieving content nodes.`
+          )
+        );
       }
+      // Unanhdled error, throwing to get a 500.
       throw e;
     }
   }
