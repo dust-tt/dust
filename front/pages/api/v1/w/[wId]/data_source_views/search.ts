@@ -45,9 +45,9 @@ async function handler(
       const { vaultId, dataSourceId, kind, vaultKind } = r.data;
 
       const data_source_views = await DataSourceViewResource.search(auth, {
-        vaultId,
         dataSourceId,
         kind,
+        vaultId,
         vaultKind,
       });
 
