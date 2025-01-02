@@ -149,33 +149,18 @@ export async function syncArticle({
       updatedAt,
     });
 
-    const documentId = getArticleInternalId({
+    const oldDocumentId = getArticleInternalId({
       connectorId,
       articleId: article.id,
     });
 
-    const parents = articleInDb.getParentInternalIds(connectorId);
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentId,
-      documentContent,
-      documentUrl: article.html_url,
-      timestampMs: updatedAt.getTime(),
-      tags: [
-        `title:${article.title}`,
-        `createdAt:${createdAt.getTime()}`,
-        `updatedAt:${updatedAt.getTime()}`,
-      ],
-      parents,
-      parentId: parents[1],
-      loggerArgs: { ...loggerArgs, articleId: article.id },
-      upsertContext: { sync_type: "batch" },
-      title: article.title,
-      mimeType: "application/vnd.dust.zendesk.article",
-      async: true,
+    // TODO(2025-01-02 aubin): stop deleting old documents once the migration of internal IDs is done.
+    await deleteDataSourceDocument(dataSourceConfig, oldDocumentId, {
+      ...loggerArgs,
+      articleId: article.id,
     });
 
-    // TODO(2025-01-02 aubin): stop upserting documents x2 once the migration of internal IDs is done.
+    const parents = articleInDb.getParentInternalIds(connectorId);
     const newDocumentId = getArticleNewInternalId({
       connectorId,
       brandId: category.brandId,

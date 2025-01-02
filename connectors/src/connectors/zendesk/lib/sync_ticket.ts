@@ -207,34 +207,17 @@ ${comments
       updatedAt: updatedAtDate,
     });
 
-    const documentId = getTicketInternalId({
+    const oldDocumentId = getTicketInternalId({
       connectorId,
+      ticketId: ticket.id,
+    });
+    // TODO(2025-01-02 aubin): stop upserting documents x2 once the migration of internal IDs is done.
+    await deleteDataSourceDocument(dataSourceConfig, oldDocumentId, {
+      ...loggerArgs,
       ticketId: ticket.id,
     });
 
     const parents = ticketInDb.getParentInternalIds(connectorId);
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentId,
-      documentContent,
-      documentUrl: ticket.url,
-      timestampMs: updatedAtDate.getTime(),
-      tags: [
-        ...ticket.tags,
-        `title:${ticket.subject}`,
-        `updatedAt:${updatedAtDate.getTime()}`,
-        `createdAt:${createdAtDate.getTime()}`,
-      ],
-      parents,
-      parentId: parents[1],
-      loggerArgs: { ...loggerArgs, ticketId: ticket.id },
-      upsertContext: { sync_type: "batch" },
-      title: ticket.subject,
-      mimeType: "application/vnd.dust.zendesk.ticket",
-      async: true,
-    });
-
-    // TODO(2025-01-02 aubin): stop upserting documents x2 once the migration of internal IDs is done.
     const newDocumentId = getTicketNewInternalId({
       connectorId,
       brandId,
