@@ -20,7 +20,12 @@ type ResourceMap<U extends ResourceKey> = {
 };
 
 type OptionsMap<U extends ResourceKey> = {
-  [K in U]: Record<string, string | boolean | number> | boolean;
+  [K in U]:
+    | {
+        requireCanRead?: boolean;
+        requireCanList?: boolean;
+      }
+    | boolean;
 };
 
 type ResourceKey = keyof KeyToResource;
