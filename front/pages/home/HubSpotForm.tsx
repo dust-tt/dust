@@ -1,27 +1,54 @@
-import { useEffect } from 'react';
+"use client";
+
+import { useEffect, useState } from "react";
+
+declare global {
+  interface Window {
+    hbspt: {
+      forms: {
+        create: (config: {
+          region: string;
+          portalId: string;
+          formId: string;
+          target: string;
+        }) => void;
+      };
+    };
+  }
+}
 
 export function HubSpotForm() {
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = "//js-eu1.hsforms.net/forms/embed/v2.js";
-    script.charset = "utf-8";
-    script.async = true;
-    document.body.appendChild(script);
+  const [isMounted, setIsMounted] = useState(false);
 
+  useEffect(() => {
+    setIsMounted(true);
+    const script = document.createElement("script");
+    script.src = "//js-eu1.hsforms.net/forms/embed/v2.js";
+    script.async = true;
     script.onload = () => {
-      if ((window as any).hbspt) {
-        (window as any).hbspt.forms.create({
+      if (window.hbspt) {
+        window.hbspt.forms.create({
+          region: "eu1",
           portalId: "144442587",
           formId: "7cc5ca02-5547-42ca-98b5-80e5e3c422eb",
-          target: "#hubspotForm"
+          target: "#hubspotForm",
         });
       }
     };
 
+    document.body.appendChild(script);
     return () => {
-      script.remove();
+      document.body.removeChild(script);
+      const formContainer = document.getElementById("hubspotForm");
+      if (formContainer) {
+        formContainer.innerHTML = "";
+      }
     };
   }, []);
+
+  if (!isMounted) {
+    return null;
+  }
 
   return <div id="hubspotForm" />;
 }
