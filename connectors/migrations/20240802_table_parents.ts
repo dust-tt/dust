@@ -49,6 +49,7 @@ async function updateParents({
         tableId,
         parents,
         dataSourceConfig,
+        parentId: parents[1] || null,
       });
     }
   }

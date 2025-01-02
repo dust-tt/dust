@@ -44,6 +44,7 @@ async function processLogFile(
           dataSourceConfig,
           documentId: documentId,
           parents: previousParents,
+          parentId: previousParents[1] || null,
         });
       }
     }

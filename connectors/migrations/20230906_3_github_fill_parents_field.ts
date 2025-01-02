@@ -88,6 +88,7 @@ async function updateDiscussionsParentsFieldForConnector(
             getDiscussionInternalId(document.repoId, document.discussionNumber),
             document.repoId,
           ],
+          parentId: document.repoId,
         });
       })
     );
@@ -118,6 +119,7 @@ async function updateIssuesParentsFieldForConnector(connector: ConnectorModel) {
             getIssueInternalId(document.repoId, document.issueNumber),
             document.repoId,
           ],
+          parentId: document.repoId,
         });
       })
     );
