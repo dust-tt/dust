@@ -25,7 +25,7 @@ import {
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -912,7 +912,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: { connectorId: this.connectorId, articleId: this.articleId },
+      where: { connectorId: this.connectorId, id: this.id },
       transaction,
     });
     return new Ok(undefined);
@@ -979,8 +979,12 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
     batchSize: number;
     cursor: number | null;
-  }): Promise<{ articleIds: number[]; cursor: number | null }> {
+  }): Promise<{
+    ids: { brandId: number; articleId: number }[];
+    cursor: number | null;
+  }> {
     const articles = await ZendeskArticle.findAll({
+      attributes: ["id", "articleId", "brandId"],
       where: {
         connectorId,
         brandId,
@@ -990,33 +994,40 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       limit: batchSize,
     });
     return {
-      articleIds: articles.map((article) => article.get().articleId),
+      ids: articles.map((article) => {
+        const { articleId, brandId } = article.get();
+        return { articleId, brandId };
+      }),
       cursor: articles[batchSize - 1]?.get().id || null, // returning the last ID if it's a complete batch
     };
   }
 
   static async fetchByArticleId({
     connectorId,
+    brandId,
     articleId,
   }: {
     connectorId: number;
+    brandId: number;
     articleId: number;
   }): Promise<ZendeskArticleResource | null> {
     const article = await ZendeskArticle.findOne({
-      where: { connectorId, articleId },
+      where: { connectorId, brandId, articleId },
     });
     return article && new this(this.model, article.get());
   }
 
   static async fetchByArticleIds({
     connectorId,
+    brandId,
     articleIds,
   }: {
     connectorId: number;
+    brandId: number;
     articleIds: number[];
   }): Promise<ZendeskArticleResource[]> {
     const articles = await ZendeskArticle.findAll({
-      where: { connectorId, articleId: { [Op.in]: articleIds } },
+      where: { connectorId, brandId, articleId: { [Op.in]: articleIds } },
     });
     return articles.map((article) => new this(this.model, article.get()));
   }
@@ -1059,12 +1070,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     connectorId: number;
     brandId: number;
     batchSize?: number | null;
-  }): Promise<number[]> {
+  }): Promise<{ brandId: number; articleId: number }[]> {
     const articles = await ZendeskArticle.findAll({
       where: { connectorId, brandId },
       ...(batchSize && { limit: batchSize }),
     });
-    return articles.map((article) => Number(article.get().articleId));
+    return articles.map((article) => {
+      const { articleId, brandId } = article.get();
+      return { articleId, brandId };
+    });
   }
 
   static async deleteByArticleId({
