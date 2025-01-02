@@ -20,14 +20,12 @@ type ResourceMap<U extends ResourceKey> = {
 };
 
 type OptionsMap<U extends ResourceKey> = {
-  [K in U]:
-    | {
-        requireCanAdministrate?: boolean;
-        requireCanList?: boolean;
-        requireCanRead?: boolean;
-        requireCanWrite?: boolean;
-      }
-    | true;
+  [K in U]: {
+    requireCanAdministrate?: boolean;
+    requireCanList?: boolean;
+    requireCanRead?: boolean;
+    requireCanWrite?: boolean;
+  };
 };
 
 type ResourceKey = keyof KeyToResource;
@@ -41,7 +39,7 @@ const resolvers = [
 
 type SessionOrKeyAuthType = Authenticator | SessionWithUser | null;
 
-type ResourceHandler<T, A extends SessionOrKeyAuthType> = (
+type ResourceResolver<T, A extends SessionOrKeyAuthType> = (
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<T>>,
   auth: Authenticator,
@@ -50,11 +48,54 @@ type ResourceHandler<T, A extends SessionOrKeyAuthType> = (
   sessionOrKeyAuth: A
 ) => Promise<void> | void;
 
+type HandlerWithResources<
+  T,
+  A extends SessionOrKeyAuthType,
+  U extends ResourceKey,
+> = (
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
+  auth: Authenticator,
+  resources: ResourceMap<U>,
+  sessionOrKeyAuth: A
+) => Promise<void> | void;
+
 function isResourceMap<U extends ResourceKey>(
   obj: any,
   keys: ResourceKey[]
 ): obj is ResourceMap<U> {
   return keys.every((key) => key in obj);
+}
+
+function spaceCheck(space: SpaceResource | null): space is SpaceResource {
+  return (space && !space.isConversations()) ?? false;
+}
+
+function hasPermission(
+  auth: Authenticator,
+  resource: SpaceResource | DataSourceResource | DataSourceViewResource,
+  options:
+    | {
+        requireCanAdministrate?: boolean;
+        requireCanList?: boolean;
+        requireCanRead?: boolean;
+        requireCanWrite?: boolean;
+      }
+    | true
+    | undefined
+) {
+  if (typeof options === "object") {
+    if (
+      (options.requireCanAdministrate === true &&
+        !resource.canAdministrate(auth)) ||
+      (options.requireCanList === true && !resource.canList(auth)) ||
+      (options.requireCanRead === true && !resource.canRead(auth)) ||
+      (options.requireCanWrite === true && !resource.canWrite(auth))
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /*
@@ -69,13 +110,7 @@ export function withResourceFetchingFromRoute<
   U extends ResourceKey,
   A extends SessionOrKeyAuthType,
 >(
-  handler: (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>,
-    auth: Authenticator,
-    resources: ResourceMap<U>,
-    sessionOrKeyAuth: A
-  ) => Promise<void> | void,
+  handler: HandlerWithResources<T, A, U>,
   options: OptionsMap<U>
 ): (
   req: NextApiRequest,
@@ -90,7 +125,7 @@ export function withResourceFetchingFromRoute<
       res: NextApiResponse<WithAPIErrorResponse<T>>,
       auth: Authenticator,
       resources: Partial<ResourceMap<ResourceKey>>,
-      _: Partial<OptionsMap<ResourceKey>>,
+      options: Partial<OptionsMap<ResourceKey>>,
       sessionOrKeyAuth: A
     ) => {
       const keys = Object.keys(options) as ResourceKey[];
@@ -126,8 +161,8 @@ export function withResourceFetchingFromRoute<
  *  not a conversation space, etc. and provide the space resource to the handler.
  */
 function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
-  handler: ResourceHandler<T, A>
-): ResourceHandler<T, A> {
+  handler: ResourceResolver<T, A>
+): ResourceResolver<T, A> {
   return async (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
@@ -161,7 +196,7 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
             // possibility of `spaceId` being undefined
             await SpaceResource.fetchById(auth, spaceId as string);
 
-      if (!space || space.isConversations()) {
+      if (!spaceCheck(space) || !hasPermission(auth, space, options.space)) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -171,26 +206,14 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
         });
       }
 
-      const opts = options.space;
-      if (typeof opts === "object") {
-        if (
-          (opts.requireCanAdministrate === true &&
-            !space.canAdministrate(auth)) ||
-          (opts.requireCanList === true && !space.canList(auth)) ||
-          (opts.requireCanRead === true && !space.canRead(auth)) ||
-          (opts.requireCanWrite === true && !space.canWrite(auth))
-        ) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "space_not_found",
-              message: "The space you requested was not found.",
-            },
-          });
-        }
-      }
-
-      resources.space = space;
+      return handler(
+        req,
+        res,
+        auth,
+        { ...resources, space },
+        options,
+        sessionOrKeyAuth
+      );
     }
 
     return handler(req, res, auth, resources, options, sessionOrKeyAuth);
@@ -203,8 +226,8 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
  * also supports the legacy usage of connectors with /w/[wId]/data_source/[dsId]/
  */
 function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
-  handler: ResourceHandler<T, A>
-): ResourceHandler<T, A> {
+  handler: ResourceResolver<T, A>
+): ResourceResolver<T, A> {
   return async (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
@@ -262,11 +285,13 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
             },
           });
         }
-
-        resources.space = space;
       }
 
-      if (dataSource.space.sId !== space.sId) {
+      if (
+        dataSource.space.sId !== space.sId ||
+        !spaceCheck(space) ||
+        !hasPermission(auth, dataSource, options.dataSource)
+      ) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -276,36 +301,14 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
         });
       }
 
-      if (!dataSource.space || dataSource.space.isConversations()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
-        });
-      }
-
-      const opts = options.dataSource;
-      if (typeof opts === "object") {
-        if (
-          (opts.requireCanAdministrate === true &&
-            !dataSource.canAdministrate(auth)) ||
-          (opts.requireCanList === true && !dataSource.canList(auth)) ||
-          (opts.requireCanRead === true && !dataSource.canRead(auth)) ||
-          (opts.requireCanWrite === true && !dataSource.canWrite(auth))
-        ) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "data_source_not_found",
-              message: "The data source you requested was not found.",
-            },
-          });
-        }
-      }
-
-      resources.dataSource = dataSource;
+      return handler(
+        req,
+        res,
+        auth,
+        { ...resources, dataSource, space },
+        options,
+        sessionOrKeyAuth
+      );
     }
 
     return handler(req, res, auth, resources, options, sessionOrKeyAuth);
@@ -318,8 +321,8 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
  * also supports the legacy usage of connectors with /w/[wId]/data_source/[dsId]/
  */
 function withDataSourceViewFromRoute<T, A extends SessionOrKeyAuthType>(
-  handler: ResourceHandler<T, A>
-): ResourceHandler<T, A> {
+  handler: ResourceResolver<T, A>
+): ResourceResolver<T, A> {
   return async (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
@@ -357,7 +360,12 @@ function withDataSourceViewFromRoute<T, A extends SessionOrKeyAuthType>(
         });
       }
 
-      if (!dataSourceView || dataSourceView.space.sId !== space.sId) {
+      if (
+        !dataSourceView ||
+        dataSourceView.space.sId !== space.sId ||
+        !spaceCheck(space) ||
+        !hasPermission(auth, dataSourceView, options.dataSourceView)
+      ) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -367,27 +375,14 @@ function withDataSourceViewFromRoute<T, A extends SessionOrKeyAuthType>(
         });
       }
 
-      const opts = options.dataSourceView;
-      if (typeof opts === "object") {
-        if (
-          (opts.requireCanAdministrate === true &&
-            !dataSourceView.canAdministrate(auth)) ||
-          (opts.requireCanList === true && !dataSourceView.canList(auth)) ||
-          (opts.requireCanRead === true && !dataSourceView.canRead(auth)) ||
-          (opts.requireCanWrite === true && !dataSourceView.canWrite(auth))
-        ) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "data_source_view_not_found",
-              message: "The data source view you requested was not found.",
-            },
-          });
-        }
-      }
-
-      resources.dataSourceView = dataSourceView;
-      resources.dataSource = dataSourceView.dataSource;
+      return handler(
+        req,
+        res,
+        auth,
+        { ...resources, dataSource: dataSourceView.dataSource, dataSourceView },
+        options,
+        sessionOrKeyAuth
+      );
     }
 
     return handler(req, res, auth, resources, options, sessionOrKeyAuth);

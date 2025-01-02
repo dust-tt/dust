@@ -34,6 +34,16 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!dataSource.canList(auth)) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+      }
+
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)

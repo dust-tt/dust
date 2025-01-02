@@ -166,5 +166,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, { space: { requireCanWrite: true } })
 );

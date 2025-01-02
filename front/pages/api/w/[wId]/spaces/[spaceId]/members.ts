@@ -33,6 +33,17 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
+      if (!space.canAdministrate(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `admins` can administrate space members.",
+          },
+        });
+      }
+
       const bodyValidation = PatchSpaceMembersRequestBodySchema.decode(
         req.body
       );

@@ -67,23 +67,12 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
 
   const app = await AppResource.fetchById(auth, aId);
-  if (!app || app.space.sId !== space.sId) {
+  if (!app || !app.canRead(auth) || app.space.sId !== space.sId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app was not found.",
-      },
-    });
-  }
-
-  if (!app.canWrite(auth)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Interacting with datasets requires write access to the app's space.",
       },
     });
   }
@@ -98,6 +87,17 @@ async function handler(
       return;
 
     case "POST":
+      if (!app.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Interacting with datasets requires write access to the app's space.",
+          },
+        });
+      }
+
       const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -211,5 +211,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanWrite: true } })
+  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
 );

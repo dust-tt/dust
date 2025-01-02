@@ -123,6 +123,16 @@ async function handler(
       return;
 
     case "DELETE":
+      if (!dataSource.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       const delRes = await deleteTable({
         owner: auth.getNonNullableWorkspace(),
         dataSource,
