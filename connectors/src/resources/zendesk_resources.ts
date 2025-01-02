@@ -426,7 +426,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: { connectorId: this.connectorId, categoryId: this.categoryId },
+      where: { connectorId: this.connectorId, id: this.id },
       transaction,
     });
     return new Ok(undefined);
@@ -457,7 +457,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   }): Promise<{ categoryId: number; brandId: number }[]> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, permission: "none" },
-      attributes: ["categoryId"],
+      attributes: ["categoryId", "brandId"],
       limit: batchSize,
     });
     return categories.map((category) => {
@@ -490,26 +490,30 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   static async fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   }: {
     connectorId: number;
+    brandId: number;
     categoryId: number;
   }): Promise<ZendeskCategoryResource | null> {
     const category = await ZendeskCategory.findOne({
-      where: { connectorId, categoryId },
+      where: { connectorId, brandId, categoryId },
     });
     return category && new this(this.model, category.get());
   }
 
   static async fetchByCategoryIds({
     connectorId,
+    brandId,
     categoryIds,
   }: {
     connectorId: number;
+    brandId: number;
     categoryIds: number[];
   }): Promise<ZendeskCategoryResource[]> {
     const categories = await ZendeskCategory.findAll({
-      where: { connectorId, categoryId: { [Op.in]: categoryIds } },
+      where: { connectorId, brandId, categoryId: { [Op.in]: categoryIds } },
     });
     return categories.map(
       (category) => category && new this(this.model, category.get())
@@ -522,12 +526,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<number[]> {
+  }): Promise<{ brandId: number; categoryId: number }[]> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, brandId, permission: "read" },
-      attributes: ["categoryId"],
+      attributes: ["categoryId", "brandId"],
     });
-    return categories.map((category) => category.get().categoryId);
+    return categories.map((category) => {
+      const { categoryId, brandId } = category.get();
+      return { categoryId, brandId };
+    });
   }
 
   static async fetchBrandIdsOfReadOnlyCategories(
@@ -577,23 +584,29 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   static async deleteByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   }: {
     connectorId: number;
+    brandId: number;
     categoryId: number;
   }): Promise<void> {
-    await ZendeskCategory.destroy({ where: { connectorId, categoryId } });
+    await ZendeskCategory.destroy({
+      where: { connectorId, brandId, categoryId },
+    });
   }
 
   static async deleteByCategoryIds({
     connectorId,
+    brandId,
     categoryIds,
   }: {
     connectorId: number;
+    brandId: number;
     categoryIds: number[];
   }): Promise<number> {
     return ZendeskCategory.destroy({
-      where: { connectorId, categoryId: { [Op.in]: categoryIds } },
+      where: { connectorId, brandId, categoryId: { [Op.in]: categoryIds } },
     });
   }
 
@@ -1010,26 +1023,30 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   static async fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   }: {
     connectorId: number;
+    brandId: number;
     categoryId: number;
   }): Promise<ZendeskArticleResource[]> {
     const articles = await ZendeskArticle.findAll({
-      where: { connectorId, categoryId },
+      where: { connectorId, brandId, categoryId },
     });
     return articles.map((article) => new this(this.model, article.get()));
   }
 
   static async fetchByCategoryIdReadOnly({
     connectorId,
+    brandId,
     categoryId,
   }: {
     connectorId: number;
+    brandId: number;
     categoryId: number;
   }): Promise<ZendeskArticleResource[]> {
     const articles = await ZendeskArticle.findAll({
-      where: { connectorId, categoryId, permission: "read" },
+      where: { connectorId, brandId, categoryId, permission: "read" },
     });
     return articles.map((article) => new this(this.model, article.get()));
   }
@@ -1052,34 +1069,44 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   static async deleteByArticleId({
     connectorId,
+    brandId,
     articleId,
   }: {
     connectorId: number;
+    brandId: number;
     articleId: number;
   }) {
-    await ZendeskArticle.destroy({ where: { connectorId, articleId } });
+    await ZendeskArticle.destroy({
+      where: { connectorId, brandId, articleId },
+    });
   }
 
   static async deleteByArticleIds({
     connectorId,
+    brandId,
     articleIds,
   }: {
     connectorId: number;
+    brandId: number;
     articleIds: number[];
   }) {
     await ZendeskArticle.destroy({
-      where: { connectorId, articleId: { [Op.in]: articleIds } },
+      where: { connectorId, brandId, articleId: { [Op.in]: articleIds } },
     });
   }
 
   static async deleteByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   }: {
     connectorId: number;
+    brandId: number;
     categoryId: number;
   }) {
-    await ZendeskArticle.destroy({ where: { connectorId, categoryId } });
+    await ZendeskArticle.destroy({
+      where: { connectorId, brandId, categoryId },
+    });
   }
 
   static async deleteByConnectorId(
@@ -1104,14 +1131,16 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   static async revokePermissionsForCategory({
     connectorId,
+    brandId,
     categoryId,
   }: {
     connectorId: number;
+    brandId: number;
     categoryId: number;
   }) {
     await ZendeskArticle.update(
       { permission: "none" },
-      { where: { connectorId, categoryId } }
+      { where: { connectorId, brandId, categoryId } }
     );
   }
 }
