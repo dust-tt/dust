@@ -708,7 +708,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: { connectorId: this.connectorId, ticketId: this.ticketId },
+      where: { connectorId: this.connectorId, id: this.id },
       transaction,
     });
     return new Ok(undefined);
@@ -779,26 +779,30 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
 
   static async fetchByTicketId({
     connectorId,
+    brandId,
     ticketId,
   }: {
     connectorId: number;
+    brandId: number;
     ticketId: number;
   }): Promise<ZendeskTicketResource | null> {
     const ticket = await ZendeskTicket.findOne({
-      where: { connectorId, ticketId },
+      where: { connectorId, brandId, ticketId },
     });
     return ticket && new this(this.model, ticket.get());
   }
 
   static async fetchByTicketIds({
     connectorId,
+    brandId,
     ticketIds,
   }: {
     connectorId: number;
+    brandId: number;
     ticketIds: number[];
   }): Promise<ZendeskTicketResource[]> {
     const tickets = await ZendeskTicket.findAll({
-      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+      where: { connectorId, brandId, ticketId: { [Op.in]: ticketIds } },
     });
     return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
@@ -830,28 +834,32 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       attributes: ["ticketId"],
       ...(batchSize && { limit: batchSize }),
     });
-    return tickets.map((ticket) => Number(ticket.get().ticketId));
+    return tickets.map((ticket) => ticket.get().ticketId);
   }
 
   static async deleteByTicketId({
     connectorId,
+    brandId,
     ticketId,
   }: {
     connectorId: number;
+    brandId: number;
     ticketId: number;
   }): Promise<void> {
-    await ZendeskTicket.destroy({ where: { connectorId, ticketId } });
+    await ZendeskTicket.destroy({ where: { connectorId, brandId, ticketId } });
   }
 
   static async deleteByTicketIds({
     connectorId,
+    brandId,
     ticketIds,
   }: {
     connectorId: number;
+    brandId: number;
     ticketIds: number[];
   }): Promise<void> {
     await ZendeskTicket.destroy({
-      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+      where: { connectorId, brandId, ticketId: { [Op.in]: ticketIds } },
     });
   }
 
