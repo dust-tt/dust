@@ -4,108 +4,31 @@ import {
   Hover3D,
   PlayIcon,
   RocketIcon,
-  Spinner,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
-import React, { useEffect, useState } from "react";
-
+import React from "react";
 import { H1, P, Strong } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
 
-const ResponsiveIframe = () => {
+const VideoPlayer = () => {
   return (
-    <div className="relative h-[70vh] w-[70vw]">
+    <div className="relative w-full pt-[56.25%]"> {/* 16:9 aspect ratio */}
       <iframe
-        src="https://fast.wistia.net/embed/iframe/v90n8beuh9?seo=true&videoFoam=false"
+        src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true"
         title="Dust product tour"
         allow="autoplay; fullscreen"
         frameBorder="0"
-        className="absolute left-0 top-0 h-full w-full rounded-lg"
+        className="absolute inset-0 h-full w-full rounded-lg"
       ></iframe>
     </div>
   );
 };
 
 export function IntroSection() {
-  const [isVideoOpen, setIsVideoOpen] = useState(false);
-  const [showSpinner, setShowSpinner] = useState(false);
-
-  useEffect(() => {
-    if (isVideoOpen) {
-      setShowSpinner(true);
-      const timer = setTimeout(() => {
-        setShowSpinner(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isVideoOpen]);
-
-  const MainVisualImage = () => (
-    <>
-      {showSpinner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black opacity-50 backdrop-blur-md"></div>
-          <Spinner size="xl" />
-        </div>
-      )}
-      {isVideoOpen && !showSpinner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black opacity-50 backdrop-blur-md"
-            onClick={() => setIsVideoOpen(false)}
-          ></div>
-          <div className="z-10 overflow-hidden rounded-lg">
-            <ResponsiveIframe />
-          </div>
-        </div>
-      )}
-
-      <Hover3D depth={-40} perspective={1000} className="relative">
-        <Div3D depth={-30}>
-          <img
-            src="/static/landing/mainVisual/MainVisual1.png"
-            alt="MainVisual1"
-          />
-        </Div3D>
-        <Div3D depth={-10} className="absolute top-0">
-          <img
-            src="/static/landing/mainVisual/MainVisual2.png"
-            alt="MainVisual2"
-          />
-        </Div3D>
-        <Div3D depth={40} className="absolute top-0">
-          <img
-            src="/static/landing/mainVisual/MainVisual3.png"
-            alt="MainVisual3"
-          />
-        </Div3D>
-        <Div3D depth={-5} className="absolute top-0">
-          <img
-            src="/static/landing/mainVisual/MainVisual4.png"
-            alt="MainVisual4"
-          />
-        </Div3D>
-        <Div3D depth={100} className="absolute top-0">
-          <img
-            src="/static/landing/mainVisual/MainVisual5.png"
-            alt="MainVisual5"
-          />
-        </Div3D>
-        <Div3D
-          depth={150}
-          className="absolute top-0 flex h-full w-full items-center justify-center"
-        >
-          <Button
-            icon={PlayIcon}
-            variant="highlight"
-            size="md"
-            label="Watch Product Tour"
-            className="shadow-xl"
-            onClick={() => setIsVideoOpen(true)}
-          />
-        </Div3D>
-      </Hover3D>
-    </>
+  const MainVisual = () => (
+    <Hover3D depth={-40} perspective={1000} className="relative w-full">
+      <VideoPlayer />
+    </Hover3D>
   );
 
   return (
@@ -116,7 +39,9 @@ export function IntroSection() {
             <H1 from="from-red-200" to="to-red-400">
               Build custom AI&nbsp;assistants to speed up your work
             </H1>
-            <div className="w-full md:hidden">{MainVisualImage()}</div>
+            <div className="w-full md:hidden">
+              <MainVisual />
+            </div>
             <P size="lg" className="text-slate-50">
               Amplify your team's performance with personalized assistants
               connected to your proprietary knowledge and data.
@@ -132,11 +57,11 @@ export function IntroSection() {
               </Link>
             </div>
           </div>
-          <div className="hidden md:block">{MainVisualImage()}</div>
+          <div className="hidden md:block w-full max-w-2xl">
+            <MainVisual />
+          </div>
         </div>
-
         <TrustedBy />
-
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <P size="md" dotCSS="text-amber-300" shape="triangle">
             Connect <Strong>your team's data</Strong> and{" "}
