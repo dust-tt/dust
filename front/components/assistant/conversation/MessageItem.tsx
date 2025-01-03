@@ -15,7 +15,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
@@ -93,10 +93,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         }
       );
 
-    if (message.visibility === "deleted") {
-      return null;
-    }
-
     const messageFeedbackWithSubmit: FeedbackSelectorProps = {
       feedback: messageFeedback
         ? {
@@ -108,6 +104,52 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       onSubmitThumb,
       isSubmittingThumb,
     };
+
+    const [urlAnchor, setUrlAnchor] = useState<string | null>(null);
+    const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
+    const [messageBlinking, setMessageBlinking] = useState(false);
+    // Because the prop ref can be undefined
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+
+    // Effect: set the url anchor
+    useEffect(() => {
+      if (typeof window !== "undefined") {
+        const hashId = window.location.hash.replace("#", "");
+        setUrlAnchor(hashId);
+      }
+    }, [sId]);
+
+    // Effect: scroll to the message and temporarily highlight if it is the anchor's target
+    useEffect(() => {
+      if (!urlAnchor) {
+        return;
+      }
+      if (urlAnchor === sId && !hasScrolledToMessage && (ref || scrollRef)) {
+        setTimeout(() => {
+          setHasScrolledToMessage(true);
+          // Use ref to scroll to the message
+          const divRef = ref
+            ? (ref as React.RefObject<HTMLDivElement>)
+            : scrollRef;
+          if (divRef.current) {
+            divRef.current.scrollIntoView({
+              behavior: "instant",
+              block: "center",
+            });
+          }
+          setMessageBlinking(true);
+
+          // Have the message blink for a short time
+          setTimeout(() => {
+            setMessageBlinking(false);
+          }, 1000);
+        }, 100);
+      }
+    }, [hasScrolledToMessage, urlAnchor, sId, ref, scrollRef]);
+
+    if (message.visibility === "deleted") {
+      return null;
+    }
 
     switch (type) {
       case "user_message":
@@ -171,7 +213,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
       case "agent_message":
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div
+            id={`message-id-${sId}`}
+            ref={ref ?? scrollRef}
+            className={messageBlinking ? "animate-[bgblink_200ms_3]" : ""}
+          >
             <AgentMessage
               conversationId={conversationId}
               isLastMessage={isLastMessage}
