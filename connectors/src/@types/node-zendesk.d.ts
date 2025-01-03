@@ -117,7 +117,7 @@ interface ZendeskFetchedTicket {
   };
   sharing_agreement_ids: number[];
   status: "new" | "open" | "pending" | "hold" | "solved" | "closed" | "deleted";
-  subject: string;
+  subject: string | null;
   submitter_id: number;
   tags: string[];
   type: "problem" | "incident" | "question" | "task";
