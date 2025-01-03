@@ -178,7 +178,7 @@ async function handler(
 
   if (
     !dataSourceView ||
-    req.query.vId !== dataSourceView.space.sId ||
+    req.query.spaceId !== dataSourceView.space.sId ||
     !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {
