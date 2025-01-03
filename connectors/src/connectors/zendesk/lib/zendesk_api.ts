@@ -277,12 +277,29 @@ export async function fetchRecentlyUpdatedArticles({
 }> {
   // this endpoint retrieves changes in content, not only in metadata despite what is mentioned in the documentation.
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`;
-  const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return {
-    articles: response.articles,
-    hasMore: response.next_page !== null && response.articles.length !== 0,
-    endTime: response.end_time,
-  };
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return {
+      articles: response.articles,
+      hasMore: response.next_page !== null && response.articles.length !== 0,
+      endTime: response.end_time,
+    };
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      const user = await fetchZendeskCurrentUser({
+        subdomain: brandSubdomain,
+        accessToken,
+      });
+      if (user && user.role !== "admin") {
+        throw new ZendeskApiError(
+          "Error fetching the incremental articles endpoint, user is not admin.",
+          403,
+          e.data
+        );
+      }
+    }
+    throw e;
+  }
 }
 
 /**
