@@ -119,7 +119,7 @@ export default function SpaceSideBarMenu({
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
-      <NavigationList className="w-full px-2 pb-2">
+      <NavigationList className="w-full px-2">
         {sortedGroupedSpaces.map(({ section, spaces }, index) => {
           if (section === "public" && !spaces.length) {
             return null;
@@ -142,7 +142,7 @@ export default function SpaceSideBarMenu({
                   isAdmin &&
                   openSpaceCreationModal && (
                     <Button
-                      className="mt-4"
+                      className="mt-1"
                       size="xs"
                       variant="ghost"
                       label="New"
