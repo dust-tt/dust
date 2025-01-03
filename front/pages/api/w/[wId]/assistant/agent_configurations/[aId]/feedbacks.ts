@@ -13,7 +13,9 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<{ feedbacks: AgentMessageFeedbackType[] }>
+    WithAPIErrorResponse<{
+      feedbacks: AgentMessageFeedbackType[];
+    }>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -77,7 +79,9 @@ async function handler(
 
       const feedbacks = feedbacksRes.value;
 
-      res.status(200).json({ feedbacks });
+      res.status(200).json({
+        feedbacks: feedbacks,
+      });
       return;
 
     default:

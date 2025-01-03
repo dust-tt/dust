@@ -4,6 +4,7 @@ import type {
   ConversationError,
   ConversationType,
   ConversationWithoutContentType,
+  LightAgentConfigurationType,
   MessageType,
   Result,
   UserType,
@@ -91,7 +92,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
-  static async fetch({
+  static async getAgentConfigurationFeedbacksByDescVersion({
     workspace,
     withMetadata,
     agentConfiguration,
@@ -99,14 +100,15 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }: {
     workspace: WorkspaceType;
     withMetadata: boolean;
-    agentConfiguration?: AgentConfigurationType;
+    agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
   }): Promise<
     (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[]
   > {
     const where: WhereOptions<AgentMessageFeedback> = {
-      // IMPORTANT: Necessary for global models who share ids across workspaces.
+      // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.sId,
     };
 
     if (paginationParams.lastValue) {
@@ -114,9 +116,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where[paginationParams.orderColumn as any] = {
         [op]: paginationParams.lastValue,
       };
-    }
-    if (agentConfiguration) {
-      where.agentConfigurationId = agentConfiguration.sId.toString();
     }
 
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
@@ -148,6 +147,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
       order: [
+        // Necessary because a feedback can be given at any time on a  message linked to an old version.
+        ["agentConfigurationVersion", "DESC"],
         [
           paginationParams.orderColumn,
           paginationParams.orderDirection === "desc" ? "DESC" : "ASC",

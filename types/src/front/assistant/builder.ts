@@ -28,7 +28,11 @@ export const ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES: Record<
   creative: 1.0,
 };
 
-export const ASSISTANT_BUILDER_DRAWER_TABS = ["Template", "Preview"] as const;
+export const ASSISTANT_BUILDER_DRAWER_TABS = [
+  "Template",
+  "Preview",
+  "Performance",
+] as const;
 
 export type AssistantBuilderRightPanelTab =
   (typeof ASSISTANT_BUILDER_DRAWER_TABS)[number];
