@@ -1,4 +1,4 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import { useAuthHook } from "@extension/components/auth/useAuth";
 import type { AuthError } from "@extension/lib/auth";
 import type { StoredUser } from "@extension/lib/storage";
@@ -11,7 +11,7 @@ type AuthContextType = {
   authError: AuthError | null;
   setAuthError: (error: AuthError | null) => void;
   user: StoredUser | null;
-  workspace: LightWorkspaceType | undefined;
+  workspace: ExtensionWorkspaceType | undefined;
   isUserSetup: boolean;
   isLoading: boolean;
   handleLogin: (isForceLogin: boolean) => void;

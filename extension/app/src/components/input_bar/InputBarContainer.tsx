@@ -1,7 +1,7 @@
 import type {
   AgentMentionType,
+  ExtensionWorkspaceType,
   LightAgentConfigurationType,
-  LightWorkspaceType,
 } from "@dust-tt/client";
 import { SplitButton } from "@dust-tt/sparkle";
 import { AssistantPicker } from "@extension/components/assistants/AssistantPicker";
@@ -21,7 +21,7 @@ export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  owner: LightWorkspaceType;
+  owner: ExtensionWorkspaceType;
   selectedAssistant: AgentMentionType | null;
   stickyMentions?: AgentMentionType[];
   disableAutoFocus: boolean;

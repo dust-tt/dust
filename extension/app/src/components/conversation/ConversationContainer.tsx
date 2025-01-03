@@ -1,7 +1,7 @@
 import type {
   AgentMentionType,
   ContentFragmentType,
-  LightWorkspaceType,
+  ExtensionWorkspaceType,
 } from "@dust-tt/client";
 import { Page, useSendNotification } from "@dust-tt/sparkle";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
@@ -35,7 +35,7 @@ import { useNavigate } from "react-router-dom";
 
 interface ConversationContainerProps {
   conversationId: string | null;
-  owner: LightWorkspaceType;
+  owner: ExtensionWorkspaceType;
   user: StoredUser;
 }
 

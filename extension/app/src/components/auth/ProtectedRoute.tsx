@@ -1,4 +1,4 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
+import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import {
   Button,
   LogoHorizontalColorLogo,
@@ -19,7 +19,7 @@ type ProtectedRouteProps = {
 
 export type ProtectedRouteChildrenProps = {
   user: StoredUser;
-  workspace: LightWorkspaceType;
+  workspace: ExtensionWorkspaceType;
   handleLogout: () => void;
 };
 
