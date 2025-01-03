@@ -26,31 +26,29 @@ export function InputBarCitations({
       const isImage = Boolean(blob.preview);
 
       nodes.push(
-        <>
-          <Citation
-            disabled={disabled}
-            key={`cf-${blob.id}`}
-            className="w-48"
-            isLoading={blob.isUploading}
-          >
-            {isImage ? (
-              <>
-                <CitationImage imgSrc={blob.preview ?? ""} />
-                <CitationIcons>
-                  <Icon visual={ImageIcon} />
-                </CitationIcons>
-              </>
-            ) : (
+        <Citation
+          disabled={disabled}
+          key={`cf-${blob.id}`}
+          className="w-48"
+          isLoading={blob.isUploading}
+        >
+          {isImage ? (
+            <>
+              <CitationImage imgSrc={blob.preview ?? ""} />
               <CitationIcons>
-                <Icon visual={DocumentIcon} />
+                <Icon visual={ImageIcon} />
               </CitationIcons>
-            )}
-            <CitationTitle>{blob.id}</CitationTitle>
-            <CitationClose
-              onClick={() => fileUploaderService.removeFile(blob.id)}
-            />
-          </Citation>
-        </>
+            </>
+          ) : (
+            <CitationIcons>
+              <Icon visual={DocumentIcon} />
+            </CitationIcons>
+          )}
+          <CitationTitle>{blob.id}</CitationTitle>
+          <CitationClose
+            onClick={() => fileUploaderService.removeFile(blob.id)}
+          />
+        </Citation>
       );
     }
 
