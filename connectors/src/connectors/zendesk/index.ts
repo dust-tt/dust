@@ -347,8 +347,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const toBeSignaledBrandIds = new Set<number>();
     const toBeSignaledTicketsIds = new Set<number>();
     const toBeSignaledHelpCenterIds = new Set<number>();
-    const toBeSignaledCategoryIds = new Set<number>();
-    const categoryBrandIds: Record<number, number> = {};
+    const toBeSignaledCategoryIds = new Set<[number, number]>();
 
     for (const [id, permission] of Object.entries(permissions)) {
       if (permission !== "none" && permission !== "read") {
@@ -437,8 +436,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
               categoryId,
             });
             if (updatedCategory) {
-              toBeSignaledCategoryIds.add(categoryId);
-              categoryBrandIds[categoryId] = brandId;
+              toBeSignaledCategoryIds.add([brandId, categoryId]);
             }
           }
           if (permission === "read") {
@@ -449,8 +447,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
               brandId,
             });
             if (newCategory) {
-              toBeSignaledCategoryIds.add(categoryId);
-              categoryBrandIds[categoryId] = brandId;
+              toBeSignaledCategoryIds.add([brandId, categoryId]);
             }
           }
           break;
@@ -480,10 +477,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         brandIds: [...toBeSignaledBrandIds],
         ticketsBrandIds: [...toBeSignaledTicketsIds],
         helpCenterBrandIds: [...toBeSignaledHelpCenterIds],
-        categoryIds: [...toBeSignaledCategoryIds].map((categoryId) => ({
-          categoryId,
-          brandId: categoryBrandIds[categoryId] as number,
-        })),
+        categoryIds: [...toBeSignaledCategoryIds].map(
+          ([brandId, categoryId]) => ({
+            categoryId,
+            brandId,
+          })
+        ),
       });
     }
 
