@@ -134,7 +134,7 @@ export function useUpdateDataSourceViewTable(
   return doUpdate;
 }
 
-export function useCreateDataSourceViewTable(
+export function useCreateDataSourceTable(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType
 ) {

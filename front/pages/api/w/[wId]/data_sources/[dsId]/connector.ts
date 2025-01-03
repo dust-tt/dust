@@ -29,8 +29,11 @@ async function handler(
     });
   }
 
+  // This endpoint can be access by non admin to get the connector chip status. Ensure that no
+  // specific data other than the connection state is returned.
+
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (!dataSource) {
+  if (!dataSource || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -81,4 +84,5 @@ async function handler(
   }
 }
 
+// Ensure the user is authenticated hand has at least the user role.
 export default withSessionAuthenticationForWorkspace(handler);
