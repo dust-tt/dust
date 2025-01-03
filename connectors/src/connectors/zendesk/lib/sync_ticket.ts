@@ -88,6 +88,10 @@ export async function syncTicket({
     !ticketInDb.lastUpsertedTs ||
     ticketInDb.lastUpsertedTs < updatedAtDate;
 
+  // Tickets can be created without a subject using the API or by email,
+  // if they were never attended in the Agent Workspace their subject is not populated.
+  ticket.subject ||= "No subject";
+
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
