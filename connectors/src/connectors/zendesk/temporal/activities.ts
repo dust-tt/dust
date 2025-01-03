@@ -508,9 +508,11 @@ export async function syncZendeskTicketBatchActivity({
   const users = await fetchZendeskManyUsers({
     accessToken,
     brandSubdomain,
-    userIds: _.uniq(
-      _.flatten(comments2d.map((comments) => comments.map((c) => c.author_id)))
-    ),
+    userIds: [
+      ...new Set(
+        comments2d.flatMap((comments) => comments.map((c) => c.author_id))
+      ),
+    ],
   });
 
   const res = await concurrentExecutor(
