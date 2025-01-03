@@ -11,7 +11,9 @@ import {
   createZendeskClient,
   fetchRecentlyUpdatedArticles,
   fetchZendeskManyUsers,
+  fetchZendeskTicketComments,
   fetchZendeskTickets,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -213,10 +215,11 @@ export async function syncZendeskTicketUpdateBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    subdomain,
+    accessToken,
   });
 
   const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
@@ -235,7 +238,11 @@ export async function syncZendeskTicketUpdateBatchActivity({
           loggerArgs,
         });
       } else if (["solved", "closed"].includes(ticket.status)) {
-        const comments = await zendeskApiClient.tickets.getComments(ticket.id);
+        const comments = await fetchZendeskTicketComments({
+          accessToken,
+          brandSubdomain,
+          ticketId: ticket.id,
+        });
         const users = await fetchZendeskManyUsers({
           accessToken,
           brandSubdomain,

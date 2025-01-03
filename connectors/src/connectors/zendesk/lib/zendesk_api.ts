@@ -8,6 +8,7 @@ import type {
   ZendeskFetchedBrand,
   ZendeskFetchedCategory,
   ZendeskFetchedTicket,
+  ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import {
@@ -391,6 +392,31 @@ export async function fetchZendeskTicket({
     }
     throw e;
   }
+}
+
+/**
+ * Fetches a single ticket from the Zendesk API.
+ */
+export async function fetchZendeskTicketComments({
+  accessToken,
+  brandSubdomain,
+  ticketId,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  ticketId: number;
+}): Promise<ZendeskFetchedTicketComment[]> {
+  const comments = [];
+  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments`;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    comments.push(...response.comments);
+    hasMore = response.hasMore || false;
+    url = response.nextLink;
+  }
+  return comments;
 }
 
 /**
