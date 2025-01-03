@@ -104,8 +104,15 @@ const mermaidStyles = `
   /* Base diagram styles */
   .mermaid {
     background: ${palette.slate[50]};
+    cursor: default;
   }
-
+    
+  .mermaid text,
+  .mermaid .nodeLabel,
+  .mermaid .edgeLabel,
+  .mermaid .label {
+    cursor: text;
+     
   /* Cluster styles */
   .mermaid .cluster rect {
     rx: 8px;
