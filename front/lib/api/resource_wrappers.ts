@@ -247,9 +247,6 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
 
       const dataSource = await DataSourceResource.fetchById(auth, dsId);
 
-      const shouldKeepLegacyEndpointSupport =
-        sessionOrKeyAuth === null || sessionOrKeyAuth instanceof Authenticator;
-
       const { space } = resources;
       if (!space) {
         return apiError(req, res, {
