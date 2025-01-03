@@ -11,7 +11,6 @@ import {
   Label,
   ListCheckIcon,
   MoreIcon,
-  NavigationList,
   NavigationListItem,
   NavigationListLabel,
   PlusIcon,
@@ -273,25 +272,23 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             )}
             {isConversationsError && (
-              <Label className="py-1 text-xs font-medium text-element-800">
+              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
                 Error loading conversations
               </Label>
             )}
-            <NavigationList className="w-full px-2">
-              {conversationsByDate &&
-                Object.keys(conversationsByDate).map((dateLabel) => (
-                  <RenderConversations
-                    key={dateLabel}
-                    conversations={conversationsByDate[dateLabel as GroupLabel]}
-                    dateLabel={dateLabel}
-                    isMultiSelect={isMultiSelect}
-                    selectedConversations={selectedConversations}
-                    toggleConversationSelection={toggleConversationSelection}
-                    router={router}
-                    owner={owner}
-                  />
-                ))}
-            </NavigationList>
+            {conversationsByDate &&
+              Object.keys(conversationsByDate).map((dateLabel) => (
+                <RenderConversations
+                  key={dateLabel}
+                  conversations={conversationsByDate[dateLabel as GroupLabel]}
+                  dateLabel={dateLabel}
+                  isMultiSelect={isMultiSelect}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  router={router}
+                  owner={owner}
+                />
+              ))}
           </div>
         </div>
       </div>

@@ -175,7 +175,7 @@ export function AssistantBrowser({
       <div className="w-full px-4">
         <ScrollArea aria-orientation="horizontal">
           <Tabs value={viewTab} onValueChange={setSelectedTab}>
-            <TabsList>
+            <TabsList hasBorder={false}>
               {visibleTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
