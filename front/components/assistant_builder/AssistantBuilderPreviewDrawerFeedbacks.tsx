@@ -198,7 +198,7 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
     // IMPORTANT: We need to check if the conversation is shared before displaying it.
     // This check is redundant: the conversationId is null if the conversation is not shared.
     feedback.isConversationShared
-      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#${feedback.messageId}`
+      ? `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/assistant/${feedback.conversationId}#?messageId=${feedback.messageId}`
       : null;
 
   const timeSinceFeedback = timeAgoFrom(
