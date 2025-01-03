@@ -1072,15 +1072,13 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     connectorId: number;
     brandId: number;
     batchSize?: number | null;
-  }): Promise<{ brandId: number; articleId: number }[]> {
+  }): Promise<number[]> {
     const articles = await ZendeskArticle.findAll({
+      attributes: ["articleId"],
       where: { connectorId, brandId },
       ...(batchSize && { limit: batchSize }),
     });
-    return articles.map((article) => {
-      const { articleId, brandId } = article.get();
-      return { articleId, brandId };
-    });
+    return articles.map((article) => article.get().articleId);
   }
 
   static async deleteByArticleId({
