@@ -34,7 +34,7 @@ import {
 } from "@sparkle/icons";
 
 const meta = {
-  title: "NewLayouts/Sheet",
+  title: "Layouts/Sheet",
 } satisfies Meta;
 
 export default meta;
