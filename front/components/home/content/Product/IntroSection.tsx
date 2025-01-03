@@ -1,6 +1,7 @@
 import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import React from "react";
+
 import { H1, P, Strong } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
 
