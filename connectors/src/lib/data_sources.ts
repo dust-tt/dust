@@ -44,11 +44,6 @@ const axiosWithTimeout = axios.create({
   httpsAgent: new https.Agent({ keepAlive: false }),
 });
 
-const { DUST_FRONT_API } = process.env;
-if (!DUST_FRONT_API) {
-  throw new Error("FRONT_API not set");
-}
-
 // We limit the document size we support. Beyond a certain size, upsert is simply too slow (>300s)
 // and large files are generally less useful anyway.
 export const MAX_DOCUMENT_TXT_LEN = 750000;
@@ -123,7 +118,7 @@ async function _upsertDataSourceDocument({
       });
 
       const endpoint =
-        `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+        `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
         `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
 
       const localLogger = logger.child({
@@ -257,7 +252,7 @@ export async function getDataSourceDocument({
   });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents?document_ids=${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -288,7 +283,7 @@ export async function deleteDataSourceDocument(
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -382,7 +377,7 @@ async function _updateDocumentOrTableParentsField({
       ? logger.child({ ...loggerArgs, documentId: id })
       : logger.child({ ...loggerArgs, tableId: id });
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/${tableOrDocument}s/${id}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -663,7 +658,7 @@ export async function upsertDataSourceRemoteTable({
   const now = new Date();
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables`;
   const dustRequestPayload: UpsertDatabaseTableRequestType = {
     name: tableName,
@@ -823,7 +818,7 @@ export async function upsertDataSourceTableFromCsv({
   }
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
   const dustRequestPayload: UpsertTableFromCsvRequestType = {
     name: tableName,
@@ -986,7 +981,7 @@ export async function deleteDataSourceTableRow({
   const now = new Date();
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}/rows/${rowId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1068,7 +1063,7 @@ export async function _getDataSourceTable({
   });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1120,7 +1115,7 @@ export async function deleteDataSourceTable({
   const now = new Date();
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1202,7 +1197,7 @@ export async function _getDataSourceFolder({
   });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/folders/${folderId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
