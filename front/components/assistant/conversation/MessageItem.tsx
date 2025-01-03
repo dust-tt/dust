@@ -106,7 +106,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
-    const [urlAnchor, setUrlAnchor] = useHashParam("messageId", undefined);
+    const [urlAnchor] = useHashParam("messageId", undefined);
     const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
     const [messageBlinking, setMessageBlinking] = useState(false);
     // Because the prop ref can be undefined
