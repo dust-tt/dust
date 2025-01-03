@@ -11,7 +11,7 @@ const VideoPlayer = () => {
       {" "}
       {/* 16:9 aspect ratio */}
       <iframe
-        src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true"
+        src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true&autoPlay=true"
         title="Dust product tour"
         allow="autoplay; fullscreen"
         frameBorder="0"
