@@ -169,7 +169,7 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
   ) => {
     const { spaceId } = req.query;
 
-    if (spaceId) {
+    if (spaceId || options.space) {
       // Handling the case where `spaceId` is undefined to keep support for the
       // legacy endpoint for v1 routes (global space assumed in that case).
       const shouldKeepLegacyEndpointSupport =
@@ -250,40 +250,19 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
       const shouldKeepLegacyEndpointSupport =
         sessionOrKeyAuth === null || sessionOrKeyAuth instanceof Authenticator;
 
-      if (!dataSource) {
+      const { space } = resources;
+      if (!space) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 400,
           api_error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
+            type: "invalid_request_error",
+            message: "Invalid space id.",
           },
         });
       }
 
-      let { space } = resources;
-
-      if (!space) {
-        if (shouldKeepLegacyEndpointSupport) {
-          if (auth.isSystemKey()) {
-            // We also handle the legacy usage of connectors that taps into connected data sources which
-            // are not in the global space. If this is a system key we trust it and set the `spaceId` to the
-            // dataSource.space.sId.
-            space = dataSource.space;
-          } else {
-            space = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-          }
-        } else {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Invalid space id.",
-            },
-          });
-        }
-      }
-
       if (
+        !dataSource ||
         dataSource.space.sId !== space.sId ||
         !spaceCheck(space) ||
         !hasPermission(auth, dataSource, options.dataSource)
