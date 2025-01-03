@@ -217,6 +217,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         { connectorId },
         "[Zendesk] Cannot resume a paused connector."
       );
+      // we don't return an error since this could be used within a batch-resume, only need to be informed
       return new Ok(undefined);
     }
 
