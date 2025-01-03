@@ -36,7 +36,7 @@ export function IntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row md:gap-32">
           <div className="flex flex-col gap-8">
-            <H1 from="from-red-200" to="to-red-400">
+            <H1 className="text-red-400">
               Build custom AI&nbsp;assistants to speed up your work
             </H1>
             <div className="w-full md:hidden">
