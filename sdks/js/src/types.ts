@@ -1567,14 +1567,6 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
   typeof GetWorkspaceFeatureFlagsResponseSchema
 >;
 
-export const PatchDataSourceViewsResponseSchema = z.object({
-  data_source_views: DataSourceViewSchema.array(),
-});
-
-export type PatchDataSourceViewsReponseType = z.infer<
-  typeof PatchDataSourceViewsResponseSchema
->;
-
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
     content: z.string(),
@@ -1763,7 +1755,7 @@ const GetAppsResponseSchema = z.object({
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
 
-const DataSourceViewsResponseSchema = z.object({
+export const DataSourceViewsResponseSchema = z.object({
   dataSourceView: DataSourceViewSchema,
 });
 

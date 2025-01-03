@@ -34,6 +34,7 @@ import {
   APIErrorSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
+  DataSourceViewsResponseSchema,
   DeleteFolderResponseSchema,
   Err,
   FileUploadRequestResponseSchema,
@@ -47,7 +48,6 @@ import {
   GetWorkspaceVerifiedDomainsResponseSchema,
   MeResponseSchema,
   Ok,
-  PatchDataSourceViewsResponseSchema,
   PostContentFragmentResponseSchema,
   PostUserMessageResponseSchema,
   Result,
@@ -990,14 +990,14 @@ export class DustAPI {
     });
 
     const r = await this._resultFromResponse(
-      PatchDataSourceViewsResponseSchema,
+      DataSourceViewsResponseSchema,
       res
     );
     if (r.isErr()) {
       return r;
     }
 
-    return new Ok(r.value.data_source_views);
+    return new Ok(r.value.dataSourceView);
   }
 
   private async _fetchWithError(
