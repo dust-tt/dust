@@ -407,7 +407,7 @@ export async function fetchZendeskTicketComments({
   ticketId: number;
 }): Promise<ZendeskFetchedTicketComment[]> {
   const comments = [];
-  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments`;
+  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=100`;
   let hasMore = true;
 
   while (hasMore) {
