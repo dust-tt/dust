@@ -289,7 +289,10 @@ RetrievalDocument.init(
   {
     modelName: "retrieval_document",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["retrievalActionId"] }],
+    indexes: [
+      { fields: ["retrievalActionId"] },
+      { fields: ["dataSourceViewId"] },
+    ],
   }
 );
 

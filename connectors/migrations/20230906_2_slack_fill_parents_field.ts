@@ -76,6 +76,7 @@ async function updateParentsFieldForConnector(connector: ConnectorModel) {
           dataSourceConfig: connector,
           documentId: documentIdAndChannel.documentId,
           parents: [documentIdAndChannel.channelId],
+          parentId: null,
         })
       )
     );

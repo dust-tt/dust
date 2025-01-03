@@ -176,6 +176,7 @@ export async function updateAllParentsFields(
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: `notion-${pageId}`,
           parents,
+          parentId: parents[1] || null,
         });
         if (onProgress) {
           await onProgress();

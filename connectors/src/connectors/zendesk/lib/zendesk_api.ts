@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import _ from "lodash";
 import type { Client } from "node-zendesk";
 import { createClient } from "node-zendesk";
 
@@ -7,6 +8,7 @@ import type {
   ZendeskFetchedBrand,
   ZendeskFetchedCategory,
   ZendeskFetchedTicket,
+  ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
 import {
@@ -277,12 +279,31 @@ export async function fetchRecentlyUpdatedArticles({
 }> {
   // this endpoint retrieves changes in content, not only in metadata despite what is mentioned in the documentation.
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`;
-  const response = await fetchFromZendeskWithRetries({ url, accessToken });
-  return {
-    articles: response.articles,
-    hasMore: response.next_page !== null && response.articles.length !== 0,
-    endTime: response.end_time,
-  };
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return {
+      articles: response.articles,
+      hasMore: response.next_page !== null && response.articles.length !== 0,
+      endTime: response.end_time,
+    };
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      const user = await fetchZendeskCurrentUser({
+        subdomain: brandSubdomain,
+        accessToken,
+      });
+      // only admins and agents can fetch this endpoint: https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/#authenticating-the-requests
+      if (user && user.role !== "admin" && user.role !== "agent") {
+        const { role, suspended, active } = user;
+        throw new ZendeskApiError(
+          "Error fetching the incremental articles endpoint, user must be admin/agent.",
+          403,
+          { ...e.data, role, suspended, active }
+        );
+      }
+    }
+    throw e;
+  }
 }
 
 /**
@@ -350,6 +371,55 @@ export async function fetchZendeskTickets(
 }
 
 /**
+ * Fetches a single ticket from the Zendesk API.
+ */
+export async function fetchZendeskTicket({
+  accessToken,
+  brandSubdomain,
+  ticketId,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  ticketId: number;
+}): Promise<ZendeskFetchedTicket | null> {
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.ticket ?? null;
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/**
+ * Fetches a single ticket from the Zendesk API.
+ */
+export async function fetchZendeskTicketComments({
+  accessToken,
+  brandSubdomain,
+  ticketId,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  ticketId: number;
+}): Promise<ZendeskFetchedTicketComment[]> {
+  const comments = [];
+  let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=100`;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    comments.push(...response.comments);
+    hasMore = response.hasMore || false;
+    url = response.nextLink;
+  }
+  return comments;
+}
+
+/**
  * Fetches the number of tickets in a Brand from the Zendesk API.
  * Only counts tickets that have been solved, and that were updated within the retention period.
  */
@@ -387,4 +457,29 @@ export async function fetchZendeskCurrentUser({
   const url = `https://${subdomain}.zendesk.com/api/v2/users/me`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
   return response.user;
+}
+
+/**
+ * Fetches a multiple users at once from the Zendesk API.
+ * May run multiple queries, more precisely we need userCount // 100 + 1 API calls.
+ */
+export async function fetchZendeskManyUsers({
+  accessToken,
+  brandSubdomain,
+  userIds,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  userIds: number[];
+}): Promise<ZendeskFetchedUser[]> {
+  const users: ZendeskFetchedUser[] = [];
+  // we can fetch at most 100 users at once: https://developer.zendesk.com/api-reference/ticketing/users/users/#show-many-users
+  for (const chunk of _.chunk(userIds, 100)) {
+    const response = await fetchFromZendeskWithRetries({
+      url: `https://${brandSubdomain}.zendesk.com/api/v2/users/show_many?ids=${chunk.join(",")}`,
+      accessToken,
+    });
+    users.push(...response.users);
+  }
+  return users;
 }

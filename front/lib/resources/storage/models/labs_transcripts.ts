@@ -70,6 +70,7 @@ LabsTranscriptsConfigurationModel.init(
     indexes: [
       { fields: ["userId"] },
       { fields: ["userId", "workspaceId"], unique: true },
+      { fields: ["dataSourceViewId"] },
     ],
   }
 );
@@ -83,7 +84,7 @@ LabsTranscriptsConfigurationModel.belongsTo(UserModel, {
 
 Workspace.hasMany(LabsTranscriptsConfigurationModel, {
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 LabsTranscriptsConfigurationModel.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },

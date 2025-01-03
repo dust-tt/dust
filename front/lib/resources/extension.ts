@@ -115,6 +115,20 @@ export class ExtensionConfigurationResource extends BaseResource<ExtensionConfig
     return config ? new this(ExtensionConfigurationModel, config.get()) : null;
   }
 
+  static async internalFetchForWorkspaces(
+    workspaceIds: ModelId[]
+  ): Promise<ExtensionConfigurationResource[]> {
+    const configs = await this.model.findAll({
+      where: {
+        workspaceId: workspaceIds,
+      },
+    });
+
+    return configs.map(
+      (config) => new this(ExtensionConfigurationModel, config.get())
+    );
+  }
+
   async updateBlacklistedDomains(
     auth: Authenticator,
     {

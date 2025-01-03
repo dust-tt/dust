@@ -252,7 +252,7 @@ Subscription.addHook(
 // Plan <> Subscription relationship: attribute "planId" in Subscription
 Plan.hasMany(Subscription, {
   foreignKey: { name: "planId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Subscription.belongsTo(Plan, {
   foreignKey: { name: "planId", allowNull: false },
@@ -261,7 +261,7 @@ Subscription.belongsTo(Plan, {
 // Subscription <> Workspace relationship: attribute "workspaceId" in Subscription
 Workspace.hasMany(Subscription, {
   foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Subscription.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },

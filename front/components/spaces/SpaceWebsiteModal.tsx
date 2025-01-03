@@ -6,7 +6,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  ExclamationCircleStrokeIcon,
+  ExclamationCircleIcon,
   InformationCircleIcon,
   Input,
   Label,
@@ -567,7 +567,7 @@ export default function SpaceWebsiteModal({
                     </Label>
                   ) : (
                     <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                      <ExclamationCircleStrokeIcon />
+                      <ExclamationCircleIcon />
                       Website name cannot be changed.
                     </p>
                   )}

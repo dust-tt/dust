@@ -3,7 +3,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   Spinner,
-  Square3Stack3DStrokeIcon,
+  Square3Stack3DIcon,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -142,7 +142,7 @@ export default function Block({
                       handleUseCacheChange(false);
                     }}
                   >
-                    <Square3Stack3DStrokeIcon className="h-4 w-4" />
+                    <Square3Stack3DIcon className="h-4 w-4" />
                   </div>
                 }
               />

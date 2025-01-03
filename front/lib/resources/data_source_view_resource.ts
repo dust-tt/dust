@@ -400,7 +400,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   static async search(
     auth: Authenticator,
     searchParams: {
-      [key in AllowedSearchColumns]: string | number | undefined;
+      [key in AllowedSearchColumns]?: string;
     }
   ): Promise<DataSourceViewResource[]> {
     const owner = auth.workspace();
@@ -413,10 +413,25 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     };
 
     for (const [key, value] of Object.entries(searchParams)) {
-      if (value && key !== "vaultKind") {
-        whereClause[key] = value;
-      } else {
-        whereClause["$space.kind$"] = searchParams.vaultKind;
+      if (value) {
+        switch (key) {
+          case "dataSourceId":
+          case "vaultId":
+            const vaultModelId = getResourceIdFromSId(value);
+
+            if (vaultModelId) {
+              whereClause[key] = vaultModelId;
+            }
+            break;
+
+          case "vaultKind":
+            whereClause["$space.kind$"] = searchParams.vaultKind;
+            break;
+
+          default:
+            whereClause[key] = value;
+            break;
+        }
       }
     }
 

@@ -23,7 +23,7 @@ import {
   removeNulls,
 } from "@dust-tt/client";
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
-import { DocumentTextStrokeIcon } from "@dust-tt/sparkle";
+import { DocumentTextIcon } from "@dust-tt/sparkle";
 import {
   Citation,
   CitationIcons,
@@ -107,7 +107,7 @@ export function makeWebsearchResultsCitation(
     description: result.snippet,
     href: result.link,
     title: result.title,
-    icon: <DocumentTextStrokeIcon />,
+    icon: <DocumentTextIcon />,
   };
 }
 

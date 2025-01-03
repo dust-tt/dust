@@ -8,8 +8,8 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import {
-  createOrUpdateMessageFeedback,
   deleteMessageFeedback,
+  upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -18,6 +18,7 @@ import { apiError } from "@app/logger/withlogging";
 export const MessageFeedbackRequestBodySchema = t.type({
   thumbDirection: t.string,
   feedbackContent: t.union([t.string, t.undefined, t.null]),
+  isConversationShared: t.union([t.boolean, t.undefined]),
 });
 
 async function handler(
@@ -79,27 +80,27 @@ async function handler(
         });
       }
 
-      const created = await createOrUpdateMessageFeedback(auth, {
+      const created = await upsertMessageFeedback(auth, {
         messageId,
         conversation,
         user,
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
         content: bodyValidation.right.feedbackContent || "",
+        isConversationShared: bodyValidation.right.isConversationShared,
       });
 
-      if (created) {
-        res.status(200).json({ success: true });
-        return;
+      if (created.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to upsert feedback",
+          },
+        });
       }
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "The message you're trying to give feedback to does not exist.",
-        },
-      });
+      res.status(200).json({ success: true });
+      return;
 
     case "DELETE":
       const deleted = await deleteMessageFeedback(auth, {

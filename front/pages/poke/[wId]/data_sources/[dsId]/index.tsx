@@ -19,11 +19,16 @@ import type {
   GroupType,
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
+  SlackAutoReadPattern,
   SlackbotWhitelistType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
+import {
+  ConnectorsAPI,
+  isSlackAutoReadPatterns,
+  safeParseJSON,
+} from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
@@ -59,7 +64,7 @@ type FeaturesType = {
   googleDriveCsvEnabled: boolean;
   microsoftCsvEnabled: boolean;
   githubCodeSyncEnabled: boolean;
-  autoReadChannelPattern: string | null;
+  autoReadChannelPatterns: SlackAutoReadPattern[];
 };
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
@@ -144,7 +149,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDriveCsvEnabled: false,
     microsoftCsvEnabled: false,
     githubCodeSyncEnabled: false,
-    autoReadChannelPattern: null,
+    autoReadChannelPatterns: [],
   };
 
   const connectorsAPI = new ConnectorsAPI(
@@ -163,16 +168,34 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         }
         features.slackBotEnabled = botEnabledRes.value.configValue === "true";
 
-        const autoReadChannelPattern = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "autoReadChannelPattern"
-        );
-        if (autoReadChannelPattern.isErr()) {
-          throw autoReadChannelPattern.error;
+        const autoReadChannelPatternsRes =
+          await connectorsAPI.getConnectorConfig(
+            dataSource.connectorId,
+            "autoReadChannelPatterns"
+          );
+        if (autoReadChannelPatternsRes.isErr()) {
+          throw autoReadChannelPatternsRes.error;
         }
-        features.autoReadChannelPattern =
-          autoReadChannelPattern.value.configValue;
+
+        const parsedAutoReadChannelPatternsRes = safeParseJSON(
+          autoReadChannelPatternsRes.value.configValue
+        );
+        if (parsedAutoReadChannelPatternsRes.isErr()) {
+          throw parsedAutoReadChannelPatternsRes.error;
+        }
+
+        if (
+          !parsedAutoReadChannelPatternsRes.value ||
+          !Array.isArray(parsedAutoReadChannelPatternsRes.value) ||
+          !isSlackAutoReadPatterns(parsedAutoReadChannelPatternsRes.value)
+        ) {
+          throw new Error("Invalid auto read channel patterns");
+        }
+
+        features.autoReadChannelPatterns =
+          parsedAutoReadChannelPatternsRes.value;
         break;
+
       case "google_drive":
         const gdrivePdfEnabledRes = await connectorsAPI.getConnectorConfig(
           dataSource.connectorId,
@@ -205,6 +228,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         features.googleDriveLargeFilesEnabled =
           gdriveLargeFilesEnabledRes.value.configValue === "true";
         break;
+
       case "microsoft":
         const microsoftPdfEnabledRes = await connectorsAPI.getConnectorConfig(
           dataSource.connectorId,
@@ -411,7 +435,7 @@ const DataSourcePage = ({
               />
               <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
                 <SlackChannelPatternInput
-                  initialValue={features.autoReadChannelPattern || ""}
+                  initialValues={features.autoReadChannelPatterns || ""}
                   owner={owner}
                   dataSource={dataSource}
                 />

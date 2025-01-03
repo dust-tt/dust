@@ -134,6 +134,7 @@ export const InputBarContainer = ({
 
       <div className="flex items-center justify-end space-x-2 mt-2">
         <AttachFragment
+          owner={owner}
           fileUploaderService={fileUploaderService}
           isLoading={isSubmitting}
         />

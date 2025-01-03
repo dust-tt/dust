@@ -69,7 +69,7 @@ KeyModel.init(
 );
 Workspace.hasMany(KeyModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 // We don't want to delete keys when a user gets deleted.
 UserModel.hasMany(KeyModel, {

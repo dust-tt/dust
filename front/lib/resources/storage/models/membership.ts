@@ -55,11 +55,11 @@ MembershipModel.init(
 );
 UserModel.hasMany(MembershipModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 Workspace.hasMany(MembershipModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 MembershipModel.belongsTo(Workspace);
 MembershipModel.belongsTo(UserModel);

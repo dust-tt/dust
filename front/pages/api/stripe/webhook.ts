@@ -383,7 +383,7 @@ async function handler(
           break;
         case "charge.dispute.created":
           const dispute = event.data.object as Stripe.Dispute;
-          logger.error(
+          logger.warn(
             { dispute, stripeError: true },
             "[Stripe Webhook] Received charge.dispute.created event. Please make sure the subscription is now marked as 'ended' in our database and canceled on Stripe."
           );

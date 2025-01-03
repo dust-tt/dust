@@ -8,6 +8,7 @@ import { assertNever, Err, isSnowflakeCredentials, Ok } from "@dust-tt/types";
 
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
@@ -247,14 +248,34 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }: {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connectorAndCredentialsRes = await getConnectorAndCredentials({
       connectorId: this.connectorId,
       logger,
     });
     if (connectorAndCredentialsRes.isErr()) {
-      return connectorAndCredentialsRes;
+      switch (connectorAndCredentialsRes.error.code) {
+        case "connector_not_found":
+          return new Err(
+            new ConnectorManagerError(
+              "CONNECTOR_NOT_FOUND",
+              "Connector not found"
+            )
+          );
+        case "invalid_credentials":
+          return new Err(
+            new ConnectorManagerError(
+              "EXTERNAL_OAUTH_TOKEN_ERROR",
+              "Snowflake authorization error, please re-authorize."
+            )
+          );
+        default:
+          assertNever(connectorAndCredentialsRes.error.code);
+      }
     }
+
     const { connector, credentials } = connectorAndCredentialsRes.value;
 
     // I don't understand why but connector expects all the selected node
@@ -263,18 +284,26 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     // It means that we get a weird behavior on the tree displayed in the UI sidebar.
     // TODO(SNOWFLAKE): Fix this, even if with a hack.
     if (filterPermission === "read" && parentInternalId === null) {
-      return fetchReadNodes({
+      const fetchRes = await fetchReadNodes({
         connectorId: connector.id,
       });
+      if (fetchRes.isErr()) {
+        throw fetchRes.error;
+      }
+      return fetchRes;
     }
 
     // We display the nodes that we were given access to by the admin.
     // We display the db/schemas if we have access to at least one table within those.
     if (filterPermission === "read") {
-      return fetchSyncedChildren({
+      const fetchRes = await fetchSyncedChildren({
         connectorId: connector.id,
         parentInternalId: parentInternalId,
       });
+      if (fetchRes.isErr()) {
+        throw fetchRes.error;
+      }
+      return fetchRes;
     }
 
     if (!isSnowflakeCredentials(credentials)) {
@@ -284,11 +313,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     // We display all available nodes with our credentials.
-    return fetchAvailableChildrenInSnowflake({
+    const fetchRes = await fetchAvailableChildrenInSnowflake({
       connectorId: connector.id,
       credentials: credentials,
       parentInternalId: parentInternalId,
     });
+    if (fetchRes.isErr()) {
+      throw fetchRes.error;
+    }
+    return fetchRes;
   }
 
   async setPermissions({

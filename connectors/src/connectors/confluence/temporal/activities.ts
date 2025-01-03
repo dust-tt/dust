@@ -219,6 +219,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId: makeSpaceInternalId(spaceId),
     parents: [makeSpaceInternalId(spaceId)],
+    parentId: null,
     title: spaceName,
     mimeType: "application/vnd.dust.confluence.space",
   });
@@ -252,7 +253,7 @@ export async function markPageHasVisited({
 interface ConfluenceUpsertPageInput {
   page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>;
   spaceName: string;
-  parents: string[];
+  parents: [string, ...string[], string];
   confluenceConfig: ConfluenceConfiguration;
   syncType?: UpsertDataSourceDocumentParams["upsertContext"]["sync_type"];
   dataSourceConfig: DataSourceConfig;
@@ -607,7 +608,7 @@ export async function confluenceGetActiveChildPageRefsActivity({
 // Confluence has a single main landing page.
 // However, users have the ability to create "orphaned" root pages that don't link from the main landing.
 // It's important to ensure these pages are also imported.
-export async function confluenceGetRootPageRefsActivity({
+async function getRootPageRefsActivity({
   connectorId,
   confluenceCloudId,
   spaceId,
@@ -645,6 +646,49 @@ export async function confluenceGetRootPageRefsActivity({
     }
     throw err;
   }
+}
+
+// Activity to handle fetching, upserting, and filtering root pages.
+export async function fetchAndUpsertRootPagesActivity(params: {
+  confluenceCloudId: string;
+  connectorId: ModelId;
+  forceUpsert: boolean;
+  isBatchSync: boolean;
+  spaceId: string;
+  spaceName: string;
+  visitedAtMs: number;
+}): Promise<string[]> {
+  const { connectorId, confluenceCloudId, spaceId } = params;
+
+  // Get the root level pages for the space.
+  const rootPageRefs = await getRootPageRefsActivity({
+    connectorId,
+    confluenceCloudId,
+    spaceId,
+  });
+  if (rootPageRefs.length === 0) {
+    return [];
+  }
+
+  const allowedRootPageIds: string[] = [];
+
+  // Check and upsert pages, filter allowed ones.
+  for (const rootPageRef of rootPageRefs) {
+    const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
+      ...params,
+      pageRef: rootPageRef,
+    });
+
+    // If the page fails the upsert operation, it indicates the page is restricted.
+    // Such pages should not be added to the list of allowed pages.
+    if (successfullyUpsert) {
+      allowedRootPageIds.push(rootPageRef.id);
+    }
+  }
+
+  console.log(">> allowedRootPageIds", allowedRootPageIds);
+
+  return allowedRootPageIds;
 }
 
 export async function confluenceGetTopLevelPageIdsActivity({

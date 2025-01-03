@@ -111,6 +111,8 @@ AgentTablesQueryConfigurationTable.init(
         fields: ["dataSourceViewId", "tableId", "tablesQueryConfigurationId"],
         name: "agent_tables_query_configuration_table_unique_dsv",
       },
+      { fields: ["dataSourceId"] },
+      { fields: ["dataSourceViewId"] },
     ],
     sequelize: frontSequelize,
   }
@@ -118,11 +120,11 @@ AgentTablesQueryConfigurationTable.init(
 
 AgentTablesQueryConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 // Config <> Data source.

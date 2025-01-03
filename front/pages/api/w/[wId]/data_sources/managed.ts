@@ -192,13 +192,16 @@ async function handler(
           }
           dataSourceDescription = configurationRes.value.url;
           break;
+
         case "slack":
           // When creating a Slack data source we don't receive a configuration but pass a default
           // value for it as we create the connector.
           configuration = {
             botEnabled: true,
             whitelistedDomains: undefined,
+            // TODO(2025-01-02 AutoReadCleanUp) Remove once fully migrated to `autoReadChannelPatterns`.
             autoReadChannelPattern: undefined,
+            autoReadChannelPatterns: [],
           };
           break;
 

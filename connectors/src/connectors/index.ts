@@ -2,7 +2,7 @@ import type {
   ConnectorProvider,
   ModelId,
   Result,
-  SlackConfiguration,
+  SlackConfigurationType,
   WebCrawlerConfiguration,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -92,7 +92,7 @@ export function createConnector({
       params: {
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
-        configuration: SlackConfiguration;
+        configuration: SlackConfigurationType;
       };
     }): Promise<
   Result<string, ConnectorManagerError<CreateConnectorErrorCode>>

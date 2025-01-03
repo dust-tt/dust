@@ -492,6 +492,7 @@ async function upsertGdriveDocument(
       timestampMs: file.updatedAtMs,
       tags,
       parents,
+      parentId: parents[1] || null,
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },

@@ -1,7 +1,7 @@
 import {
   Button,
   DataTable,
-  ExclamationCircleStrokeIcon,
+  ExclamationCircleIcon,
   Icon,
   Input,
   Modal,
@@ -219,7 +219,7 @@ export function CreateOrEditSpaceModal({
             />
             {!space && (
               <div className="flex gap-1 text-xs text-element-700">
-                <Icon visual={ExclamationCircleStrokeIcon} size="xs" />
+                <Icon visual={ExclamationCircleIcon} size="xs" />
                 <span>Space name must be unique</span>
               </div>
             )}

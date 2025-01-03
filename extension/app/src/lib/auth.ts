@@ -117,7 +117,10 @@ const fetchMe = async (
   token: string
 ): Promise<Result<{ user: UserTypeWithWorkspaces }, AuthError>> => {
   const response = await fetch(`${process.env.DUST_DOMAIN}/api/v1/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-Request-Origin": "extension",
+    },
   });
   const me = await response.json();
   if (!response.ok) {

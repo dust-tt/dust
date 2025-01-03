@@ -34,6 +34,7 @@ async function createFolderNodes(execute: boolean) {
         dataSourceConfig,
         folderId: getTeamsInternalId(connector.id),
         parents: [getTeamsInternalId(connector.id)],
+        parentId: null,
         title: "Conversations",
         mimeType: getDataSourceNodeMimeType("CONVERSATIONS_FOLDER"),
       });
@@ -57,6 +58,7 @@ async function createFolderNodes(execute: boolean) {
             dataSourceConfig,
             folderId: teamInternalId,
             parents: [teamInternalId, getTeamsInternalId(connector.id)],
+            parentId: getTeamsInternalId(connector.id),
             title: team.name,
             mimeType: getDataSourceNodeMimeType("TEAM"),
           });
@@ -95,6 +97,7 @@ async function createFolderNodes(execute: boolean) {
             dataSourceConfig,
             folderId: helpCenterInternalId,
             parents: [helpCenterInternalId],
+            parentId: null,
             title: helpCenter.name,
             mimeType: getDataSourceNodeMimeType("HELP_CENTER"),
           });
@@ -128,6 +131,7 @@ async function createFolderNodes(execute: boolean) {
                 dataSourceConfig,
                 folderId: collectionInternalId,
                 parents: collectionParents,
+                parentId: collectionParents[1] || null,
                 title: collection.name,
                 mimeType: getDataSourceNodeMimeType("COLLECTION"),
               });

@@ -6,7 +6,10 @@ import type {
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
 } from "@connectors/@types/node-zendesk";
-import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import {
+  getTicketInternalId,
+  getTicketNewInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   deleteDataSourceDocument,
   renderDocumentTitleAndContent,
@@ -84,6 +87,10 @@ export async function syncTicket({
     !ticketInDb ||
     !ticketInDb.lastUpsertedTs ||
     ticketInDb.lastUpsertedTs < updatedAtDate;
+
+  // Tickets can be created without a subject using the API or by email,
+  // if they were never attended in the Agent Workspace their subject is not populated.
+  ticket.subject ||= "No subject";
 
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
@@ -185,7 +192,7 @@ ${comments
       );
       author = null;
     }
-    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.body}`;
+    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.body.replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
   })
   .join("\n")}
 `.trim();
@@ -204,14 +211,26 @@ ${comments
       updatedAt: updatedAtDate,
     });
 
-    const documentId = getTicketInternalId({
+    const oldDocumentId = getTicketInternalId({
       connectorId,
+      ticketId: ticket.id,
+    });
+    // TODO(2025-01-02 aubin): stop deleting old documents once the migration of internal IDs is done.
+    await deleteDataSourceDocument(dataSourceConfig, oldDocumentId, {
+      ...loggerArgs,
+      ticketId: ticket.id,
+    });
+
+    const parents = ticketInDb.getParentInternalIds(connectorId);
+    const newDocumentId = getTicketNewInternalId({
+      connectorId,
+      brandId,
       ticketId: ticket.id,
     });
 
     await upsertDataSourceDocument({
       dataSourceConfig,
-      documentId,
+      documentId: newDocumentId,
       documentContent,
       documentUrl: ticket.url,
       timestampMs: updatedAtDate.getTime(),
@@ -221,13 +240,15 @@ ${comments
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
       ],
-      parents: ticketInDb.getParentInternalIds(connectorId),
+      parents: [newDocumentId, ...parents.slice(1)],
+      parentId: parents[1],
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
       title: ticket.subject,
       mimeType: "application/vnd.dust.zendesk.ticket",
       async: true,
     });
+
     await ticketInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });
   } else {
     logger.warn(

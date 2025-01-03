@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
+  ExtensionConfigurationType,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceDomain,
@@ -46,6 +47,7 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DustProdActionRegistry } from "@app/lib/registry";
+import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
@@ -56,6 +58,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   registry: typeof DustProdActionRegistry;
   workspaceVerifiedDomain: WorkspaceDomain | null;
   worspaceCreationDay: string;
+  extensionConfig: ExtensionConfigurationType | null;
   baseUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -93,6 +96,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
   const worspaceCreationDate = await getWorkspaceCreationDate(owner.sId);
 
+  const extensionConfig =
+    await ExtensionConfigurationResource.fetchForWorkspace(auth);
+
   return {
     props: {
       owner,
@@ -106,6 +112,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       registry: DustProdActionRegistry,
       workspaceVerifiedDomain,
       worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
+      extensionConfig: extensionConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
     },
   };
@@ -120,6 +127,7 @@ const WorkspacePage = ({
   registry,
   workspaceVerifiedDomain,
   worspaceCreationDay,
+  extensionConfig,
   baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
@@ -241,6 +249,7 @@ const WorkspacePage = ({
                   owner={owner}
                   workspaceVerifiedDomain={workspaceVerifiedDomain}
                   worspaceCreationDay={worspaceCreationDay}
+                  extensionConfig={extensionConfig}
                 />
                 <div className="flex flex-grow flex-col gap-4">
                   <PluginList

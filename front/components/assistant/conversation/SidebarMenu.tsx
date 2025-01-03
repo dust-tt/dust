@@ -16,7 +16,6 @@ import {
   NavigationListLabel,
   PlusIcon,
   RobotIcon,
-  ScrollArea,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -278,7 +277,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            <ScrollArea className="w-full px-2">
+            <NavigationList className="w-full px-2">
               {conversationsByDate &&
                 Object.keys(conversationsByDate).map((dateLabel) => (
                   <RenderConversations
@@ -292,7 +291,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     owner={owner}
                   />
                 ))}
-            </ScrollArea>
+            </NavigationList>
           </div>
         </div>
       </div>
@@ -318,18 +317,16 @@ const RenderConversations = ({
   }
 
   return (
-    <div>
+    <>
       <NavigationListLabel label={dateLabel} />
-      <NavigationList>
-        {conversations.map((conversation) => (
-          <RenderConversation
-            key={conversation.sId}
-            conversation={conversation}
-            {...props}
-          />
-        ))}
-      </NavigationList>
-    </div>
+      {conversations.map((conversation) => (
+        <RenderConversation
+          key={conversation.sId}
+          conversation={conversation}
+          {...props}
+        />
+      ))}
+    </>
   );
 };
 

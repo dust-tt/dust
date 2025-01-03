@@ -44,6 +44,11 @@ const SocialMenuConfig: MenuConfig = {
       href: "https://www.linkedin.com/company/dust-tt/",
       isExternal: true,
     },
+    {
+      title: "YouTube",
+      href: "https://www.youtube.com/@dust-tt",
+      isExternal: true,
+    },
   ],
 };
 

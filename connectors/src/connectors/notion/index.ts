@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import {
@@ -419,11 +420,15 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     parentInternalId: string | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     const notionId =

@@ -53,8 +53,8 @@ export async function deleteWorkspaceWorkflow({
   }
   await deleteConversationsActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });
-  await deleteAppsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
+  await deleteAppsActivity({ workspaceId });
   await deleteTrackersActivity({ workspaceId });
   await deleteMembersActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });

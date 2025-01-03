@@ -294,7 +294,9 @@ const handleDataSourceWithProvider = async ({
     configuration = {
       botEnabled: true,
       whitelistedDomains: undefined,
+      // TODO(2025-01-02 AutoReadCleanUp) Remove once fully migrated to `autoReadChannelPatterns`.
       autoReadChannelPattern: undefined,
+      autoReadChannelPatterns: [],
     };
   }
 
