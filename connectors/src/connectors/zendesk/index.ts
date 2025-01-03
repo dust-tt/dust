@@ -212,6 +212,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
+    if (connector.isPaused()) {
+      logger.error(
+        { connectorId },
+        "[Zendesk] Cannot resume a paused connector."
+      );
+      return new Err(new Error("Cannot resume a paused connector"));
+    }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     const loggerArgs = {
