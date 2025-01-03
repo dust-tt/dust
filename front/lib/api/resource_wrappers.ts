@@ -280,7 +280,7 @@ function withDataSourceFromRoute<T, A extends SessionOrKeyAuthType>(
         req,
         res,
         auth,
-        { ...resources, dataSource, space },
+        { ...resources, dataSource },
         options,
         sessionOrKeyAuth
       );
