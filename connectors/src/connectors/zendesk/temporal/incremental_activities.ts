@@ -10,6 +10,7 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchRecentlyUpdatedArticles,
+  fetchZendeskManyUsers,
   fetchZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -235,9 +236,11 @@ export async function syncZendeskTicketUpdateBatchActivity({
         });
       } else if (["solved", "closed"].includes(ticket.status)) {
         const comments = await zendeskApiClient.tickets.getComments(ticket.id);
-        const { result: users } = await zendeskApiClient.users.showMany(
-          comments.map((c) => c.author_id)
-        );
+        const users = await fetchZendeskManyUsers({
+          accessToken,
+          brandSubdomain,
+          userIds: comments.map((c) => c.author_id),
+        });
         return syncTicket({
           connectorId,
           ticket,
