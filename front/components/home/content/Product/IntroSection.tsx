@@ -1,10 +1,4 @@
-import {
-  Button,
-  Div3D,
-  Hover3D,
-  PlayIcon,
-  RocketIcon,
-} from "@dust-tt/sparkle";
+import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import React from "react";
 import { H1, P, Strong } from "@app/components/home/ContentComponents";
@@ -12,7 +6,9 @@ import TrustedBy from "@app/components/home/TrustedBy";
 
 const VideoPlayer = () => {
   return (
-    <div className="relative w-full pt-[56.25%]"> {/* 16:9 aspect ratio */}
+    <div className="relative w-full pt-[56.25%]">
+      {" "}
+      {/* 16:9 aspect ratio */}
       <iframe
         src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true"
         title="Dust product tour"
@@ -57,7 +53,7 @@ export function IntroSection() {
               </Link>
             </div>
           </div>
-          <div className="hidden md:block w-full max-w-2xl">
+          <div className="hidden w-full max-w-2xl md:block">
             <MainVisual />
           </div>
         </div>
