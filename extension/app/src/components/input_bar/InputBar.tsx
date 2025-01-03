@@ -1,8 +1,8 @@
 import type {
   AgentMentionType,
   ConversationPublicType,
+  ExtensionWorkspaceType,
   LightAgentConfigurationType,
-  LightWorkspaceType,
 } from "@dust-tt/client";
 import { Button, Page, Spinner, StopIcon } from "@dust-tt/sparkle";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
@@ -37,7 +37,7 @@ export function AssistantInputBar({
   setIncludeTab,
   isSubmitting,
 }: {
-  owner: LightWorkspaceType;
+  owner: ExtensionWorkspaceType;
   onSubmit: (
     input: string,
     mentions: AgentMentionType[],
