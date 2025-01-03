@@ -439,7 +439,8 @@ export const SpaceResourcesList = ({
                   .map(
                     (v) => v.dataSource
                   ) as DataSourceWithConnectorDetailsType[]
-                // We need to filter and then cast because useSpaceDataSourceViewsWithDetails can return dataSources with connectorProvider as null
+                // We need to filter and then cast because useSpaceDataSourceViewsWithDetails can
+                // return dataSources with connectorProvider as null
               }
               setIsProviderLoading={(provider, isLoading) => {
                 setIsNewConnectorLoading(isLoading);
