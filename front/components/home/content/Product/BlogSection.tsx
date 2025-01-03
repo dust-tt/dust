@@ -26,8 +26,6 @@ export function BlogSection({
           <div className="mb-6 flex items-end justify-between">
             <div>
               <H2 from={headerColorFrom} to={headerColorTo}>
-                Dust in Action:
-                <br />
                 Customer Stories
               </H2>
               <P size="lg">

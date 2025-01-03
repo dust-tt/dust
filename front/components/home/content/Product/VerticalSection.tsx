@@ -21,7 +21,7 @@ export function VerticalSection() {
     <div className="w-full">
       <Carousel className="w-full rounded-3xl" isLooping={true}>
         <div className="mb-6 flex items-center justify-between">
-          <H2 className="text-white">Dust for Marketing, Sales, Data,…</H2>
+          <H2 className="text-white">Accelerate every team</H2>
           <div className="flex space-x-2">
             <CarouselPrevious />
             <CarouselNext />
