@@ -133,7 +133,7 @@ chrome.runtime.onConnect.addListener((port) => {
 const getActionHandler = (menuItemId: string | number) => {
   switch (menuItemId) {
     /**
-     * We have the logic to add an action that will open a convo a pre-post a message.
+     * We have the logic to add an action that will open a convo and pre-post a message.
      * We're not using it anymore at the moment but keeping ref here for future iteration
      * if we want to experiment again with quick actions.
      *
