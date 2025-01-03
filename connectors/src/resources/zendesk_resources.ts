@@ -987,12 +987,9 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
     batchSize: number;
     cursor: number | null;
-  }): Promise<{
-    ids: { brandId: number; articleId: number }[];
-    cursor: number | null;
-  }> {
+  }): Promise<{ articleIds: number[]; cursor: number | null }> {
     const articles = await ZendeskArticle.findAll({
-      attributes: ["id", "articleId", "brandId"],
+      attributes: ["id", "articleId"],
       where: {
         connectorId,
         brandId,
@@ -1002,10 +999,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       limit: batchSize,
     });
     return {
-      ids: articles.map((article) => {
-        const { articleId, brandId } = article.get();
-        return { articleId, brandId };
-      }),
+      articleIds: articles.map((article) => article.get().articleId),
       cursor: articles[batchSize - 1]?.get().id || null, // returning the last ID if it's a complete batch
     };
   }
