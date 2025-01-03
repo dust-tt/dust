@@ -16,7 +16,7 @@ export async function tokenCountForTexts(
     const batches = _.chunk(texts, Math.ceil(texts.length / BATCHES_COUNT));
     const batchResults = await Promise.all(
       batches.map((batch) =>
-        coreAPI.tokenizeBatch({
+        coreAPI.tokensCountBatch({
           texts: batch,
           providerId: model.providerId,
           modelId: model.modelId,
@@ -31,11 +31,40 @@ export async function tokenCountForTexts(
           new Error(`Error tokenizing model message: ${res.error.message}`)
         );
       }
-      for (const tokens of res.value.tokens) {
-        counts.push(tokens.length);
+      for (const tokens of res.value.tokens_count) {
+        counts.push(tokens);
       }
     }
 
+    const batchResultsOld = await Promise.all(
+      batches.map((batch) =>
+        coreAPI.tokenizeBatch({
+          texts: batch,
+          providerId: model.providerId,
+          modelId: model.modelId,
+        })
+      )
+    );
+
+    const countsOld: number[] = [];
+    for (const res of batchResultsOld) {
+      if (res.isErr()) {
+        return new Err(
+          new Error(`Error tokenizing model message: ${res.error.message}`)
+        );
+      }
+      for (const tokens of res.value.tokens) {
+        countsOld.push(tokens.length);
+      }
+    }
+
+    console.log(
+      "---------",
+      counts.length,
+      texts.map((t) => t.substring(0, 15)),
+      counts,
+      countsOld
+    );
     return new Ok(counts);
   } catch (err) {
     return new Err(new Error(`Error tokenizing model message: ${err}`));

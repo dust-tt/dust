@@ -3480,6 +3480,48 @@ async fn tokenize_batch(
     }
 }
 
+async fn tokens_count_batch(
+    Json(payload): Json<TokenizeBatchPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let mut llm = provider(payload.provider_id).llm(payload.model_id);
+
+    // If we received credentials we initialize the llm with them.
+    match payload.credentials {
+        Some(c) => {
+            match llm.initialize(c.clone()).await {
+                Err(e) => {
+                    return error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to initialize LLM",
+                        Some(e),
+                    );
+                }
+                Ok(()) => (),
+            };
+        }
+        None => (),
+    }
+
+    match llm.tokens_count(payload.texts).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to count tokens on text",
+            Some(e),
+        ),
+        Ok(res) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "tokens_count": res,
+                })),
+            }),
+        ),
+    }
+}
+
 fn main() {
     JSExecutor::init();
 
@@ -3697,6 +3739,10 @@ fn main() {
         // Misc
         .route("/tokenize", post(tokenize))
         .route("/tokenize/batch", post(tokenize_batch))
+        .route(
+            "/tokens_count/batch",
+            post(tokens_count_batch),
+        )
 
         // Extensions
         .layer(DefaultBodyLimit::disable())

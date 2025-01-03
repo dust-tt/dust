@@ -17,6 +17,7 @@ use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine};
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
+use futures::future::join_all;
 use futures::TryStreamExt;
 use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
@@ -727,6 +728,12 @@ impl AnthropicLLM {
 
     fn completions_uri(&self) -> Result<Uri> {
         Ok("https://api.anthropic.com/v1/complete"
+            .to_string()
+            .parse::<Uri>()?)
+    }
+
+    fn tokens_count_uri(&self) -> Result<Uri> {
+        Ok("https://api.anthropic.com/v1/messages/count_tokens"
             .to_string()
             .parse::<Uri>()?)
     }
@@ -1656,6 +1663,61 @@ impl LLM for AnthropicLLM {
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
         decode_async(anthropic_base_singleton(), tokens).await
+    }
+
+    async fn tokens_count(&self, texts: Vec<String>) -> Result<Vec<usize>> {
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse()?);
+        headers.insert("X-API-Key", self.api_key.clone().unwrap().parse()?);
+        headers.insert("anthropic-version", "2023-06-01".parse()?);
+
+        let url = self.tokens_count_uri()?.to_string();
+        let results = join_all(texts.into_iter().map(|s| {
+            let body = json!({
+                "model": self.id.clone(),
+                "system": "".to_string(),
+                "messages": vec![json!({
+                    "role": "user",
+                    "content": s,
+                })],
+            });
+
+            reqwest::Client::new()
+                .post(url.clone())
+                .headers(headers.clone())
+                .json(&body)
+                .send()
+        }))
+        .await;
+
+        let results = join_all(results.into_iter().map(|res| async {
+            match res {
+                Ok(res) => {
+                    let res_body = res.json::<serde_json::Value>().await?;
+                    // Access the count_tokens attribute
+                    if let Some(count_tokens) =
+                        res_body.get("input_tokens").and_then(|v| v.as_u64())
+                    {
+                        Ok(count_tokens as usize)
+                    } else {
+                        Err(anyhow!("No input token count"))
+                    }
+                }
+                Err(e) => Err(anyhow!("Error fetching token count: {:?}", e)),
+            }
+        }))
+        .await
+        .into_iter()
+        .map(|result: Result<usize, _>| match result {
+            Ok(result) => result,
+            Err(e) => {
+                println!("Error: {}", e);
+                0
+            }
+        })
+        .collect::<Vec<_>>();
+
+        Ok(results)
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {

@@ -108,6 +108,11 @@ pub trait LLM {
     async fn decode(&self, tokens: Vec<usize>) -> Result<String>;
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>>;
 
+    async fn tokens_count(&self, texts: Vec<String>) -> Result<Vec<usize>> {
+        let tokenized = self.tokenize(texts).await?;
+        Ok(tokenized.into_iter().map(|t| t.len()).collect())
+    }
+
     async fn generate(
         &self,
         prompt: &str,
