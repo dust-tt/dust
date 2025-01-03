@@ -429,10 +429,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           break;
         }
         case "category": {
-          const { categoryId } = objectIds;
+          const { brandId, categoryId } = objectIds;
           if (permission === "none") {
             const updatedCategory = await forbidSyncZendeskCategory({
               connectorId,
+              brandId,
               categoryId,
             });
             if (updatedCategory) {
@@ -615,7 +616,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "category": {
         const category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
-          categoryId: objectIds.categoryId,
+          ...objectIds,
         });
         if (category) {
           return new Ok(category.getParentInternalIds(connectorId));
@@ -630,7 +631,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "article": {
         const article = await ZendeskArticleResource.fetchByArticleId({
           connectorId,
-          articleId: objectIds.articleId,
+          ...objectIds,
         });
         if (article) {
           return new Ok(article.getParentInternalIds(connectorId));
@@ -645,7 +646,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "ticket": {
         const ticket = await ZendeskTicketResource.fetchByTicketId({
           connectorId,
-          ticketId: objectIds.ticketId,
+          ...objectIds,
         });
         if (ticket) {
           return new Ok(ticket.getParentInternalIds(connectorId));
