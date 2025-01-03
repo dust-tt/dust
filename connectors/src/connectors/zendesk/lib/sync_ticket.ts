@@ -45,6 +45,7 @@ export async function deleteTicket({
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
+    brandId,
     ticketId,
   });
 }
@@ -75,6 +76,7 @@ export async function syncTicket({
 }) {
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
+    brandId,
     ticketId: ticket.id,
   });
 
