@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import _ from "lodash";
 import type { Client } from "node-zendesk";
 import { createClient } from "node-zendesk";
 
@@ -430,4 +431,29 @@ export async function fetchZendeskCurrentUser({
   const url = `https://${subdomain}.zendesk.com/api/v2/users/me`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
   return response.user;
+}
+
+/**
+ * Fetches a multiple users at once from the Zendesk API.
+ * May run multiple queries, more precisely we need userCount // 100 + 1 API calls.
+ */
+export async function fetchZendeskManyUsers({
+  accessToken,
+  brandSubdomain,
+  userIds,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  userIds: number[];
+}): Promise<ZendeskFetchedUser[]> {
+  const users: ZendeskFetchedUser[] = [];
+  // we can fetch at most 100 users at once: https://developer.zendesk.com/api-reference/ticketing/users/users/#show-many-users
+  for (const chunk of _.chunk(userIds, 100)) {
+    const response = await fetchFromZendeskWithRetries({
+      url: `https://${brandSubdomain}.zendesk.com/api/v2/users/show_many?ids=${chunk.join(",")}`,
+      accessToken,
+    });
+    users.push(...response.users);
+  }
+  return users;
 }
