@@ -15,7 +15,6 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<{
       feedbacks: AgentMessageFeedbackType[];
-      totalFeedbackCount: number;
     }>
   >,
   auth: Authenticator
@@ -81,8 +80,7 @@ async function handler(
       const feedbacks = feedbacksRes.value;
 
       res.status(200).json({
-        feedbacks: feedbacks.feedbacks,
-        totalFeedbackCount: feedbacks.totalFeedbackCount,
+        feedbacks: feedbacks,
       });
       return;
 

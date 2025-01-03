@@ -194,13 +194,7 @@ export async function getAgentFeedbacks({
   paginationParams: PaginationParams;
 }): Promise<
   Result<
-    {
-      feedbacks: (
-        | AgentMessageFeedbackType
-        | AgentMessageFeedbackWithMetadataType
-      )[];
-      totalFeedbackCount: number;
-    },
+    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
     Error
   >
 > {

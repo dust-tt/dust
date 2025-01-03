@@ -130,11 +130,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       agentConfigurationId: agentConfiguration.sId,
     };
 
-    // Get the total feedback count, because needed for pagination
-    const totalFeedbackCountPromise = AgentMessageFeedback.count({
-      where,
-    });
-
     if (paginationParams.lastValue) {
       const op = paginationParams.orderDirection === "desc" ? Op.lt : Op.gt;
       where[paginationParams.orderColumn as any] = {
@@ -142,7 +137,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       };
     }
 
-    const agentMessageFeedbackPromise = AgentMessageFeedback.findAll({
+    const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where,
       include: [
         {

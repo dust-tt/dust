@@ -5,15 +5,13 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
   Page,
-  Pagination,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { PaginationState } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
@@ -32,33 +30,53 @@ export const FeedbacksSection = ({
   owner,
   agentConfigurationId,
 }: FeedbacksSectionProps) => {
-  // Used for pagination's lastValue: page index -> last feedback id in page
-  const [lastIdForPage, setLastIdForPage] = useState<Record<number, number>>(
-    {}
-  );
-
-  const [paginationState, setPaginationState] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: FEEDBACKS_PAGE_SIZE,
+  const {
+    isAgentConfigurationFeedbacksLoading,
+    isValidating,
+    agentConfigurationFeedbacks,
+    hasMore: feedbacksNotExhausted,
+    setSize,
+    size,
+  } = useAgentConfigurationFeedbacksByDescVersion({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfigurationId,
+    limit: FEEDBACKS_PAGE_SIZE,
   });
 
-  // Decreasing version, paginated decreasing id.
-  const { agentConfigurationFeedbacks, isAgentConfigurationFeedbacksLoading } =
-    useAgentConfigurationFeedbacksByDescVersion({
-      workspaceId: owner.sId,
-      agentConfigurationId: agentConfigurationId ?? "",
-      withMetadata: true,
-      paginationParams: {
-        limit: FEEDBACKS_PAGE_SIZE,
-        lastValue:
-          paginationState.pageIndex === 0
-            ? undefined
-            : lastIdForPage[paginationState.pageIndex - 1],
-        orderColumn: "id",
-        orderDirection: "desc",
+  // Intersection observer to detect when the user has scrolled to the bottom of the list.
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (
+          target.isIntersecting &&
+          !isValidating &&
+          !isAgentConfigurationFeedbacksLoading &&
+          feedbacksNotExhausted
+        ) {
+          setSize(size + 1);
+        }
       },
-      disabled: !agentConfigurationId,
-    });
+      {
+        threshold: 0.25,
+      }
+    );
+
+    if (bottomRef.current) {
+      observer.observe(bottomRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [
+    bottomRef,
+    isValidating,
+    isAgentConfigurationFeedbacksLoading,
+    agentConfigurationFeedbacks,
+    setSize,
+    size,
+    feedbacksNotExhausted,
+  ]);
 
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
     useAgentConfigurationHistory({
@@ -66,39 +84,6 @@ export const FeedbacksSection = ({
       agentConfigurationId: agentConfigurationId,
       disabled: !agentConfigurationId,
     });
-
-  const handleSetPagination = useCallback(
-    (pagination: PaginationState) => {
-      // Pagination is not displayed if there are no feedbacks.
-      if (
-        !agentConfigurationFeedbacks ||
-        agentConfigurationFeedbacks.feedbacks.length === 0
-      ) {
-        return;
-      }
-      setLastIdForPage((prev) => ({
-        ...prev,
-        ...{
-          [paginationState.pageIndex]:
-            agentConfigurationFeedbacks.feedbacks[
-              agentConfigurationFeedbacks.feedbacks.length - 1
-            ].id,
-        },
-      }));
-      setPaginationState(pagination);
-    },
-    [agentConfigurationFeedbacks, paginationState.pageIndex]
-  );
-
-  const firstAgentConfigurationInPage = useMemo(
-    () =>
-      agentConfigurationHistory?.find(
-        (c) =>
-          c.version ===
-          agentConfigurationFeedbacks?.feedbacks[0].agentConfigurationVersion
-      ),
-    [agentConfigurationHistory, agentConfigurationFeedbacks]
-  );
 
   if (
     isAgentConfigurationFeedbacksLoading ||
@@ -109,13 +94,12 @@ export const FeedbacksSection = ({
 
   if (
     !isAgentConfigurationFeedbacksLoading &&
-    (!agentConfigurationFeedbacks ||
-      agentConfigurationFeedbacks.feedbacks.length === 0)
+    (!agentConfigurationFeedbacks || agentConfigurationFeedbacks.length === 0)
   ) {
     return <div className="mt-3 text-sm text-element-900">No feedbacks.</div>;
   }
 
-  if (!agentConfigurationHistory || !firstAgentConfigurationInPage) {
+  if (!agentConfigurationHistory) {
     return (
       <div className="mt-3 text-sm text-element-900">
         Error loading the previous agent versions.
@@ -127,20 +111,16 @@ export const FeedbacksSection = ({
     <div>
       <div className="mb-2 flex flex-col">
         <AgentConfigurationVersionHeader
-          agentConfiguration={firstAgentConfigurationInPage}
-          agentConfigurationVersion={firstAgentConfigurationInPage?.version}
-          isLatestVersion={
-            firstAgentConfigurationInPage?.version ===
-            agentConfigurationHistory[0].version
-          }
+          agentConfiguration={agentConfigurationHistory[0]}
+          agentConfigurationVersion={agentConfigurationHistory[0].version}
+          isLatestVersion={true}
         />
-        {agentConfigurationFeedbacks?.feedbacks.map((feedback, index) => {
+        {agentConfigurationFeedbacks?.map((feedback, index) => {
           const isFirstFeedback = index === 0;
           const isNewVersion =
             !isFirstFeedback &&
             feedback.agentConfigurationVersion !==
-              agentConfigurationFeedbacks.feedbacks[index - 1]
-                .agentConfigurationVersion;
+              agentConfigurationFeedbacks[index - 1].agentConfigurationVersion;
           return (
             <div key={feedback.id} className="animate-fadeIn">
               {isNewVersion && (
@@ -158,7 +138,7 @@ export const FeedbacksSection = ({
                 </div>
               )}
               <div className="mr-2">
-                <FeedbackCard
+                <MemoizedFeedbackCard
                   owner={owner}
                   feedback={feedback as AgentMessageFeedbackWithMetadataType}
                 />
@@ -167,20 +147,8 @@ export const FeedbacksSection = ({
           );
         })}
       </div>
-      {agentConfigurationFeedbacks &&
-        agentConfigurationFeedbacks.totalFeedbackCount > 0 && (
-          <div className="my-2 mr-2">
-            <Pagination
-              rowCount={agentConfigurationFeedbacks.totalFeedbackCount}
-              pagination={paginationState}
-              setPagination={handleSetPagination}
-              size="xs"
-              showDetails={true}
-              // Important: We need to go page by page to keep track of last cursor id.
-              showPageButtons={false}
-            />
-          </div>
-        )}
+      {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
+      <div ref={bottomRef} className="h-1.5" />
     </div>
   );
 };
@@ -222,6 +190,7 @@ interface FeedbackCardProps {
   owner: LightWorkspaceType;
   feedback: AgentMessageFeedbackWithMetadataType;
 }
+const MemoizedFeedbackCard = memo(FeedbackCard);
 function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
   const conversationUrl =
     feedback.conversationId &&
