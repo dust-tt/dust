@@ -242,31 +242,39 @@ export async function zendeskIncrementalSyncWorkflow({
   const startTimeMs = new Date(cursor).getTime(); // recasting the date since error may occur during Temporal's serialization
   const startTime = Math.floor(startTimeMs / 1000);
 
+  let articleSyncSuccess = true;
   for (const brandId of helpCenterBrandIds) {
     let articleSyncStartTime: number | null = startTime;
-    while (articleSyncStartTime !== null) {
-      articleSyncStartTime = await syncZendeskArticleUpdateBatchActivity({
-        connectorId,
-        brandId,
-        currentSyncDateMs,
-        startTime: articleSyncStartTime,
-      });
+    let hasMoreArticles = true;
+    while (hasMoreArticles) {
+      const { hasMore, success, endTime } =
+        await syncZendeskArticleUpdateBatchActivity({
+          connectorId,
+          brandId,
+          currentSyncDateMs,
+          startTime: articleSyncStartTime,
+        });
+      articleSyncStartTime = endTime;
+      hasMoreArticles = hasMore;
+      articleSyncSuccess &&= success;
     }
   }
 
-  for (const brandId of ticketBrandIds) {
-    await runZendeskActivityWithPagination((url) =>
-      syncZendeskTicketUpdateBatchActivity({
-        connectorId,
-        startTime,
-        brandId,
-        currentSyncDateMs,
-        url,
-      })
-    );
+  // stopping the incremental sync if the article sync failed to prevent having ticket syncs that grow in size endlessly
+  if (articleSyncSuccess) {
+    for (const brandId of ticketBrandIds) {
+      await runZendeskActivityWithPagination((url) =>
+        syncZendeskTicketUpdateBatchActivity({
+          connectorId,
+          startTime,
+          brandId,
+          currentSyncDateMs,
+          url,
+        })
+      );
+    }
+    await setZendeskTimestampCursorActivity({ connectorId, currentSyncDateMs });
   }
-
-  await setZendeskTimestampCursorActivity({ connectorId, currentSyncDateMs });
 }
 
 /**
