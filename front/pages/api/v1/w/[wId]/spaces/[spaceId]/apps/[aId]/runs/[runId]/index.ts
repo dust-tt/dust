@@ -73,7 +73,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -145,5 +145,5 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );

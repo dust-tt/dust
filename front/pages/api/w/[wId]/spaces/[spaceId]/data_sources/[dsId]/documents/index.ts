@@ -32,7 +32,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostDocumentResponseBody>>,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   const { dsId } = req.query;
   if (typeof dsId !== "string") {
@@ -180,5 +180,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );

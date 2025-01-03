@@ -37,8 +37,9 @@ export type PatchDocumentResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchDocumentResponseBody>>,
+
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   const { documentId, dsId } = req.query;
   if (typeof dsId !== "string" || typeof documentId !== "string") {
@@ -232,5 +233,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );

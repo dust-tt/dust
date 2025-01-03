@@ -19,7 +19,7 @@ async function handler(
     WithAPIErrorResponse<GetTrackersResponseBody | { success: true }>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   const owner = auth.workspace();
   if (!owner) {
@@ -166,5 +166,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanWrite: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );

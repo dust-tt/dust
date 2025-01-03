@@ -25,7 +25,7 @@ async function handler(
     WithAPIErrorResponse<GetAppsResponseBody | PostAppResponseBody>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -117,5 +117,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );

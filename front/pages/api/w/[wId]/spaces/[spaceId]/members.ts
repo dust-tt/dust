@@ -19,7 +19,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchSpaceMembersResponseBody>>,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   if (!space.isRegular()) {
     return apiError(req, res, {
@@ -33,17 +33,6 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      if (!space.canAdministrate(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` can administrate space members.",
-          },
-        });
-      }
-
       const bodyValidation = PatchSpaceMembersRequestBodySchema.decode(
         req.body
       );
@@ -103,5 +92,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );
