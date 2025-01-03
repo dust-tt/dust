@@ -392,6 +392,7 @@ export async function zendeskCategorySyncWorkflow({
     await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
         connectorId,
+        brandId,
         categoryId,
         currentSyncDateMs,
         forceResync,
@@ -527,6 +528,7 @@ async function runZendeskBrandHelpCenterSyncActivities({
     await runZendeskActivityWithPagination((url) =>
       syncZendeskArticleBatchActivity({
         connectorId,
+        brandId,
         categoryId,
         currentSyncDateMs,
         forceResync,
