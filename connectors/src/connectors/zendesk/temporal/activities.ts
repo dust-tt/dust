@@ -11,6 +11,8 @@ import {
   createZendeskClient,
   fetchZendeskArticlesInCategory,
   fetchZendeskCategoriesInBrand,
+  fetchZendeskManyUsers,
+  fetchZendeskTicketComments,
   fetchZendeskTickets,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -495,13 +497,21 @@ export async function syncZendeskTicketBatchActivity({
 
   const comments2d = await concurrentExecutor(
     closedTickets,
-    async (ticket) => zendeskApiClient.tickets.getComments(ticket.id),
+    async (ticket) =>
+      fetchZendeskTicketComments({
+        accessToken,
+        brandSubdomain,
+        ticketId: ticket.id,
+      }),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
-  const userIds = _.uniq(
-    _.flatten(comments2d.map((comments) => comments.map((c) => c.author_id)))
-  );
-  const { result: users } = await zendeskApiClient.users.showMany(userIds);
+  const users = await fetchZendeskManyUsers({
+    accessToken,
+    brandSubdomain,
+    userIds: _.uniq(
+      _.flatten(comments2d.map((comments) => comments.map((c) => c.author_id)))
+    ),
+  });
 
   const res = await concurrentExecutor(
     _.zip(closedTickets, comments2d),
