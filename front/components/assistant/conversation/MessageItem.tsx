@@ -8,6 +8,7 @@ import {
   DocumentTextIcon,
   Icon,
   SlackLogo,
+  useHashParam,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -105,19 +106,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
-    const [urlAnchor, setUrlAnchor] = useState<string | null>(null);
+    const [urlAnchor, setUrlAnchor] = useHashParam("messageId", undefined);
     const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
     const [messageBlinking, setMessageBlinking] = useState(false);
     // Because the prop ref can be undefined
     const scrollRef = React.useRef<HTMLDivElement>(null);
-
-    // Effect: set the url anchor
-    useEffect(() => {
-      if (typeof window !== "undefined") {
-        const hashId = window.location.hash.replace("#", "");
-        setUrlAnchor(hashId);
-      }
-    }, [sId]);
 
     // Effect: scroll to the message and temporarily highlight if it is the anchor's target
     useEffect(() => {
