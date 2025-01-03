@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ScrollArea } from "@sparkle/components";
+import { ScrollArea, ScrollBar } from "@sparkle/components";
 import { cn } from "@sparkle/lib";
 
 interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -24,6 +24,7 @@ export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
           >
             {children}
           </div>
+          <ScrollBar size="classic" orientation="vertical" />
         </ScrollArea>
       </div>
     );
