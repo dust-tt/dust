@@ -115,13 +115,14 @@ async function handler(
       return;
 
     case "POST":
-      if (!auth.isAdmin()) {
+      if (!auth.isAdmin() || !dataSource.canAdministrate(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `admins` for the current workspace can edit the configuration of a data source.",
+              "Only the users that are `admins` for the current workspace " +
+              "can edit the configuration of a data source.",
           },
         });
       }
