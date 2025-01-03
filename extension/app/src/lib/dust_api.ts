@@ -16,7 +16,6 @@ export const useDustAPI = () => {
   return new DustAPI(
     {
       url: process.env.DUST_DOMAIN,
-      nodeEnv: process.env.NODE_ENV,
     },
     {
       apiKey: () => getAccessToken(),
