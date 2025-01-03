@@ -38,7 +38,11 @@ export async function deleteArticle(
     dataSourceConfig,
     getArticleInternalId({ connectorId, brandId, articleId })
   );
-  await ZendeskArticleResource.deleteByArticleId({ connectorId, articleId });
+  await ZendeskArticleResource.deleteByArticleId({
+    connectorId,
+    brandId,
+    articleId,
+  });
 }
 
 /**
@@ -67,6 +71,7 @@ export async function syncArticle({
 }) {
   let articleInDb = await ZendeskArticleResource.fetchByArticleId({
     connectorId,
+    brandId: category.brandId,
     articleId: article.id,
   });
   const updatedAtDate = new Date(article.updated_at);
