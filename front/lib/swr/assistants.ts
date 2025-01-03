@@ -18,8 +18,8 @@ import type {
 import {
   fetcher,
   getErrorFromResponse,
-  useSWRWithDefaults,
   useSWRInfiniteWithDefaults,
+  useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";

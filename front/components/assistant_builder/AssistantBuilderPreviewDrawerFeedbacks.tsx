@@ -55,7 +55,7 @@ export const FeedbacksSection = ({
           !isAgentConfigurationFeedbacksLoading &&
           feedbacksNotExhausted
         ) {
-          setSize(size + 1);
+          void setSize(size + 1);
         }
       },
       {
