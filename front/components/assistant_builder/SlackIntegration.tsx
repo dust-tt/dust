@@ -3,7 +3,6 @@ import {
   InformationCircleIcon,
   Modal,
   Page,
-  SlackLogo,
 } from "@dust-tt/sparkle";
 import type {
   ContentNode,
@@ -172,10 +171,6 @@ export function SlackAssistantDefaultManager({
         <div className="pt-8">
           <Page.Vertical gap="lg" align="stretch">
             <div className="flex flex-col gap-y-2">
-              <div className="grow text-sm font-medium text-element-800">
-                <SlackLogo className="h-8 w-8" />
-              </div>
-
               <div className="text-sm font-normal text-foreground">
                 Set this assistant as the default assistant on one or several of
                 your Slack channels. It will answer by default when the{" "}
