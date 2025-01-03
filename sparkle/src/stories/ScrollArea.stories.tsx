@@ -17,11 +17,11 @@ const tags = Array.from({ length: 50 }).map(
 
 export function ScrollAreaDemo() {
   return (
-    <div className="s-h-[400px]">
-      <ScrollArea className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border">
-        <div className="s-p-4">
+    <div className="s-flex s-flex-row s-gap-6 s-bg-muted s-p-8">
+      <div className="s-h-[400px]">
+        <ScrollArea className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white">
           <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
-            Tags
+            Mini ScrollBar
           </h4>
           {tags.map((tag) => (
             <React.Fragment key={tag}>
@@ -29,8 +29,22 @@ export function ScrollAreaDemo() {
               <Separator className="s-my-2" />
             </React.Fragment>
           ))}
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
+      <div className="s-h-[400px]">
+        <ScrollArea className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white">
+          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+            Classic ScrollBar
+          </h4>
+          {tags.map((tag) => (
+            <React.Fragment key={tag}>
+              <div className="s-text-sm">{tag}</div>
+              <Separator className="s-my-2" />
+            </React.Fragment>
+          ))}
+          <ScrollBar orientation="vertical" size="classic" />
+        </ScrollArea>
+      </div>
     </div>
   );
 }
