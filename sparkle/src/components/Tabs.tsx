@@ -12,17 +12,19 @@ type TabsListProps = React.ComponentPropsWithoutRef<
   typeof TabsPrimitive.List
 > & {
   isFullSize?: boolean;
+  hasBorder?: boolean;
 };
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   TabsListProps
->(({ className, isFullSize = true, ...props }, ref) => (
+>(({ className, isFullSize = true, hasBorder = true, ...props }, ref) => (
   <ScrollArea>
     <TabsPrimitive.List
       ref={ref}
       className={cn(
-        "s-inline-flex s-h-11 s-gap-2 s-border-b s-border-primary-200/60",
+        "s-inline-flex s-h-11 s-gap-2",
+        hasBorder && "s-border-b s-border-primary-200/60",
         isFullSize && "s-w-full",
         className
       )}
