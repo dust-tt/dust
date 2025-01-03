@@ -50,8 +50,9 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetDatasetsResponseBody | PostDatasetResponseBody>
   >,
+
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   const { aId } = req.query;
   if (typeof aId !== "string") {
@@ -211,7 +212,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  // Interacting with datasets requires write access to the app's space.
-  // Read permission is not enough as it's available to all space users (or everybody for public spaces)
-  withResourceFetchingFromRoute(handler, { space: { requireCanWrite: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );

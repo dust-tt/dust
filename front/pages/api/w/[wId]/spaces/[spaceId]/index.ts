@@ -46,7 +46,7 @@ async function handler(
     WithAPIErrorResponse<GetSpaceResponseBody | PatchSpaceResponseBody>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
@@ -241,5 +241,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );

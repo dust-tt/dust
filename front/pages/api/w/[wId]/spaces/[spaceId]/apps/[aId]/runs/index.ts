@@ -1,5 +1,6 @@
 import type { RunType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI, credentialsFromProviders } from "@dust-tt/types";
+import { credentialsFromProviders } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -31,7 +32,7 @@ async function handler(
     WithAPIErrorResponse<GetRunsResponseBody | PostRunsResponseBody>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource },
+  space: SpaceResource,
   session: SessionWithUser
 ) {
   const { aId } = req.query;
@@ -265,5 +266,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanWrite: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );

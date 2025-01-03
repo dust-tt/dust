@@ -6,7 +6,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import apiConfig from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -27,22 +27,22 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetDataSourceViewTableResponseBody>
   >,
-  auth: Authenticator,
-  { dataSourceView }: { dataSourceView: DataSourceViewResource }
+  auth: Authenticator
 ): Promise<void> {
-  const { tableId } = req.query;
+  const { dsvId, tableId } = req.query;
 
-  if (typeof tableId !== "string") {
+  if (typeof dsvId !== "string" || typeof tableId !== "string") {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 404,
       api_error: {
-        type: "invalid_request_error",
-        message: "Invalid table id.",
+        type: "data_source_view_not_found",
+        message: "The data source view you requested was not found.",
       },
     });
   }
 
-  if (!dataSourceView.canRead(auth)) {
+  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
+  if (!dataSourceView || !dataSourceView.canRead(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -89,7 +89,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, {
-    dataSourceView: { requireCanRead: true },
-  })
+  withResourceFetchingFromRoute(handler, "space")
 );

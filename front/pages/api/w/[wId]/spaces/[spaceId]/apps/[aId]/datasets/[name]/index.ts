@@ -23,8 +23,9 @@ export type GetDatasetResponseBody = { dataset: DatasetType };
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDatasetResponseBody>>,
+
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  space: SpaceResource
 ): Promise<void> {
   const owner = auth.workspace();
   if (!owner) {
@@ -232,5 +233,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, "space")
 );
