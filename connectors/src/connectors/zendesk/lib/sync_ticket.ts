@@ -192,7 +192,7 @@ ${comments
       );
       author = null;
     }
-    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.body}`;
+    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.body.replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
   })
   .join("\n")}
 `.trim();
