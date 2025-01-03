@@ -27,7 +27,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
-  useCreateDataSourceViewTable,
+  useCreateDataSourceTable,
   useDataSourceViewTable,
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
@@ -126,7 +126,7 @@ export const TableUploadOrEditModal = ({
     dataSourceView,
     initialId ?? ""
   );
-  const doCreate = useCreateDataSourceViewTable(owner, dataSourceView);
+  const doCreate = useCreateDataSourceTable(owner, dataSourceView);
 
   const handleTableUpload = useCallback(
     async (table: Table) => {
