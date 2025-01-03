@@ -290,7 +290,8 @@ export async function fetchRecentlyUpdatedArticles({
         subdomain: brandSubdomain,
         accessToken,
       });
-      if (user && user.role !== "admin") {
+      // only admins and agents can fetch this endpoint: https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/#authenticating-the-requests
+      if (user && user.role !== "admin" && user.role !== "agent") {
         throw new ZendeskApiError(
           "Error fetching the incremental articles endpoint, user is not admin.",
           403,
