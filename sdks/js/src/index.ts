@@ -34,7 +34,7 @@ import {
   APIErrorSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
-  DataSourceViewsResponseSchema,
+  DataSourceViewResponseSchema,
   DeleteFolderResponseSchema,
   Err,
   FileUploadRequestResponseSchema,
@@ -979,7 +979,7 @@ export class DustAPI {
     return new Ok(r.value.data_source_views);
   }
 
-  async patchDataSourceViews(
+  async patchDataSourceView(
     dataSourceView: DataSourceViewType,
     patchData: PatchDataSourceViewRequestType
   ) {
@@ -989,10 +989,7 @@ export class DustAPI {
       body: patchData,
     });
 
-    const r = await this._resultFromResponse(
-      DataSourceViewsResponseSchema,
-      res
-    );
+    const r = await this._resultFromResponse(DataSourceViewResponseSchema, res);
     if (r.isErr()) {
       return r;
     }

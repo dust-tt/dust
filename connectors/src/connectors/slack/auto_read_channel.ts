@@ -145,7 +145,7 @@ export async function autoReadChannel(
           parentsToAdd: [channel.slackChannelId],
           parentsToRemove: undefined,
         };
-        const updateDataSourceViewRes = await dustAPI.patchDataSourceViews(
+        const updateDataSourceViewRes = await dustAPI.patchDataSourceView(
           dataSourceView,
           patchData
         );

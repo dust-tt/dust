@@ -1755,12 +1755,12 @@ const GetAppsResponseSchema = z.object({
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
 
-export const DataSourceViewsResponseSchema = z.object({
+export const DataSourceViewResponseSchema = z.object({
   dataSourceView: DataSourceViewSchema,
 });
 
-export type DataSourceViewsResponseType = z.infer<
-  typeof DataSourceViewsResponseSchema
+export type DataSourceViewResponseType = z.infer<
+  typeof DataSourceViewResponseSchema
 >;
 
 export const PatchDataSourceViewRequestSchema = z.union([
