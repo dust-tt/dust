@@ -46,9 +46,8 @@ async function handler(
       GetSpaceDataSourceViewsResponseBody | PostSpaceDataSourceViewsResponseBody
     >
   >,
-
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
@@ -232,5 +231,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
 );

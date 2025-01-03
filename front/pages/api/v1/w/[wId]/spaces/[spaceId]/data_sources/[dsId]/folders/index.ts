@@ -19,7 +19,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetFoldersResponseType>>,
   auth: Authenticator,
-  dataSource: DataSourceResource
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   if (!auth.isSystemKey()) {
@@ -34,6 +34,16 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!dataSource.canList(auth)) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+      }
+
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)
@@ -77,5 +87,7 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, "dataSource")
+  withResourceFetchingFromRoute(handler, {
+    dataSource: { requireCanList: true },
+  })
 );

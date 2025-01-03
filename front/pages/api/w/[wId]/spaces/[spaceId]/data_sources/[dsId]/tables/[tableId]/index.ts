@@ -32,7 +32,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchTableResponseBody>>,
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const { tableId, dsId } = req.query;
 
@@ -123,6 +123,16 @@ async function handler(
       return;
 
     case "DELETE":
+      if (!dataSource.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       const delRes = await deleteTable({
         owner: auth.getNonNullableWorkspace(),
         dataSource,
@@ -168,5 +178,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
 );

@@ -9,8 +9,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
 /**
@@ -152,25 +151,9 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<DataSourceSearchResponseType>>,
   auth: Authenticator,
-  space: SpaceResource
+  { dataSourceView }: { dataSourceView: DataSourceViewResource }
 ): Promise<void> {
-  const { dsvId } = req.query;
-  if (typeof dsvId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
-  if (
-    !dataSourceView ||
-    dataSourceView.space.sId !== space.sId ||
-    !dataSourceView.canRead(auth)
-  ) {
+  if (!dataSourceView.canRead(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -243,5 +226,7 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, {
+    dataSourceView: { requireCanRead: true },
+  })
 );

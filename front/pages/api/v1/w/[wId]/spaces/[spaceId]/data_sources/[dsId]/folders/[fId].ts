@@ -31,7 +31,7 @@ async function handler(
     >
   >,
   auth: Authenticator,
-  dataSource: DataSourceResource
+  { dataSource }: { dataSource: DataSourceResource }
 ): Promise<void> {
   const { fId } = req.query;
 
@@ -59,6 +59,16 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!dataSource.canList(auth)) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+      }
+
       const docRes = await coreAPI.getDataSourceFolder({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
@@ -82,6 +92,16 @@ async function handler(
       return;
 
     case "POST":
+      if (!dataSource.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       const r = UpsertDataSourceFolderRequestSchema.safeParse(req.body);
 
       if (r.error) {
@@ -153,6 +173,16 @@ async function handler(
       return;
 
     case "DELETE":
+      if (!dataSource.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       const delRes = await coreAPI.deleteDataSourceFolder({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
@@ -190,5 +220,7 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, "dataSource")
+  withResourceFetchingFromRoute(handler, {
+    dataSource: { requireCanList: true },
+  })
 );

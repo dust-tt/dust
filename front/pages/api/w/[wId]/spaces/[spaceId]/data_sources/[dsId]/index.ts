@@ -27,7 +27,7 @@ async function handler(
     WithAPIErrorResponse<PatchSpaceDataSourceResponseBody | void>
   >,
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const { dsId } = req.query;
   if (typeof dsId !== "string") {
@@ -168,5 +168,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
 );
