@@ -1,7 +1,6 @@
 import React from "react";
 
 import * as SolidIcons from "../icons/solid";
-import * as StrokeIcons from "../icons/stroke";
 import { Icon } from "../index_with_tw_base";
 
 export default {
@@ -25,24 +24,6 @@ const itemStyle = {
 export const SolidIconSet = () => (
   <div style={gridStyle}>
     {Object.entries(SolidIcons).map(([iconName, IconComponent]) => {
-      const CurrentIcon = (
-        "default" in IconComponent ? IconComponent.default : IconComponent
-      ) as React.ComponentType<{ className?: string | undefined }>;
-      return (
-        <div key={iconName}>
-          <Icon visual={CurrentIcon} size="md" />
-          <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-            {iconName}
-          </div>
-        </div>
-      );
-    })}
-  </div>
-);
-
-export const StrokeIconSet = () => (
-  <div style={gridStyle}>
-    {Object.entries(StrokeIcons).map(([iconName, IconComponent]) => {
       const CurrentIcon = (
         "default" in IconComponent ? IconComponent.default : IconComponent
       ) as React.ComponentType<{ className?: string | undefined }>;
