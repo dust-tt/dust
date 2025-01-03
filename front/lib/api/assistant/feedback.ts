@@ -183,13 +183,7 @@ export async function getAgentFeedbacks({
   paginationParams: PaginationParams;
 }): Promise<
   Result<
-    {
-      feedbacks: (
-        | AgentMessageFeedbackType
-        | AgentMessageFeedbackWithMetadataType
-      )[];
-      totalFeedbackCount: number;
-    },
+    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
     Error
   >
 > {
@@ -218,17 +212,12 @@ export async function getAgentFeedbacks({
     return new Ok(feedbacksRes);
   }
 
-  const feedbacksWithHiddenConversationId = feedbacksRes.feedbacks.map(
-    (feedback) => ({
-      ...feedback,
-      // Redact the conversationId if user did not share the conversation.
-      conversationId: feedback.isConversationShared
-        ? (feedback as AgentMessageFeedbackWithMetadataType).conversationId
-        : null,
-    })
-  );
-  return new Ok({
-    feedbacks: feedbacksWithHiddenConversationId,
-    totalFeedbackCount: feedbacksRes.totalFeedbackCount,
-  });
+  const feedbacksWithHiddenConversationId = feedbacksRes.map((feedback) => ({
+    ...feedback,
+    // Redact the conversationId if user did not share the conversation.
+    conversationId: feedback.isConversationShared
+      ? (feedback as AgentMessageFeedbackWithMetadataType).conversationId
+      : null,
+  }));
+  return new Ok(feedbacksWithHiddenConversationId);
 }

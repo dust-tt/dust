@@ -15,11 +15,11 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
-import type { PaginationParams } from "@app/lib/api/pagination";
 import {
   fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
+  useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";
@@ -235,51 +235,72 @@ export function useAgentConfiguration({
 interface AgentConfigurationFeedbacksByDescVersionProps {
   workspaceId: string;
   agentConfigurationId: string | null;
-  paginationParams: PaginationParams;
-  withMetadata?: boolean;
-  disabled?: boolean;
+  limit: number;
 }
 export function useAgentConfigurationFeedbacksByDescVersion({
   workspaceId,
   agentConfigurationId,
-  paginationParams,
-  withMetadata,
-  disabled,
+  limit,
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
       | AgentMessageFeedbackType
       | AgentMessageFeedbackWithMetadataType
     )[];
-    totalFeedbackCount: number;
   }> = fetcher;
 
   const urlParams = new URLSearchParams({
-    limit: paginationParams.limit.toString(),
-    orderColumn: paginationParams.orderColumn,
-    orderDirection: paginationParams.orderDirection,
+    limit: limit.toString(),
+    orderColumn: "id",
+    orderDirection: "desc",
+    withMetadata: "true",
   });
-  if (withMetadata) {
-    urlParams.append("withMetadata", "true");
-  }
-  if (paginationParams.lastValue) {
-    urlParams.append("lastValue", paginationParams.lastValue.toString());
-  }
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    agentConfigurationId
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks?${urlParams.toString()}`
-      : null,
-    agentConfigurationFeedbacksFetcher,
-    // If agentConfigurationId is null, we don't want to fetch
-    { disabled: disabled || !agentConfigurationId }
-  );
+  const [hasMore, setHasMore] = useState(true);
+
+  const { data, error, mutate, size, setSize, isLoading, isValidating } =
+    useSWRInfiniteWithDefaults(
+      (pageIndex: number, previousPageData) => {
+        console.log("previousPageData", previousPageData);
+        if (!agentConfigurationId) {
+          return null;
+        }
+
+        // If we have reached the last page and there are no more
+        // messages or the previous page has no messages, return null.
+        if (previousPageData && previousPageData.feedbacks.length < limit) {
+          setHasMore(false);
+          return null;
+        }
+
+        if (previousPageData !== null) {
+          const lastIdValue =
+            previousPageData.feedbacks[previousPageData.feedbacks.length - 1]
+              .id;
+          urlParams.append("lastValue", lastIdValue.toString());
+        }
+        return `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks?${urlParams.toString()}`;
+      },
+      agentConfigurationFeedbacksFetcher,
+      {
+        revalidateAll: false,
+        revalidateOnFocus: false,
+      }
+    );
 
   return {
-    agentConfigurationFeedbacks: data ? data : null,
-    isAgentConfigurationFeedbacksLoading: !error && !data,
+    isLoadingInitialData: !error && !data,
     isAgentConfigurationFeedbacksError: error,
+    isAgentConfigurationFeedbacksLoading: isLoading,
+    isValidating,
+    agentConfigurationFeedbacks: useMemo(
+      () => (data ? data.flatMap((d) => (d ? d.feedbacks : [])) : []),
+      [data]
+    ),
+    hasMore,
     mutateAgentConfigurationFeedbacks: mutate,
+    setSize,
+    size,
   };
 }
 

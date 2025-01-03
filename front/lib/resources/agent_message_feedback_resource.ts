@@ -102,23 +102,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     withMetadata: boolean;
     agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
-  }): Promise<{
-    feedbacks: (
-      | AgentMessageFeedbackType
-      | AgentMessageFeedbackWithMetadataType
-    )[];
-    totalFeedbackCount: number;
-  }> {
+  }): Promise<
+    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[]
+  > {
     const where: WhereOptions<AgentMessageFeedback> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.sId,
     };
-
-    // Get the total feedback count, because needed for pagination
-    const totalFeedbackCountPromise = AgentMessageFeedback.count({
-      where,
-    });
 
     if (paginationParams.lastValue) {
       const op = paginationParams.orderDirection === "desc" ? Op.lt : Op.gt;
@@ -127,7 +118,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       };
     }
 
-    const agentMessageFeedbackPromise = AgentMessageFeedback.findAll({
+    const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where,
       include: [
         {
@@ -166,14 +157,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       limit: paginationParams.limit,
     });
 
-    const [agentMessageFeedback, totalFeedbackCount] = await Promise.all([
-      agentMessageFeedbackPromise,
-      totalFeedbackCountPromise,
-    ]);
-
-    return {
-      totalFeedbackCount,
-      feedbacks: agentMessageFeedback
+    return (
+      agentMessageFeedback
         // Typeguard needed because of TypeScript limitations
         .filter(
           (
@@ -209,8 +194,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
               userImageUrl: feedback.user.imageUrl,
             }),
           };
-        }),
-    };
+        })
+    );
   }
 
   static async getFeedbackUsageDataForWorkspace({
