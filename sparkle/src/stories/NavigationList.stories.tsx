@@ -76,30 +76,28 @@ export const Demo = () => {
         <NavigationList className="s-relative s-h-full s-w-full s-px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
-              <div className="s-relative s-flex s-flex-col s-gap-1">
-                <NavigationListLabel label={section.label} />
-                {section.items.map((title, index) => {
-                  const itemIndex = allItems.indexOf(title);
-                  return (
-                    <NavigationListItem
-                      key={index}
-                      href={index % 2 === 0 ? "#" : undefined}
-                      selected={itemIndex === selectedIndex}
-                      onClick={(e) => {
-                        // Prevent default only if it's not coming from the more menu
-                        if (!e.defaultPrevented) {
-                          e.preventDefault();
-                          setSelectedIndex(itemIndex);
-                        }
-                      }}
-                      label={title}
-                      className="s-w-full"
-                      moreMenu={getMoreMenu(title)}
-                      icon={LockIcon}
-                    />
-                  );
-                })}
-              </div>
+              <NavigationListLabel label={section.label} />
+              {section.items.map((title, index) => {
+                const itemIndex = allItems.indexOf(title);
+                return (
+                  <NavigationListItem
+                    key={index}
+                    href={index % 2 === 0 ? "#" : undefined}
+                    selected={itemIndex === selectedIndex}
+                    onClick={(e) => {
+                      // Prevent default only if it's not coming from the more menu
+                      if (!e.defaultPrevented) {
+                        e.preventDefault();
+                        setSelectedIndex(itemIndex);
+                      }
+                    }}
+                    label={title}
+                    className="s-w-full"
+                    moreMenu={getMoreMenu(title)}
+                    icon={LockIcon}
+                  />
+                );
+              })}
             </React.Fragment>
           ))}
         </NavigationList>
@@ -108,30 +106,28 @@ export const Demo = () => {
         <NavigationList className="s-relative s-h-full s-w-full s-px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
-              <div className="s-relative s-flex s-flex-col s-gap-1">
-                <NavigationListLabel label={section.label} isSticky />
-                {section.items.map((title, index) => {
-                  const itemIndex = allItems.indexOf(title);
-                  return (
-                    <NavigationListItem
-                      key={index}
-                      href={index % 2 === 0 ? "#" : undefined}
-                      selected={itemIndex === selectedIndex}
-                      onClick={(e) => {
-                        // Prevent default only if it's not coming from the more menu
-                        if (!e.defaultPrevented) {
-                          e.preventDefault();
-                          setSelectedIndex(itemIndex);
-                        }
-                      }}
-                      label={title}
-                      className="s-w-full"
-                      moreMenu={getMoreMenu(title)}
-                      icon={LockIcon}
-                    />
-                  );
-                })}
-              </div>
+              <NavigationListLabel label={section.label} isSticky />
+              {section.items.map((title, index) => {
+                const itemIndex = allItems.indexOf(title);
+                return (
+                  <NavigationListItem
+                    key={index}
+                    href={index % 2 === 0 ? "#" : undefined}
+                    selected={itemIndex === selectedIndex}
+                    onClick={(e) => {
+                      // Prevent default only if it's not coming from the more menu
+                      if (!e.defaultPrevented) {
+                        e.preventDefault();
+                        setSelectedIndex(itemIndex);
+                      }
+                    }}
+                    label={title}
+                    className="s-w-full"
+                    moreMenu={getMoreMenu(title)}
+                    icon={LockIcon}
+                  />
+                );
+              })}
             </React.Fragment>
           ))}
         </NavigationList>
