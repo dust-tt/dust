@@ -24,9 +24,8 @@ export type GetRunBlockResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetRunBlockResponseBody>>,
-
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const { aId } = req.query;
   if (typeof aId !== "string") {
@@ -108,5 +107,7 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  // App block runs contain sensitive data and requires write access to the app's space.
+  // Read permission is not enough as it's available to all space users (or everybody for public spaces)
+  withResourceFetchingFromRoute(handler, { space: { requireCanWrite: true } })
 );
