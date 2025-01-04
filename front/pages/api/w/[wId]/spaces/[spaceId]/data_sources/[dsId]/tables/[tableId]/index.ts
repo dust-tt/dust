@@ -128,7 +128,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
-            message: "You are not allowed to update data in this data source.",
+            message: "You are not allowed to delete data in this data source.",
           },
         });
       }

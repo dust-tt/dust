@@ -4,6 +4,7 @@ import { Err, Ok } from "@dust-tt/types";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import { slackChannelInternalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -142,10 +143,12 @@ export async function autoReadChannel(
         }
 
         const patchData = {
-          parentsToAdd: [channel.slackChannelId],
+          parentsToAdd: [
+            slackChannelInternalIdFromSlackChannelId(channel.slackChannelId),
+          ],
           parentsToRemove: undefined,
         };
-        const updateDataSourceViewRes = await dustAPI.patchDataSourceViews(
+        const updateDataSourceViewRes = await dustAPI.patchDataSourceView(
           dataSourceView,
           patchData
         );

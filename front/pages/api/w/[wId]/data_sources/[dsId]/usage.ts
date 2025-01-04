@@ -33,7 +33,7 @@ async function handler(
   }
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (!dataSource) {
+  if (!dataSource || !dataSource.canRead(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

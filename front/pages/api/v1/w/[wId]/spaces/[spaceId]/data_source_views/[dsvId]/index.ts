@@ -1,4 +1,4 @@
-import type { DataSourceViewsResponseType } from "@dust-tt/client";
+import type { DataSourceViewResponseType } from "@dust-tt/client";
 import { PatchDataSourceViewRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -149,7 +149,7 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<DataSourceViewsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<DataSourceViewResponseType>>,
   auth: Authenticator,
   { dataSourceView }: { dataSourceView: DataSourceViewResource }
 ): Promise<void> {
