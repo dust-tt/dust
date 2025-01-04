@@ -3,7 +3,7 @@ import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo, useState } from "react";
 
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { useDataSourceUsage } from "@app/lib/swr/data_sources";
+import { useDataSourceUsage } from "@app/lib/swr/data_source_usage";
 
 interface DeleteStaticDataSourceDialogProps {
   owner: LightWorkspaceType;
