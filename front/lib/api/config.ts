@@ -8,6 +8,9 @@ const config = {
       "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
     );
   },
+  getWorkOsClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_CLIENT_ID");
+  },
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },

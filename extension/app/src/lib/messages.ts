@@ -1,8 +1,7 @@
 import { saveTokens } from "@extension/lib/storage";
 
-export type Auth0AuthorizeResponse = {
+export type OAuthAuthorizeResponse = {
   accessToken: string;
-  idToken: string;
   refreshToken: string;
   expiresIn: number;
 };
@@ -81,7 +80,7 @@ const sendMessage = <T, U>(message: T): Promise<U> => {
 
 export const sendAuthMessage = (
   isForceLogin?: boolean
-): Promise<Auth0AuthorizeResponse> => {
+): Promise<OAuthAuthorizeResponse> => {
   return new Promise((resolve, reject) => {
     const message: AuthBackgroundMessage = {
       type: "AUTHENTICATE",
@@ -89,7 +88,7 @@ export const sendAuthMessage = (
     };
     chrome.runtime.sendMessage(
       message,
-      (response: Auth0AuthorizeResponse | undefined) => {
+      (response: OAuthAuthorizeResponse | undefined) => {
         const error = chrome.runtime.lastError;
         if (error) {
           if (error.message?.includes("Could not establish connection")) {
@@ -97,7 +96,7 @@ export const sendAuthMessage = (
             chrome.runtime.getBackgroundPage(() => {
               chrome.runtime.sendMessage(
                 message,
-                (response: Auth0AuthorizeResponse | undefined) => {
+                (response: OAuthAuthorizeResponse | undefined) => {
                   if (chrome.runtime.lastError) {
                     return reject(chrome.runtime.lastError);
                   }
@@ -123,7 +122,7 @@ export const sendAuthMessage = (
 
 export const sendRefreshTokenMessage = (
   refreshToken: string
-): Promise<Auth0AuthorizeResponse> => {
+): Promise<OAuthAuthorizeResponse> => {
   return new Promise((resolve, reject) => {
     const message: AuthBackgroundMessage = {
       type: "REFRESH_TOKEN",
@@ -131,7 +130,7 @@ export const sendRefreshTokenMessage = (
     };
     chrome.runtime.sendMessage(
       message,
-      (response: Auth0AuthorizeResponse | undefined) => {
+      (response: OAuthAuthorizeResponse | undefined) => {
         if (chrome.runtime.lastError) {
           return reject(chrome.runtime.lastError);
         }

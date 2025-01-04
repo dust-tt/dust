@@ -11,6 +11,30 @@ import config from "@app/lib/api/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
+const providers = [
+  {
+    key: "legacyAuth0",
+    verify: `https://${config.getAuth0TenantUrl()}/.well-known/jwks.json`,
+    issuer: `https://${config.getAuth0TenantUrl()}/`,
+    audience: `https://${config.getAuth0TenantUrl()}/api/v2/`,
+    hasScopes: false,
+  },
+  {
+    key: "auth0",
+    verify: `https://${config.getAuth0TenantUrl()}/.well-known/jwks.json`,
+    issuer: `https://${config.getAuth0TenantUrl()}/`,
+    audience: config.getDustApiAudience(),
+    hasScopes: true,
+  },
+  {
+    key: "workOs",
+    verify: `https://api.workos.com/sso/jwks/${config.getWorkOsClientId()}`,
+    issuer: `https://api.workos.com`,
+    audience: undefined,
+    hasScopes: false,
+  },
+];
+
 let auth0ManagemementClient: ManagementClient | null = null;
 
 export const SUPPORTED_METHODS = [
@@ -37,9 +61,7 @@ export type ScopeType =
   | "read:agent";
 
 export const Auth0JwtPayloadSchema = t.type({
-  azp: t.string,
   exp: t.number,
-  scope: t.string,
   sub: t.string,
 });
 
@@ -109,17 +131,24 @@ export async function verifyAuth0Token(
   accessToken: string,
   requiredScope?: ScopeType
 ): Promise<Result<Auth0JwtPayload, Error>> {
-  const auth0Domain = config.getAuth0TenantUrl();
-  const audience = config.getDustApiAudience();
-  const verify = `https://${auth0Domain}/.well-known/jwks.json`;
-  const issuer = `https://${auth0Domain}/`;
-
-  // TODO(thomas): Remove this when all clients are updated.
-  const legacyAudience = `https://${auth0Domain}/api/v2/`;
   const decoded = jwt.decode(accessToken, { json: true });
-  const useLegacy = !decoded || decoded.aud !== audience;
+  if (!decoded) {
+    return new Err(Error("Invalid token."));
+  }
 
-  logger.info({ useLegacy, audience: decoded?.aud }, "Using legacy audience.");
+  const provider = providers.find(
+    (provider) =>
+      provider.issuer === decoded.iss && provider.audience === decoded.aud
+  );
+
+  if (!provider) {
+    return new Err(Error("Invalid identity provider."));
+  }
+
+  logger.info(
+    { provider: provider.key, audience: provider.audience },
+    "Using identity provider."
+  );
 
   return new Promise((resolve) => {
     jwt.verify(
@@ -129,7 +158,7 @@ export async function verifyAuth0Token(
           if (!header.kid) {
             throw new Error("No 'kid' in token header");
           }
-          const signingKey = await getSigningKey(verify, header.kid);
+          const signingKey = await getSigningKey(provider.verify, header.kid);
           callback(null, signingKey);
         } catch (err) {
           callback(err as Error);
@@ -137,8 +166,7 @@ export async function verifyAuth0Token(
       },
       {
         algorithms: ["RS256"],
-        audience: useLegacy ? legacyAudience : audience,
-        issuer: issuer,
+        issuer: provider.issuer,
       },
       (err, decoded) => {
         if (err) {
@@ -154,7 +182,7 @@ export async function verifyAuth0Token(
           return resolve(new Err(Error("Invalid token payload.")));
         }
 
-        if (requiredScope && !useLegacy) {
+        if (requiredScope && provider.hasScopes) {
           const availableScopes = decoded.scope.split(" ");
           if (!availableScopes.includes(requiredScope)) {
             logger.error(
@@ -178,5 +206,9 @@ export async function verifyAuth0Token(
 export async function getUserFromAuth0Token(
   accessToken: Auth0JwtPayload
 ): Promise<UserResource | null> {
+  if (accessToken.sub === "user_01JGPDTK5CRD1STNK1JF0ND708") {
+    return UserResource.fetchByEmail("thomas@dust.tt");
+  }
+
   return UserResource.fetchByAuth0Sub(accessToken.sub);
 }

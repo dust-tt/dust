@@ -2,13 +2,17 @@ import type { PendingUpdate } from "@extension/lib/storage";
 import { getStoredUser, savePendingUpdate } from "@extension/lib/storage";
 
 import {
+  AUTH,
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
   DUST_API_AUDIENCE,
+  getAuthorizeURL,
+  getOAuthClientID,
+  getTokenURL,
 } from "./src/lib/config";
 import { extractPage } from "./src/lib/extraction";
 import type {
-  Auth0AuthorizeResponse,
+  OAuthAuthorizeResponse,
   AuthBackgroundMessage,
   AuthBackgroundResponse,
   CaptureMesssage,
@@ -24,7 +28,7 @@ const log = console.error;
 const state: {
   refreshingToken: boolean;
   refreshRequests: ((
-    auth: Auth0AuthorizeResponse | AuthBackgroundResponse
+    auth: OAuthAuthorizeResponse | AuthBackgroundResponse
   ) => void)[];
   lastHandler: (() => void) | undefined;
 } = {
@@ -219,7 +223,7 @@ chrome.runtime.onMessage.addListener(
     sender,
     sendResponse: (
       response:
-        | Auth0AuthorizeResponse
+        | OAuthAuthorizeResponse
         | AuthBackgroundResponse
         | CaptureResponse
         | GetActiveTabBackgroundResponse
@@ -375,25 +379,30 @@ chrome.runtime.onMessage.addListener(
  */
 const authenticate = async (
   { isForceLogin }: AuthBackgroundMessage,
-  sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
+  sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
-  const options = {
-    client_id: AUTH0_CLIENT_ID,
+  const options: Record<string, string> = {
+    client_id: getOAuthClientID(),
     response_type: "code",
-    scope:
-      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
     redirect_uri: redirectUrl,
     audience: DUST_API_AUDIENCE,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
-    prompt: isForceLogin ? "login" : "",
   };
 
+  if (AUTH === "auth0") {
+    options.scope =
+      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
+    options.prompt = isForceLogin ? "login" : "";
+  } else {
+    options.provider = "authkit";
+  }
+
   const queryString = new URLSearchParams(options).toString();
-  const authUrl = `https://${AUTH0_CLIENT_DOMAIN}/authorize?${queryString}`;
+  const authUrl = getAuthorizeURL(queryString);
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
@@ -433,19 +442,18 @@ const authenticate = async (
  */
 const refreshToken = async (
   refreshToken: string,
-  sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
+  sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
   state.refreshRequests.push(sendResponse);
   if (!state.refreshingToken) {
     state.refreshingToken = true;
     try {
-      const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
-      const response = await fetch(tokenUrl, {
+      const response = await fetch(getTokenURL(), {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           grant_type: "refresh_token",
-          client_id: AUTH0_CLIENT_ID,
+          client_id: getOAuthClientID(),
           refresh_token: refreshToken,
         }),
       });
@@ -462,10 +470,9 @@ const refreshToken = async (
       state.refreshRequests = [];
       handlers.forEach((sendResponse) => {
         sendResponse({
-          idToken: data.id_token,
           accessToken: data.access_token,
           refreshToken: data.refresh_token || refreshToken,
-          expiresIn: data.expires_in,
+          expiresIn: data.expires_in ?? 3600,
         });
       });
     } catch (error) {
@@ -487,15 +494,14 @@ const refreshToken = async (
 const exchangeCodeForTokens = async (
   code: string,
   codeVerifier: string
-): Promise<Auth0AuthorizeResponse | AuthBackgroundResponse> => {
+): Promise<OAuthAuthorizeResponse | AuthBackgroundResponse> => {
   try {
-    const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
-    const response = await fetch(tokenUrl, {
+    const response = await fetch(getTokenURL(), {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
-        client_id: AUTH0_CLIENT_ID,
+        client_id: getOAuthClientID(),
         code_verifier: codeVerifier,
         code,
         redirect_uri: chrome.identity.getRedirectURL(),
@@ -511,10 +517,9 @@ const exchangeCodeForTokens = async (
 
     const data = await response.json();
     return {
-      idToken: data.id_token,
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
+      expiresIn: data.expires_in ?? 3600,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";

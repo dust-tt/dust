@@ -3,7 +3,7 @@ import type {
   ExtensionWorkspaceType,
   UserType,
 } from "@dust-tt/client";
-import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
+import type { OAuthAuthorizeResponse } from "@extension/lib/messages";
 import type { UploadedFileWithKind } from "@extension/lib/types";
 
 export type UserTypeWithExtensionWorkspaces = UserType & {
@@ -26,7 +26,7 @@ export type StoredUser = UserTypeWithExtensionWorkspaces & {
  */
 
 export const saveTokens = async (
-  rawTokens: Auth0AuthorizeResponse
+  rawTokens: OAuthAuthorizeResponse
 ): Promise<StoredTokens> => {
   const tokens: StoredTokens = {
     accessToken: rawTokens.accessToken,
