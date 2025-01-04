@@ -21,7 +21,6 @@ import { useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
-import { useDataSources } from "@app/lib/swr/data_sources";
 
 interface FoldersHeaderMenuProps {
   canWriteInSpace: boolean;
@@ -151,8 +150,6 @@ const EditFolderButton = ({
   owner,
   space,
 }: EditFolderButtonProps) => {
-  const { dataSources } = useDataSources(owner);
-
   const [showEditFolderModal, setShowEditFolderModal] = useState(false);
 
   return (
@@ -164,7 +161,6 @@ const EditFolderButton = ({
         }}
         owner={owner}
         space={space}
-        dataSources={dataSources}
         dataSourceViewId={folder.sId}
       />
       <Button

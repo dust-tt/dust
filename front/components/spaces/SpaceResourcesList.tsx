@@ -48,7 +48,6 @@ import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
-import { useDataSources } from "@app/lib/swr/data_sources";
 import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
@@ -278,7 +277,6 @@ export const SpaceResourcesList = ({
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "name", desc: false },
   ]);
-  const { dataSources, isDataSourcesLoading } = useDataSources(owner);
   const router = useRouter();
 
   const searchBarRef = useRef<HTMLInputElement>(null);
@@ -396,7 +394,6 @@ export const SpaceResourcesList = ({
   }, [selectedDataSourceView, doDelete, router, owner.sId, space.sId]);
 
   if (
-    isDataSourcesLoading ||
     isSpaceDataSourceViewsLoading ||
     isNewConnectorLoading
   ) {
@@ -505,7 +502,6 @@ export const SpaceResourcesList = ({
               owner={owner}
               space={space}
               canWriteInSpace={canWriteInSpace}
-              dataSources={dataSources}
               dataSourceView={selectedDataSourceView}
               plan={plan}
               category={category}
