@@ -4,7 +4,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { updateExtensionConfiguration } from "@app/lib/api/workspace";
 import { isDomain } from "@app/lib/utils";
 
-export const extensionBlacklistDomains = createPlugin(
+export const extensionBlacklistDomainsPlugin = createPlugin(
   {
     id: "extension-blacklist-domains",
     name: "Extension Blacklist Domains",

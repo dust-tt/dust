@@ -1,7 +1,10 @@
 import type { Session } from "@auth0/nextjs-auth0";
-import type { UserProviderType } from "@dust-tt/types";
-import { sanitizeString } from "@dust-tt/types";
+import type { Result, UserProviderType } from "@dust-tt/types";
+import { Err, Ok, sanitizeString } from "@dust-tt/types";
+import type { PostIdentitiesRequestProviderEnum } from "auth0";
 
+import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
+import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -167,4 +170,86 @@ export async function createOrUpdateUser(
 
     return { user: u, created: true };
   }
+}
+
+export async function mergeUserIdentities({
+  primaryUserId,
+  secondaryUserId,
+}: {
+  primaryUserId: string;
+  secondaryUserId: string;
+}): Promise<
+  Result<{ primaryUser: UserResource; secondaryUser: UserResource }, Error>
+> {
+  if (primaryUserId === secondaryUserId) {
+    return new Err(new Error("Primary and secondary user IDs are the same."));
+  }
+
+  const primaryUser = await UserResource.fetchById(primaryUserId);
+  const secondaryUser = await UserResource.fetchById(secondaryUserId);
+  if (!primaryUser || !secondaryUser) {
+    return new Err(new Error("Primary or secondary user not found."));
+  }
+
+  if (primaryUser.email !== secondaryUser.email) {
+    return new Err(
+      new Error("Primary and secondary user emails do not match.")
+    );
+  }
+
+  const auth0ManagemementClient = getAuth0ManagemementClient();
+
+  const users = await auth0ManagemementClient.usersByEmail.getByEmail({
+    email: primaryUser.email.toLowerCase(),
+  });
+
+  const primaryUserAuth0 = users.data.find(
+    (u) => u.user_id === primaryUser.auth0Sub
+  );
+  const secondaryUserAuth0 = users.data.find(
+    (u) => u.user_id === secondaryUser.auth0Sub
+  );
+
+  if (!primaryUserAuth0 || !secondaryUserAuth0) {
+    return new Err(new Error("Primary or secondary user not found in Auth0."));
+  }
+
+  const [identityToMerge] = secondaryUserAuth0.identities;
+
+  // Retrieve the connection id for the identity to merge.
+  const connectionsResponse =
+    await getAuth0ManagemementClient().connections.getAll({
+      name: identityToMerge.connection,
+    });
+
+  const [connection] = connectionsResponse.data;
+  if (!connection) {
+    return new Err(
+      new Error(`Auth0 connection ${identityToMerge.connection} not found.`)
+    );
+  }
+
+  await auth0ManagemementClient.users.link(
+    { id: primaryUserAuth0.user_id },
+    {
+      provider: identityToMerge.provider as PostIdentitiesRequestProviderEnum,
+      connection_id: connection.id,
+      user_id: identityToMerge.user_id,
+    }
+  );
+
+  // Mark the primary user as having been linked.
+  await auth0ManagemementClient.users.update(
+    { id: primaryUserAuth0.user_id },
+    {
+      app_metadata: {
+        account_linking_state: Date.now(),
+      },
+    }
+  );
+
+  return new Ok({
+    primaryUser,
+    secondaryUser,
+  });
 }
