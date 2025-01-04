@@ -45,7 +45,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
-import { useDataSources } from "@app/lib/swr/data_sources";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
@@ -88,8 +87,6 @@ export default function SpaceWebsiteModal({
   const [dataSourceNameError, setDataSourceNameError] = useState<string | null>(
     null
   );
-
-  const { dataSources, mutateDataSources } = useDataSources(owner);
 
   const [maxPages, setMaxPages] = useState<number | null>(
     WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
@@ -204,14 +201,8 @@ export default function SpaceWebsiteModal({
 
     // Validate Name (if it's not edition)
     if (!webCrawlerConfiguration) {
-      const nameExists = dataSources.some(
-        (d) =>
-          d.name === dataSourceName && d.sId !== dataSourceView?.dataSource.sId
-      );
       const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
-      if (nameExists) {
-        nameError = "A Website with the same name already exists";
-      } else if (!dataSourceName.length) {
+      if (!dataSourceName.length) {
         nameError = "Please provide a name.";
       } else if (dataSourceNameRes.isErr()) {
         nameError = dataSourceNameRes.error;
@@ -223,9 +214,7 @@ export default function SpaceWebsiteModal({
     return !urlError && !nameError;
   }, [
     dataSourceUrl,
-    dataSources,
     dataSourceName,
-    dataSourceView?.dataSource.sId,
     webCrawlerConfiguration,
   ]);
 
@@ -331,7 +320,6 @@ export default function SpaceWebsiteModal({
         description: `The website has been successfully ${action}.`,
       });
       void mutateSpaceDataSourceViews();
-      void mutateDataSources();
       setIsSaving(false);
     } else {
       const err: { error: APIError } = await res.json();
