@@ -1,12 +1,9 @@
-import { Button, PlusIcon, Popup, Tooltip } from "@dust-tt/sparkle";
+import { Button, PlusIcon, Tooltip } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
-  PlanType,
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useRouter } from "next/router";
-import { useState } from "react";
 
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
 import SpaceWebsiteModal from "@app/components/spaces/SpaceWebsiteModal";
@@ -20,7 +17,6 @@ interface EditSpaceStaticDatasourcesViewsProps {
   onClose: () => void;
   onOpen: () => void;
   owner: WorkspaceType;
-  plan: PlanType;
   space: SpaceType;
 }
 
@@ -32,12 +28,8 @@ export function EditSpaceStaticDatasourcesViews({
   onClose,
   onOpen,
   owner,
-  plan,
   space,
 }: EditSpaceStaticDatasourcesViewsProps) {
-  const router = useRouter();
-  const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
-    useState(false);
   const { killSwitches } = useKillSwitches();
 
   const isSavingDisabled = killSwitches?.includes("save_data_source_views");
@@ -53,19 +45,6 @@ export function EditSpaceStaticDatasourcesViews({
 
   return (
     <>
-      <Popup
-        show={showDatasourceLimitPopup}
-        chipLabel={`${plan.name} plan`}
-        description={`You have reached the limit of data sources (${plan.limits.dataSources.count} data sources). Upgrade your plan for unlimited datasources.`}
-        buttonLabel="Check Dust plans"
-        buttonClick={() => {
-          void router.push(`/w/${owner.sId}/subscription`);
-        }}
-        onClose={() => {
-          setShowDatasourceLimitPopup(false);
-        }}
-        className="absolute bottom-8 right-0"
-      />
       {category === "folder" ? (
         <SpaceFolderModal
           isOpen={isOpen}

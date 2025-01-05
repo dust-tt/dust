@@ -393,10 +393,7 @@ export const SpaceResourcesList = ({
     }
   }, [selectedDataSourceView, doDelete, router, owner.sId, space.sId]);
 
-  if (
-    isSpaceDataSourceViewsLoading ||
-    isNewConnectorLoading
-  ) {
+  if (isSpaceDataSourceViewsLoading || isNewConnectorLoading) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner size="lg" />
@@ -503,7 +500,6 @@ export const SpaceResourcesList = ({
               space={space}
               canWriteInSpace={canWriteInSpace}
               dataSourceView={selectedDataSourceView}
-              plan={plan}
               category={category}
               onClose={() => {
                 setShowFolderOrWebsiteModal(false);
