@@ -760,7 +760,7 @@ export function ConnectorPermissionsModal({
             </div>
           </SheetHeader>
 
-          <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4">
+          <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4 px-4">
             <div className="flex flex-row justify-end gap-2">
               {(isOAuthProvider(connector.type) ||
                 connector.type === "snowflake") && (

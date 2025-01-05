@@ -36,7 +36,7 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   viewType,
 }: {
   owner: LightWorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceType | null;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
@@ -50,15 +50,18 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
     GetDataSourcePermissionsResponseBody<IncludeParents>
   > = fetcher;
 
-  let url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
-  if (parentId) {
-    url += `&parentId=${parentId}`;
-  }
-  if (filterPermission) {
-    url += `&filterPermission=${filterPermission}`;
-  }
-  if (includeParents) {
-    url += "&includeParents=true";
+  let url = "";
+  if (dataSource) {
+    url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
+    if (parentId) {
+      url += `&parentId=${parentId}`;
+    }
+    if (filterPermission) {
+      url += `&filterPermission=${filterPermission}`;
+    }
+    if (includeParents) {
+      url += "&includeParents=true";
+    }
   }
 
   const { data, error } = useSWRWithDefaults(url, permissionsFetcher, {
