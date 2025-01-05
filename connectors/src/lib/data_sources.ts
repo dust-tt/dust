@@ -88,7 +88,9 @@ export function getDustAPI(dataSourceConfig: DataSourceConfig) {
   );
 }
 
-export const upsertDataSourceDocument = withRetries(_upsertDataSourceDocument);
+export const upsertDataSourceDocument = withRetries(_upsertDataSourceDocument, {
+  retries: 3,
+});
 
 async function _upsertDataSourceDocument({
   dataSourceConfig,
@@ -316,7 +318,8 @@ export async function deleteDataSourceDocument(
 }
 
 export const updateDataSourceDocumentParents = withRetries(
-  _updateDataSourceDocumentParents
+  _updateDataSourceDocumentParents,
+  { retries: 3 }
 );
 
 async function _updateDataSourceDocumentParents({
@@ -337,7 +340,8 @@ async function _updateDataSourceDocumentParents({
 }
 
 export const updateDataSourceTableParents = withRetries(
-  _updateDataSourceTableParents
+  _updateDataSourceTableParents,
+  { retries: 3 }
 );
 
 async function _updateDataSourceTableParents({
@@ -1049,7 +1053,9 @@ export async function deleteDataSourceTableRow({
   }
 }
 
-export const getDataSourceTable = withRetries(_getDataSourceTable);
+export const getDataSourceTable = withRetries(_getDataSourceTable, {
+  retries: 3,
+});
 
 export async function _getDataSourceTable({
   dataSourceConfig,
@@ -1183,7 +1189,9 @@ export async function deleteDataSourceTable({
   }
 }
 
-export const getDataSourceFolder = withRetries(_getDataSourceFolder);
+export const getDataSourceFolder = withRetries(_getDataSourceFolder, {
+  retries: 3,
+});
 
 export async function _getDataSourceFolder({
   dataSourceConfig,
@@ -1221,7 +1229,9 @@ export async function _getDataSourceFolder({
   return dustRequestResult.data.folder;
 }
 
-export const upsertDataSourceFolder = withRetries(_upsertDataSourceFolder);
+export const upsertDataSourceFolder = withRetries(_upsertDataSourceFolder, {
+  retries: 3,
+});
 
 export async function _upsertDataSourceFolder({
   dataSourceConfig,
