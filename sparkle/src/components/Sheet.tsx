@@ -64,7 +64,7 @@ const SheetContent = React.forwardRef<
 >(({ className, children, size, trapFocusScope, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
-    <FocusScope trapped={trapFocusScope}>
+    <FocusScope trapped={trapFocusScope} asChild>
       <SheetPrimitive.Content
         ref={ref}
         className={cn(sheetVariants({ size }), className)}
