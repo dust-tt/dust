@@ -1,4 +1,4 @@
-import { ScrollArea, Tooltip } from "@dust-tt/sparkle";
+import { Tooltip } from "@dust-tt/sparkle";
 import type { PluginWorkspaceResource } from "@dust-tt/types";
 import React, { useState } from "react";
 

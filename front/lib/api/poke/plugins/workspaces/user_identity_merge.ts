@@ -33,10 +33,6 @@ export const userIdentityMergePlugin = createPlugin(
       return new Err(new Error("Primary and secondary user IDs are required."));
     }
 
-    if (primaryUserId === secondaryUserId) {
-      return new Err(new Error("Primary and secondary user IDs are the same."));
-    }
-
     const mergeResult = await mergeUserIdentities({
       primaryUserId,
       secondaryUserId,

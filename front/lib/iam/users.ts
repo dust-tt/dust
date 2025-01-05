@@ -4,7 +4,6 @@ import { Err, Ok, sanitizeString } from "@dust-tt/types";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
-import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
