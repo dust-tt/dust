@@ -1,4 +1,5 @@
 import type { NotificationType } from "@dust-tt/sparkle";
+import { SheetHeader } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -11,6 +12,8 @@ import {
   LockIcon,
   Modal,
   Page,
+  Sheet,
+  SheetContent,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
@@ -746,81 +749,95 @@ export function ConnectorPermissionsModal({
           }}
         />
       )}
-      <Modal
-        title={`Manage ${getDisplayNameForDataSource(dataSource)} connection`}
-        isOpen={modalToShow === "selection"}
-        onClose={() => closeModal(false)}
-        onSave={save}
-        saveLabel="Save"
-        savingLabel="Saving..."
-        isSaving={saving}
-        hasChanged={!isUnchanged}
-        className="flex"
-        variant="side-md"
+      <Sheet
+        open={modalToShow === "selection"}
+        onOpenChange={() => closeModal(false)}
       >
-        <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4">
-          <div className="flex flex-row justify-end gap-2">
-            {(isOAuthProvider(connector.type) ||
-              connector.type === "snowflake") && (
-              <Button
-                label={
-                  connector.type !== "snowflake"
-                    ? "Edit permissions"
-                    : "Edit connection"
-                }
-                variant="outline"
-                icon={LockIcon}
-                onClick={() => {
-                  setModalToShow("edition");
-                }}
-              />
-            )}
-            {MANAGED_DS_DELETABLE.includes(connector.type) && (
-              <Button
-                label="Delete connection"
-                variant="warning"
-                icon={TrashIcon}
-                onClick={() => {
-                  setModalToShow("deletion");
-                }}
-              />
-            )}
-          </div>
-          {OptionsComponent && plan && (
-            <>
-              <div className="p-1 text-xl font-bold">Connector options</div>
+        <SheetContent size="xl">
+          <SheetHeader>
+            <div className="text-lg font-semibold">
+              Manage {getDisplayNameForDataSource(dataSource)} connection
+            </div>
+          </SheetHeader>
 
-              <div className="p-1">
-                <div className="border-y">
-                  <OptionsComponent
-                    {...{ owner, readOnly, isAdmin, dataSource, plan }}
-                  />
+          <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4">
+            <div className="flex flex-row justify-end gap-2">
+              {(isOAuthProvider(connector.type) ||
+                connector.type === "snowflake") && (
+                <Button
+                  label={
+                    connector.type !== "snowflake"
+                      ? "Edit permissions"
+                      : "Edit connection"
+                  }
+                  variant="outline"
+                  icon={LockIcon}
+                  onClick={() => {
+                    setModalToShow("edition");
+                  }}
+                />
+              )}
+              {MANAGED_DS_DELETABLE.includes(connector.type) && (
+                <Button
+                  label="Delete connection"
+                  variant="warning"
+                  icon={TrashIcon}
+                  onClick={() => {
+                    setModalToShow("deletion");
+                  }}
+                />
+              )}
+            </div>
+            {OptionsComponent && plan && (
+              <>
+                <div className="p-1 text-xl font-bold">Connector options</div>
+                <div className="p-1">
+                  <div className="border-y">
+                    <OptionsComponent
+                      {...{ owner, readOnly, isAdmin, dataSource, plan }}
+                    />
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
 
-          <div className="p-1 text-xl font-bold">
-            {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
+            <div className="p-1 text-xl font-bold">
+              {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
+            </div>
+
+            <ContentNodeTree
+              isSearchEnabled={
+                CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
+              }
+              isRoundedBackground={true}
+              useResourcesHook={useResourcesHook}
+              selectedNodes={canUpdatePermissions ? selectedNodes : undefined}
+              setSelectedNodes={
+                canUpdatePermissions && !isResourcesLoading
+                  ? setSelectedNodes
+                  : undefined
+              }
+              showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
+            />
+
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button
+                label="Cancel"
+                variant="outline"
+                onClick={() => closeModal(false)}
+              />
+              <Button
+                label={saving ? "Saving..." : "Save"}
+                variant="primary"
+                disabled={isUnchanged || saving}
+                onClick={save}
+              />
+            </div>
           </div>
+        </SheetContent>
+      </Sheet>
 
-          <ContentNodeTree
-            isSearchEnabled={
-              CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
-            }
-            isRoundedBackground={true}
-            useResourcesHook={useResourcesHook}
-            selectedNodes={canUpdatePermissions ? selectedNodes : undefined}
-            setSelectedNodes={
-              canUpdatePermissions && !isResourcesLoading
-                ? setSelectedNodes
-                : undefined
-            }
-            showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
-          />
-        </div>
-      </Modal>
-      {/* Snowflake is not oauth-based and has its own config form */}
+      {/* Keep existing modals for edition/deletion/data update states */}
       {connector.type === "snowflake" ? (
         <CreateOrUpdateConnectionSnowflakeModal
           owner={owner}
