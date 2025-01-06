@@ -104,11 +104,11 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
   assert(globalGroup.isOk(), "Failed to fetch global group");
 
-  const allSpaces = await SpaceResource.listForGroups(auth, [
+  const globalGroupSpaces = await SpaceResource.listForGroups(auth, [
     globalGroup.value,
   ]);
 
-  const nonConversationSpaces = allSpaces.filter(
+  const nonConversationSpaces = globalGroupSpaces.filter(
     (space) => !space.isConversations()
   );
 
