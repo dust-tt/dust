@@ -470,15 +470,15 @@ export async function deleteCategoryBatchActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const categories = await ZendeskCategoryResource.fetchByBrandId({
+  const categoryIds = await ZendeskCategoryResource.fetchByBrandId({
     connectorId,
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
 
   await concurrentExecutor(
-    categories,
-    async ({ categoryId, brandId }) => {
+    categoryIds,
+    async (categoryId) => {
       await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
@@ -490,7 +490,7 @@ export async function deleteCategoryBatchActivity({
   const deletedCount = await ZendeskCategoryResource.deleteByCategoryIds({
     connectorId,
     brandId,
-    categoryIds: categories.map((category) => category.categoryId),
+    categoryIds,
   });
   logger.info(
     { ...loggerArgs, brandId, deletedCount },
