@@ -598,7 +598,7 @@ export function ConnectorPermissionsModal({
       parentId: null,
       viewType: "documents",
       includeParents: true,
-      disabled: !canUpdatePermissions || !isDataAvailable,
+      disabled: !canUpdatePermissions,
     });
 
   const initialTreeSelectionModel = useMemo(

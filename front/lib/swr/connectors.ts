@@ -65,7 +65,7 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   }
 
   const { data, error } = useSWRWithDefaults(url, permissionsFetcher, {
-    disabled,
+    disabled: disabled || !dataSource,
   });
 
   return {
