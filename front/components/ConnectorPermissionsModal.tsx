@@ -1,4 +1,5 @@
-import { NotificationType, SheetContainer, SheetTitle } from "@dust-tt/sparkle";
+import type { NotificationType } from "@dust-tt/sparkle";
+import { SheetContainer, SheetTitle } from "@dust-tt/sparkle";
 import { SheetHeader } from "@dust-tt/sparkle";
 import {
   Avatar,
