@@ -1,4 +1,4 @@
-import { NotificationType, SheetTitle } from "@dust-tt/sparkle";
+import { NotificationType, SheetContainer, SheetTitle } from "@dust-tt/sparkle";
 import { SheetHeader } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -761,10 +761,7 @@ export function ConnectorPermissionsModal({
                 <SheetTitle>
                   Manage {getDisplayNameForDataSource(dataSource)} connection
                 </SheetTitle>
-              </SheetHeader>
-
-              <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4 px-4">
-                <div className="flex flex-row justify-end gap-2">
+                <div className="flex flex-row justify-end gap-2 py-1">
                   {(isOAuthProvider(connector.type) ||
                     connector.type === "snowflake") && (
                     <Button
@@ -791,58 +788,63 @@ export function ConnectorPermissionsModal({
                     />
                   )}
                 </div>
-                {OptionsComponent && plan && (
-                  <>
-                    <div className="p-1 text-xl font-bold">
-                      Connector options
-                    </div>
-                    <div className="p-1">
-                      <div className="border-y">
-                        <OptionsComponent
-                          {...{ owner, readOnly, isAdmin, dataSource, plan }}
-                        />
+              </SheetHeader>
+
+              <SheetContainer>
+                <div className="flex w-full flex-col gap-4">
+                  {OptionsComponent && plan && (
+                    <>
+                      <div className="p-1 text-xl font-bold">
+                        Connector options
                       </div>
-                    </div>
-                  </>
-                )}
+                      <div className="p-1">
+                        <div className="border-y">
+                          <OptionsComponent
+                            {...{ owner, readOnly, isAdmin, dataSource, plan }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
 
-                <div className="p-1 text-xl font-bold">
-                  {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
-                </div>
+                  <div className="p-1 text-xl font-bold">
+                    {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
+                  </div>
 
-                <ContentNodeTree
-                  isSearchEnabled={
-                    CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
-                  }
-                  isRoundedBackground={true}
-                  useResourcesHook={useResourcesHook}
-                  selectedNodes={
-                    canUpdatePermissions ? selectedNodes : undefined
-                  }
-                  setSelectedNodes={
-                    canUpdatePermissions && !isResourcesLoading
-                      ? setSelectedNodes
-                      : undefined
-                  }
-                  showExpand={
-                    CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
-                  }
-                />
-
-                <div className="flex justify-end gap-2 border-t pt-4">
-                  <Button
-                    label="Cancel"
-                    variant="outline"
-                    onClick={() => closeModal(false)}
+                  <ContentNodeTree
+                    isSearchEnabled={
+                      CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
+                    }
+                    isRoundedBackground={true}
+                    useResourcesHook={useResourcesHook}
+                    selectedNodes={
+                      canUpdatePermissions ? selectedNodes : undefined
+                    }
+                    setSelectedNodes={
+                      canUpdatePermissions && !isResourcesLoading
+                        ? setSelectedNodes
+                        : undefined
+                    }
+                    showExpand={
+                      CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
+                    }
                   />
-                  <Button
-                    label={saving ? "Saving..." : "Save"}
-                    variant="primary"
-                    disabled={isUnchanged || saving}
-                    onClick={save}
-                  />
+
+                  <div className="flex justify-end gap-2 border-t pt-4">
+                    <Button
+                      label="Cancel"
+                      variant="outline"
+                      onClick={() => closeModal(false)}
+                    />
+                    <Button
+                      label={saving ? "Saving..." : "Save"}
+                      variant="primary"
+                      disabled={isUnchanged || saving}
+                      onClick={save}
+                    />
+                  </div>
                 </div>
-              </div>
+              </SheetContainer>
             </>
           )}
         </SheetContent>
