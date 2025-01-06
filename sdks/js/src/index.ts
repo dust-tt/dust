@@ -59,7 +59,17 @@ import {
 
 export * from "./types";
 
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios from "axios";
 import { createParser } from "eventsource-parser";
+import http from "http";
+import https from "https";
+
+const axiosWithTimeout = axios.create({
+  timeout: 60000,
+  httpAgent: new http.Agent({ keepAlive: false }),
+  httpsAgent: new https.Agent({ keepAlive: false }),
+});
 
 export function isAPIError(obj: unknown): obj is APIError {
   return (
@@ -881,26 +891,27 @@ export class DustAPI {
     formData.append("file", fileObject);
 
     // Upload file to the obtained URL.
-    let uploadResult;
     try {
-      uploadResult = await fetch(file.uploadUrl, {
-        method: "POST",
-        headers: await this.baseHeaders(),
-        body: formData,
-      });
+      const {
+        data: { file: fileUploaded },
+      } = await axios.post<FileUploadedRequestResponseType>(
+        file.uploadUrl,
+        formData,
+        { headers: await this.baseHeaders() }
+      );
+      return new Ok(fileUploaded);
     } catch (err) {
-      return new Err(new Error(err instanceof Error ? err.message : undefined));
-    }
-
-    if (!uploadResult.ok) {
+      if (axios.isAxiosError(err)) {
+        return new Err(
+          new Error(
+            err.response?.data?.error?.message || "Failed to upload file"
+          )
+        );
+      }
       return new Err(
-        new Error(uploadResult.statusText || "Failed to upload file")
+        new Error(err instanceof Error ? err.message : "Unknown error")
       );
     }
-    const { file: fileUploaded } =
-      (await uploadResult.json()) as FileUploadedRequestResponseType;
-
-    return new Ok(fileUploaded);
   }
 
   async deleteFile(fileID: string) {
