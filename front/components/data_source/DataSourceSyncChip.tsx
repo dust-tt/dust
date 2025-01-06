@@ -85,7 +85,7 @@ export default function ConnectorSyncingChip({
         return (
           <Tooltip
             label={
-              "The syncrhonization failed because the websites blocks automated visits."
+              "The synchronization failed because the websites blocks automated visits."
             }
             className="max-w-md"
             trigger={<Chip color="warning">Access blocked</Chip>}
