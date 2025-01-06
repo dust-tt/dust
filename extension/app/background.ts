@@ -12,7 +12,6 @@ import {
 } from "./src/lib/config";
 import { extractPage } from "./src/lib/extraction";
 import type {
-  OAuthAuthorizeResponse,
   AuthBackgroundMessage,
   AuthBackgroundResponse,
   CaptureMesssage,
@@ -20,6 +19,7 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
+  OAuthAuthorizeResponse,
 } from "./src/lib/messages";
 import { generatePKCE } from "./src/lib/utils";
 
