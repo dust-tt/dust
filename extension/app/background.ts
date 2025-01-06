@@ -371,6 +371,48 @@ chrome.runtime.onMessage.addListener(
 );
 
 /**
+ * Listener for messages sent from external websites that are whitelisted on the manifest.
+ * It allows to open the side panel and navigate to a specific conversation.
+ */
+chrome.runtime.onMessageExternal.addListener((request) => {
+  // If the message is not valid or the conversationId is not valid, ignore it.
+  // Return true to keep the message channel open.
+  if (
+    request.action !== "openSidePanel" ||
+    !request.conversationId ||
+    !request.workspaceId ||
+    !/^[a-zA-Z0-9_-]{10,}$/.test(request.conversationId)
+  ) {
+    return true;
+  }
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) {
+      void chrome.sidePanel
+        .open({
+          windowId: tabs[0].windowId,
+        })
+        .then(() => {
+          // Set a timeout to ensure it's loaded. Ugly but works.
+          setTimeout(() => {
+            const params = JSON.stringify({
+              conversationId: request.conversationId,
+            });
+            void chrome.runtime.sendMessage({
+              type: "EXT_ROUTE_CHANGE",
+              pathname: "/run",
+              search: `?${params}`,
+            });
+          }, 1000);
+        })
+        .catch((err) => console.error("Error opening side panel:", err));
+    }
+  });
+
+  return true;
+});
+
+/**
  * Authenticate the user using Auth0.
  */
 const authenticate = async (
