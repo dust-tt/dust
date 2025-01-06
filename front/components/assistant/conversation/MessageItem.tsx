@@ -93,6 +93,10 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         }
       );
 
+    if (message.visibility === "deleted") {
+      return null;
+    }
+
     const messageFeedbackWithSubmit: FeedbackSelectorProps = {
       feedback: messageFeedback
         ? {
@@ -104,10 +108,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       onSubmitThumb,
       isSubmittingThumb,
     };
-
-    if (message.visibility === "deleted") {
-      return null;
-    }
 
     switch (type) {
       case "user_message":
