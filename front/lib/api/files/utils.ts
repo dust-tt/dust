@@ -40,6 +40,9 @@ export const parseUploadRequest = async (
 
       // Ensure the file is of the correct type.
       filter: function (part) {
+        if (file.contentType === "text/markdown") {
+          return part.mimetype === "application/octet-stream";
+        }
         return part.mimetype === file.contentType;
       },
     });
