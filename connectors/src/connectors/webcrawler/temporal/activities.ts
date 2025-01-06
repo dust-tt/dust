@@ -110,6 +110,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   let upsertingError = 0;
   const createdFolders = new Set<string>();
 
+  const maxRequestsPerCrawl =
+    webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES;
+
   const crawler = new CheerioCrawler(
     {
       navigationTimeoutSecs: 10,
@@ -149,9 +152,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           }
         },
       ],
-      maxRequestsPerCrawl:
-        webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES,
-
+      maxRequestsPerCrawl,
       maxConcurrency: CONCURRENCY,
       maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
@@ -451,7 +452,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     "Webcrawler activity started"
   );
 
-  await crawler.run([url]);
+  const stats = await crawler.run([url]);
 
   await crawler.teardown();
 
@@ -469,6 +470,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     await syncFailed(connector.id, "webcrawling_error_empty_content");
   } else if (pageCount.valid === 0) {
     await syncFailed(connector.id, "webcrawling_error");
+  } else if (stats.requestsFinished >= maxRequestsPerCrawl) {
+    await syncFailed(connector.id, "webcrawling_synchronization_limit_reached");
   } else {
     await syncSucceeded(connector.id);
   }
