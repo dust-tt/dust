@@ -137,15 +137,16 @@ export class DustAPI {
   /**
    * Fetches the current user's information from the API.
    *
-   * This method sends a GET request to the `/api/v1/me` endpoint with the necessary
-   * authorization headers. It then processes the response to extract the user information.
-   * Note that this will only work if you are using an OAuth2 token. It will always fail with a workspace API key.
+   * This method sends a GET request to the `/api/v1/me` endpoint with the necessary authorization
+   * headers. It then processes the response to extract the user information.  Note that this will
+   * only work if you are using an OAuth2 token. It will always fail with a workspace API key.
    *
    * @returns {Promise<Result<User, Error>>} A promise that resolves to a Result object containing
    * either the user information or an error.
    */
   async me() {
-    // This method call directly _fetchWithError and _resultFromResponse as it's a little special : it doesn't live under the workspace resource.
+    // This method call directly _fetchWithError and _resultFromResponse as it's a little special:
+    // it doesn't live under the workspace resource.
     const headers: RequestInit["headers"] = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${await this.getApiKey()}`,
@@ -415,7 +416,8 @@ export class DustAPI {
             pendingEvents = [];
           }
           if (!hasRunId) {
-            // once the stream is entirely consumed, if we haven't received a run id, reject the promise
+            // Once the stream is entirely consumed, if we haven't received a run id, reject the
+            // promise.
             setImmediate(() => {
               logger.error({}, "No run id received.");
               rejectDustRunIdPromise(new Error("No run id received"));
@@ -458,7 +460,8 @@ export class DustAPI {
    * @param workspaceId string the workspace id to fetch data sources for
    */
   async getDataSources(workspaceId: string) {
-    // Note for henry: do we need to override the workspace id here? (isn't it already derived from the credentials?)
+    // Note for henry: do we need to override the workspace id here? (isn't it already derived from
+    // the credentials?)
     const res = await this.request({
       overrideWorkspaceId: workspaceId,
       method: "GET",
@@ -1065,7 +1068,9 @@ export class DustAPI {
           // Unexpected response format (neither an error nor a valid response)
           const err: APIError = {
             type: "unexpected_response_format",
-            message: `Unexpected response format from DustAPI calling ${res.value.response.url} : ${r.error.message}`,
+            message:
+              `Unexpected response format from DustAPI calling ` +
+              `${res.value.response.url} : ${r.error.message}`,
           };
           this._logger.error(
             {
