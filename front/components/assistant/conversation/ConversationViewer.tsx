@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Spinner, useHashParam } from "@dust-tt/sparkle";
 import type {
   AgentGenerationCancelledEvent,
   AgentMention,
@@ -314,6 +314,58 @@ const ConversationViewer = React.forwardRef<
 
   useLastMessageGroupObserver(typedGroupedMessages);
 
+  // Used for auto-scrolling to the message in the anchor.
+  const [urlAnchor] = useHashParam("messageId", undefined);
+  const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
+  const [messageBlinking, setMessageBlinking] = useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  // Track index of the group with message sId in anchor.
+  const groupIndexWithMessageIdInAnchor = useMemo(() => {
+    return typedGroupedMessages.findIndex((group) => {
+      return group.some((message) => message.sId === urlAnchor);
+    });
+  }, [typedGroupedMessages, urlAnchor]);
+
+  console.log({
+    groupIndexWithMessageIdInAnchor,
+    urlAnchor,
+    hasScrolledToMessage,
+  });
+
+  // Effect: scroll to the message and temporarily highlight if it is the anchor's target
+  useEffect(() => {
+    if (
+      !urlAnchor ||
+      !groupIndexWithMessageIdInAnchor ||
+      !scrollRef.current ||
+      hasScrolledToMessage
+    ) {
+      return;
+    }
+    setTimeout(() => {
+      if (scrollRef.current) {
+        setHasScrolledToMessage(true);
+        // Use ref to scroll to the message
+        scrollRef.current.scrollIntoView({
+          behavior: "instant",
+          block: "center",
+        });
+        setMessageBlinking(true);
+
+        // Have the message blink for a short time
+        setTimeout(() => {
+          setMessageBlinking(false);
+        }, 1000);
+      }
+    }, 100);
+  }, [
+    hasScrolledToMessage,
+    urlAnchor,
+    groupIndexWithMessageIdInAnchor,
+    scrollRef,
+  ]);
+
   return (
     <div
       className={classNames(
@@ -338,20 +390,30 @@ const ConversationViewer = React.forwardRef<
       {conversation &&
         typedGroupedMessages.map((typedGroup, index) => {
           const isLastGroup = index === typedGroupedMessages.length - 1;
+          const isGroupInAnchor = index === groupIndexWithMessageIdInAnchor;
           return (
-            <MessageGroup
+            <div
               key={`typed-group-${index}`}
-              messages={typedGroup}
-              isLastMessageGroup={isLastGroup}
-              conversationId={conversationId}
-              feedbacks={feedbacks}
-              isInModal={isInModal}
-              owner={owner}
-              prevFirstMessageId={prevFirstMessageId}
-              prevFirstMessageRef={prevFirstMessageRef}
-              user={user}
-              latestPage={latestPage}
-            />
+              className={
+                messageBlinking && isGroupInAnchor
+                  ? "animate-[bgblink_200ms_3]"
+                  : ""
+              }
+              ref={isGroupInAnchor ? scrollRef : undefined}
+            >
+              <MessageGroup
+                messages={typedGroup}
+                isLastMessageGroup={isLastGroup}
+                conversationId={conversationId}
+                feedbacks={feedbacks}
+                isInModal={isInModal}
+                owner={owner}
+                prevFirstMessageId={prevFirstMessageId}
+                prevFirstMessageRef={prevFirstMessageRef}
+                user={user}
+                latestPage={latestPage}
+              />
+            </div>
           );
         })}
     </div>
