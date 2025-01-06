@@ -894,7 +894,7 @@ export class DustAPI {
     try {
       const {
         data: { file: fileUploaded },
-      } = await axios.post<FileUploadedRequestResponseType>(
+      } = await axiosWithTimeout.post<FileUploadedRequestResponseType>(
         file.uploadUrl,
         formData,
         { headers: await this.baseHeaders() }
@@ -1013,10 +1013,12 @@ export class DustAPI {
 
   private async _fetchWithError(
     url: string,
-    init?: RequestInit
+    config?: AxiosRequestConfig,
   ): Promise<Result<{ response: Response; duration: number }, APIError>> {
     const now = Date.now();
     try {
+      const response = await axiosWithTimeout(url,...init, validateStatus: () => true);
+
       const res = await fetch(url, init);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
