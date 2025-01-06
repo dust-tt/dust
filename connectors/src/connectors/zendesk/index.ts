@@ -328,7 +328,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }
@@ -355,8 +355,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const toBeSignaledBrandIds = new Set<number>();
     const toBeSignaledTicketsIds = new Set<number>();
     const toBeSignaledHelpCenterIds = new Set<number>();
-    const toBeSignaledCategoryIds = new Set<number>();
-    const categoryBrandIds: Record<number, number> = {};
+    const toBeSignaledCategoryIds = new Set<[number, number]>();
 
     for (const [id, permission] of Object.entries(permissions)) {
       if (permission !== "none" && permission !== "read") {
@@ -437,15 +436,15 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           break;
         }
         case "category": {
-          const { categoryId } = objectIds;
+          const { brandId, categoryId } = objectIds;
           if (permission === "none") {
             const updatedCategory = await forbidSyncZendeskCategory({
               connectorId,
+              brandId,
               categoryId,
             });
             if (updatedCategory) {
-              toBeSignaledCategoryIds.add(categoryId);
-              categoryBrandIds[categoryId] = brandId;
+              toBeSignaledCategoryIds.add([brandId, categoryId]);
             }
           }
           if (permission === "read") {
@@ -456,8 +455,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
               brandId,
             });
             if (newCategory) {
-              toBeSignaledCategoryIds.add(categoryId);
-              categoryBrandIds[categoryId] = brandId;
+              toBeSignaledCategoryIds.add([brandId, categoryId]);
             }
           }
           break;
@@ -487,10 +485,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         brandIds: [...toBeSignaledBrandIds],
         ticketsBrandIds: [...toBeSignaledTicketsIds],
         helpCenterBrandIds: [...toBeSignaledHelpCenterIds],
-        categoryIds: [...toBeSignaledCategoryIds].map((categoryId) => ({
-          categoryId,
-          brandId: categoryBrandIds[categoryId] as number,
-        })),
+        categoryIds: [...toBeSignaledCategoryIds].map(
+          ([brandId, categoryId]) => ({
+            categoryId,
+            brandId,
+          })
+        ),
       });
     }
 
@@ -509,9 +509,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandIds: number[] = [];
     const brandHelpCenterIds: number[] = [];
     const brandTicketsIds: number[] = [];
-    const categoryIds: number[] = [];
-    const articleIds: number[] = [];
-    const ticketIds: number[] = [];
+    const categoryIdsPerBrandId: Record<number, number[]> = [];
+    const articleIdsPerBrandId: Record<number, number[]> = [];
+    const ticketIdsPerBrandId: Record<number, number[]> = [];
     internalIds.forEach((internalId) => {
       const { type, objectIds } = getIdsFromInternalId(
         this.connectorId,
@@ -531,15 +531,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           return;
         }
         case "category": {
-          categoryIds.push(objectIds.categoryId);
+          // initializing the array if it does not exist
+          categoryIdsPerBrandId[objectIds.brandId] ||= [];
+          categoryIdsPerBrandId[objectIds.brandId]?.push(objectIds.categoryId);
           return;
         }
         case "article": {
-          articleIds.push(objectIds.articleId);
+          // initializing the array if it does not exist
+          articleIdsPerBrandId[objectIds.brandId] ||= [];
+          articleIdsPerBrandId[objectIds.brandId]?.push(objectIds.articleId);
           return;
         }
         case "ticket": {
-          ticketIds.push(objectIds.ticketId);
+          // initializing the array if it does not exist
+          ticketIdsPerBrandId[objectIds.brandId] ||= [];
+          ticketIdsPerBrandId[objectIds.brandId]?.push(objectIds.ticketId);
           return;
         }
         default: {
@@ -567,18 +573,42 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       brandTicketsIds.includes(brand.brandId)
     );
 
-    const categories = await ZendeskCategoryResource.fetchByCategoryIds({
-      connectorId,
-      categoryIds,
-    });
-    const articles = await ZendeskArticleResource.fetchByArticleIds({
-      connectorId,
-      articleIds,
-    });
-    const tickets = await ZendeskTicketResource.fetchByTicketIds({
-      connectorId,
-      ticketIds,
-    });
+    const categories: ZendeskCategoryResource[] = [];
+    for (const [brandId, categoryIds] of Object.entries(
+      categoryIdsPerBrandId
+    ) as unknown as [number, number[]][]) {
+      categories.push(
+        ...(await ZendeskCategoryResource.fetchByCategoryIds({
+          connectorId,
+          brandId,
+          categoryIds,
+        }))
+      );
+    }
+    const articles: ZendeskArticleResource[] = [];
+    for (const [brandId, articleIds] of Object.entries(
+      articleIdsPerBrandId
+    ) as unknown as [number, number[]][]) {
+      articles.push(
+        ...(await ZendeskArticleResource.fetchByArticleIds({
+          connectorId,
+          brandId,
+          articleIds,
+        }))
+      );
+    }
+    const tickets: ZendeskTicketResource[] = [];
+    for (const [brandId, ticketIds] of Object.entries(
+      ticketIdsPerBrandId
+    ) as unknown as [number, number[]][]) {
+      tickets.push(
+        ...(await ZendeskTicketResource.fetchByTicketIds({
+          connectorId,
+          brandId,
+          ticketIds,
+        }))
+      );
+    }
 
     return new Ok([
       ...brands.map((brand) => brand.toContentNode(connectorId)),
@@ -623,7 +653,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "category": {
         const category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
-          categoryId: objectIds.categoryId,
+          ...objectIds,
         });
         if (category) {
           return new Ok(category.getParentInternalIds(connectorId));
@@ -638,7 +668,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "article": {
         const article = await ZendeskArticleResource.fetchByArticleId({
           connectorId,
-          articleId: objectIds.articleId,
+          ...objectIds,
         });
         if (article) {
           return new Ok(article.getParentInternalIds(connectorId));
@@ -653,7 +683,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "ticket": {
         const ticket = await ZendeskTicketResource.fetchByTicketId({
           connectorId,
-          ticketId: objectIds.ticketId,
+          ...objectIds,
         });
         if (ticket) {
           return new Ok(ticket.getParentInternalIds(connectorId));

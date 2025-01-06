@@ -268,6 +268,7 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
     async ({ categoryId, brandId }) => {
       const articles = await ZendeskArticleResource.fetchByCategoryIdReadOnly({
         connectorId,
+        brandId,
         categoryId,
       });
       if (articles.length === 0) {
@@ -382,7 +383,11 @@ export async function deleteTicketBatchActivity({
     { concurrency: 10 }
   );
   /// deleting the tickets stored in the db
-  await ZendeskTicketResource.deleteByTicketIds({ connectorId, ticketIds });
+  await ZendeskTicketResource.deleteByTicketIds({
+    connectorId,
+    brandId,
+    ticketIds,
+  });
 
   /// returning false if we know for sure there isn't any more ticket to process
   return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE };
@@ -432,7 +437,11 @@ export async function deleteArticleBatchActivity({
     { concurrency: 10 }
   );
   /// deleting the articles stored in the db
-  await ZendeskArticleResource.deleteByArticleIds({ connectorId, articleIds });
+  await ZendeskArticleResource.deleteByArticleIds({
+    connectorId,
+    brandId,
+    articleIds,
+  });
 
   /// returning false if we know for sure there isn't any more article to process
   return { hasMore: articleIds.length === ZENDESK_BATCH_SIZE };
@@ -461,15 +470,15 @@ export async function deleteCategoryBatchActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const categories = await ZendeskCategoryResource.fetchByBrandId({
+  const categoryIds = await ZendeskCategoryResource.fetchByBrandId({
     connectorId,
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
 
   await concurrentExecutor(
-    categories,
-    async ({ categoryId, brandId }) => {
+    categoryIds,
+    async (categoryId) => {
       await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
@@ -480,7 +489,8 @@ export async function deleteCategoryBatchActivity({
 
   const deletedCount = await ZendeskCategoryResource.deleteByCategoryIds({
     connectorId,
-    categoryIds: categories.map((category) => category.categoryId),
+    brandId,
+    categoryIds,
   });
   logger.info(
     { ...loggerArgs, brandId, deletedCount },

@@ -125,6 +125,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
       if (section.category_id) {
         let category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
+          brandId,
           categoryId: section.category_id,
         });
         /// fetching and adding the category to the db if it is newly created, and the Help Center is selected
