@@ -144,7 +144,6 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 
     async fn index_node(&self, node: Node) -> Result<()> {
-        // todo(kw-search): fail on error
         let now = utils::now();
         // Note: in elasticsearch, the index API updates the document if it
         // already exists.
@@ -175,7 +174,7 @@ impl SearchStore for ElasticsearchSearchStore {
                     "[ElasticsearchSearchStore] Failed to index {}",
                     node.node_type.to_string()
                 );
-                Ok(())
+                Err(anyhow::anyhow!("Failed to index node {}", error))
             }
         }
     }
@@ -186,7 +185,6 @@ impl SearchStore for ElasticsearchSearchStore {
             .delete(DeleteParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
             .send()
             .await?;
-        // todo(kw-search): fail on error
         match response.status_code().is_success() {
             true => Ok(()),
             false => {
@@ -215,7 +213,6 @@ impl SearchStore for ElasticsearchSearchStore {
             }))
             .send()
             .await?;
-        // todo(kw-search): fail on error
         match response.status_code().is_success() {
             true => Ok(()),
             false => {
