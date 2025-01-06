@@ -471,7 +471,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   } else if (pageCount.valid === 0) {
     await syncFailed(connector.id, "webcrawling_error");
   } else if (stats.requestsFinished >= maxRequestsPerCrawl) {
-    await syncFailed(connector.id, "webcrawling_syncrhonization_limit_reached");
+    await syncFailed(connector.id, "webcrawling_synchronization_limit_reached");
   } else {
     await syncSucceeded(connector.id);
   }
