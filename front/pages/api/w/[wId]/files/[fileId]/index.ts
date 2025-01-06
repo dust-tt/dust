@@ -3,11 +3,9 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
-import {
-  getOrCreateJitDataSourceForFile,
-  processAndUpsertToDataSource,
-} from "@app/lib/api/files/upsert";
+import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -146,7 +144,10 @@ async function handler(
 
       // Only upsert immediately in case of conversation
       if (file.useCase === "conversation") {
-        const jitDataSource = await getOrCreateJitDataSourceForFile(auth, file);
+        const jitDataSource = await getOrCreateConversationDataSourceFromFile(
+          auth,
+          file
+        );
         if (jitDataSource.isErr()) {
           logger.warn({
             fileModelId: file.id,

@@ -1,9 +1,7 @@
 import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
-import {
-  getOrCreateJitDataSourceForFile,
-  processAndUpsertToDataSource,
-} from "@app/lib/api/files/upsert";
+import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -41,7 +39,7 @@ export async function internalCreateToolOutputCsvFile(
 
   // If the tool returned no content, it makes no sense to upsert it to the data source
   if (content && isJITActionsEnabled(auth)) {
-    const jitDataSource = await getOrCreateJitDataSourceForFile(
+    const jitDataSource = await getOrCreateConversationDataSourceFromFile(
       auth,
       fileResource
     );

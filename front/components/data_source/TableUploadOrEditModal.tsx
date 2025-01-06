@@ -27,18 +27,16 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
-  useCreateDataSourceTable,
   useDataSourceViewTable,
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
-import { useFileProcessedContent } from "@app/lib/swr/file";
+import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface Table {
   name: string;
   description: string;
   file: File | null;
-  content: string | null;
 }
 export interface TableUploadOrEditModalProps {
   contentNode?: LightContentNode;
@@ -66,7 +64,6 @@ export const TableUploadOrEditModal = ({
     name: "",
     description: "",
     file: null,
-    content: null,
   });
   const [editionStatus, setEditionStatus] = useState({
     name: false,
@@ -90,79 +87,50 @@ export const TableUploadOrEditModal = ({
     useCase: "folder_table",
   });
   const [fileId, setFileId] = useState<string | null>(null);
-  const { isContentLoading } = useFileProcessedContent(owner, fileId ?? null, {
-    disabled: !fileId,
-    onSuccess: async (response) => {
-      const content = await response.text();
-      if (!content || content.trim().length === 0) {
-        sendNotification({
-          type: "error",
-          title: "Empty content",
-          description: "The file content is empty.",
-        });
-        fileUploaderService.resetUpload();
-        return;
-      }
-      setTableState((prev) => ({
-        ...prev,
-        content: content,
-      }));
-    },
-    onError: (error) => {
-      fileUploaderService.resetUpload();
-      sendNotification({
-        type: "error",
-        title: "Error fetching content",
-        description: error instanceof Error ? error.message : String(error),
-      });
-    },
-    shouldRetryOnError: false,
-  });
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-
-  // Mutations for upserting the table
+  const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(
+    owner,
+    dataSourceView
+  );
   const doUpdate = useUpdateDataSourceViewTable(
     owner,
     dataSourceView,
     initialId ?? ""
   );
-  const doCreate = useCreateDataSourceTable(owner, dataSourceView);
 
   const handleTableUpload = useCallback(
     async (table: Table) => {
       setIsUpserting(true);
-
-      if (!table.content) {
-        sendNotification({
-          type: "error",
-          title: "No content",
-          description: "No content to upload.",
-        });
-        setIsUpserting(false);
-        return;
-      }
-
+      let upsertRes = null;
       try {
-        const body = {
-          name: table.name,
-          description: table.description,
-          csv: table.content,
-          tableId: initialId,
-          timestamp: null,
-          tags: [],
-          parentId: null,
-          parents: [],
-          truncate: true,
-          async: false,
-          useAppForHeaderDetection,
-          title: table.name,
-          mimeType: tableState.file?.type ?? "text/csv",
-        };
-        let upsertRes = null;
-        if (initialId) {
-          upsertRes = await doUpdate(body);
+        if (!fileId) {
+          // Editing an existing table, not replacing the content.
+          upsertRes = await doUpdate({
+            name: table.name,
+            description: table.description,
+            truncate: true,
+            useAppForHeaderDetection,
+            title: table.name,
+            timestamp: undefined,
+            tags: undefined,
+            parentId: undefined,
+            parents: undefined,
+            async: undefined,
+            csv: undefined,
+          });
         } else {
-          upsertRes = await doCreate(body);
+          // Replacing the content of an existing table with a new file.
+          upsertRes = await doUpsertFileAsDataSourceEntry({
+            fileId,
+            upsertArgs: {
+              // Make sure to reuse the tableId from the initialId if it exists.
+              tableId: initialId ?? undefined,
+              name: table.name,
+              description: table.description,
+              useAppForHeaderDetection,
+              title: table.name,
+            },
+          });
         }
 
         // Upsert successful, close and reset the modal
@@ -172,7 +140,6 @@ export const TableUploadOrEditModal = ({
             name: "",
             description: "",
             file: null,
-            content: null,
           });
           setEditionStatus({
             description: false,
@@ -192,12 +159,11 @@ export const TableUploadOrEditModal = ({
     [
       initialId,
       onClose,
-      sendNotification,
-      doCreate,
-      doUpdate,
+      doUpsertFileAsDataSourceEntry,
       fileUploaderService,
       useAppForHeaderDetection,
-      tableState.file?.type,
+      fileId,
+      doUpdate,
     ]
   );
 
@@ -224,6 +190,14 @@ export const TableUploadOrEditModal = ({
     }
 
     if (!isValidTable) {
+      if (!initialId && !fileId) {
+        sendNotification({
+          type: "error",
+          title: "Missing file",
+          description: "You must upload a file to create a table.",
+        });
+        return;
+      }
       if (
         tableState.name.trim().length === 0 ||
         !isSlugified(tableState.name)
@@ -244,14 +218,6 @@ export const TableUploadOrEditModal = ({
         });
         return;
       }
-      if (!tableState.content || tableState.content.trim().length === 0) {
-        sendNotification({
-          type: "error",
-          title: "Missing file",
-          description: "You must upload a file to create a table.",
-        });
-        return;
-      }
 
       // Fallback
       sendNotification({
@@ -269,6 +235,8 @@ export const TableUploadOrEditModal = ({
     isValidTable,
     tableState,
     sendNotification,
+    initialId,
+    fileId,
   ]);
 
   const handleFileChange = useCallback(
@@ -332,10 +300,9 @@ export const TableUploadOrEditModal = ({
     const isNameValid =
       tableState.name.trim() !== "" && isSlugified(tableState.name);
     const isDescriptionValid = tableState.description.trim() !== "";
-    const isContentValid =
-      !!tableState.content && tableState.content.trim() !== "";
-    setIsValidTable(isNameValid && isDescriptionValid && isContentValid);
-  }, [tableState]);
+    const fileOrInitialId = initialId || fileId;
+    setIsValidTable(isNameValid && isDescriptionValid && !!fileOrInitialId);
+  }, [tableState, initialId, fileId]);
 
   // Effect: Set the table state when the table is loaded
   useEffect(() => {
@@ -344,7 +311,6 @@ export const TableUploadOrEditModal = ({
         name: "",
         description: "",
         file: null,
-        content: null,
       });
     } else if (table) {
       setTableState((prev) => ({
@@ -364,11 +330,9 @@ export const TableUploadOrEditModal = ({
       hasChanged={
         table
           ? table.description !== tableState.description ||
-            table.name !== tableState.name ||
-            !!tableState.content
+            table.name !== tableState.name
           : tableState.description.trim() !== "" ||
-            tableState.name.trim() !== "" ||
-            !!tableState.content
+            tableState.name.trim() !== ""
       }
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} table`}
@@ -443,14 +407,13 @@ export const TableUploadOrEditModal = ({
                   title="CSV File"
                   description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
                   action={{
-                    label:
-                      fileUploaderService.isProcessingFiles || isContentLoading
-                        ? "Uploading..."
-                        : tableState.file
-                          ? tableState.file.name
-                          : initialId
-                            ? "Replace file"
-                            : "Upload file",
+                    label: fileUploaderService.isProcessingFiles
+                      ? "Uploading..."
+                      : tableState.file
+                        ? tableState.file.name
+                        : initialId
+                          ? "Replace file"
+                          : "Upload file",
                     variant: "primary",
                     icon: DocumentPlusIcon,
                     onClick: () => fileInputRef.current?.click(),

@@ -5,10 +5,8 @@ import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
 import type { Writable } from "stream";
 
-import {
-  getOrCreateJitDataSourceForFile,
-  processAndUpsertToDataSource,
-} from "@app/lib/api/files/upsert";
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -134,7 +132,7 @@ export async function maybeUpsertFileAttachment(
           await fileResource.setUseCaseMetadata({
             conversationId: conversation.sId,
           });
-          const jitDataSource = await getOrCreateJitDataSourceForFile(
+          const jitDataSource = await getOrCreateConversationDataSourceFromFile(
             auth,
             fileResource
           );
