@@ -630,6 +630,21 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
     supportsVision: false,
   };
 
+export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "deepseek",
+  modelId: DEEPSEEK_CHAT_MODEL_ID,
+  displayName: "DeepSeek",
+  contextSize: 64_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "DeepSeek's best model (v3, 64k context).",
+  shortDescription: "DeepSeek's best model.",
+  isLegacy: false,
+  supportsVision: false,
+  featureFlag: "deepseek_feature",
+};
+
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -656,6 +671,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,
   TOGETHERAI_QWEN_32B_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG,
+  DEEPSEEK_CHAT_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
@@ -705,6 +721,7 @@ export enum GLOBAL_AGENTS_SID {
   // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
   MISTRAL_SMALL = "mistral",
   GEMINI_PRO = "gemini-pro",
+  DEEPSEEK = "deepseek",
 }
 
 export function getGlobalAgentAuthorName(agentId: string): string {
@@ -723,6 +740,8 @@ export function getGlobalAgentAuthorName(agentId: string): string {
       return "Mistral";
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       return "Google";
+    case GLOBAL_AGENTS_SID.DEEPSEEK:
+      return "DeepSeek";
     default:
       return "Dust";
   }

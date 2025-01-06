@@ -664,6 +664,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
+  | "deepseek_feature"
   | "snowflake_connector_feature"
   | "index_private_slack_channel"
   | "conversations_jit_actions"

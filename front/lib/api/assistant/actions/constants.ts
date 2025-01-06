@@ -1,5 +1,8 @@
 // Stored in a separate file to prevent a circular dependency issue.
 export const DEFAULT_BROWSE_ACTION_NAME = "browse";
+export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
+  "Browse the content of a web page";
+
 export const DEFAULT_PROCESS_ACTION_NAME =
   "extract_structured_data_from_data_sources";
 
