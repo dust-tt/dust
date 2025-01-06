@@ -12,10 +12,14 @@ const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   ScrollAreaProps
 >(({ className, children, hideScrollBar = false, ...props }, ref) => {
-  const hasCustomScrollBar = React.Children.toArray(children).some(
-    (child) =>
-      React.isValidElement(child) &&
-      (child.type as typeof ScrollBar).displayName === ScrollBar.displayName
+  const hasCustomScrollBar = React.useMemo(
+    () =>
+      React.Children.toArray(children).some(
+        (child) =>
+          React.isValidElement(child) &&
+          (child.type as typeof ScrollBar).displayName === ScrollBar.displayName
+      ),
+    [children]
   );
 
   const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
