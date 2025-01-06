@@ -21,8 +21,6 @@ export function isSlackAutoReadPatterns(
 export const SlackConfigurationTypeSchema = t.type({
   botEnabled: t.boolean,
   whitelistedDomains: t.union([t.array(t.string), t.undefined]),
-  // TODO(2025-01-02 AutoReadCleanUp) Remove once fully migrated to `autoReadChannelPatterns`.
-  autoReadChannelPattern: t.union([t.string, t.null, t.undefined]),
   autoReadChannelPatterns: SlackAutoReadPatternsSchema,
 });
 

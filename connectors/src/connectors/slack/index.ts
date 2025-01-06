@@ -90,7 +90,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         dataSourceId: dataSourceConfig.dataSourceId,
       },
       {
-        autoReadChannelPattern: configuration.autoReadChannelPattern,
         autoReadChannelPatterns: configuration.autoReadChannelPatterns,
         botEnabled: configuration.botEnabled,
         slackTeamId: teamInfo.team.id,
@@ -709,10 +708,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         }
       }
 
-      case "autoReadChannelPattern": {
-        return new Err(new Error("autoReadChannelPattern is not deprecated"));
-      }
-
       case "autoReadChannelPatterns": {
         const parsedConfig = safeParseJSON(configValue);
         if (parsedConfig.isErr()) {
@@ -762,14 +757,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           return botEnabledRes;
         }
         return new Ok(botEnabledRes.value.toString());
-      }
-
-      case "autoReadChannelPattern": {
-        const autoReadChannelPattern = await getAutoReadChannelPattern(
-          this.connectorId
-        );
-
-        return autoReadChannelPattern;
       }
 
       case "autoReadChannelPatterns": {
@@ -876,24 +863,6 @@ export async function uninstallSlack(connectionId: string) {
   logger.info({ connectionId: connectionId }, `Deactivated the Slack app`);
 
   return new Ok(undefined);
-}
-
-export async function getAutoReadChannelPattern(
-  connectorId: ModelId
-): Promise<Result<string | null, Error>> {
-  const slackConfiguration =
-    await SlackConfigurationResource.fetchByConnectorId(connectorId);
-  if (!slackConfiguration) {
-    return new Err(
-      new Error(
-        `Failed to find a Slack configuration for connector ${connectorId}`
-      )
-    );
-  }
-  if (!slackConfiguration.autoReadChannelPattern) {
-    return new Ok(null);
-  }
-  return new Ok(slackConfiguration.autoReadChannelPattern);
 }
 
 export async function getAutoReadChannelPatterns(

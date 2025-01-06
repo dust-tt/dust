@@ -18,7 +18,6 @@ export class SlackConfigurationModel extends BaseModel<SlackConfigurationModel> 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
-  declare autoReadChannelPattern?: string | null;
   declare autoReadChannelPatterns: SlackAutoReadPattern[];
 }
 
@@ -45,11 +44,6 @@ SlackConfigurationModel.init(
     },
     whitelistedDomains: {
       type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
-    // TODO(2025-01-02 AutoReadCleanUp) Remove once fully migrated to `autoReadChannelPatterns`.
-    autoReadChannelPattern: {
-      type: DataTypes.STRING,
       allowNull: true,
     },
     autoReadChannelPatterns: {
