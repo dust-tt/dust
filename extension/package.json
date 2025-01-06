@@ -5,8 +5,9 @@
   "scripts": {
     "clean": "rm -rf build/*",
     "dev": "npm run clean && tsx run/watch.ts --mode=development",
+    "package:production": "tsx run/build.ts",
+    "package:release": "tsx run/build.ts --release",
     "analyze": "tsx run/build.ts --analyze",
-    "build": "tsx run/build.ts",
     "lint": "eslint app",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
