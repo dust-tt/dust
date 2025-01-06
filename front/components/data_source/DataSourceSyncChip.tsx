@@ -91,7 +91,7 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Access blocked</Chip>}
           />
         );
-      case "webcrawling_syncrhonization_limit_reached":
+      case "webcrawling_synchronization_limit_reached":
         return (
           <Tooltip
             label={
