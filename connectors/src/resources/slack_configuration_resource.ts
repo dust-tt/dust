@@ -249,18 +249,6 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
-  async setAutoReadChannelPattern(pattern: string | null) {
-    await this.model.update(
-      { autoReadChannelPattern: pattern },
-      {
-        where: {
-          id: this.id,
-        },
-      }
-    );
-    return new Ok(undefined);
-  }
-
   async setAutoReadChannelPatterns(patterns: SlackAutoReadPattern[]) {
     await this.model.update(
       { autoReadChannelPatterns: patterns },
@@ -318,8 +306,6 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   toJSON(): SlackConfigurationType {
     return {
-      // TODO(2025-01-02 AutoReadCleanUp) Remove once fully migrated to `autoReadChannelPatterns`.
-      autoReadChannelPattern: this.autoReadChannelPattern,
       autoReadChannelPatterns: this.autoReadChannelPatterns,
       botEnabled: this.botEnabled,
       whitelistedDomains: this.whitelistedDomains?.map((d) => d),
