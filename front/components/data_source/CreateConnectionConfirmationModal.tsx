@@ -52,7 +52,14 @@ export function CreateConnectionConfirmationModal({
   }, [isOpen, setIsLoading]);
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>Connection Setup</SheetTitle>

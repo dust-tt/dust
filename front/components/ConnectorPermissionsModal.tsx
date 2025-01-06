@@ -744,7 +744,14 @@ export function ConnectorPermissionsModal({
           }}
         />
       )}
-      <Sheet open={modalToShow === "selection"} onOpenChange={onClose}>
+      <Sheet
+        open={modalToShow === "selection"}
+        onOpenChange={(open) => {
+          if (!open) {
+            onClose(open);
+          }
+        }}
+      >
         <SheetContent size="xl">
           {user && (
             <>
