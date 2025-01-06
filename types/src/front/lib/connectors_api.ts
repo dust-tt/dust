@@ -21,6 +21,7 @@ const CONNECTORS_ERROR_TYPES = [
   "webcrawling_error_empty_content",
   "webcrawling_error_content_too_large",
   "webcrawling_error_blocked",
+  "webcrawling_syncrhonization_limit_reached",
   "remote_database_connection_not_readonly",
   "remote_database_network_error",
 ] as const;
