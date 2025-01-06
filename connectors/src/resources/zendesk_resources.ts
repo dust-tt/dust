@@ -552,16 +552,13 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     brandId: number;
     batchSize?: number | null;
-  }): Promise<{ categoryId: number; brandId: number }[]> {
+  }): Promise<number[]> {
     const categories = await ZendeskCategory.findAll({
-      attributes: ["categoryId", "brandId"],
+      attributes: ["categoryId"],
       where: { connectorId, brandId, permission: "read" },
       ...(batchSize && { limit: batchSize }),
     });
-    return categories.map((category) => {
-      const { categoryId, brandId } = category.get();
-      return { categoryId, brandId };
-    });
+    return categories.map((category) => category.get().categoryId);
   }
 
   static async fetchByBrandIdReadOnly({
