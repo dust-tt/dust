@@ -76,7 +76,7 @@ export default function ConnectorSyncingChip({
       case "webcrawling_error_empty_content":
         return (
           <Tooltip
-            label={"The syncrhonization failed to retrieve any content."}
+            label={"The synchronization failed to retrieve any content."}
             className="max-w-md"
             trigger={<Chip color="warning">Empty content</Chip>}
           />
