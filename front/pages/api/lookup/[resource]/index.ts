@@ -19,9 +19,7 @@ export type WorkspaceLookupResponse = {
 };
 
 export type UserLookupResponse = {
-  user: {
-    email: string;
-  } | null;
+  exists: boolean;
 };
 
 const ExternalUserCodec = t.type({
@@ -123,7 +121,9 @@ async function handler(
             },
           });
         }
-        response = await handleLookupUser(bodyValidation.right.user);
+        response = {
+          exists: await handleLookupUser(bodyValidation.right.user),
+        };
       }
       break;
     case "workspace": {

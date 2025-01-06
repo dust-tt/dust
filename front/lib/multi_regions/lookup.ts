@@ -1,30 +1,27 @@
 import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
 import { fetchUserWithAuth0Sub } from "@app/lib/iam/users";
+import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
 
 export async function handleLookupUser(userLookup: {
   sub: string;
   email: string;
 }) {
-  // Check if user exists or has pending invitations
-  const [user, pendingInvite] = await Promise.all([
+  // Check if user exists, has pending invitations or has a workspace with verified domain
+  const [user, pendingInvite, workspaceWithVerifiedDomain] = await Promise.all([
     fetchUserWithAuth0Sub(userLookup.sub),
     getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.email),
+    findWorkspaceWithVerifiedDomain({
+      email: userLookup.email,
+      email_verified: true,
+    }),
   ]);
 
-  if (user) {
-    return {
-      user: { email: user.email },
-    };
-  } else if (pendingInvite) {
-    return {
-      user: { email: pendingInvite.invitation.inviteEmail },
-    };
+  if (user || pendingInvite || workspaceWithVerifiedDomain) {
+    return true;
   }
 
-  return {
-    user: null,
-  };
+  return false;
 }
 
 export async function handleLookupWorkspace(workspaceLookup: {
