@@ -1,4 +1,4 @@
-import type { NotificationType } from "@dust-tt/sparkle";
+import { NotificationType, SheetTitle } from "@dust-tt/sparkle";
 import { SheetHeader } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -103,7 +103,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
 };
 
 const getUseResourceHook =
-  (owner: LightWorkspaceType, dataSource: DataSourceType) =>
+  (owner: LightWorkspaceType, dataSource: DataSourceType | null) =>
   (parentId: string | null) =>
     useConnectorPermissions({
       dataSource,
@@ -541,8 +541,8 @@ function DataSourceDeletionModal({
 }
 
 interface ConnectorPermissionsModalProps {
-  connector: ConnectorType;
-  dataSource: DataSourceType;
+  connector: ConnectorType | null;
+  dataSource: DataSourceType | null;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
@@ -568,15 +568,17 @@ export function ConnectorPermissionsModal({
     Record<string, ContentNodeTreeItemStatus>
   >({});
 
-  const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
-    connector.type
-  );
+  const isDataAvailable = !!connector && !!dataSource;
+
+  const canUpdatePermissions = isDataAvailable
+    ? PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(connector.type)
+    : false;
   const selectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
+    (dataSource?.connectorProvider &&
       CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
     "none";
   const unselectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
+    (dataSource?.connectorProvider &&
       CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
         ?.unselected) ||
     "none";
@@ -595,7 +597,7 @@ export function ConnectorPermissionsModal({
       parentId: null,
       viewType: "documents",
       includeParents: true,
-      disabled: !canUpdatePermissions,
+      disabled: !canUpdatePermissions || !isDataAvailable,
     });
 
   const initialTreeSelectionModel = useMemo(
@@ -645,6 +647,7 @@ export function ConnectorPermissionsModal({
 
   async function save() {
     if (
+      !isDataAvailable ||
       !(await confirmPrivateNodesSync({
         selectedNodes: Object.values(selectedNodes)
           .filter((sn) => sn.isSelected)
@@ -725,21 +728,22 @@ export function ConnectorPermissionsModal({
     } else {
       setModalToShow(null);
     }
-  }, [connector.type, isOpen]);
+  }, [connector?.type, isOpen]);
 
-  if (!user) {
-    return;
-  }
-
-  const OptionsComponent =
-    CONNECTOR_CONFIGURATIONS[connector.type].optionsComponent;
+  const OptionsComponent = isDataAvailable
+    ? CONNECTOR_CONFIGURATIONS[connector.type].optionsComponent
+    : null;
 
   return (
     <>
       {onManageButtonClick && (
         <Button
           size="sm"
-          label={`Manage ${getDisplayNameForDataSource(dataSource)}`}
+          label={
+            isDataAvailable
+              ? `Manage ${getDisplayNameForDataSource(dataSource)}`
+              : ""
+          }
           icon={CloudArrowLeftRightIcon}
           variant="primary"
           disabled={readOnly || !isAdmin}
@@ -749,163 +753,176 @@ export function ConnectorPermissionsModal({
           }}
         />
       )}
-      <Sheet
-        open={modalToShow === "selection"}
-        onOpenChange={() => closeModal(false)}
-      >
+      <Sheet open={modalToShow === "selection"} onOpenChange={onClose}>
         <SheetContent size="xl">
-          <SheetHeader>
-            <div className="text-lg font-semibold">
-              Manage {getDisplayNameForDataSource(dataSource)} connection
-            </div>
-          </SheetHeader>
+          {user && isDataAvailable && (
+            <>
+              <SheetHeader>
+                <SheetTitle>
+                  Manage {getDisplayNameForDataSource(dataSource)} connection
+                </SheetTitle>
+              </SheetHeader>
 
-          <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4 px-4">
-            <div className="flex flex-row justify-end gap-2">
-              {(isOAuthProvider(connector.type) ||
-                connector.type === "snowflake") && (
-                <Button
-                  label={
-                    connector.type !== "snowflake"
-                      ? "Edit permissions"
-                      : "Edit connection"
-                  }
-                  variant="outline"
-                  icon={LockIcon}
-                  onClick={() => {
-                    setModalToShow("edition");
-                  }}
-                />
-              )}
-              {MANAGED_DS_DELETABLE.includes(connector.type) && (
-                <Button
-                  label="Delete connection"
-                  variant="warning"
-                  icon={TrashIcon}
-                  onClick={() => {
-                    setModalToShow("deletion");
-                  }}
-                />
-              )}
-            </div>
-            {OptionsComponent && plan && (
-              <>
-                <div className="p-1 text-xl font-bold">Connector options</div>
-                <div className="p-1">
-                  <div className="border-y">
-                    <OptionsComponent
-                      {...{ owner, readOnly, isAdmin, dataSource, plan }}
+              <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4 px-4">
+                <div className="flex flex-row justify-end gap-2">
+                  {(isOAuthProvider(connector.type) ||
+                    connector.type === "snowflake") && (
+                    <Button
+                      label={
+                        connector.type !== "snowflake"
+                          ? "Edit permissions"
+                          : "Edit connection"
+                      }
+                      variant="outline"
+                      icon={LockIcon}
+                      onClick={() => {
+                        setModalToShow("edition");
+                      }}
                     />
-                  </div>
+                  )}
+                  {MANAGED_DS_DELETABLE.includes(connector.type) && (
+                    <Button
+                      label="Delete connection"
+                      variant="warning"
+                      icon={TrashIcon}
+                      onClick={() => {
+                        setModalToShow("deletion");
+                      }}
+                    />
+                  )}
                 </div>
-              </>
-            )}
+                {OptionsComponent && plan && (
+                  <>
+                    <div className="p-1 text-xl font-bold">
+                      Connector options
+                    </div>
+                    <div className="p-1">
+                      <div className="border-y">
+                        <OptionsComponent
+                          {...{ owner, readOnly, isAdmin, dataSource, plan }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
-            <div className="p-1 text-xl font-bold">
-              {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
-            </div>
+                <div className="p-1 text-xl font-bold">
+                  {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
+                </div>
 
-            <ContentNodeTree
-              isSearchEnabled={
-                CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
-              }
-              isRoundedBackground={true}
-              useResourcesHook={useResourcesHook}
-              selectedNodes={canUpdatePermissions ? selectedNodes : undefined}
-              setSelectedNodes={
-                canUpdatePermissions && !isResourcesLoading
-                  ? setSelectedNodes
-                  : undefined
-              }
-              showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
-            />
+                <ContentNodeTree
+                  isSearchEnabled={
+                    CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
+                  }
+                  isRoundedBackground={true}
+                  useResourcesHook={useResourcesHook}
+                  selectedNodes={
+                    canUpdatePermissions ? selectedNodes : undefined
+                  }
+                  setSelectedNodes={
+                    canUpdatePermissions && !isResourcesLoading
+                      ? setSelectedNodes
+                      : undefined
+                  }
+                  showExpand={
+                    CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
+                  }
+                />
 
-            <div className="flex justify-end gap-2 border-t pt-4">
-              <Button
-                label="Cancel"
-                variant="outline"
-                onClick={() => closeModal(false)}
-              />
-              <Button
-                label={saving ? "Saving..." : "Save"}
-                variant="primary"
-                disabled={isUnchanged || saving}
-                onClick={save}
-              />
-            </div>
-          </div>
+                <div className="flex justify-end gap-2 border-t pt-4">
+                  <Button
+                    label="Cancel"
+                    variant="outline"
+                    onClick={() => closeModal(false)}
+                  />
+                  <Button
+                    label={saving ? "Saving..." : "Save"}
+                    variant="primary"
+                    disabled={isUnchanged || saving}
+                    onClick={save}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </SheetContent>
       </Sheet>
 
       {/* Keep existing modals for edition/deletion/data update states */}
-      {connector.type === "snowflake" ? (
-        <CreateOrUpdateConnectionSnowflakeModal
-          owner={owner}
-          connectorProviderConfiguration={
-            CONNECTOR_CONFIGURATIONS[connector.type]
-          }
-          isOpen={modalToShow === "edition"}
-          onClose={() => closeModal(false)}
-          dataSourceToUpdate={dataSource}
-          onSuccess={() => {
-            setModalToShow("selection");
-          }}
-        />
-      ) : (
-        <DataSourceEditionModal
-          isOpen={modalToShow === "edition"}
-          onClose={() => closeModal(false)}
-          dataSource={dataSource}
-          owner={owner}
-          onEditPermissionsClick={async (
-            extraConfig: Record<string, string>
-          ) => {
-            await handleUpdatePermissions(
-              connector,
-              dataSource,
-              owner,
-              extraConfig,
-              sendNotification
-            );
-            closeModal(false);
-          }}
-        />
-      )}
+      {isDataAvailable ? (
+        connector.type === "snowflake" ? (
+          <CreateOrUpdateConnectionSnowflakeModal
+            owner={owner}
+            connectorProviderConfiguration={
+              CONNECTOR_CONFIGURATIONS[connector.type]
+            }
+            isOpen={modalToShow === "edition"}
+            onClose={() => closeModal(false)}
+            dataSourceToUpdate={dataSource}
+            onSuccess={() => {
+              setModalToShow("selection");
+            }}
+          />
+        ) : (
+          <DataSourceEditionModal
+            isOpen={modalToShow === "edition"}
+            onClose={() => closeModal(false)}
+            dataSource={dataSource}
+            owner={owner}
+            onEditPermissionsClick={async (
+              extraConfig: Record<string, string>
+            ) => {
+              await handleUpdatePermissions(
+                connector,
+                dataSource,
+                owner,
+                extraConfig,
+                sendNotification
+              );
+              closeModal(false);
+            }}
+          />
+        )
+      ) : null}
 
-      <DataSourceDeletionModal
-        isOpen={modalToShow === "deletion"}
-        onClose={() => closeModal(false)}
-        dataSource={dataSource}
-        owner={owner}
-      />
-      <ConnectorDataUpdatedModal
-        owner={owner}
-        isOpen={modalToShow === "data_updated"}
-        onClose={() => {
-          closeModal(false);
-        }}
-        connectorProvider={connector.type}
-      />
-      <Dialog
-        alertDialog={true}
-        isOpen={showDataConnectionDialog}
-        title="Your data is being synchronized..."
-        onValidate={() => setShowDataConnectionDialog(false)}
-      >
-        <div>
-          Once synced, data can be added to:
-          <div className="mt-2">
-            <ul className="ml-4 list-disc">
-              <li>
-                <strong>Company Data</strong> for company-wide access
-              </li>
-              <li>
-                <strong>Restricted Spaces</strong> for custom access
-              </li>
-            </ul>
-          </div>
-        </div>
-      </Dialog>
+      {isDataAvailable && (
+        <>
+          <DataSourceDeletionModal
+            isOpen={modalToShow === "deletion"}
+            onClose={() => closeModal(false)}
+            dataSource={dataSource}
+            owner={owner}
+          />
+          <ConnectorDataUpdatedModal
+            owner={owner}
+            isOpen={modalToShow === "data_updated"}
+            onClose={() => {
+              closeModal(false);
+            }}
+            connectorProvider={connector.type}
+          />
+          <Dialog
+            alertDialog={true}
+            isOpen={showDataConnectionDialog}
+            title="Your data is being synchronized..."
+            onValidate={() => setShowDataConnectionDialog(false)}
+          >
+            <div>
+              Once synced, data can be added to:
+              <div className="mt-2">
+                <ul className="ml-4 list-disc">
+                  <li>
+                    <strong>Company Data</strong> for company-wide access
+                  </li>
+                  <li>
+                    <strong>Restricted Spaces</strong> for custom access
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </Dialog>
+        </>
+      )}
     </>
   );
 }
