@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-function Skeleton({
+function LoadingBlock({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
@@ -17,4 +17,4 @@ function Skeleton({
   );
 }
 
-export { Skeleton };
+export { LoadingBlock };
