@@ -96,33 +96,28 @@ export function ContentBlockWrapper({
         className
       )}
     >
-      <div className="s-sticky s-top-0 s-z-[1] s-w-full">
-        <div
-          id="BlockActions"
-          className="s-absolute s-right-2 s-top-2 s-z-50 s-flex s-gap-2"
-        >
-          {actions && actions}
-          {getContentToDownload && (
-            <Button
-              variant={"outline"}
-              size="xs"
-              icon={ArrowDownOnSquareIcon}
-              onClick={handleDownload}
-              tooltip="Download"
-            />
-          )}
-          {content && (
-            <Button
-              variant={"outline"}
-              size="xs"
-              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-              onClick={handleCopyToClipboard}
-              tooltip="Copy"
-            />
-          )}
-        </div>
+      <div className="s-absolute s-right-2 s-top-2 s-flex s-gap-2">
+        {actions && actions}
+        {getContentToDownload && (
+          <Button
+            variant={"outline"}
+            size="xs"
+            icon={ArrowDownOnSquareIcon}
+            onClick={handleDownload}
+            tooltip="Download"
+          />
+        )}
+        {content && (
+          <Button
+            variant={"outline"}
+            size="xs"
+            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+            onClick={handleCopyToClipboard}
+            tooltip="Copy"
+          />
+        )}
       </div>
-      <div className={cn("s-z-0 s-w-full", innerClassName)}>{children}</div>
+      <div className={cn("s-w-full", innerClassName)}>{children}</div>
     </div>
   );
 }
