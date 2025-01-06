@@ -95,7 +95,7 @@ export default function ConnectorSyncingChip({
         return (
           <Tooltip
             label={
-              "The website syncrhonization reached the max number of page to syncrhonize limit."
+              "The website synchronization reached the maximum page limit."
             }
             className="max-w-md"
             trigger={<Chip color="warning">Limit reached</Chip>}
