@@ -104,7 +104,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
 };
 
 const getUseResourceHook =
-  (owner: LightWorkspaceType, dataSource: DataSourceType | null) =>
+  (owner: LightWorkspaceType, dataSource: DataSourceType) =>
   (parentId: string | null) =>
     useConnectorPermissions({
       dataSource,
@@ -542,8 +542,8 @@ function DataSourceDeletionModal({
 }
 
 interface ConnectorPermissionsModalProps {
-  connector: ConnectorType | null;
-  dataSource: DataSourceType | null;
+  connector: ConnectorType;
+  dataSource: DataSourceType;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
@@ -569,17 +569,15 @@ export function ConnectorPermissionsModal({
     Record<string, ContentNodeTreeItemStatus>
   >({});
 
-  const isDataAvailable = !!connector && !!dataSource;
-
-  const canUpdatePermissions = isDataAvailable
-    ? PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(connector.type)
-    : false;
+  const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
+    connector.type
+  );
   const selectedPermission: ConnectorPermission =
-    (dataSource?.connectorProvider &&
+    (dataSource.connectorProvider &&
       CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
     "none";
   const unselectedPermission: ConnectorPermission =
-    (dataSource?.connectorProvider &&
+    (dataSource.connectorProvider &&
       CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
         ?.unselected) ||
     "none";
@@ -647,7 +645,6 @@ export function ConnectorPermissionsModal({
 
   async function save() {
     if (
-      !isDataAvailable ||
       !(await confirmPrivateNodesSync({
         selectedNodes: Object.values(selectedNodes)
           .filter((sn) => sn.isSelected)
@@ -727,22 +724,17 @@ export function ConnectorPermissionsModal({
     } else {
       setModalToShow(null);
     }
-  }, [connector?.type, isOpen]);
+  }, [connector.type, isOpen]);
 
-  const OptionsComponent = isDataAvailable
-    ? CONNECTOR_CONFIGURATIONS[connector.type].optionsComponent
-    : null;
+  const OptionsComponent =
+    CONNECTOR_CONFIGURATIONS[connector.type].optionsComponent;
 
   return (
     <>
       {onManageButtonClick && (
         <Button
           size="sm"
-          label={
-            isDataAvailable
-              ? `Manage ${getDisplayNameForDataSource(dataSource)}`
-              : ""
-          }
+          label={`Manage ${getDisplayNameForDataSource(dataSource)}`}
           icon={CloudArrowLeftRightIcon}
           variant="primary"
           disabled={readOnly || !isAdmin}
@@ -754,7 +746,7 @@ export function ConnectorPermissionsModal({
       )}
       <Sheet open={modalToShow === "selection"} onOpenChange={onClose}>
         <SheetContent size="xl">
-          {user && isDataAvailable && (
+          {user && (
             <>
               <SheetHeader>
                 <SheetTitle>
@@ -850,59 +842,53 @@ export function ConnectorPermissionsModal({
       </Sheet>
 
       {/* Keep existing modals for edition/deletion/data update states */}
-      {isDataAvailable ? (
-        connector.type === "snowflake" ? (
-          <CreateOrUpdateConnectionSnowflakeModal
-            owner={owner}
-            connectorProviderConfiguration={
-              CONNECTOR_CONFIGURATIONS[connector.type]
-            }
-            isOpen={modalToShow === "edition"}
-            onClose={() => closeModal(false)}
-            dataSourceToUpdate={dataSource}
-            onSuccess={() => {
-              setModalToShow("selection");
-            }}
-          />
-        ) : (
-          <DataSourceEditionModal
-            isOpen={modalToShow === "edition"}
-            onClose={() => closeModal(false)}
-            dataSource={dataSource}
-            owner={owner}
-            onEditPermissionsClick={async (
-              extraConfig: Record<string, string>
-            ) => {
-              await handleUpdatePermissions(
-                connector,
-                dataSource,
-                owner,
-                extraConfig,
-                sendNotification
-              );
-              closeModal(false);
-            }}
-          />
-        )
-      ) : null}
-
-      {isDataAvailable && (
-        <>
-          <DataSourceDeletionModal
-            isOpen={modalToShow === "deletion"}
-            onClose={() => closeModal(false)}
-            dataSource={dataSource}
-            owner={owner}
-          />
-          <ConnectorDataUpdatedModal
-            isOpen={modalToShow === "data_updated"}
-            onClose={() => {
-              closeModal(false);
-            }}
-            connectorProvider={connector.type}
-          />
-        </>
+      {connector.type === "snowflake" ? (
+        <CreateOrUpdateConnectionSnowflakeModal
+          owner={owner}
+          connectorProviderConfiguration={
+            CONNECTOR_CONFIGURATIONS[connector.type]
+          }
+          isOpen={modalToShow === "edition"}
+          onClose={() => closeModal(false)}
+          dataSourceToUpdate={dataSource}
+          onSuccess={() => {
+            setModalToShow("selection");
+          }}
+        />
+      ) : (
+        <DataSourceEditionModal
+          isOpen={modalToShow === "edition"}
+          onClose={() => closeModal(false)}
+          dataSource={dataSource}
+          owner={owner}
+          onEditPermissionsClick={async (
+            extraConfig: Record<string, string>
+          ) => {
+            await handleUpdatePermissions(
+              connector,
+              dataSource,
+              owner,
+              extraConfig,
+              sendNotification
+            );
+            closeModal(false);
+          }}
+        />
       )}
+
+      <DataSourceDeletionModal
+        isOpen={modalToShow === "deletion"}
+        onClose={() => closeModal(false)}
+        dataSource={dataSource}
+        owner={owner}
+      />
+      <ConnectorDataUpdatedModal
+        isOpen={modalToShow === "data_updated"}
+        onClose={() => {
+          closeModal(false);
+        }}
+        connectorProvider={connector.type}
+      />
     </>
   );
 }

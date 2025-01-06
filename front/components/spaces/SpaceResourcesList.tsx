@@ -543,19 +543,20 @@ export const SpaceResourcesList = ({
           }}
         />
       )}
-      {selectedDataSourceView?.dataSource && selectedDataSourceView.dataSource.connector && (
-        <ConnectorPermissionsModal
-          owner={owner}
-          connector={selectedDataSourceView.dataSource.connector}
-          dataSource={selectedDataSourceView.dataSource}
-          isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
-          onClose={() => {
-            setShowConnectorPermissionsModal(false);
-          }}
-          readOnly={false}
-          isAdmin={isAdmin}
-        />
-      )}
+      {selectedDataSourceView?.dataSource &&
+        selectedDataSourceView.dataSource.connector && (
+          <ConnectorPermissionsModal
+            owner={owner}
+            connector={selectedDataSourceView.dataSource.connector}
+            dataSource={selectedDataSourceView.dataSource}
+            isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+            onClose={() => {
+              setShowConnectorPermissionsModal(false);
+            }}
+            readOnly={false}
+            isAdmin={isAdmin}
+          />
+        )}
     </>
   );
 };
