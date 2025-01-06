@@ -19,6 +19,7 @@ import {
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  DEEPSEEK_CHAT_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
@@ -36,6 +37,7 @@ import {
 import assert from "assert";
 
 import {
+  DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -125,18 +127,27 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   };
 }
 
-function _getDefaultSearchActionForGlobalAgent({
+function _getDefaultWebActionsForGlobalAgent({
   agentSid,
 }: {
   agentSid: GLOBAL_AGENTS_SID;
-}): AgentActionConfigurationType {
-  return {
-    id: -1,
-    sId: agentSid + "-search-action",
-    type: "websearch_configuration",
-    name: DEFAULT_WEBSEARCH_ACTION_NAME,
-    description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  };
+}): [AgentActionConfigurationType, AgentActionConfigurationType] {
+  return [
+    {
+      id: -1,
+      sId: agentSid + "-search-action",
+      type: "websearch_configuration",
+      name: DEFAULT_WEBSEARCH_ACTION_NAME,
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+    },
+    {
+      id: -1,
+      sId: agentSid + "-browse-action",
+      type: "browse_configuration",
+      name: DEFAULT_BROWSE_ACTION_NAME,
+      description: DEFAULT_BROWSE_ACTION_DESCRIPTION,
+    },
+  ];
 }
 
 /**
@@ -212,7 +223,7 @@ function _getHelperGlobalAgent({
         name: "search_dust_docs",
         description: `The documentation of the Dust platform.`,
       },
-      _getDefaultSearchActionForGlobalAgent({
+      ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.HELPER,
       }),
     ],
@@ -250,7 +261,7 @@ function _getGPT35TurboGlobalAgent({
       temperature: 0.7,
     },
     actions: [
-      _getDefaultSearchActionForGlobalAgent({
+      ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GPT35_TURBO,
       }),
     ],
@@ -297,7 +308,7 @@ function _getGPT4GlobalAgent({
       temperature: 0.7,
     },
     actions: [
-      _getDefaultSearchActionForGlobalAgent({
+      ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GPT4,
       }),
     ],
@@ -654,7 +665,7 @@ function _getMistralLargeGlobalAgent({
       temperature: 0.7,
     },
     actions: [
-      _getDefaultSearchActionForGlobalAgent({
+      ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
       }),
     ],
@@ -698,7 +709,7 @@ function _getMistralMediumGlobalAgent({
       temperature: 0.7,
     },
     actions: [
-      _getDefaultSearchActionForGlobalAgent({
+      ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
       }),
     ],
@@ -736,7 +747,7 @@ function _getMistralSmallGlobalAgent({
       temperature: 0.7,
     },
     actions: [
-      _getDefaultSearchActionForGlobalAgent({
+      ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
       }),
     ],
@@ -779,12 +790,57 @@ function _getGeminiProGlobalAgent({
       temperature: 0.7,
     },
     actions: [
-      _getDefaultSearchActionForGlobalAgent({
+      ..._getDefaultWebActionsForGlobalAgent({
         agentSid: GLOBAL_AGENTS_SID.GEMINI_PRO,
       }),
     ],
     maxStepsPerRun: 3,
     visualizationEnabled: true,
+    templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
+    groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+
+function _getDeepSeekGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "disabled_by_admin";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DEEPSEEK,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "deepseek",
+    description: DEEPSEEK_CHAT_MODEL_CONFIG.description,
+    instructions:
+      "Only use web search if the user's question require recent or up to date information. Browse a maximum of 8 web pages.",
+    pictureUrl: "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: DEEPSEEK_CHAT_MODEL_CONFIG.providerId,
+      modelId: DEEPSEEK_CHAT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: GLOBAL_AGENTS_SID.DEEPSEEK,
+      }),
+    ],
+    maxStepsPerRun: 3,
+    visualizationEnabled: false,
     templateId: null,
     // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
@@ -1099,7 +1155,7 @@ function _getDustGlobalAgent(
       userFavorite: false,
       model,
       actions: [
-        _getDefaultSearchActionForGlobalAgent({
+        ..._getDefaultWebActionsForGlobalAgent({
           agentSid: GLOBAL_AGENTS_SID.DUST,
         }),
       ],
@@ -1319,6 +1375,9 @@ function getGlobalAgent(
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       agentConfiguration = _getGeminiProGlobalAgent({ auth, settings });
       break;
+    case GLOBAL_AGENTS_SID.DEEPSEEK:
+      agentConfiguration = _getDeepSeekGlobalAgent({ auth, settings });
+      break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
         settings,
@@ -1439,6 +1498,11 @@ export async function getGlobalAgents(
   if (!flags.includes("openai_o1_high_reasoning_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
+    );
+  }
+  if (!flags.includes("deepseek_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK
     );
   }
 

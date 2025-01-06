@@ -17,6 +17,7 @@ import type {
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
+  DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
@@ -159,7 +160,7 @@ export async function submitAssistantBuilderForm({
           {
             type: "browse_configuration",
             name: DEFAULT_BROWSE_ACTION_NAME,
-            description: "Browse the content of a web page",
+            description: DEFAULT_BROWSE_ACTION_DESCRIPTION,
           },
         ];
 
