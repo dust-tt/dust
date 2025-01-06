@@ -156,10 +156,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
         className={cn("s-group/card s-relative", containerClassName)}
         ref={ref}
       >
-        <InnerCard
-          className={cn("s-z-0 s-h-full s-w-full", className)}
-          {...props}
-        />
+        <InnerCard className={cn("s-h-full s-w-full", className)} {...props} />
         {action && <CardActions>{action}</CardActions>}
       </div>
     );

@@ -1,27 +1,65 @@
+import { cva, VariantProps } from "class-variance-authority";
 import React from "react";
 
 import { Avatar, Button, CitationGrid } from "@sparkle/components";
 import { cn } from "@sparkle/lib/utils";
 
-type ConversationMessageType = "agent" | "user";
+const conversationContainerVariants = cva(
+  "s-w-full s-@container/conversation",
+  {
+    variants: {
+      padding: {
+        none: "",
+        default: "s-px-1 @[32rem]/conversation:s-px-4",
+      },
+    },
+    defaultVariants: {
+      padding: "default",
+    },
+  }
+);
 
-const messageTypeClasses: Record<ConversationMessageType, string> = {
-  user: "s-bg-muted-background s-w-full @md:s-w-[calc(100%-8rem)] @md:s-ml-[8rem]",
-  agent: "",
-};
+const messageVariants = cva(
+  "s-mt-2 s-flex s-w-full s-flex-col s-gap-4 s-rounded-3xl s-p-3 @[32rem]/conversation:s-p-4",
+  {
+    variants: {
+      type: {
+        user: "s-bg-muted-background s-w-full @[32rem]/conversation:s-w-[calc(100%-8rem)] @[32rem]/conversation:s-ml-[8rem]",
+        agent: "",
+      },
+    },
+    defaultVariants: {
+      type: "agent",
+    },
+  }
+);
+
+const messageContentVariants = cva(
+  "s-flex s-flex-col s-gap-3 @[32rem]/conversation:s-gap-4",
+  {
+    variants: {},
+  }
+);
+
+const messageHeaderVariants = cva(
+  "s-flex s-items-center s-gap-2 s-p-1 @[32rem]/conversation:s-p-0",
+  {
+    variants: {},
+  }
+);
 
 export const ConversationContainer = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ children, className, ...props }, ref) => {
   return (
-    <div
-      ref={ref}
-      className={cn("s-w-full s-@container", className)}
-      {...props}
-    >
-      <div className="s-flex s-w-full s-flex-col s-gap-4 s-px-1 @md:s-gap-6 @md:s-px-4">
-        {children}
+    <div className="s-w-full">
+      <div
+        ref={ref}
+        className={cn(conversationContainerVariants({}), className)}
+        {...props}
+      >
+        <div className="s-flex s-w-full s-flex-col s-gap-4">{children}</div>
       </div>
     </div>
   );
@@ -30,15 +68,15 @@ export const ConversationContainer = React.forwardRef<
 ConversationContainer.displayName = "ConversationContainer";
 
 interface ConversationMessageProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof messageVariants> {
   avatarBusy?: boolean;
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
   citations?: React.ReactElement[];
-  name: string | null;
+  name?: string;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
-  type: ConversationMessageType;
 }
 
 /**
@@ -67,16 +105,12 @@ export const ConversationMessage = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={cn(
-          "s-mt-2 s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-3xl s-p-3 @md:s-p-4",
-          messageTypeClasses[type],
-          className
-        )}
+        className={cn(messageVariants({ type, className }))}
         {...props}
       >
         <ConversationMessageHeader
           avatarUrl={pictureUrl}
-          name={name ?? undefined}
+          name={name}
           isBusy={avatarBusy}
           renderName={renderName}
         />
@@ -107,10 +141,7 @@ export const ConversationMessageContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(
-        "s-flex s-flex-col s-justify-stretch s-gap-3 @md:s-gap-4",
-        className
-      )}
+      className={cn(messageContentVariants({}), className)}
       {...props}
     >
       <div
@@ -144,7 +175,7 @@ export const ConversationMessageHeader = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-items-center s-gap-2 s-p-1 @md:s-p-0", className)}
+      className={cn(messageHeaderVariants({}), className)}
       {...props}
     >
       <Avatar
