@@ -636,6 +636,7 @@ const EXTENSION_WHITELIST = [
 
   // Documentation
   ".md", // Markdown
+  ".mdx", // Markdown with JSX
   ".rst", // ReStructured Text
   ".adoc", // AsciiDoc
   ".tex", // LaTeX
