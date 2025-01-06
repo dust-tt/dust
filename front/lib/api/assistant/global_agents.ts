@@ -110,13 +110,9 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
     globalGroup.value,
   ]);
 
-  const nonConversationSpaces = globalGroupSpaces.filter(
-    (space) => !space.isConversations()
-  );
-
   const dataSourceViews = await DataSourceViewResource.listBySpaces(
     auth,
-    nonConversationSpaces
+    globalGroupSpaces
   );
 
   return {

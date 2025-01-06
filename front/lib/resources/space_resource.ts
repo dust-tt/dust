@@ -221,7 +221,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  static async listForGroups(auth: Authenticator, groups: GroupResource[]) {
+  static async listForGroups(
+    auth: Authenticator,
+    groups: GroupResource[],
+    options?: { includeConversationsSpace?: boolean }
+  ) {
     const groupSpaces = await GroupSpaceModel.findAll({
       where: {
         groupId: groups.map((g) => g.id),
@@ -231,6 +235,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const spaces = await this.baseFetch(auth, {
       where: {
         id: groupSpaces.map((v) => v.vaultId),
+        kind: {
+          [Op.in]: [
+            "system",
+            "global",
+            "regular",
+            "public",
+            ...(options?.includeConversationsSpace ? ["conversations"] : []),
+          ],
+        },
       },
     });
 
