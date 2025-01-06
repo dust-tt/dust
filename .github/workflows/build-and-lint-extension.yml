@@ -3,7 +3,6 @@ name: Lint & Build (extension)
 on:
   push:
     paths:
-      - sdks/js/**
       - extension/**
       - .github/workflows/build-and-lint-extension.yml
 
@@ -17,7 +16,5 @@ jobs:
           node-version: 20.13.0
           cache: "npm"
           cache-dependency-path: ./front/package-lock.json
-      - working-directory: sdks/js
-        run: npm install && npm run package:production
       - working-directory: extension
         run: npm install && npm run lint && npm run format:check && npm run package:production
