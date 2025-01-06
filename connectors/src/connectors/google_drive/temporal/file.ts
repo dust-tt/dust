@@ -179,7 +179,7 @@ async function handleFileExport(
     return null;
   }
   let result;
-  if (file.mimeType === "text/plain") {
+  if (["text/plain", "text/markdown"].includes(file.mimeType)) {
     result = handleTextFile(res.data, maxDocumentLen);
   } else if (file.mimeType === "text/csv") {
     const parentGoogleIds = await getFileParentsMemoized(
