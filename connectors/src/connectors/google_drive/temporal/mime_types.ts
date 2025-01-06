@@ -14,6 +14,7 @@ export async function getMimeTypesToDownload({
 }) {
   const mimeTypes = [
     "text/plain",
+    "text/markdown",
     // docx files hosted on Gdrive
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     // Temporarily excluding pptx files for debugging purpose.
