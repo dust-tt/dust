@@ -328,7 +328,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }
@@ -509,9 +509,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandIds: number[] = [];
     const brandHelpCenterIds: number[] = [];
     const brandTicketsIds: number[] = [];
-    const categoryIds: number[] = [];
-    const articleIds: number[] = [];
-    const ticketIds: number[] = [];
+    const categoryIdsPerBrandId: Record<number, number[]> = [];
+    const articleIdsPerBrandId: Record<number, number[]> = [];
+    const ticketIdsPerBrandId: Record<number, number[]> = [];
     internalIds.forEach((internalId) => {
       const { type, objectIds } = getIdsFromInternalId(
         this.connectorId,
@@ -531,15 +531,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           return;
         }
         case "category": {
-          categoryIds.push(objectIds.categoryId);
+          // initializing the array if it does not exist
+          categoryIdsPerBrandId[objectIds.brandId] ||= [];
+          categoryIdsPerBrandId[objectIds.brandId]?.push(objectIds.categoryId);
           return;
         }
         case "article": {
-          articleIds.push(objectIds.articleId);
+          // initializing the array if it does not exist
+          articleIdsPerBrandId[objectIds.brandId] ||= [];
+          articleIdsPerBrandId[objectIds.brandId]?.push(objectIds.articleId);
           return;
         }
         case "ticket": {
-          ticketIds.push(objectIds.ticketId);
+          // initializing the array if it does not exist
+          ticketIdsPerBrandId[objectIds.brandId] ||= [];
+          ticketIdsPerBrandId[objectIds.brandId]?.push(objectIds.ticketId);
           return;
         }
         default: {
@@ -567,18 +573,42 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       brandTicketsIds.includes(brand.brandId)
     );
 
-    const categories = await ZendeskCategoryResource.fetchByCategoryIds({
-      connectorId,
-      categoryIds,
-    });
-    const articles = await ZendeskArticleResource.fetchByArticleIds({
-      connectorId,
-      articleIds,
-    });
-    const tickets = await ZendeskTicketResource.fetchByTicketIds({
-      connectorId,
-      ticketIds,
-    });
+    const categories: ZendeskCategoryResource[] = [];
+    for (const [brandId, categoryIds] of Object.entries(
+      categoryIdsPerBrandId
+    ) as unknown as [number, number[]][]) {
+      categories.push(
+        ...(await ZendeskCategoryResource.fetchByCategoryIds({
+          connectorId,
+          brandId,
+          categoryIds,
+        }))
+      );
+    }
+    const articles: ZendeskArticleResource[] = [];
+    for (const [brandId, articleIds] of Object.entries(
+      articleIdsPerBrandId
+    ) as unknown as [number, number[]][]) {
+      articles.push(
+        ...(await ZendeskArticleResource.fetchByArticleIds({
+          connectorId,
+          brandId,
+          articleIds,
+        }))
+      );
+    }
+    const tickets: ZendeskTicketResource[] = [];
+    for (const [brandId, ticketIds] of Object.entries(
+      ticketIdsPerBrandId
+    ) as unknown as [number, number[]][]) {
+      tickets.push(
+        ...(await ZendeskTicketResource.fetchByTicketIds({
+          connectorId,
+          brandId,
+          ticketIds,
+        }))
+      );
+    }
 
     return new Ok([
       ...brands.map((brand) => brand.toContentNode(connectorId)),
