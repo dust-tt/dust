@@ -1,4 +1,4 @@
-name: Deploy Prodbox TMP
+name: Deploy Prodbox EU (TMP)
 
 on:
   workflow_dispatch:
@@ -9,9 +9,7 @@ on:
         default: "us-central1"
         type: choice
         options:
-          - "us-central1"
           - "europe-west1"
-          - "all"
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -26,6 +24,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_EU_PROJECT_ID }}
   IMAGE_NAME: prodbox
 
 jobs:
@@ -91,23 +90,12 @@ jobs:
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Set project ID
-        id: project
-        run: |
-          if [ "${{ matrix.region }}" = "us-central1" ]; then
-            echo "project_id=${{ secrets.US_GCLOUD_PROJECT_ID }}" >> $GITHUB_OUTPUT
-          else
-            echo "project_id=${{ secrets.EU_GCLOUD_PROJECT_ID }}" >> $GITHUB_OUTPUT
-          fi
-
       - name: "Authenticate with Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
           credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
 
       - name: Build image for ${{ matrix.region }}
-        env:
-          GCLOUD_PROJECT_ID: ${{ steps.project.outputs.project_id }}
         run: |
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
