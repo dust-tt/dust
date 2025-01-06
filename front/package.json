@@ -3,7 +3,7 @@
     "dev:all": "concurrently --kill-others \"cd ../types/ && npm run start\" \"sleep 20 && cd ../sdks/js/ && npm run start\" \"sleep 22 && next dev\" \"sleep 22 && tsx ./start_worker.ts\"",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start --keepAliveTimeout 610000",
+    "start": "next start --keepAliveTimeout 5000",
     "start:worker": "tsx ./start_worker.ts",
     "lint": "next lint",
     "docs": "npx next-swagger-doc-cli swagger.json 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || { npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json && npm run format; }",
