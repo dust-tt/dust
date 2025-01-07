@@ -40,9 +40,14 @@ export const parseUploadRequest = async (
 
       // Ensure the file is of the correct type.
       filter: function (part) {
-        // formidable returns markdown file parts as application/octet-stream
         if (file.contentType === "text/markdown") {
-          return part.mimetype === "application/octet-stream";
+          // some setups do not detect the markdown type and return a content type of application/octet-stream
+          return (
+            part.mimetype !== null &&
+            ["text/markdown", "application/octet-stream"].includes(
+              part.mimetype
+            )
+          );
         }
         return part.mimetype === file.contentType;
       },
