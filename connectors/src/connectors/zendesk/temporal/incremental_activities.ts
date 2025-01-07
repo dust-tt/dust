@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { ZENDESK_MIME_TYPES } from "@dust-tt/types";
 
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
@@ -153,7 +154,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
               parents,
               parentId: parents[1],
               title: category.name,
-              mimeType: "application/vnd.dust.zendesk.category",
+              mimeType: ZENDESK_MIME_TYPES.CATEGORY,
             });
           } else {
             /// ignoring these to proceed with the other articles, but these might have to be checked at some point

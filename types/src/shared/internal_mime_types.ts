@@ -78,6 +78,18 @@ export const WEBCRAWLER_MIME_TYPES = {
 export type WebcrawlerMimeType =
   (typeof WEBCRAWLER_MIME_TYPES)[keyof typeof WEBCRAWLER_MIME_TYPES];
 
+export const ZENDESK_MIME_TYPES = {
+  BRAND: "application/vnd.dust.zendesk.brand",
+  HELP_CENTER: "application/vnd.dust.zendesk.helpcenter",
+  CATEGORY: "application/vnd.dust.zendesk.category",
+  ARTICLE: "application/vnd.dust.zendesk.article",
+  TICKETS: "application/vnd.dust.zendesk.tickets",
+  TICKET: "application/vnd.dust.zendesk.ticket",
+};
+
+export type ZendeskMimeType =
+  (typeof ZENDESK_MIME_TYPES)[keyof typeof ZENDESK_MIME_TYPES];
+
 export type DustMimeType =
   | ConfluenceMimeType
   | GithubMimeType
@@ -87,4 +99,5 @@ export type DustMimeType =
   | NotionMimeType
   | SlackMimeType
   | SnowflakeMimeType
-  | WebcrawlerMimeType;
+  | WebcrawlerMimeType
+  | ZendeskMimeType;

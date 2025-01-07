@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { ZENDESK_MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import type {
@@ -175,7 +176,7 @@ export async function syncArticle({
       loggerArgs: { ...loggerArgs, articleId: article.id },
       upsertContext: { sync_type: "batch" },
       title: article.title,
-      mimeType: "application/vnd.dust.zendesk.article",
+      mimeType: ZENDESK_MIME_TYPES.ARTICLE,
       async: true,
     });
     await articleInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });
