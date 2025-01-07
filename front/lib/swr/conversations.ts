@@ -121,10 +121,12 @@ export function useConversationMessages({
   conversationId,
   workspaceId,
   limit,
+  startAtRank,
 }: {
   conversationId: string | null;
   workspaceId: string;
   limit: number;
+  startAtRank?: number;
 }) {
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
@@ -145,7 +147,10 @@ export function useConversationMessages({
         }
 
         if (previousPageData === null) {
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
+          const startAtRankParam = startAtRank
+            ? `&lastValue=${startAtRank - 1}`
+            : "";
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}${startAtRankParam}`;
         }
 
         return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;

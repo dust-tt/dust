@@ -423,6 +423,30 @@ export async function getConversation(
   });
 }
 
+export async function getConversationMessageRank(
+  auth: Authenticator,
+  conversation: ConversationType | ConversationWithoutContentType,
+  messageId: string
+): Promise<number | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const message = await Message.findOne({
+    where: {
+      conversationId: conversation.id,
+      sId: messageId,
+    },
+  });
+
+  if (!message) {
+    return null;
+  }
+
+  return message.rank;
+}
+
 export async function getConversationMessageType(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType,

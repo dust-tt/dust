@@ -44,6 +44,7 @@ interface ConversationViewerProps {
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   owner: WorkspaceType;
   user: UserType;
+  messageRankToScrollTo?: number | undefined;
 }
 
 /**
@@ -62,6 +63,7 @@ const ConversationViewer = React.forwardRef<
     onStickyMentionsChange,
     isInModal = false,
     isFading = false,
+    messageRankToScrollTo,
   },
   ref
 ) {
@@ -91,6 +93,7 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
+    startAtRank: messageRankToScrollTo,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({
