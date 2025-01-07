@@ -1,17 +1,3 @@
-use anyhow::{anyhow, Result};
-use async_trait::async_trait;
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
-use futures::future::try_join_all;
-use serde_json::Value;
-use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::str::FromStr;
-use tokio_postgres::types::ToSql;
-use tokio_postgres::{NoTls, Transaction};
-
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeType};
 use crate::{
@@ -38,6 +24,20 @@ use crate::{
     stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES},
     utils,
 };
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
+use futures::future::try_join_all;
+use serde_json::Value;
+use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::str::FromStr;
+use tokio_postgres::types::ToSql;
+use tokio_postgres::{NoTls, Transaction};
+use tracing::log::info;
 
 use super::store::{DocumentCreateParams, FolderUpsertParams, TableUpsertParams};
 
@@ -166,9 +166,13 @@ impl PostgresStore {
             .await?
             .get(0);
         if count != upsert_params.parents.len() as i64 {
-            return Err(anyhow!(
-                "Some parents refer to non-existing data_sources_nodes."
-            ));
+            info!(
+                data_source_id = data_source_id,
+                node_id = node_id,
+                parents = ?payload.parents,
+                operation = "upsert_node",
+                "[KWSEARCH] invariant_parent_exist_in_nodes"
+            );
         }
 
         let created = utils::now();
