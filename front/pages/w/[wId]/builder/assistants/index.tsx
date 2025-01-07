@@ -1,14 +1,10 @@
 import {
-  Avatar,
   Button,
-  Cog6ToothIcon,
-  ContextItem,
   Page,
+  PlanetIcon,
   PlusIcon,
-  Popup,
   RobotIcon,
   SearchInput,
-  SliderToggle,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -21,18 +17,18 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { AGENT_CONFIGURATION_SCOPES } from "@dust-tt/types";
-import { assertNever, isBuilder } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import type { AssistantManagerTabsType } from "@app/components/assistant/AssistantsTable";
+import {
+  ASSISTANT_MANAGER_TABS,
+  AssistantsTable,
+} from "@app/components/assistant/AssistantsTable";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
-import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
-import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -43,7 +39,7 @@ import { subFilter } from "@app/lib/utils";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  tabScope: AgentConfigurationScope;
+  tabScope: AssistantManagerTabsType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -53,10 +49,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
-  const tabScope = Object.keys(SCOPE_INFO).includes(
-    context.query.tabScope as AgentConfigurationScope
+
+  const tabScope = ASSISTANT_MANAGER_TABS.includes(
+    context.query.tabScope as AssistantManagerTabsType
   )
-    ? (context.query.tabScope as AgentConfigurationScope)
+    ? (context.query.tabScope as AssistantManagerTabsType)
     : "workspace";
   return {
     props: {
@@ -67,8 +64,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-function isValidTab(tab: string): tab is AgentConfigurationScope {
-  return AGENT_CONFIGURATION_SCOPES.includes(tab as AgentConfigurationScope);
+function isValidTab(tab?: string): tab is AssistantManagerTabsType {
+  return ASSISTANT_MANAGER_TABS.includes(tab as AgentConfigurationScope);
 }
 
 export default function WorkspaceAssistants({
@@ -77,21 +74,29 @@ export default function WorkspaceAssistants({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useHashParam("tabScope", "workspace");
+  const [selectedTab, setSelectedTab] = useHashParam("tabScope", tabScope);
 
-  const includes: ("authors" | "usage")[] = (() => {
-    switch (tabScope) {
+  const activeTab = useMemo(() => {
+    return selectedTab && isValidTab(selectedTab) ? selectedTab : "workspace";
+  }, [selectedTab]);
+
+  const includes: ("authors" | "usage" | "feedbacks")[] = (() => {
+    if (assistantSearch) {
+      return ["usage", "feedbacks"];
+    }
+
+    switch (activeTab) {
+      case "edited_by_me":
       case "published":
-        return ["authors", "usage"];
+        return ["authors", "usage", "feedbacks"];
       case "private":
       case "global":
       case "workspace":
-        return ["usage"];
+        return ["usage", "feedbacks"];
       default:
-        assertNever(tabScope);
+        assertNever(activeTab);
     }
   })();
 
@@ -104,24 +109,20 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView:
-      selectedTab === "private" ? "list" : (selectedTab as AgentsGetViewType),
+      activeTab === "private" || activeTab === "edited_by_me" || assistantSearch
+        ? "list"
+        : (activeTab as AgentsGetViewType),
     includes,
   });
 
-  const { agentConfigurations: searchableAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: assistantSearch ? "list" : null,
-    });
-
-  const filteredAgents = (
-    assistantSearch ? searchableAgentConfigurations : agentConfigurations
-  ).filter((a) => {
-    return (
-      // filter by tab only if no search
-      (assistantSearch || a.scope === selectedTab) &&
-      subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
-    );
+  const filteredAgents = agentConfigurations.filter((a) => {
+    if (assistantSearch) {
+      return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
+    } else if (activeTab === "edited_by_me") {
+      return a.lastAuthors?.includes("Me");
+    } else {
+      return a.scope === activeTab;
+    }
   });
 
   const [showDetails, setShowDetails] =
@@ -158,13 +159,21 @@ export default function WorkspaceAssistants({
 
     await mutateAgentConfigurations();
   };
-  const tabs = (
-    ["workspace", "published", "private", "global"] as AgentConfigurationScope[]
-  ).map((scope) => ({
-    label: SCOPE_INFO[scope].shortLabel,
-    icon: SCOPE_INFO[scope].icon,
-    scope,
-  }));
+
+  const tabs = [
+    {
+      label: "Edited my me",
+      icon: PlanetIcon,
+      scope: "edited_by_me",
+    },
+    ...(["workspace", "published", "global"] as AgentConfigurationScope[]).map(
+      (scope) => ({
+        label: SCOPE_INFO[scope].shortLabel,
+        icon: SCOPE_INFO[scope].icon,
+        scope,
+      })
+    ),
+  ];
 
   const disabledTablineClass =
     "!border-element-500 !text-element-500 !cursor-default";
@@ -186,44 +195,6 @@ export default function WorkspaceAssistants({
       window.removeEventListener("keydown", handleKeyPress);
     };
   }, []);
-
-  switch (orderBy) {
-    case "name": {
-      filteredAgents.sort((a, b) => {
-        return a.name.localeCompare(b.name);
-      });
-      break;
-    }
-    case "usage": {
-      filteredAgents.sort((a, b) => {
-        return (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0);
-      });
-      break;
-    }
-    case "edited_at":
-      filteredAgents.sort((a, b) => {
-        const dateA = a.versionCreatedAt
-          ? new Date(a.versionCreatedAt).getTime()
-          : -Infinity;
-        const dateB = b.versionCreatedAt
-          ? new Date(b.versionCreatedAt).getTime()
-          : -Infinity;
-        return dateB - dateA;
-      });
-      break;
-    default:
-      assertNever(orderBy);
-  }
-
-  useEffect(() => {
-    if (tabScope === "global") {
-      setOrderBy("name");
-    }
-  }, [tabScope]);
-
-  const activeTab = useMemo(() => {
-    return selectedTab && isValidTab(selectedTab) ? selectedTab : "workspace";
-  }, [selectedTab]);
 
   return (
     <AppLayout
@@ -267,33 +238,29 @@ export default function WorkspaceAssistants({
                 {tabs.map((tab) => (
                   <TabsTrigger
                     key={tab.label}
-                    value={tab.scope}
+                    value={assistantSearch ? "" : tab.scope}
                     label={tab.label}
                     icon={tab.icon}
                     disabled={!!assistantSearch}
                     className={assistantSearch ? disabledTablineClass : ""}
-                    onClick={() => setSelectedTab(tab.scope)}
+                    onClick={() =>
+                      !assistantSearch && setSelectedTab(tab.scope)
+                    }
                   />
                 ))}
-                <div className="flex h-full w-full items-center justify-end">
-                  <SearchOrderDropdown
-                    orderBy={orderBy}
-                    setOrderBy={setOrderBy}
-                    disabled={activeTab === "global"}
-                  />
-                </div>
               </TabsList>
             </Tabs>
             <Page.P>
               {assistantSearch
                 ? "Searching across all assistants"
-                : SCOPE_INFO[activeTab].text}
+                : activeTab === "edited_by_me"
+                  ? "Your edited and created assistants"
+                  : SCOPE_INFO[activeTab].text}
             </Page.P>
             {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
-              <AgentViewForScope
+              <AssistantsTable
                 owner={owner}
                 agents={filteredAgents}
-                scopeView={assistantSearch ? "search-view" : activeTab}
                 setShowDetails={setShowDetails}
                 handleToggleAgentStatus={handleToggleAgentStatus}
                 showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
@@ -317,114 +284,4 @@ export default function WorkspaceAssistants({
       </Page.Vertical>
     </AppLayout>
   );
-}
-
-function AgentViewForScope({
-  owner,
-  agents,
-  scopeView,
-  setShowDetails,
-  handleToggleAgentStatus,
-  showDisabledFreeWorkspacePopup,
-  setShowDisabledFreeWorkspacePopup,
-}: {
-  owner: WorkspaceType;
-  agents: LightAgentConfigurationType[];
-  scopeView: AgentConfigurationScope | "search-view";
-  setShowDetails: (agent: LightAgentConfigurationType) => void;
-  handleToggleAgentStatus: (
-    agent: LightAgentConfigurationType
-  ) => Promise<void>;
-  showDisabledFreeWorkspacePopup: string | null;
-  setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
-}) {
-  const router = useRouter();
-
-  return (
-    <ContextItem.List>
-      {agents.map((agent) => (
-        <ContextItem
-          key={agent.sId}
-          title={`@${agent.name}`}
-          subElement={
-            agent.scope === "global" || scopeView === "search-view"
-              ? null
-              : assistantUsageMessage({
-                  assistantName: agent.name,
-                  usage: agent.usage || null,
-                  isLoading: false,
-                  isError: false,
-                  shortVersion: true,
-                })
-          }
-          visual={<Avatar visual={agent.pictureUrl} size="md" />}
-          onClick={() => setShowDetails(agent)}
-          action={
-            agent.scope === "global" ? (
-              <GlobalAgentAction agent={agent} />
-            ) : null
-          }
-        >
-          <ContextItem.Description>
-            <div className="line-clamp-2 text-element-700">
-              {agent.description}
-            </div>
-          </ContextItem.Description>
-        </ContextItem>
-      ))}
-    </ContextItem.List>
-  );
-
-  function GlobalAgentAction({
-    agent,
-  }: {
-    agent: LightAgentConfigurationType;
-  }) {
-    if (agent.sId === "helper") {
-      return null;
-    }
-
-    if (agent.sId === "dust") {
-      return (
-        <Button
-          variant="outline"
-          icon={Cog6ToothIcon}
-          label="Manage"
-          size="sm"
-          disabled={!isBuilder(owner)}
-          onClick={(e: Event) => {
-            e.stopPropagation();
-            void router.push(`/w/${owner.sId}/builder/assistants/dust`);
-          }}
-        />
-      );
-    }
-
-    return (
-      <div className="relative">
-        <SliderToggle
-          size="xs"
-          onClick={async (e) => {
-            e.stopPropagation();
-            await handleToggleAgentStatus(agent);
-          }}
-          selected={agent.status === "active"}
-          disabled={agent.status === "disabled_missing_datasource"}
-        />
-        <Popup
-          show={showDisabledFreeWorkspacePopup === agent.sId}
-          className="absolute bottom-8 right-0"
-          chipLabel={`Free plan`}
-          description={`@${agent.name} is only available on our paid plans.`}
-          buttonLabel="Check Dust plans"
-          buttonClick={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          }}
-          onClose={() => {
-            setShowDisabledFreeWorkspacePopup(null);
-          }}
-        />
-      </div>
-    );
-  }
 }

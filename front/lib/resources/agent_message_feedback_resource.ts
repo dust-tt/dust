@@ -9,12 +9,17 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, WhereOptions } from "sequelize";
-import type { CreationAttributes, Transaction } from "sequelize";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
@@ -22,8 +27,8 @@ import type {
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import {
+  AgentMessage,
   AgentMessage as AgentMessageModel,
   AgentMessageFeedback,
   Conversation,
@@ -242,6 +247,30 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
       };
     });
+  }
+
+  static async getFeedbackCountForAssistants(
+    auth: Authenticator,
+    agentConfigurationIds: string[]
+  ) {
+    const dateMinus30Days = new Date();
+    dateMinus30Days.setDate(dateMinus30Days.getDate() - 30);
+    const workspace = auth.getNonNullableWorkspace();
+    const feedbackCount = await AgentMessageFeedback.findAndCountAll({
+      attributes: ["agentConfigurationId", "thumbDirection"],
+      where: {
+        workspaceId: workspace.id,
+        agentConfigurationId: agentConfigurationIds,
+        createdAt: { [Op.gt]: dateMinus30Days },
+      },
+      group: ["agentConfigurationId", "thumbDirection"],
+    });
+
+    return feedbackCount.count as {
+      thumbDirection: AgentMessageFeedbackDirection;
+      agentConfigurationId: string;
+      count: number;
+    }[];
   }
 
   static async getConversationFeedbacksForUser(

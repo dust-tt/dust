@@ -212,6 +212,7 @@ export type LightAgentConfigurationType = {
   // `lastAuthors` is expensive to compute, so we only compute it when needed.
   lastAuthors?: AgentRecentAuthors;
   usage?: AgentUsageType;
+  feedbacks?: { up: number; down: number };
 
   maxStepsPerRun: number;
   visualizationEnabled: boolean;

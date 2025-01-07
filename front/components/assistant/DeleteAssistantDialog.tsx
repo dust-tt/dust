@@ -11,7 +11,7 @@ import {
 } from "@app/lib/swr/assistants";
 
 interface DeleteAssistantDialogProps {
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfiguration?: LightAgentConfigurationType;
   isOpen: boolean;
   isPrivateAssistant?: boolean;
   onClose: () => void;
@@ -26,7 +26,7 @@ export function DeleteAssistantDialog({
   owner,
 }: DeleteAssistantDialogProps) {
   const agentUsage = useAgentUsage({
-    agentConfigurationId: agentConfiguration.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
     disabled: !isOpen,
     workspaceId: owner.sId,
   });
