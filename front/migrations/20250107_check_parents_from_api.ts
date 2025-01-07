@@ -6,6 +6,7 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const coreSequelize = getCorePrimaryDbConnection();
+const DATASOURCE_BATCH_SIZE = 25;
 
 function checkDocument(document: any, logger: typeof Logger) {
   if (document.parents.length === 0) {
@@ -76,18 +77,20 @@ async function checkStaticDataSourcesParents(
   nextDataSourceId: number,
   logger: typeof Logger
 ) {
-  const staticDataSources = await DataSourceModel.findAll({
-    where: { connectorProvider: null, id: { [Op.gte]: nextDataSourceId } },
-  });
-  if (!staticDataSources.length) {
-    logger.info("No static datasource");
-    return;
-  }
+  const startId = nextDataSourceId;
 
-  for (const dataSource of staticDataSources) {
-    logger.info({ dataSource }, "CHECK");
-    await checkStaticDataSourceParents(dataSource, logger);
-  }
+  let staticDataSources;
+  do {
+    staticDataSources = await DataSourceModel.findAll({
+      where: { connectorProvider: null, id: { [Op.gte]: startId } },
+      limit: DATASOURCE_BATCH_SIZE,
+    });
+
+    for (const dataSource of staticDataSources) {
+      logger.info({ dataSource }, "CHECK");
+      await checkStaticDataSourceParents(dataSource, logger);
+    }
+  } while (staticDataSources.length === DATASOURCE_BATCH_SIZE);
 }
 
 makeScript(
