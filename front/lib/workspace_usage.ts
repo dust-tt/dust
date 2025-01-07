@@ -441,15 +441,30 @@ export async function getFeedbacksUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const feedbacks =
-    (await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
+    await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
       startDate,
       endDate,
       workspace,
-    })) as FeedbackQueryResult[];
-  if (!feedbacks.length) {
+    });
+
+  if (!feedbacks || feedbacks.length === 0) {
     return "No data available for the selected period.";
   }
-  return generateCsvFromQueryResult(feedbacks);
+
+  const feedbacksWithMinimalFields = feedbacks.map((feedback) => {
+    const jsonFeedback = feedback.toJSON();
+    return {
+      id: jsonFeedback.id,
+      createdAt: jsonFeedback.createdAt,
+      userName: jsonFeedback.userName,
+      userEmail: jsonFeedback.userEmail,
+      agentConfigurationId: jsonFeedback.agentConfigurationId,
+      agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
+      thumb: jsonFeedback.thumbDirection,
+      content: jsonFeedback.content?.replace(/\r?\n/g, "\\n") || null,
+    };
+  }) as FeedbackQueryResult[];
+  return generateCsvFromQueryResult(feedbacksWithMinimalFields);
 }
 
 function generateCsvFromQueryResult(

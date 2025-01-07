@@ -30,28 +30,55 @@ export type AgentMessageFeedbackType = {
   isConversationShared: boolean;
 };
 
-export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType & {
-  conversationId: string | null;
+export type FeedbackUserInfo = {
   userName: string;
   userEmail: string;
   userImageUrl: string | null;
 };
 
+export type FeedbackConversationInfo = {
+  conversationId: string | null;
+};
+
+export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType &
+  FeedbackConversationInfo &
+  FeedbackUserInfo;
+
 export async function getConversationFeedbacksForUser(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
-): Promise<Result<AgentMessageFeedbackType[], ConversationError | Error>> {
+) {
   if (!canAccessConversation(auth, conversation)) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
-  const feedbacks =
+  const feedbacksRes =
     await AgentMessageFeedbackResource.getConversationFeedbacksForUser(
       auth,
       conversation
     );
 
-  return feedbacks;
+  const feedbacks = feedbacksRes
+    .filter(
+      (feedback): feedback is AgentMessageFeedbackResource => feedback !== null
+    )
+    .map((feedback) => {
+      const jsonFeedback = feedback.toJSON();
+      return {
+        id: jsonFeedback.id,
+        messageId: jsonFeedback.messageId,
+        agentMessageId: jsonFeedback.agentMessageId,
+        userId: jsonFeedback.userId,
+        thumbDirection: jsonFeedback.thumbDirection,
+        content: jsonFeedback.content,
+        isConversationShared: jsonFeedback.isConversationShared,
+        createdAt: jsonFeedback.createdAt,
+        agentConfigurationId: jsonFeedback.agentConfigurationId,
+        agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
+      } as AgentMessageFeedbackType;
+    });
+
+  return new Ok(feedbacks);
 }
 
 /**
@@ -202,21 +229,22 @@ export async function getAgentFeedbacks({
     workspace: owner,
     agentConfiguration,
     paginationParams,
-    withMetadata,
   });
 
+  const feedbacks = feedbacksRes.map((feedback) => feedback.toJSON());
+
   if (!withMetadata) {
-    return new Ok(feedbacksRes);
+    return new Ok(feedbacks as AgentMessageFeedbackType[]);
   }
 
-  const feedbacks = (
-    feedbacksRes as AgentMessageFeedbackWithMetadataType[]
-  ).map((feedback) => ({
+  const feedbacksWithHiddenConversationId = feedbacks.map((feedback) => ({
     ...feedback,
     // Only display conversationId if the feedback was shared
     conversationId: feedback.isConversationShared
       ? feedback.conversationId
       : null,
   }));
-  return new Ok(feedbacks);
+  return new Ok(
+    feedbacksWithHiddenConversationId as AgentMessageFeedbackWithMetadataType[]
+  );
 }
