@@ -28,6 +28,8 @@ export class Conversation extends BaseModel<Conversation> {
   declare groupIds: number[];
   declare requestedGroupIds: number[][];
 
+  declare lastUserMessageAt: Date | null;
+
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
@@ -66,6 +68,10 @@ Conversation.init(
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
       allowNull: false,
       defaultValue: [],
+    },
+    lastUserMessageAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

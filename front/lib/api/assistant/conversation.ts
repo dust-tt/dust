@@ -126,6 +126,7 @@ export async function createConversation(
     // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: [],
     requestedGroupIds: [],
+    lastUserMessageAt: null,
   });
 
   return {
