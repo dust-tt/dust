@@ -24,7 +24,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
-import { apiError, statsDClient } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const config = {
   api: {
@@ -517,18 +517,6 @@ async function handler(
             message: `Invalid parent id: parents[1] and parent_id should be equal.\n${parentsDisclaimerMessage}`,
           },
         });
-      }
-
-      const statsDTags = [
-        `data_source_id:${dataSource.id}`,
-        `workspace_id:${owner.sId}`,
-        `data_source_name:${dataSource.name}`,
-        `document_id:${req.query.documentId}`,
-      ];
-      if (!r.data.parents || r.data.parents.length === 0) {
-        statsDClient.increment("document_empty_parents.count", 1, statsDTags);
-      } else if (r.data.parents[0] != req.query.documentId) {
-        statsDClient.increment("document_no_self_ref.count", 1, statsDTags);
       }
 
       const documentId = req.query.documentId as string;
