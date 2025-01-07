@@ -40,6 +40,7 @@ export type IntercomMimeType =
 
 export const MICROSOFT_MIME_TYPES = {
   FOLDER: "application/vnd.dust.microsoft.folder",
+  // for files and spreadsheets, we keep Microsoft's mime types
 };
 
 export type MicrosoftMimeType =
