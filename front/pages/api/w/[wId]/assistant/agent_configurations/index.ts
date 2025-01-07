@@ -146,7 +146,8 @@ async function handler(
         const feedbacks =
           await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
             auth,
-            agentConfigurations.map((agent) => agent.sId)
+            agentConfigurations.map((agent) => agent.sId),
+            30
           );
         agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
           ...agentConfiguration,

@@ -251,17 +251,20 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getFeedbackCountForAssistants(
     auth: Authenticator,
-    agentConfigurationIds: string[]
+    agentConfigurationIds: string[],
+    daysOld?: number
   ) {
-    const dateMinus30Days = new Date();
-    dateMinus30Days.setDate(dateMinus30Days.getDate() - 30);
+    const dateMinusXDays = new Date();
+    if (daysOld) {
+      dateMinusXDays.setDate(dateMinusXDays.getDate() - daysOld);
+    }
     const workspace = auth.getNonNullableWorkspace();
     const feedbackCount = await AgentMessageFeedback.findAndCountAll({
       attributes: ["agentConfigurationId", "thumbDirection"],
       where: {
         workspaceId: workspace.id,
         agentConfigurationId: agentConfigurationIds,
-        createdAt: { [Op.gt]: dateMinus30Days },
+        ...(daysOld ? { createdAt: { [Op.gt]: dateMinusXDays } } : {}),
       },
       group: ["agentConfigurationId", "thumbDirection"],
     });
