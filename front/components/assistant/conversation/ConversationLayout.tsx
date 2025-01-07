@@ -11,11 +11,11 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { useURLSheet } from "@app/hooks/useURLSheet";
 import {
   useConversation,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { useURLSheet } from "@app/hooks/useURLSheet";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
