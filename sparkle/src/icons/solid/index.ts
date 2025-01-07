@@ -92,6 +92,7 @@ export { default as PlanetIcon } from "./Planet";
 export { default as PlayIcon } from "./Play";
 export { default as PlusIcon } from "./Plus";
 export { default as PlusCircleIcon } from "./PlusCircle";
+export { default as RectangleIcon } from "./Rectangle";
 export { default as RobotIcon } from "./Robot";
 export { default as RocketIcon } from "./Rocket";
 export { default as ScanIcon } from "./Scan";
