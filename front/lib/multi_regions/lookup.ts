@@ -6,6 +6,7 @@ import { Workspace } from "@app/lib/models/workspace";
 export async function handleLookupUser(userLookup: {
   sub: string;
   email: string;
+  email_verified: boolean;
 }): Promise<boolean> {
   // Check if user exists, has pending invitations or has a workspace with verified domain
   const [user, pendingInvite, workspaceWithVerifiedDomain] = await Promise.all([
@@ -13,7 +14,7 @@ export async function handleLookupUser(userLookup: {
     getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.email),
     findWorkspaceWithVerifiedDomain({
       email: userLookup.email,
-      email_verified: true,
+      email_verified: userLookup.email_verified,
     }),
   ]);
 
