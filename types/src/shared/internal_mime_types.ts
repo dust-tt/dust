@@ -70,6 +70,14 @@ export const SNOWFLAKE_MIME_TYPES = {
 export type SnowflakeMimeType =
   (typeof SNOWFLAKE_MIME_TYPES)[keyof typeof SNOWFLAKE_MIME_TYPES];
 
+export const WEBCRAWLER_MIME_TYPES = {
+  FOLDER: "application/vnd.dust.webcrawler.folder",
+  // pages are upserted as text/html, not an internal mime type
+};
+
+export type WebcrawlerMimeType =
+  (typeof WEBCRAWLER_MIME_TYPES)[keyof typeof WEBCRAWLER_MIME_TYPES];
+
 export type DustMimeType =
   | ConfluenceMimeType
   | GithubMimeType
@@ -78,4 +86,5 @@ export type DustMimeType =
   | MicrosoftMimeType
   | NotionMimeType
   | SlackMimeType
-  | SnowflakeMimeType;
+  | SnowflakeMimeType
+  | WebcrawlerMimeType;
