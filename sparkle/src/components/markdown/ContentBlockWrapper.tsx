@@ -92,14 +92,14 @@ export function ContentBlockWrapper({
     <div
       id="BlockWrapper"
       className={cn(
-        "s-relative s-w-full !s-overflow-visible s-rounded-2xl",
+        "s-relative s-mt-11 s-w-full !s-overflow-visible",
         className
       )}
     >
-      <div className="s-sticky s-top-0 s-z-[1] s-w-full">
+      <div className="s-sticky s-top-11 s-z-[1] s-h-0">
         <div
           id="BlockActions"
-          className="s-flex s-w-full s-cursor-text s-justify-end s-gap-1 s-p-2"
+          className="s-absolute s-bottom-0 s-right-2 s-flex s-h-11 s-items-center s-gap-1 s-py-2"
         >
           {actions && actions}
           {getContentToDownload && (
@@ -122,9 +122,7 @@ export function ContentBlockWrapper({
           )}
         </div>
       </div>
-      <div className={cn("s-z-0 -s-mt-11 s-w-full", innerClassName)}>
-        {children}
-      </div>
+      <div className={cn("s-z-0 s-w-full", innerClassName)}>{children}</div>
     </div>
   );
 }
