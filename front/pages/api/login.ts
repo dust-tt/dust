@@ -359,7 +359,7 @@ async function handler(
     const regionLookupClient = new RegionLookupClient();
     const r = await regionLookupClient.lookupUser(session.user);
     for (const [region, result] of r) {
-      if (result.reponse.exists) {
+      if (result.response.exists) {
         if (!result.isCurrentRegion) {
           //TODO(multi-regions): keep the querystring when redirecting
           res.redirect(`${result.regionUrl}/api/login`);
