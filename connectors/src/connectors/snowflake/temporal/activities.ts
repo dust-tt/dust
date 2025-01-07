@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { isSnowflakeCredentials } from "@dust-tt/types";
+import { isSnowflakeCredentials, SNOWFLAKE_MIME_TYPES } from "@dust-tt/types";
 
 import {
   connectToSnowflake,
@@ -192,7 +192,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           parents: [table.internalId, schemaId, table.databaseName],
           parentId: schemaId,
           title: table.name,
-          mimeType: "application/vnd.snowflake.table",
+          mimeType: SNOWFLAKE_MIME_TYPES.TABLE,
         });
         await table.update({
           lastUpsertedAt: new Date(),

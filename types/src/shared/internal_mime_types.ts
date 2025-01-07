@@ -63,6 +63,13 @@ export const SLACK_MIME_TYPES = {
 export type SlackMimeType =
   (typeof SLACK_MIME_TYPES)[keyof typeof SLACK_MIME_TYPES];
 
+export const SNOWFLAKE_MIME_TYPES = {
+  TABLE: "application/vnd.snowflake.table",
+};
+
+export type SnowflakeMimeType =
+  (typeof SNOWFLAKE_MIME_TYPES)[keyof typeof SNOWFLAKE_MIME_TYPES];
+
 export type DustMimeType =
   | ConfluenceMimeType
   | GithubMimeType
@@ -70,4 +77,5 @@ export type DustMimeType =
   | IntercomMimeType
   | MicrosoftMimeType
   | NotionMimeType
-  | SlackMimeType;
+  | SlackMimeType
+  | SnowflakeMimeType;
