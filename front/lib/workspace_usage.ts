@@ -1,4 +1,8 @@
-import type { ModelId, WorkspaceType } from "@dust-tt/types";
+import type {
+  AgentConfigurationType,
+  ModelId,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
@@ -380,6 +384,65 @@ export async function getBuildersUsageData(
   return generateCsvFromQueryResult(buildersUsage);
 }
 
+export async function getAssistantUsageData(
+  startDate: Date,
+  endDate: Date,
+  workspace: WorkspaceType,
+  agentConfiguration: AgentConfigurationType
+): Promise<string> {
+  const wId = workspace.id;
+  const mentions = await frontSequelize.query<AgentUsageQueryResult>(
+    `
+    SELECT
+      ac."name",
+      ac."description",
+      CASE
+        WHEN ac."scope" = 'published' THEN 'shared'
+        WHEN ac."scope" = 'private' THEN 'private'
+        ELSE 'company'
+      END AS "settings",
+      ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
+      COUNT(a."id") AS "messages",
+      COUNT(DISTINCT u."id") AS "distinctUsersReached",
+      COUNT(DISTINCT m."conversationId") AS "distinctConversations",
+      MAX(CAST(ac."createdAt" AS DATE)) AS "lastEdit"
+    FROM
+      "agent_messages" a
+      JOIN "messages" m ON a."id" = m."agentMessageId"
+      JOIN "messages" parent ON m."parentId" = parent."id"
+      JOIN "user_messages" um ON um."id" = parent."userMessageId"
+      JOIN "users" u ON um."userId" = u."id"
+      JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
+      JOIN "users" aut ON ac."authorId" = aut."id"
+    WHERE
+      a."createdAt" BETWEEN :startDate AND :endDate
+      AND ac."workspaceId" = :wId
+      AND ac."status" = 'active'
+      AND ac."sId" = :agentConfigurationId
+    GROUP BY
+      ac."name",
+      ac."description",
+      ac."scope"
+    ORDER BY
+      "messages" DESC;
+    `,
+    {
+      type: QueryTypes.SELECT,
+      replacements: {
+        startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"),
+        endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"),
+        agentConfigurationId: agentConfiguration.sId,
+        wId,
+      },
+    }
+  );
+
+  if (!mentions.length) {
+    return "No data available for the selected period.";
+  }
+  return generateCsvFromQueryResult(mentions);
+}
+
 export async function getAssistantsUsageData(
   startDate: Date,
   endDate: Date,
@@ -411,7 +474,7 @@ export async function getAssistantsUsageData(
       JOIN "users" aut ON ac."authorId" = aut."id"
     WHERE
       a."createdAt" BETWEEN :startDate AND :endDate
-      AND ac."workspaceId" = ${wId}
+      AND ac."workspaceId" = :wId
       AND ac."status" = 'active'
       AND ac."scope" != 'private'
     GROUP BY
@@ -426,6 +489,7 @@ export async function getAssistantsUsageData(
       replacements: {
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"), // Use first day of start month
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"), // Use last day of end month
+        wId,
       },
     }
   );
@@ -441,15 +505,30 @@ export async function getFeedbacksUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const feedbacks =
-    (await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
+    await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
       startDate,
       endDate,
       workspace,
-    })) as FeedbackQueryResult[];
-  if (!feedbacks.length) {
+    });
+
+  if (feedbacks.length === 0) {
     return "No data available for the selected period.";
   }
-  return generateCsvFromQueryResult(feedbacks);
+
+  const feedbacksWithMinimalFields = feedbacks.map((feedback) => {
+    const jsonFeedback = feedback.toJSON();
+    return {
+      id: jsonFeedback.id,
+      createdAt: jsonFeedback.createdAt,
+      userName: jsonFeedback.userName,
+      userEmail: jsonFeedback.userEmail,
+      agentConfigurationId: jsonFeedback.agentConfigurationId,
+      agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
+      thumb: jsonFeedback.thumbDirection,
+      content: jsonFeedback.content?.replace(/\r?\n/g, "\\n") || null,
+    } as FeedbackQueryResult;
+  });
+  return generateCsvFromQueryResult(feedbacksWithMinimalFields);
 }
 
 function generateCsvFromQueryResult(

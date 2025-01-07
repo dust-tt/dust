@@ -1,4 +1,4 @@
-import { CoreAPI, dustManagedCredentials } from "@dust-tt/types";
+import { CoreAPI, dustManagedCredentials, safeSubstring } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -86,7 +86,9 @@ export async function upsertDocumentActivity(
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: upsertQueueItem.documentId,
-    tags: upsertQueueItem.tags || [],
+    tags: ((upsertQueueItem.tags as string[] | null) || []).map((tag) =>
+      safeSubstring(tag, 0)
+    ),
     parentId: upsertQueueItem.parentId || null,
     parents: upsertQueueItem.parents || [upsertQueueItem.documentId],
     sourceUrl: upsertQueueItem.sourceUrl,

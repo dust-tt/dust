@@ -3,65 +3,60 @@ import {
   ContentMessage,
   Hoverable,
   Icon,
-  Modal,
-  Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider, LightWorkspaceType } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@dust-tt/types";
-import Link from "next/link";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  owner: LightWorkspaceType;
   connectorProvider: ConnectorProvider;
 };
 
 export const ConnectorDataUpdatedModal = ({
   isOpen,
   onClose,
-  owner,
   connectorProvider,
 }: DataSourceViewSelectionModalProps) => {
   const isRemoteDbProvider =
     REMOTE_DATABASE_CONNECTOR_PROVIDERS.includes(connectorProvider);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => {}}
-      onSave={() => {}}
-      isSaving={false}
-      hasChanged={false}
-      variant="side-sm"
-      alertModal
-    >
-      <Page variant="modal">
-        <Page.Vertical sizing="grow">
-          <div className="flex flex-col gap-2">
-            <div className="p-1 text-xl font-bold">
-              <Icon visual={SparklesIcon} className="text-brand" size="lg" />
-              <div>Data sync in progress...</div>
-            </div>
+    <Sheet open={isOpen}>
+      <SheetContent
+        size="lg"
+        onInteractOutside={(e) => {
+          e.preventDefault();
+        }}
+      >
+        <SheetHeader hideButton>
+          <SheetTitle />
+          <div className="p-1 text-xl font-bold">
+            <Icon visual={SparklesIcon} className="text-brand" size="lg" />
+            <div>Data sync in progress...</div>
           </div>
-
-          <ContentMessage variant="slate">
+        </SheetHeader>
+        <SheetContainer>
+          <ContentMessage variant="amber">
             <div className="flex flex-col gap-2">
               <p>
                 Once synchronized, {isRemoteDbProvider ? "tables" : "data"} will
-                appear under <em>"Connection Admin"</em>.
+                appear under <em>"Connection Admin"</em> and can be added to:
               </p>
-              <p className="font-bold">
-                Add {isRemoteDbProvider ? "tables" : "data"} to{" "}
-                <Link
-                  className="cursor-pointer font-bold text-action-500"
-                  href={`/w/${owner.sId}/spaces`}
-                >
-                  <Hoverable onClick={() => {}}>Company Data</Hoverable>
-                </Link>{" "}
-                for team-wide access or to a specific space to manage access.
-              </p>
+              <ul className="ml-6 list-disc">
+                <li>
+                  An <strong>Open Space</strong> for company-wide access
+                </li>
+                <li>
+                  A <strong>Restricted Space</strong> for custom access
+                </li>
+              </ul>
             </div>
           </ContentMessage>
           <div className="w-full pt-4">
@@ -90,8 +85,8 @@ export const ConnectorDataUpdatedModal = ({
           <div className="flex w-full justify-end">
             <Button label="Ok" onClick={() => onClose()} />
           </div>
-        </Page.Vertical>
-      </Page>
-    </Modal>
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 };

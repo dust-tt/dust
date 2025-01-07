@@ -302,16 +302,17 @@ export class Authenticator {
   }: {
     token: Auth0JwtPayload;
     wId: string;
-  }): Promise<Authenticator> {
+  }): Promise<
+    Result<
+      Authenticator,
+      {
+        code: "user_not_found" | "workspace_not_found";
+      }
+    >
+  > {
     const user = await getUserFromAuth0Token(token);
     if (!user) {
-      return new Authenticator({
-        role: "none",
-        groups: [],
-        user: null,
-        subscription: null,
-        workspace: null,
-      });
+      return new Err({ code: "user_not_found" });
     }
 
     const workspace = await Workspace.findOne({
@@ -320,7 +321,7 @@ export class Authenticator {
       },
     });
     if (!workspace) {
-      throw new Error("Workspace not found.");
+      return new Err({ code: "workspace_not_found" });
     }
 
     let role = "none" as RoleType;
@@ -339,13 +340,15 @@ export class Authenticator {
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
     ]);
 
-    return new Authenticator({
-      workspace,
-      groups,
-      user,
-      role,
-      subscription,
-    });
+    return new Ok(
+      new Authenticator({
+        workspace,
+        groups,
+        user,
+        role,
+        subscription,
+      })
+    );
   }
 
   /**

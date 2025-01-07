@@ -1,9 +1,9 @@
 import type {
   AgentConfigurationType,
   AgentMessageType,
-  ConversationError,
   ConversationType,
   ConversationWithoutContentType,
+  LightAgentConfigurationType,
   MessageType,
   Result,
   UserType,
@@ -20,10 +20,6 @@ import type {
 import { Op } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import type {
-  AgentMessageFeedbackType,
-  AgentMessageFeedbackWithMetadataType,
-} from "@app/lib/api/assistant/feedback";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -35,6 +31,7 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 
@@ -48,15 +45,41 @@ export interface AgentMessageFeedbackResource
 export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedback> {
   static model: ModelStatic<AgentMessageFeedback> = AgentMessageFeedback;
 
+  readonly message?: Attributes<Message>;
+  readonly user?: Attributes<UserModel>;
+  readonly conversationId?: string;
+
   constructor(
     model: ModelStatic<AgentMessageFeedback>,
-    blob: Attributes<AgentMessageFeedback>
+    blob: Attributes<AgentMessageFeedback>,
+    {
+      message,
+      user,
+      conversationId,
+    }: {
+      message?: Attributes<Message>;
+      user?: Attributes<UserModel>;
+      conversationId?: string;
+    } = {}
   ) {
     super(AgentMessageFeedback, blob);
+
+    this.message = message;
+    this.user = user;
+    this.conversationId = conversationId;
   }
 
   static async makeNew(
-    blob: CreationAttributes<AgentMessageFeedback>
+    blob: CreationAttributes<AgentMessageFeedback>,
+    {
+      message,
+      user,
+      conversationId,
+    }: {
+      message?: Attributes<Message>;
+      user?: Attributes<UserModel>;
+      conversationId?: string;
+    } = {}
   ): Promise<AgentMessageFeedbackResource> {
     const agentMessageFeedback = await AgentMessageFeedback.create({
       ...blob,
@@ -64,7 +87,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     return new AgentMessageFeedbackResource(
       AgentMessageFeedback,
-      agentMessageFeedback.get()
+      agentMessageFeedback.get(),
+      { message, user, conversationId }
     );
   }
 
@@ -98,17 +122,13 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async fetch({
     workspace,
-    withMetadata,
     agentConfiguration,
     paginationParams,
   }: {
     workspace: WorkspaceType;
-    withMetadata: boolean;
-    agentConfiguration?: AgentConfigurationType;
+    agentConfiguration?: LightAgentConfigurationType;
     paginationParams: PaginationParams;
-  }): Promise<
-    (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[]
-  > {
+  }) {
     const where: WhereOptions<AgentMessageFeedback> = {
       // IMPORTANT: Necessary for global models who share ids across workspaces.
       workspaceId: workspace.id,
@@ -161,45 +181,17 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       limit: paginationParams.limit,
     });
 
-    return (
-      agentMessageFeedback
-        // Typeguard needed because of TypeScript limitations
-        .filter(
-          (
-            feedback
-          ): feedback is AgentMessageFeedback & {
-            agentMessage: {
-              message: Message & { conversation: Conversation };
-            };
-          } => !!feedback.agentMessage?.message?.conversation
-        )
-        .map((feedback) => {
-          return {
-            id: feedback.id,
-            messageId: feedback.agentMessage.message.sId,
-            agentMessageId: feedback.agentMessageId,
-            userId: feedback.userId,
-            thumbDirection: feedback.thumbDirection,
-            content: feedback.content
-              ? feedback.content.replace(/\r?\n/g, "\\n")
-              : null,
-            isConversationShared: feedback.isConversationShared,
-            createdAt: feedback.createdAt,
-            agentConfigurationId: feedback.agentConfigurationId,
-            agentConfigurationVersion: feedback.agentConfigurationVersion,
-
-            ...(withMetadata && {
-              // This field is sensitive, it allows accessing the conversation
-              conversationId: feedback.isConversationShared
-                ? feedback.agentMessage.message.conversation.sId
-                : null,
-              userName: feedback.user.name,
-              userEmail: feedback.user.email,
-              userImageUrl: feedback.user.imageUrl,
-            }),
-          };
-        })
-    );
+    return agentMessageFeedback.map((feedback) => {
+      return new AgentMessageFeedbackResource(
+        AgentMessageFeedback,
+        feedback.get(),
+        {
+          message: feedback.agentMessage?.message,
+          user: feedback.user,
+          conversationId: feedback.agentMessage?.message?.conversation?.sId,
+        }
+      );
+    });
   }
 
   static async getFeedbackUsageDataForWorkspace({
@@ -235,18 +227,17 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       order: [["id", "ASC"]],
     });
 
-    return agentMessageFeedback.map((feedback) => {
-      return {
-        id: feedback.id,
-        createdAt: feedback.createdAt,
-        userName: feedback.user.name,
-        userEmail: feedback.user.email,
-        agentConfigurationId: feedback.agentConfigurationId,
-        agentConfigurationVersion: feedback.agentConfigurationVersion,
-        thumb: feedback.thumbDirection,
-        content: feedback.content?.replace(/\r?\n/g, "\\n") || null,
-      };
-    });
+    return agentMessageFeedback
+      .filter((feedback) => Boolean(feedback.user))
+      .map((feedback) => {
+        return new AgentMessageFeedbackResource(
+          AgentMessageFeedback,
+          feedback.get(),
+          {
+            user: feedback.user,
+          }
+        );
+      });
   }
 
   static async getFeedbackCountForAssistants(
@@ -279,7 +270,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   static async getConversationFeedbacksForUser(
     auth: Authenticator,
     conversation: ConversationType | ConversationWithoutContentType
-  ): Promise<Result<AgentMessageFeedbackType[], ConversationError | Error>> {
+  ) {
     const user = auth.getNonNullableUser();
 
     const feedbackForMessages = await Message.findAll({
@@ -307,36 +298,27 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
     });
-
-    const feedbacksWithMessageId = feedbackForMessages
-      // typeguard needed because of TypeScript limitations
+    const feedbacks = feedbackForMessages
       .filter(
         (
           message
         ): message is Message & {
-          agentMessage: { feedbacks: AgentMessageFeedbackResource[] };
+          agentMessage: { feedbacks: AgentMessageFeedback[] };
         } =>
           !!message.agentMessage?.feedbacks &&
           message.agentMessage.feedbacks.length > 0
       )
       .map((message) => {
-        // Only one feedback can be associated with a message
-        const feedback = message.agentMessage.feedbacks[0];
-        return {
-          id: feedback.id,
-          messageId: message.sId,
-          agentMessageId: feedback.agentMessageId,
-          userId: feedback.userId,
-          thumbDirection: feedback.thumbDirection,
-          content: feedback.content,
-          isConversationShared: feedback.isConversationShared,
-          createdAt: feedback.createdAt,
-          agentConfigurationId: feedback.agentConfigurationId,
-          agentConfigurationVersion: feedback.agentConfigurationVersion,
-        } as AgentMessageFeedbackType;
+        const feedback = message.agentMessage?.feedbacks?.[0];
+        return new AgentMessageFeedbackResource(
+          AgentMessageFeedback,
+          feedback.get(),
+          {
+            message,
+          }
+        );
       });
-
-    return new Ok(feedbacksWithMessageId);
+    return feedbacks;
   }
 
   static async getFeedbackWithConversationContext({
@@ -466,5 +448,28 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       },
       isGlobalAgent,
     });
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      messageId: this.message?.sId,
+      agentMessageId: this.agentMessageId,
+      userId: this.userId,
+      thumbDirection: this.thumbDirection,
+      content: this.content ? this.content.replace(/\r?\n/g, "\\n") : null,
+      isConversationShared: this.isConversationShared,
+      createdAt: this.createdAt,
+      agentConfigurationId: this.agentConfigurationId,
+      agentConfigurationVersion: this.agentConfigurationVersion,
+      conversationId: this.conversationId,
+      ...(this.user
+        ? {
+            userName: this.user.name,
+            userEmail: this.user.email,
+            userImageUrl: this.user.imageUrl,
+          }
+        : {}),
+    };
   }
 }
