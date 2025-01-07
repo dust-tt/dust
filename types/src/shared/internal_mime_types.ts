@@ -28,7 +28,18 @@ export const GOOGLE_DRIVE_MIME_TYPES = {
 export type GoogleDriveMimeType =
   (typeof GOOGLE_DRIVE_MIME_TYPES)[keyof typeof GOOGLE_DRIVE_MIME_TYPES];
 
+export const INTERCOM_MIME_TYPES = {
+  COLLECTION: "application/vnd.dust.intercom.collection",
+  CONVERSATIONS: "application/vnd.dust.intercom.teams-folder",
+  TEAM: "application/vnd.dust.intercom.team",
+  HELP_CENTER: "application/vnd.dust.intercom.help-center",
+};
+
+export type IntercomMimeType =
+  (typeof INTERCOM_MIME_TYPES)[keyof typeof INTERCOM_MIME_TYPES];
+
 export type DustMimeType =
   | ConfluenceMimeType
   | GithubMimeType
-  | GoogleDriveMimeType;
+  | GoogleDriveMimeType
+  | IntercomMimeType;
