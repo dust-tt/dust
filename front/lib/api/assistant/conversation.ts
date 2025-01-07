@@ -272,9 +272,10 @@ export async function getUserConversations(
         return acc;
       }
 
-      const conversation = {
+      const conversation: ConversationWithoutContentType = {
         id: p.conversation.id,
         created: p.conversation.createdAt.getTime(),
+        updated: p.updatedAt.getTime(),
         sId: p.conversation.sId,
         owner,
         title: p.conversation.title,
@@ -310,12 +311,12 @@ async function createOrUpdateParticipation({
     });
     if (participant) {
       participant.changed("updatedAt", true);
-      await participant.save();
-      return participant.update({
+      await participant.update({
         action: "posted",
+        updatedAt: new Date(),
       });
     } else {
-      return ConversationParticipant.create({
+      await ConversationParticipant.create({
         conversationId: conversation.id,
         action: "posted",
         userId: user.id,

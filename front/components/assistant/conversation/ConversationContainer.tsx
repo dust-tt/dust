@@ -28,7 +28,10 @@ import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
-import { useConversationMessages } from "@app/lib/swr/conversations";
+import {
+  useConversationMessages,
+  useConversations,
+} from "@app/lib/swr/conversations";
 
 interface ConversationContainerProps {
   conversationId: string | null;
@@ -60,6 +63,10 @@ export function ConversationContainer({
   const router = useRouter();
 
   const sendNotification = useSendNotification();
+
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+  });
 
   const { mutateMessages } = useConversationMessages({
     conversationId: activeConversationId,
@@ -161,6 +168,7 @@ export function ConversationContainer({
           populateCache: true,
         }
       );
+      await mutateConversations();
     } catch (err) {
       // If the API errors, the original data will be
       // rolled back by SWR automatically.
@@ -229,11 +237,12 @@ export function ConversationContainer({
           { shallow: true }
         );
         setActiveConversationId(conversationRes.value.sId);
+        await mutateConversations();
 
         return new Ok(undefined);
       }
     },
-    [isSubmitting, owner, user, sendNotification, router]
+    [isSubmitting, owner, user, sendNotification, router, mutateConversations]
   );
 
   useEffect(() => {
