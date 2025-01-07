@@ -86,6 +86,7 @@ export async function launchZendeskSyncWorkflow(
   ];
 
   const workflowId = getZendeskSyncWorkflowId(connector.id);
+  const minute = connector.id % 30; // spreading workflows across each half-hour
   try {
     await client.workflow.signalWithStart(zendeskSyncWorkflow, {
       args: [{ connectorId: connector.id }],
@@ -95,7 +96,7 @@ export async function launchZendeskSyncWorkflow(
       signal: zendeskUpdatesSignal,
       signalArgs: [signals],
       memo: { connectorId: connector.id },
-      cronSchedule: "*/30 * * * *", // Every 30 minutes.
+      cronSchedule: `${minute},${30 + minute} * * * *`, // Every 30 minutes.
     });
   } catch (err) {
     return new Err(err as Error);
