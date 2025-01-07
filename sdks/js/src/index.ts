@@ -64,16 +64,27 @@ import axios from "axios";
 import { createParser } from "eventsource-parser";
 import http from "http";
 import https from "https";
+import { Readable } from "stream";
 
 interface DustResponse {
   status: number;
   ok: boolean;
   url: string;
-  body: ReadableStream<Uint8Array>;
+  body: Readable;
 }
 
-const axiosWithTimeout = axios.create({
-  timeout: 60000,
+const textFromResponse = async (response: DustResponse): Promise<string> => {
+  const stream = response.body;
+
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+    stream.on("error", reject);
+  });
+};
+
+const axiosNoKeepAlive = axios.create({
   httpAgent: new http.Agent({ keepAlive: false }),
   httpsAgent: new https.Agent({ keepAlive: false }),
 });
@@ -405,21 +416,28 @@ export class DustAPI {
         }
       });
 
-      const reader = res.body.getReader();
+      const reader = res.body;
 
       const streamEvents = async function* () {
         try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              break;
-            }
-            parser.feed(new TextDecoder().decode(value));
+          for await (const chunk of reader) {
+            parser.feed(new TextDecoder().decode(chunk));
             for (const event of pendingEvents) {
               yield event;
             }
             pendingEvents = [];
           }
+          // while (true) {
+          //   const { done, value } = await reader.read();
+          //   if (done) {
+          //     break;
+          //   }
+          //   parser.feed(new TextDecoder().decode(value));
+          //   for (const event of pendingEvents) {
+          //     yield event;
+          //   }
+          //   pendingEvents = [];
+          // }
           if (!hasRunId) {
             // Once the stream is entirely consumed, if we haven't received a run id, reject the
             // promise.
@@ -444,8 +462,6 @@ export class DustAPI {
             },
             "Error streaming chunks."
           );
-        } finally {
-          reader.releaseLock();
         }
       };
 
@@ -629,7 +645,7 @@ export class DustAPI {
         type: "dust_api_error",
         message: `Error running streamed app: status_code=${
           res.value.response.status
-        }  - message=${await new Response(res.value.response.body).text()}`,
+        }  - message=${await textFromResponse(res.value.response)}`,
       });
     }
 
@@ -690,17 +706,13 @@ export class DustAPI {
       }
     });
 
-    const reader = res.value.response.body.getReader();
+    const reader = res.value.response.body;
     const logger = this._logger;
 
     const streamEvents = async function* () {
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          parser.feed(new TextDecoder().decode(value));
+        for await (const chunk of reader) {
+          parser.feed(new TextDecoder().decode(chunk));
           for (const event of pendingEvents) {
             yield event;
           }
@@ -722,8 +734,6 @@ export class DustAPI {
           },
           "Error streaming chunks."
         );
-      } finally {
-        reader.releaseLock();
       }
     };
 
@@ -889,7 +899,7 @@ export class DustAPI {
     try {
       const {
         data: { file: fileUploaded },
-      } = await axiosWithTimeout.post<FileUploadedRequestResponseType>(
+      } = await axiosNoKeepAlive.post<FileUploadedRequestResponseType>(
         file.uploadUrl,
         formData,
         { headers: await this.baseHeaders() }
@@ -1012,7 +1022,7 @@ export class DustAPI {
   ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
     const now = Date.now();
     try {
-      const res = await axiosWithTimeout(url, {
+      const res = await axiosNoKeepAlive<Readable>(url, {
         validateStatus: () => true,
         responseType: "stream",
         ...config,
@@ -1078,7 +1088,7 @@ export class DustAPI {
 
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
-    const text = await new Response(res.value.response.body).text();
+    const text = await textFromResponse(res.value.response);
 
     try {
       const response = JSON.parse(text);
