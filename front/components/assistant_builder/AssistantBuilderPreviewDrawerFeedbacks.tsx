@@ -117,13 +117,13 @@ export const FeedbacksSection = ({
         />
         {agentConfigurationFeedbacks?.map((feedback, index) => {
           const isFirstFeedback = index === 0;
-          const isNewVersion =
+          const previousFeedbackHasDifferentVersion =
             !isFirstFeedback &&
             feedback.agentConfigurationVersion !==
               agentConfigurationFeedbacks[index - 1].agentConfigurationVersion;
           return (
             <div key={feedback.id} className="animate-fadeIn">
-              {isNewVersion && (
+              {previousFeedbackHasDifferentVersion && (
                 <AgentConfigurationVersionHeader
                   agentConfiguration={agentConfigurationHistory?.find(
                     (c) => c.version === feedback.agentConfigurationVersion
@@ -132,7 +132,7 @@ export const FeedbacksSection = ({
                   isLatestVersion={false}
                 />
               )}
-              {!isNewVersion && !isFirstFeedback && (
+              {!previousFeedbackHasDifferentVersion && !isFirstFeedback && (
                 <div className="mx-4 my-1">
                   <Page.Separator />
                 </div>
