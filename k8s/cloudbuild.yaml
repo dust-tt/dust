@@ -1,6 +1,6 @@
 steps:
-  - id: 'Build Container Image'
-    name: 'ghcr.io/depot/cli:latest'
+  - id: "Build Container Image"
+    name: "ghcr.io/depot/cli:latest"
     script: |
       #!/usr/bin/env bash
 
@@ -28,8 +28,8 @@ steps:
       depot build \
         --project 3vz0lnf16v \
         --provenance=false \
-        -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA} \
-        -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
+        -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/dust-images/${_IMAGE_NAME}:${SHORT_SHA} \
+        -t ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/dust-images/${_IMAGE_NAME}:latest \
         -f ${_DOCKERFILE_PATH} \
         --build-arg COMMIT_HASH=${SHORT_SHA} \
         ${build_args[@]} \
@@ -43,7 +43,7 @@ timeout: 1200s
 
 availableSecrets:
   secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest
+    - versionName: projects/$_PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest
       env: DEPOT_TOKEN
 
 options:

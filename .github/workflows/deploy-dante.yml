@@ -54,7 +54,8 @@ jobs:
             --dockerfile-path=./dante.Dockerfile \
             --working-dir=./ \
             --gcloud-ignore-file=../.gcloudignore-dante \
-            --region=us-central1
+            --region=us-central1 \
+            --project-id=$GCLOUD_PROJECT_ID
           cd ..
 
       - name: Generate a token

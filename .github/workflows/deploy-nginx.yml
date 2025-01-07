@@ -51,7 +51,8 @@ jobs:
             --dockerfile-path=./nginx.Dockerfile \
             --working-dir=./ \
             --gcloud-ignore-file=../.gcloudignore-nginx \
-            --region=us-central1
+            --region=us-central1 \
+            --project-id=$GCLOUD_PROJECT_ID
           cd ..
 
       - name: Generate a token
