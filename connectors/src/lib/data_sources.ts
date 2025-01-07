@@ -158,7 +158,7 @@ async function _upsertDataSourceDocument({
         timestamp,
         title,
         mime_type: mimeType,
-        tags: tags?.map((tag) => tag.substring(0, 512)),
+        tags: tags?.map((tag) => safeSubstring(tag, 0, 512)),
         parent_id: parentId,
         parents,
         light_document_output: true,
@@ -579,7 +579,7 @@ export async function renderDocumentTitleAndContent({
     ? safeSubstring(lastEditor, 0, MAX_AUTHOR_CHAR_LENGTH)
     : undefined;
   if (title && title.trim()) {
-    title = `$title: ${title}\n`;
+    title = `$title: ${safeSubstring(title, 0)}\n`;
   } else {
     title = null;
   }
@@ -592,13 +592,13 @@ export async function renderDocumentTitleAndContent({
     metaPrefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
   }
   if (author && lastEditor && author === lastEditor) {
-    metaPrefix += `$author: ${author}\n`;
+    metaPrefix += `$author: ${safeSubstring(author, 0)}\n`;
   } else {
     if (author) {
-      metaPrefix += `$author: ${author}\n`;
+      metaPrefix += `$author: ${safeSubstring(author, 0)}\n`;
     }
     if (lastEditor) {
-      metaPrefix += `$lastEditor: ${lastEditor}\n`;
+      metaPrefix += `$lastEditor: ${safeSubstring(lastEditor, 0)}\n`;
     }
   }
   if (metaPrefix) {
