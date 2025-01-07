@@ -46,9 +46,19 @@ export const MICROSOFT_MIME_TYPES = {
 export type MicrosoftMimeType =
   (typeof MICROSOFT_MIME_TYPES)[keyof typeof MICROSOFT_MIME_TYPES];
 
+export const NOTION_MIME_TYPES = {
+  UNKNOWN_FOLDER: "application/vnd.dust.notion.unknown-folder",
+  DATABASE: "application/vnd.dust.notion.database",
+  PAGE: "application/vnd.dust.notion.page",
+};
+
+export type NotionMimeType =
+  (typeof NOTION_MIME_TYPES)[keyof typeof NOTION_MIME_TYPES];
+
 export type DustMimeType =
   | ConfluenceMimeType
   | GithubMimeType
   | GoogleDriveMimeType
   | IntercomMimeType
-  | MicrosoftMimeType;
+  | MicrosoftMimeType
+  | NotionMimeType;

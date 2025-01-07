@@ -3,6 +3,7 @@ import {
   Err,
   getNotionDatabaseTableId,
   getOAuthConnectionAccessToken,
+  NOTION_MIME_TYPES,
   Ok,
 } from "@dust-tt/types";
 import _ from "lodash";
@@ -104,7 +105,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       parents: [folderId],
       parentId: null,
       title: "Orphaned Resources",
-      mimeType: "application/vnd.dust.notion.unknown-folder",
+      mimeType: NOTION_MIME_TYPES.UNKNOWN_FOLDER,
     });
 
     try {

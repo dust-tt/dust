@@ -1,6 +1,7 @@
 import type {
   CoreAPIDataSourceDocumentSection,
   ModelId,
+  NOTION_MIME_TYPES,
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@dust-tt/types";
@@ -1824,7 +1825,7 @@ export async function renderAndUpsertPageFromCache({
               parents: parents,
               parentId: parents[1] || null,
               title: parentDb.title ?? "Untitled Notion Database",
-              mimeType: "application/vnd.dust.notion.database",
+              mimeType: NOTION_MIME_TYPES.DATABASE,
             }),
           localLogger
         );
@@ -2048,7 +2049,7 @@ export async function renderAndUpsertPageFromCache({
         sync_type: isFullSync ? "batch" : "incremental",
       },
       title: title ?? "",
-      mimeType: "application/vnd.dust.notion.page",
+      mimeType: NOTION_MIME_TYPES.PAGE,
       async: true,
     });
   }
@@ -2545,7 +2546,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         parents: parentIds,
         parentId: parentIds[1] || null,
         title: dbModel.title ?? "Untitled Notion Database",
-        mimeType: "application/vnd.dust.notion.database",
+        mimeType: NOTION_MIME_TYPES.DATABASE,
       }),
     localLogger
   );
@@ -2606,7 +2607,7 @@ export async function upsertDatabaseStructuredDataFromCache({
           sync_type: "batch",
         },
         title: databaseName,
-        mimeType: "application/vnd.dust.notion.database",
+        mimeType: NOTION_MIME_TYPES.DATABASE,
         async: true,
       });
     } else {
