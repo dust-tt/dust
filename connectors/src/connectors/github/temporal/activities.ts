@@ -1,5 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, GITHUB_MIME_TYPES } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
@@ -308,7 +308,7 @@ export async function githubUpsertIssueActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: issue.title,
-    mimeType: "application/vnd.dust.github.issue",
+    mimeType: GITHUB_MIME_TYPES.ISSUE,
     async: true,
   });
 
@@ -494,7 +494,7 @@ export async function githubUpsertDiscussionActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: discussion.title,
-    mimeType: "application/vnd.dust.github.discussion",
+    mimeType: GITHUB_MIME_TYPES.DISCUSSION,
     async: true,
   });
 
@@ -960,7 +960,7 @@ export async function githubCodeSyncActivity({
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: "application/vnd.dust.github.code.root",
+    mimeType: GITHUB_MIME_TYPES.CODE_ROOT,
   });
 
   let githubCodeRepository = await GithubCodeRepository.findOne({
@@ -1172,7 +1172,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: "application/vnd.dust.github.code.file",
+            mimeType: GITHUB_MIME_TYPES.CODE_FILE,
             async: true,
           });
 
@@ -1216,7 +1216,7 @@ export async function githubCodeSyncActivity({
           parents,
           parentId: parents[1],
           title: d.dirName,
-          mimeType: "application/vnd.dust.github.code.directory",
+          mimeType: GITHUB_MIME_TYPES.CODE_DIRECTORY,
         });
 
         // Find directory or create it.
@@ -1356,7 +1356,7 @@ export async function githubUpsertRepositoryFolderActivity({
     title: repoName,
     parents: [getRepositoryInternalId(repoId)],
     parentId: null,
-    mimeType: "application/vnd.dust.github.repository",
+    mimeType: GITHUB_MIME_TYPES.REPOSITORY,
   });
 }
 
@@ -1377,7 +1377,7 @@ export async function githubUpsertIssuesFolderActivity({
     title: "Issues",
     parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: "application/vnd.dust.github.issues",
+    mimeType: GITHUB_MIME_TYPES.ISSUES,
   });
 }
 
@@ -1401,7 +1401,7 @@ export async function githubUpsertDiscussionsFolderActivity({
       getRepositoryInternalId(repoId),
     ],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: "application/vnd.dust.github.discussions",
+    mimeType: GITHUB_MIME_TYPES.DISCUSSIONS,
   });
 }
 
@@ -1422,6 +1422,6 @@ export async function githubUpsertCodeRootFolderActivity({
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: "application/vnd.dust.github.code.root",
+    mimeType: GITHUB_MIME_TYPES.CODE_ROOT,
   });
 }
