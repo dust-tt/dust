@@ -33,7 +33,7 @@ export function FairUsageModal({ isOpened, onClose }: FairUsageModalProps) {
     >
       <div className="py-8">
         <Icon visual={AttachmentIcon} size="lg" className="text-emerald-500" />
-        <Markdown content={FAIR_USE_CONTENT} textSize="sm" />
+        <Markdown content={FAIR_USE_CONTENT} forcedTextSize="sm" />
       </div>
     </Modal>
   );

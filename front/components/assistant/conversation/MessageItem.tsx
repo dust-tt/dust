@@ -38,7 +38,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     {
       conversationId,
       messageFeedback,
-      isInModal,
       isLastMessage,
       message,
       owner,
@@ -165,7 +164,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isLastMessage={isLastMessage}
               message={message}
               owner={owner}
-              size={isInModal ? "compact" : "normal"}
             />
           </div>
         );
@@ -180,7 +178,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={owner}
               user={user}
-              size={isInModal ? "compact" : "normal"}
             />
           </div>
         );
