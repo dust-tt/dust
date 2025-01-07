@@ -102,7 +102,7 @@ function ContentNodeTreeChildren({
   parentIds,
   parentIsSelected,
 }: ContentNodeTreeChildrenProps) {
-  const { onDocumentViewClick, selectedNodes, setSelectedNodes } =
+  const { onDocumentViewClick, selectedNodes, setSelectedNodes, showExpand } =
     useContentNodeTreeContext();
 
   const [search, setSearch] = useState("");
@@ -176,7 +176,9 @@ function ContentNodeTreeChildren({
         return (
           <Tree.Item
             key={n.internalId}
-            type={n.expandable ? "node" : "leaf"}
+            type={
+              showExpand === false ? "item" : n.expandable ? "node" : "leaf"
+            }
             label={n.title}
             labelClassName={
               n.providerVisibility === "private"

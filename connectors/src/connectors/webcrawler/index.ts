@@ -15,10 +15,11 @@ import {
 } from "@dust-tt/types";
 
 import type {
-  ConnectorManagerError,
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   getDisplayNameForFolder,
@@ -130,17 +131,21 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     const webCrawlerConfig =
       await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
 
     if (!webCrawlerConfig) {
-      return new Err(new Error("Webcrawler configuration not found"));
+      throw new Error("Webcrawler configuration not found");
     }
     let parentUrl: string | null = null;
     if (parentInternalId) {

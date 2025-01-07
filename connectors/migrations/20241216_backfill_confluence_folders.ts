@@ -26,6 +26,7 @@ makeScript({}, async ({ execute }, logger) => {
             dataSourceConfig,
             folderId: makeSpaceInternalId(space.spaceId),
             parents: [makeSpaceInternalId(space.spaceId)],
+            parentId: null,
             title: space.name,
             mimeType: "application/vnd.dust.confluence.space",
           });

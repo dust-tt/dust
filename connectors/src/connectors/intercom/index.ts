@@ -36,11 +36,13 @@ import {
 } from "@connectors/connectors/intercom/temporal/client";
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   IntercomArticle,
   IntercomCollection,
@@ -309,14 +311,18 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
         { connectorId: this.connectorId },
         "[Intercom] Connector not found."
       );
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     if (filterPermission === "read" && parentInternalId === null) {
@@ -343,7 +349,16 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       const nodes = [...helpCenterNodes, ...convosNodes];
       return new Ok(nodes);
     } catch (e) {
-      return new Err(e as Error);
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "Authorization error, please re-authorize Intercom."
+          )
+        );
+      }
+      // Unanhdled error, throwing to get a 500.
+      throw e;
     }
   }
 

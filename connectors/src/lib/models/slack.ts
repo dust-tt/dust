@@ -1,5 +1,6 @@
 import type {
   ConnectorPermission,
+  SlackAutoReadPattern,
   SlackbotWhitelistType,
 } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
@@ -17,8 +18,9 @@ export class SlackConfigurationModel extends BaseModel<SlackConfigurationModel> 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
-  declare autoReadChannelPattern?: string | null;
+  declare autoReadChannelPatterns: SlackAutoReadPattern[];
 }
+
 SlackConfigurationModel.init(
   {
     createdAt: {
@@ -44,9 +46,10 @@ SlackConfigurationModel.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
-    autoReadChannelPattern: {
-      type: DataTypes.STRING,
+    autoReadChannelPatterns: {
+      type: DataTypes.JSONB,
       allowNull: true,
+      defaultValue: [],
     },
   },
   {

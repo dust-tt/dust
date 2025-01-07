@@ -1,8 +1,14 @@
-import type { ContentFragmentType, MeResponseType } from "@dust-tt/client";
+import type {
+  ContentFragmentType,
+  ExtensionWorkspaceType,
+  UserType,
+} from "@dust-tt/client";
 import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
 import type { UploadedFileWithKind } from "@extension/lib/types";
 
-export type UserTypeWithWorkspaces = MeResponseType["user"];
+export type UserTypeWithExtensionWorkspaces = UserType & {
+  workspaces: ExtensionWorkspaceType[];
+};
 
 export type StoredTokens = {
   accessToken: string;
@@ -10,7 +16,7 @@ export type StoredTokens = {
   expiresAt: number;
 };
 
-export type StoredUser = UserTypeWithWorkspaces & {
+export type StoredUser = UserTypeWithExtensionWorkspaces & {
   selectedWorkspace: string | null;
 };
 
@@ -75,7 +81,7 @@ export const setConversationsContext = async (
  */
 
 export const saveUser = async (
-  user: UserTypeWithWorkspaces
+  user: UserTypeWithExtensionWorkspaces
 ): Promise<StoredUser> => {
   const storedUser: StoredUser = {
     ...user,

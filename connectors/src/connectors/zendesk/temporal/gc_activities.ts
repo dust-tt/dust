@@ -101,30 +101,37 @@ export async function removeOutdatedTicketBatchActivity(
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const ticketIds = await ZendeskTicketResource.fetchOutdatedTicketIds({
-    connectorId,
-    expirationDate: new Date(
-      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
-    ),
-    batchSize: ZENDESK_BATCH_SIZE,
-  });
+  const ticketIdsWithBrandIds =
+    await ZendeskTicketResource.fetchOutdatedTicketIds({
+      connectorId,
+      expirationDate: new Date(
+        Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000 // conversion from days to ms
+      ),
+      batchSize: ZENDESK_BATCH_SIZE,
+    });
   logger.info(
-    { ...loggerArgs, ticketCount: ticketIds.length },
+    { ...loggerArgs, ticketCount: ticketIdsWithBrandIds.length },
     "[Zendesk] Removing outdated tickets."
   );
 
-  if (ticketIds.length === 0) {
+  if (ticketIdsWithBrandIds.length === 0) {
     return { hasMore: false };
   }
 
   await concurrentExecutor(
-    ticketIds,
-    (ticketId) =>
-      deleteTicket({ connectorId, ticketId, dataSourceConfig, loggerArgs }),
+    ticketIdsWithBrandIds,
+    ({ brandId, ticketId }) =>
+      deleteTicket({
+        connectorId,
+        brandId,
+        ticketId,
+        dataSourceConfig,
+        loggerArgs,
+      }),
     { concurrency: 10 }
   );
 
-  return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE }; // true iff there are more tickets to process
+  return { hasMore: ticketIdsWithBrandIds.length === ZENDESK_BATCH_SIZE }; // true iff there are more tickets to process
 }
 
 /**
@@ -187,6 +194,7 @@ export async function removeMissingArticleBatchActivity({
       if (!article) {
         await deleteArticle(
           connectorId,
+          brandId,
           articleId,
           dataSourceConfig,
           loggerArgs
@@ -260,6 +268,7 @@ export async function removeEmptyCategoriesActivity(connectorId: number) {
     async ({ categoryId, brandId }) => {
       const articles = await ZendeskArticleResource.fetchByCategoryIdReadOnly({
         connectorId,
+        brandId,
         categoryId,
       });
       if (articles.length === 0) {
@@ -369,12 +378,16 @@ export async function deleteTicketBatchActivity({
     (ticketId) =>
       deleteDataSourceDocument(
         dataSourceConfig,
-        getTicketInternalId({ connectorId, ticketId })
+        getTicketInternalId({ connectorId, brandId, ticketId })
       ),
     { concurrency: 10 }
   );
   /// deleting the tickets stored in the db
-  await ZendeskTicketResource.deleteByTicketIds({ connectorId, ticketIds });
+  await ZendeskTicketResource.deleteByTicketIds({
+    connectorId,
+    brandId,
+    ticketIds,
+  });
 
   /// returning false if we know for sure there isn't any more ticket to process
   return { hasMore: ticketIds.length === ZENDESK_BATCH_SIZE };
@@ -419,12 +432,16 @@ export async function deleteArticleBatchActivity({
     (articleId) =>
       deleteDataSourceDocument(
         dataSourceConfig,
-        getArticleInternalId({ connectorId, articleId })
+        getArticleInternalId({ connectorId, brandId, articleId })
       ),
     { concurrency: 10 }
   );
   /// deleting the articles stored in the db
-  await ZendeskArticleResource.deleteByArticleIds({ connectorId, articleIds });
+  await ZendeskArticleResource.deleteByArticleIds({
+    connectorId,
+    brandId,
+    articleIds,
+  });
 
   /// returning false if we know for sure there isn't any more article to process
   return { hasMore: articleIds.length === ZENDESK_BATCH_SIZE };
@@ -453,15 +470,15 @@ export async function deleteCategoryBatchActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const categories = await ZendeskCategoryResource.fetchByBrandId({
+  const categoryIds = await ZendeskCategoryResource.fetchByBrandId({
     connectorId,
     brandId,
     batchSize: ZENDESK_BATCH_SIZE,
   });
 
   await concurrentExecutor(
-    categories,
-    async ({ categoryId, brandId }) => {
+    categoryIds,
+    async (categoryId) => {
       await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: getCategoryInternalId({ connectorId, brandId, categoryId }),
@@ -472,7 +489,8 @@ export async function deleteCategoryBatchActivity({
 
   const deletedCount = await ZendeskCategoryResource.deleteByCategoryIds({
     connectorId,
-    categoryIds: categories.map((category) => category.categoryId),
+    brandId,
+    categoryIds,
   });
   logger.info(
     { ...loggerArgs, brandId, deletedCount },

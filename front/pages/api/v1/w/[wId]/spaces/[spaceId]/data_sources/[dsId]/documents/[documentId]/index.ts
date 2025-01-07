@@ -9,6 +9,7 @@ import {
   CoreAPI,
   dustManagedCredentials,
   rateLimiter,
+  safeSubstring,
   sectionFullText,
 } from "@dust-tt/types";
 import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
@@ -556,7 +557,7 @@ async function handler(
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           documentId: req.query.documentId as string,
-          tags: r.data.tags || [],
+          tags: (r.data.tags || []).map((tag) => safeSubstring(tag, 0)),
           parentId: r.data.parent_id || null,
           parents: r.data.parents || [documentId],
           sourceUrl,

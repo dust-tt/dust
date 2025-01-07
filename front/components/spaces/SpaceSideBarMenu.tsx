@@ -7,7 +7,6 @@ import {
   NavigationList,
   NavigationListLabel,
   PlusIcon,
-  ScrollArea,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -106,17 +105,13 @@ export default function SpaceSideBarMenu({
     return spaces.map((space) => (
       <Fragment key={`space-${space.sId}`}>
         {space.kind === "system" ? (
-          <NavigationList>
-            <SystemSpaceMenu owner={owner} space={space} />
-          </NavigationList>
+          <SystemSpaceMenu owner={owner} space={space} />
         ) : (
-          <NavigationList>
-            <SpaceMenu
-              owner={owner}
-              space={space}
-              isMember={!!spacesAsUser.find((v) => v.sId === space.sId)}
-            />
-          </NavigationList>
+          <SpaceMenu
+            owner={owner}
+            space={space}
+            isMember={!!spacesAsUser.find((v) => v.sId === space.sId)}
+          />
         )}
       </Fragment>
     ));
@@ -124,56 +119,51 @@ export default function SpaceSideBarMenu({
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
-      <ScrollArea className="w-full">
-        <div className="px-2 pb-2">
-          <NavigationList>
-            {sortedGroupedSpaces.map(({ section, spaces }, index) => {
-              if (section === "public" && !spaces.length) {
-                return null;
-              }
+      <NavigationList className="w-full px-2 pb-2">
+        {sortedGroupedSpaces.map(({ section, spaces }, index) => {
+          if (section === "public" && !spaces.length) {
+            return null;
+          }
 
-              if (section === "restricted" && !spaces.length && !isAdmin) {
-                return null;
-              }
+          if (section === "restricted" && !spaces.length && !isAdmin) {
+            return null;
+          }
 
-              const sectionDetails = getSpaceSectionDetails(section);
+          const sectionDetails = getSpaceSectionDetails(section);
 
-              return (
-                <Fragment key={`space-section-${index}`}>
-                  <div className="flex items-center justify-between pr-1">
-                    <NavigationListLabel
-                      label={sectionDetails.label}
-                      variant="secondary"
+          return (
+            <Fragment key={`space-section-${index}`}>
+              <div className="flex items-center justify-between pr-1">
+                <NavigationListLabel
+                  label={sectionDetails.label}
+                  variant="secondary"
+                />
+                {sectionDetails.displayCreateSpaceButton &&
+                  isAdmin &&
+                  openSpaceCreationModal && (
+                    <Button
+                      className="mt-4"
+                      size="xs"
+                      variant="ghost"
+                      label="New"
+                      icon={PlusIcon}
+                      onClick={() =>
+                        openSpaceCreationModal({
+                          defaultRestricted: sectionDetails.defaultRestricted,
+                        })
+                      }
                     />
-                    {sectionDetails.displayCreateSpaceButton &&
-                      isAdmin &&
-                      openSpaceCreationModal && (
-                        <Button
-                          className="mt-4"
-                          size="xs"
-                          variant="ghost"
-                          label="New"
-                          icon={PlusIcon}
-                          onClick={() =>
-                            openSpaceCreationModal({
-                              defaultRestricted:
-                                sectionDetails.defaultRestricted,
-                            })
-                          }
-                        />
-                      )}
-                  </div>
-                  {renderSpaceItems(
-                    spaces.toSorted(compareSpaces),
-                    spacesAsUser,
-                    owner
                   )}
-                </Fragment>
-              );
-            })}
-          </NavigationList>
-        </div>
-      </ScrollArea>
+              </div>
+              {renderSpaceItems(
+                spaces.toSorted(compareSpaces),
+                spacesAsUser,
+                owner
+              )}
+            </Fragment>
+          );
+        })}
+      </NavigationList>
     </div>
   );
 }

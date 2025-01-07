@@ -35,7 +35,7 @@ async function handler(
     >
   >,
   auth: Authenticator,
-  space: SpaceResource
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const { dsId } = req.query;
   if (typeof dsId !== "string") {
@@ -70,9 +70,8 @@ async function handler(
     });
   }
 
-  // Only Slack & Webcrawler connectors have configurations.
-  // SlackConfiguration.botEnabled can only be updated from a Poke route.
-  // So these routes are currently only for Webcrawler connectors.
+  // Only Slack & Webcrawler connectors have configurations. SlackConfiguration can only be updated
+  // from a Poke route. So these routes are currently only for Webcrawler connectors.
   if (!dataSource.connectorId || !isWebsite(dataSource)) {
     return apiError(req, res, {
       status_code: 404,
@@ -179,5 +178,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
 );

@@ -44,11 +44,6 @@ const axiosWithTimeout = axios.create({
   httpsAgent: new https.Agent({ keepAlive: false }),
 });
 
-const { DUST_FRONT_API } = process.env;
-if (!DUST_FRONT_API) {
-  throw new Error("FRONT_API not set");
-}
-
 // We limit the document size we support. Beyond a certain size, upsert is simply too slow (>300s)
 // and large files are generally less useful anyway.
 export const MAX_DOCUMENT_TXT_LEN = 750000;
@@ -71,7 +66,7 @@ export type UpsertDataSourceDocumentParams = {
   timestampMs?: number;
   tags?: string[];
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
   title: string;
@@ -93,7 +88,9 @@ export function getDustAPI(dataSourceConfig: DataSourceConfig) {
   );
 }
 
-export const upsertDataSourceDocument = withRetries(_upsertDataSourceDocument);
+export const upsertDataSourceDocument = withRetries(_upsertDataSourceDocument, {
+  retries: 3,
+});
 
 async function _upsertDataSourceDocument({
   dataSourceConfig,
@@ -108,7 +105,7 @@ async function _upsertDataSourceDocument({
   title,
   mimeType,
   async,
-  parentId = null,
+  parentId,
 }: UpsertDataSourceDocumentParams) {
   return tracer.trace(
     `connectors`,
@@ -123,7 +120,7 @@ async function _upsertDataSourceDocument({
       });
 
       const endpoint =
-        `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+        `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
         `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
 
       const localLogger = logger.child({
@@ -161,7 +158,7 @@ async function _upsertDataSourceDocument({
         timestamp,
         title,
         mime_type: mimeType,
-        tags: tags?.map((tag) => tag.substring(0, 512)),
+        tags: tags?.map((tag) => safeSubstring(tag, 0, 512)),
         parent_id: parentId,
         parents,
         light_document_output: true,
@@ -257,7 +254,7 @@ export async function getDataSourceDocument({
   });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents?document_ids=${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -288,7 +285,7 @@ export async function deleteDataSourceDocument(
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -321,7 +318,8 @@ export async function deleteDataSourceDocument(
 }
 
 export const updateDataSourceDocumentParents = withRetries(
-  _updateDataSourceDocumentParents
+  _updateDataSourceDocumentParents,
+  { retries: 3 }
 );
 
 async function _updateDataSourceDocumentParents({
@@ -331,7 +329,7 @@ async function _updateDataSourceDocumentParents({
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -342,7 +340,8 @@ async function _updateDataSourceDocumentParents({
 }
 
 export const updateDataSourceTableParents = withRetries(
-  _updateDataSourceTableParents
+  _updateDataSourceTableParents,
+  { retries: 3 }
 );
 
 async function _updateDataSourceTableParents({
@@ -352,6 +351,7 @@ async function _updateDataSourceTableParents({
   dataSourceConfig: DataSourceConfig;
   tableId: string;
   parents: string[];
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
 }) {
   return _updateDocumentOrTableParentsField({
@@ -365,14 +365,14 @@ async function _updateDocumentOrTableParentsField({
   dataSourceConfig,
   id,
   parents,
-  parentId = null,
+  parentId,
   loggerArgs = {},
   tableOrDocument,
 }: {
   dataSourceConfig: DataSourceConfig;
   id: string;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   loggerArgs?: Record<string, string | number>;
   tableOrDocument: "document" | "table";
 }) {
@@ -381,7 +381,7 @@ async function _updateDocumentOrTableParentsField({
       ? logger.child({ ...loggerArgs, documentId: id })
       : logger.child({ ...loggerArgs, tableId: id });
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/${tableOrDocument}s/${id}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -579,7 +579,7 @@ export async function renderDocumentTitleAndContent({
     ? safeSubstring(lastEditor, 0, MAX_AUTHOR_CHAR_LENGTH)
     : undefined;
   if (title && title.trim()) {
-    title = `$title: ${title}\n`;
+    title = `$title: ${safeSubstring(title, 0)}\n`;
   } else {
     title = null;
   }
@@ -592,13 +592,13 @@ export async function renderDocumentTitleAndContent({
     metaPrefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
   }
   if (author && lastEditor && author === lastEditor) {
-    metaPrefix += `$author: ${author}\n`;
+    metaPrefix += `$author: ${safeSubstring(author, 0)}\n`;
   } else {
     if (author) {
-      metaPrefix += `$author: ${author}\n`;
+      metaPrefix += `$author: ${safeSubstring(author, 0)}\n`;
     }
     if (lastEditor) {
-      metaPrefix += `$lastEditor: ${lastEditor}\n`;
+      metaPrefix += `$lastEditor: ${safeSubstring(lastEditor, 0)}\n`;
     }
   }
   if (metaPrefix) {
@@ -630,6 +630,7 @@ export async function upsertDataSourceRemoteTable({
   remoteDatabaseSecretId,
   loggerArgs,
   parents,
+  parentId,
   title,
   mimeType,
 }: {
@@ -641,6 +642,7 @@ export async function upsertDataSourceRemoteTable({
   remoteDatabaseSecretId: string | null;
   loggerArgs?: Record<string, string | number>;
   parents: string[];
+  parentId: string | null;
   title: string;
   mimeType: string;
 }) {
@@ -660,11 +662,12 @@ export async function upsertDataSourceRemoteTable({
   const now = new Date();
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables`;
   const dustRequestPayload: UpsertDatabaseTableRequestType = {
     name: tableName,
     parents,
+    parent_id: parentId,
     description: tableDescription,
     table_id: tableId,
     remote_database_table_id: remoteDatabaseTableId,
@@ -778,7 +781,7 @@ export async function upsertDataSourceTableFromCsv({
   loggerArgs,
   truncate,
   parents,
-  parentId = null,
+  parentId,
   useAppForHeaderDetection,
   title,
   mimeType,
@@ -791,7 +794,7 @@ export async function upsertDataSourceTableFromCsv({
   loggerArgs?: Record<string, string | number>;
   truncate: boolean;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   useAppForHeaderDetection?: boolean;
   title: string;
   mimeType: string;
@@ -819,7 +822,7 @@ export async function upsertDataSourceTableFromCsv({
   }
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
   const dustRequestPayload: UpsertTableFromCsvRequestType = {
     name: tableName,
@@ -982,7 +985,7 @@ export async function deleteDataSourceTableRow({
   const now = new Date();
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}/rows/${rowId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1050,7 +1053,9 @@ export async function deleteDataSourceTableRow({
   }
 }
 
-export const getDataSourceTable = withRetries(_getDataSourceTable);
+export const getDataSourceTable = withRetries(_getDataSourceTable, {
+  retries: 3,
+});
 
 export async function _getDataSourceTable({
   dataSourceConfig,
@@ -1064,7 +1069,7 @@ export async function _getDataSourceTable({
   });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1116,7 +1121,7 @@ export async function deleteDataSourceTable({
   const now = new Date();
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1184,7 +1189,9 @@ export async function deleteDataSourceTable({
   }
 }
 
-export const getDataSourceFolder = withRetries(_getDataSourceFolder);
+export const getDataSourceFolder = withRetries(_getDataSourceFolder, {
+  retries: 3,
+});
 
 export async function _getDataSourceFolder({
   dataSourceConfig,
@@ -1198,7 +1205,7 @@ export async function _getDataSourceFolder({
   });
 
   const endpoint =
-    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/folders/${folderId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1222,14 +1229,16 @@ export async function _getDataSourceFolder({
   return dustRequestResult.data.folder;
 }
 
-export const upsertDataSourceFolder = withRetries(_upsertDataSourceFolder);
+export const upsertDataSourceFolder = withRetries(_upsertDataSourceFolder, {
+  retries: 3,
+});
 
 export async function _upsertDataSourceFolder({
   dataSourceConfig,
   folderId,
   timestampMs,
   parents,
-  parentId = parents[1] ?? null,
+  parentId,
   title,
   mimeType,
 }: {
@@ -1237,7 +1246,7 @@ export async function _upsertDataSourceFolder({
   folderId: string;
   timestampMs?: number;
   parents: string[];
-  parentId?: string | null;
+  parentId: string | null;
   title: string;
   mimeType: string;
 }) {

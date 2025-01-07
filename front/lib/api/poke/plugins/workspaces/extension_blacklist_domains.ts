@@ -2,8 +2,9 @@ import { Err, Ok } from "@dust-tt/types";
 
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateExtensionConfiguration } from "@app/lib/api/workspace";
+import { isDomain } from "@app/lib/utils";
 
-export const extensionBlacklistDomains = createPlugin(
+export const extensionBlacklistDomainsPlugin = createPlugin(
   {
     id: "extension-blacklist-domains",
     name: "Extension Blacklist Domains",
@@ -14,7 +15,7 @@ export const extensionBlacklistDomains = createPlugin(
         type: "string",
         label: "Blacklisted domains",
         description:
-          "Comma-separated list of domains to blacklist for the extension.",
+          "Comma-separated list of domains to blacklist for the extension. This will override the existing list (if any).",
       },
     },
   },
@@ -51,21 +52,11 @@ function areDomainsValid(domains: string[]): boolean {
     return true; // Empty domains array is valid
   }
 
-  // Regular expression for domain validation
-  // - Starts with alphanumeric or hyphen
-  // - Can contain alphanumeric, hyphens
-  // - Must have at least one dot
-  // - TLD must be at least 2 characters
-  // - Cannot start or end with hyphen
-  // - Cannot have consecutive hyphens
-  const domainRegex =
-    /^(?!-)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?!-)$/;
-
   return domains.every((domain) => {
     if (domain.length > 253) {
       return false;
     }
-    if (!domainRegex.test(domain)) {
+    if (!isDomain(domain)) {
       return false;
     }
     const labels = domain.split(".");

@@ -1,5 +1,5 @@
 import type { PendingUpdate } from "@extension/lib/storage";
-import { savePendingUpdate } from "@extension/lib/storage";
+import { getStoredUser, savePendingUpdate } from "@extension/lib/storage";
 
 import {
   AUTH0_CLIENT_DOMAIN,
@@ -51,11 +51,6 @@ chrome.runtime.onInstalled.addListener(() => {
   void chrome.storage.local.set({ extensionReady: false });
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.contextMenus.create({
-    id: "ask_dust",
-    title: "Ask @dust to summarize this page",
-    contexts: ["all"],
-  });
-  chrome.contextMenus.create({
     id: "add_tab_content",
     title: "Add tab content to conversation",
     contexts: ["all"],
@@ -71,6 +66,53 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Add selection to conversation",
     contexts: ["selection"],
   });
+});
+
+/**
+ * Util & listeners to disable context menu items based on the domain.
+ */
+const shouldDisableContextMenuForDomain = async (
+  url: string
+): Promise<boolean> => {
+  if (url.startsWith("chrome://")) {
+    return true;
+  }
+
+  const user = await getStoredUser();
+  if (!user || !user.selectedWorkspace) {
+    return false;
+  }
+
+  const blacklistedDomains =
+    user.workspaces.find((w) => w.sId === user.selectedWorkspace)
+      ?.blacklistedDomains || [];
+
+  return blacklistedDomains.some((d) => url.includes(d));
+};
+
+const toggleContextMenus = (isDisabled: boolean) => {
+  ["add_tab_content", "add_tab_screenshot", "add_selection"].forEach(
+    (menuId) => {
+      chrome.contextMenus.update(menuId, { enabled: !isDisabled });
+    }
+  );
+};
+
+// Add URL change listener to update context menu state.
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete" && tab.url) {
+    const isDisabled = await shouldDisableContextMenuForDomain(tab.url);
+    toggleContextMenus(isDisabled);
+  }
+});
+
+// Also add URL change listener for active tab changes.
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  const tab = await chrome.tabs.get(activeInfo.tabId);
+  if (tab.url) {
+    const isDisabled = await shouldDisableContextMenuForDomain(tab.url);
+    toggleContextMenus(isDisabled);
+  }
 });
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -90,20 +132,24 @@ chrome.runtime.onConnect.addListener((port) => {
 
 const getActionHandler = (menuItemId: string | number) => {
   switch (menuItemId) {
-    case "ask_dust":
-      return () => {
-        const params = JSON.stringify({
-          includeContent: true,
-          includeCapture: false,
-          text: ":mention[dust]{sId=dust} summarize this page.",
-          configurationId: "dust",
-        });
-        void chrome.runtime.sendMessage({
-          type: "EXT_ROUTE_CHANGE",
-          pathname: "/run",
-          search: `?${params}`,
-        });
-      };
+    /**
+     * We have the logic to add an action that will open a convo and pre-post a message.
+     * We're not using it anymore at the moment but keeping ref here for future iteration
+     * if we want to experiment again with quick actions.
+     *
+     * const params = JSON.stringify({
+     *    includeContent: true,
+     *    includeCapture: false,
+     *    text: ":mention[dust]{sId=dust} summarize this page.",
+     *    configurationId: "dust",
+     *  });
+     *  void chrome.runtime.sendMessage({
+     *    type: "EXT_ROUTE_CHANGE",
+     *    pathname: "/run",
+     *    search: `?${params}`,
+     *  });
+     *
+     */
     case "add_tab_content":
       return () => {
         void chrome.runtime.sendMessage({

@@ -10,7 +10,10 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchRecentlyUpdatedArticles,
+  fetchZendeskManyUsers,
+  fetchZendeskTicketComments,
   fetchZendeskTickets,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -122,6 +125,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
       if (section.category_id) {
         let category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
+          brandId,
           categoryId: section.category_id,
         });
         /// fetching and adding the category to the db if it is newly created, and the Help Center is selected
@@ -147,6 +151,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
               dataSourceConfig,
               folderId: parents[0],
               parents,
+              parentId: parents[1],
               title: category.name,
               mimeType: "application/vnd.dust.zendesk.category",
             });
@@ -211,10 +216,11 @@ export async function syncZendeskTicketUpdateBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    subdomain,
+    accessToken,
   });
 
   const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
@@ -228,15 +234,22 @@ export async function syncZendeskTicketUpdateBatchActivity({
       if (ticket.status === "deleted") {
         return deleteTicket({
           connectorId,
+          brandId,
           ticketId: ticket.id,
           dataSourceConfig,
           loggerArgs,
         });
       } else if (["solved", "closed"].includes(ticket.status)) {
-        const comments = await zendeskApiClient.tickets.getComments(ticket.id);
-        const { result: users } = await zendeskApiClient.users.showMany(
-          comments.map((c) => c.author_id)
-        );
+        const comments = await fetchZendeskTicketComments({
+          accessToken,
+          brandSubdomain,
+          ticketId: ticket.id,
+        });
+        const users = await fetchZendeskManyUsers({
+          accessToken,
+          brandSubdomain,
+          userIds: comments.map((c) => c.author_id),
+        });
         return syncTicket({
           connectorId,
           ticket,

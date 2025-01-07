@@ -65,7 +65,12 @@ export function RunPluginDialog({
   return (
     <PokeDialog open={true} onOpenChange={handleClose}>
       <PokeDialogContent className="w-auto bg-structure-50 sm:min-w-[600px] sm:max-w-[1000px]">
-        <h2>Run {plugin.name} plugin</h2>
+        <div className="flex flex-col gap-1">
+          <h2>Run {plugin.name} plugin</h2>
+          <p className="text-wrap w-auto text-xs text-slate-400">
+            {plugin.description}
+          </p>
+        </div>
         {isLoading ? (
           <Spinner />
         ) : !manifest ? (

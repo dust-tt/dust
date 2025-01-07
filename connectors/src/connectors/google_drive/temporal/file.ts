@@ -1,4 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
@@ -26,6 +27,7 @@ import {
   MAX_FILE_SIZE_TO_DOWNLOAD,
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
+  renderMarkdownSection,
   sectionLength,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
@@ -202,6 +204,26 @@ async function handleFileExport(
       connectorId,
       parents,
     });
+  } else if (file.mimeType === "text/markdown") {
+    const textContent = handleTextFile(res.data, maxDocumentLen);
+    if (textContent.isErr()) {
+      result = textContent;
+    } else {
+      result = new Ok(
+        await renderDocumentTitleAndContent({
+          dataSourceConfig,
+          title: file.name || "",
+          createdAt: new Date(file.createdAtMs),
+          content: await renderMarkdownSection(
+            dataSourceConfig,
+            textContent.value.content || ""
+          ),
+          ...(file.updatedAtMs
+            ? { updatedAt: new Date(file.updatedAtMs) }
+            : {}),
+        })
+      );
+    }
   } else {
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);
   }
@@ -492,6 +514,7 @@ async function upsertGdriveDocument(
       timestampMs: file.updatedAtMs,
       tags,
       parents,
+      parentId: parents[1] || null,
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },

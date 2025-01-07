@@ -11,6 +11,8 @@ import {
   createZendeskClient,
   fetchZendeskArticlesInCategory,
   fetchZendeskCategoriesInBrand,
+  fetchZendeskManyUsers,
+  fetchZendeskTicketComments,
   fetchZendeskTickets,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -132,6 +134,7 @@ export async function syncZendeskBrandActivity({
     dataSourceConfig,
     folderId: brandInternalId,
     parents: [brandInternalId],
+    parentId: null,
     title: brandInDb.name,
     mimeType: "application/vnd.dust.zendesk.brand",
   });
@@ -142,6 +145,7 @@ export async function syncZendeskBrandActivity({
     dataSourceConfig,
     folderId: helpCenterNode.internalId,
     parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
+    parentId: helpCenterNode.parentInternalId,
     title: helpCenterNode.title,
     mimeType: "application/vnd.dust.zendesk.helpcenter",
   });
@@ -152,6 +156,7 @@ export async function syncZendeskBrandActivity({
     dataSourceConfig,
     folderId: ticketsNode.internalId,
     parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
+    parentId: ticketsNode.parentInternalId,
     title: ticketsNode.title,
     mimeType: "application/vnd.dust.zendesk.tickets",
   });
@@ -291,6 +296,7 @@ export async function syncZendeskCategoryActivity({
   }
   const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   if (!categoryInDb) {
@@ -326,6 +332,7 @@ export async function syncZendeskCategoryActivity({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     folderId: parents[0],
     parents,
+    parentId: parents[1],
     title: categoryInDb.name,
     mimeType: "application/vnd.dust.zendesk.category",
   });
@@ -346,12 +353,14 @@ export async function syncZendeskCategoryActivity({
  */
 export async function syncZendeskArticleBatchActivity({
   connectorId,
+  brandId,
   categoryId,
   currentSyncDateMs,
   forceResync,
   url,
 }: {
   connectorId: ModelId;
+  brandId: number;
   categoryId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
@@ -370,6 +379,7 @@ export async function syncZendeskArticleBatchActivity({
   };
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   if (!category) {
@@ -400,9 +410,11 @@ export async function syncZendeskArticleBatchActivity({
 
   const sections =
     await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
-  const { result: users } = await zendeskApiClient.users.showMany(
-    articles.map((article) => article.author_id)
-  );
+  const users = await fetchZendeskManyUsers({
+    accessToken,
+    brandSubdomain,
+    userIds: articles.map((article) => article.author_id),
+  });
 
   await concurrentExecutor(
     articles,
@@ -463,10 +475,11 @@ export async function syncZendeskTicketBatchActivity({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    accessToken,
+    subdomain,
   });
 
   const startTime =
@@ -491,13 +504,23 @@ export async function syncZendeskTicketBatchActivity({
 
   const comments2d = await concurrentExecutor(
     closedTickets,
-    async (ticket) => zendeskApiClient.tickets.getComments(ticket.id),
+    async (ticket) =>
+      fetchZendeskTicketComments({
+        accessToken,
+        brandSubdomain,
+        ticketId: ticket.id,
+      }),
     { concurrency: 3, onBatchComplete: heartbeat }
   );
-  const userIds = _.uniq(
-    _.flatten(comments2d.map((comments) => comments.map((c) => c.author_id)))
-  );
-  const { result: users } = await zendeskApiClient.users.showMany(userIds);
+  const users = await fetchZendeskManyUsers({
+    accessToken,
+    brandSubdomain,
+    userIds: [
+      ...new Set(
+        comments2d.flatMap((comments) => comments.map((c) => c.author_id))
+      ),
+    ],
+  });
 
   const res = await concurrentExecutor(
     _.zip(closedTickets, comments2d),

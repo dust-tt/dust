@@ -51,7 +51,9 @@ export function isZendeskExpiredCursorError(
  * The idea is that we only try/catch the part where we call the API, without wrapping any of our code and from then
  * only certain functions can actually handle 404 by returning a null.
  */
-export function isZendeskNotFoundError(err: unknown): boolean {
+export function isZendeskNotFoundError(
+  err: unknown
+): err is ZendeskApiError & boolean {
   return err instanceof ZendeskApiError && err.status === 404;
 }
 

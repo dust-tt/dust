@@ -10,6 +10,7 @@ import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceTable,
+  upsertDataSourceFolder,
   upsertDataSourceRemoteTable,
 } from "@connectors/lib/data_sources";
 import {
@@ -158,18 +159,38 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           });
         }
 
+        const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+        // upsert a folder for the database (top level node)
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: table.databaseName,
+          title: table.databaseName,
+          parents: [table.databaseName],
+          parentId: null,
+          mimeType: "application/vnd.snowflake.database",
+        });
+
+        // upsert a folder for the schema (child of the database)
+        const schemaId = `${table.databaseName}.${table.schemaName}`;
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: schemaId,
+          title: table.schemaName,
+          parents: [schemaId, table.databaseName],
+          parentId: table.databaseName,
+          mimeType: "application/vnd.snowflake.schema",
+        });
+
         await upsertDataSourceRemoteTable({
-          dataSourceConfig: dataSourceConfigFromConnector(connector),
+          dataSourceConfig,
           tableId: internalId,
           tableName: internalId,
           remoteDatabaseTableId: internalId,
           remoteDatabaseSecretId: connector.connectionId,
           tableDescription: "",
-          parents: [
-            table.internalId,
-            `${table.databaseName}.${table.schemaName}`,
-            table.databaseName,
-          ],
+          parents: [table.internalId, schemaId, table.databaseName],
+          parentId: schemaId,
           title: table.name,
           mimeType: "application/vnd.snowflake.table",
         });

@@ -8,7 +8,7 @@ import {
 import type {
   StoredTokens,
   StoredUser,
-  UserTypeWithWorkspaces,
+  UserTypeWithExtensionWorkspaces,
 } from "@extension/lib/storage";
 import {
   clearStoredData,
@@ -115,9 +115,12 @@ export const getAccessToken = async (): Promise<string | null> => {
 // Fetch me sends a request to the /me route to get the user info.
 const fetchMe = async (
   token: string
-): Promise<Result<{ user: UserTypeWithWorkspaces }, AuthError>> => {
+): Promise<Result<{ user: UserTypeWithExtensionWorkspaces }, AuthError>> => {
   const response = await fetch(`${process.env.DUST_DOMAIN}/api/v1/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-Request-Origin": "extension",
+    },
   });
   const me = await response.json();
   if (!response.ok) {

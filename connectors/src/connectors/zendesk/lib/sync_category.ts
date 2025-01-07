@@ -34,6 +34,7 @@ export async function deleteCategory({
   // deleting the articles in the data source
   const articles = await ZendeskArticleResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   await concurrentExecutor(
@@ -41,20 +42,29 @@ export async function deleteCategory({
     (article) =>
       deleteDataSourceDocument(
         dataSourceConfig,
-        getArticleInternalId({ connectorId, articleId: article.articleId })
+        getArticleInternalId({
+          connectorId,
+          brandId,
+          articleId: article.articleId,
+        })
       ),
     { concurrency: 10 }
   );
   // deleting the articles stored in the db
   await ZendeskArticleResource.deleteByCategoryId({
     connectorId,
+    brandId,
     categoryId,
   });
   // deleting the folder in data_sources_folders (core)
   const folderId = getCategoryInternalId({ connectorId, brandId, categoryId });
   await deleteDataSourceFolder({ dataSourceConfig, folderId });
   // deleting the category stored in the db
-  await ZendeskCategoryResource.deleteByCategoryId({ connectorId, categoryId });
+  await ZendeskCategoryResource.deleteByCategoryId({
+    connectorId,
+    brandId,
+    categoryId,
+  });
 }
 
 /**
@@ -75,6 +85,7 @@ export async function syncCategory({
 }): Promise<void> {
   let categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
+    brandId,
     categoryId: category.id,
   });
   if (!categoryInDb) {
@@ -104,6 +115,7 @@ export async function syncCategory({
     dataSourceConfig,
     folderId: parents[0],
     parents,
+    parentId: parents[1],
     title: categoryInDb.name,
     mimeType: "application/vnd.dust.zendesk.category",
   });

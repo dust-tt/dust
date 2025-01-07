@@ -24,11 +24,13 @@ const turndownService = new TurndownService();
  */
 export async function deleteTicket({
   connectorId,
+  brandId,
   ticketId,
   dataSourceConfig,
   loggerArgs,
 }: {
   connectorId: ModelId;
+  brandId: number;
   ticketId: number;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
@@ -39,10 +41,11 @@ export async function deleteTicket({
   );
   await deleteDataSourceDocument(
     dataSourceConfig,
-    getTicketInternalId({ connectorId, ticketId })
+    getTicketInternalId({ connectorId, brandId, ticketId })
   );
   await ZendeskTicketResource.deleteByTicketId({
     connectorId,
+    brandId,
     ticketId,
   });
 }
@@ -73,6 +76,7 @@ export async function syncTicket({
 }) {
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
+    brandId,
     ticketId: ticket.id,
   });
 
@@ -84,6 +88,10 @@ export async function syncTicket({
     !ticketInDb ||
     !ticketInDb.lastUpsertedTs ||
     ticketInDb.lastUpsertedTs < updatedAtDate;
+
+  // Tickets can be created without a subject using the API or by email,
+  // if they were never attended in the Agent Workspace their subject is not populated.
+  ticket.subject ||= "No subject";
 
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
@@ -185,7 +193,7 @@ ${comments
       );
       author = null;
     }
-    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.body}`;
+    return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${comment.plain_body.replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
   })
   .join("\n")}
 `.trim();
@@ -206,9 +214,11 @@ ${comments
 
     const documentId = getTicketInternalId({
       connectorId,
+      brandId,
       ticketId: ticket.id,
     });
 
+    const parents = ticketInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
@@ -221,7 +231,8 @@ ${comments
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
       ],
-      parents: ticketInDb.getParentInternalIds(connectorId),
+      parents,
+      parentId: parents[1],
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
       title: ticket.subject,

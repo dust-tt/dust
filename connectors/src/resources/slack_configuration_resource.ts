@@ -1,6 +1,7 @@
 import type {
   ModelId,
   Result,
+  SlackAutoReadPattern,
   SlackbotWhitelistType,
   SlackConfigurationType,
 } from "@dust-tt/types";
@@ -59,9 +60,10 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     await SlackConfigurationModel.create(
       {
-        slackTeamId,
+        autoReadChannelPatterns: [],
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
-        connectorId: connectorId,
+        connectorId,
+        slackTeamId,
       },
       { transaction }
     );
@@ -247,9 +249,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
-  async setAutoReadChannelPattern(pattern: string | null) {
+  async setAutoReadChannelPatterns(patterns: SlackAutoReadPattern[]) {
     await this.model.update(
-      { autoReadChannelPattern: pattern },
+      { autoReadChannelPatterns: patterns },
       {
         where: {
           id: this.id,
@@ -304,9 +306,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   toJSON(): SlackConfigurationType {
     return {
+      autoReadChannelPatterns: this.autoReadChannelPatterns,
       botEnabled: this.botEnabled,
       whitelistedDomains: this.whitelistedDomains?.map((d) => d),
-      autoReadChannelPattern: this.autoReadChannelPattern,
     };
   }
 }

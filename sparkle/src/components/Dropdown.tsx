@@ -24,9 +24,10 @@ export const menuStyleClasses = {
     {
       variants: {
         variant: {
-          default: "focus:s-text-primary-950 focus:s-bg-primary-150",
+          default:
+            "focus:s-text-primary-950 hover:s-bg-primary-150 focus:s-bg-primary-150",
           warning:
-            "s-text-warning-500 hover:s-bg-warning-50 active:s-bg-warning-100",
+            "s-text-warning-500 hover:s-bg-warning-50 focus:s-bg-warning-50 active:s-bg-warning-100",
         },
       },
       defaultVariants: {

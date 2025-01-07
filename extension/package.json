@@ -5,8 +5,9 @@
   "scripts": {
     "clean": "rm -rf build/*",
     "dev": "npm run clean && tsx run/watch.ts --mode=development",
+    "package:production": "tsx run/build.ts",
+    "package:release": "tsx run/build.ts --release",
     "analyze": "tsx run/build.ts --analyze",
-    "build": "tsx run/build.ts",
     "lint": "eslint app",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -48,8 +49,8 @@
     "zip-webpack-plugin": "^4.0.1"
   },
   "dependencies": {
-    "@dust-tt/client": "^1.0.15",
-    "@dust-tt/sparkle": "^0.2.348",
+    "@dust-tt/client": "^1.0.18",
+    "@dust-tt/sparkle": "^0.2.354",
     "@tailwindcss/forms": "^0.5.9",
     "@tiptap/extension-character-count": "^2.9.1",
     "@tiptap/extension-mention": "^2.9.1",

@@ -97,7 +97,8 @@ jobs:
             --image-name=$IMAGE_NAME \
             --dockerfile-path=./viz/Dockerfile \
             --working-dir=./ \
-            --region=${{ matrix.region }}
+            --region=${{ matrix.region }} \
+            --project-id=$GCLOUD_PROJECT_ID
 
   deploy:
     needs: [notify-start, build]

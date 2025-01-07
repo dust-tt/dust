@@ -176,7 +176,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator,
-  space: SpaceResource,
+  { space }: { space: SpaceResource },
   keyAuth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -506,7 +506,8 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, "space"),
+  // Check read on the workspace authenticator - for public space, everybody can read
+  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } }),
   {
     allowUserOutsideCurrentWorkspace: true,
   }

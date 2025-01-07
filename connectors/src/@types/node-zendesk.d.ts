@@ -117,7 +117,7 @@ interface ZendeskFetchedTicket {
   };
   sharing_agreement_ids: number[];
   status: "new" | "open" | "pending" | "hold" | "solved" | "closed" | "deleted";
-  subject: string;
+  subject: string | null;
   submitter_id: number;
   tags: string[];
   type: "problem" | "incident" | "question" | "task";
@@ -240,9 +240,6 @@ declare module "node-zendesk" {
       show: (
         userId: number
       ) => Promise<{ response: Response; result: ZendeskFetchedUser }>;
-      showMany: (
-        userIds: number[]
-      ) => Promise<{ response: Response; result: ZendeskFetchedUser[] }>;
     };
   }
 

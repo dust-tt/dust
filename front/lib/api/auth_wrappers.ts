@@ -237,10 +237,22 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           });
         }
 
-        const auth = await Authenticator.fromAuth0Token({
+        const authRes = await Authenticator.fromAuth0Token({
           token: decoded.value,
           wId,
         });
+        if (authRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "not_authenticated",
+              message:
+                "The user does not have an active session or is not authenticated.",
+            },
+          });
+        }
+        const auth = authRes.value;
+
         if (auth.user() === null) {
           return apiError(req, res, {
             status_code: 401,
@@ -428,7 +440,11 @@ export function withAuth0TokenAuthentication<T>(
         });
       }
 
-      const userWithWorkspaces = await getUserWithWorkspaces(user);
+      const isFromExtension = req.headers["x-request-origin"] === "extension";
+      const userWithWorkspaces = await getUserWithWorkspaces(
+        user,
+        isFromExtension
+      );
 
       return handler(req, res, userWithWorkspaces);
     }

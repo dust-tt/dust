@@ -1,4 +1,4 @@
-import type { DataSourceViewsResponseType } from "@dust-tt/client";
+import type { DataSourceViewResponseType } from "@dust-tt/client";
 import { PatchDataSourceViewRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -9,8 +9,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
 /**
@@ -150,37 +149,11 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<DataSourceViewsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<DataSourceViewResponseType>>,
   auth: Authenticator,
-  space: SpaceResource
+  { dataSourceView }: { dataSourceView: DataSourceViewResource }
 ): Promise<void> {
-  const { dsvId } = req.query;
-  if (typeof dsvId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
-  if (!dataSourceView || dataSourceView.space.sId !== space.sId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_view_not_found",
-        message: "The data source view you requested was not found.",
-      },
-    });
-  }
-
-  if (
-    !dataSourceView ||
-    req.query.vId !== dataSourceView.space.sId ||
-    !dataSourceView.canList(auth)
-  ) {
+  if (!dataSourceView.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -255,5 +228,7 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, "space")
+  withResourceFetchingFromRoute(handler, {
+    dataSourceView: { requireCanList: true },
+  })
 );

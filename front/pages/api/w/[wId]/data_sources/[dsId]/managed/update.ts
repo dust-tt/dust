@@ -28,17 +28,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
-      },
-    });
-  }
-
   const owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
@@ -71,6 +60,17 @@ async function handler(
       api_error: {
         type: "data_source_not_managed",
         message: "The data source you requested is not managed.",
+      },
+    });
+  }
+
+  if (!dataSource.canAdministrate(auth) || !auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
       },
     });
   }

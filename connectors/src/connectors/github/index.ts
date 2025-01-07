@@ -31,6 +31,7 @@ import {
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import type {
   CreateConnectorErrorCode,
+  RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import {
@@ -247,11 +248,15 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
+  }): Promise<
+    Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
+  > {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
     }
 
     const connectionId = c.connectionId;
@@ -265,7 +270,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         const pageRes = await getReposPage(connectionId, pageNumber);
 
         if (pageRes.isErr()) {
-          return new Err(pageRes.error);
+          return new Err(
+            new ConnectorManagerError(
+              "EXTERNAL_OAUTH_TOKEN_ERROR",
+              pageRes.error.message
+            )
+          );
         }
 
         const page = pageRes.value;
@@ -298,7 +308,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     } else {
       const { type, repoId } = matchGithubInternalIdType(parentInternalId);
       if (isNaN(repoId)) {
-        return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
+        return new Err(
+          new ConnectorManagerError(
+            "INVALID_PARENT_INTERNAL_ID",
+            `Invalid parentInternalId Github repoId: ${parentInternalId}`
+          )
+        );
       }
 
       switch (type) {
@@ -329,7 +344,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             ]);
 
           if (repoRes.isErr()) {
-            return repoRes;
+            return new Err(
+              new ConnectorManagerError(
+                "EXTERNAL_OAUTH_TOKEN_ERROR",
+                repoRes.error.message
+              )
+            );
           }
 
           const repo = repoRes.value;
@@ -447,7 +467,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         case "REPO_CODE_FILE":
         case "REPO_DISCUSSION":
         case "REPO_ISSUE":
-          return new Err(new Error("Invalid parent ID."));
+          return new Err(
+            new ConnectorManagerError(
+              "INVALID_PARENT_INTERNAL_ID",
+              `Invalid parentInternalId Github type: ${type}`
+            )
+          );
         default:
           assertNever(type);
       }

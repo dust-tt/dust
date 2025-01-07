@@ -25,6 +25,7 @@ const turndownService = new TurndownService();
  */
 export async function deleteArticle(
   connectorId: ModelId,
+  brandId: number,
   articleId: number,
   dataSourceConfig: DataSourceConfig,
   loggerArgs: Record<string, string | number | null>
@@ -35,9 +36,13 @@ export async function deleteArticle(
   );
   await deleteDataSourceDocument(
     dataSourceConfig,
-    getArticleInternalId({ connectorId, articleId })
+    getArticleInternalId({ connectorId, brandId, articleId })
   );
-  await ZendeskArticleResource.deleteByArticleId({ connectorId, articleId });
+  await ZendeskArticleResource.deleteByArticleId({
+    connectorId,
+    brandId,
+    articleId,
+  });
 }
 
 /**
@@ -66,6 +71,7 @@ export async function syncArticle({
 }) {
   let articleInDb = await ZendeskArticleResource.fetchByArticleId({
     connectorId,
+    brandId: category.brandId,
     articleId: article.id,
   });
   const updatedAtDate = new Date(article.updated_at);
@@ -148,9 +154,11 @@ export async function syncArticle({
 
     const documentId = getArticleInternalId({
       connectorId,
+      brandId: category.brandId,
       articleId: article.id,
     });
 
+    const parents = articleInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
       documentId,
@@ -162,7 +170,8 @@ export async function syncArticle({
         `createdAt:${createdAt.getTime()}`,
         `updatedAt:${updatedAt.getTime()}`,
       ],
-      parents: articleInDb.getParentInternalIds(connectorId),
+      parents,
+      parentId: parents[1],
       loggerArgs: { ...loggerArgs, articleId: article.id },
       upsertContext: { sync_type: "batch" },
       title: article.title,

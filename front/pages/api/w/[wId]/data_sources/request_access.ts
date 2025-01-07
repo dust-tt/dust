@@ -30,6 +30,16 @@ async function handler(
 ) {
   const user = auth.getNonNullableUser();
 
+  if (!auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "data_source_auth_error",
+        message: "You are not authorized to submit connections requests.",
+      },
+    });
+  }
+
   const { method } = req;
 
   if (method !== "POST") {

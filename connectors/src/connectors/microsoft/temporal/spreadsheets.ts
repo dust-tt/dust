@@ -70,7 +70,7 @@ async function upsertMSTable(
   internalId: string,
   spreadsheet: microsoftgraph.DriveItem,
   worksheet: microsoftgraph.WorkbookWorksheet,
-  parents: string[],
+  parents: [string, string, ...string[]],
   rows: string[][],
   loggerArgs: object
 ) {
@@ -99,6 +99,7 @@ async function upsertMSTable(
     },
     truncate: true,
     parents,
+    parentId: parents[1],
     useAppForHeaderDetection: true,
     title: `${spreadsheet.name} - ${worksheet.name}`,
     mimeType:
@@ -183,7 +184,7 @@ async function processSheet({
 
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    const parents = [
+    const parents: [string, string, ...string[]] = [
       worksheetInternalId,
       ...(await getParents({
         connectorId: connector.id,

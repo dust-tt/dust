@@ -4,6 +4,10 @@ import React from "react";
 import {
   Avatar,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   Input,
   Page,
@@ -22,6 +26,7 @@ import {
   CloudArrowLeftRightIcon,
   FolderIcon,
   GlobeAltIcon,
+  MoreIcon,
   PencilSquareIcon,
   RocketIcon,
   StarIcon,
@@ -38,7 +43,6 @@ export function Demo() {
   return (
     <div className="s-flex s-flex-col s-gap-6">
       <SheetDemo />
-
       <ContentDemo />
       <SheetCustom />
     </div>
@@ -97,11 +101,41 @@ export function ContentDemo() {
 }
 
 export function SheetCustom() {
+  const SimpleDropdownDemo = () => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            icon={MoreIcon}
+            onClick={(event) => {
+              event.currentTarget.focus();
+            }}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+          }}
+        >
+          <DropdownMenuItem label="My Account" />
+          <DropdownMenuItem label="Profile" />
+          <DropdownMenuItem label="Billing" />
+          <DropdownMenuItem label="Team" />
+          <DropdownMenuItem label="Subscription" />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   return (
     <div>
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="outline" label="Assistant Demo" />
+          <Button
+            aria-hidden="false"
+            variant="outline"
+            label="Assistant Demo"
+          />
         </SheetTrigger>
         <SheetContent>
           <SheetHeader>
@@ -122,11 +156,12 @@ export function SheetCustom() {
                 <Separator orientation="vertical" />
                 <Button icon={PencilSquareIcon} variant={"outline"} />
                 <Button icon={TrashIcon} variant={"outline"} />
+                <SimpleDropdownDemo />
               </div>
             </div>
           </SheetHeader>
           <SheetContainer>
-            <TextArea disabled isDisplay />
+            <TextArea />
           </SheetContainer>
         </SheetContent>
       </Sheet>

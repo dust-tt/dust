@@ -28,6 +28,10 @@ while [[ $# -gt 0 ]]; do
             REGION="${1#*=}"
             shift
             ;;
+        --project-id=*)
+            PROJECT_ID="${1#*=}"
+            shift
+            ;;
         --gcloud-ignore-file=*)
             GCLOUD_IGNORE_FILE="${1#*=}"
             shift
@@ -40,7 +44,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required arguments
-if [ -z "$WORKING_DIR" ] || [ -z "$IMAGE_NAME" ] || [ -z "$DOCKERFILE_PATH" ] || [ -z "$REGION" ]; then
+if [ -z "$WORKING_DIR" ] || [ -z "$IMAGE_NAME" ] || [ -z "$DOCKERFILE_PATH" ] || [ -z "$REGION" ] || [ -z "$PROJECT_ID" ]; then
     echo "Error: --working-dir, --image-name, --region and --dockerfile-path are required"
     exit 1
 fi
@@ -56,7 +60,7 @@ if [ -n "$GCLOUD_IGNORE_FILE" ]; then
 fi
 
 # Add substitutions
-BUILD_CMD+=(--substitutions="_REGION=$REGION,_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH,SHORT_SHA=$(git rev-parse --short HEAD)" .)
+BUILD_CMD+=(--substitutions="_PROJECT_ID=$PROJECT_ID,_REGION=$REGION,_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH,SHORT_SHA=$(git rev-parse --short HEAD)" .)
 
 # Execute the build
 "${BUILD_CMD[@]}"

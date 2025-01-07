@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Dust",
+  "version": "0.0.3",
+  "description": "Get more done, faster, with the power of your assistants at your fingertips.",
+  "icons": {
+    "16": "images/dust16.png",
+    "32": "images/dust32.png",
+    "48": "images/dust48.png",
+    "128": "images/dust128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Dust ⇧⌘E"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl + Shift + E",
+        "mac": "Command + Shift + E"
+      }
+    }
+  },
+  "side_panel": {
+    "default_path": "main.html"
+  },
+  "permissions": [
+    "sidePanel",
+    "identity",
+    "storage",
+    "tabs",
+    "scripting",
+    "contextMenus"
+  ],
+  "host_permissions": ["<all_urls>"]
+}
