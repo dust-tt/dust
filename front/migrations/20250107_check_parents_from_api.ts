@@ -8,23 +8,13 @@ import { makeScript } from "@app/scripts/helpers";
 const coreSequelize = getCoreReplicaDbConnection();
 const DATASOURCE_BATCH_SIZE = 25;
 
-function checkDocument(document: any, logger: typeof Logger) {
-  if (document.parents.length === 0) {
-    logger.warn("Document has no parents.");
-  } else if (document.parents.length >= 2) {
-    logger.warn("Document has 2 parents or more.");
-  } else if (document.parents[0] !== document.document_id) {
-    logger.warn("Document has incorrect parents: parents[0] !== document_id.");
-  }
-}
-
-function checkTable(table: any, logger: typeof Logger) {
-  if (table.parents.length === 0) {
-    logger.warn("Table has no parents.");
-  } else if (table.parents.length >= 2) {
-    logger.warn("Table has 2 parents or more.");
-  } else if (table.parents[0] !== table.table_id) {
-    logger.warn("Table has incorrect parents: parents[0] !== table_id.");
+function checkNode(node: any, logger: typeof Logger) {
+  if (node.parents.length === 0) {
+    logger.warn("Node has no parents.");
+  } else if (node.parents.length >= 2) {
+    logger.warn("Node has 2 parents or more.");
+  } else if (node.parents[0] !== node.node_id) {
+    logger.warn("Node has incorrect parents: parents[0] !== document_id.");
   }
 }
 
@@ -48,29 +38,18 @@ async function checkStaticDataSourceParents(
     return;
   }
 
-  const documents: any[] = await coreSequelize.query(
-    `SELECT id FROM data_sources_documents WHERE data_source=:c AND status='latest'`,
+  const nodes: any[] = await coreSequelize.query(
+    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c`,
     { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
   );
-  documents.forEach((doc) => {
-    checkDocument(
+  nodes.forEach((doc) => {
+    checkNode(
       doc,
       logger.child({
-        documentId: doc.document_id,
+        nodeId: doc.node_id,
         parents: doc.parents,
-        date: new Date(doc.timestamp),
+        timestamp: new Date(doc.timestamp),
       })
-    );
-  });
-
-  const tables: any[] = await coreSequelize.query(
-    `SELECT id FROM tables WHERE data_source=:c`,
-    { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
-  );
-  tables.forEach((table) => {
-    checkTable(
-      table,
-      logger.child({ tableId: table.table_id, parents: table.parents })
     );
   });
 }
