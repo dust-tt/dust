@@ -34,6 +34,7 @@ export const INTERCOM_MIME_TYPES = {
   CONVERSATION: "application/vnd.dust.intercom.conversation",
   TEAM: "application/vnd.dust.intercom.team",
   HELP_CENTER: "application/vnd.dust.intercom.help-center",
+  ARTICLE: "application/vnd.dust.intercom.article",
 };
 
 export type IntercomMimeType =
