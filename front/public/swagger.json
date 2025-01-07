@@ -28,7 +28,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -115,7 +115,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -179,7 +179,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -260,7 +260,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -340,7 +340,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Conversation ID"
+            "description": "Conversation sId"
           }
         ],
         "security": [
@@ -408,7 +408,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -417,7 +417,7 @@
             "in": "path",
             "name": "cId",
             "required": true,
-            "description": "ID of the conversation",
+            "description": "sId of the conversation",
             "schema": {
               "type": "string"
             }
@@ -473,7 +473,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -482,7 +482,7 @@
             "in": "path",
             "name": "cId",
             "required": true,
-            "description": "ID of the conversation",
+            "description": "sId of the conversation",
             "schema": {
               "type": "string"
             }
@@ -532,7 +532,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -541,7 +541,7 @@
             "in": "path",
             "name": "cId",
             "required": true,
-            "description": "ID of the conversation",
+            "description": "sId of the conversation",
             "schema": {
               "type": "string"
             }
@@ -599,7 +599,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Conversation ID"
+            "description": "Conversation sId"
           },
           {
             "name": "mId",
@@ -694,7 +694,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -703,7 +703,7 @@
             "in": "path",
             "name": "cId",
             "required": true,
-            "description": "ID of the conversation",
+            "description": "sId of the conversation",
             "schema": {
               "type": "string"
             }
@@ -790,7 +790,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -799,7 +799,7 @@
             "in": "path",
             "name": "cId",
             "required": true,
-            "description": "ID of the conversation",
+            "description": "sId of the conversation",
             "schema": {
               "type": "string"
             }
@@ -855,7 +855,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -944,7 +944,7 @@
             "name": "wId",
             "in": "path",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -1587,7 +1587,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -1850,7 +1850,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -1932,7 +1932,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -2089,7 +2089,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -2278,7 +2278,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -2377,7 +2377,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
@@ -3246,7 +3246,7 @@
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Id of the workspace",
             "schema": {
               "type": "string"
             }
