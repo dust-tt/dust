@@ -1,11 +1,15 @@
 import type {
   CoreAPIDataSourceDocumentSection,
   ModelId,
-  NOTION_MIME_TYPES,
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@dust-tt/types";
-import { assertNever, getNotionDatabaseTableId, slugify } from "@dust-tt/types";
+import {
+  assertNever,
+  getNotionDatabaseTableId,
+  NOTION_MIME_TYPES,
+  slugify,
+} from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
