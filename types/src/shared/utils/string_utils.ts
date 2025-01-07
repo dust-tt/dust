@@ -21,7 +21,7 @@ export function safeSubstring(
     start++;
   }
   if (end === undefined) {
-    return str.substring(start);
+    end = str.length;
   }
   while (isLeadingLoneSurrogate(str.charCodeAt(end - 1))) {
     end--;
