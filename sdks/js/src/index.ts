@@ -59,29 +59,24 @@ import {
 
 export * from "./types";
 
-import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import { createParser } from "eventsource-parser";
 import http from "http";
 import https from "https";
+
+interface DustResponse {
+  status: number;
+  ok: boolean;
+  url: string;
+  body: ReadableStream<Uint8Array>;
+}
 
 const axiosWithTimeout = axios.create({
   timeout: 60000,
   httpAgent: new http.Agent({ keepAlive: false }),
   httpsAgent: new https.Agent({ keepAlive: false }),
 });
-
-export function isAPIError(obj: unknown): obj is APIError {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    "message" in obj &&
-    typeof obj.message === "string" &&
-    "type" in obj &&
-    typeof obj.type === "string"
-    // TODO(spolu): check type is a valid APIErrorType
-  );
-}
 
 type RequestArgsType = {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -193,7 +188,7 @@ export class DustAPI {
     const res = await this._fetchWithError(url, {
       method: args.method,
       headers,
-      body: args.body ? JSON.stringify(args.body) : undefined,
+      data: args.body ? JSON.stringify(args.body) : undefined,
       signal: args.signal,
     });
 
@@ -302,7 +297,7 @@ export class DustAPI {
      * @param res an HTTP response ready to be consumed as a stream
      */
     async function processStreamedRunResponse(
-      res: Response,
+      res: DustResponse,
       logger: LoggerInterface
     ) {
       if (!res.ok || !res.body) {
@@ -634,7 +629,7 @@ export class DustAPI {
         type: "dust_api_error",
         message: `Error running streamed app: status_code=${
           res.value.response.status
-        }  - message=${await res.value.response.text()}`,
+        }  - message=${await new Response(res.value.response.body).text()}`,
       });
     }
 
@@ -1013,14 +1008,22 @@ export class DustAPI {
 
   private async _fetchWithError(
     url: string,
-    config?: AxiosRequestConfig,
-  ): Promise<Result<{ response: Response; duration: number }, APIError>> {
+    config?: AxiosRequestConfig
+  ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
     const now = Date.now();
     try {
-      const response = await axiosWithTimeout(url,...init, validateStatus: () => true);
-
-      const res = await fetch(url, init);
-      return new Ok({ response: res, duration: Date.now() - now });
+      const res = await axiosWithTimeout(url, {
+        validateStatus: () => true,
+        responseType: "stream",
+        ...config,
+      });
+      const response: DustResponse = {
+        status: res.status,
+        url: res.config.url || url,
+        body: res.data,
+        ok: res.status >= 200 && res.status < 300,
+      };
+      return new Ok({ response, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
       const err: APIError = {
@@ -1044,7 +1047,7 @@ export class DustAPI {
     schema: T,
     res: Result<
       {
-        response: Response;
+        response: DustResponse;
         duration: number;
       },
       APIError
@@ -1057,18 +1060,19 @@ export class DustAPI {
     if (res.value.response.status === 413) {
       return new Err({
         type: "content_too_large",
-        title: "Your message is too long to be sent.",
-        message: "Please try again with a shorter message.",
+        title: "Your request's content is too large.",
+        message: "Please try again with a shorter content length.",
       });
     }
 
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
-    const text = await res.value.response.text();
+    const text = await new Response(res.value.response.body).text();
 
     try {
       const response = JSON.parse(text);
       const r = schema.safeParse(response);
+      // This assume that safe parsing means a 200 status.
       if (r.success) {
         return new Ok(r.data as z.infer<T>);
       } else {
@@ -1102,7 +1106,9 @@ export class DustAPI {
     } catch (e) {
       const err: APIError = {
         type: "unexpected_response_format",
-        message: `Fail to parse response from DustAPI calling ${res.value.response.url} : ${e}`,
+        message:
+          `Fail to parse response from DustAPI calling ` +
+          `${res.value.response.url} : ${e}`,
       };
       this._logger.error(
         {
