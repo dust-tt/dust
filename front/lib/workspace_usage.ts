@@ -418,7 +418,7 @@ export async function getAssistantUsageData(
       a."createdAt" BETWEEN :startDate AND :endDate
       AND ac."workspaceId" = ${wId}
       AND ac."status" = 'active'
-      AND ac."sId" = :assistantSid
+      AND ac."sId" = :agentConfigurationId
     GROUP BY
       ac."name",
       ac."description",
