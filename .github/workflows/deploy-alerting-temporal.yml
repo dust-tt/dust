@@ -82,7 +82,8 @@ jobs:
             --image-name=$IMAGE_NAME \
             --dockerfile-path=./Dockerfile \
             --working-dir=./alerting/temporal/ \
-            --region=${{ matrix.region }}
+            --region=${{ matrix.region }} \
+            --project-id=$GCLOUD_PROJECT_ID
 
   deploy:
     if: github.ref == 'refs/heads/main'

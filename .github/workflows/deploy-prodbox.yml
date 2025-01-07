@@ -79,7 +79,7 @@ jobs:
           fi
 
   build:
-    needs: [ notify-start, create-matrix ]
+    needs: [notify-start, create-matrix]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -104,10 +104,11 @@ jobs:
             --dockerfile-path=./prodbox.Dockerfile \
             --working-dir=./ \
             --gcloud-ignore-file=.gcloudignore-prodbox \
-            --region=${{ matrix.region }}
+            --region=${{ matrix.region }} \
+            --project-id=$GCLOUD_PROJECT_ID
 
   deploy:
-    needs: [ notify-start, build ]
+    needs: [notify-start, build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
