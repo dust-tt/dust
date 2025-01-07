@@ -15,6 +15,7 @@ const LimitCodec = createRangeCodec(0, 100);
 // of AgentGetViewType
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
+    t.literal("current_user"),
     t.literal("list"),
     t.literal("workspace"),
     t.literal("published"),

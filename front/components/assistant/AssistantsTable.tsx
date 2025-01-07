@@ -27,7 +27,7 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 export const ASSISTANT_MANAGER_TABS = [
-  "edited_by_me",
+  "current_user",
   "global",
   "workspace",
   "published",

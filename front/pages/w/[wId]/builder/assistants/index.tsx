@@ -88,7 +88,7 @@ export default function WorkspaceAssistants({
     }
 
     switch (activeTab) {
-      case "edited_by_me":
+      case "current_user":
       case "published":
         return ["authors", "usage", "feedbacks"];
       case "global":
@@ -107,18 +107,15 @@ export default function WorkspaceAssistants({
     isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView:
-      activeTab === "edited_by_me" || assistantSearch
-        ? "list"
-        : (activeTab as AgentsGetViewType),
+    agentsGetView: assistantSearch ? "list" : (activeTab as AgentsGetViewType),
     includes,
   });
 
   const filteredAgents = agentConfigurations.filter((a) => {
     if (assistantSearch) {
       return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
-    } else if (activeTab === "edited_by_me") {
-      return a.lastAuthors?.includes("Me");
+    } else if (activeTab === "current_user") {
+      return true;
     } else {
       return a.scope === activeTab;
     }
@@ -163,7 +160,7 @@ export default function WorkspaceAssistants({
     {
       label: "Edited by me",
       icon: PlanetIcon,
-      scope: "edited_by_me",
+      scope: "current_user",
     },
     ...(["workspace", "published", "global"] as AgentConfigurationScope[]).map(
       (scope) => ({
@@ -252,7 +249,7 @@ export default function WorkspaceAssistants({
             <Page.P>
               {assistantSearch
                 ? "Searching across all assistants"
-                : activeTab === "edited_by_me"
+                : activeTab === "current_user"
                   ? "Your edited and created assistants"
                   : SCOPE_INFO[activeTab].text}
             </Page.P>

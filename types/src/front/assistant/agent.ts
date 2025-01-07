@@ -160,6 +160,7 @@ export type AgentConfigurationScope =
  */
 export type AgentsGetViewType =
   | { agentIds: string[]; allVersions?: boolean }
+  | "current_user"
   | "list"
   | "all"
   | "workspace"
