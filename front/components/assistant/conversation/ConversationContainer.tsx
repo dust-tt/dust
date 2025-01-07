@@ -16,6 +16,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -59,6 +60,7 @@ export function ConversationContainer({
     useContext(InputBarContext);
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
+  const { scrollConversationsToTop } = useConversationsNavigation();
 
   const router = useRouter();
 
@@ -169,6 +171,7 @@ export function ConversationContainer({
         }
       );
       await mutateConversations();
+      await scrollConversationsToTop();
     } catch (err) {
       // If the API errors, the original data will be
       // rolled back by SWR automatically.
@@ -238,11 +241,20 @@ export function ConversationContainer({
         );
         setActiveConversationId(conversationRes.value.sId);
         await mutateConversations();
+        await scrollConversationsToTop();
 
         return new Ok(undefined);
       }
     },
-    [isSubmitting, owner, user, sendNotification, router, mutateConversations]
+    [
+      isSubmitting,
+      owner,
+      user,
+      sendNotification,
+      router,
+      mutateConversations,
+      scrollConversationsToTop,
+    ]
   );
 
   useEffect(() => {

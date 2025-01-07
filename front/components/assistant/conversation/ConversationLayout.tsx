@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -97,48 +98,50 @@ export default function ConversationLayout({
 
   return (
     <RootLayout>
-      <InputBarProvider>
-        <AppLayout
-          subscription={subscription}
-          owner={owner}
-          isWideMode
-          pageTitle={
-            conversation?.title
-              ? `Dust - ${conversation?.title}`
-              : `Dust - New Conversation`
-          }
-          titleChildren={
-            // TODO: Improve so we don't re-render everytime.
-            activeConversationId && (
-              <ConversationTitle
-                owner={owner}
-                conversationId={activeConversationId}
-                conversation={conversation}
-                shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
-                onDelete={onDeleteConversation}
-              />
-            )
-          }
-          navChildren={<AssistantSidebarMenu owner={owner} />}
-        >
-          {conversationError ? (
-            <ConversationErrorDisplay error={conversationError} />
-          ) : (
-            <>
-              <AssistantDetails
-                owner={owner}
-                assistantId={detailViewContent || null}
-                onClose={() => onOpenChangeAssistantModal(false)}
-              />
-              <FileDropProvider>
-                <GenerationContextProvider>
-                  {children}
-                </GenerationContextProvider>
-              </FileDropProvider>
-            </>
-          )}
-        </AppLayout>
-      </InputBarProvider>
+      <ConversationsNavigationProvider>
+        <InputBarProvider>
+          <AppLayout
+            subscription={subscription}
+            owner={owner}
+            isWideMode
+            pageTitle={
+              conversation?.title
+                ? `Dust - ${conversation?.title}`
+                : `Dust - New Conversation`
+            }
+            titleChildren={
+              // TODO: Improve so we don't re-render everytime.
+              activeConversationId && (
+                <ConversationTitle
+                  owner={owner}
+                  conversationId={activeConversationId}
+                  conversation={conversation}
+                  shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
+                  onDelete={onDeleteConversation}
+                />
+              )
+            }
+            navChildren={<AssistantSidebarMenu owner={owner} />}
+          >
+            {conversationError ? (
+              <ConversationErrorDisplay error={conversationError} />
+            ) : (
+              <>
+                <AssistantDetails
+                  owner={owner}
+                  assistantId={detailViewContent || null}
+                  onClose={() => onOpenChangeAssistantModal(false)}
+                />
+                <FileDropProvider>
+                  <GenerationContextProvider>
+                    {children}
+                  </GenerationContextProvider>
+                </FileDropProvider>
+              </>
+            )}
+          </AppLayout>
+        </InputBarProvider>
+      </ConversationsNavigationProvider>
     </RootLayout>
   );
 }

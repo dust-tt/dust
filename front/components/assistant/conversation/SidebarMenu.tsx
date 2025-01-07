@@ -28,6 +28,7 @@ import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
+import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
@@ -50,6 +51,8 @@ type GroupLabel =
 
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
+  const { conversationsNavigationRef } = useConversationsNavigation();
+
   const { setSidebarOpen } = useContext(SidebarContext);
   const { conversations, isConversationsError } = useConversations({
     workspaceId: owner.sId,
@@ -277,7 +280,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            <NavigationList className="w-full px-2">
+            <NavigationList
+              className="w-full px-2"
+              ref={conversationsNavigationRef}
+            >
               {conversationsByDate &&
                 Object.keys(conversationsByDate).map((dateLabel) => (
                   <RenderConversations
