@@ -15,6 +15,7 @@ import {
   useConversation,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
+import { useURLSheet } from "@app/hooks/useURLSheet";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -39,18 +40,8 @@ export default function ConversationLayout({
     conversationId !== "new" ? conversationId : null
   );
 
-  const handleCloseModal = useCallback(() => {
-    const currentPathname = router.pathname;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { assistantDetails, ...restQuery } = router.query;
-    void router.push(
-      { pathname: currentPathname, query: restQuery },
-      undefined,
-      {
-        shallow: true,
-      }
-    );
-  }, [router]);
+  const { onOpenChange: onOpenChangeAssistantModal } =
+    useURLSheet("assistantDetails");
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -137,7 +128,7 @@ export default function ConversationLayout({
               <AssistantDetails
                 owner={owner}
                 assistantId={detailViewContent || null}
-                onClose={handleCloseModal}
+                onClose={() => onOpenChangeAssistantModal(false)}
               />
               <FileDropProvider>
                 <GenerationContextProvider>

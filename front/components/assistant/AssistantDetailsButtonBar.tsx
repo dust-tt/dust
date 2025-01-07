@@ -22,6 +22,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 
@@ -42,6 +43,9 @@ export function AssistantDetailsButtonBar({
   const { user } = useUser();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
+  const { onOpenChange: onOpenChangeAssistantModal } =
+    useURLSheet("assistantDetails");
+
   const router = useRouter();
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
@@ -70,6 +74,7 @@ export function AssistantDetailsButtonBar({
           agentConfiguration={agentConfiguration}
           onClose={() => {
             setShowDeletionModal(false);
+            onOpenChangeAssistantModal(false);
           }}
           isPrivateAssistant={agentConfiguration.scope === "private"}
         />
