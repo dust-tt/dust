@@ -26,11 +26,8 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (
-    !req.query.aId ||
-    typeof req.query.aId !== "string" ||
-    req.query.aId.length === 0
-  ) {
+  const { aId } = req.query;
+  if (typeof aId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -41,7 +38,7 @@ async function handler(
   }
 
   // Check that user has access to this assistant
-  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  const assistant = await getAgentConfiguration(auth, aId);
   if (
     !assistant ||
     (assistant.scope === "private" &&
@@ -82,7 +79,7 @@ async function handler(
       const agentConfigurations = await getAgentConfigurations({
         auth,
         agentsGetView: {
-          agentIds: [req.query.aId as string],
+          agentIds: [aId],
           allVersions: true,
         },
         variant: "light",
