@@ -451,7 +451,7 @@ export async function getFeedbacksUsageData(
     return "No data available for the selected period.";
   }
 
-  const feedbacksWithMinimalFields: FeedbackQueryResult[] = feedbacks.map((feedback) => {
+  const feedbacksWithMinimalFields = feedbacks.map((feedback) => {
     const jsonFeedback = feedback.toJSON();
     return {
       id: jsonFeedback.id,
@@ -462,7 +462,7 @@ export async function getFeedbacksUsageData(
       agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
       thumb: jsonFeedback.thumbDirection,
       content: jsonFeedback.content?.replace(/\r?\n/g, "\\n") || null,
-    };
+    } as FeedbackQueryResult;
   });
   return generateCsvFromQueryResult(feedbacksWithMinimalFields);
 }
