@@ -34,7 +34,6 @@ import {
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
 } from "@dust-tt/types";
-import assert from "assert";
 
 import {
   DEFAULT_BROWSE_ACTION_DESCRIPTION,
@@ -52,8 +51,6 @@ import {
   PRODUCTION_DUST_APPS_WORKSPACE_ID,
 } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 // Used when returning an agent with status 'disabled_by_admin'
@@ -102,24 +99,12 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
 ): Promise<PrefetchedDataSourcesType> {
   const owner = auth.getNonNullableWorkspace();
-
-  const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
-  assert(globalGroup.isOk(), "Failed to fetch global group");
-
-  const globalGroupSpaces = await SpaceResource.listForGroups(auth, [
-    globalGroup.value,
-  ]);
-
-  const dataSourceViews = await DataSourceViewResource.listBySpaces(
-    auth,
-    globalGroupSpaces
-  );
+  const dsvs = await DataSourceViewResource.listAssistantDefaultSelected(auth);
 
   return {
-    dataSourceViews: dataSourceViews.map((dsv) => {
+    dataSourceViews: dsvs.map((dsv) => {
       return {
         ...dsv.toJSON(),
-        assistantDefaultSelected: dsv.dataSource.assistantDefaultSelected,
         isInGlobalSpace: dsv.space.isGlobal(),
       };
     }),
