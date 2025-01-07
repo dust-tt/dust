@@ -223,7 +223,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
 
     return agentMessageFeedback
-      .filter((feedback) => !!feedback.user)
+      .filter((feedback) => Boolean(feedback.user))
       .map((feedback) => {
         return new AgentMessageFeedbackResource(
           AgentMessageFeedback,
