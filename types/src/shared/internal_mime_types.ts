@@ -22,6 +22,7 @@ export type GithubMimeType =
 
 export const GOOGLE_DRIVE_MIME_TYPES = {
   FOLDER: "application/vnd.dust.googledrive.folder",
+  // for files and spreadsheets, we keep Google's mime types
 };
 
 export type GoogleDriveMimeType =
