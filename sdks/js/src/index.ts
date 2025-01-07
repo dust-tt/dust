@@ -1032,6 +1032,7 @@ export class DustAPI {
       };
       this._logger.error(
         {
+          dustError: err,
           url,
           duration,
           connectorsError: err,
@@ -1058,11 +1059,21 @@ export class DustAPI {
     }
 
     if (res.value.response.status === 413) {
-      return new Err({
+      const err: APIError = {
         type: "content_too_large",
-        title: "Your request's content is too large.",
-        message: "Please try again with a shorter content length.",
-      });
+        message:
+          "Your request content is too large, please try again with a shorter content.",
+      };
+      this._logger.error(
+        {
+          dustError: err,
+          status: res.value.response.status,
+          url: res.value.response.url,
+          duration: res.value.duration,
+        },
+        "DustAPI error"
+      );
+      return new Err(err);
     }
 
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
@@ -1080,6 +1091,15 @@ export class DustAPI {
         const rErr = APIErrorSchema.safeParse(response["error"]);
         if (rErr.success) {
           // Successfully parsed an error
+          this._logger.error(
+            {
+              dustError: rErr.data,
+              status: res.value.response.status,
+              url: res.value.response.url,
+              duration: res.value.duration,
+            },
+            "DustAPI error"
+          );
           return new Err(rErr.data);
         } else {
           // Unexpected response format (neither an error nor a valid response)
