@@ -17,15 +17,14 @@ import { apiError } from "@app/logger/withlogging";
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
   upsertArgs:
-    | Pick<UpsertDocumentArgs, "name" | "title" | "parents" | "tags">
+    | Pick<UpsertDocumentArgs, "name" | "title" | "tags">
     | Pick<
         UpsertTableArgs,
         | "name"
         | "title"
-        | "parents"
-        | "tags"
         | "description"
         | "tableId"
+        | "tags"
         | "useAppForHeaderDetection"
       >;
 }

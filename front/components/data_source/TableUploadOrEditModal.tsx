@@ -328,11 +328,12 @@ export const TableUploadOrEditModal = ({
         onClose(false);
       }}
       hasChanged={
-        table
+        tableState.file !== null ||
+        (table
           ? table.description !== tableState.description ||
             table.name !== tableState.name
           : tableState.description.trim() !== "" ||
-            tableState.name.trim() !== ""
+            tableState.name.trim() !== "")
       }
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} table`}
