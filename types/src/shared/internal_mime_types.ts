@@ -55,10 +55,19 @@ export const NOTION_MIME_TYPES = {
 export type NotionMimeType =
   (typeof NOTION_MIME_TYPES)[keyof typeof NOTION_MIME_TYPES];
 
+export const SLACK_MIME_TYPES = {
+  CHANNEL: "application/vnd.dust.slack.channel",
+  THREAD: "application/vnd.dust.slack.thread",
+};
+
+export type SlackMimeType =
+  (typeof SLACK_MIME_TYPES)[keyof typeof SLACK_MIME_TYPES];
+
 export type DustMimeType =
   | ConfluenceMimeType
   | GithubMimeType
   | GoogleDriveMimeType
   | IntercomMimeType
   | MicrosoftMimeType
-  | NotionMimeType;
+  | NotionMimeType
+  | SlackMimeType;
