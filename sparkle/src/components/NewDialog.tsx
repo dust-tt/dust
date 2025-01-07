@@ -37,7 +37,7 @@ const sizeClasses: Record<DialogSizeType, string> = {
 };
 
 const dialogVariants = cva(
-  "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-translate-x-[-50%] s-translate-y-[-50%] s-bg-background s-duration-200 s-flex s-flex-col data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 s-rounded-xl s-border s-border-border",
+  "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-translate-x-[-50%] s-translate-y-[-50%] s-bg-background s-duration-200 s-flex s-flex-col data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 s-overflow-hidden s-rounded-2xl s-border s-border-border",
   {
     variants: {
       size: sizeClasses,
@@ -94,13 +94,13 @@ const NewDialogHeader = ({
 }: NewNewDialogHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-rounded-t-xl s-border-b s-bg-background s-p-5 s-text-left",
+      "s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-p-5 s-text-left",
       className
     )}
     {...props}
   >
     {children}
-    <NewDialogClose asChild className="s-absolute s-right-3 s-top-4">
+    <NewDialogClose asChild className="s-absolute s-right-3 s-top-3">
       {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
     </NewDialogClose>
   </div>
@@ -134,7 +134,7 @@ const NewDialogFooter = ({
 }: NewDialogFooterProps) => (
   <div
     className={cn(
-      "s-flex s-flex-none s-flex-row s-gap-2 s-px-3 s-py-3",
+      "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-py-3",
       className
     )}
     {...props}

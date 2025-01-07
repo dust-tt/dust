@@ -37,19 +37,17 @@ export const Basic: Story = {
           </NewDialogDescription>
         </NewDialogHeader>
         <NewDialogContainer>
-          <p className="s-text-sm s-text-muted-foreground">
-            Your profile details will be updated based on the information you
-            provide.
-          </p>
+          Your profile details will be updated based on the information you
+          provide.
         </NewDialogContainer>
         <NewDialogFooter
           leftButtonProps={{
             label: "Cancel",
-            variant: "ghost",
+            variant: "outline",
           }}
           rightButtonProps={{
             label: "Save Changes",
-            variant: "primary",
+            variant: "highlight",
           }}
         />
       </NewDialogContent>
