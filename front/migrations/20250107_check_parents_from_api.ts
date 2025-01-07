@@ -32,6 +32,7 @@ async function checkStaticDataSourceParents(
   frontDataSource: DataSourceModel,
   logger: typeof Logger
 ) {
+  logger.info("CHECK");
   const { dustAPIProjectId, dustAPIDataSourceId } = frontDataSource;
   const coreDataSource: any = (
     await coreSequelize.query(
@@ -43,10 +44,7 @@ async function checkStaticDataSourceParents(
     )
   )[0];
   if (!coreDataSource) {
-    logger.warn(
-      { project: dustAPIProjectId, dataSourceId: dustAPIDataSourceId },
-      "No core data source found for static data source."
-    );
+    logger.warn("No core data source found for static data source.");
     return;
   }
 
@@ -57,7 +55,11 @@ async function checkStaticDataSourceParents(
   documents.forEach((doc) => {
     checkDocument(
       doc,
-      logger.child({ documentId: doc.document_id, parents: doc.parents })
+      logger.child({
+        documentId: doc.document_id,
+        parents: doc.parents,
+        date: new Date(doc.timestamp),
+      })
     );
   });
 
@@ -87,8 +89,13 @@ async function checkStaticDataSourcesParents(
     });
 
     for (const dataSource of staticDataSources) {
-      logger.info({ dataSource }, "CHECK");
-      await checkStaticDataSourceParents(dataSource, logger);
+      await checkStaticDataSourceParents(
+        dataSource,
+        logger.child({
+          project: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+        })
+      );
     }
   } while (staticDataSources.length === DATASOURCE_BATCH_SIZE);
 }
