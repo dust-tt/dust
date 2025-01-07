@@ -28,11 +28,13 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
     },
     ref
   ) => {
-    const childrenArray = React.Children.toArray(children);
-    const hasDescription = childrenArray.some(
-      (child) =>
-        React.isValidElement(child) && child.type === CitationDescription
-    );
+    const hasDescription = React.useMemo(() => {
+      const childrenArray = React.Children.toArray(children);
+      return childrenArray.some(
+        (child) =>
+          React.isValidElement(child) && child.type === CitationDescription
+      );
+    }, [children]);
 
     const contentWithDescription = (
       <>

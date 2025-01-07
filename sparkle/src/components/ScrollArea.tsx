@@ -1,5 +1,6 @@
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import * as React from "react";
+import { useMemo } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
@@ -12,7 +13,7 @@ const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   ScrollAreaProps
 >(({ className, children, hideScrollBar = false, ...props }, ref) => {
-  const hasCustomScrollBar = React.useMemo(
+  const hasCustomScrollBar = useMemo(
     () =>
       React.Children.toArray(children).some(
         (child) =>
