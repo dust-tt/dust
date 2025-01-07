@@ -250,7 +250,7 @@ export default function WorkspaceAssistants({
               {assistantSearch
                 ? "Searching across all assistants"
                 : activeTab === "current_user"
-                  ? "Your edited and created assistants"
+                  ? "Edited or created by you."
                   : SCOPE_INFO[activeTab].text}
             </Page.P>
             {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (

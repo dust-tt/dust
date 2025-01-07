@@ -13,6 +13,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  AgentConfigurationScope,
   AgentUsageType,
   LightAgentConfigurationType,
   WorkspaceType,
@@ -41,6 +42,7 @@ type RowData = {
   usage: AgentUsageType | undefined;
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
+  scope: AgentConfigurationScope;
   onClick?: () => void;
 };
 
@@ -76,7 +78,7 @@ const getTableColumns = () => {
     },
     {
       header: "Messages",
-      accessorKey: "usage",
+      accessorKey: "usage.messageCount",
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.CellContent>
           <Tooltip
@@ -89,7 +91,7 @@ const getTableColumns = () => {
             })}
             trigger={
               <span className="px-2">
-                {info.row.original.usage?.messageCount}
+                {info.row.original.usage?.messageCount ?? 0}
               </span>
             }
           />
@@ -103,6 +105,9 @@ const getTableColumns = () => {
       header: "Feedbacks",
       accessorKey: "feedbacks",
       cell: (info: CellContext<RowData, { up: number; down: number }>) => {
+        if (info.row.original.scope === "global") {
+          return "-";
+        }
         const f = info.getValue();
         if (f) {
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
@@ -197,11 +202,15 @@ export function AssistantsTable({
       agents.map((agentConfiguration) => {
         return {
           name: agentConfiguration.name,
-          usage: agentConfiguration.usage,
+          usage: agentConfiguration.usage ?? {
+            messageCount: 0,
+            timePeriodSec: 2592000,
+          },
           description: agentConfiguration.description,
           pictureUrl: agentConfiguration.pictureUrl,
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
+          scope: agentConfiguration.scope,
           action:
             agentConfiguration.scope === "global" ? (
               <GlobalAgentAction
@@ -298,7 +307,11 @@ export function AssistantsTable({
       />
       <div>
         {rows.length > 0 && (
-          <DataTable data={rows} columns={getTableColumns()} />
+          <DataTable
+            className="relative"
+            data={rows}
+            columns={getTableColumns()}
+          />
         )}
       </div>
     </>
