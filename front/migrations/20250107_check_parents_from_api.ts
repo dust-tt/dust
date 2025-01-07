@@ -1,11 +1,11 @@
 import { Op, QueryTypes } from "sequelize";
 
-import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { getCoreReplicaDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const coreSequelize = getCorePrimaryDbConnection();
+const coreSequelize = getCoreReplicaDbConnection();
 const DATASOURCE_BATCH_SIZE = 25;
 
 function checkDocument(document: any, logger: typeof Logger) {
