@@ -59,13 +59,16 @@ async function handler(
         case "azure_openai":
           try {
             const parsed = new URL(config.endpoint);
-            if (!parsed.hostname.endsWith(".openai.azure.com")) {
+            if (
+              !parsed.hostname.endsWith(".openai.azure.com") &&
+              !parsed.hostname.endsWith(".cognitive.microsoft.com")
+            ) {
               return apiError(req, res, {
                 status_code: 400,
                 api_error: {
                   type: "invalid_request_error",
                   message:
-                    "The endpoint is invalid (expecting `openai.azure.com`).",
+                    "The endpoint is invalid (expecting `openai.azure.com` or `cognitive.microsoft.com`).",
                 },
               });
             }
