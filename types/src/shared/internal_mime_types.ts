@@ -31,6 +31,7 @@ export type GoogleDriveMimeType =
 export const INTERCOM_MIME_TYPES = {
   COLLECTION: "application/vnd.dust.intercom.collection",
   CONVERSATIONS: "application/vnd.dust.intercom.teams-folder",
+  CONVERSATION: "application/vnd.dust.intercom.conversation",
   TEAM: "application/vnd.dust.intercom.team",
   HELP_CENTER: "application/vnd.dust.intercom.help-center",
 };
