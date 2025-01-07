@@ -136,15 +136,7 @@ export async function maybeUpsertFileAttachment(
             auth,
             fileResource
           );
-          if (jitDataSource.isErr()) {
-            logger.error(
-              {
-                code: jitDataSource.error.code,
-                message: jitDataSource.error.message,
-              },
-              "Failed to get or create JIT data source"
-            );
-          } else {
+          if (!jitDataSource.isErr()) {
             const r = await processAndUpsertToDataSource(
               auth,
               jitDataSource.value,
