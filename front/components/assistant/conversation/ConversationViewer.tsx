@@ -1,4 +1,4 @@
-import { Spinner, useHashParam } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type {
   AgentGenerationCancelledEvent,
   AgentMention,
@@ -35,7 +35,7 @@ import {
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
-const DEFAULT_PAGE_LIMIT = 2;
+const DEFAULT_PAGE_LIMIT = 50;
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -327,10 +327,16 @@ const ConversationViewer = React.forwardRef<
 
   // Track index of the group with message sId in anchor.
   const groupIndexWithMessageIdInAnchor = useMemo(() => {
+    const messageToScrollTo = messages
+      .flatMap((messagePage) => messagePage.messages)
+      .find((message) => message.rank === messageRankToScrollTo);
+    if (!messageToScrollTo) {
+      return -1;
+    }
     return typedGroupedMessages.findIndex((group) => {
-      return group.some((message) => message.rank === messageRankToScrollTo);
+      return group.some((message) => message.sId === messageToScrollTo.sId);
     });
-  }, [typedGroupedMessages, messageRankToScrollTo]);
+  }, [typedGroupedMessages, messageRankToScrollTo, messages]);
 
   // Effect: scroll to the message and temporarily highlight if it is the anchor's target
   useEffect(() => {
