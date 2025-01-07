@@ -24,7 +24,6 @@ import {
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
-const headerColor = "s-text-foreground";
 const sizes = {
   p: "s-text-sm @sm:s-text-base @sm:s-leading-7",
   h1: "s-text-3xl @sm:s-text-4xl s-font-semibold",
@@ -51,6 +50,7 @@ export function Markdown({
   content,
   isStreaming = false,
   textColor = "s-text-foreground",
+  forcedTextSize,
   isLastMessage = false,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
@@ -59,6 +59,7 @@ export function Markdown({
   isStreaming?: boolean;
   textColor?: string;
   isLastMessage?: boolean;
+  forcedTextSize?: string;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }) {
@@ -83,15 +84,38 @@ export function Markdown({
     return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
       a: LinkBlock,
-      ul: ({ children }) => <UlBlock textColor={textColor}>{children}</UlBlock>,
+      ul: ({ children }) => (
+        <UlBlock
+          textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          textColor={textColor}
+        >
+          {children}
+        </UlBlock>
+      ),
       ol: ({ children, start }) => (
-        <OlBlock start={start} textColor={textColor}>
+        <OlBlock
+          start={start}
+          textColor={textColor}
+          textSize={forcedTextSize ? forcedTextSize : sizes.p}
+        >
           {children}
         </OlBlock>
       ),
-      li: ({ children }) => <LiBlock textColor={textColor}>{children}</LiBlock>,
+      li: ({ children }) => (
+        <LiBlock
+          textColor={textColor}
+          textSize={forcedTextSize ? forcedTextSize : sizes.p}
+        >
+          {children}
+        </LiBlock>
+      ),
       p: ({ children }) => (
-        <ParagraphBlock textColor={textColor}>{children}</ParagraphBlock>
+        <ParagraphBlock
+          textColor={textColor}
+          textSize={forcedTextSize ? forcedTextSize : sizes.p}
+        >
+          {children}
+        </ParagraphBlock>
       ),
       table: TableBlock,
       thead: TableHeadBlock,
@@ -99,32 +123,68 @@ export function Markdown({
       th: TableHeaderBlock,
       td: TableDataBlock,
       h1: ({ children }) => (
-        <h1 className={cn("s-pb-2 s-pt-4", sizes.h1, headerColor)}>
+        <h1
+          className={cn(
+            "s-pb-2 s-pt-4",
+            forcedTextSize ? forcedTextSize : sizes.h1,
+            textColor
+          )}
+        >
           {children}
         </h1>
       ),
       h2: ({ children }) => (
-        <h2 className={cn("s-pb-2 s-pt-4", sizes.h2, headerColor)}>
+        <h2
+          className={cn(
+            "s-pb-2 s-pt-4",
+            forcedTextSize ? forcedTextSize : sizes.h2,
+            textColor
+          )}
+        >
           {children}
         </h2>
       ),
       h3: ({ children }) => (
-        <h3 className={cn("s-pb-2 s-pt-4", sizes.h3, headerColor)}>
+        <h3
+          className={cn(
+            "s-pb-2 s-pt-4",
+            forcedTextSize ? forcedTextSize : sizes.h3,
+            textColor
+          )}
+        >
           {children}
         </h3>
       ),
       h4: ({ children }) => (
-        <h4 className={cn("s-pb-2 s-pt-3", sizes.h4, headerColor)}>
+        <h4
+          className={cn(
+            "s-pb-2 s-pt-3",
+            forcedTextSize ? forcedTextSize : sizes.h4,
+            textColor
+          )}
+        >
           {children}
         </h4>
       ),
       h5: ({ children }) => (
-        <h5 className={cn("s-pb-1.5 s-pt-2.5", sizes.h5, headerColor)}>
+        <h5
+          className={cn(
+            "s-pb-1.5 s-pt-2.5",
+            forcedTextSize ? forcedTextSize : sizes.h5,
+            textColor
+          )}
+        >
           {children}
         </h5>
       ),
       h6: ({ children }) => (
-        <h6 className={cn("s-pb-1.5 s-pt-2.5", sizes.h6, headerColor)}>
+        <h6
+          className={cn(
+            "s-pb-1.5 s-pt-2.5",
+            forcedTextSize ? forcedTextSize : sizes.h6,
+            textColor
+          )}
+        >
           {children}
         </h6>
       ),
@@ -223,30 +283,35 @@ function PreBlock({ children }: { children: React.ReactNode }) {
 function UlBlock({
   children,
   textColor,
+  textSize,
 }: {
   children: React.ReactNode;
   textColor: string;
+  textSize: string;
 }) {
   return (
     <ul
       className={cn(
         "s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0",
         textColor,
-        sizes.p
+        textSize
       )}
     >
       {children}
     </ul>
   );
 }
+
 function OlBlock({
   children,
   start,
   textColor,
+  textSize,
 }: {
   children: React.ReactNode;
   start?: number;
   textColor: string;
+  textSize: string;
 }) {
   return (
     <ol
@@ -254,21 +319,24 @@ function OlBlock({
       className={cn(
         "s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0",
         textColor,
-        sizes.p
+        textSize
       )}
     >
       {children}
     </ol>
   );
 }
+
 function LiBlock({
   children,
   textColor,
+  textSize,
   className = "",
 }: {
   children: React.ReactNode;
   textColor: string;
   className?: string;
+  textSize: string;
 }) {
   return (
     <li
@@ -276,7 +344,7 @@ function LiBlock({
         "s-break-words first:s-pt-0 last:s-pb-0",
         "s-py-1 @md:s-py-2",
         textColor,
-        sizes.p,
+        textSize,
         className
       )}
     >
@@ -284,19 +352,22 @@ function LiBlock({
     </li>
   );
 }
+
 function ParagraphBlock({
   children,
   textColor,
+  textSize,
 }: {
   children: React.ReactNode;
   textColor: string;
+  textSize: string;
 }) {
   return (
     <div
       className={cn(
         "s-whitespace-pre-wrap s-break-words s-font-normal first:s-pt-0 last:s-pb-0",
         "s-py-1 @md:s-py-2 @md:s-leading-7",
-        sizes.p,
+        textSize,
         textColor
       )}
     >
