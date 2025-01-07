@@ -1,5 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis, removeNulls } from "@dust-tt/types";
+import {
+  cacheWithRedis,
+  MICROSOFT_MIME_TYPES,
+  removeNulls,
+} from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -209,7 +213,7 @@ export async function getRootNodesToSyncFromResources(
         parents: [createdOrUpdatedResource.internalId],
         parentId: null,
         title: createdOrUpdatedResource.name ?? "",
-        mimeType: "application/vnd.dust.microsoft.folder",
+        mimeType: MICROSOFT_MIME_TYPES.FOLDER,
       }),
     { concurrency: 5 }
   );
@@ -481,7 +485,7 @@ export async function syncFiles({
         parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
         parentId: parentsOfParent[0],
         title: createdOrUpdatedResource.name ?? "",
-        mimeType: "application/vnd.dust.microsoft.folder",
+        mimeType: MICROSOFT_MIME_TYPES.FOLDER,
       }),
     { concurrency: 5 }
   );
@@ -655,7 +659,7 @@ export async function syncDeltaForRootNodesInDrive({
           parents: [blob.internalId],
           parentId: null,
           title: blob.name ?? "",
-          mimeType: "application/vnd.dust.microsoft.folder",
+          mimeType: MICROSOFT_MIME_TYPES.FOLDER,
         });
 
         // add parent information to new node resource. for the toplevel folder,
@@ -871,7 +875,7 @@ async function updateDescendantsParentsInCore({
     parents,
     parentId: parents[1] || null,
     title: folder.name ?? "",
-    mimeType: "application/vnd.dust.microsoft.folder",
+    mimeType: MICROSOFT_MIME_TYPES.FOLDER,
   });
 
   await concurrentExecutor(

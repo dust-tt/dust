@@ -38,8 +38,16 @@ export const INTERCOM_MIME_TYPES = {
 export type IntercomMimeType =
   (typeof INTERCOM_MIME_TYPES)[keyof typeof INTERCOM_MIME_TYPES];
 
+export const MICROSOFT_MIME_TYPES = {
+  FOLDER: "application/vnd.dust.microsoft.folder",
+};
+
+export type MicrosoftMimeType =
+  (typeof MICROSOFT_MIME_TYPES)[keyof typeof MICROSOFT_MIME_TYPES];
+
 export type DustMimeType =
   | ConfluenceMimeType
   | GithubMimeType
   | GoogleDriveMimeType
-  | IntercomMimeType;
+  | IntercomMimeType
+  | MicrosoftMimeType;
