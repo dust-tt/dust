@@ -154,6 +154,23 @@ impl PostgresStore {
         row_id: i64,
         tx: &Transaction<'_>,
     ) -> Result<()> {
+        // Check that all parents exist in data_sources_nodes
+        let stmt_check = tx
+            .prepare(
+                "SELECT COUNT(*) FROM data_sources_nodes
+                 WHERE data_source = $1 AND node_id = ANY($2)",
+            )
+            .await?;
+        let count: i64 = tx
+            .query_one(&stmt_check, &[&data_source_row_id, &upsert_params.parents])
+            .await?
+            .get(0);
+        if count != upsert_params.parents.len() as i64 {
+            return Err(anyhow!(
+                "Some parents refer to non-existing data_sources_nodes."
+            ));
+        }
+
         let created = utils::now();
 
         let (document_row_id, table_row_id, folder_row_id) = match upsert_params.node_type {
