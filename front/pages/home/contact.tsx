@@ -1,4 +1,4 @@
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
@@ -13,8 +13,7 @@ import {
 
 // Create a separate component for HubSpot form
 const HubSpotForm = dynamic(
-  () => 
-    import('./HubSpotForm').then((mod) => mod.HubSpotForm),
+  () => import("./HubSpotForm").then((mod) => mod.HubSpotForm),
   { ssr: false }
 );
 
@@ -28,7 +27,7 @@ export async function getServerSideProps() {
 
 export default function Contact() {
   return (
-    <div className="flex flex-col gap-12 w-full justify-center">
+    <div className="flex w-full flex-col justify-center gap-12">
       <HeaderContentBlock
         title="Contact Dust"
         from="from-emerald-200"
@@ -36,8 +35,9 @@ export default function Contact() {
         hasCTA={false}
         subtitle={
           <>
-            To prepare for our demo call, please share a bit about yourself and the challenges you're hoping to address with Dust.
-            <div className="flex w-full justify-left px-4 pt-12 sm:px-6 lg:px-8">
+            To prepare for our demo call, please share a bit about yourself and
+            the challenges you're hoping to address with Dust.
+            <div className="justify-left flex w-full px-4 pt-0 sm:px-6 lg:px-8">
               <div className="w-full max-w-[600px] pb-4">
                 <HubSpotForm />
               </div>

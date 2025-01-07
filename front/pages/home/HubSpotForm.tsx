@@ -1,27 +1,50 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 export function HubSpotForm() {
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = "//js-eu1.hsforms.net/forms/embed/v2.js";
-    script.charset = "utf-8";
-    script.async = true;
-    document.body.appendChild(script);
+    console.log("Component mounted");
 
-    script.onload = () => {
-      if ((window as any).hbspt) {
-        (window as any).hbspt.forms.create({
-          portalId: "144442587",
-          formId: "7cc5ca02-5547-42ca-98b5-80e5e3c422eb",
-          target: "#hubspotForm"
-        });
-      }
+    // Create the script
+    const script = document.createElement("script");
+    script.innerHTML = `
+      hbspt.forms.create({
+        region: "eu1",
+        portalId: "144442587",
+        formId: "31e790e5-f4d5-4c79-acc5-acd770fe8f84",
+        target: "#hubspotForm"
+      });
+    `;
+
+    // Add the main HubSpot script
+    const hubspotScript = document.createElement("script");
+    hubspotScript.src = "https://js-eu1.hsforms.net/forms/embed/v2.js";
+    hubspotScript.defer = true;
+
+    hubspotScript.onload = () => {
+      console.log("HubSpot script loaded");
+      document.body.appendChild(script);
     };
 
+    document.body.appendChild(hubspotScript);
+
     return () => {
+      hubspotScript.remove();
       script.remove();
+      const formContainer = document.getElementById("hubspotForm");
+      if (formContainer) {
+        formContainer.innerHTML = "";
+      }
     };
   }, []);
 
-  return <div id="hubspotForm" />;
+  return (
+    <div
+      id="hubspotForm"
+      style={{
+        minHeight: "400px",
+        border: "0px solid #ccc",
+        padding: "0px",
+      }}
+    />
+  );
 }
