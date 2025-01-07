@@ -416,7 +416,7 @@ export async function getAssistantUsageData(
       JOIN "users" aut ON ac."authorId" = aut."id"
     WHERE
       a."createdAt" BETWEEN :startDate AND :endDate
-      AND ac."workspaceId" = ${wId}
+      AND ac."workspaceId" = :wId
       AND ac."status" = 'active'
       AND ac."sId" = :agentConfigurationId
     GROUP BY
@@ -432,6 +432,7 @@ export async function getAssistantUsageData(
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"),
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"),
         agentConfigurationId: agentConfiguration.sId,
+        wId,
       },
     }
   );
@@ -473,7 +474,7 @@ export async function getAssistantsUsageData(
       JOIN "users" aut ON ac."authorId" = aut."id"
     WHERE
       a."createdAt" BETWEEN :startDate AND :endDate
-      AND ac."workspaceId" = ${wId}
+      AND ac."workspaceId" = :wId
       AND ac."status" = 'active'
       AND ac."scope" != 'private'
     GROUP BY
@@ -488,6 +489,7 @@ export async function getAssistantsUsageData(
       replacements: {
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"), // Use first day of start month
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"), // Use last day of end month
+        wId,
       },
     }
   );
