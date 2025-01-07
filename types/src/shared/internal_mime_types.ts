@@ -20,4 +20,14 @@ export const GITHUB_MIME_TYPES = {
 export type GithubMimeType =
   (typeof GITHUB_MIME_TYPES)[keyof typeof GITHUB_MIME_TYPES];
 
-export type DustMimeType = ConfluenceMimeType | GithubMimeType;
+export const GOOGLE_DRIVE_MIME_TYPES = {
+  FOLDER: "application/vnd.dust.googledrive.folder",
+};
+
+export type GoogleDriveMimeType =
+  (typeof GOOGLE_DRIVE_MIME_TYPES)[keyof typeof GOOGLE_DRIVE_MIME_TYPES];
+
+export type DustMimeType =
+  | ConfluenceMimeType
+  | GithubMimeType
+  | GoogleDriveMimeType;
