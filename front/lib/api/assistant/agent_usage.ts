@@ -11,6 +11,7 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
+import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 
 // Ranking of agents is done over a 30 days period.
@@ -96,7 +97,6 @@ export async function getAgentUsage(
   {
     workspaceId,
     agentConfiguration,
-    providedRedis,
   }: {
     workspaceId: string;
     agentConfiguration: AgentConfigurationType;
@@ -111,20 +111,20 @@ export async function getAgentUsage(
     throw new Error("Provided workspace and owner workspace do not match.");
   }
 
-  let redis: RedisClientType | null = null;
-  const { sId: agentConfigurationId } = agentConfiguration;
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - rankingUsageDays);
 
-  const agentMessageCountKey = _getUsageKey(workspaceId);
-
-  redis = providedRedis ?? (await getRedisClient({ origin: "agent_usage" }));
-
-  const agentUsage = await redis.hGet(
-    agentMessageCountKey,
-    agentConfigurationId
+  const agentUsage = await getAssistantUsageData(
+    start,
+    end,
+    owner,
+    agentConfiguration
   );
+
   return agentUsage
     ? {
-        agentId: agentConfigurationId,
+        agentId: agentConfiguration.sId,
         messageCount: parseInt(agentUsage, 10),
         timePeriodSec: rankingTimeframeSec,
       }

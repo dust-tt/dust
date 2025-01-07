@@ -16,6 +16,7 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { getAssistantsUsageData } from "@app/lib/workspace_usage";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
@@ -290,6 +291,9 @@ export function useAgentUsage({
   agentConfigurationId: string | null;
   disabled?: boolean;
 }) {
+  const workspace = getWorkspace(workspaceId);
+  const agentUsage = getAssistantsUsageData(start, end, workspace);
+
   const agentUsageFetcher: Fetcher<GetAgentUsageResponseBody> = fetcher;
   const fetchUrl = agentConfigurationId
     ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/usage`
