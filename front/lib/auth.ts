@@ -306,13 +306,13 @@ export class Authenticator {
     Result<
       Authenticator,
       {
-        code: "uer_not_found" | "workspace_not_found";
+        code: "user_not_found" | "workspace_not_found";
       }
     >
   > {
     const user = await getUserFromAuth0Token(token);
     if (!user) {
-      return new Err({ code: "uer_not_found" });
+      return new Err({ code: "user_not_found" });
     }
 
     const workspace = await Workspace.findOne({
