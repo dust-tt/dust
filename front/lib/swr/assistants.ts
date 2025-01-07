@@ -261,7 +261,6 @@ export function useAgentConfigurationFeedbacksByDescVersion({
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
     useSWRInfiniteWithDefaults(
       (pageIndex: number, previousPageData) => {
-        console.log("previousPageData", previousPageData);
         if (!agentConfigurationId) {
           return null;
         }
