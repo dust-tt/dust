@@ -65,7 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 function isValidTab(tab?: string): tab is AssistantManagerTabsType {
-  return ASSISTANT_MANAGER_TABS.includes(tab as AgentConfigurationScope);
+  return ASSISTANT_MANAGER_TABS.includes(tab as AssistantManagerTabsType);
 }
 
 export default function WorkspaceAssistants({
@@ -91,7 +91,6 @@ export default function WorkspaceAssistants({
       case "edited_by_me":
       case "published":
         return ["authors", "usage", "feedbacks"];
-      case "private":
       case "global":
       case "workspace":
         return ["usage", "feedbacks"];
@@ -109,7 +108,7 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView:
-      activeTab === "private" || activeTab === "edited_by_me" || assistantSearch
+      activeTab === "edited_by_me" || assistantSearch
         ? "list"
         : (activeTab as AgentsGetViewType),
     includes,
@@ -162,7 +161,7 @@ export default function WorkspaceAssistants({
 
   const tabs = [
     {
-      label: "Edited my me",
+      label: "Edited by me",
       icon: PlanetIcon,
       scope: "edited_by_me",
     },

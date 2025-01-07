@@ -17,11 +17,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  AGENT_CONFIGURATION_SCOPES,
-  isBuilder,
-  pluralize,
-} from "@dust-tt/types";
+import { isBuilder, pluralize } from "@dust-tt/types";
 import type { CellContext, Row } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
