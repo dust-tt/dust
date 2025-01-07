@@ -66,9 +66,15 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async makeNew(
     blob: CreationAttributes<AgentMessageFeedback>,
-    message?: Attributes<Message>,
-    user?: Attributes<UserModel>,
-    conversationId?: string
+    {
+      message,
+      user,
+      conversationId,
+    }: {
+      message?: Attributes<Message>;
+      user?: Attributes<UserModel>;
+      conversationId?: string;
+    } = {}
   ): Promise<AgentMessageFeedbackResource> {
     const agentMessageFeedback = await AgentMessageFeedback.create({
       ...blob,

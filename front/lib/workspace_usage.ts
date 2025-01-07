@@ -447,7 +447,7 @@ export async function getFeedbacksUsageData(
       workspace,
     });
 
-  if (!feedbacks || feedbacks.length === 0) {
+  if (feedbacks.length === 0) {
     return "No data available for the selected period.";
   }
 

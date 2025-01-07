@@ -58,25 +58,9 @@ export async function getConversationFeedbacksForUser(
       conversation
     );
 
-  const feedbacks = feedbacksRes
-    .filter(
-      (feedback): feedback is AgentMessageFeedbackResource => feedback !== null
-    )
-    .map((feedback) => {
-      const jsonFeedback = feedback.toJSON();
-      return {
-        id: jsonFeedback.id,
-        messageId: jsonFeedback.messageId,
-        agentMessageId: jsonFeedback.agentMessageId,
-        userId: jsonFeedback.userId,
-        thumbDirection: jsonFeedback.thumbDirection,
-        content: jsonFeedback.content,
-        isConversationShared: jsonFeedback.isConversationShared,
-        createdAt: jsonFeedback.createdAt,
-        agentConfigurationId: jsonFeedback.agentConfigurationId,
-        agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
-      } as AgentMessageFeedbackType;
-    });
+  const feedbacks = feedbacksRes.map((feedback) => {
+    return feedback.toJSON() as AgentMessageFeedbackType;
+  });
 
   return new Ok(feedbacks);
 }
