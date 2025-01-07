@@ -28,30 +28,18 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
     },
     ref
   ) => {
-    const childrenArray = React.Children.toArray(children);
-    const hasDescription = childrenArray.some(
-      (child) =>
-        React.isValidElement(child) && child.type === CitationDescription
-    );
-
-    const contentWithDescription = (
-      <>
-        {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
-        {children}
-      </>
-    );
     const cardButton = (
       <Card
         ref={ref}
         variant={variant}
         size="sm"
         className={cn(
-          "s-relative s-flex s-min-w-[100px] s-flex-none s-flex-col s-justify-end s-overflow-hidden s-pt-[8%]",
+          "s-relative s-flex s-aspect-[2/1] s-min-w-[140px] s-flex-none s-flex-col s-justify-end s-overflow-hidden",
           className
         )}
         {...props}
       >
-        {contentWithDescription}
+        {children}
         {isLoading && <CitationLoading />}
       </Card>
     );
@@ -92,7 +80,7 @@ const CitationGrid = React.forwardRef<
 >(({ children, className, ...props }, ref) => {
   return (
     <div ref={ref} className={cn("s-@container", className)} {...props}>
-      <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6">
+      <div className="s-grid s-grid-cols-2 s-gap-2 @xs:s-grid-cols-3 @sm:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6">
         {children}
       </div>
     </div>

@@ -4,7 +4,7 @@ import React from "react";
 import { AspectRatio } from "../index_with_tw_base";
 
 const meta = {
-  title: "Layouts/AspectRatio",
+  title: "Utils/AspectRatio",
   component: AspectRatio,
 } satisfies Meta;
 

@@ -26,14 +26,26 @@ import { cn } from "@sparkle/lib/utils";
 
 const headerColor = "s-text-foreground";
 const sizes = {
-  p: "s-text-sm @sm:s-text-base @sm:s-leading-7",
-  h1: "s-text-3xl @sm:s-text-4xl s-font-semibold",
-  h2: "s-text-2xl @sm:s-text-3xl s-font-semibold",
-  h3: "s-text-xl @sm:s-text-2xl s-font-semibold",
-  h4: "s-text-lg @sm:s-text-xl s-font-bold",
-  h5: "s-text-base @sm:s-text-lg s-font-medium",
-  h6: "s-text-sm @sm:s-text-base s-font-bold",
+  sm: {
+    p: "s-text-base",
+    h1: "s-text-xl s-font-semibold",
+    h2: "s-text-xl s-font-regular",
+    h3: "s-text-lg s-font-semibold",
+    h4: "s-text-base s-font-semibold",
+    h5: "s-text-base s-font-medium",
+    h6: "s-text-base s-font-bold",
+  },
+  base: {
+    p: "s-text-base",
+    h1: "s-text-4xl s-font-semibold",
+    h2: "s-text-3xl s-font-semibold",
+    h3: "s-text-2xl s-font-semibold",
+    h4: "s-text-xl s-font-bold",
+    h5: "s-text-lg s-font-medium",
+    h6: "s-text-base s-font-bold",
+  },
 };
+type TextSize = "sm" | "base";
 
 function showUnsupportedDirective() {
   return (tree: any) => {
@@ -50,6 +62,7 @@ function showUnsupportedDirective() {
 export function Markdown({
   content,
   isStreaming = false,
+  textSize = "base",
   textColor = "s-text-foreground",
   isLastMessage = false,
   additionalMarkdownComponents,
@@ -57,6 +70,7 @@ export function Markdown({
 }: {
   content: string;
   isStreaming?: boolean;
+  textSize?: TextSize;
   textColor?: string;
   isLastMessage?: boolean;
   additionalMarkdownComponents?: Components;
@@ -83,15 +97,25 @@ export function Markdown({
     return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
       a: LinkBlock,
-      ul: ({ children }) => <UlBlock textColor={textColor}>{children}</UlBlock>,
+      ul: ({ children }) => (
+        <UlBlock textSize={textSize} textColor={textColor}>
+          {children}
+        </UlBlock>
+      ),
       ol: ({ children, start }) => (
-        <OlBlock start={start} textColor={textColor}>
+        <OlBlock start={start} textSize={textSize} textColor={textColor}>
           {children}
         </OlBlock>
       ),
-      li: ({ children }) => <LiBlock textColor={textColor}>{children}</LiBlock>,
+      li: ({ children }) => (
+        <LiBlock textSize={textSize} textColor={textColor}>
+          {children}
+        </LiBlock>
+      ),
       p: ({ children }) => (
-        <ParagraphBlock textColor={textColor}>{children}</ParagraphBlock>
+        <ParagraphBlock textSize={textSize} textColor={textColor}>
+          {children}
+        </ParagraphBlock>
       ),
       table: TableBlock,
       thead: TableHeadBlock,
@@ -99,32 +123,36 @@ export function Markdown({
       th: TableHeaderBlock,
       td: TableDataBlock,
       h1: ({ children }) => (
-        <h1 className={cn("s-pb-2 s-pt-4", sizes.h1, headerColor)}>
+        <h1 className={cn("s-pb-2 s-pt-4", sizes[textSize].h1, headerColor)}>
           {children}
         </h1>
       ),
       h2: ({ children }) => (
-        <h2 className={cn("s-pb-2 s-pt-4", sizes.h2, headerColor)}>
+        <h2 className={cn("s-pb-2 s-pt-4", sizes[textSize].h2, headerColor)}>
           {children}
         </h2>
       ),
       h3: ({ children }) => (
-        <h3 className={cn("s-pb-2 s-pt-4", sizes.h3, headerColor)}>
+        <h3 className={cn("s-pb-2 s-pt-4", sizes[textSize].h3, headerColor)}>
           {children}
         </h3>
       ),
       h4: ({ children }) => (
-        <h4 className={cn("s-pb-2 s-pt-3", sizes.h4, headerColor)}>
+        <h4 className={cn("s-pb-2 s-pt-3", sizes[textSize].h4, headerColor)}>
           {children}
         </h4>
       ),
       h5: ({ children }) => (
-        <h5 className={cn("s-pb-1.5 s-pt-2.5", sizes.h5, headerColor)}>
+        <h5
+          className={cn("s-pb-1.5 s-pt-2.5", sizes[textSize].h5, headerColor)}
+        >
           {children}
         </h5>
       ),
       h6: ({ children }) => (
-        <h6 className={cn("s-pb-1.5 s-pt-2.5", sizes.h6, headerColor)}>
+        <h6
+          className={cn("s-pb-1.5 s-pt-2.5", sizes[textSize].h6, headerColor)}
+        >
           {children}
         </h6>
       ),
@@ -139,7 +167,7 @@ export function Markdown({
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
-  }, [textColor, additionalMarkdownComponents]);
+  }, [textSize, textColor, additionalMarkdownComponents]);
 
   const markdownPlugins: PluggableList = useMemo(
     () => [
@@ -223,16 +251,18 @@ function PreBlock({ children }: { children: React.ReactNode }) {
 function UlBlock({
   children,
   textColor,
+  textSize,
 }: {
   children: React.ReactNode;
   textColor: string;
+  textSize: TextSize;
 }) {
   return (
     <ul
       className={cn(
         "s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0",
         textColor,
-        sizes.p
+        sizes[textSize].p
       )}
     >
       {children}
@@ -243,10 +273,12 @@ function OlBlock({
   children,
   start,
   textColor,
+  textSize,
 }: {
   children: React.ReactNode;
   start?: number;
   textColor: string;
+  textSize: TextSize;
 }) {
   return (
     <ol
@@ -254,7 +286,7 @@ function OlBlock({
       className={cn(
         "s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0",
         textColor,
-        sizes.p
+        sizes[textSize].p
       )}
     >
       {children}
@@ -264,19 +296,21 @@ function OlBlock({
 function LiBlock({
   children,
   textColor,
+  textSize,
   className = "",
 }: {
   children: React.ReactNode;
   textColor: string;
+  textSize: TextSize;
   className?: string;
 }) {
   return (
     <li
       className={cn(
         "s-break-words first:s-pt-0 last:s-pb-0",
-        "s-py-1 @md:s-py-2",
+        textSize === "sm" ? "s-py-1" : "s-py-2",
         textColor,
-        sizes.p,
+        sizes[textSize].p,
         className
       )}
     >
@@ -287,16 +321,18 @@ function LiBlock({
 function ParagraphBlock({
   children,
   textColor,
+  textSize,
 }: {
   children: React.ReactNode;
   textColor: string;
+  textSize: TextSize;
 }) {
   return (
     <div
       className={cn(
         "s-whitespace-pre-wrap s-break-words s-font-normal first:s-pt-0 last:s-pb-0",
-        "s-py-1 @md:s-py-2 @md:s-leading-7",
-        sizes.p,
+        textSize === "sm" ? "s-py-1" : "s-py-2 s-leading-7",
+        sizes[textSize].p,
         textColor
       )}
     >

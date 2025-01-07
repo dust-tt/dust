@@ -1,36 +1,25 @@
 import React from "react";
 
-import { Avatar, Button, CitationGrid } from "@sparkle/components";
+import { Button } from "@sparkle/components";
+import { ConversationMessageContent } from "@sparkle/components/ConversationMessageContent";
+import { ConversationMessageHeader } from "@sparkle/components/ConversationMessageHeader";
 import { cn } from "@sparkle/lib/utils";
+
+export type ConversationMessageSizeType = "compact" | "normal";
 
 type ConversationMessageType = "agent" | "user";
 
+const messageSizeClasses: Record<ConversationMessageSizeType, string> = {
+  compact: "s-p-3",
+  normal: "s-p-4",
+};
+
 const messageTypeClasses: Record<ConversationMessageType, string> = {
-  user: "s-bg-muted-background s-w-full @md:s-w-[calc(100%-8rem)] @md:s-ml-[8rem]",
+  user: "s-bg-muted-background",
   agent: "",
 };
 
-export const ConversationContainer = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ children, className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn("s-w-full s-@container", className)}
-      {...props}
-    >
-      <div className="s-flex s-w-full s-flex-col s-gap-4 s-px-1 @md:s-gap-6 @md:s-px-4">
-        {children}
-      </div>
-    </div>
-  );
-});
-
-ConversationContainer.displayName = "ConversationContainer";
-
-interface ConversationMessageProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+type ConversationMessageProps = {
   avatarBusy?: boolean;
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
@@ -38,140 +27,47 @@ interface ConversationMessageProps
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
+  size?: ConversationMessageSizeType;
   type: ConversationMessageType;
-}
+};
 
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
  */
-export const ConversationMessage = React.forwardRef<
-  HTMLDivElement,
-  ConversationMessageProps
->(
-  (
-    {
-      avatarBusy = false,
-      buttons,
-      children,
-      citations,
-      name,
-      pictureUrl,
-      renderName = (name) => <span>{name}</span>,
-      type,
-      className,
-      ...props
-    },
-    ref
-  ) => {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          "s-mt-2 s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-3xl s-p-3 @md:s-p-4",
-          messageTypeClasses[type],
-          className
-        )}
-        {...props}
-      >
-        <ConversationMessageHeader
-          avatarUrl={pictureUrl}
-          name={name ?? undefined}
-          isBusy={avatarBusy}
-          renderName={renderName}
-        />
-
-        <ConversationMessageContent citations={citations}>
-          {children}
-        </ConversationMessageContent>
-        {buttons && (
-          <div className="s-flex s-justify-end s-gap-2">{buttons}</div>
-        )}
-      </div>
-    );
-  }
-);
-
-ConversationMessage.displayName = "ConversationMessage";
-
-interface ConversationMessageContentProps
-  extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  citations?: React.ReactElement[];
-}
-
-export const ConversationMessageContent = React.forwardRef<
-  HTMLDivElement,
-  ConversationMessageContentProps
->(({ children, citations, className, ...props }, ref) => {
+export function ConversationMessage({
+  avatarBusy = false,
+  buttons,
+  children,
+  citations,
+  name,
+  pictureUrl,
+  renderName = (name) => (
+    <div className="s-text-base s-font-medium">{name}</div>
+  ),
+  size = "normal",
+  type,
+}: ConversationMessageProps) {
   return (
     <div
-      ref={ref}
       className={cn(
-        "s-flex s-flex-col s-justify-stretch s-gap-3 @md:s-gap-4",
-        className
+        "s-mt-2 s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-3xl",
+        messageTypeClasses[type],
+        messageSizeClasses[size]
       )}
-      {...props}
     >
-      <div
-        className={cn(
-          "s-px-2 s-text-sm s-text-foreground @sm:s-text-base @md:s-px-4"
-        )}
-      >
+      <ConversationMessageHeader
+        avatarUrl={pictureUrl}
+        name={name ?? undefined}
+        size={size}
+        isBusy={avatarBusy}
+        renderName={renderName}
+      />
+
+      <ConversationMessageContent citations={citations} size={size}>
         {children}
-      </div>
-      {citations && citations.length > 0 && (
-        <CitationGrid>{citations}</CitationGrid>
-      )}
+      </ConversationMessageContent>
+      {buttons && <div className="s-flex s-justify-end s-gap-2">{buttons}</div>}
     </div>
   );
-});
-
-ConversationMessageContent.displayName = "ConversationMessageContent";
-
-interface ConversationMessageHeaderProps
-  extends React.HTMLAttributes<HTMLDivElement> {
-  avatarUrl?: string | React.ReactNode;
-  isBusy?: boolean;
-  name?: string;
-  renderName: (name: string | null) => React.ReactNode;
 }
-
-export const ConversationMessageHeader = React.forwardRef<
-  HTMLDivElement,
-  ConversationMessageHeaderProps
->(({ avatarUrl, isBusy, name = "", renderName, className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn("s-flex s-items-center s-gap-2 s-p-1 @md:s-p-0", className)}
-      {...props}
-    >
-      <Avatar
-        className="@md:s-hidden"
-        name={name}
-        visual={avatarUrl}
-        busy={isBusy}
-        size="xs"
-      />
-      <Avatar
-        className="s-hidden @md:s-flex"
-        name={name}
-        visual={avatarUrl}
-        busy={isBusy}
-        size="sm"
-      />
-      <div className="flex items-center gap-2">
-        <div
-          className={cn(
-            "s-text-sm s-font-medium s-text-foreground @md:s-pb-1 @md:s-text-base"
-          )}
-        >
-          {renderName(name)}
-        </div>
-      </div>
-    </div>
-  );
-});
-
-ConversationMessageHeader.displayName = "ConversationMessageHeader";

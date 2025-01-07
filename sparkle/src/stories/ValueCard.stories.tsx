@@ -7,7 +7,7 @@ import { HandThumbUpIcon } from "@sparkle/icons/solid";
 import { ComposableCard, ValueCard } from "../components/ValueCard";
 
 const meta: Meta<typeof ValueCard> = {
-  title: "Modules/ValueCard",
+  title: "Module/ValueCard",
   component: ValueCard,
   parameters: {
     layout: "padded",
