@@ -150,15 +150,15 @@ export const config = {
  *                 description: Tags to associate with the document.
  *               parent_id:
  *                 type: string
- *                 description: Direct parent document ID to associate with the document.
+ *                 description: Reserved for internal use, should be left empty. Document ID of the direct parent to associate with the document.
  *               parents:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: 'Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order'
+ *                 description: Reserved for internal use, should be left empty. Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order.
  *               timestamp:
  *                 type: number
- *                 description: Unix timestamp (in seconds) for the document (e.g. 1698225000). Can be null or omitted.
+ *                 description: Unix timestamp (in seconds) for the document (e.gå. 1698225000). Can be null or omitted.
  *               light_document_output:
  *                 type: boolean
  *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
