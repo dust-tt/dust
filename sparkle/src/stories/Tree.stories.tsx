@@ -271,7 +271,7 @@ export const TreeExample = () => {
                 onItemClick={() => console.log("Clickable")}
                 isSelected={true}
               >
-                <Tree variant="navigator" tailwindIconTextColor="s-text-brand">
+                <Tree variant="navigator">
                   <Tree.Item
                     label="Item 1 with a very very very very very very very long text"
                     visual={FolderIcon}
@@ -286,22 +286,86 @@ export const TreeExample = () => {
                       <Tree.Item label="Item 3" visual={FolderIcon} />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item
-                    label="Item 2"
-                    visual={FolderIcon}
-                    tailwindIconTextColor="s-text-brand"
-                  >
+                  <Tree.Item label="Item 2" visual={FolderIcon}>
                     <Tree variant="navigator">
                       <Tree.Item label="Item 1" visual={FolderIcon} />
                       <Tree.Item label="Item 2" visual={FolderIcon} />
                       <Tree.Item label="Item 3" visual={FolderIcon} />
                     </Tree>
                   </Tree.Item>
+                  <Tree.Item label="Item 3" visual={FolderIcon}>
+                    <Tree variant="navigator">
+                      <Tree.Item label="Item 1" visual={FolderIcon} />
+                      <Tree.Item label="Item 2" visual={FolderIcon} />
+                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                    </Tree>
+                  </Tree.Item>
+                </Tree>
+              </Tree.Item>
+              <Tree.Item label="Notion" visual={NotionLogo} />
+              <Tree.Item label="Slack" visual={SlackLogo} />
+              <Tree.Item label="Dust" visual={DustIcon} />
+            </Tree>
+          </div>
+        </div>
+
+        <div className="s-flex s-max-w-xs s-flex-col s-gap-3">
+          <div className="s-text-xl">Select DataSource</div>
+          <div>
+            <Tree variant="navigator">
+              <Tree.Item
+                label="Intercom  github.com-apache-incubator-devlake-tree-main-backend"
+                visual={IntercomLogo}
+                onItemClick={() => console.log("Clickable")}
+                isSelected={true}
+              >
+                <Tree variant="navigator">
                   <Tree.Item
-                    label="Item 3"
+                    label="Item 1 with a very very very very very very very long text"
                     visual={FolderIcon}
-                    tailwindIconTextColor="s-text-brand"
                   >
+                    <Tree variant="navigator">
+                      <Tree.Item
+                        label="Item 1 with a very very very very very very very long text"
+                        visual={FolderIcon}
+                        type="leaf"
+                        checkbox={{
+                          checked: false,
+                          onChange: () => {
+                            return;
+                          },
+                        }}
+                      />
+                      <Tree.Item
+                        label="Item 2"
+                        visual={FolderIcon}
+                        checkbox={{
+                          checked: false,
+                          onChange: () => {
+                            return;
+                          },
+                        }}
+                      />
+                      <Tree.Item
+                        label="Item 3"
+                        visual={FolderIcon}
+                        checkbox={{
+                          checked: false,
+                          onChange: () => {
+                            return;
+                          },
+                        }}
+                      />
+                    </Tree>
+                  </Tree.Item>
+                  <Tree.Item label="Item 2" visual={FolderIcon}>
+                    <Tree variant="navigator">
+                      <Tree.Item label="Item 1" visual={FolderIcon} />
+                      <Tree.Item label="Item 2" visual={FolderIcon} />
+                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                    </Tree>
+                  </Tree.Item>
+                  <Tree.Item label="Item 3" visual={FolderIcon}>
                     <Tree variant="navigator">
                       <Tree.Item label="Item 1" visual={FolderIcon} />
                       <Tree.Item label="Item 2" visual={FolderIcon} />
