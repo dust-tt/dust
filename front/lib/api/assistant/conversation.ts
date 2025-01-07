@@ -243,7 +243,7 @@ export async function getUserConversations(
   }
 
   const participations = await ConversationParticipant.findAll({
-    attributes: ["userId", "createdAt"],
+    attributes: ["userId", "updatedAt"],
     where: {
       userId: user.id,
       action: "posted",
@@ -255,7 +255,7 @@ export async function getUserConversations(
         required: true,
       },
     ],
-    order: [["createdAt", "DESC"]],
+    order: [["updatedAt", "DESC"]],
   });
 
   const conversations = participations.reduce<ConversationWithoutContentType[]>(
@@ -309,6 +309,8 @@ async function createOrUpdateParticipation({
       },
     });
     if (participant) {
+      participant.changed("updatedAt", true);
+      await participant.save();
       return participant.update({
         action: "posted",
       });
