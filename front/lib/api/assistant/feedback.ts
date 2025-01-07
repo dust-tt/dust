@@ -58,8 +58,8 @@ export async function getConversationFeedbacksForUser(
       conversation
     );
 
-  const feedbacks = feedbacksRes.map((feedback) => {
-    return feedback.toJSON() as AgentMessageFeedbackType;
+  const feedbacks: AgentMessageFeedbackType[] = feedbacksRes.map((feedback) => {
+    return feedback.toJSON();
   });
 
   return new Ok(feedbacks);
