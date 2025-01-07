@@ -730,7 +730,7 @@ export class DustAPI {
           {
             error: e,
             errorStr: JSON.stringify(e),
-            errorSource: "postUserMessage",
+            errorSource: "streamAgentAnswerEvents",
           },
           "Error streaming chunks."
         );
