@@ -148,7 +148,7 @@ export function useConversationMessages({
 
         if (previousPageData === null) {
           const startAtRankParam = startAtRank
-            ? `&lastValue=${startAtRank - 1}`
+            ? `&lastValue=${startAtRank}`
             : "";
           return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}${startAtRankParam}`;
         }

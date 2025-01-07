@@ -423,9 +423,8 @@ export async function getConversation(
   });
 }
 
-export async function getConversationMessageRank(
+export async function getMessageRank(
   auth: Authenticator,
-  conversation: ConversationType | ConversationWithoutContentType,
   messageId: string
 ): Promise<number | null> {
   const owner = auth.workspace();
@@ -435,7 +434,6 @@ export async function getConversationMessageRank(
 
   const message = await Message.findOne({
     where: {
-      conversationId: conversation.id,
       sId: messageId,
     },
   });

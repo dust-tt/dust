@@ -67,6 +67,7 @@ export function ConversationContainer({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
+    startAtRank: messageRankToScrollTo,
   });
 
   const setInputbarMention = useCallback(

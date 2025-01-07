@@ -8,7 +8,7 @@ import { ConversationContainer } from "@app/components/assistant/conversation/Co
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import { getConversationMessageRank } from "@app/lib/api/assistant/conversation";
+import { getMessageRank } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -18,7 +18,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     conversationId: string | null;
     user: UserType;
     isBuilder: boolean;
-    messageRankToScrollTo: number | undefined;
+    messageRankToScrollTo: number | null;
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
@@ -46,13 +46,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
 
   const { cId } = context.params;
+  console.log("QUERY PARAMS", context.query, context.params);
 
   // Extract messageId from query params and fetch its rank
-  const { mId } = context.query;
-  let messageRankToScrollTo: number | undefined = undefined;
-  if (typeof mId === "string") {
-    messageRankToScrollTo =
-      (await getConversationMessageRank(auth, cId, mId)) ?? undefined;
+  const { messageId } = context.query;
+  let messageRankToScrollTo: number | null = null;
+  if (typeof messageId === "string") {
+    messageRankToScrollTo = (await getMessageRank(auth, messageId)) ?? null;
   }
 
   return {
@@ -63,7 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       baseUrl: config.getClientFacingUrl(),
       conversationId: getValidConversationId(cId),
-      messageRankToScrollTo,
+      messageRankToScrollTo: messageRankToScrollTo,
     },
   };
 });
@@ -122,7 +122,7 @@ export default function AssistantConversation({
       user={user}
       isBuilder={isBuilder}
       agentIdToMention={agentIdToMention}
-      messageRankToScrollTo={messageRankToScrollTo}
+      messageRankToScrollTo={messageRankToScrollTo ?? undefined}
     />
   );
 }

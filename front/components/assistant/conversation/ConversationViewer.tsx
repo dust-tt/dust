@@ -35,7 +35,7 @@ import {
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
-const DEFAULT_PAGE_LIMIT = 50;
+const DEFAULT_PAGE_LIMIT = 2;
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -93,7 +93,10 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
-    startAtRank: messageRankToScrollTo,
+    // Make sure that the message rank to scroll to is in the middle of the page.
+    startAtRank: messageRankToScrollTo
+      ? Math.max(0, messageRankToScrollTo - Math.floor(DEFAULT_PAGE_LIMIT / 2))
+      : undefined,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({
@@ -318,7 +321,6 @@ const ConversationViewer = React.forwardRef<
   useLastMessageGroupObserver(typedGroupedMessages);
 
   // Used for auto-scrolling to the message in the anchor.
-  const [urlAnchor] = useHashParam("messageId", undefined);
   const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
   const [messageBlinking, setMessageBlinking] = useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -326,20 +328,14 @@ const ConversationViewer = React.forwardRef<
   // Track index of the group with message sId in anchor.
   const groupIndexWithMessageIdInAnchor = useMemo(() => {
     return typedGroupedMessages.findIndex((group) => {
-      return group.some((message) => message.sId === urlAnchor);
+      return group.some((message) => message.rank === messageRankToScrollTo);
     });
-  }, [typedGroupedMessages, urlAnchor]);
-
-  console.log({
-    groupIndexWithMessageIdInAnchor,
-    urlAnchor,
-    hasScrolledToMessage,
-  });
+  }, [typedGroupedMessages, messageRankToScrollTo]);
 
   // Effect: scroll to the message and temporarily highlight if it is the anchor's target
   useEffect(() => {
     if (
-      !urlAnchor ||
+      !messageRankToScrollTo ||
       !groupIndexWithMessageIdInAnchor ||
       !scrollRef.current ||
       hasScrolledToMessage
@@ -364,7 +360,7 @@ const ConversationViewer = React.forwardRef<
     }, 100);
   }, [
     hasScrolledToMessage,
-    urlAnchor,
+    messageRankToScrollTo,
     groupIndexWithMessageIdInAnchor,
     scrollRef,
   ]);
