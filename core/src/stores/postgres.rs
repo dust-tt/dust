@@ -2780,13 +2780,6 @@ impl Store for PostgresStore {
 
         let tx = c.transaction().await?;
 
-        // Update parents on tables table (TODO: remove this once we migrate to nodes table).
-        let stmt = tx
-            .prepare("UPDATE tables SET parents = $1 WHERE data_source = $2 AND table_id = $3")
-            .await?;
-        tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
-            .await?;
-
         // Update parents on nodes table.
         let stmt = tx
             .prepare(
