@@ -396,7 +396,7 @@ async function handler(
           });
         }
       }
-      if (parentId && parents?.[1] !== parentId) {
+      if (parents?.[1] !== parentId) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
