@@ -57,7 +57,7 @@ export type NotionMimeType =
 
 export const SLACK_MIME_TYPES = {
   CHANNEL: "application/vnd.dust.slack.channel",
-  THREAD: "application/vnd.dust.slack.thread",
+  THREAD: "text/vnd.dust.slack.thread",
 };
 
 export type SlackMimeType =
