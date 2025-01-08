@@ -12,6 +12,13 @@ import {
   DustIcon,
   IconButton,
   LockIcon,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   Page,
   PopoverContent,
   PopoverRoot,
@@ -367,7 +374,7 @@ export function SharingDropdown({
   return (
     <div>
       {requestNewScope && confirmationModalData && (
-        <ScopeChangeModal
+        <ScopeChangeDialog
           show={requestNewScope !== null}
           confirmationModalData={confirmationModalData}
           usageText={confirmationModalData.showUsage ? usageText : undefined}
@@ -440,7 +447,7 @@ export function SharingChip({ scope }: { scope: AgentConfigurationScope }) {
   );
 }
 
-function ScopeChangeModal({
+function ScopeChangeDialog({
   show,
   confirmationModalData,
   usageText,
@@ -454,25 +461,45 @@ function ScopeChangeModal({
   setSharingScope: () => void;
 }) {
   return (
-    <Dialog
-      isOpen={show}
-      title={confirmationModalData.title}
-      onCancel={onClose}
-      validateLabel={confirmationModalData.confirmText}
-      validateVariant={confirmationModalData.variant}
-      onValidate={async () => {
-        setSharingScope();
-        onClose();
+    <NewDialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
       }}
-      alertDialog
     >
-      <div>
-        <div className="pb-2">
-          {usageText && <span className="font-bold">{usageText}&nbsp;</span>}
-          {confirmationModalData.text}
-        </div>
-        <div className="font-bold">Are you sure you want to proceed ?</div>
-      </div>
-    </Dialog>
+      <NewDialogContent>
+        <NewDialogHeader hideButton>
+          <NewDialogTitle>{confirmationModalData.title}</NewDialogTitle>
+          {usageText && (
+            <NewDialogDescription>{usageText}</NewDialogDescription>
+          )}
+        </NewDialogHeader>
+        <NewDialogContainer>
+          <div>
+            {confirmationModalData.text}
+            <div className="font-bold">Are you sure you want to proceed ?</div>
+          </div>
+        </NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: () => {
+              onClose();
+            },
+          }}
+          rightButtonProps={{
+            label: confirmationModalData.confirmText,
+            variant: "warning",
+            onClick: async () => {
+              setSharingScope();
+              onClose();
+            },
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 }
