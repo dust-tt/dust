@@ -11,7 +11,8 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect } from "react";
+import { useInView } from "react-intersection-observer";
 
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
@@ -44,38 +45,23 @@ export const FeedbacksSection = ({
   });
 
   // Intersection observer to detect when the user has scrolled to the bottom of the list.
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const { ref: bottomRef, inView: isBottomOfListVisible } = useInView();
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const target = entries[0];
-        if (
-          target.isIntersecting &&
-          !isValidating &&
-          !isAgentConfigurationFeedbacksLoading &&
-          hasMore
-        ) {
-          void setSize(size + 1);
-        }
-      },
-      {
-        threshold: 0.25,
-      }
-    );
-
-    if (bottomRef.current) {
-      observer.observe(bottomRef.current);
+    if (
+      isBottomOfListVisible &&
+      hasMore &&
+      !isValidating &&
+      !isAgentConfigurationFeedbacksLoading
+    ) {
+      void setSize(size + 1);
     }
-
-    return () => observer.disconnect();
   }, [
-    bottomRef,
+    isBottomOfListVisible,
+    hasMore,
     isValidating,
     isAgentConfigurationFeedbacksLoading,
-    agentConfigurationFeedbacks,
     setSize,
     size,
-    hasMore,
   ]);
 
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
