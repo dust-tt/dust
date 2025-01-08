@@ -22,6 +22,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
 import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
@@ -384,6 +385,33 @@ export function useAgentUsage({
     isAgentUsageLoading: !error && !data && !disabled,
     isAgentUsageError: error,
     mutateAgentUsage: mutate,
+  };
+}
+
+export function useAgentAnalytics({
+  workspaceId,
+  agentConfigurationId,
+  period,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  period: number;
+  disabled?: boolean;
+}) {
+  const agentAnalyticsFetcher: Fetcher<GetAgentConfigurationAnalyticsResponseBody> =
+    fetcher;
+  const fetchUrl = agentConfigurationId
+    ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/analytics?period=${period}`
+    : null;
+  const { data, error } = useSWRWithDefaults(fetchUrl, agentAnalyticsFetcher, {
+    disabled,
+  });
+
+  return {
+    agentAnalytics: data ? data : null,
+    isAgentAnayticsLoading: !error && !data && !disabled,
+    isAgentAnayticsError: error,
   };
 }
 

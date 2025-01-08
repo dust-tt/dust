@@ -110,7 +110,7 @@ export default function WorkspaceAssistants({
       return a.scope === activeTab;
     }
   });
-  console.log(activeTab, filteredAgents.length);
+
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 
@@ -187,6 +187,7 @@ export default function WorkspaceAssistants({
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         <AssistantDetails
+          showPerformanceTab
           owner={owner}
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
