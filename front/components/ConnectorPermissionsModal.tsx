@@ -1,4 +1,15 @@
-import type { NotificationType } from "@dust-tt/sparkle";
+import {
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+  NewDialogTrigger,
+  NotificationType,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { SheetContainer, SheetTitle } from "@dust-tt/sparkle";
 import { SheetHeader } from "@dust-tt/sparkle";
 import {
@@ -36,7 +47,13 @@ import {
   MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
@@ -113,19 +130,6 @@ const getUseResourceHook =
       parentId,
       viewType: "documents",
     });
-interface DataSourceManagementModalProps {
-  children: React.ReactNode;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-interface DataSourceEditionModalProps {
-  dataSource: DataSourceType;
-  isOpen: boolean;
-  onClose: () => void;
-  onEditPermissionsClick: (extraConfig: Record<string, string>) => void;
-  owner: LightWorkspaceType;
-}
 
 export async function handleUpdatePermissions(
   connector: ConnectorType,
@@ -209,6 +213,12 @@ async function updateConnectorConnectionId(
   };
 }
 
+interface DataSourceManagementModalProps {
+  children: React.ReactNode;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 function DataSourceManagementModal({
   children,
   isOpen,
@@ -227,6 +237,14 @@ function DataSourceManagementModal({
   );
 }
 
+interface DataSourceEditionModalProps {
+  dataSource: DataSourceType;
+  isOpen: boolean;
+  onClose: () => void;
+  onEditPermissionsClick: (extraConfig: Record<string, string>) => void;
+  owner: LightWorkspaceType;
+}
+
 function DataSourceEditionModal({
   dataSource,
   isOpen,
@@ -235,7 +253,6 @@ function DataSourceEditionModal({
   owner,
 }: DataSourceEditionModalProps) {
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
 
   const { connectorProvider, editedByUser } = dataSource;
@@ -381,33 +398,40 @@ function DataSourceEditionModal({
         )}
 
         <div className="flex items-center justify-center">
-          <Button
-            label="Edit Permissions"
-            icon={LockIcon}
-            variant="warning"
-            disabled={!isExtraConfigValid(extraConfig)}
-            onClick={() => {
-              setShowConfirmDialog(true);
-            }}
-          />
+          <NewDialog>
+            <NewDialogTrigger>
+              <Button
+                label="Edit Permissions"
+                icon={LockIcon}
+                variant="warning"
+                disabled={!isExtraConfigValid(extraConfig)}
+              />
+            </NewDialogTrigger>
+            <NewDialogContent>
+              <NewDialogHeader>
+                <NewDialogTitle>Are you sure?</NewDialogTitle>
+              </NewDialogHeader>
+              <NewDialogContainer>
+                The changes you are about to make may break existing{" "}
+                {connectorConfiguration.name} Data sources and the assistants
+                using them. Are you sure you want to continue?
+              </NewDialogContainer>
+              <NewDialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                }}
+                rightButtonProps={{
+                  label: "Continue",
+                  variant: "warning",
+                  onClick: async () => {
+                    void onEditPermissionsClick(extraConfig);
+                  },
+                }}
+              />
+            </NewDialogContent>
+          </NewDialog>
         </div>
-
-        <Dialog
-          title="Are you sure?"
-          isOpen={showConfirmDialog}
-          onCancel={() => setShowConfirmDialog(false)}
-          onValidate={() => {
-            void onEditPermissionsClick(extraConfig);
-            setShowConfirmDialog(false);
-          }}
-          validateVariant="warning"
-          cancelLabel="Cancel"
-          validateLabel="Continue"
-        >
-          The changes you are about to make may break existing{" "}
-          {connectorConfiguration.name} Data sources and the assistants using
-          them. Are you sure you want to continue?
-        </Dialog>
       </>
     </DataSourceManagementModal>
   );
@@ -427,7 +451,6 @@ function DataSourceDeletionModal({
 }: DataSourceDeletionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
   const { systemSpace } = useSystemSpace({
     workspaceId: owner.sId,
@@ -510,32 +533,47 @@ function DataSourceDeletionModal({
           </div>
         </div>
         <div className="flex items-center justify-center">
-          <Button
-            label="Delete Connection"
-            icon={LockIcon}
-            variant="warning"
-            onClick={() => {
-              setShowConfirmDialog(true);
-            }}
-          />
+          <NewDialog>
+            <NewDialogTrigger>
+              <Button
+                label="Delete Connection"
+                icon={LockIcon}
+                variant="warning"
+              />
+            </NewDialogTrigger>
+            <NewDialogContent>
+              <NewDialogHeader>
+                <NewDialogTitle>Are you sure?</NewDialogTitle>
+              </NewDialogHeader>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Spinner variant="dark" size="md" />
+                </div>
+              ) : (
+                <>
+                  <NewDialogContainer>
+                    The changes you are about to make will break existing
+                    assistants using {connectorConfiguration.name}. Are you sure
+                    you want to continue?
+                  </NewDialogContainer>
+                  <NewDialogFooter
+                    leftButtonProps={{
+                      label: "Cancel",
+                      variant: "outline",
+                    }}
+                    rightButtonProps={{
+                      label: "Delete",
+                      variant: "warning",
+                      onClick: async () => {
+                        await handleDelete();
+                      },
+                    }}
+                  />
+                </>
+              )}
+            </NewDialogContent>
+          </NewDialog>
         </div>
-
-        <Dialog
-          title="Are you sure?"
-          isOpen={showConfirmDialog}
-          onCancel={() => setShowConfirmDialog(false)}
-          onValidate={() => {
-            void handleDelete();
-            setShowConfirmDialog(false);
-          }}
-          validateVariant="warning"
-          cancelLabel="Cancel"
-          validateLabel="Continue"
-          isSaving={isLoading}
-        >
-          The changes you are about to make will break existing assistants using{" "}
-          {connectorConfiguration.name}. Are you sure you want to continue?
-        </Dialog>
       </>
     </DataSourceManagementModal>
   );
