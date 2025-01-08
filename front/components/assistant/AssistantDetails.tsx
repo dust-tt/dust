@@ -30,6 +30,7 @@ import type {
   AgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
@@ -150,21 +151,20 @@ function AssistantDetailsPerformance({
                     {agentAnalytics.users.length}
                   </div>
 
-                  <Avatar.Stack size="md">
-                    {agentAnalytics.users
-                      .filter((top) => top.user)
+                  <Avatar.Stack size="md" hasMagnifier={false}>
+                    {removeNulls(agentAnalytics.users.map((top) => top.user))
                       .slice(0, 5)
-                      .map((top) => (
+                      .map((user) => (
                         <Tooltip
-                          key={top?.user?.id}
+                          key={user.id}
                           trigger={
                             <Avatar
                               size="sm"
-                              name={top?.user?.fullName}
-                              visual={top?.user?.image}
+                              name={user.fullName}
+                              visual={user.image}
                             />
                           }
-                          label={top?.user?.fullName}
+                          label={user.fullName}
                         />
                       ))}
                   </Avatar.Stack>

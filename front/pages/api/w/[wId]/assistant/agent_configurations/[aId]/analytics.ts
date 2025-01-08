@@ -118,7 +118,7 @@ async function handler(
         await agentMentionsCount(owner.id, assistant, period)
       )[0];
 
-      const result = {
+      return res.status(200).json({
         users: agentUsers
           .map((r) => ({
             user: users.find((u) => u.id === r.userId)?.toJSON(),
@@ -136,10 +136,7 @@ async function handler(
           negativeFeedbacks,
           timePeriodSec: period * 60 * 60 * 24,
         },
-      };
-
-      return res.status(200).json(result);
-
+      });
     default:
       return apiError(req, res, {
         status_code: 405,
