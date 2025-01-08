@@ -6,8 +6,11 @@ import {
   DataTable,
   HandThumbDownIcon,
   HandThumbUpIcon,
+  MagnifyingGlassIcon,
   PencilSquareIcon,
+  PlanetIcon,
   Popup,
+  RocketIcon,
   SliderToggle,
   Tooltip,
   TrashIcon,
@@ -25,15 +28,45 @@ import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 export const ASSISTANT_MANAGER_TABS = [
-  "current_user",
-  "global",
-  "workspace",
-  "published",
+  // default shown tab = earliest in this list with non-empty agents
+  {
+    label: "Edited by me",
+    icon: PlanetIcon,
+    id: "current_user",
+    description: "Edited or created by you.",
+  },
+  {
+    label: "Company",
+    icon: SCOPE_INFO["workspace"].icon,
+    id: "workspace",
+    description: SCOPE_INFO["workspace"].text,
+  },
+  {
+    label: "Shared",
+    icon: SCOPE_INFO["published"].icon,
+    id: "published",
+    description: SCOPE_INFO["published"].text,
+  },
+  {
+    id: "global",
+    label: "Default Assistant",
+    icon: SCOPE_INFO["global"].icon,
+    description: SCOPE_INFO["global"].text,
+  },
+  {
+    label: "Searching across all assistants",
+    icon: MagnifyingGlassIcon,
+    id: "search",
+    description: "Searching across all assistants",
+  },
 ] as const;
-export type AssistantManagerTabsType = (typeof ASSISTANT_MANAGER_TABS)[number];
+
+export type AssistantManagerTabsType =
+  (typeof ASSISTANT_MANAGER_TABS)[number]["id"];
 
 type RowData = {
   name: string;
@@ -48,8 +81,8 @@ type RowData = {
 
 const calculateFeedback = (row: Row<RowData>) => {
   const feedbacks = row.original.feedbacks;
-  const messages = row.original.usage?.messageCount;
-  return feedbacks && messages ? (feedbacks.up - feedbacks.down) / messages : 0;
+  const totalFeedbacks = feedbacks ? feedbacks.up + feedbacks.down : 0;
+  return feedbacks && totalFeedbacks > 0 ? feedbacks.up / totalFeedbacks : 0;
 };
 
 const getTableColumns = () => {

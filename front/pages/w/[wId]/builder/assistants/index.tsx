@@ -1,7 +1,6 @@
 import {
   Button,
   Page,
-  PlanetIcon,
   PlusIcon,
   RobotIcon,
   SearchInput,
@@ -11,13 +10,11 @@ import {
   useHashParam,
 } from "@dust-tt/sparkle";
 import type {
-  AgentConfigurationScope,
   AgentsGetViewType,
   LightAgentConfigurationType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -30,7 +27,6 @@ import {
 } from "@app/components/assistant/AssistantsTable";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -51,7 +47,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const tabScope = ASSISTANT_MANAGER_TABS.includes(
+  const tabScope = ASSISTANT_MANAGER_TABS.map((tab) => tab.id).includes(
     context.query.tabScope as AssistantManagerTabsType
   )
     ? (context.query.tabScope as AssistantManagerTabsType)
@@ -66,7 +62,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 function isValidTab(tab?: string): tab is AssistantManagerTabsType {
-  return ASSISTANT_MANAGER_TABS.includes(tab as AssistantManagerTabsType);
+  return ASSISTANT_MANAGER_TABS.map((tab) => tab.id).includes(
+    tab as AssistantManagerTabsType
+  );
 }
 
 export default function WorkspaceAssistants({
@@ -80,25 +78,12 @@ export default function WorkspaceAssistants({
   const [selectedTab, setSelectedTab] = useHashParam("tabScope", tabScope);
 
   const activeTab = useMemo(() => {
+    if (assistantSearch.trim() !== "") {
+      return "search";
+    }
+
     return selectedTab && isValidTab(selectedTab) ? selectedTab : "workspace";
-  }, [selectedTab]);
-
-  const includes: ("authors" | "usage" | "feedbacks")[] = (() => {
-    if (assistantSearch) {
-      return ["usage", "feedbacks"];
-    }
-
-    switch (activeTab) {
-      case "current_user":
-      case "published":
-        return ["authors", "usage", "feedbacks"];
-      case "global":
-      case "workspace":
-        return ["usage", "feedbacks"];
-      default:
-        assertNever(activeTab);
-    }
-  })();
+  }, [assistantSearch, selectedTab]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -108,20 +93,24 @@ export default function WorkspaceAssistants({
     isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: assistantSearch ? "list" : (activeTab as AgentsGetViewType),
-    includes,
+    agentsGetView:
+      activeTab === "search" ? "list" : (activeTab as AgentsGetViewType),
+    includes: ["usage", "feedbacks"],
   });
 
   const filteredAgents = agentConfigurations.filter((a) => {
-    if (assistantSearch) {
-      return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
+    if (assistantSearch && assistantSearch.trim() !== "") {
+      return subFilter(
+        assistantSearch.trim().toLowerCase(),
+        a.name.toLowerCase()
+      );
     } else if (activeTab === "current_user") {
       return true;
     } else {
       return a.scope === activeTab;
     }
   });
-
+  console.log(activeTab, filteredAgents.length);
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 
@@ -157,20 +146,17 @@ export default function WorkspaceAssistants({
     await mutateAgentConfigurations();
   };
 
-  const tabs = [
-    {
-      label: "Edited by me",
-      icon: PlanetIcon,
-      scope: "current_user",
-    },
-    ...(["workspace", "published", "global"] as AgentConfigurationScope[]).map(
-      (scope) => ({
-        label: SCOPE_INFO[scope].shortLabel,
-        icon: SCOPE_INFO[scope].icon,
-        scope,
-      })
-    ),
-  ];
+  // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
+  const visibleTabs = useMemo(() => {
+    const searchTab = ASSISTANT_MANAGER_TABS.find((tab) => tab.id === "search");
+    if (!searchTab) {
+      throw new Error("Unexpected: Search tab not found");
+    }
+
+    return assistantSearch.trim() !== ""
+      ? [searchTab]
+      : ASSISTANT_MANAGER_TABS.filter((tab) => tab.id !== "search");
+  }, [assistantSearch]);
 
   const disabledTablineClass =
     "!border-element-500 !text-element-500 !cursor-default";
@@ -233,27 +219,23 @@ export default function WorkspaceAssistants({
             <div className="flex flex-col gap-4 pt-3">
               <Tabs value={activeTab}>
                 <TabsList>
-                  {tabs.map((tab) => (
+                  {visibleTabs.map((tab) => (
                     <TabsTrigger
-                      key={tab.label}
-                      value={assistantSearch ? "" : tab.scope}
+                      key={tab.id}
+                      value={tab.id}
                       label={tab.label}
                       icon={tab.icon}
-                      disabled={!!assistantSearch}
                       className={assistantSearch ? disabledTablineClass : ""}
-                      onClick={() =>
-                        !assistantSearch && setSelectedTab(tab.scope)
-                      }
+                      onClick={() => !assistantSearch && setSelectedTab(tab.id)}
                     />
                   ))}
                 </TabsList>
               </Tabs>
               <Page.P>
-                {assistantSearch
-                  ? "Searching across all assistants"
-                  : activeTab === "current_user"
-                    ? "Edited or created by you."
-                    : SCOPE_INFO[activeTab].text}
+                {
+                  ASSISTANT_MANAGER_TABS.find((tab) => tab.id === activeTab)
+                    ?.description
+                }
               </Page.P>
               {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
                 <AssistantsTable
