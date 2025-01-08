@@ -496,7 +496,7 @@ export class DustAPI {
     includes = [],
   }: {
     view?: AgentConfigurationViewType;
-    includes: "authors"[];
+    includes?: "authors"[];
   }) {
     // Function to generate query parameters.
     function getQueryString() {

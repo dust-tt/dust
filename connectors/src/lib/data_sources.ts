@@ -1274,10 +1274,10 @@ export async function deleteDataSourceFolder({
   folderId: string;
   loggerArgs?: Record<string, string | number>;
 }) {
-  const r = await getDustAPI(dataSourceConfig).deleteFolder(
-    dataSourceConfig.dataSourceId,
-    folderId
-  );
+  const r = await getDustAPI(dataSourceConfig).deleteFolder({
+    dataSourceId: dataSourceConfig.dataSourceId,
+    folderId,
+  });
 
   if (r.isErr()) {
     throw r.error;
