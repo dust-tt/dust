@@ -136,6 +136,20 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "doc-tracker-score-docs": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "N0RrhyTXfq",
+      appHash:
+        "af4ab848b1e4f13afffdf2a9672bb2613e278ed5ee55a3a1c67a013e7036daee",
+      appSpaceId: PRODUCTION_DUST_APPS_SPACE_ID,
+    },
+    config: {
+      MODEL: {
+        use_cache: false,
+      },
+    },
+  },
   "doc-tracker-suggest-changes": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,

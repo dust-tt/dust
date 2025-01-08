@@ -13,6 +13,7 @@ import { processTrackerNotification } from "@app/lib/api/tracker";
 import { Authenticator } from "@app/lib/auth";
 import { getDocumentDiff } from "@app/lib/document_upsert_hooks/hooks/data_source_helpers";
 import { callDocTrackerRetrievalAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_retrieval";
+import { callDocTrackerScoreDocsAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_score_docs";
 import { callDocTrackerSuggestChangesAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_suggest_changes";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -28,10 +29,12 @@ const TRACKER_WATCHED_DOCUMENT_MINIMUM_DIFF_LINE_LENGTH = 4;
 const TRACKER_WATCHED_DOCUMENT_MAX_DIFF_TOKENS = 4096;
 // The total number of tokens to show to the model (watched doc diff + maintained scope retrieved tokens)
 const TRACKER_TOTAL_TARGET_TOKENS = 8192;
-// The topK used for the semantic search against the maintained scope.
-// TODO(DOC_TRACKER): Decide how we handle this. If the top doc has less than $targetDocumentTokens,
-// we could include content from the next doc in the maintained scope.
-const TRACKER_MAINTAINED_DOCUMENT_TOP_K = 1;
+// The maximum number of chunks to retrieve from the maintained scope.
+const TRACKER_MAINTAINED_SCOPE_MAX_TOP_K = 8;
+
+// The size of the chunks in our data sources.
+// TODO(@fontanierh): find a way to ensure this remains true.
+const CHUNK_SIZE = 512;
 
 export async function getDebounceMsActivity(
   dataSourceConnectorProvider: ConnectorProvider | null
@@ -65,6 +68,8 @@ export async function trackersGenerationActivity(
   if (!dataSource) {
     throw new Error(`Could not find data source ${dataSourceId}`);
   }
+
+  // We start by finding all trackers that are watching the modified document.
 
   const trackers = await getTrackersToRun(auth, dataSource, documentId);
 
@@ -113,6 +118,9 @@ export async function trackersGenerationActivity(
     );
     return;
   }
+
+  // We compute the diff between the current version of the document and the version right before the edit
+  // that triggered the tracker.
 
   const documentDiff = await getDocumentDiff({
     dataSource,
@@ -185,6 +193,21 @@ export async function trackersGenerationActivity(
   const targetMaintainedScopeTokens =
     TRACKER_TOTAL_TARGET_TOKENS - tokensInDiffCount;
 
+  // We don't want to retrieve more than targetMaintainedScopeTokens / CHUNK_SIZE chunks,
+  // in case all retrieved chunks are from the same document (in which case, we'd have
+  // more than targetMaintainedScopeTokens tokens for that document).
+  const maintainedScopeTopK = Math.min(
+    TRACKER_MAINTAINED_SCOPE_MAX_TOP_K,
+    Math.floor(targetMaintainedScopeTokens / CHUNK_SIZE)
+  );
+
+  if (maintainedScopeTopK === 0) {
+    throw new Error(
+      "Unreachable: targetMaintainedScopeTokens is less than CHUNK_SIZE."
+    );
+  }
+
+  // We run each tracker.
   for (const tracker of trackers) {
     const trackerLogger = localLogger.child({
       trackerId: tracker.sId,
@@ -213,63 +236,160 @@ export async function trackersGenerationActivity(
       (x) => x.filter?.parents?.in ?? null
     );
 
+    // We retrieve content from the maintained scope based on the diff.
     const maintainedScopeRetrieval = await callDocTrackerRetrievalAction(auth, {
       inputText: diffString,
       targetDocumentTokens: targetMaintainedScopeTokens,
-      topK: TRACKER_MAINTAINED_DOCUMENT_TOP_K,
+      topK: maintainedScopeTopK,
       maintainedScope,
       parentsInMap,
     });
 
-    // TODO(DOC_TRACKER): Right now we only handle the top match.
-    // We may want to support topK > 1 and process more than 1 doc if the top doc has less than
-    // $targetDocumentTokens.
     if (maintainedScopeRetrieval.length === 0) {
       trackerLogger.info("No content retrieved from maintained scope.");
       continue;
     }
 
-    const content = maintainedScopeRetrieval[0].chunks
-      .map((c) => c.text)
-      .join("\n");
-    if (!content) {
-      trackerLogger.info("No content retrieved from maintained scope.");
-      continue;
-    }
+    const maintainedDocuments: {
+      content: string;
+      sourceUrl: string | null;
+      title: string | null;
+      dataSourceId: string;
+      documentId: string;
+    }[] = [];
 
-    const suggestChangesResult = await callDocTrackerSuggestChangesAction(
-      auth,
-      {
-        watchedDocDiff: diffString,
-        maintainedDocContent: content,
-        prompt: tracker.prompt,
-        providerId: tracker.providerId,
-        modelId: tracker.modelId,
+    // For each document retrieved from the maintained scope, we build the content of the document.
+    // We add "[...]" separators when there is a gap in the chunks (so the model understands that parts of the document are missing).
+    for (const retrievalDoc of maintainedScopeRetrieval) {
+      let docContent: string = "";
+      const sortedChunks = _.sortBy(retrievalDoc.chunks, (c) => c.offset);
+
+      for (const [i, chunk] of sortedChunks.entries()) {
+        if (i === 0) {
+          //  If we are at index 0 (i.e the first retrieved chunk), we check whether our chunk includes
+          // the beginning of the document. If it doesn't, we add a "[...]"" separator.
+          const allOffsetsInChunk = [
+            chunk.offset,
+            ...(chunk.expanded_offsets ?? []),
+          ];
+          const isBeginningOfDocument = allOffsetsInChunk.includes(0);
+          if (!isBeginningOfDocument) {
+            docContent += "[...]\n";
+          }
+        } else {
+          // If we are not at index 0, we check whether the current chunk is a direct continuation of the previous chunk.
+          // We do this by checking that the first offset of the current chunk is the last offset of the previous chunk + 1.
+          const previousChunk = sortedChunks[i - 1];
+          const allOffsetsInCurrentChunk = [
+            chunk.offset,
+            ...(chunk.expanded_offsets ?? []),
+          ];
+          const firstOffsetInCurrentChunk = _.min(allOffsetsInCurrentChunk)!;
+          const allOffsetsInPreviousChunk = [
+            previousChunk.offset,
+            ...(previousChunk.expanded_offsets ?? []),
+          ];
+          const lastOffsetInPreviousChunk = _.max(allOffsetsInPreviousChunk)!;
+          const hasGap =
+            firstOffsetInCurrentChunk !== lastOffsetInPreviousChunk + 1;
+
+          if (hasGap) {
+            docContent += "[...]\n";
+          }
+        }
+
+        // Add the chunk text to the document.
+        docContent += chunk.text + "\n";
+
+        if (i === sortedChunks.length - 1) {
+          // If we are at the last chunk, we check if we have the last offset of the doc.
+          // If not, we add a "[...]" separator.
+          const lastChunk = sortedChunks[sortedChunks.length - 1];
+          if (lastChunk.offset !== retrievalDoc.chunk_count - 1) {
+            docContent += "[...]\n";
+          }
+        }
       }
-    );
 
-    if (!suggestChangesResult.suggestion) {
-      trackerLogger.info("No changes suggested.");
-      continue;
+      maintainedDocuments.push({
+        content: docContent,
+        sourceUrl: retrievalDoc.source_url,
+        title: retrievalDoc.title,
+        dataSourceId: retrievalDoc.data_source_id,
+        documentId: retrievalDoc.document_id,
+      });
     }
 
-    const suggestedChanges = suggestChangesResult.suggestion;
-    const thinking = suggestChangesResult.thinking;
-    const confidenceScore = suggestChangesResult.confidence_score;
-
-    trackerLogger.info(
-      {
-        confidenceScore,
-      },
-      "Changes suggested."
+    const contentByDocumentIdentifier = _.mapValues(
+      _.keyBy(
+        maintainedDocuments,
+        (doc) => `${doc.dataSourceId}__${doc.documentId}`
+      ),
+      (doc) => doc.content
     );
 
-    await tracker.addGeneration({
-      generation: suggestedChanges,
-      thinking: thinking ?? null,
-      dataSourceId,
-      documentId,
+    // We find documents for which to run the change suggestion.
+    // We do this by asking which documents are most relevant to the diff and using the
+    // logprobs as a score.
+    const scoreDocsResult = await callDocTrackerScoreDocsAction(auth, {
+      watchedDocDiff: diffString,
+      maintainedDocuments,
+      providerId: tracker.providerId,
+      modelId: tracker.modelId,
     });
+
+    // The output of the Dust App above is a list of document for which we want to run the change suggestion.
+
+    for (const { documentId, dataSourceId, score } of scoreDocsResult) {
+      logger.info(
+        {
+          documentId,
+          dataSourceId,
+          score,
+        },
+        "Running document tracker suggest changes."
+      );
+
+      const content =
+        contentByDocumentIdentifier[`${dataSourceId}__${documentId}`];
+      if (!content) {
+        continue;
+      }
+
+      const suggestChangesResult = await callDocTrackerSuggestChangesAction(
+        auth,
+        {
+          watchedDocDiff: diffString,
+          maintainedDocContent: content,
+          prompt: tracker.prompt,
+          providerId: tracker.providerId,
+          modelId: tracker.modelId,
+        }
+      );
+
+      if (!suggestChangesResult.suggestion) {
+        trackerLogger.info("No changes suggested.");
+        continue;
+      }
+
+      const suggestedChanges = suggestChangesResult.suggestion;
+      const thinking = suggestChangesResult.thinking;
+      const confidenceScore = suggestChangesResult.confidence_score;
+
+      trackerLogger.info(
+        {
+          confidenceScore,
+        },
+        "Changes suggested."
+      );
+
+      await tracker.addGeneration({
+        generation: suggestedChanges,
+        thinking: thinking ?? null,
+        dataSourceId,
+        documentId,
+      });
+    }
   }
 }
 
