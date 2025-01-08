@@ -163,8 +163,8 @@ export abstract class ResourceWithSpace<
     return this.space.canAdministrate(auth);
   }
 
-  canList(auth: Authenticator) {
-    return this.space.canList(auth);
+  canReadOrAdministrate(auth: Authenticator) {
+    return this.space.canReadOrAdministrate(auth);
   }
 
   canRead(auth: Authenticator) {

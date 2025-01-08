@@ -63,7 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const isAdmin = auth.isAdmin();
 
-  if (!owner || !subscription || !space || !space.canList(auth)) {
+  if (!owner || !subscription || !space || !space.canReadOrAdministrate(auth)) {
     return {
       notFound: true,
     };

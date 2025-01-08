@@ -25,8 +25,8 @@ type ResourceMap<U extends ResourceKey> = {
 
 type OptionsMap<U extends ResourceKey> = {
   [K in U]: {
+    requireCanReadOrAdministrate?: boolean;
     requireCanAdministrate?: boolean;
-    requireCanList?: boolean;
     requireCanRead?: boolean;
     requireCanWrite?: boolean;
   };
@@ -79,7 +79,7 @@ function hasPermission(
   options:
     | {
         requireCanAdministrate?: boolean;
-        requireCanList?: boolean;
+        requireCanReadOrAdministrate?: boolean;
         requireCanRead?: boolean;
         requireCanWrite?: boolean;
       }
@@ -90,7 +90,8 @@ function hasPermission(
     if (
       (options.requireCanAdministrate === true &&
         !resource.canAdministrate(auth)) ||
-      (options.requireCanList === true && !resource.canList(auth)) ||
+      (options.requireCanReadOrAdministrate === true &&
+        !resource.canReadOrAdministrate(auth)) ||
       (options.requireCanRead === true && !resource.canRead(auth)) ||
       (options.requireCanWrite === true && !resource.canWrite(auth))
     ) {
