@@ -8,12 +8,11 @@ import {
   HandThumbUpIcon,
   MagnifyingGlassIcon,
   PencilSquareIcon,
-  PlanetIcon,
   Popup,
-  RocketIcon,
   SliderToggle,
   Tooltip,
   TrashIcon,
+  UserIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -35,7 +34,7 @@ export const ASSISTANT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents
   {
     label: "Edited by me",
-    icon: PlanetIcon,
+    icon: UserIcon,
     id: "current_user",
     description: "Edited or created by you.",
   },
