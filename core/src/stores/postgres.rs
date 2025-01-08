@@ -154,7 +154,7 @@ impl PostgresStore {
         row_id: i64,
         tx: &Transaction<'_>,
     ) -> Result<()> {
-        // Check that all parents exist in data_sources_nodes
+        // Check that all parents exist in data_sources_nodes.
         let stmt_check = tx
             .prepare(
                 "SELECT COUNT(*) FROM data_sources_nodes
@@ -1471,6 +1471,35 @@ impl Store for PostgresStore {
         };
 
         let tx = c.transaction().await?;
+
+        // Check that all parents exist in data_sources_nodes.
+        let stmt_check = c
+            .prepare(
+                "SELECT COUNT(*) FROM data_sources_nodes
+                 WHERE data_source = $1 AND node_id = ANY($2)",
+            )
+            .await?;
+        let count: i64 = tx
+            .query_one(&stmt_check, &[&data_source_row_id, &parents])
+            .await?
+            .get(0);
+        if count != parents.len() as i64 {
+            info!(
+                data_source_id = data_source_id,
+                node_id = node_id,
+                parents = ?parents,
+                operation = "update_parents",
+                "[KWSEARCH] invariant_parent_exist_in_nodes"
+            );
+        }
+
+        // Update parents on tables table (TODO: remove this once we migrate to nodes table).
+        tx.execute(
+            "UPDATE data_sources_documents SET parents = $1 \
+            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
+            &[&parents, &data_source_row_id, &document_id],
+        )
+        .await?;
 
         // Update parents on nodes table.
         tx.execute(
