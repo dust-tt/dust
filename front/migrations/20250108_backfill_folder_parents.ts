@@ -1,4 +1,4 @@
-import { CoreAPI } from "@dust-tt/types";
+import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
 import { Op, QueryTypes } from "sequelize";
 
 import config from "@app/lib/api/config";
@@ -9,6 +9,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 const coreSequelize = getCoreReplicaDbConnection();
 const DATASOURCE_BATCH_SIZE = 25;
+const NODE_CONCURRENCY = 10;
 
 async function migrateNode(
   node: any,
@@ -63,20 +64,23 @@ async function migrateFolderDataSourceParents(
     `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c`,
     { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
   );
-  for (const node of nodes) {
-    await migrateNode(
-      node,
-      coreAPI,
-      dustAPIProjectId,
-      dustAPIDataSourceId,
-      execute,
-      logger.child({
-        nodeId: node.node_id,
-        parents: node.parents,
-        timestamp: new Date(node.timestamp),
-      })
-    );
-  }
+  await concurrentExecutor(
+    nodes,
+    async (node) =>
+      migrateNode(
+        node,
+        coreAPI,
+        dustAPIProjectId,
+        dustAPIDataSourceId,
+        execute,
+        logger.child({
+          nodeId: node.node_id,
+          parents: node.parents,
+          timestamp: new Date(node.timestamp),
+        })
+      ),
+    { concurrency: NODE_CONCURRENCY }
+  );
 }
 
 async function migrateFolderDataSourcesParents(
