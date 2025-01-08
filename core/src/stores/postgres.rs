@@ -1473,17 +1473,14 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
 
         // Check that all parents exist in data_sources_nodes.
-        let stmt_check = c
-            .prepare(
+        let count: u64 = tx
+            .execute(
                 "SELECT COUNT(*) FROM data_sources_nodes
                  WHERE data_source = $1 AND node_id = ANY($2)",
+                &[&data_source_row_id, &parents],
             )
             .await?;
-        let count: i64 = tx
-            .query_one(&stmt_check, &[&data_source_row_id, &parents])
-            .await?
-            .get(0);
-        if count != parents.len() as i64 {
+        if count != parents.len() as u64 {
             info!(
                 data_source_id = data_source_row_id,
                 node_id = document_id,
@@ -2828,17 +2825,14 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
 
         // Check that all parents exist in data_sources_nodes.
-        let stmt_check = c
-            .prepare(
+        let count: u64 = tx
+            .execute(
                 "SELECT COUNT(*) FROM data_sources_nodes
                  WHERE data_source = $1 AND node_id = ANY($2)",
+                &[&data_source_row_id, &parents],
             )
             .await?;
-        let count: i64 = tx
-            .query_one(&stmt_check, &[&data_source_row_id, &parents])
-            .await?
-            .get(0);
-        if count != parents.len() as i64 {
+        if count != parents.len() as u64 {
             info!(
                 data_source_id = data_source_row_id,
                 node_id = table_id,
