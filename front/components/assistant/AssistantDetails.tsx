@@ -242,7 +242,6 @@ function AssistantDetailsPerformance({
           </div>
         </Card>
       </CardGrid>
-      <Page.SectionHeader title="Feedbacks" />
     </>
   );
 }
