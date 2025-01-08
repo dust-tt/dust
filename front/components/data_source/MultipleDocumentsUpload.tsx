@@ -121,7 +121,7 @@ export const MultipleDocumentsUpload = ({
             completed: prev ? prev.completed + 1 : 1,
           }));
         },
-        { concurrency: 8 }
+        { concurrency: 4 }
       );
 
       // Reset the upload state

@@ -102,7 +102,6 @@ async function handler(
         { file, upsertArgs: upsertArgs }
       );
       if (rUpsert.isErr()) {
-        console.log("ERROR UPSERTING FILE", rUpsert);
         return apiError(req, res, {
           status_code: 500,
           api_error: {
