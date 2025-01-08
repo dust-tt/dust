@@ -298,6 +298,9 @@ impl Block for Chat {
                 if let Some(Value::Bool(b)) = v.get("logprobs") {
                     extras["logprobs"] = json!(b.clone());
                 }
+                if let Some(Value::Number(n)) = v.get("top_logprobs") {
+                    extras["top_logprobs"] = json!(n.as_f64().unwrap() as i32);
+                }
 
                 match extras.as_object().unwrap().keys().len() {
                     0 => None,

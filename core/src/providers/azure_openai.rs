@@ -448,8 +448,9 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
-        let (openai_user, response_format, reasoning_effort, logprobs) = match &extras {
-            None => (None, None, None, None),
+        let (openai_user, response_format, reasoning_effort, logprobs, top_logprobs) = match &extras
+        {
+            None => (None, None, None, None, None),
             Some(v) => (
                 match v.get("openai_user") {
                     Some(Value::String(u)) => Some(u.to_string()),
@@ -465,6 +466,10 @@ impl LLM for AzureOpenAILLM {
                 },
                 match v.get("logprobs") {
                     Some(Value::Bool(l)) => Some(l.clone()),
+                    _ => None,
+                },
+                match v.get("top_logprobs") {
+                    Some(Value::Number(n)) => Some(n.as_f64().unwrap() as i32),
                     _ => None,
                 },
             ),
@@ -511,6 +516,7 @@ impl LLM for AzureOpenAILLM {
                     response_format,
                     reasoning_effort,
                     logprobs,
+                    top_logprobs,
                     openai_user,
                     event_sender,
                 )
@@ -544,6 +550,7 @@ impl LLM for AzureOpenAILLM {
                     response_format,
                     reasoning_effort,
                     logprobs,
+                    top_logprobs,
                     openai_user,
                 )
                 .await?

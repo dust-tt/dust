@@ -87,9 +87,17 @@ pub struct LLMTokenUsage {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct TopLogprob {
+    pub token: String,
+    pub logprob: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMChatLogprob {
     pub token: String,
     pub logprob: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_logprobs: Option<Vec<TopLogprob>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

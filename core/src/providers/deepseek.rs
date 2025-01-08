@@ -197,6 +197,7 @@ impl LLM for DeepseekLLM {
                 None,
                 None,
                 None,
+                None,
                 event_sender.clone(),
             )
             .await?
@@ -225,6 +226,7 @@ impl LLM for DeepseekLLM {
                     Some(f) => f,
                     None => 0.0,
                 },
+                None,
                 None,
                 None,
                 None,

@@ -37,6 +37,11 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
               ? spec[i].config.logprobs
               : false
             : false,
+          top_logprobs: spec[i].config
+            ? spec[i].config.top_logprobs
+              ? spec[i].config.top_logprobs
+              : null
+            : null,
         };
         break;
       case "input":
