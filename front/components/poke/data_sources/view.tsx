@@ -80,6 +80,12 @@ export function ViewDataSourceTable({
                   <PokeTableCell>{dataSource.description}</PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
+                  <PokeTableCell>Created at</PokeTableCell>
+                  <PokeTableCell>
+                    {formatTimestampToFriendlyDate(dataSource.createdAt)}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
                   <PokeTableCell>Edited by</PokeTableCell>
                   <PokeTableCell>
                     {dataSource.editedByUser?.fullName ?? "N/A"}
