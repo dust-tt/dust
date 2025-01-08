@@ -1,4 +1,10 @@
-import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Div3D,
+  Hover3D,
+  RocketIcon,
+  UserArrowIcon,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
 
@@ -123,7 +129,7 @@ export default function CustomerSupport() {
           <P size="lg" className="text-slate-50">
             {pageSettings.description}
           </P>
-          <div>
+          <div className="flex gap-4">
             <Link href="/home/pricing" shallow={true}>
               <Button
                 variant="highlight"
@@ -132,6 +138,14 @@ export default function CustomerSupport() {
                 icon={RocketIcon}
               />
             </Link>
+            <Button
+              variant="outline"
+              size="md"
+              label="Talk to sales"
+              icon={UserArrowIcon}
+              href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
+              target="_blank"
+            />
           </div>
         </div>
         <div

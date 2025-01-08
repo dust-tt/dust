@@ -1,4 +1,9 @@
-import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import {
+  ArrowRightIcon,
+  Button,
+  RocketIcon,
+  UserArrowIcon,
+} from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -164,7 +169,7 @@ export const HeaderContentBlock = ({
         </P>
       )}
       {hasCTA && (
-        <div>
+        <div className="flex gap-4">
           <Link href="/pricing" shallow={true}>
             <Button
               variant="highlight"
@@ -173,6 +178,14 @@ export const HeaderContentBlock = ({
               icon={RocketIcon}
             />
           </Link>
+          <Button
+            variant="outline"
+            size="md"
+            label="Talk to sales"
+            icon={UserArrowIcon}
+            href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
+            target="_blank"
+          />
         </div>
       )}
     </div>
