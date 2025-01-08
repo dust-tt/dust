@@ -236,7 +236,7 @@ export function AssistantsTable({
           name: agentConfiguration.name,
           usage: agentConfiguration.usage ?? {
             messageCount: 0,
-            timePeriodSec: 2592000,
+            timePeriodSec: 30 * 24 * 60 * 60,
           },
           description: agentConfiguration.description,
           pictureUrl: agentConfiguration.pictureUrl,
