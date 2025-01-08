@@ -294,10 +294,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
           model: DataSourceModel,
           as: "dataSourceForView",
           required: true,
+          where: {
+            assistantDefaultSelected: true,
+          },
         },
       ],
       where: {
-        "$dataSourceForView.assistantDefaultSelected$": true,
         vaultId: spaces.map((s) => s.id),
       },
     });

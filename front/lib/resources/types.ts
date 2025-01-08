@@ -1,5 +1,6 @@
 import type {
   FindOptions,
+  Includeable,
   Model,
   ModelStatic,
   NonAttribute,
@@ -12,15 +13,25 @@ import type {
 } from "@app/lib/resources/storage/wrappers";
 
 export type NonAttributeKeys<M> = {
-  [K in keyof M]: M[K] extends NonAttribute<Model<any, any>> ? K : never;
+  [K in keyof M]: M[K] extends NonAttribute<infer T>
+    ? T extends Array<BaseModel<any>>
+      ? K
+      : T extends BaseModel<any>
+        ? K
+        : never
+    : never;
 }[keyof M] &
   string;
 
 export type InferIncludeType<M> = {
   [K in NonAttributeKeys<M>]: M[K] extends NonAttribute<infer T>
-    ? T extends BaseModel<any>
-      ? T
-      : never
+    ? T extends Array<infer U>
+      ? U extends BaseModel<any>
+        ? U
+        : never
+      : T extends BaseModel<any>
+        ? T
+        : never
     : never;
 };
 
@@ -29,6 +40,8 @@ export type TypedIncludeable<M> = {
     model: ModelStatic<InferIncludeType<M>[K]>;
     as: K;
     required?: boolean;
+    where?: WhereOptions<InferIncludeType<M>[K]>;
+    include?: Includeable[];
   };
 }[NonAttributeKeys<M>];
 

@@ -2,6 +2,7 @@ import type {
   ModelId,
   ResourcePermission,
   Result,
+  SpaceKind,
   SpaceType,
 } from "@dust-tt/types";
 import { concurrentExecutor, Err } from "@dust-tt/types";
@@ -232,20 +233,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
     });
 
-    const spaces = await this.baseFetch(auth, {
-      where: {
-        id: groupSpaces.map((v) => v.vaultId),
-        kind: {
-          [Op.in]: [
-            "system",
-            "global",
-            "regular",
-            "public",
-            ...(options?.includeConversationsSpace ? ["conversations"] : []),
-          ],
+    const allExceptConversations: Exclude<SpaceKind, "conversations">[] = [
+      "system",
+      "global",
+      "regular",
+      "public",
+    ];
+
+    let spaces: SpaceResource[] = [];
+
+    if (options?.includeConversationsSpace) {
+      spaces = await this.baseFetch(auth, {
+        where: {
+          id: groupSpaces.map((v) => v.vaultId),
         },
-      },
-    });
+      });
+    } else {
+      spaces = await this.baseFetch(auth, {
+        where: {
+          id: groupSpaces.map((v) => v.vaultId),
+          kind: {
+            [Op.in]: allExceptConversations,
+          },
+        },
+      });
+    }
 
     return spaces.filter((s) => s.canRead(auth));
   }
