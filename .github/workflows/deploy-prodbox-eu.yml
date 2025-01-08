@@ -24,7 +24,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_EU_PROJECT_ID }}
+  GCLOUD_US_PROJECT_ID: ${{ secrets.GCLOUD_US_PROJECT_ID }}
+  GCLOUD_EU_PROJECT_ID: ${{ secrets.GCLOUD_EU_PROJECT_ID }}
   IMAGE_NAME: prodbox
 
 jobs:
@@ -77,6 +78,9 @@ jobs:
           fi
 
   build:
+    permissions:
+      contents: read
+      id-token: write
     needs: [notify-start, create-matrix]
     runs-on: ubuntu-latest
     strategy:
@@ -103,6 +107,13 @@ jobs:
 
       - name: Build image for ${{ matrix.region }}
         run: |
+          # Set project ID based on region
+          if [ "${{ matrix.region }}" = "us-central1" ]; then
+            PROJECT_ID="${{ secrets.GCLOUD_US_PROJECT_ID }}"
+          else
+            PROJECT_ID="${{ secrets.GCLOUD_EU_PROJECT_ID }}"
+          fi
+
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
             --image-name=$IMAGE_NAME \
@@ -110,7 +121,7 @@ jobs:
             --working-dir=./ \
             --gcloud-ignore-file=.gcloudignore-prodbox \
             --region=${{ matrix.region }} \
-            --project-id=$GCLOUD_PROJECT_ID
+            --project-id=${PROJECT_ID}
 
       - name: Notify Failure
         if: failure()
