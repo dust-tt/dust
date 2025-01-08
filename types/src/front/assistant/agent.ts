@@ -146,6 +146,7 @@ export type AgentConfigurationScope =
 /**
  * Defines strategies for fetching agent configurations based on various
  * 'views':
+ * - 'current_user': Retrieves agents created or edited by the current user.
  * - 'list': Retrieves all active agents accessible to the user
  * - {agentIds: string}: Retrieves specific agents by their sIds.
  * - 'all': All non-private agents (so combines workspace, published and global
@@ -160,6 +161,7 @@ export type AgentConfigurationScope =
  */
 export type AgentsGetViewType =
   | { agentIds: string[]; allVersions?: boolean }
+  | "current_user"
   | "list"
   | "all"
   | "workspace"
@@ -212,6 +214,7 @@ export type LightAgentConfigurationType = {
   // `lastAuthors` is expensive to compute, so we only compute it when needed.
   lastAuthors?: AgentRecentAuthors;
   usage?: AgentUsageType;
+  feedbacks?: { up: number; down: number };
 
   maxStepsPerRun: number;
   visualizationEnabled: boolean;

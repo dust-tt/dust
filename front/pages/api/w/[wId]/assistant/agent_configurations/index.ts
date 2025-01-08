@@ -33,6 +33,7 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -79,7 +80,7 @@ async function handler(
         });
       }
 
-      const { view, limit, withUsage, withAuthors, sort } =
+      const { view, limit, withUsage, withAuthors, withFeedbacks, sort } =
         queryValidation.right;
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
@@ -132,19 +133,41 @@ async function handler(
           auth,
           agents: agentConfigurations,
         });
-        agentConfigurations = await Promise.all(
-          agentConfigurations.map(
-            async (
-              agentConfiguration,
-              index
-            ): Promise<LightAgentConfigurationType> => {
-              return {
-                ...agentConfiguration,
-                lastAuthors: recentAuthors[index],
-              };
-            }
-          )
+        agentConfigurations = agentConfigurations.map(
+          (agentConfiguration, index) => {
+            return {
+              ...agentConfiguration,
+              lastAuthors: recentAuthors[index],
+            };
+          }
         );
+      }
+      if (withFeedbacks === "true") {
+        const feedbacks =
+          await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
+            auth,
+            agentConfigurations
+              .filter((agent) => agent.scope !== "global")
+              .map((agent) => agent.sId),
+            30
+          );
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          feedbacks: {
+            up:
+              feedbacks.find(
+                (f) =>
+                  f.agentConfigurationId === agentConfiguration.sId &&
+                  f.thumbDirection === "up"
+              )?.count ?? 0,
+            down:
+              feedbacks.find(
+                (f) =>
+                  f.agentConfigurationId === agentConfiguration.sId &&
+                  f.thumbDirection === "down"
+              )?.count ?? 0,
+          },
+        }));
       }
 
       return res.status(200).json({
