@@ -20,6 +20,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -104,7 +105,7 @@ function AssistantDetailsPerformance({
   owner: WorkspaceType;
 }) {
   const [period, setPeriod] = useState(30);
-  const { agentAnalytics } = useAgentAnalytics({
+  const { agentAnalytics, isAgentAnayticsLoading } = useAgentAnalytics({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
     period,
@@ -138,112 +139,115 @@ function AssistantDetailsPerformance({
         </div>
       </div>
 
-      <div></div>
-      <CardGrid>
-        <Card variant="primary" size="md">
-          <div className="flex h-24 w-full flex-col gap-1 text-sm">
-            <div className="flex w-full gap-1 font-medium text-foreground">
-              <div className="w-full">Active Users</div>
-            </div>
-            <div className="flex flex-col gap-1 text-lg font-bold">
-              {agentAnalytics?.users ? (
-                <>
-                  <div className="truncate text-element-900">
-                    {agentAnalytics.users.length}
-                  </div>
-
-                  <Avatar.Stack size="md" hasMagnifier={false}>
-                    {removeNulls(agentAnalytics.users.map((top) => top.user))
-                      .slice(0, 5)
-                      .map((user) => (
-                        <Tooltip
-                          key={user.id}
-                          trigger={
-                            <Avatar
-                              size="sm"
-                              name={user.fullName}
-                              visual={user.image}
-                            />
-                          }
-                          label={user.fullName}
-                        />
-                      ))}
-                  </Avatar.Stack>
-                </>
-              ) : (
-                "-"
-              )}
-            </div>
-          </div>
-        </Card>
-
-        <Card variant="primary" size="md">
-          <div className="flex h-24 w-full flex-col gap-1 text-sm">
-            <div className="flex w-full gap-1 font-medium text-foreground">
-              <div className="w-full">Reactions</div>
-            </div>
-            <div className="flex flex-row gap-2 text-lg font-bold">
-              {agentConfiguration.scope !== "global" &&
-              agentAnalytics?.feedbacks ? (
-                <>
-                  <div className="flex flex-row items-center">
-                    <div>
-                      <HandThumbUpIcon className="h-6 w-6 pr-2 text-element-600" />
+      {isAgentAnayticsLoading ? (
+        <Spinner />
+      ) : (
+        <CardGrid>
+          <Card variant="primary" size="md">
+            <div className="flex h-24 w-full flex-col gap-1 text-sm">
+              <div className="flex w-full gap-1 font-medium text-foreground">
+                <div className="w-full">Active Users</div>
+              </div>
+              <div className="flex flex-col gap-1 text-lg font-bold">
+                {agentAnalytics?.users ? (
+                  <>
+                    <div className="truncate text-element-900">
+                      {agentAnalytics.users.length}
                     </div>
-                    <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
-                  </div>
-                  <div className="flex flex-row items-center">
-                    <div>
-                      <HandThumbDownIcon className="h-6 w-6 pr-2 text-element-600" />
+
+                    <Avatar.Stack size="md" hasMagnifier={false}>
+                      {removeNulls(agentAnalytics.users.map((top) => top.user))
+                        .slice(0, 5)
+                        .map((user) => (
+                          <Tooltip
+                            key={user.id}
+                            trigger={
+                              <Avatar
+                                size="sm"
+                                name={user.fullName}
+                                visual={user.image}
+                              />
+                            }
+                            label={user.fullName}
+                          />
+                        ))}
+                    </Avatar.Stack>
+                  </>
+                ) : (
+                  "-"
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <Card variant="primary" size="md">
+            <div className="flex h-24 w-full flex-col gap-1 text-sm">
+              <div className="flex w-full gap-1 font-medium text-foreground">
+                <div className="w-full">Reactions</div>
+              </div>
+              <div className="flex flex-row gap-2 text-lg font-bold">
+                {agentConfiguration.scope !== "global" &&
+                agentAnalytics?.feedbacks ? (
+                  <>
+                    <div className="flex flex-row items-center">
+                      <div>
+                        <HandThumbUpIcon className="h-6 w-6 pr-2 text-element-600" />
+                      </div>
+                      <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
                     </div>
-                    <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
+                    <div className="flex flex-row items-center">
+                      <div>
+                        <HandThumbDownIcon className="h-6 w-6 pr-2 text-element-600" />
+                      </div>
+                      <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
+                    </div>
+                  </>
+                ) : (
+                  "-"
+                )}
+              </div>
+            </div>
+          </Card>
+          <Card variant="primary" size="md">
+            <div className="flex h-24 w-full flex-col gap-1 text-sm">
+              <div className="flex w-full gap-1 font-medium text-foreground">
+                <div className="w-full">Conversations</div>
+              </div>
+              <div className="flex flex-row gap-2 text-lg font-bold">
+                <div className="flex flex-row items-center">
+                  <div>
+                    <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-element-600" />
                   </div>
-                </>
-              ) : (
-                "-"
-              )}
-            </div>
-          </div>
-        </Card>
-        <Card variant="primary" size="md">
-          <div className="flex h-24 w-full flex-col gap-1 text-sm">
-            <div className="flex w-full gap-1 font-medium text-foreground">
-              <div className="w-full">Conversations</div>
-            </div>
-            <div className="flex flex-row gap-2 text-lg font-bold">
-              <div className="flex flex-row items-center">
-                <div>
-                  <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-element-600" />
-                </div>
-                <div>
-                  {agentAnalytics?.mentions
-                    ? `${agentAnalytics.mentions.conversationCount}`
-                    : "-"}
+                  <div>
+                    {agentAnalytics?.mentions
+                      ? `${agentAnalytics.mentions.conversationCount}`
+                      : "-"}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Card>
-        <Card variant="primary" size="md">
-          <div className="flex h-24 w-full flex-col gap-1 text-sm">
-            <div className="flex w-full gap-1 font-medium text-foreground">
-              <div className="w-full">Messages</div>
-            </div>
-            <div className="flex flex-row gap-2 text-lg font-bold">
-              <div className="flex flex-row items-center">
-                <div>
-                  <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-element-600" />
-                </div>
-                <div>
-                  {agentAnalytics?.mentions
-                    ? `${agentAnalytics.mentions.messageCount}`
-                    : "-"}
+          </Card>
+          <Card variant="primary" size="md">
+            <div className="flex h-24 w-full flex-col gap-1 text-sm">
+              <div className="flex w-full gap-1 font-medium text-foreground">
+                <div className="w-full">Messages</div>
+              </div>
+              <div className="flex flex-row gap-2 text-lg font-bold">
+                <div className="flex flex-row items-center">
+                  <div>
+                    <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-element-600" />
+                  </div>
+                  <div>
+                    {agentAnalytics?.mentions
+                      ? `${agentAnalytics.mentions.messageCount}`
+                      : "-"}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Card>
-      </CardGrid>
+          </Card>
+        </CardGrid>
+      )}
       {agentConfiguration.scope !== "global" && (
         <>
           <Page.SectionHeader title="Feedbacks" />
