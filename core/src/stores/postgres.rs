@@ -2621,7 +2621,6 @@ impl Store for PostgresStore {
                    ON CONFLICT (table_id, data_source) DO UPDATE \
                    SET name = EXCLUDED.name, description = EXCLUDED.description, \
                    timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, \
-                     parents = EXCLUDED.parents, \
                      remote_database_table_id = EXCLUDED.remote_database_table_id, \
                      remote_database_secret_id = EXCLUDED.remote_database_secret_id \
                    RETURNING id, created, schema, schema_stale_at",
