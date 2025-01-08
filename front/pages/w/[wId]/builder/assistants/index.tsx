@@ -28,6 +28,7 @@ import {
   ASSISTANT_MANAGER_TABS,
   AssistantsTable,
 } from "@app/components/assistant/AssistantsTable";
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -193,91 +194,95 @@ export default function WorkspaceAssistants({
   }, []);
 
   return (
-    <AppLayout
-      subscription={subscription}
-      owner={owner}
-      navChildren={<AssistantSidebarMenu owner={owner} />}
-    >
-      <AssistantDetails
+    <ConversationsNavigationProvider>
+      <AppLayout
+        subscription={subscription}
         owner={owner}
-        assistantId={showDetails?.sId || null}
-        onClose={() => setShowDetails(null)}
-      />
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header title="Manage Assistants" icon={RobotIcon} />
-        <Page.Vertical gap="md" align="stretch">
-          <div className="flex flex-row gap-2">
-            <SearchInput
-              ref={searchBarRef}
-              name="search"
-              placeholder="Search (Name)"
-              value={assistantSearch}
-              onChange={(s) => {
-                setAssistantSearch(s);
-              }}
-            />
-            <div className="flex gap-2">
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-              >
-                <Button
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Create an assistant"
-                />
-              </Link>
-            </div>
-          </div>
-          <div className="flex flex-col gap-4 pt-3">
-            <Tabs value={activeTab}>
-              <TabsList>
-                {tabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.label}
-                    value={assistantSearch ? "" : tab.scope}
-                    label={tab.label}
-                    icon={tab.icon}
-                    disabled={!!assistantSearch}
-                    className={assistantSearch ? disabledTablineClass : ""}
-                    onClick={() =>
-                      !assistantSearch && setSelectedTab(tab.scope)
-                    }
-                  />
-                ))}
-              </TabsList>
-            </Tabs>
-            <Page.P>
-              {assistantSearch
-                ? "Searching across all assistants"
-                : activeTab === "current_user"
-                  ? "Edited or created by you."
-                  : SCOPE_INFO[activeTab].text}
-            </Page.P>
-            {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
-              <AssistantsTable
-                owner={owner}
-                agents={filteredAgents}
-                setShowDetails={setShowDetails}
-                handleToggleAgentStatus={handleToggleAgentStatus}
-                showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
-                setShowDisabledFreeWorkspacePopup={
-                  setShowDisabledFreeWorkspacePopup
-                }
+        navChildren={<AssistantSidebarMenu owner={owner} />}
+      >
+        <AssistantDetails
+          owner={owner}
+          assistantId={showDetails?.sId || null}
+          onClose={() => setShowDetails(null)}
+        />
+        <Page.Vertical gap="xl" align="stretch">
+          <Page.Header title="Manage Assistants" icon={RobotIcon} />
+          <Page.Vertical gap="md" align="stretch">
+            <div className="flex flex-row gap-2">
+              <SearchInput
+                ref={searchBarRef}
+                name="search"
+                placeholder="Search (Name)"
+                value={assistantSearch}
+                onChange={(s) => {
+                  setAssistantSearch(s);
+                }}
               />
-            ) : (
-              !assistantSearch && (
-                <div className="pt-2">
-                  <EmptyCallToAction
-                    href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                    label="Create an Assistant"
+              <div className="flex gap-2">
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
+                >
+                  <Button
+                    variant="primary"
                     icon={PlusIcon}
+                    label="Create an assistant"
                   />
-                </div>
-              )
-            )}
-          </div>
+                </Link>
+              </div>
+            </div>
+            <div className="flex flex-col gap-4 pt-3">
+              <Tabs value={activeTab}>
+                <TabsList>
+                  {tabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.label}
+                      value={assistantSearch ? "" : tab.scope}
+                      label={tab.label}
+                      icon={tab.icon}
+                      disabled={!!assistantSearch}
+                      className={assistantSearch ? disabledTablineClass : ""}
+                      onClick={() =>
+                        !assistantSearch && setSelectedTab(tab.scope)
+                      }
+                    />
+                  ))}
+                </TabsList>
+              </Tabs>
+              <Page.P>
+                {assistantSearch
+                  ? "Searching across all assistants"
+                  : activeTab === "current_user"
+                    ? "Edited or created by you."
+                    : SCOPE_INFO[activeTab].text}
+              </Page.P>
+              {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
+                <AssistantsTable
+                  owner={owner}
+                  agents={filteredAgents}
+                  setShowDetails={setShowDetails}
+                  handleToggleAgentStatus={handleToggleAgentStatus}
+                  showDisabledFreeWorkspacePopup={
+                    showDisabledFreeWorkspacePopup
+                  }
+                  setShowDisabledFreeWorkspacePopup={
+                    setShowDisabledFreeWorkspacePopup
+                  }
+                />
+              ) : (
+                !assistantSearch && (
+                  <div className="pt-2">
+                    <EmptyCallToAction
+                      href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
+                      label="Create an Assistant"
+                      icon={PlusIcon}
+                    />
+                  </div>
+                )
+              )}
+            </div>
+          </Page.Vertical>
         </Page.Vertical>
-      </Page.Vertical>
-    </AppLayout>
+      </AppLayout>
+    </ConversationsNavigationProvider>
   );
 }

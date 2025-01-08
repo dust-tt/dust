@@ -45,7 +45,8 @@ jobs:
             --image-name=front-qa \
             --dockerfile-path=./front/Dockerfile \
             --working-dir=./ \
-            --region=us-central1
+            --region=us-central1 \
+            --project-id=$GCLOUD_PROJECT_ID
 
       - name: Generate a token
         id: generate-token

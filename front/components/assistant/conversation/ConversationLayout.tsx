@@ -5,12 +5,14 @@ import React, { useCallback, useEffect, useState } from "react";
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { useURLSheet } from "@app/hooks/useURLSheet";
 import {
   useConversation,
   useDeleteConversation,
@@ -39,18 +41,8 @@ export default function ConversationLayout({
     conversationId !== "new" ? conversationId : null
   );
 
-  const handleCloseModal = useCallback(() => {
-    const currentPathname = router.pathname;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { assistantDetails, ...restQuery } = router.query;
-    void router.push(
-      { pathname: currentPathname, query: restQuery },
-      undefined,
-      {
-        shallow: true,
-      }
-    );
-  }, [router]);
+  const { onOpenChange: onOpenChangeAssistantModal } =
+    useURLSheet("assistantDetails");
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -106,48 +98,50 @@ export default function ConversationLayout({
 
   return (
     <RootLayout>
-      <InputBarProvider>
-        <AppLayout
-          subscription={subscription}
-          owner={owner}
-          isWideMode
-          pageTitle={
-            conversation?.title
-              ? `Dust - ${conversation?.title}`
-              : `Dust - New Conversation`
-          }
-          titleChildren={
-            // TODO: Improve so we don't re-render everytime.
-            activeConversationId && (
-              <ConversationTitle
-                owner={owner}
-                conversationId={activeConversationId}
-                conversation={conversation}
-                shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
-                onDelete={onDeleteConversation}
-              />
-            )
-          }
-          navChildren={<AssistantSidebarMenu owner={owner} />}
-        >
-          {conversationError ? (
-            <ConversationErrorDisplay error={conversationError} />
-          ) : (
-            <>
-              <AssistantDetails
-                owner={owner}
-                assistantId={detailViewContent || null}
-                onClose={handleCloseModal}
-              />
-              <FileDropProvider>
-                <GenerationContextProvider>
-                  {children}
-                </GenerationContextProvider>
-              </FileDropProvider>
-            </>
-          )}
-        </AppLayout>
-      </InputBarProvider>
+      <ConversationsNavigationProvider>
+        <InputBarProvider>
+          <AppLayout
+            subscription={subscription}
+            owner={owner}
+            isWideMode
+            pageTitle={
+              conversation?.title
+                ? `Dust - ${conversation?.title}`
+                : `Dust - New Conversation`
+            }
+            titleChildren={
+              // TODO: Improve so we don't re-render everytime.
+              activeConversationId && (
+                <ConversationTitle
+                  owner={owner}
+                  conversationId={activeConversationId}
+                  conversation={conversation}
+                  shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
+                  onDelete={onDeleteConversation}
+                />
+              )
+            }
+            navChildren={<AssistantSidebarMenu owner={owner} />}
+          >
+            {conversationError ? (
+              <ConversationErrorDisplay error={conversationError} />
+            ) : (
+              <>
+                <AssistantDetails
+                  owner={owner}
+                  assistantId={detailViewContent || null}
+                  onClose={() => onOpenChangeAssistantModal(false)}
+                />
+                <FileDropProvider>
+                  <GenerationContextProvider>
+                    {children}
+                  </GenerationContextProvider>
+                </FileDropProvider>
+              </>
+            )}
+          </AppLayout>
+        </InputBarProvider>
+      </ConversationsNavigationProvider>
     </RootLayout>
   );
 }
