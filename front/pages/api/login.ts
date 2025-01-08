@@ -423,8 +423,9 @@ async function handler(
   } else {
     if (userCreated) {
       // If user is newly created, check if there is a pending invitation for
-      // the user. If present, redirect to the signup callback for workspace,
-      // which will redirect to the workspace welcome page (see comment's PR)
+      // the user. If present, redirect to directly to the link of the "signup"
+      // button in the "signup" page, which will redirect to the workspace
+      // welcome page (see comment's PR)
       const pendingInvitationAndWorkspace =
         await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
       if (pendingInvitationAndWorkspace) {
