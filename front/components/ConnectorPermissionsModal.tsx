@@ -1,5 +1,4 @@
-import type {
-  NotificationType} from "@dust-tt/sparkle";
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   NewDialog,
   NewDialogContainer,
