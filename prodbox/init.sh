@@ -14,6 +14,7 @@ chmod 600 ~/.ssh/github-deploykey-deploybox
 
 # Only allow to pull via fast-forward
 git config pull.ff only
+git remote set-url origin git@github.com:dust-tt/dust.git
 
 # This is the script used to start the container, so it needs to stay alive, otherwise the
 # kube pod (container) dies.
