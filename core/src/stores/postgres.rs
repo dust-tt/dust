@@ -1488,7 +1488,7 @@ impl Store for PostgresStore {
                 data_source_id = data_source_id,
                 node_id = node_id,
                 parents = ?parents,
-                operation = "update_parents",
+                operation = "update_document_parents",
                 "[KWSEARCH] invariant_parent_exist_in_nodes"
             );
         }
