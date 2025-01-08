@@ -349,7 +349,11 @@ const getProcessingFunction = ({
     case "application/json":
     case "application/xml":
     case "application/x-sh":
-      if (useCase === "conversation" || useCase === "tool_output") {
+      if (
+        useCase === "conversation" ||
+        useCase === "tool_output" ||
+        useCase === "folder_document"
+      ) {
         return upsertDocumentToDatasource;
       }
       break;
