@@ -1030,6 +1030,7 @@ impl LLM for MistralAILLM {
                 prompt_tokens: u.prompt_tokens,
             }),
             provider_request_id: request_id,
+            logprobs: None,
         })
     }
 

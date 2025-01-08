@@ -4,6 +4,7 @@ use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
+use crate::providers::openai::logprobs_from_choices;
 use crate::providers::openai::{
     chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
     to_openai_messages, OpenAILLM, OpenAITool, OpenAIToolChoice,
@@ -447,8 +448,8 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
-        let (openai_user, response_format, reasoning_effort) = match &extras {
-            None => (None, None, None),
+        let (openai_user, response_format, reasoning_effort, logprobs) = match &extras {
+            None => (None, None, None, None),
             Some(v) => (
                 match v.get("openai_user") {
                     Some(Value::String(u)) => Some(u.to_string()),
@@ -460,6 +461,10 @@ impl LLM for AzureOpenAILLM {
                 },
                 match v.get("reasoning_effort") {
                     Some(Value::String(r)) => Some(r.to_string()),
+                    _ => None,
+                },
+                match v.get("logprobs") {
+                    Some(Value::Bool(l)) => Some(l.clone()),
                     _ => None,
                 },
             ),
@@ -504,8 +509,9 @@ impl LLM for AzureOpenAILLM {
                         None => 0.0,
                     },
                     response_format,
-                    openai_user,
                     reasoning_effort,
+                    logprobs,
+                    openai_user,
                     event_sender,
                 )
                 .await?
@@ -537,6 +543,7 @@ impl LLM for AzureOpenAILLM {
                     },
                     response_format,
                     reasoning_effort,
+                    logprobs,
                     openai_user,
                 )
                 .await?
@@ -561,6 +568,7 @@ impl LLM for AzureOpenAILLM {
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
             provider_request_id: request_id,
+            logprobs: logprobs_from_choices(&c.choices),
         })
     }
 }

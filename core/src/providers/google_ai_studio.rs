@@ -662,6 +662,7 @@ impl LLM for GoogleAiStudioLLM {
                 completion_tokens: c.candidates_token_count.unwrap_or(0) as u64,
             }),
             provider_request_id: None,
+            logprobs: None,
         })
     }
 }
