@@ -24,7 +24,7 @@ export class RegionLookupClient {
           return [
             region,
             {
-              reponse: data as T,
+              response: data as T,
               isCurrentRegion: isCurrentRegion(region),
               regionUrl: url,
             },

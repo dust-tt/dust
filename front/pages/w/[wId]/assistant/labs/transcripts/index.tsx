@@ -27,6 +27,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -624,326 +625,333 @@ export default function LabsTranscriptsIndex({
   };
 
   return (
-    <AppLayout
-      subscription={subscription}
-      owner={owner}
-      pageTitle="Dust - Transcripts processing"
-      navChildren={<AssistantSidebarMenu owner={owner} />}
-    >
-      <Dialog
-        isOpen={isDeleteProviderDialogOpened}
-        title="Disconnect transcripts provider"
-        onValidate={async () => {
-          await handleDisconnectProvider();
-          setIsDeleteProviderDialogOpened(false);
-        }}
-        onCancel={() => setIsDeleteProviderDialogOpened(false)}
+    <ConversationsNavigationProvider>
+      <AppLayout
+        subscription={subscription}
+        owner={owner}
+        pageTitle="Dust - Transcripts processing"
+        navChildren={<AssistantSidebarMenu owner={owner} />}
       >
-        <div>
-          This will stop the processing of your meeting transcripts and delete
-          all history. You can reconnect anytime.
-        </div>
-      </Dialog>
-      <Page>
-        <Page.Header
-          title="Meeting transcripts processing"
-          icon={BookOpenIcon}
-          description="Receive meeting minutes processed by email automatically and store them in a Dust Folder."
-        />
-        <Page.Layout direction="vertical">
-          <Page.SectionHeader title="Connect your transcripts provider" />
-          {!transcriptsConfiguration && (
-            <Page.Layout direction="horizontal" gap="xl">
-              <div
-                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                  transcriptsConfigurationState.provider == "google_drive"
-                    ? "border-gray-400"
-                    : "border-gray-200"
-                }`}
-                onClick={() => handleProviderChange("google_drive")}
-              >
-                <img
-                  src="/static/labs/transcripts/google.png"
-                  style={{ maxHeight: "35px" }}
-                />
-              </div>
-              <div
-                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                  transcriptsConfigurationState.provider == "gong"
-                    ? "border-gray-400"
-                    : "border-gray-200"
-                }`}
-                onClick={() => handleProviderChange("gong")}
-              >
-                <img
-                  src="/static/labs/transcripts/gong.jpeg"
-                  style={{ maxHeight: "35px" }}
-                />
-              </div>
-              {featureFlags.includes("labs_transcripts_modjo") && (
+        <Dialog
+          isOpen={isDeleteProviderDialogOpened}
+          title="Disconnect transcripts provider"
+          onValidate={async () => {
+            await handleDisconnectProvider();
+            setIsDeleteProviderDialogOpened(false);
+          }}
+          onCancel={() => setIsDeleteProviderDialogOpened(false)}
+        >
+          <div>
+            This will stop the processing of your meeting transcripts and delete
+            all history. You can reconnect anytime.
+          </div>
+        </Dialog>
+        <Page>
+          <Page.Header
+            title="Meeting transcripts processing"
+            icon={BookOpenIcon}
+            description="Receive meeting minutes processed by email automatically and store them in a Dust Folder."
+          />
+          <Page.Layout direction="vertical">
+            <Page.SectionHeader title="Connect your transcripts provider" />
+            {!transcriptsConfiguration && (
+              <Page.Layout direction="horizontal" gap="xl">
+                <div
+                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                    transcriptsConfigurationState.provider == "google_drive"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleProviderChange("google_drive")}
+                >
+                  <img
+                    src="/static/labs/transcripts/google.png"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
                 <div
                   className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
                     transcriptsConfigurationState.provider == "gong"
                       ? "border-gray-400"
                       : "border-gray-200"
                   }`}
-                  onClick={() => handleProviderChange("modjo")}
+                  onClick={() => handleProviderChange("gong")}
                 >
                   <img
-                    src="/static/labs/transcripts/modjo.png"
+                    src="/static/labs/transcripts/gong.jpeg"
                     style={{ maxHeight: "35px" }}
                   />
                 </div>
-              )}
-            </Page.Layout>
-          )}
+                {featureFlags.includes("labs_transcripts_modjo") && (
+                  <div
+                    className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                      transcriptsConfigurationState.provider == "gong"
+                        ? "border-gray-400"
+                        : "border-gray-200"
+                    }`}
+                    onClick={() => handleProviderChange("modjo")}
+                  >
+                    <img
+                      src="/static/labs/transcripts/modjo.png"
+                      style={{ maxHeight: "35px" }}
+                    />
+                  </div>
+                )}
+              </Page.Layout>
+            )}
 
-          {transcriptsConfigurationState.provider === "google_drive" && (
-            <Page.Layout direction="vertical">
-              {transcriptsConfigurationState.isGDriveConnected ? (
-                <Page.Layout direction="horizontal">
-                  <Button
-                    label="Google connected"
-                    size="sm"
-                    icon={CloudArrowLeftRightIcon}
-                    disabled={true}
-                  />
-                  <Button
-                    label="Disconnect"
-                    icon={XMarkIcon}
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsDeleteProviderDialogOpened(true)}
-                  />
-                </Page.Layout>
-              ) : (
-                <>
-                  <Page.P>
-                    Connect to Google Drive so Dust can access 'My Drive' where
-                    your meeting transcripts are stored.
-                  </Page.P>
-                  <div>
-                    <Button
-                      label="Connect Google"
-                      size="sm"
-                      icon={CloudArrowLeftRightIcon}
-                      onClick={async () => {
-                        await handleConnectGoogleTranscriptsSource();
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-            </Page.Layout>
-          )}
-          {transcriptsConfigurationState.provider === "gong" && (
-            <Page.Layout direction="vertical">
-              {transcriptsConfigurationState.isGongConnected ? (
-                <Page.Layout direction="horizontal">
-                  <Button
-                    label="Gong connected"
-                    size="sm"
-                    icon={CloudArrowLeftRightIcon}
-                    disabled={true}
-                  />
-                  <Button
-                    label="Disconnect"
-                    icon={XMarkIcon}
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsDeleteProviderDialogOpened(true)}
-                  />
-                </Page.Layout>
-              ) : (
-                <>
-                  <Page.P>
-                    Connect to Gong so Dust can access your meeting transcripts.
-                  </Page.P>
-                  <div>
-                    <Button
-                      label="Connect Gong"
-                      size="sm"
-                      icon={CloudArrowLeftRightIcon}
-                      onClick={async () => {
-                        await handleConnectGongTranscriptsSource();
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-            </Page.Layout>
-          )}
-          {transcriptsConfigurationState.provider === "modjo" && (
-            <Page.Layout direction="vertical">
-              {transcriptsConfigurationState.isModjoConnected ? (
-                <Page.Layout direction="horizontal">
-                  <Button
-                    label="Modjo connected"
-                    size="sm"
-                    icon={CloudArrowLeftRightIcon}
-                    disabled={true}
-                  />
-                  <Button
-                    label="Disconnect"
-                    icon={XMarkIcon}
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsDeleteProviderDialogOpened(true)}
-                  />
-                </Page.Layout>
-              ) : (
-                <>
-                  <Page.P>
-                    Connect to Modjo so Dust can access your meeting
-                    transcripts.
-                  </Page.P>
-                  <div className="flex gap-2">
-                    {!transcriptsConfigurationState.hasDefaultConfiguration && (
-                      <Input
-                        placeholder="Modjo API key"
-                        value={transcriptsConfigurationState.credentialId}
-                        onChange={(e) =>
-                          setTranscriptsConfigurationState({
-                            ...transcriptsConfigurationState,
-                            credentialId: e.target.value,
-                          })
-                        }
-                      />
-                    )}
-                    <Button
-                      label="Connect Modjo"
-                      size="sm"
-                      icon={CloudArrowLeftRightIcon}
-                      onClick={async () => {
-                        await handleConnectModjoTranscriptsSource();
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-            </Page.Layout>
-          )}
-        </Page.Layout>
-        {transcriptsConfiguration &&
-          (transcriptsConfigurationState.isGDriveConnected ||
-            transcriptsConfigurationState.isGongConnected ||
-            transcriptsConfigurationState.isModjoConnected) && (
-            <>
-              {(!hasDefaultStorageConfiguration ||
-                (hasDefaultStorageConfiguration &&
-                  transcriptsConfiguration.isDefaultFullStorage)) && (
-                <Page.Layout direction="vertical">
-                  <Page.SectionHeader
-                    title="Store transcripts"
-                    description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
-                  />
-                  {transcriptsConfiguration.isDefaultFullStorage && (
-                    <ContentMessage
-                      title="Default storage"
-                      variant="slate"
-                      size="lg"
-                      icon={ChatBubbleThoughtIcon}
-                    >
-                      Your configuration handles the storage of all your
-                      workspace's transcripts. Other users will not have the
-                      possibility to store their own transcripts.
-                    </ContentMessage>
-                  )}
-                  <Page.Layout direction="horizontal" gap="xl">
-                    <SliderToggle
-                      selected={storeInFolder}
-                      onClick={() => handleSetStoreInFolder(!storeInFolder)}
-                    />
-                    <Page.P>Enable transcripts storage</Page.P>
-                  </Page.Layout>
-                  <Page.Layout direction="horizontal">
-                    <div className="w-full">
-                      <div className="overflow-x-auto">
-                        {!isSpacesLoading &&
-                          storeInFolder &&
-                          selectionConfigurations && (
-                            <DataSourceViewsSelector
-                              useCase="transcriptsProcessing"
-                              dataSourceViews={dataSourcesViews}
-                              allowedSpaces={spaces}
-                              owner={owner}
-                              selectionConfigurations={selectionConfigurations}
-                              setSelectionConfigurations={
-                                handleSetSelectionConfigurations
-                              }
-                              viewType={"documents"}
-                              isRootSelectable={true}
-                            />
-                          )}
-                      </div>
-                    </div>
-                  </Page.Layout>
-                </Page.Layout>
-              )}
+            {transcriptsConfigurationState.provider === "google_drive" && (
               <Page.Layout direction="vertical">
-                <Page.SectionHeader
-                  title="Process transcripts automatically"
-                  description="After each transcribed meeting, Dust will run the assistant you selected and send you the result by email."
-                />
-                <Page.Layout direction="vertical">
-                  <Page.Layout direction="vertical">
-                    <Page.Layout direction="horizontal">
-                      <AssistantPicker
-                        owner={owner}
+                {transcriptsConfigurationState.isGDriveConnected ? (
+                  <Page.Layout direction="horizontal">
+                    <Button
+                      label="Google connected"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      disabled={true}
+                    />
+                    <Button
+                      label="Disconnect"
+                      icon={XMarkIcon}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsDeleteProviderDialogOpened(true)}
+                    />
+                  </Page.Layout>
+                ) : (
+                  <>
+                    <Page.P>
+                      Connect to Google Drive so Dust can access 'My Drive'
+                      where your meeting transcripts are stored.
+                    </Page.P>
+                    <div>
+                      <Button
+                        label="Connect Google"
                         size="sm"
-                        onItemClick={(assistant) =>
-                          handleSelectAssistant(
-                            transcriptsConfiguration.id,
-                            assistant
-                          )
-                        }
-                        assistants={agents}
-                        showFooterButtons={false}
+                        icon={CloudArrowLeftRightIcon}
+                        onClick={async () => {
+                          await handleConnectGoogleTranscriptsSource();
+                        }}
                       />
-                      {transcriptsConfigurationState.assistantSelected && (
-                        <div className="mt-2">
-                          <Page.P>
-                            <strong>
-                              @
-                              {
-                                transcriptsConfigurationState.assistantSelected
-                                  .name
-                              }
-                            </strong>
-                          </Page.P>
-                        </div>
+                    </div>
+                  </>
+                )}
+              </Page.Layout>
+            )}
+            {transcriptsConfigurationState.provider === "gong" && (
+              <Page.Layout direction="vertical">
+                {transcriptsConfigurationState.isGongConnected ? (
+                  <Page.Layout direction="horizontal">
+                    <Button
+                      label="Gong connected"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      disabled={true}
+                    />
+                    <Button
+                      label="Disconnect"
+                      icon={XMarkIcon}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsDeleteProviderDialogOpened(true)}
+                    />
+                  </Page.Layout>
+                ) : (
+                  <>
+                    <Page.P>
+                      Connect to Gong so Dust can access your meeting
+                      transcripts.
+                    </Page.P>
+                    <div>
+                      <Button
+                        label="Connect Gong"
+                        size="sm"
+                        icon={CloudArrowLeftRightIcon}
+                        onClick={async () => {
+                          await handleConnectGongTranscriptsSource();
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+              </Page.Layout>
+            )}
+            {transcriptsConfigurationState.provider === "modjo" && (
+              <Page.Layout direction="vertical">
+                {transcriptsConfigurationState.isModjoConnected ? (
+                  <Page.Layout direction="horizontal">
+                    <Button
+                      label="Modjo connected"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      disabled={true}
+                    />
+                    <Button
+                      label="Disconnect"
+                      icon={XMarkIcon}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsDeleteProviderDialogOpened(true)}
+                    />
+                  </Page.Layout>
+                ) : (
+                  <>
+                    <Page.P>
+                      Connect to Modjo so Dust can access your meeting
+                      transcripts.
+                    </Page.P>
+                    <div className="flex gap-2">
+                      {!transcriptsConfigurationState.hasDefaultConfiguration && (
+                        <Input
+                          placeholder="Modjo API key"
+                          value={transcriptsConfigurationState.credentialId}
+                          onChange={(e) =>
+                            setTranscriptsConfigurationState({
+                              ...transcriptsConfigurationState,
+                              credentialId: e.target.value,
+                            })
+                          }
+                        />
                       )}
-                      <div className="mt-2">
-                        <Page.P>
-                          The assistant that will process the transcripts
-                          received from{" "}
-                          {transcriptsConfigurationState.provider
-                            .charAt(0)
-                            .toUpperCase() +
-                            transcriptsConfigurationState.provider.slice(1)}
-                          .
-                        </Page.P>
+                      <Button
+                        label="Connect Modjo"
+                        size="sm"
+                        icon={CloudArrowLeftRightIcon}
+                        onClick={async () => {
+                          await handleConnectModjoTranscriptsSource();
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+              </Page.Layout>
+            )}
+          </Page.Layout>
+          {transcriptsConfiguration &&
+            (transcriptsConfigurationState.isGDriveConnected ||
+              transcriptsConfigurationState.isGongConnected ||
+              transcriptsConfigurationState.isModjoConnected) && (
+              <>
+                {(!hasDefaultStorageConfiguration ||
+                  (hasDefaultStorageConfiguration &&
+                    transcriptsConfiguration.isDefaultFullStorage)) && (
+                  <Page.Layout direction="vertical">
+                    <Page.SectionHeader
+                      title="Store transcripts"
+                      description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
+                    />
+                    {transcriptsConfiguration.isDefaultFullStorage && (
+                      <ContentMessage
+                        title="Default storage"
+                        variant="slate"
+                        size="lg"
+                        icon={ChatBubbleThoughtIcon}
+                      >
+                        Your configuration handles the storage of all your
+                        workspace's transcripts. Other users will not have the
+                        possibility to store their own transcripts.
+                      </ContentMessage>
+                    )}
+                    <Page.Layout direction="horizontal" gap="xl">
+                      <SliderToggle
+                        selected={storeInFolder}
+                        onClick={() => handleSetStoreInFolder(!storeInFolder)}
+                      />
+                      <Page.P>Enable transcripts storage</Page.P>
+                    </Page.Layout>
+                    <Page.Layout direction="horizontal">
+                      <div className="w-full">
+                        <div className="overflow-x-auto">
+                          {!isSpacesLoading &&
+                            storeInFolder &&
+                            selectionConfigurations && (
+                              <DataSourceViewsSelector
+                                useCase="transcriptsProcessing"
+                                dataSourceViews={dataSourcesViews}
+                                allowedSpaces={spaces}
+                                owner={owner}
+                                selectionConfigurations={
+                                  selectionConfigurations
+                                }
+                                setSelectionConfigurations={
+                                  handleSetSelectionConfigurations
+                                }
+                                viewType={"documents"}
+                                isRootSelectable={true}
+                              />
+                            )}
+                        </div>
                       </div>
                     </Page.Layout>
                   </Page.Layout>
-                </Page.Layout>
-                <Page.Layout direction="horizontal" gap="xl">
-                  <SliderToggle
-                    selected={transcriptsConfigurationState.isActive}
-                    onClick={() =>
-                      handleSetIsActive(
-                        transcriptsConfiguration.id,
-                        !transcriptsConfigurationState.isActive
-                      )
-                    }
-                    disabled={!transcriptsConfigurationState.assistantSelected}
+                )}
+                <Page.Layout direction="vertical">
+                  <Page.SectionHeader
+                    title="Process transcripts automatically"
+                    description="After each transcribed meeting, Dust will run the assistant you selected and send you the result by email."
                   />
-                  <Page.P>Enable transcripts email processing</Page.P>
+                  <Page.Layout direction="vertical">
+                    <Page.Layout direction="vertical">
+                      <Page.Layout direction="horizontal">
+                        <AssistantPicker
+                          owner={owner}
+                          size="sm"
+                          onItemClick={(assistant) =>
+                            handleSelectAssistant(
+                              transcriptsConfiguration.id,
+                              assistant
+                            )
+                          }
+                          assistants={agents}
+                          showFooterButtons={false}
+                        />
+                        {transcriptsConfigurationState.assistantSelected && (
+                          <div className="mt-2">
+                            <Page.P>
+                              <strong>
+                                @
+                                {
+                                  transcriptsConfigurationState
+                                    .assistantSelected.name
+                                }
+                              </strong>
+                            </Page.P>
+                          </div>
+                        )}
+                        <div className="mt-2">
+                          <Page.P>
+                            The assistant that will process the transcripts
+                            received from{" "}
+                            {transcriptsConfigurationState.provider
+                              .charAt(0)
+                              .toUpperCase() +
+                              transcriptsConfigurationState.provider.slice(1)}
+                            .
+                          </Page.P>
+                        </div>
+                      </Page.Layout>
+                    </Page.Layout>
+                  </Page.Layout>
+                  <Page.Layout direction="horizontal" gap="xl">
+                    <SliderToggle
+                      selected={transcriptsConfigurationState.isActive}
+                      onClick={() =>
+                        handleSetIsActive(
+                          transcriptsConfiguration.id,
+                          !transcriptsConfigurationState.isActive
+                        )
+                      }
+                      disabled={
+                        !transcriptsConfigurationState.assistantSelected
+                      }
+                    />
+                    <Page.P>Enable transcripts email processing</Page.P>
+                  </Page.Layout>
                 </Page.Layout>
-              </Page.Layout>
-            </>
-          )}
-      </Page>
-    </AppLayout>
+              </>
+            )}
+        </Page>
+      </AppLayout>
+    </ConversationsNavigationProvider>
   );
 }

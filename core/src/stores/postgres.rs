@@ -1451,14 +1451,6 @@ impl Store for PostgresStore {
 
         let tx = c.transaction().await?;
 
-        // Update parents on tables table (TODO: remove this once we migrate to nodes table).
-        tx.execute(
-            "UPDATE data_sources_documents SET parents = $1 \
-            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
-            &[&parents, &data_source_row_id, &document_id],
-        )
-        .await?;
-
         // Update parents on nodes table.
         tx.execute(
             "UPDATE data_sources_nodes SET parents = $1 \
@@ -1865,9 +1857,9 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "INSERT INTO data_sources_documents \
-                   (id, data_source, created, document_id, timestamp, tags_array, parents, \
+                   (id, data_source, created, document_id, timestamp, tags_array, \
                     source_url, hash, text_size, chunk_count, status) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
                    RETURNING id, created",
             )
             .await?;
@@ -1881,7 +1873,6 @@ impl Store for PostgresStore {
                     &create_params.document_id,
                     &(create_params.timestamp as i64),
                     &create_params.tags,
-                    &create_params.parents,
                     &create_params.source_url,
                     &create_params.hash,
                     &(create_params.text_size as i64),
@@ -2625,12 +2616,11 @@ impl Store for PostgresStore {
             .prepare(
                 "INSERT INTO tables \
                    (id, data_source, created, table_id, name, description, timestamp, \
-                    tags_array, parents, remote_database_table_id, remote_database_secret_id) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
+                    tags_array, remote_database_table_id, remote_database_secret_id) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9) \
                    ON CONFLICT (table_id, data_source) DO UPDATE \
                    SET name = EXCLUDED.name, description = EXCLUDED.description, \
                    timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, \
-                     parents = EXCLUDED.parents, \
                      remote_database_table_id = EXCLUDED.remote_database_table_id, \
                      remote_database_secret_id = EXCLUDED.remote_database_secret_id \
                    RETURNING id, created, schema, schema_stale_at",
@@ -2648,7 +2638,6 @@ impl Store for PostgresStore {
                     &upsert_params.description,
                     &(upsert_params.timestamp as i64),
                     &upsert_params.tags,
-                    &upsert_params.parents,
                     &upsert_params.remote_database_table_id,
                     &upsert_params.remote_database_secret_id,
                 ],
@@ -2787,13 +2776,6 @@ impl Store for PostgresStore {
         };
 
         let tx = c.transaction().await?;
-
-        // Update parents on tables table (TODO: remove this once we migrate to nodes table).
-        let stmt = tx
-            .prepare("UPDATE tables SET parents = $1 WHERE data_source = $2 AND table_id = $3")
-            .await?;
-        tx.query(&stmt, &[&parents, &data_source_row_id, &table_id])
-            .await?;
 
         // Update parents on nodes table.
         let stmt = tx

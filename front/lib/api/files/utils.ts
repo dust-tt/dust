@@ -5,6 +5,7 @@ import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
 import type { Writable } from "stream";
 
+import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -131,21 +132,30 @@ export async function maybeUpsertFileAttachment(
           await fileResource.setUseCaseMetadata({
             conversationId: conversation.sId,
           });
-
-          const r = await processAndUpsertToDataSource(auth, {
-            file: fileResource,
-          });
-          if (r.isErr()) {
-            // For now, silently log the error
-            logger.warn({
-              fileModelId: fileResource.id,
-              workspaceId: conversation.owner.sId,
-              contentType: fileResource.contentType,
-              useCase: fileResource.useCase,
-              useCaseMetadata: fileResource.useCaseMetadata,
-              message: "Failed to upsert the file.",
-              error: r.error,
-            });
+          const jitDataSource = await getOrCreateConversationDataSourceFromFile(
+            auth,
+            fileResource
+          );
+          if (!jitDataSource.isErr()) {
+            const r = await processAndUpsertToDataSource(
+              auth,
+              jitDataSource.value,
+              {
+                file: fileResource,
+              }
+            );
+            if (r.isErr()) {
+              // For now, silently log the error
+              logger.warn({
+                fileModelId: fileResource.id,
+                workspaceId: conversation.owner.sId,
+                contentType: fileResource.contentType,
+                useCase: fileResource.useCase,
+                useCaseMetadata: fileResource.useCaseMetadata,
+                message: "Failed to upsert the file.",
+                error: r.error,
+              });
+            }
           }
         }
       }),

@@ -1,0 +1,2 @@
+ALTER TABLE data_sources_documents ALTER COLUMN parents DROP NOT NULL;
+ALTER TABLE tables ALTER COLUMN parents DROP NOT NULL;

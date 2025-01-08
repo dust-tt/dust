@@ -196,6 +196,7 @@ export type ConversationVisibility =
 export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
+  updated?: number;
   owner: WorkspaceType;
   sId: string;
   title: string | null;

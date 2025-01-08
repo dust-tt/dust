@@ -18,21 +18,13 @@ import { Writable } from "stream";
 import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import { isJITActionsEnabled } from "@app/lib/api/assistant/jit_actions";
 import config from "@app/lib/api/config";
-import {
-  createDataSourceWithoutProvider,
-  upsertDocument,
-  upsertTable,
-} from "@app/lib/api/data_sources";
+import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
 const ENABLE_LLM_SNIPPETS = false;
@@ -229,6 +221,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   file,
   content,
   dataSource,
+  upsertArgs,
 }) => {
   // Use the file id as the document id to make it easy to track the document back to the file.
   const documentId = file.sId;
@@ -245,6 +238,9 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
     auth,
     mime_type: file.contentType,
     title: file.fileName,
+
+    // Used to override defaults.
+    ...(upsertArgs ?? {}),
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -264,6 +260,7 @@ const upsertTableToDatasource: ProcessingFunction = async ({
   file,
   content,
   dataSource,
+  upsertArgs,
 }) => {
   const tableId = file.sId; // Use the file sId as the table id to make it easy to track the table back to the file.
   const upsertTableRes = await upsertTable({
@@ -280,6 +277,9 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     useAppForHeaderDetection: true,
     title: file.fileName,
     mimeType: file.contentType,
+
+    // Used to override defaults, for manual file uploads where some fields are user-defined.
+    ...(upsertArgs ?? {}),
   });
 
   if (upsertTableRes.isErr()) {
@@ -295,7 +295,6 @@ const upsertTableToDatasource: ProcessingFunction = async ({
 };
 
 // Processing for datasource upserts.
-
 type ProcessingFunction = ({
   auth,
   file,
@@ -306,6 +305,7 @@ type ProcessingFunction = ({
   file: FileResource;
   content: string;
   dataSource: DataSourceResource;
+  upsertArgs?: Record<string, string>;
 }) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
@@ -361,7 +361,7 @@ const getProcessingFunction = ({
   return undefined;
 };
 
-const isUpsertSupported = (arg: {
+export const isUpsertSupported = (arg: {
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
@@ -374,25 +374,31 @@ const maybeApplyProcessing: ProcessingFunction = async ({
   content,
   file,
   dataSource,
+  upsertArgs,
 }) => {
   const processing = getProcessingFunction(file);
 
   if (processing) {
     const startTime = Date.now();
-    const res = await processing({ auth, file, content, dataSource });
+    const res = await processing({
+      auth,
+      file,
+      content,
+      dataSource,
+      upsertArgs,
+    });
     if (res.isErr()) {
       return res;
-    } else {
-      const endTime = Date.now();
-      logger.info(
-        {
-          workspaceId: auth.workspace()?.sId,
-          fileId: file.sId,
-        },
-        `Processing took ${endTime - startTime}ms`
-      );
-      return new Ok(undefined);
     }
+
+    const endTime = Date.now();
+    logger.info(
+      {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+      },
+      `Processing took ${endTime - startTime}ms`
+    );
   }
 
   return new Ok(undefined);
@@ -414,7 +420,7 @@ async function getFileContent(
   const content = writableStream.getContent();
 
   if (!content) {
-    throw new Error("No content extracted from file for JIT processing.");
+    throw new Error("No content extracted from file.");
   }
 
   return content;
@@ -422,7 +428,16 @@ async function getFileContent(
 
 export async function processAndUpsertToDataSource(
   auth: Authenticator,
-  { file, optionalContent }: { file: FileResource; optionalContent?: string }
+  dataSource: DataSourceResource,
+  {
+    file,
+    optionalContent,
+    upsertArgs,
+  }: {
+    file: FileResource;
+    optionalContent?: string;
+    upsertArgs?: Record<string, string>;
+  }
 ): Promise<
   Result<
     FileResource,
@@ -435,29 +450,19 @@ export async function processAndUpsertToDataSource(
     }
   >
 > {
-  const jitEnabled = isJITActionsEnabled(auth);
-
-  if (!jitEnabled || !isUpsertSupported(file)) {
-    return new Ok(file);
-  }
-
-  // Note: this assume that if we don't have useCaseMetadata, the file is fine.
-  const hasRequiredMetadata =
-    !!file.useCaseMetadata && !!file.useCaseMetadata.conversationId;
-
-  if (!hasRequiredMetadata) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "File is missing required metadata for JIT processing.",
-    });
-  }
-
   if (file.status !== "ready") {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
       message: "File is not ready for post processing.",
+    });
+  }
+
+  if (!isUpsertSupported(file)) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File is not supported for upsert.",
     });
   }
 
@@ -481,58 +486,13 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  const cRes = await getConversationWithoutContent(
-    auth,
-    file.useCaseMetadata.conversationId
-  );
-
-  if (cRes.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to fetch conversation.`,
-    });
-  }
-
-  // Fetch the datasource linked to the conversation...
-  let dataSource = await DataSourceResource.fetchByConversation(
-    auth,
-    cRes.value
-  );
-
-  if (!dataSource) {
-    // ...or create a new one.
-    const conversationsSpace =
-      await SpaceResource.fetchWorkspaceConversationsSpace(auth);
-
-    // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
-    // are used as secrets to share the conversation within the workspace users.
-    const r = await createDataSourceWithoutProvider(auth, {
-      plan: auth.getNonNullablePlan(),
-      owner: auth.getNonNullableWorkspace(),
-      space: conversationsSpace,
-      name: generateRandomModelSId("conv"),
-      description: "Files uploaded to conversation",
-      conversation: cRes.value,
-    });
-
-    if (r.isErr()) {
-      return new Err({
-        name: "dust_error",
-        code: "internal_server_error",
-        message: `Failed to create datasource : ${r.error}`,
-      });
-    }
-
-    dataSource = r.value.dataSource;
-  }
-
   const [processingRes, snippetRes] = await Promise.all([
     maybeApplyProcessing({
       auth,
       file,
       content,
       dataSource,
+      upsertArgs,
     }),
     generateSnippet(auth, file, content),
   ]);
