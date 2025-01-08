@@ -7,6 +7,7 @@ import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
@@ -33,6 +34,7 @@ import { RegionLookupClient } from "@app/lib/multi_regions/region_lookup_client"
 import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -420,14 +422,20 @@ async function handler(
     targetWorkspace = workspace;
   } else {
     if (userCreated) {
-      // If user is newly created, check if there is a pending invitation for the user.
-      // If present, redirect to the workspace join page.
+      // When user is just created, check whether they have a pending
+      // invitation. If they do, it is assumed they are coming from the
+      // invitation link and have seen the join page; we redirect (after auth0
+      // login) to this URL with inviteToken appended. The user will then end up
+      // on the workspace's welcome page (see comment's PR)
       const pendingInvitationAndWorkspace =
         await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
       if (pendingInvitationAndWorkspace) {
         const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
-
-        res.redirect(pendingInvitation.inviteLink);
+        const signUpUrl = getSignUpUrl({
+          signupCallbackUrl: `/api/login?inviteToken=${getTokenFromMembershipInvitationUrl(pendingInvitation.inviteLink)}`,
+          invitationEmail: pendingInvitation.inviteEmail,
+        });
+        res.redirect(signUpUrl);
         return;
       }
     }
