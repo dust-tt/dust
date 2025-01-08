@@ -3,7 +3,6 @@ import {
   Button,
   CheckIcon,
   ClipboardCheckIcon,
-  Dialog,
   IconButton,
   LinkIcon,
   PencilSquareIcon,
@@ -18,6 +17,7 @@ import React, { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { classNames } from "@app/lib/utils";
 
 export function ConversationTitle({
@@ -83,8 +83,10 @@ export function ConversationTitle({
   return (
     <>
       {onDelete && (
-        <DeleteConversationDialog
-          show={showDeleteDialog}
+        <DeleteConversationsDialog
+          isOpen={showDeleteDialog}
+          type="selection"
+          selectedCount={1}
           onClose={() => setShowDeleteDialog(false)}
           onDelete={() => {
             setShowDeleteDialog(false);
@@ -235,35 +237,5 @@ export function ConversationTitle({
         </div>
       </div>
     </>
-  );
-}
-
-function DeleteConversationDialog({
-  show,
-  onClose,
-  onDelete,
-}: {
-  show: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <Dialog
-      isOpen={show}
-      title={"Deleting the conversation"}
-      onCancel={onClose}
-      validateLabel="Delete for everyone"
-      validateVariant="warning"
-      onValidate={onDelete}
-    >
-      <div className="flex flex-col gap-2">
-        <div>
-          <div>
-            <span className="font-bold">Are you sure you want to delete?</span>{" "}
-          </div>
-          This will delete the conversation for everyone.
-        </div>
-      </div>
-    </Dialog>
   );
 }

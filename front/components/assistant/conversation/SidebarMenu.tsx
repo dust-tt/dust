@@ -2,7 +2,6 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,6 +28,7 @@ import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
@@ -170,31 +170,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   return (
     <>
-      <Dialog
-        title="Clear conversation history"
-        isOpen={showDeleteDialog === "all"}
-        onCancel={() => setShowDeleteDialog(null)}
-        onValidate={deleteAll}
-        validateVariant="warning"
-        isSaving={isDeleting}
-      >
-        Are you sure you want to delete ALL conversations&nbsp;?
-        <br />
-        <b>This action cannot be undone.</b>
-      </Dialog>
-      <Dialog
-        title="Delete conversations"
-        isOpen={showDeleteDialog === "selection"}
-        onCancel={() => setShowDeleteDialog(null)}
-        onValidate={deleteSelection}
-        validateVariant="warning"
-        isSaving={isDeleting}
-      >
-        Are you sure you want to delete {selectedConversations.length}{" "}
-        conversations?
-        <br />
-        <b>This action cannot be undone.</b>
-      </Dialog>
+      <DeleteConversationsDialog
+        isOpen={showDeleteDialog !== null}
+        isDeleting={isDeleting}
+        onClose={() => setShowDeleteDialog(null)}
+        onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
+        type={showDeleteDialog || "all"}
+        selectedCount={selectedConversations.length}
+      />
       <div
         className={classNames(
           "flex grow flex-col",
@@ -240,7 +223,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     }
                   }}
                 />
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
