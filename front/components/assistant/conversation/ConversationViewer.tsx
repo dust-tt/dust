@@ -322,7 +322,7 @@ const ConversationViewer = React.forwardRef<
 
   // Used for auto-scrolling to the message in the anchor.
   const [hasScrolledToMessage, setHasScrolledToMessage] = useState(false);
-  const [messageBlinking, setMessageBlinking] = useState(false);
+  const [messageShaking, setMessageShaking] = useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   // Track index of the group with message sId in anchor.
@@ -356,11 +356,11 @@ const ConversationViewer = React.forwardRef<
           behavior: "instant",
           block: "center",
         });
-        setMessageBlinking(true);
+        setMessageShaking(true);
 
         // Have the message blink for a short time
         setTimeout(() => {
-          setMessageBlinking(false);
+          setMessageShaking(false);
         }, 1000);
       }
     }, 100);
@@ -400,9 +400,7 @@ const ConversationViewer = React.forwardRef<
             <div
               key={`typed-group-${index}`}
               className={
-                messageBlinking && isGroupInAnchor
-                  ? "animate-[bgblink_200ms_3]"
-                  : ""
+                messageShaking && isGroupInAnchor ? "animate-shake" : ""
               }
               ref={isGroupInAnchor ? scrollRef : undefined}
             >
