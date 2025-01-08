@@ -1010,7 +1010,7 @@ export class DustAPI {
     return new Ok(r.value.data_source_views);
   }
 
-  async patcheDataSourceView(
+  async patchDataSourceView(
     dataSourceView: DataSourceViewType,
     patch: PatchDataSourceViewRequestType
   ) {
