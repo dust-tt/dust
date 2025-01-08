@@ -29,7 +29,7 @@ import { useContext, useEffect } from "react";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { FeedbacksSection } from "@app/components/assistant_builder/AssistantBuilderPreviewDrawerFeedbacks";
+import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
