@@ -22,13 +22,25 @@ async function migrateNode(
   if (node.parents.length === 0) {
     logger.info("Node has no parents.");
     if (execute) {
-      await coreAPI.updateDataSourceDocumentParents({
-        projectId,
-        dataSourceId,
-        documentId: node.node_id,
-        parentId: null,
-        parents: [node.node_id],
-      });
+      if (node.document !== null) {
+        await coreAPI.updateDataSourceDocumentParents({
+          projectId,
+          dataSourceId,
+          documentId: node.node_id,
+          parentId: null,
+          parents: [node.node_id],
+        });
+      } else if (node.table !== null) {
+        await coreAPI.updateTableParents({
+          projectId,
+          dataSourceId,
+          tableId: node.node_id,
+          parentId: null,
+          parents: [node.node_id],
+        });
+      } else {
+        logger.warn("Node is neither a document nor a table.");
+      }
     }
   } else if (node.parents.length >= 2) {
     logger.warn("Node has 2 parents or more.");
