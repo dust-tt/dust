@@ -133,32 +133,7 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
       config.getTextExtractionUrl()
     ).fromStream(readStream, file.contentType);
 
-    processedStream.on("data", (chunk) => {
-      // Handle backpressure
-      const canWrite = writeStream.write(chunk);
-      if (!canWrite) {
-        readStream.pause();
-        writeStream.once("drain", () => readStream.resume());
-      }
-    });
-
-    processedStream.on("end", () => {
-      writeStream.end();
-    });
-
-    processedStream.on("error", (err) => {
-      throw err;
-    });
-
-    writeStream.on("error", (err) => {
-      throw err;
-    });
-
-    // Await the completion of the writeStream
-    await new Promise<void>((resolve, reject) => {
-      writeStream.on("finish", resolve);
-      writeStream.on("error", reject);
-    });
+    await pipeline(processedStream, writeStream);
 
     return new Ok(undefined);
   } catch (err) {
