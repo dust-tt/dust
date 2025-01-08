@@ -541,7 +541,6 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        document_id              TEXT NOT NULL,
        timestamp                BIGINT NOT NULL,
        tags_array               TEXT[] NOT NULL,
-       parents                  TEXT[] NOT NULL,
        source_url               TEXT,
        hash                     TEXT NOT NULL,
        text_size                BIGINT NOT NULL,
@@ -573,7 +572,6 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        description                  TEXT NOT NULL,
        timestamp                    BIGINT NOT NULL,
        tags_array                   TEXT[] NOT NULL,
-       parents                      TEXT[] NOT NULL,
        schema                       TEXT, -- json, kept up-to-date automatically with the last insert
        schema_stale_at              BIGINT, -- timestamp when the schema was last invalidated
        data_source                  BIGINT NOT NULL,
