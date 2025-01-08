@@ -7,6 +7,7 @@ import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
@@ -33,13 +34,12 @@ import { RegionLookupClient } from "@app/lib/multi_regions/region_lookup_client"
 import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import { getSignUpUrl } from "@app/lib/signup";
-import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
