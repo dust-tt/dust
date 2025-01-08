@@ -2883,6 +2883,8 @@ impl Store for PostgresStore {
             Option<i64>,
             Option<String>,
             Option<String>,
+            String,
+            String,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -2897,6 +2899,8 @@ impl Store for PostgresStore {
                 r[0].get(8),
                 r[0].get(9),
                 r[0].get(10),
+                r[0].get(11),
+                r[0].get(12),
             )),
             _ => unreachable!(),
         };
@@ -2915,6 +2919,8 @@ impl Store for PostgresStore {
                 schema_stale_at,
                 remote_database_table_id,
                 remote_database_secret_id,
+                title,
+                mime_type,
             )) => {
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2927,9 +2933,6 @@ impl Store for PostgresStore {
                     }
                 };
 
-                // TODO(KW_SEARCH_INFRA) use title
-                let title = name.clone();
-
                 Ok(Some(Table::new(
                     project.clone(),
                     data_source_id.clone(),
@@ -2940,7 +2943,7 @@ impl Store for PostgresStore {
                     description,
                     timestamp as u64,
                     title,
-                    "text/csv".to_string(), // TODO(KW_SEARCH_INFRA) use mimetype
+                    mime_type,
                     tags,
                     parents.get(1).cloned(),
                     parents,
@@ -3058,6 +3061,8 @@ impl Store for PostgresStore {
                 let schema_stale_at: Option<i64> = r.get(8);
                 let remote_database_table_id: Option<String> = r.get(9);
                 let remote_database_secret_id: Option<String> = r.get(10);
+                let title: String = r.get(11);
+                let mime_type: String = r.get(12);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -3070,9 +3075,6 @@ impl Store for PostgresStore {
                     }
                 };
 
-                // TODO(KW_SEARCH_INFRA) use title
-                let title = name.clone();
-
                 Ok(Table::new(
                     project.clone(),
                     data_source_id.clone(),
@@ -3083,7 +3085,7 @@ impl Store for PostgresStore {
                     description,
                     timestamp as u64,
                     title,
-                    "text/csv".to_string(), // TODO(KW_SEARCH_INFRA)use mimetype
+                    mime_type,
                     tags,
                     parents.get(1).cloned(),
                     parents,
