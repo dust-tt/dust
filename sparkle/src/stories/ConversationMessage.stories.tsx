@@ -26,7 +26,7 @@ export default meta;
 export const ConversationExample = () => {
   return (
     <>
-      <div className="s-flex s-w-full s-max-w-[896px] s-justify-center s-gap-6">
+      <div className="s-flex s-w-full s-justify-center s-gap-6">
         <ConversationContainer>
           <ConversationMessage
             type="user"

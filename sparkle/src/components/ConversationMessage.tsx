@@ -4,62 +4,21 @@ import React from "react";
 import { Avatar, Button, CitationGrid } from "@sparkle/components";
 import { cn } from "@sparkle/lib/utils";
 
-const conversationContainerVariants = cva(
-  "s-w-full s-@container/conversation",
-  {
-    variants: {
-      padding: {
-        none: "",
-        default: "s-px-1 @[32rem]/conversation:s-px-4",
-      },
-    },
-    defaultVariants: {
-      padding: "default",
-    },
-  }
-);
-
-const messageVariants = cva(
-  "s-mt-2 s-flex s-w-full s-flex-col s-gap-4 s-rounded-3xl s-p-3 @[32rem]/conversation:s-p-4",
-  {
-    variants: {
-      type: {
-        user: "s-bg-muted-background s-w-full @[32rem]/conversation:s-w-[calc(100%-8rem)] @[32rem]/conversation:s-ml-[8rem]",
-        agent: "",
-      },
-    },
-    defaultVariants: {
-      type: "agent",
-    },
-  }
-);
-
-const messageContentVariants = cva(
-  "s-flex s-flex-col s-gap-3 @[32rem]/conversation:s-gap-4",
-  {
-    variants: {},
-  }
-);
-
-const messageHeaderVariants = cva(
-  "s-flex s-items-center s-gap-2 s-p-1 @[32rem]/conversation:s-p-0",
-  {
-    variants: {},
-  }
-);
-
 export const ConversationContainer = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ children, className, ...props }, ref) => {
   return (
-    <div className="s-w-full">
-      <div
-        ref={ref}
-        className={cn(conversationContainerVariants({}), className)}
-        {...props}
-      >
-        <div className="s-flex s-w-full s-flex-col s-gap-4">{children}</div>
+    <div
+      ref={ref}
+      className={cn(
+        "s-flex s-w-full s-flex-col s-items-center s-@container/conversation",
+        className
+      )}
+      {...props}
+    >
+      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+        {children}
       </div>
     </div>
   );
@@ -79,6 +38,20 @@ interface ConversationMessageProps
   renderName?: (name: string | null) => React.ReactNode;
 }
 
+const messageVariants = cva(
+  "s-flex s-w-full s-flex-col s-gap-4 s-rounded-3xl s-p-3 @sm/conversation:s-p-4",
+  {
+    variants: {
+      type: {
+        user: "s-bg-muted-background s-w-full @md/conversation:s-w-[calc(100%-14%)] @md/conversation:s-ml-[14%]",
+        agent: "",
+      },
+    },
+    defaultVariants: {
+      type: "agent",
+    },
+  }
+);
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
@@ -141,7 +114,10 @@ export const ConversationMessageContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(messageContentVariants({}), className)}
+      className={cn(
+        "s-flex s-flex-col s-gap-3 @sm/conversation:s-gap-4",
+        className
+      )}
       {...props}
     >
       <div
@@ -175,18 +151,21 @@ export const ConversationMessageHeader = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(messageHeaderVariants({}), className)}
+      className={cn(
+        "s-flex s-items-center s-gap-2 s-p-1 @sm/conversation:s-p-0",
+        className
+      )}
       {...props}
     >
       <Avatar
-        className="@md:s-hidden"
+        className="@sm:s-hidden"
         name={name}
         visual={avatarUrl}
         busy={isBusy}
         size="xs"
       />
       <Avatar
-        className="s-hidden @md:s-flex"
+        className="s-hidden @sm:s-flex"
         name={name}
         visual={avatarUrl}
         busy={isBusy}
@@ -195,7 +174,7 @@ export const ConversationMessageHeader = React.forwardRef<
       <div className="flex items-center gap-2">
         <div
           className={cn(
-            "s-text-sm s-font-medium s-text-foreground @md:s-pb-1 @md:s-text-base"
+            "s-text-sm s-font-medium s-text-foreground @sm:s-pb-1 @sm:s-text-base"
           )}
         >
           {renderName(name)}
