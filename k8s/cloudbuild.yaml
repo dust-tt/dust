@@ -41,6 +41,8 @@ steps:
 
 timeout: 1200s
 
+serviceAccount: "projects/${_PROJECT_ID}/serviceAccounts/cloudbuild-publisher@${_PROJECT_ID}.iam.gserviceaccount.com"
+
 availableSecrets:
   secretManager:
     - versionName: projects/$_PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest
