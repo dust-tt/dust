@@ -2,11 +2,11 @@ use crate::providers::chat_messages::{
     AssistantChatMessage, ChatMessage, ContentBlock, MixedContent,
 };
 use crate::providers::embedder::{Embedder, EmbedderVector};
-use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
 use crate::providers::llm::{
     ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
 };
+use crate::providers::llm::{LLMChatLogprob, Tokens};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     batch_tokenize_async, cl100k_base_singleton, o200k_base_singleton, p50k_base_singleton,
@@ -321,10 +321,25 @@ pub struct OpenAICompletionChatMessage {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenAIChatChoiceLogprob {
+    pub token: String,
+    pub logprob: f32,
+    pub bytes: Vec<u8>,
+    pub top_logprobs: Vec<f32>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenAIChatChoiceLogprobs {
+    pub content: Vec<OpenAIChatChoiceLogprob>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenAIChatChoice {
     pub message: OpenAICompletionChatMessage,
     pub index: usize,
     pub finish_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logprobs: Option<OpenAIChatChoiceLogprobs>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -503,6 +518,7 @@ pub struct ChatDelta {
     pub delta: Value,
     pub index: usize,
     pub finish_reason: Option<String>,
+    pub logprobs: Option<OpenAIChatChoiceLogprobs>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -1015,6 +1031,7 @@ pub async fn streamed_chat_completion(
     frequency_penalty: f32,
     response_format: Option<String>,
     reasoning_effort: Option<String>,
+    logprobs: Option<bool>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
@@ -1082,6 +1099,9 @@ pub async fn streamed_chat_completion(
     }
     if let Some(reasoning_effort) = reasoning_effort {
         body["reasoning_effort"] = json!(reasoning_effort);
+    }
+    if let Some(logprobs) = logprobs {
+        body["logprobs"] = json!(logprobs);
     }
 
     let client = builder
@@ -1288,6 +1308,19 @@ pub async fn streamed_chat_completion(
             0 => Err(anyhow!("No chunks received from OpenAI")),
             _ => Ok(guard[0].clone()),
         }?;
+
+        // merge logprobs from all choices of all chunks
+        let logprobs: Vec<OpenAIChatChoiceLogprob> = guard
+            .iter()
+            .flat_map(|chunk| {
+                chunk
+                    .choices
+                    .iter()
+                    .filter_map(|choice| choice.logprobs.as_ref().map(|lp| lp.content.clone()))
+            })
+            .flatten()
+            .collect();
+
         let mut c = OpenAIChatCompletion {
             id: f.id.clone(),
             object: f.object.clone(),
@@ -1305,6 +1338,12 @@ pub async fn streamed_chat_completion(
                     },
                     index: c.index,
                     finish_reason: None,
+                    logprobs: match logprobs.len() {
+                        0 => None,
+                        _ => Some(OpenAIChatChoiceLogprobs {
+                            content: logprobs.clone(),
+                        }),
+                    },
                 })
                 .collect::<Vec<_>>(),
             usage,
@@ -1441,6 +1480,7 @@ pub async fn chat_completion(
     frequency_penalty: f32,
     response_format: Option<String>,
     reasoning_effort: Option<String>,
+    logprobs: Option<bool>,
     user: Option<String>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let mut body = json!({
@@ -1477,6 +1517,9 @@ pub async fn chat_completion(
     }
     if let Some(reasoning_effort) = reasoning_effort {
         body["reasoning_effort"] = json!(reasoning_effort);
+    }
+    if let Some(logprobs) = logprobs {
+        body["logprobs"] = json!(logprobs);
     }
 
     let mut req = reqwest::Client::new()
@@ -1554,6 +1597,24 @@ pub async fn chat_completion(
     }
 
     Ok((completion, request_id))
+}
+
+pub fn logprobs_from_choices(choices: &Vec<OpenAIChatChoice>) -> Option<Vec<LLMChatLogprob>> {
+    let lp: Vec<LLMChatLogprob> = choices
+        .iter()
+        .filter_map(|choice| choice.logprobs.as_ref())
+        .flat_map(|lp| {
+            lp.content.iter().map(|content_logprob| LLMChatLogprob {
+                token: content_logprob.token.clone(),
+                logprob: content_logprob.logprob,
+            })
+        })
+        .collect();
+
+    match lp.len() {
+        0 => None,
+        _ => Some(lp),
+    }
 }
 
 ///
@@ -2015,27 +2076,32 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (openai_org_id, openai_user, response_format, reasoning_effort) = match &extras {
-            None => (None, None, None, None),
-            Some(v) => (
-                match v.get("openai_organization_id") {
-                    Some(Value::String(o)) => Some(o.to_string()),
-                    _ => None,
-                },
-                match v.get("openai_user") {
-                    Some(Value::String(u)) => Some(u.to_string()),
-                    _ => None,
-                },
-                match v.get("response_format") {
-                    Some(Value::String(f)) => Some(f.to_string()),
-                    _ => None,
-                },
-                match v.get("reasoning_effort") {
-                    Some(Value::String(r)) => Some(r.to_string()),
-                    _ => None,
-                },
-            ),
-        };
+        let (openai_org_id, openai_user, response_format, reasoning_effort, logprobs) =
+            match &extras {
+                None => (None, None, None, None, None),
+                Some(v) => (
+                    match v.get("openai_organization_id") {
+                        Some(Value::String(o)) => Some(o.to_string()),
+                        _ => None,
+                    },
+                    match v.get("openai_user") {
+                        Some(Value::String(u)) => Some(u.to_string()),
+                        _ => None,
+                    },
+                    match v.get("response_format") {
+                        Some(Value::String(f)) => Some(f.to_string()),
+                        _ => None,
+                    },
+                    match v.get("reasoning_effort") {
+                        Some(Value::String(r)) => Some(r.to_string()),
+                        _ => None,
+                    },
+                    match v.get("logprobs") {
+                        Some(Value::Bool(l)) => Some(l.clone()),
+                        _ => None,
+                    },
+                ),
+            };
 
         let tool_choice = match function_call.as_ref() {
             Some(fc) => Some(OpenAIToolChoice::from_str(fc)?),
@@ -2081,6 +2147,7 @@ impl LLM for OpenAILLM {
                 },
                 response_format,
                 reasoning_effort,
+                logprobs,
                 openai_user,
                 event_sender.clone(),
             )
@@ -2113,6 +2180,7 @@ impl LLM for OpenAILLM {
                 },
                 response_format,
                 reasoning_effort,
+                logprobs,
                 openai_user,
             )
             .await?
@@ -2159,6 +2227,7 @@ impl LLM for OpenAILLM {
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
             provider_request_id: request_id,
+            logprobs: logprobs_from_choices(&c.choices),
         })
     }
 }

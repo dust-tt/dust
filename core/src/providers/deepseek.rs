@@ -3,9 +3,9 @@ use crate::providers::embedder::Embedder;
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::openai::{
-    chat_completion, streamed_chat_completion, to_openai_messages, OpenAIChatMessage,
-    OpenAIChatMessageContent, OpenAIContentBlock, OpenAITextContent, OpenAITextContentType,
-    OpenAITool, OpenAIToolChoice,
+    chat_completion, logprobs_from_choices, streamed_chat_completion, to_openai_messages,
+    OpenAIChatMessage, OpenAIChatMessageContent, OpenAIContentBlock, OpenAITextContent,
+    OpenAITextContentType, OpenAITool, OpenAIToolChoice,
 };
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, o200k_base_singleton, CoreBPE};
@@ -196,6 +196,7 @@ impl LLM for DeepseekLLM {
                 None,
                 None,
                 None,
+                None,
                 event_sender.clone(),
             )
             .await?
@@ -227,6 +228,7 @@ impl LLM for DeepseekLLM {
                 None,
                 None,
                 None,
+                None,
             )
             .await?
         };
@@ -247,6 +249,7 @@ impl LLM for DeepseekLLM {
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
             provider_request_id: request_id,
+            logprobs: logprobs_from_choices(&c.choices),
         })
     }
 }

@@ -1795,6 +1795,7 @@ impl LLM for AnthropicLLM {
             }),
             completions: AssistantChatMessage::try_from(c).into_iter().collect(),
             provider_request_id: request_id,
+            logprobs: None,
         })
     }
 }
