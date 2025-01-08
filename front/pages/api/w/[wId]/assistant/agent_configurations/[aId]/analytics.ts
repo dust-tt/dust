@@ -75,7 +75,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "app_auth_error",
-        message: "Only builders can get workspace stats.",
+        message: "Only builders can get assistant analytics.",
       },
     });
   }
