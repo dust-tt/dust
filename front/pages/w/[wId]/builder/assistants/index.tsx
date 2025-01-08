@@ -110,7 +110,7 @@ export default function WorkspaceAssistants({
       return a.scope === activeTab;
     }
   });
-  console.log(activeTab, filteredAgents.length);
+
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 
