@@ -169,7 +169,7 @@ impl PostgresStore {
             info!(
                 data_source_id = data_source_id,
                 node_id = node_id,
-                parents = ?payload.parents,
+                parents = ?upsert_params.parents,
                 operation = "upsert_node",
                 "[KWSEARCH] invariant_parent_exist_in_nodes"
             );
