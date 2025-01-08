@@ -168,5 +168,7 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanReadOrAdministrate: true } })
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanReadOrAdministrate: true },
+  })
 );
