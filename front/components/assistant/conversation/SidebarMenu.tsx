@@ -14,6 +14,13 @@ import {
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
   PlusIcon,
   RobotIcon,
   TrashIcon,
@@ -170,18 +177,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   return (
     <>
-      <Dialog
-        title="Clear conversation history"
+      <DeleteAllConversationsDialog
         isOpen={showDeleteDialog === "all"}
-        onCancel={() => setShowDeleteDialog(null)}
-        onValidate={deleteAll}
-        validateVariant="warning"
-        isSaving={isDeleting}
-      >
-        Are you sure you want to delete ALL conversations&nbsp;?
-        <br />
-        <b>This action cannot be undone.</b>
-      </Dialog>
+        onClose={() => setShowDeleteDialog(null)}
+        onDelete={deleteAll}
+      />
       <Dialog
         title="Delete conversations"
         isOpen={showDeleteDialog === "selection"}
@@ -240,7 +240,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     }
                   }}
                 />
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
@@ -382,5 +382,52 @@ const RenderConversation = ({
         />
       )}
     </>
+  );
+};
+
+const DeleteAllConversationsDialog = ({
+  isOpen,
+  onClose,
+  onDelete,
+}: {
+  isOpen: boolean;
+  onClose: (dialog: "all" | "selection" | null) => void;
+  onDelete: () => void;
+}) => {
+  return (
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(null);
+        }
+      }}
+    >
+      <NewDialogContent>
+        <NewDialogHeader>
+          <NewDialogTitle>Clear conversation history</NewDialogTitle>
+          <NewDialogDescription>
+            Are you sure you want to delete ALL conversations&nbsp;?
+          </NewDialogDescription>
+        </NewDialogHeader>
+        <NewDialogContainer>
+          <b>This action cannot be undone.</b>
+        </NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Delete",
+            variant: "warning",
+            onClick: async () => {
+              onDelete();
+              onClose(null);
+            },
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 };
