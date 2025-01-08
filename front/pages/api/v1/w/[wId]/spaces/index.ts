@@ -22,8 +22,8 @@ export type GetSpacesResponseBody =
  * @swagger
  * /api/v1/w/{wId}/spaces:
  *   get:
- *     summary: List Workspace Spaces
- *     description: Retrieves a list of spaces for the authenticated workspace.
+ *     summary: List Spaces accessible.
+ *     description: Retrieves a list of accessible spaces for the authenticated workspace.
  *     tags:
  *       - Spaces
  *     security:
