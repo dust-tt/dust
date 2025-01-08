@@ -1,3 +1,18 @@
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
+use futures::future::try_join_all;
+use serde_json::Value;
+use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::str::FromStr;
+use tokio_postgres::types::ToSql;
+use tokio_postgres::{NoTls, Transaction};
+use tracing::info;
+
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeType};
 use crate::{
@@ -24,20 +39,6 @@ use crate::{
     stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES},
     utils,
 };
-use anyhow::{anyhow, Result};
-use async_trait::async_trait;
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
-use futures::future::try_join_all;
-use serde_json::Value;
-use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::str::FromStr;
-use tokio_postgres::types::ToSql;
-use tokio_postgres::{NoTls, Transaction};
-use tracing::info;
 
 use super::store::{DocumentCreateParams, FolderUpsertParams, TableUpsertParams};
 
