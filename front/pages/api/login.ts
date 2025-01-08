@@ -39,6 +39,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import { getSignUpUrl } from "@app/lib/signup";
+import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
@@ -429,7 +430,7 @@ async function handler(
       if (pendingInvitationAndWorkspace) {
         const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
         const signUpUrl = getSignUpUrl({
-          signupCallbackUrl: pendingInvitation.inviteLink,
+          signupCallbackUrl: `/api/login?inviteToken=${getTokenFromMembershipInvitationUrl(pendingInvitation.inviteLink)}`,
           invitationEmail: pendingInvitation.inviteEmail,
         });
         res.redirect(signUpUrl);

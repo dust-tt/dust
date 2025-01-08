@@ -154,6 +154,14 @@ function getMembershipInvitationUrlForToken(
   return `${config.getClientFacingUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
 }
 
+export function getTokenFromMembershipInvitationUrl(
+  url: string
+): string | null {
+  const urlObj = new URL(url);
+  const token = urlObj.searchParams.get("t");
+  return token;
+}
+
 export function getMembershipInvitationUrl(
   owner: LightWorkspaceType,
   invitationId: number
