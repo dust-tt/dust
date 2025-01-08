@@ -168,7 +168,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           title: table.databaseName,
           parents: [table.databaseName],
           parentId: null,
-          mimeType: "application/vnd.snowflake.database",
+          mimeType: SNOWFLAKE_MIME_TYPES.DATABASE,
         });
 
         // upsert a folder for the schema (child of the database)
@@ -179,7 +179,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           title: table.schemaName,
           parents: [schemaId, table.databaseName],
           parentId: table.databaseName,
-          mimeType: "application/vnd.snowflake.schema",
+          mimeType: SNOWFLAKE_MIME_TYPES.SCHEMA,
         });
 
         await upsertDataSourceRemoteTable({

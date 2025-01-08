@@ -66,6 +66,8 @@ export type SlackMimeType =
   (typeof SLACK_MIME_TYPES)[keyof typeof SLACK_MIME_TYPES];
 
 export const SNOWFLAKE_MIME_TYPES = {
+  DATABASE: "application/vnd.snowflake.database",
+  SCHEMA: "application/vnd.snowflake.schema",
   TABLE: "application/vnd.snowflake.table",
 };
 
