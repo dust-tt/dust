@@ -22,6 +22,7 @@ import {
   NewDialogTitle,
   PlusIcon,
   RobotIcon,
+  Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -178,6 +179,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     <>
       <DeleteConversationsDialog
         isOpen={showDeleteDialog !== null}
+        isDeleting={isDeleting}
         onClose={() => setShowDeleteDialog(null)}
         onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
         type={showDeleteDialog || "all"}
@@ -375,6 +377,7 @@ const RenderConversation = ({
 
 type DeleteConversationsDialogProps = {
   isOpen: boolean;
+  isDeleting: boolean;
   onClose: () => void;
   onDelete: () => void;
   type: "all" | "selection";
@@ -383,6 +386,7 @@ type DeleteConversationsDialogProps = {
 
 export const DeleteConversationsDialog = ({
   isOpen,
+  isDeleting,
   onClose,
   onDelete,
   type,
@@ -402,23 +406,31 @@ export const DeleteConversationsDialog = ({
           <NewDialogTitle>{title}</NewDialogTitle>
           <NewDialogDescription>{description}</NewDialogDescription>
         </NewDialogHeader>
-        <NewDialogContainer>
-          <b>This action cannot be undone.</b>
-        </NewDialogContainer>
-        <NewDialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: "Delete",
-            variant: "warning",
-            onClick: async () => {
-              onDelete();
-              onClose();
-            },
-          }}
-        />
+        {isDeleting ? (
+          <div className="flex justify-center py-8">
+            <Spinner variant="dark" size="md" />
+          </div>
+        ) : (
+          <>
+            <NewDialogContainer>
+              <b>This action cannot be undone.</b>
+            </NewDialogContainer>
+            <NewDialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Delete",
+                variant: "warning",
+                onClick: async () => {
+                  await onDelete();
+                  onClose();
+                },
+              }}
+            />
+          </>
+        )}
       </NewDialogContent>
     </NewDialog>
   );
