@@ -45,7 +45,6 @@ import {
 import { classNames } from "@app/lib/utils";
 
 const PERIODS = [
-  { value: 1, label: "Last day" },
   { value: 7, label: "Last 7 days" },
   { value: 15, label: "Last 15 days" },
   { value: 30, label: "Last 30 days" },
@@ -55,6 +54,7 @@ type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   assistantId: string | null;
+  showPerformanceTab?: boolean;
 };
 
 function AssistantDetailsInfo({
@@ -250,6 +250,7 @@ export function AssistantDetails({
   assistantId,
   onClose,
   owner,
+  showPerformanceTab = false,
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
   const [selectedTab, setSelectedTab] = useState("info");
@@ -333,22 +334,24 @@ export function AssistantDetails({
           {agentConfiguration && (
             <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
               <DescriptionSection />
-              <Tabs value={selectedTab}>
-                <TabsList>
-                  <TabsTrigger
-                    value="info"
-                    label="Info"
-                    icon={InformationCircleIcon}
-                    onClick={() => setSelectedTab("info")}
-                  />
-                  <TabsTrigger
-                    value="performance"
-                    label="Performance"
-                    icon={BarChartIcon}
-                    onClick={() => setSelectedTab("performance")}
-                  />
-                </TabsList>
-              </Tabs>
+              {showPerformanceTab && (
+                <Tabs value={selectedTab}>
+                  <TabsList>
+                    <TabsTrigger
+                      value="info"
+                      label="Info"
+                      icon={InformationCircleIcon}
+                      onClick={() => setSelectedTab("info")}
+                    />
+                    <TabsTrigger
+                      value="performance"
+                      label="Performance"
+                      icon={BarChartIcon}
+                      onClick={() => setSelectedTab("performance")}
+                    />
+                  </TabsList>
+                </Tabs>
+              )}
               {selectedTab === "info" && (
                 <AssistantDetailsInfo
                   agentConfiguration={agentConfiguration}
