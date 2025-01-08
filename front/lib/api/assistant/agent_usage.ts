@@ -226,6 +226,7 @@ export async function storeCountsInRedis(
       amcByAgentId[agentId] = {
         agentId,
         count: 0,
+        conversationCount: 0,
         timePeriodSec: RANKING_TIMEFRAME_SEC,
       };
     }
