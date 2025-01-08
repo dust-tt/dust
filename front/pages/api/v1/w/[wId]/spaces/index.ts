@@ -65,7 +65,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const allSpaces = await SpaceResource.listWorkspaceSpaces(auth);
+      const allSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
       // conversations space should not be shown
       const spaces = allSpaces.filter(
