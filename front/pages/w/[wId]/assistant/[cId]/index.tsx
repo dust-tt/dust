@@ -46,7 +46,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
 
   const { cId } = context.params;
-  console.log("QUERY PARAMS", context.query, context.params);
 
   // Extract messageId from query params and fetch its rank
   const { messageId } = context.query;
