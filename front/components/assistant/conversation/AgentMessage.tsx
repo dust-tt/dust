@@ -440,7 +440,8 @@ export function AgentMessage({
             disabled={isRetryHandlerProcessing || shouldStream}
           />,
           // One cannot leave feedback on global agents.
-          ...(isGlobalAgent
+          ...(isGlobalAgent ||
+          agentMessageToRender.configuration.status === "draft"
             ? []
             : [
                 <div key="separator" className="flex items-center">
