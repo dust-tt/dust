@@ -4,7 +4,6 @@ import {
   ChevronDownIcon,
   Chip,
   CompanyIcon,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
