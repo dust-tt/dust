@@ -3,7 +3,6 @@ import {
   Button,
   CheckIcon,
   ClipboardCheckIcon,
-  Dialog,
   IconButton,
   LinkIcon,
   PencilSquareIcon,
@@ -18,8 +17,8 @@ import React, { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
-import { classNames } from "@app/lib/utils";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { classNames } from "@app/lib/utils";
 
 export function ConversationTitle({
   owner,
