@@ -21,13 +21,13 @@ import { apiError } from "@app/logger/withlogging";
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Id of the workspace
  *         schema:
  *           type: string
  *       - in: path
  *         name: cId
  *         required: true
- *         description: ID of the conversation
+ *         description: sId of the conversation
  *         schema:
  *           type: string
  *     security:

@@ -27,7 +27,7 @@ import { apiError } from "@app/logger/withlogging";
  *       - name: wId
  *         in: path
  *         required: true
- *         description: ID of the workspace
+ *         description: Id of the workspace
  *         schema:
  *           type: string
  *     security:
