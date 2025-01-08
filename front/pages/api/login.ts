@@ -422,10 +422,11 @@ async function handler(
     targetWorkspace = workspace;
   } else {
     if (userCreated) {
-      // If user is newly created, check if there is a pending invitation for
-      // the user. If present, redirect to directly to the link of the "signup"
-      // button in the "signup" page, which will redirect to the workspace
-      // welcome page (see comment's PR)
+      // When user is just created, check whether they have a pending
+      // invitation. If they do, it is assumed they are coming from the
+      // invitation link and have seen the join page; we redirect (after auth0
+      // login) to this URL with inviteToken appended. The user will then end up
+      // on the workspace's welcome page (see comment's PR)
       const pendingInvitationAndWorkspace =
         await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
       if (pendingInvitationAndWorkspace) {
