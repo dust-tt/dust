@@ -1,7 +1,8 @@
 import {
+  BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  cn,
+  classNames,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -124,7 +125,7 @@ export default function AssistantBuilderRightPanel({
               <TabsTrigger
                 value="Performance"
                 label="Performance"
-                icon={LightbulbIcon}
+                icon={BarChartIcon}
               />
             )}
             <TabsTrigger
@@ -135,21 +136,20 @@ export default function AssistantBuilderRightPanel({
           </TabsList>
         </Tabs>
       </div>
-
       <div
-        className={cn(
-          "grow-1 mb-5 h-full overflow-y-auto border-structure-200",
-
-          "rounded-b-xl border-x border-b pt-5" && !!template,
-          "mt-5 rounded-xl border border-structure-200" && !template,
-          "bg-structure-50" && rightPanelStatus.tab !== "Performance",
-          // Only animate the reload if the drawer has been open for at least 1 second.
-          // This is to prevent the animation from triggering right after the drawer is opened.
+        className={classNames(
+          template !== null
+            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 pt-5"
+            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200",
           shouldAnimatePreviewDrawer &&
             rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
-            Date.now() - rightPanelStatus.openedAt > 1000 &&
-            "animate-reload"
+            // Only animate the reload if the drawer has been open for at least 1 second.
+            // This is to prevent the animation from triggering right after the drawer is opened.
+            Date.now() - rightPanelStatus.openedAt > 1000
+            ? "animate-reload"
+            : "",
+          rightPanelStatus.tab !== "Performance" ? "bg-structure-50" : ""
         )}
       >
         {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
