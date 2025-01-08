@@ -85,7 +85,7 @@ export function useAgentConfigurations({
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType | null;
-  includes?: ("authors" | "usage")[];
+  includes?: ("authors" | "usage" | "feedbacks")[];
   limit?: number;
   sort?: "alphabetical" | "priority";
   disabled?: boolean;
@@ -105,6 +105,9 @@ export function useAgentConfigurations({
     }
     if (includes.includes("authors")) {
       params.append("withAuthors", "true");
+    }
+    if (includes.includes("feedbacks")) {
+      params.append("withFeedbacks", "true");
     }
 
     if (limit) {
@@ -303,7 +306,7 @@ export function useAgentUsage({
 
   return {
     agentUsage: data ? data.agentUsage : null,
-    isAgentUsageLoading: !error && !data,
+    isAgentUsageLoading: !error && !data && !disabled,
     isAgentUsageError: error,
     mutateAgentUsage: mutate,
   };
@@ -370,7 +373,7 @@ export function useDeleteAgentConfiguration({
   agentConfiguration,
 }: {
   owner: LightWorkspaceType;
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfiguration?: LightAgentConfigurationType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
@@ -382,11 +385,14 @@ export function useDeleteAgentConfiguration({
 
   const { mutateAgentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
     disabled: true, // We only use the hook to mutate the cache
   });
 
   const doDelete = async () => {
+    if (!agentConfiguration) {
+      return;
+    }
     const res = await fetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
       {

@@ -8,6 +8,7 @@ IMAGE_NAME=""
 DOCKERFILE_PATH=""
 REGION=""
 GCLOUD_IGNORE_FILE=""
+PROJECT_ID=""
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -45,7 +46,7 @@ done
 
 # Validate required arguments
 if [ -z "$WORKING_DIR" ] || [ -z "$IMAGE_NAME" ] || [ -z "$DOCKERFILE_PATH" ] || [ -z "$REGION" ] || [ -z "$PROJECT_ID" ]; then
-    echo "Error: --working-dir, --image-name, --region and --dockerfile-path are required"
+    echo "Error: --working-dir, --image-name, --region, --project-id and --dockerfile-path are required"
     exit 1
 fi
 

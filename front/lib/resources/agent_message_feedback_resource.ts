@@ -9,12 +9,17 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, WhereOptions } from "sequelize";
-import type { CreationAttributes, Transaction } from "sequelize";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -233,6 +238,33 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           }
         );
       });
+  }
+
+  static async getFeedbackCountForAssistants(
+    auth: Authenticator,
+    agentConfigurationIds: string[],
+    daysOld?: number
+  ) {
+    const dateMinusXDays = new Date();
+    if (daysOld) {
+      dateMinusXDays.setDate(dateMinusXDays.getDate() - daysOld);
+    }
+    const workspace = auth.getNonNullableWorkspace();
+    const feedbackCount = await AgentMessageFeedback.findAndCountAll({
+      attributes: ["agentConfigurationId", "thumbDirection"],
+      where: {
+        workspaceId: workspace.id,
+        agentConfigurationId: agentConfigurationIds,
+        ...(daysOld ? { createdAt: { [Op.gt]: dateMinusXDays } } : {}),
+      },
+      group: ["agentConfigurationId", "thumbDirection"],
+    });
+
+    return feedbackCount.count as {
+      thumbDirection: AgentMessageFeedbackDirection;
+      agentConfigurationId: string;
+      count: number;
+    }[];
   }
 
   static async getConversationFeedbacksForUser(

@@ -177,6 +177,7 @@ function determineGlobalAgentIdsToFetch(
     case "workspace":
     case "published":
     case "archived":
+    case "current_user":
       return []; // fetch no global agents
     case "global":
     case "list":
@@ -271,6 +272,24 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
         where: baseWhereConditions,
+      });
+    case "current_user":
+      const authorId = auth.getNonNullableUser().id;
+      const r = await AgentConfiguration.findAll({
+        attributes: ["sId"],
+        group: "sId",
+        where: {
+          workspaceId: owner.id,
+          authorId,
+        },
+      });
+
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: {
+          ...baseWhereConditions,
+          sId: { [Op.in]: [...new Set(r.map((r) => r.sId))] },
+        },
       });
     case "archived":
       // Get the latest version of all archived agents.

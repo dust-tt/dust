@@ -24,7 +24,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_EU_PROJECT_ID }}
+  GCLOUD_US_PROJECT_ID: ${{ secrets.GCLOUD_US_PROJECT_ID }}
+  GCLOUD_EU_PROJECT_ID: ${{ secrets.GCLOUD_EU_PROJECT_ID }}
   IMAGE_NAME: prodbox
 
 jobs:
@@ -77,6 +78,9 @@ jobs:
           fi
 
   build:
+    permissions:
+      contents: read
+      id-token: write
     needs: [notify-start, create-matrix]
     runs-on: ubuntu-latest
     strategy:
@@ -90,13 +94,26 @@ jobs:
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: "Authenticate with Google Cloud"
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
-          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
+          create_credentials_file: true
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          service_account: "deployment-manager@dust-infra.iam.gserviceaccount.com"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
 
       - name: Build image for ${{ matrix.region }}
         run: |
+          # Set project ID based on region
+          if [ "${{ matrix.region }}" = "us-central1" ]; then
+            PROJECT_ID="${{ secrets.GCLOUD_US_PROJECT_ID }}"
+          else
+            PROJECT_ID="${{ secrets.GCLOUD_EU_PROJECT_ID }}"
+          fi
+
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
             --image-name=$IMAGE_NAME \
@@ -104,7 +121,18 @@ jobs:
             --working-dir=./ \
             --gcloud-ignore-file=.gcloudignore-prodbox \
             --region=${{ matrix.region }} \
-            --project-id=$GCLOUD_PROJECT_ID
+            --project-id=${PROJECT_ID}
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          component: "prodbox"
+          image_tag: ${{ steps.short_sha.outputs.short_sha }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
     needs: [notify-start, build]

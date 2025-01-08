@@ -33,6 +33,7 @@ import {
   stopSnowflakeSyncWorkflow,
 } from "@connectors/connectors/snowflake/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -155,8 +156,18 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
         )
       );
     }
-
+    await stopSnowflakeSyncWorkflow(c.id);
     await c.update({ connectionId });
+    // We reset all the remote tables "lastUpsertedAt" to null, to force the tables to be
+    // upserted again (to update their remoteDatabaseSecret).
+    await RemoteTableModel.update(
+      {
+        lastUpsertedAt: null,
+      },
+      { where: { connectorId: c.id } }
+    );
+    await launchSnowflakeSyncWorkflow(c.id);
+    // We launch the workflow again so it syncs immediately.
     await launchSnowflakeSyncWorkflow(c.id);
 
     return new Ok(c.id.toString());
