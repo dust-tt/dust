@@ -37,6 +37,7 @@ import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDe
 import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
+import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
   useAgentAnalytics,
@@ -243,6 +244,11 @@ function AssistantDetailsPerformance({
           </div>
         </Card>
       </CardGrid>
+      <Page.SectionHeader title="Feedbacks" />
+      <FeedbacksSection
+        owner={owner}
+        agentConfigurationId={agentConfiguration.sId}
+      />
     </>
   );
 }
