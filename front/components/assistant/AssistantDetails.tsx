@@ -182,7 +182,8 @@ function AssistantDetailsPerformance({
               <div className="w-full">Reactions</div>
             </div>
             <div className="flex flex-row gap-2 text-lg font-bold">
-              {agentAnalytics?.feedbacks ? (
+              {agentConfiguration.scope !== "global" &&
+              agentAnalytics?.feedbacks ? (
                 <>
                   <div className="flex flex-row items-center">
                     <div>
