@@ -1,4 +1,10 @@
-import { Button, Div3D, Hover3D, RocketIcon, UserArrowIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Div3D,
+  Hover3D,
+  RocketIcon,
+  UserArrowIcon,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
 
@@ -132,14 +138,14 @@ export default function CustomerSupport() {
                 icon={RocketIcon}
               />
             </Link>
-              <Button
-                variant="outline"
-                size="md"
-                label="Talk to sales"
-                icon={UserArrowIcon}
-                href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
-                target='_blank'
-              />
+            <Button
+              variant="outline"
+              size="md"
+              label="Talk to sales"
+              icon={UserArrowIcon}
+              href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
+              target="_blank"
+            />
           </div>
         </div>
         <div
