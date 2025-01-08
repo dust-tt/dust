@@ -169,7 +169,7 @@ impl PostgresStore {
             info!(
                 data_source_id = data_source_row_id,
                 node_id = upsert_params.node_id,
-                parents = &upsert_params.parents,
+                parents = ?upsert_params.parents,
                 operation = "upsert_node",
                 "[KWSEARCH] invariant_parent_exist_in_nodes"
             );
@@ -1487,7 +1487,7 @@ impl Store for PostgresStore {
             info!(
                 data_source_id = data_source_row_id,
                 node_id = document_id,
-                parents = &parents,
+                parents = ?parents,
                 operation = "update_document_parents",
                 "[KWSEARCH] invariant_parent_exist_in_nodes"
             );
@@ -2842,7 +2842,7 @@ impl Store for PostgresStore {
             info!(
                 data_source_id = data_source_row_id,
                 node_id = table_id,
-                parents = &parents,
+                parents = ?parents,
                 operation = "update_table_parents",
                 "[KWSEARCH] invariant_parent_exist_in_nodes"
             );
