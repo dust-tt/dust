@@ -22,6 +22,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import config from "@app/lib/api/config";
@@ -161,51 +162,35 @@ export default function TrackerConfigurations({
   ];
 
   return (
-    <AppLayout
-      subscription={subscription}
-      owner={owner}
-      pageTitle="Dust - Trackers"
-      navChildren={<AssistantSidebarMenu owner={owner} />}
-    >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Trackers"
-          icon={EyeIcon}
-          description="Document monitoring made simple."
-        />
-        <Page.SectionHeader title="Watch Changes" />
-        <Page.P>
-          Select documents to monitor, define what matters to you, and receive
-          notifications when relevant changes occur. <br />
-          Set up once, stay informed automatically.
-        </Page.P>
-        <Page.SectionHeader title="Your Trackers" />
-        <div className="w-full max-w-4xl overflow-x-auto">
-          {isTrackersLoading ? (
-            <div className="flex h-full items-center justify-center">
-              <Spinner />
-            </div>
-          ) : (
-            <>
-              {rows.length === 0 ? (
-                <div className="flex h-full items-center justify-center">
-                  <Button
-                    label="New tracker"
-                    icon={PlusIcon}
-                    onClick={() =>
-                      router.push(`/w/${owner.sId}/assistant/labs/trackers/new`)
-                    }
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-row gap-2">
-                    <SearchInput
-                      name="filter"
-                      placeholder="Filter"
-                      value={filter}
-                      onChange={(e) => setFilter(e)}
-                    />
+    <ConversationsNavigationProvider>
+      <AppLayout
+        subscription={subscription}
+        owner={owner}
+        pageTitle="Dust - Trackers"
+        navChildren={<AssistantSidebarMenu owner={owner} />}
+      >
+        <Page.Vertical gap="xl" align="stretch">
+          <Page.Header
+            title="Trackers"
+            icon={EyeIcon}
+            description="Document monitoring made simple."
+          />
+          <Page.SectionHeader title="Watch Changes" />
+          <Page.P>
+            Select documents to monitor, define what matters to you, and receive
+            notifications when relevant changes occur. <br />
+            Set up once, stay informed automatically.
+          </Page.P>
+          <Page.SectionHeader title="Your Trackers" />
+          <div className="w-full max-w-4xl overflow-x-auto">
+            {isTrackersLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <Spinner />
+              </div>
+            ) : (
+              <>
+                {rows.length === 0 ? (
+                  <div className="flex h-full items-center justify-center">
                     <Button
                       label="New tracker"
                       icon={PlusIcon}
@@ -216,20 +201,40 @@ export default function TrackerConfigurations({
                       }
                     />
                   </div>
+                ) : (
+                  <>
+                    <div className="flex flex-row gap-2">
+                      <SearchInput
+                        name="filter"
+                        placeholder="Filter"
+                        value={filter}
+                        onChange={(e) => setFilter(e)}
+                      />
+                      <Button
+                        label="New tracker"
+                        icon={PlusIcon}
+                        onClick={() =>
+                          router.push(
+                            `/w/${owner.sId}/assistant/labs/trackers/new`
+                          )
+                        }
+                      />
+                    </div>
 
-                  <div className="h-8" />
-                  <DataTable
-                    data={rows}
-                    filter={filter}
-                    filterColumn="name"
-                    columns={columns}
-                  />
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </Page.Vertical>
-    </AppLayout>
+                    <div className="h-8" />
+                    <DataTable
+                      data={rows}
+                      filter={filter}
+                      filterColumn="name"
+                      columns={columns}
+                    />
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </Page.Vertical>
+      </AppLayout>
+    </ConversationsNavigationProvider>
   );
 }
