@@ -1,5 +1,13 @@
 const path = require("path");
 
+const CONTENT_SECURITY_POLICIES =
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com;` +
+  ` style-src 'self' 'unsafe-inline' *.typekit.net;` +
+  ` connect-src 'self';` +
+  ` form-action 'self';` +
+  ` base-uri 'self';` +
+  ` frame-ancestors 'self';`;
+
 module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
@@ -49,7 +57,7 @@ module.exports = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self'",
+            value: CONTENT_SECURITY_POLICIES,
           },
           {
             key: "Strict-Transport-Security",
