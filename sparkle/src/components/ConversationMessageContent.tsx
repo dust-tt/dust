@@ -18,7 +18,7 @@ export function ConversationMessageContent({
   return (
     <div
       className={cn(
-        "s-flex s-flex-col s-justify-stretch s-@container",
+        "s-flex s-flex-col s-justify-stretch",
         size === "compact" ? "s-gap-3" : "s-gap-4"
       )}
     >
