@@ -1491,14 +1491,6 @@ impl Store for PostgresStore {
             );
         }
 
-        // Update parents on tables table (TODO: remove this once we migrate to nodes table).
-        tx.execute(
-            "UPDATE data_sources_documents SET parents = $1 \
-            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
-            &[&parents, &data_source_row_id, &document_id],
-        )
-        .await?;
-
         // Update parents on nodes table.
         tx.execute(
             "UPDATE data_sources_nodes SET parents = $1 \
