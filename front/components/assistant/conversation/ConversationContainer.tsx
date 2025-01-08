@@ -41,6 +41,7 @@ interface ConversationContainerProps {
   user: UserType;
   isBuilder: boolean;
   agentIdToMention: string | null;
+  messageRankToScrollTo: number | undefined;
 }
 
 export function ConversationContainer({
@@ -50,6 +51,7 @@ export function ConversationContainer({
   user,
   isBuilder,
   agentIdToMention,
+  messageRankToScrollTo,
 }: ConversationContainerProps) {
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
@@ -74,6 +76,7 @@ export function ConversationContainer({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
+    startAtRank: messageRankToScrollTo,
   });
 
   const setInputbarMention = useCallback(
@@ -307,6 +310,7 @@ export function ConversationContainer({
           conversationId={activeConversationId}
           // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
           onStickyMentionsChange={onStickyMentionsChange}
+          messageRankToScrollTo={messageRankToScrollTo}
         />
       ) : (
         <div></div>
