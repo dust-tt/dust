@@ -153,7 +153,7 @@ async function handler(
   auth: Authenticator,
   { dataSourceView }: { dataSourceView: DataSourceViewResource }
 ): Promise<void> {
-  if (!dataSourceView.canList(auth)) {
+  if (!dataSourceView.canReadOrAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -229,6 +229,6 @@ async function handler(
 
 export default withPublicAPIAuthentication(
   withResourceFetchingFromRoute(handler, {
-    dataSourceView: { requireCanList: true },
+    dataSourceView: { requireCanReadOrAdministrate: true },
   })
 );

@@ -22,8 +22,8 @@ export type GetSpacesResponseBody =
  * @swagger
  * /api/v1/w/{wId}/spaces:
  *   get:
- *     summary: List Workspace Spaces
- *     description: Retrieves a list of spaces for the authenticated workspace.
+ *     summary: List Spaces accessible.
+ *     description: Retrieves a list of accessible spaces for the authenticated workspace.
  *     tags:
  *       - Spaces
  *     security:
@@ -65,7 +65,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const allSpaces = await SpaceResource.listWorkspaceSpaces(auth);
+      const allSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
       // conversations space should not be shown
       const spaces = allSpaces.filter(
