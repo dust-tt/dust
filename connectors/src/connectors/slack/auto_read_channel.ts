@@ -142,15 +142,14 @@ export async function autoReadChannel(
           );
         }
 
-        const patchData = {
-          parentsToAdd: [
-            slackChannelInternalIdFromSlackChannelId(channel.slackChannelId),
-          ],
-          parentsToRemove: undefined,
-        };
         const updateDataSourceViewRes = await dustAPI.patchDataSourceView(
           dataSourceView,
-          patchData
+          {
+            parentsToAdd: [
+              slackChannelInternalIdFromSlackChannelId(channel.slackChannelId),
+            ],
+            parentsToRemove: undefined,
+          }
         );
 
         if (updateDataSourceViewRes.isErr()) {

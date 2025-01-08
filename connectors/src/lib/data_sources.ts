@@ -1251,15 +1251,15 @@ export async function _upsertDataSourceFolder({
 }) {
   const now = new Date();
 
-  const r = await getDustAPI(dataSourceConfig).upsertFolder(
-    dataSourceConfig.dataSourceId,
+  const r = await getDustAPI(dataSourceConfig).upsertFolder({
+    dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
-    timestampMs ? timestampMs : now.getTime(),
+    timestamp: timestampMs ? timestampMs : now.getTime(),
     title,
     parentId,
     parents,
-    mimeType
-  );
+    mimeType,
+  });
 
   if (r.isErr()) {
     throw r.error;

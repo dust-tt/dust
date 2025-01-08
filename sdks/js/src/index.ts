@@ -476,15 +476,10 @@ export class DustAPI {
 
   /**
    * This actions talks to the Dust production API to retrieve the list of data sources of the
-   * specified workspace id.
-   *
-   * @param workspaceId string the workspace id to fetch data sources for
+   * current workspace.
    */
-  async getDataSources(workspaceId: string) {
-    // Note for henry: do we need to override the workspace id here? (isn't it already derived from
-    // the credentials?)
+  async getDataSources() {
     const res = await this.request({
-      overrideWorkspaceId: workspaceId,
       method: "GET",
       path: "data_sources",
     });
@@ -496,10 +491,13 @@ export class DustAPI {
     return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations(
-    view?: AgentConfigurationViewType,
-    includes: "authors"[] = []
-  ) {
+  async getAgentConfigurations({
+    view,
+    includes = [],
+  }: {
+    view?: AgentConfigurationViewType;
+    includes: "authors"[];
+  }) {
     // Function to generate query parameters.
     function getQueryString() {
       const params = new URLSearchParams();
@@ -707,7 +705,7 @@ export class DustAPI {
     });
 
     const reader = res.value.response.body;
-    const logger = this._logger;
+    const logger = this._logger.child({});
 
     const streamEvents = async function* () {
       try {
@@ -813,15 +811,23 @@ export class DustAPI {
     return new Ok(r.value.tokens);
   }
 
-  async upsertFolder(
-    dataSourceId: string,
-    folderId: string,
-    timestamp: number,
-    title: string,
-    parentId: string | null,
-    parents: string[],
-    mimeType: string
-  ) {
+  async upsertFolder({
+    dataSourceId,
+    folderId,
+    timestamp,
+    title,
+    parentId,
+    parents,
+    mimeType,
+  }: {
+    dataSourceId: string;
+    folderId: string;
+    timestamp: number;
+    title: string;
+    parentId: string | null;
+    parents: string[];
+    mimeType: string;
+  }) {
     const res = await this.request({
       method: "POST",
       path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
@@ -844,7 +850,13 @@ export class DustAPI {
     return new Ok(r.value);
   }
 
-  async deleteFolder(dataSourceId: string, folderId: string) {
+  async deleteFolder({
+    dataSourceId,
+    folderId,
+  }: {
+    dataSourceId: string;
+    folderId: string;
+  }) {
     const res = await this.request({
       method: "DELETE",
       path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
@@ -919,7 +931,7 @@ export class DustAPI {
     }
   }
 
-  async deleteFile(fileID: string) {
+  async deleteFile({ fileID }: { fileID: string }) {
     const res = await this.request({
       method: "DELETE",
       path: `files/${fileID}`,
@@ -998,14 +1010,14 @@ export class DustAPI {
     return new Ok(r.value.data_source_views);
   }
 
-  async patchDataSourceView(
+  async patcheDataSourceView(
     dataSourceView: DataSourceViewType,
-    patchData: PatchDataSourceViewRequestType
+    patch: PatchDataSourceViewRequestType
   ) {
     const res = await this.request({
       method: "PATCH",
       path: `spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}`,
-      body: patchData,
+      body: patch,
     });
 
     const r = await this._resultFromResponse(DataSourceViewResponseSchema, res);
