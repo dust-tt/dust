@@ -100,7 +100,7 @@ jobs:
         with:
           create_credentials_file: true
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-          service_account: "deployment-manager@dust-infra.iam.gserviceaccount.com"
+          service_account: "cloudbuild-publisher@dust-infra.iam.gserviceaccount.com"
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"
