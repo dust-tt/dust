@@ -39,6 +39,22 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
+export function getSignUpUrl({
+  signupCallbackUrl,
+  invitationEmail,
+}: {
+  signupCallbackUrl: string;
+  invitationEmail?: string;
+}) {
+  let signUpUrl = `/api/auth/login?returnTo=${signupCallbackUrl}&screen_hint=signup`;
+
+  if (invitationEmail) {
+    signUpUrl += `&login_hint=${encodeURIComponent(invitationEmail)}`;
+  }
+
+  return signUpUrl;
+}
+
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
 // it does not already exist and mark the invitation as consumed.
@@ -420,14 +436,18 @@ async function handler(
     targetWorkspace = workspace;
   } else {
     if (userCreated) {
-      // If user is newly created, check if there is a pending invitation for the user.
-      // If present, redirect to the workspace join page.
+      // If user is newly created, check if there is a pending invitation for
+      // the user. If present, redirect to the signup callback for workspace,
+      // which will redirect to the workspace welcome page (see comment's PR)
       const pendingInvitationAndWorkspace =
         await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
       if (pendingInvitationAndWorkspace) {
         const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
-
-        res.redirect(pendingInvitation.inviteLink);
+        const signUpUrl = getSignUpUrl({
+          signupCallbackUrl: pendingInvitation.inviteLink,
+          invitationEmail: pendingInvitation.inviteEmail,
+        });
+        res.redirect(signUpUrl);
         return;
       }
     }
