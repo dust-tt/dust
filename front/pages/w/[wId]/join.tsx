@@ -11,7 +11,7 @@ import {
 } from "@app/lib/api/workspace";
 import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-import { getSignUpUrl } from "@app/pages/api/login";
+import { getSignUpUrl } from "@app/lib/signup";
 
 /**
  * 3 ways to end up here:

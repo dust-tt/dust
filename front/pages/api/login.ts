@@ -38,22 +38,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-
-export function getSignUpUrl({
-  signupCallbackUrl,
-  invitationEmail,
-}: {
-  signupCallbackUrl: string;
-  invitationEmail?: string;
-}) {
-  let signUpUrl = `/api/auth/login?returnTo=${signupCallbackUrl}&screen_hint=signup`;
-
-  if (invitationEmail) {
-    signUpUrl += `&login_hint=${encodeURIComponent(invitationEmail)}`;
-  }
-
-  return signUpUrl;
-}
+import { getSignUpUrl } from "@app/lib/signup";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
