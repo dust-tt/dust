@@ -37,7 +37,7 @@ use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
-use tracing::log::info;
+use tracing::info;
 
 use super::store::{DocumentCreateParams, FolderUpsertParams, TableUpsertParams};
 
