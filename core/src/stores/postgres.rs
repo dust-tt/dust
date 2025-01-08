@@ -2827,6 +2827,27 @@ impl Store for PostgresStore {
 
         let tx = c.transaction().await?;
 
+        // Check that all parents exist in data_sources_nodes.
+        let stmt_check = c
+            .prepare(
+                "SELECT COUNT(*) FROM data_sources_nodes
+                 WHERE data_source = $1 AND node_id = ANY($2)",
+            )
+            .await?;
+        let count: i64 = tx
+            .query_one(&stmt_check, &[&data_source_row_id, &parents])
+            .await?
+            .get(0);
+        if count != parents.len() as i64 {
+            info!(
+                data_source_id = data_source_id,
+                node_id = node_id,
+                parents = ?parents,
+                operation = "update_table_parents",
+                "[KWSEARCH] invariant_parent_exist_in_nodes"
+            );
+        }
+
         // Update parents on nodes table.
         let stmt = tx
             .prepare(
