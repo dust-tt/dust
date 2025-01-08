@@ -155,6 +155,6 @@ async function handler(
 
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
-    dataSourceView: { requireCanList: true },
+    dataSourceView: { requireCanReadOrAdministrate: true },
   })
 );

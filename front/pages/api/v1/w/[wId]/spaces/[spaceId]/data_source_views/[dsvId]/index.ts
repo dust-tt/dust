@@ -229,6 +229,6 @@ async function handler(
 
 export default withPublicAPIAuthentication(
   withResourceFetchingFromRoute(handler, {
-    dataSourceView: { requireCanList: true },
+    dataSourceView: { requireCanReadOrAdministrate: true },
   })
 );
