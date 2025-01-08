@@ -79,7 +79,7 @@ export function ConfirmDialog({
         }
       }}
     >
-      <NewDialogContent size="md" isAlertDialog>
+      <NewDialogContent size="md">
         <NewDialogHeader hideButton>
           <NewDialogTitle>{confirmData?.title ?? ""}</NewDialogTitle>
           <NewDialogDescription>
