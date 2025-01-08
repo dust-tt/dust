@@ -2,7 +2,6 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -177,16 +176,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   return (
     <>
-      <DeleteAllConversationsDialog
-        isOpen={showDeleteDialog === "all"}
+      <DeleteConversationsDialog
+        isOpen={showDeleteDialog !== null}
         onClose={() => setShowDeleteDialog(null)}
-        onDelete={deleteAll}
-      />
-      <DeleteSelectedConversationsDialog
-        isOpen={showDeleteDialog === "selection"}
-        onClose={() => setShowDeleteDialog(null)}
-        onDelete={deleteSelection}
-        selectedConversationsLength={selectedConversations.length}
+        onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
+        type={showDeleteDialog || "all"}
+        selectedCount={selectedConversations.length}
       />
       <div
         className={classNames(
@@ -378,80 +373,34 @@ const RenderConversation = ({
   );
 };
 
-const DeleteAllConversationsDialog = ({
-  isOpen,
-  onClose,
-  onDelete,
-}: {
+type DeleteConversationsDialogProps = {
   isOpen: boolean;
-  onClose: (dialog: "all" | "selection" | null) => void;
+  onClose: () => void;
   onDelete: () => void;
-}) => {
-  return (
-    <NewDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose(null);
-        }
-      }}
-    >
-      <NewDialogContent>
-        <NewDialogHeader>
-          <NewDialogTitle>Clear conversation history</NewDialogTitle>
-          <NewDialogDescription>
-            Are you sure you want to delete ALL conversations&nbsp;?
-          </NewDialogDescription>
-        </NewDialogHeader>
-        <NewDialogContainer>
-          <b>This action cannot be undone.</b>
-        </NewDialogContainer>
-        <NewDialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: "Delete",
-            variant: "warning",
-            onClick: async () => {
-              onDelete();
-              onClose(null);
-            },
-          }}
-        />
-      </NewDialogContent>
-    </NewDialog>
-  );
+  type: "all" | "selection";
+  selectedCount?: number;
 };
 
-const DeleteSelectedConversationsDialog = ({
+export const DeleteConversationsDialog = ({
   isOpen,
   onClose,
   onDelete,
-  selectedConversationsLength,
-}: {
-  isOpen: boolean;
-  onClose: (dialog: "all" | "selection" | null) => void;
-  onDelete: () => void;
-  selectedConversationsLength: number;
-}) => {
+  type,
+  selectedCount,
+}: DeleteConversationsDialogProps) => {
+  const title =
+    type === "all" ? "Clear conversation history" : "Delete conversations";
+  const description =
+    type === "all"
+      ? "Are you sure you want to delete ALL conversations?"
+      : `Are you sure you want to delete ${selectedCount} conversations?`;
+
   return (
-    <NewDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose(null);
-        }
-      }}
-    >
+    <NewDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <NewDialogContent>
         <NewDialogHeader>
-          <NewDialogTitle>Delete conversations</NewDialogTitle>
-          <NewDialogDescription>
-            Are you sure you want to delete {selectedConversationsLength}{" "}
-            conversations?
-          </NewDialogDescription>
+          <NewDialogTitle>{title}</NewDialogTitle>
+          <NewDialogDescription>{description}</NewDialogDescription>
         </NewDialogHeader>
         <NewDialogContainer>
           <b>This action cannot be undone.</b>
@@ -466,7 +415,7 @@ const DeleteSelectedConversationsDialog = ({
             variant: "warning",
             onClick: async () => {
               onDelete();
-              onClose(null);
+              onClose();
             },
           }}
         />
