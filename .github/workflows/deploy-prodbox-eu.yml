@@ -94,26 +94,27 @@ jobs:
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
+      - id: "project"
+        run: |
+          if [ "${{ matrix.region }}" = "us-central1" ]; then
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          fi
+
       - id: "auth"
         name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@v1"
         with:
           create_credentials_file: true
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-          service_account: "cloudbuild-publisher@dust-infra.iam.gserviceaccount.com"
+          service_account: "cloudbuild-publisher@${{ steps.project.outputs.PROJECT_ID }}.iam.gserviceaccount.com"
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"
 
       - name: Build image for ${{ matrix.region }}
         run: |
-          # Set project ID based on region
-          if [ "${{ matrix.region }}" = "us-central1" ]; then
-            PROJECT_ID="${{ secrets.GCLOUD_US_PROJECT_ID }}"
-          else
-            PROJECT_ID="${{ secrets.GCLOUD_EU_PROJECT_ID }}"
-          fi
-
           chmod +x ./k8s/cloud-build.sh
           ./k8s/cloud-build.sh \
             --image-name=$IMAGE_NAME \
@@ -121,7 +122,7 @@ jobs:
             --working-dir=./ \
             --gcloud-ignore-file=.gcloudignore-prodbox \
             --region=${{ matrix.region }} \
-            --project-id=${PROJECT_ID}
+            --project-id=${{ steps.project.outputs.PROJECT_ID }}
 
       - name: Notify Failure
         if: failure()
