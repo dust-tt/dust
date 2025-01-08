@@ -90,7 +90,7 @@ function hasPermission(
     if (
       (options.requireCanAdministrate === true &&
         !resource.canAdministrate(auth)) ||
-      (options.requireCanList === true && !resource.canList(auth)) ||
+      (options.requireCanList === true && !resource.canReadOrAdministrate(auth)) ||
       (options.requireCanRead === true && !resource.canRead(auth)) ||
       (options.requireCanWrite === true && !resource.canWrite(auth))
     ) {

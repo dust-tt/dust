@@ -200,7 +200,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // using canRead() as we know that only members can read spaces (but admins can list them)
     // also, conversations space is not meant for members
     return spaces.filter(
-      (s) => s.canList(auth) && s.canRead(auth) && !s.isConversations()
+      (s) => s.canReadOrAdministrate(auth) && s.canRead(auth) && !s.isConversations()
     );
   }
 
@@ -628,7 +628,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return auth.canRead(this.requestedPermissions());
   }
 
-  canList(auth: Authenticator) {
+  canReadOrAdministrate(auth: Authenticator) {
     return this.canRead(auth) || this.canAdministrate(auth);
   }
 

@@ -61,7 +61,7 @@ async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  if (!space.canList(auth)) {
+  if (!space.canReadOrAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
