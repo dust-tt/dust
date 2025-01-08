@@ -34,7 +34,7 @@ export const FeedbacksSection = ({
     isAgentConfigurationFeedbacksLoading,
     isValidating,
     agentConfigurationFeedbacks,
-    hasMore: feedbacksNotExhausted,
+    hasMore,
     setSize,
     size,
   } = useAgentConfigurationFeedbacksByDescVersion({
@@ -53,7 +53,7 @@ export const FeedbacksSection = ({
           target.isIntersecting &&
           !isValidating &&
           !isAgentConfigurationFeedbacksLoading &&
-          feedbacksNotExhausted
+          hasMore
         ) {
           void setSize(size + 1);
         }
@@ -75,7 +75,7 @@ export const FeedbacksSection = ({
     agentConfigurationFeedbacks,
     setSize,
     size,
-    feedbacksNotExhausted,
+    hasMore,
   ]);
 
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
@@ -113,7 +113,7 @@ export const FeedbacksSection = ({
         <AgentConfigurationVersionHeader
           agentConfiguration={agentConfigurationHistory[0]}
           agentConfigurationVersion={agentConfigurationHistory[0].version}
-          isLatestVersion={true}
+          isLatestVersion
         />
         {agentConfigurationFeedbacks?.map((feedback, index) => {
           const isFirstFeedback = index === 0;
