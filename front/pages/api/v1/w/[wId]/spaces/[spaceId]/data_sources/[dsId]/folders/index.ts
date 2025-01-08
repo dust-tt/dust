@@ -34,7 +34,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      if (!dataSource.canList(auth)) {
+      if (!dataSource.canReadOrAdministrate(auth)) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -88,6 +88,6 @@ async function handler(
 
 export default withPublicAPIAuthentication(
   withResourceFetchingFromRoute(handler, {
-    dataSource: { requireCanList: true },
+    dataSource: { requireCanReadOrAdministrate: true },
   })
 );

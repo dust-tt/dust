@@ -67,7 +67,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   if (
     !dataSourceView ||
     dataSourceView.space.sId !== spaceId ||
-    !dataSourceView.canList(auth)
+    !dataSourceView.canReadOrAdministrate(auth)
   ) {
     return {
       notFound: true,

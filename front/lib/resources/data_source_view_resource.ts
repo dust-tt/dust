@@ -253,7 +253,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews.filter(
       (dsv) =>
         (!dsv.space.isConversations() || includeConversationDataSources) &&
-        dsv.canList(auth)
+        dsv.canReadOrAdministrate(auth)
     );
   }
 
