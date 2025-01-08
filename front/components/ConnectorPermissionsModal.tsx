@@ -1,13 +1,13 @@
+import type {
+  NotificationType} from "@dust-tt/sparkle";
 import {
   NewDialog,
   NewDialogContainer,
   NewDialogContent,
-  NewDialogDescription,
   NewDialogFooter,
   NewDialogHeader,
   NewDialogTitle,
   NewDialogTrigger,
-  NotificationType,
   Spinner,
 } from "@dust-tt/sparkle";
 import { SheetContainer, SheetTitle } from "@dust-tt/sparkle";
@@ -17,7 +17,6 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   ContentMessage,
-  Dialog,
   Hoverable,
   Icon,
   Input,

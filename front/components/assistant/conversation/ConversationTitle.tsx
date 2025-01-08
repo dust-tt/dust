@@ -19,6 +19,7 @@ import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
 import { classNames } from "@app/lib/utils";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 
 export function ConversationTitle({
   owner,
@@ -83,8 +84,10 @@ export function ConversationTitle({
   return (
     <>
       {onDelete && (
-        <DeleteConversationDialog
-          show={showDeleteDialog}
+        <DeleteConversationsDialog
+          isOpen={showDeleteDialog}
+          type="selection"
+          selectedCount={1}
           onClose={() => setShowDeleteDialog(false)}
           onDelete={() => {
             setShowDeleteDialog(false);
@@ -235,35 +238,5 @@ export function ConversationTitle({
         </div>
       </div>
     </>
-  );
-}
-
-function DeleteConversationDialog({
-  show,
-  onClose,
-  onDelete,
-}: {
-  show: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <Dialog
-      isOpen={show}
-      title={"Deleting the conversation"}
-      onCancel={onClose}
-      validateLabel="Delete for everyone"
-      validateVariant="warning"
-      onValidate={onDelete}
-    >
-      <div className="flex flex-col gap-2">
-        <div>
-          <div>
-            <span className="font-bold">Are you sure you want to delete?</span>{" "}
-          </div>
-          This will delete the conversation for everyone.
-        </div>
-      </div>
-    </Dialog>
   );
 }
