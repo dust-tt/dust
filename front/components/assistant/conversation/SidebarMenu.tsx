@@ -182,19 +182,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         onClose={() => setShowDeleteDialog(null)}
         onDelete={deleteAll}
       />
-      <Dialog
-        title="Delete conversations"
+      <DeleteSelectedConversationsDialog
         isOpen={showDeleteDialog === "selection"}
-        onCancel={() => setShowDeleteDialog(null)}
-        onValidate={deleteSelection}
-        validateVariant="warning"
-        isSaving={isDeleting}
-      >
-        Are you sure you want to delete {selectedConversations.length}{" "}
-        conversations?
-        <br />
-        <b>This action cannot be undone.</b>
-      </Dialog>
+        onClose={() => setShowDeleteDialog(null)}
+        onDelete={deleteSelection}
+        selectedConversationsLength={selectedConversations.length}
+      />
       <div
         className={classNames(
           "flex grow flex-col",
@@ -408,6 +401,56 @@ const DeleteAllConversationsDialog = ({
           <NewDialogTitle>Clear conversation history</NewDialogTitle>
           <NewDialogDescription>
             Are you sure you want to delete ALL conversations&nbsp;?
+          </NewDialogDescription>
+        </NewDialogHeader>
+        <NewDialogContainer>
+          <b>This action cannot be undone.</b>
+        </NewDialogContainer>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Delete",
+            variant: "warning",
+            onClick: async () => {
+              onDelete();
+              onClose(null);
+            },
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
+  );
+};
+
+const DeleteSelectedConversationsDialog = ({
+  isOpen,
+  onClose,
+  onDelete,
+  selectedConversationsLength,
+}: {
+  isOpen: boolean;
+  onClose: (dialog: "all" | "selection" | null) => void;
+  onDelete: () => void;
+  selectedConversationsLength: number;
+}) => {
+  return (
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose(null);
+        }
+      }}
+    >
+      <NewDialogContent>
+        <NewDialogHeader>
+          <NewDialogTitle>Delete conversations</NewDialogTitle>
+          <NewDialogDescription>
+            Are you sure you want to delete {selectedConversationsLength}{" "}
+            conversations?
           </NewDialogDescription>
         </NewDialogHeader>
         <NewDialogContainer>
