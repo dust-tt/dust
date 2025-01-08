@@ -16,6 +16,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -28,7 +29,10 @@ import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
-import { useConversationMessages } from "@app/lib/swr/conversations";
+import {
+  useConversationMessages,
+  useConversations,
+} from "@app/lib/swr/conversations";
 
 interface ConversationContainerProps {
   conversationId: string | null;
@@ -56,10 +60,15 @@ export function ConversationContainer({
     useContext(InputBarContext);
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
+  const { scrollConversationsToTop } = useConversationsNavigation();
 
   const router = useRouter();
 
   const sendNotification = useSendNotification();
+
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+  });
 
   const { mutateMessages } = useConversationMessages({
     conversationId: activeConversationId,
@@ -161,6 +170,8 @@ export function ConversationContainer({
           populateCache: true,
         }
       );
+      await mutateConversations();
+      await scrollConversationsToTop();
     } catch (err) {
       // If the API errors, the original data will be
       // rolled back by SWR automatically.
@@ -229,11 +240,21 @@ export function ConversationContainer({
           { shallow: true }
         );
         setActiveConversationId(conversationRes.value.sId);
+        await mutateConversations();
+        await scrollConversationsToTop();
 
         return new Ok(undefined);
       }
     },
-    [isSubmitting, owner, user, sendNotification, router]
+    [
+      isSubmitting,
+      owner,
+      user,
+      sendNotification,
+      router,
+      mutateConversations,
+      scrollConversationsToTop,
+    ]
   );
 
   useEffect(() => {

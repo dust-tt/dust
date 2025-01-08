@@ -243,7 +243,7 @@ export async function getUserConversations(
   }
 
   const participations = await ConversationParticipant.findAll({
-    attributes: ["userId", "createdAt"],
+    attributes: ["userId", "updatedAt"],
     where: {
       userId: user.id,
       action: "posted",
@@ -255,7 +255,7 @@ export async function getUserConversations(
         required: true,
       },
     ],
-    order: [["createdAt", "DESC"]],
+    order: [["updatedAt", "DESC"]],
   });
 
   const conversations = participations.reduce<ConversationWithoutContentType[]>(
@@ -272,9 +272,10 @@ export async function getUserConversations(
         return acc;
       }
 
-      const conversation = {
+      const conversation: ConversationWithoutContentType = {
         id: p.conversation.id,
         created: p.conversation.createdAt.getTime(),
+        updated: p.updatedAt.getTime(),
         sId: p.conversation.sId,
         owner,
         title: p.conversation.title,
@@ -309,11 +310,13 @@ async function createOrUpdateParticipation({
       },
     });
     if (participant) {
-      return participant.update({
+      participant.changed("updatedAt", true);
+      await participant.update({
         action: "posted",
+        updatedAt: new Date(),
       });
     } else {
-      return ConversationParticipant.create({
+      await ConversationParticipant.create({
         conversationId: conversation.id,
         action: "posted",
         userId: user.id,
