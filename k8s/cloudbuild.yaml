@@ -41,7 +41,7 @@ steps:
 
 timeout: 1200s
 
-serviceAccount: "projects/${_PROJECT_ID}/serviceAccounts/cloudbuild-publisher@${_PROJECT_ID}.iam.gserviceaccount.com"
+serviceAccount: "projects/${_PROJECT_ID}/serviceAccounts/cloudbuild-runtime@${_PROJECT_ID}.iam.gserviceaccount.com"
 
 availableSecrets:
   secretManager:

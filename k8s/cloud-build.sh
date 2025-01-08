@@ -54,7 +54,7 @@ fi
 cd "$WORKING_DIR"
 
 # Prepare the build command
-BUILD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --service-account="projects/${PROJECT_ID}/serviceAccounts/cloudbuild-publisher@${PROJECT_ID}.iam.gserviceaccount.com")
+BUILD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --service-account="projects/${PROJECT_ID}/serviceAccounts/cloudbuild-runtime@${PROJECT_ID}.iam.gserviceaccount.com")
 
 if [ -n "$GCLOUD_IGNORE_FILE" ]; then
     BUILD_CMD+=(--ignore-file="$GCLOUD_IGNORE_FILE")
