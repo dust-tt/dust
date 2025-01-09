@@ -9,12 +9,17 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, WhereOptions } from "sequelize";
-import type { CreationAttributes, Transaction } from "sequelize";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -115,18 +120,19 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
-  static async fetch({
+  static async getAgentConfigurationFeedbacksByDescVersion({
     workspace,
     agentConfiguration,
     paginationParams,
   }: {
     workspace: WorkspaceType;
-    agentConfiguration?: LightAgentConfigurationType;
+    agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
   }) {
     const where: WhereOptions<AgentMessageFeedback> = {
-      // IMPORTANT: Necessary for global models who share ids across workspaces.
+      // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
+      agentConfigurationId: agentConfiguration.sId,
     };
 
     if (paginationParams.lastValue) {
@@ -134,9 +140,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where[paginationParams.orderColumn as any] = {
         [op]: paginationParams.lastValue,
       };
-    }
-    if (agentConfiguration) {
-      where.agentConfigurationId = agentConfiguration.sId.toString();
     }
 
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
@@ -168,6 +171,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
       order: [
+        // Necessary because a feedback can be given at any time on a  message linked to an old version.
+        ["agentConfigurationVersion", "DESC"],
         [
           paginationParams.orderColumn,
           paginationParams.orderDirection === "desc" ? "DESC" : "ASC",
@@ -233,6 +238,33 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           }
         );
       });
+  }
+
+  static async getFeedbackCountForAssistants(
+    auth: Authenticator,
+    agentConfigurationIds: string[],
+    daysOld?: number
+  ) {
+    const dateMinusXDays = new Date();
+    if (daysOld) {
+      dateMinusXDays.setDate(dateMinusXDays.getDate() - daysOld);
+    }
+    const workspace = auth.getNonNullableWorkspace();
+    const feedbackCount = await AgentMessageFeedback.findAndCountAll({
+      attributes: ["agentConfigurationId", "thumbDirection"],
+      where: {
+        workspaceId: workspace.id,
+        agentConfigurationId: agentConfigurationIds,
+        ...(daysOld ? { createdAt: { [Op.gt]: dateMinusXDays } } : {}),
+      },
+      group: ["agentConfigurationId", "thumbDirection"],
+    });
+
+    return feedbackCount.count as {
+      thumbDirection: AgentMessageFeedbackDirection;
+      agentConfigurationId: string;
+      count: number;
+    }[];
   }
 
   static async getConversationFeedbacksForUser(

@@ -76,7 +76,7 @@ async function handler(
   if (
     !dataSourceView ||
     spaceId !== dataSourceView.space.sId ||
-    !dataSourceView.canList(auth)
+    !dataSourceView.canReadOrAdministrate(auth)
   ) {
     return apiError(req, res, {
       status_code: 404,

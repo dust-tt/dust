@@ -13,66 +13,13 @@ concurrency:
   group: deploy_front_qa
   cancel-in-progress: false
 
-env:
-  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
-
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    # We skip running the build and deploy if the PR contains a migration represented by the 'migration-ack' label.
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'migration-ack') }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Get short sha
-        id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: "Authenticate with Google Cloud"
-        uses: "google-github-actions/auth@v1"
-        with:
-          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
-
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
-
-      - name: Build the image on Cloud Build
-        run: |
-          chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh \
-            --image-name=front-qa \
-            --dockerfile-path=./front/Dockerfile \
-            --working-dir=./ \
-            --region=us-central1 \
-            --project-id=$GCLOUD_PROJECT_ID
-
-      - name: Generate a token
-        id: generate-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
-          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            dust-infra
-
-      - name: Trigger dust-infra workflow
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ steps.generate-token.outputs.token }}
-          script: |
-            await github.rest.repos.createDispatchEvent({
-              owner: '${{ github.repository_owner }}',
-              repo: 'dust-infra',
-              event_type: 'trigger-component-deploy',
-              client_payload: {
-                regions: 'us-central1',
-                component: 'front-qa',
-                image_tag: '${{ steps.short_sha.outputs.short_sha }}',
-                run_playwright: true,
-                playwright_sha: '${{ github.sha }}',
-                repository_name: '${{ github.event.repository.name }}'
-              }
-            });
+  deploy:
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      check_deployment_blocked: false
+      component: front-qa
+      dockerfile_path: ./front/Dockerfile
+      regions: us-central1
+      working_dir: ./
+    secrets: inherit

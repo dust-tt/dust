@@ -2,6 +2,7 @@ import type {
   ModelId,
   ResourcePermission,
   Result,
+  SpaceKind,
   SpaceType,
 } from "@dust-tt/types";
 import { concurrentExecutor, Err } from "@dust-tt/types";
@@ -197,11 +198,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async listWorkspaceSpacesAsMember(auth: Authenticator) {
     const spaces = await this.baseFetch(auth);
 
-    // using canRead() as we know that only members can read spaces (but admins can list them)
-    // also, conversations space is not meant for members
-    return spaces.filter(
-      (s) => s.canList(auth) && s.canRead(auth) && !s.isConversations()
-    );
+    // Filtering to the spaces the auth can read that are not conversations.
+    return spaces.filter((s) => s.canRead(auth) && !s.isConversations());
   }
 
   static async listWorkspaceDefaultSpaces(
@@ -221,18 +219,42 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
-  static async listForGroups(auth: Authenticator, groups: GroupResource[]) {
+  static async listForGroups(
+    auth: Authenticator,
+    groups: GroupResource[],
+    options?: { includeConversationsSpace?: boolean }
+  ) {
     const groupSpaces = await GroupSpaceModel.findAll({
       where: {
         groupId: groups.map((g) => g.id),
       },
     });
 
-    const spaces = await this.baseFetch(auth, {
-      where: {
-        id: groupSpaces.map((v) => v.vaultId),
-      },
-    });
+    const allExceptConversations: Exclude<SpaceKind, "conversations">[] = [
+      "system",
+      "global",
+      "regular",
+      "public",
+    ];
+
+    let spaces: SpaceResource[] = [];
+
+    if (options?.includeConversationsSpace) {
+      spaces = await this.baseFetch(auth, {
+        where: {
+          id: groupSpaces.map((v) => v.vaultId),
+        },
+      });
+    } else {
+      spaces = await this.baseFetch(auth, {
+        where: {
+          id: groupSpaces.map((v) => v.vaultId),
+          kind: {
+            [Op.in]: allExceptConversations,
+          },
+        },
+      });
+    }
 
     return spaces.filter((s) => s.canRead(auth));
   }
@@ -628,7 +650,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return auth.canRead(this.requestedPermissions());
   }
 
-  canList(auth: Authenticator) {
+  canReadOrAdministrate(auth: Authenticator) {
     return this.canRead(auth) || this.canAdministrate(auth);
   }
 

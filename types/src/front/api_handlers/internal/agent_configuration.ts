@@ -15,6 +15,7 @@ const LimitCodec = createRangeCodec(0, 100);
 // of AgentGetViewType
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
+    t.literal("current_user"),
     t.literal("list"),
     t.literal("workspace"),
     t.literal("published"),
@@ -25,6 +26,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
   ]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
+  withFeedbacks: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   limit: t.union([LimitCodec, t.undefined]),
   sort: t.union([
     t.literal("priority"),

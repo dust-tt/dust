@@ -58,7 +58,7 @@ async function handler(
 ): Promise<void> {
   const dataSources = await DataSourceResource.listBySpace(auth, space);
 
-  if (!space.canList(auth)) {
+  if (!space.canReadOrAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -87,5 +87,7 @@ async function handler(
 }
 
 export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, { space: { requireCanList: true } })
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanReadOrAdministrate: true },
+  })
 );

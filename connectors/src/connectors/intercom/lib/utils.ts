@@ -7,28 +7,6 @@ import type {
 import { IntercomCollection } from "@connectors/lib/models/intercom";
 
 /**
- * Mimetypes
- */
-export function getDataSourceNodeMimeType(
-  intercomNodeType:
-    | "COLLECTION"
-    | "TEAM"
-    | "CONVERSATIONS_FOLDER"
-    | "HELP_CENTER"
-): string {
-  switch (intercomNodeType) {
-    case "COLLECTION":
-      return "application/vnd.dust.intercom.collection";
-    case "CONVERSATIONS_FOLDER":
-      return "application/vnd.dust.intercom.teams-folder";
-    case "TEAM":
-      return "application/vnd.dust.intercom.team";
-    case "HELP_CENTER":
-      return "application/vnd.dust.intercom.help-center";
-  }
-}
-
-/**
  * From id to internalId
  */
 export function getHelpCenterInternalId(

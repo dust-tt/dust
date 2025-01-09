@@ -87,6 +87,12 @@ pub struct LLMTokenUsage {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct LLMChatLogprob {
+    pub token: String,
+    pub logprob: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMChatGeneration {
     pub created: u64,
     pub provider: String,
@@ -94,6 +100,8 @@ pub struct LLMChatGeneration {
     pub completions: Vec<AssistantChatMessage>,
     pub usage: Option<LLMTokenUsage>,
     pub provider_request_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logprobs: Option<Vec<LLMChatLogprob>>,
 }
 
 #[async_trait]

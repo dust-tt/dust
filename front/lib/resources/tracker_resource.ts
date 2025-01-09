@@ -411,9 +411,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       },
       includes: [
         {
-          // @ts-expect-error @todo(DOC_TRACKER) Fix to remove the ts-expect-error.
           model: TrackerGenerationModel,
-          // @ts-expect-error @todo(DOC_TRACKER) Fix to remove the ts-expect-error.
           as: "generations",
           where: {
             consumedAt: null,

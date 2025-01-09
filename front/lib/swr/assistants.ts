@@ -11,12 +11,18 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
+import type {
+  AgentMessageFeedbackType,
+  AgentMessageFeedbackWithMetadataType,
+} from "@app/lib/api/assistant/feedback";
 import {
   fetcher,
   getErrorFromResponse,
+  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
 import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
@@ -84,7 +90,7 @@ export function useAgentConfigurations({
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType | null;
-  includes?: ("authors" | "usage")[];
+  includes?: ("authors" | "usage" | "feedbacks")[];
   limit?: number;
   sort?: "alphabetical" | "priority";
   disabled?: boolean;
@@ -104,6 +110,9 @@ export function useAgentConfigurations({
     }
     if (includes.includes("authors")) {
       params.append("withAuthors", "true");
+    }
+    if (includes.includes("feedbacks")) {
+      params.append("withFeedbacks", "true");
     }
 
     if (limit) {
@@ -227,6 +236,77 @@ export function useAgentConfiguration({
   };
 }
 
+interface AgentConfigurationFeedbacksByDescVersionProps {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  limit: number;
+}
+export function useAgentConfigurationFeedbacksByDescVersion({
+  workspaceId,
+  agentConfigurationId,
+  limit,
+}: AgentConfigurationFeedbacksByDescVersionProps) {
+  const agentConfigurationFeedbacksFetcher: Fetcher<{
+    feedbacks: (
+      | AgentMessageFeedbackType
+      | AgentMessageFeedbackWithMetadataType
+    )[];
+  }> = fetcher;
+
+  const urlParams = new URLSearchParams({
+    limit: limit.toString(),
+    orderColumn: "id",
+    orderDirection: "desc",
+    withMetadata: "true",
+  });
+
+  const [hasMore, setHasMore] = useState(true);
+
+  const { data, error, mutate, size, setSize, isLoading, isValidating } =
+    useSWRInfiniteWithDefaults(
+      (pageIndex: number, previousPageData) => {
+        if (!agentConfigurationId) {
+          return null;
+        }
+
+        // If we have reached the last page and there are no more
+        // messages or the previous page has no messages, return null.
+        if (previousPageData && previousPageData.feedbacks.length < limit) {
+          setHasMore(false);
+          return null;
+        }
+
+        if (previousPageData !== null) {
+          const lastIdValue =
+            previousPageData.feedbacks[previousPageData.feedbacks.length - 1]
+              .id;
+          urlParams.append("lastValue", lastIdValue.toString());
+        }
+        return `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/feedbacks?${urlParams.toString()}`;
+      },
+      agentConfigurationFeedbacksFetcher,
+      {
+        revalidateAll: false,
+        revalidateOnFocus: false,
+      }
+    );
+
+  return {
+    isLoadingInitialData: !error && !data,
+    isAgentConfigurationFeedbacksError: error,
+    isAgentConfigurationFeedbacksLoading: isLoading,
+    isValidating,
+    agentConfigurationFeedbacks: useMemo(
+      () => (data ? data.flatMap((d) => (d ? d.feedbacks : [])) : []),
+      [data]
+    ),
+    hasMore,
+    mutateAgentConfigurationFeedbacks: mutate,
+    setSize,
+    size,
+  };
+}
+
 export function useAgentConfigurationHistory({
   workspaceId,
   agentConfigurationId,
@@ -302,9 +382,36 @@ export function useAgentUsage({
 
   return {
     agentUsage: data ? data.agentUsage : null,
-    isAgentUsageLoading: !error && !data,
+    isAgentUsageLoading: !error && !data && !disabled,
     isAgentUsageError: error,
     mutateAgentUsage: mutate,
+  };
+}
+
+export function useAgentAnalytics({
+  workspaceId,
+  agentConfigurationId,
+  period,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string | null;
+  period: number;
+  disabled?: boolean;
+}) {
+  const agentAnalyticsFetcher: Fetcher<GetAgentConfigurationAnalyticsResponseBody> =
+    fetcher;
+  const fetchUrl = agentConfigurationId
+    ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/analytics?period=${period}`
+    : null;
+  const { data, error } = useSWRWithDefaults(fetchUrl, agentAnalyticsFetcher, {
+    disabled,
+  });
+
+  return {
+    agentAnalytics: data ? data : null,
+    isAgentAnayticsLoading: !error && !data && !disabled,
+    isAgentAnayticsError: error,
   };
 }
 
@@ -342,7 +449,7 @@ export function useDeleteAgentConfiguration({
   agentConfiguration,
 }: {
   owner: LightWorkspaceType;
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfiguration?: LightAgentConfigurationType;
 }) {
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
@@ -354,11 +461,14 @@ export function useDeleteAgentConfiguration({
 
   const { mutateAgentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
     disabled: true, // We only use the hook to mutate the cache
   });
 
   const doDelete = async () => {
+    if (!agentConfiguration) {
+      return;
+    }
     const res = await fetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
       {

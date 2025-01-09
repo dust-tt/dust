@@ -20,7 +20,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
     );
     if (selection.lastSpaceId) {
       const space = await SpaceResource.fetchById(auth, selection.lastSpaceId);
-      if (space && space.canList(auth)) {
+      if (space && space.canReadOrAdministrate(auth)) {
         return {
           redirect: {
             destination: `/w/${owner.sId}/spaces/${space.sId}`,

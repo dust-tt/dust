@@ -128,7 +128,7 @@ export default function CustomerSupport() {
           <P size="lg" className="text-slate-50">
             {pageSettings.description}
           </P>
-          <div>
+          <div className="flex gap-4">
             <Link href="/home/pricing" shallow={true}>
               <Button
                 variant="highlight"
@@ -137,6 +137,13 @@ export default function CustomerSupport() {
                 icon={RocketIcon}
               />
             </Link>
+            <Button
+              variant="outline"
+              size="md"
+              label="Talk to sales"
+              href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
+              target="_blank"
+            />
           </div>
         </div>
         <div

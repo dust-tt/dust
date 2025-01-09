@@ -2,7 +2,6 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  Dialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -28,6 +27,8 @@ import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
+import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
+import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
@@ -50,6 +51,8 @@ type GroupLabel =
 
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
+  const { conversationsNavigationRef } = useConversationsNavigation();
+
   const { setSidebarOpen } = useContext(SidebarContext);
   const { conversations, isConversationsError } = useConversations({
     workspaceId: owner.sId,
@@ -136,16 +139,16 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     };
 
     conversations.forEach((conversation: ConversationType) => {
-      const createdDate = moment(conversation.created);
-      if (createdDate.isSameOrAfter(today)) {
+      const updatedAt = moment(conversation.updated ?? conversation.created);
+      if (updatedAt.isSameOrAfter(today)) {
         groups["Today"].push(conversation);
-      } else if (createdDate.isSameOrAfter(yesterday)) {
+      } else if (updatedAt.isSameOrAfter(yesterday)) {
         groups["Yesterday"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastWeek)) {
+      } else if (updatedAt.isSameOrAfter(lastWeek)) {
         groups["Last Week"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastMonth)) {
+      } else if (updatedAt.isSameOrAfter(lastMonth)) {
         groups["Last Month"].push(conversation);
-      } else if (createdDate.isSameOrAfter(lastYear)) {
+      } else if (updatedAt.isSameOrAfter(lastYear)) {
         groups["Last 12 Months"].push(conversation);
       } else {
         groups["Older"].push(conversation);
@@ -167,31 +170,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   return (
     <>
-      <Dialog
-        title="Clear conversation history"
-        isOpen={showDeleteDialog === "all"}
-        onCancel={() => setShowDeleteDialog(null)}
-        onValidate={deleteAll}
-        validateVariant="warning"
-        isSaving={isDeleting}
-      >
-        Are you sure you want to delete ALL conversations&nbsp;?
-        <br />
-        <b>This action cannot be undone.</b>
-      </Dialog>
-      <Dialog
-        title="Delete conversations"
-        isOpen={showDeleteDialog === "selection"}
-        onCancel={() => setShowDeleteDialog(null)}
-        onValidate={deleteSelection}
-        validateVariant="warning"
-        isSaving={isDeleting}
-      >
-        Are you sure you want to delete {selectedConversations.length}{" "}
-        conversations?
-        <br />
-        <b>This action cannot be undone.</b>
-      </Dialog>
+      <DeleteConversationsDialog
+        isOpen={showDeleteDialog !== null}
+        isDeleting={isDeleting}
+        onClose={() => setShowDeleteDialog(null)}
+        onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
+        type={showDeleteDialog || "all"}
+        selectedCount={selectedConversations.length}
+      />
       <div
         className={classNames(
           "flex grow flex-col",
@@ -237,7 +223,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     }
                   }}
                 />
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
@@ -277,7 +263,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            <NavigationList className="w-full px-2">
+            <NavigationList
+              className="w-full px-2"
+              ref={conversationsNavigationRef}
+            >
               {conversationsByDate &&
                 Object.keys(conversationsByDate).map((dateLabel) => (
                   <RenderConversations

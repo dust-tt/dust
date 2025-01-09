@@ -8,6 +8,7 @@ IMAGE_NAME=""
 DOCKERFILE_PATH=""
 REGION=""
 GCLOUD_IGNORE_FILE=""
+PROJECT_ID=""
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -45,7 +46,7 @@ done
 
 # Validate required arguments
 if [ -z "$WORKING_DIR" ] || [ -z "$IMAGE_NAME" ] || [ -z "$DOCKERFILE_PATH" ] || [ -z "$REGION" ] || [ -z "$PROJECT_ID" ]; then
-    echo "Error: --working-dir, --image-name, --region and --dockerfile-path are required"
+    echo "Error: --working-dir, --image-name, --region, --project-id and --dockerfile-path are required"
     exit 1
 fi
 
@@ -53,7 +54,7 @@ fi
 cd "$WORKING_DIR"
 
 # Prepare the build command
-BUILD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml")
+BUILD_CMD=(gcloud builds submit --quiet --config "${SCRIPT_DIR}/cloudbuild.yaml" --service-account="projects/${PROJECT_ID}/serviceAccounts/cloudbuild-runtime@${PROJECT_ID}.iam.gserviceaccount.com")
 
 if [ -n "$GCLOUD_IGNORE_FILE" ]; then
     BUILD_CMD+=(--ignore-file="$GCLOUD_IGNORE_FILE")

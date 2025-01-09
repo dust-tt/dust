@@ -1,6 +1,8 @@
 import {
+  BarChartIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  classNames,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,6 +29,7 @@ import { useContext, useEffect } from "react";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
@@ -41,7 +44,6 @@ import { getDefaultActionConfiguration } from "@app/components/assistant_builder
 import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 interface AssistantBuilderRightPanelProps {
@@ -54,6 +56,7 @@ interface AssistantBuilderRightPanelProps {
   rightPanelStatus: AssistantBuilderRightPanelStatus;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
+  agentConfigurationId: string | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
 }
 
@@ -67,6 +70,7 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus,
   openRightPanelTab,
   builderState,
+  agentConfigurationId,
   setAction,
 }: AssistantBuilderRightPanelProps) {
   const {
@@ -104,31 +108,39 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {template && (
-        <div className="shrink-0 bg-white pt-5">
-          <Tabs
-            value={rightPanelStatus.tab ?? "Preview"}
-            onValueChange={(t) =>
-              openRightPanelTab(t as AssistantBuilderRightPanelTab)
-            }
-            className="hidden lg:flex"
-          >
-            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+      <div className="shrink-0 bg-white pt-5">
+        <Tabs
+          value={rightPanelStatus.tab ?? "Preview"}
+          onValueChange={(t) =>
+            openRightPanelTab(t as AssistantBuilderRightPanelTab)
+          }
+          className="hidden lg:flex"
+        >
+          <TabsList className="inline-flex items-center gap-2 border-b border-separator">
+            {template && (
               <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+            )}
+            {/* The agentConfigurationId is truthy iff not a new assistant */}
+            {agentConfigurationId && (
               <TabsTrigger
-                value="Preview"
-                label="Preview"
-                icon={ChatBubbleBottomCenterTextIcon}
+                value="Performance"
+                label="Performance"
+                icon={BarChartIcon}
               />
-            </TabsList>
-          </Tabs>
-        </div>
-      )}
+            )}
+            <TabsTrigger
+              value="Preview"
+              label="Preview"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+          </TabsList>
+        </Tabs>
+      </div>
       <div
         className={classNames(
           template !== null
-            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
-            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
+            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 pt-5"
+            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200",
           shouldAnimatePreviewDrawer &&
             rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
@@ -136,7 +148,8 @@ export default function AssistantBuilderRightPanel({
             // This is to prevent the animation from triggering right after the drawer is opened.
             Date.now() - rightPanelStatus.openedAt > 1000
             ? "animate-reload"
-            : ""
+            : "",
+          rightPanelStatus.tab !== "Performance" ? "bg-structure-50" : ""
         )}
       >
         {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
@@ -263,6 +276,15 @@ export default function AssistantBuilderRightPanel({
               </div>
             </div>
           )}
+        {rightPanelStatus.tab === "Performance" && agentConfigurationId && (
+          <div className="ml-4 mt-4">
+            <Page.SectionHeader title="Feedback" />
+            <FeedbacksSection
+              owner={owner}
+              agentConfigurationId={agentConfigurationId}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

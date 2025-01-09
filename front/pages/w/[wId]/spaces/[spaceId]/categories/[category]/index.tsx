@@ -53,7 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !systemSpace || !space.canList(auth)) {
+  if (!space || !systemSpace || !space.canReadOrAdministrate(auth)) {
     return {
       notFound: true,
     };

@@ -3,7 +3,7 @@ use crate::blocks::block::{
 };
 use crate::deno::js_executor::JSExecutor;
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage, SystemChatMessage};
-use crate::providers::llm::{ChatFunction, ChatMessageRole, LLMChatRequest};
+use crate::providers::llm::{ChatFunction, ChatMessageRole, LLMChatLogprob, LLMChatRequest};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -129,6 +129,8 @@ impl Chat {
 #[derive(Debug, Serialize, PartialEq)]
 struct ChatValue {
     message: AssistantChatMessage,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    logprobs: Option<Vec<LLMChatLogprob>>,
 }
 
 #[async_trait]
@@ -292,6 +294,9 @@ impl Block for Chat {
                 }
                 if let Some(Value::String(s)) = v.get("reasoning_effort") {
                     extras["reasoning_effort"] = json!(s.clone());
+                }
+                if let Some(Value::Bool(b)) = v.get("logprobs") {
+                    extras["logprobs"] = json!(b.clone());
                 }
 
                 match extras.as_object().unwrap().keys().len() {
@@ -512,6 +517,7 @@ impl Block for Chat {
         Ok(BlockResult {
             value: serde_json::to_value(ChatValue {
                 message: g.completions[0].clone(),
+                logprobs: g.logprobs.clone(),
             })?,
             meta: Some(json!({
                 "logs": all_logs,

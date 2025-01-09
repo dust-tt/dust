@@ -1,4 +1,11 @@
-import { ElementDialog } from "@dust-tt/sparkle";
+import {
+  NewDialog,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+} from "@dust-tt/sparkle";
 import React from "react";
 import { createPortal } from "react-dom";
 
@@ -63,22 +70,41 @@ export function ConfirmDialog({
   closeDialogFn: () => void;
 }) {
   return (
-    <ElementDialog
-      openOnElement={confirmData}
-      title={confirmData?.title || ""}
-      closeDialogFn={closeDialogFn}
-      onCancel={(closingFn) => {
-        resolveConfirm(false);
-        closingFn();
+    <NewDialog
+      open={confirmData != null}
+      onOpenChange={(open) => {
+        if (!open) {
+          resolveConfirm(false);
+          closeDialogFn();
+        }
       }}
-      onValidate={(closingFn) => {
-        resolveConfirm(true);
-        closingFn();
-      }}
-      validateLabel={confirmData?.validateLabel}
-      validateVariant={confirmData?.validateVariant}
     >
-      {confirmData?.message}
-    </ElementDialog>
+      <NewDialogContent size="md">
+        <NewDialogHeader hideButton>
+          <NewDialogTitle>{confirmData?.title ?? ""}</NewDialogTitle>
+          <NewDialogDescription>
+            {confirmData?.message ?? ""}
+          </NewDialogDescription>
+        </NewDialogHeader>
+        <NewDialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: () => {
+              resolveConfirm(false);
+              closeDialogFn();
+            },
+          }}
+          rightButtonProps={{
+            label: confirmData?.validateLabel ?? "OK",
+            variant: "warning",
+            onClick: async () => {
+              resolveConfirm(true);
+              closeDialogFn();
+            },
+          }}
+        />
+      </NewDialogContent>
+    </NewDialog>
   );
 }

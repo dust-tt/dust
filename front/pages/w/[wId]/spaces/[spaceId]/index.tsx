@@ -29,7 +29,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
 
   const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !space.canList(auth)) {
+  if (!space || !space.canReadOrAdministrate(auth)) {
     return {
       notFound: true,
     };

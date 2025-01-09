@@ -63,7 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const isAdmin = auth.isAdmin();
 
-  if (!owner || !subscription || !space || !space.canList(auth)) {
+  if (!owner || !subscription || !space || !space.canReadOrAdministrate(auth)) {
     return {
       notFound: true,
     };
@@ -106,7 +106,8 @@ const isRunnable = (
       if (
         key != "use_cache" &&
         key != "error_as_output" &&
-        key != "function_call"
+        key != "function_call" &&
+        key != "logprobs"
       ) {
         if (!config[name][key] || config[name][key].length == 0) {
           return false;

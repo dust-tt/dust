@@ -47,8 +47,6 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import {
-  DocumentTrackerChangeSuggestion,
-  TrackedDocument,
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
   TrackerGenerationModel,
@@ -127,8 +125,6 @@ async function main() {
 
   await RunModel.sync({ alter: true });
   await RunUsageModel.sync({ alter: true });
-  await TrackedDocument.sync({ alter: true });
-  await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
   await TrackerConfigurationModel.sync({ alter: true });
   await TrackerDataSourceConfigurationModel.sync({ alter: true });
