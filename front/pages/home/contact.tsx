@@ -10,6 +10,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import { classNames } from "@app/lib/utils";
 
 // Create a separate component for HubSpot form
 const HubSpotForm = dynamic(
@@ -37,14 +38,16 @@ export default function Contact() {
           <>
             To prepare for our demo call, please share a bit about yourself and
             the challenges you're hoping to address with Dust.
-            <div className="justify-left flex w-full px-4 pt-0 sm:px-6 lg:px-8">
-              <div className="w-full max-w-[600px] pb-4">
-                <HubSpotForm />
-              </div>
-            </div>
           </>
         }
       />
+      <div className="grid grid-cols-12 items-start sm:gap-8 md:gap-y-12">
+        <div className="col-span-12 flex flex-col justify-end gap-12 sm:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
+          <div className="w-full max-w-[600px]">
+            <HubSpotForm />
+          </div>
+        </div>
+      </div>
       <TrustedBy />
     </div>
   );
