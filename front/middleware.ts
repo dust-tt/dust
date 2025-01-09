@@ -4,9 +4,16 @@ import { NextResponse } from "next/server";
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
 
-  // We test decodedURL as attackers could hide the traversal patterns behind encodings. Ideally we
-  // should as well check nested encodings but will start with this.
-  const decodedUrl = decodeURIComponent(url);
+  // The CASA test attempts to at least double encode the string to bypass checks hence why we
+  // attempt to handle nested encoding up to 8 times.
+  let decodedUrl = url;
+  let count = 0;
+  let prevUrl;
+  do {
+    prevUrl = decodedUrl;
+    decodedUrl = decodeURIComponent(prevUrl);
+    count++;
+  } while (decodedUrl !== prevUrl && count <= 8);
 
   // Check for various path traversal patterns
   const dangerous = [
