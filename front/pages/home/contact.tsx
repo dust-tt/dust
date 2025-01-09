@@ -1,14 +1,14 @@
 import dynamic from "next/dynamic";
 import type { ReactElement } from "react";
+
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import TrustedBy from "@app/components/home/TrustedBy";
-
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import TrustedBy from "@app/components/home/TrustedBy";
 
 // Create a separate component for HubSpot form
 const HubSpotForm = dynamic(
