@@ -107,6 +107,7 @@ export const supportedOtherFileFormats = {
   "application/json": [".json"],
   "application/xml": [".xml"],
   "application/x-sh": [".sh"],
+  "text/x-sh": [".sh"],
 } as const;
 
 // Supported content types for images.
