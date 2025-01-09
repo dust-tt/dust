@@ -89,6 +89,16 @@ const axiosNoKeepAlive = axios.create({
   httpsAgent: new https.Agent({ keepAlive: false }),
 });
 
+const sanitizedError = (e: unknown) => {
+  if (axios.isAxiosError(e)) {
+    return {
+      ...e,
+      config: undefined,
+    };
+  }
+  return e;
+};
+
 type RequestArgsType = {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
@@ -1058,7 +1068,7 @@ export class DustAPI {
           url,
           duration,
           connectorsError: err,
-          error: e,
+          error: sanitizedError(e),
         },
         "DustAPI error"
       );
