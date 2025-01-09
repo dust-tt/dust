@@ -196,6 +196,7 @@ export function SharingButton({
                 initialScope={initialScope}
                 newScope={newScope}
                 setNewScope={setNewScope}
+                origin="page"
               />
               <div className="text-sm text-element-700">
                 <div>
@@ -305,6 +306,7 @@ interface SharingDropdownProps {
   initialScope: AgentConfigurationScope;
   newScope: AgentConfigurationScope;
   setNewScope: (scope: NonGlobalScope) => void;
+  origin: "page" | "modal";
 }
 
 /*
@@ -317,6 +319,7 @@ export function SharingDropdown({
   initialScope,
   newScope,
   setNewScope,
+  origin,
 }: SharingDropdownProps) {
   const [requestNewScope, setModalNewScope] = useState<NonGlobalScope | null>(
     null
@@ -383,7 +386,7 @@ export function SharingDropdown({
           }
         />
       )}
-      <DropdownMenu>
+      <DropdownMenu modal={origin === "modal"}>
         <DropdownMenuTrigger disabled={!allowedToChange} asChild>
           <div className="group flex cursor-pointer items-center gap-2">
             <SharingChip scope={newScope} />

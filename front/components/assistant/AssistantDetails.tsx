@@ -312,6 +312,7 @@ export function AssistantDetails({
               newScope={agentConfiguration.scope}
               disabled={isUpdatingScope}
               setNewScope={(scope) => updateScope(scope)}
+              origin="modal"
             />
           )}
         </div>
