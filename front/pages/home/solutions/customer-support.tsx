@@ -136,7 +136,6 @@ export default function CustomerSupport() {
               variant="outline"
               size="md"
               label="Talk to sales"
-              icon={UserIcon}
               href="https://forms.gle/dGaQ1AZuDCbXY1ft9"
               target="_blank"
             />
