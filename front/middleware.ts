@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
+
+  // We test decodedURL as attackers could hide the traversal patterns behind encodings. Ideally we
+  // should as well check nested encodings but will start with this.
   const decodedUrl = decodeURIComponent(url);
 
   // Check for various path traversal patterns
