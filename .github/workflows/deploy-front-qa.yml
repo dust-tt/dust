@@ -20,6 +20,7 @@ jobs:
       check_deployment_blocked: false
       component: front-qa
       dockerfile_path: ./front/Dockerfile
+      enforce_main: false
       regions: us-central1
       working_dir: ./
     secrets: inherit

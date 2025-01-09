@@ -29,7 +29,7 @@ jobs:
   deploy:
     uses: ./.github/workflows/reusable-deploy.yml
     with:
-      check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked }}
+      check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked == 'check' }}
       component: viz
       dockerfile_path: ./viz/Dockerfile
       gcloud_ignore_file: .gcloudignore-prodbox
