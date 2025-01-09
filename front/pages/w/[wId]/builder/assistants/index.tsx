@@ -187,7 +187,6 @@ export default function WorkspaceAssistants({
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
         <AssistantDetails
-          showPerformanceTab
           owner={owner}
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
