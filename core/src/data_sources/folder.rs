@@ -12,6 +12,7 @@ pub struct Folder {
     parent_id: Option<String>,
     parents: Vec<String>,
     mime_type: String,
+    source_url: Option<String>,
 }
 
 impl Folder {
@@ -24,6 +25,7 @@ impl Folder {
         parent_id: Option<String>,
         parents: Vec<String>,
         mime_type: String,
+        source_url: Option<String>,
     ) -> Self {
         Folder {
             data_source_id,
@@ -34,6 +36,7 @@ impl Folder {
             parent_id,
             parents,
             mime_type,
+            source_url,
         }
     }
 
@@ -58,6 +61,9 @@ impl Folder {
     pub fn parents(&self) -> &Vec<String> {
         &self.parents
     }
+    pub fn source_url(&self) -> &Option<String> {
+        &self.source_url
+    }
     pub fn mime_type(&self) -> &str {
         &self.mime_type
     }
@@ -75,6 +81,7 @@ impl From<Folder> for Node {
             &folder.mime_type,
             folder.parent_id,
             folder.parents,
+            folder.source_url,
         )
     }
 }

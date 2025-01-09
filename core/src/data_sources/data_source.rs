@@ -231,6 +231,7 @@ impl From<Document> for Node {
             &document.mime_type,
             document.parent_id,
             document.parents.clone(),
+            document.source_url,
         )
     }
 }

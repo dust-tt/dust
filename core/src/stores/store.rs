@@ -65,6 +65,7 @@ pub struct TableUpsertParams {
     pub timestamp: u64,
     pub tags: Vec<String>,
     pub parents: Vec<String>,
+    pub source_url: Option<String>,
     pub remote_database_table_id: Option<String>,
     pub remote_database_secret_id: Option<String>,
     pub title: String,
@@ -77,6 +78,7 @@ pub struct FolderUpsertParams {
     pub title: String,
     pub parents: Vec<String>,
     pub mime_type: String,
+    pub source_url: Option<String>,
 }
 
 #[async_trait]

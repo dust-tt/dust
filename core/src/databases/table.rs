@@ -64,6 +64,7 @@ pub struct Table {
     mime_type: String,
     parent_id: Option<String>,
     parents: Vec<String>,
+    source_url: Option<String>,
 
     schema: Option<TableSchema>,
     schema_stale_at: Option<u64>,
@@ -87,6 +88,7 @@ impl Table {
         tags: Vec<String>,
         parent_id: Option<String>,
         parents: Vec<String>,
+        source_url: Option<String>,
         schema: Option<TableSchema>,
         schema_stale_at: Option<u64>,
         remote_database_table_id: Option<String>,
@@ -106,6 +108,7 @@ impl Table {
             mime_type,
             parent_id,
             parents,
+            source_url,
             schema,
             schema_stale_at,
             remote_database_table_id,
@@ -136,6 +139,9 @@ impl Table {
     }
     pub fn parents(&self) -> &Vec<String> {
         &self.parents
+    }
+    pub fn source_url(&self) -> &Option<String> {
+        &self.source_url
     }
     pub fn name(&self) -> &str {
         &self.name
@@ -251,6 +257,7 @@ impl From<Table> for Node {
             &table.mime_type,
             table.parents.get(1).cloned(),
             table.parents,
+            table.source_url,
         )
     }
 }
@@ -599,6 +606,7 @@ mod tests {
             vec![],
             None,
             vec![],
+            None,
             Some(schema),
             None,
             None,
