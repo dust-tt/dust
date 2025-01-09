@@ -82,9 +82,10 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           step: "start"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
@@ -159,9 +160,10 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
@@ -203,8 +205,9 @@ jobs:
         uses: ./.github/actions/slack-notify
         with:
           step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          region: ${{ inputs.regions }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
