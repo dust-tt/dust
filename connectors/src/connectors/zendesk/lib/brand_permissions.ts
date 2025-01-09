@@ -29,36 +29,36 @@ export async function allowSyncZendeskBrand({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  let brand = await ZendeskBrandResource.fetchByBrandId({
+  const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
 
+  // fetching the brand from Zendesk
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connectionId)
+  );
+  const {
+    result: { brand: fetchedBrand },
+  } = await zendeskApiClient.brand.show(brandId);
+
+  if (!fetchedBrand) {
+    logger.error(
+      { connectorId, brandId },
+      "[Zendesk] Brand could not be fetched."
+    );
+    return false;
+  }
+
+  const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
+
   if (brand) {
     await brand.grantTicketsPermissions();
-    if (brand.hasHelpCenter) {
+    if (helpCenterEnabled) {
       await brand.grantHelpCenterPermissions();
     }
   } else {
-    // fetching the brand from Zendesk
-    const zendeskApiClient = createZendeskClient(
-      await getZendeskSubdomainAndAccessToken(connectionId)
-    );
-    const {
-      result: { brand: fetchedBrand },
-    } = await zendeskApiClient.brand.show(brandId);
-
-    if (!fetchedBrand) {
-      logger.error(
-        { connectorId, brandId },
-        "[Zendesk] Brand could not be fetched."
-      );
-      return false;
-    }
-
-    const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
-
-    brand = await ZendeskBrandResource.makeNew({
+    await ZendeskBrandResource.makeNew({
       blob: {
         subdomain: fetchedBrand.subdomain,
         connectorId: connectorId,
@@ -73,7 +73,7 @@ export async function allowSyncZendeskBrand({
     });
   }
 
-  if (brand?.hasHelpCenter) {
+  if (helpCenterEnabled) {
     await allowSyncZendeskHelpCenter({
       connectorId,
       connectionId,
