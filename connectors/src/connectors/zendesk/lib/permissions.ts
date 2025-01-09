@@ -18,6 +18,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  isBrandHelpCenterEnabled,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -150,9 +151,7 @@ async function getBrandChildren(
       const {
         result: { brand: fetchedBrand },
       } = await zendeskApiClient.brand.show(brandId);
-      hasHelpCenter =
-        fetchedBrand.has_help_center &&
-        fetchedBrand.help_center_state === "enabled";
+      hasHelpCenter = isBrandHelpCenterEnabled(fetchedBrand);
     }
 
     if (hasHelpCenter) {

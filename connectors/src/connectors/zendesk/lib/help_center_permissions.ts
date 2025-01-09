@@ -4,6 +4,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  isBrandHelpCenterEnabled,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
@@ -48,9 +49,7 @@ export async function allowSyncZendeskHelpCenter({
       return false;
     }
 
-    const hasHelpCenter =
-      fetchedBrand.has_help_center &&
-      fetchedBrand.help_center_state === "enabled";
+    const hasHelpCenter = isBrandHelpCenterEnabled(fetchedBrand);
 
     await ZendeskBrandResource.makeNew({
       blob: {
@@ -175,9 +174,7 @@ export async function allowSyncZendeskCategory({
         return null;
       }
 
-      const hasHelpCenter =
-        fetchedBrand.has_help_center &&
-        fetchedBrand.help_center_state === "enabled";
+      const hasHelpCenter = isBrandHelpCenterEnabled(fetchedBrand);
 
       await ZendeskBrandResource.makeNew({
         blob: {
