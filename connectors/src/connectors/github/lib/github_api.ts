@@ -34,7 +34,10 @@ import {
   getCodeFileInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -179,34 +182,46 @@ export async function getRepoIssuesPage(
   login: string,
   page: number
 ): Promise<GithubIssue[]> {
-  const octokit = await getOctokit(connectionId);
+  try {
+    const octokit = await getOctokit(connectionId);
 
-  const issues = (
-    await octokit.rest.issues.listForRepo({
-      owner: login,
-      repo: repoName,
-      per_page: API_PAGE_SIZE,
-      page: page,
-      state: "all",
-    })
-  ).data;
+    const issues = (
+      await octokit.rest.issues.listForRepo({
+        owner: login,
+        repo: repoName,
+        per_page: API_PAGE_SIZE,
+        page: page,
+        state: "all",
+      })
+    ).data;
 
-  return issues.map((i) => ({
-    id: i.id,
-    number: i.number,
-    title: i.title,
-    url: i.html_url,
-    creator: i.user
-      ? {
-          id: i.user.id,
-          login: i.user.login,
-        }
-      : null,
-    createdAt: new Date(i.created_at),
-    updatedAt: new Date(i.updated_at),
-    body: i.body,
-    isPullRequest: !!i.pull_request,
-  }));
+    return issues.map((i) => ({
+      id: i.id,
+      number: i.number,
+      title: i.title,
+      url: i.html_url,
+      creator: i.user
+        ? {
+            id: i.user.id,
+            login: i.user.login,
+          }
+        : null,
+      createdAt: new Date(i.created_at),
+      updatedAt: new Date(i.updated_at),
+      body: i.body,
+      isPullRequest: !!i.pull_request,
+    }));
+  } catch (err) {
+    if (isBadCredentials(err)) {
+      throw new ProviderWorkflowError(
+        "github",
+        `401 - Transient BadCredentialErrror`,
+        "transient_upstream_activity_error"
+      );
+    }
+
+    throw err;
+  }
 }
 
 export async function getIssue(
@@ -248,12 +263,19 @@ export async function getIssue(
     // by safely ignoring the issue and logging the error.
     if (
       isGithubRequestRedirectCountExceededError(err) ||
-      isGithubRequestErrorNotFound(err) ||
-      isBadCredentials(err)
+      isGithubRequestErrorNotFound(err)
     ) {
       logger.info({ err: err.message }, "Failed to get issue.");
 
       return null;
+    }
+
+    if (isBadCredentials(err)) {
+      throw new ProviderWorkflowError(
+        "github",
+        `401 - Transient BadCredentialErrror`,
+        "transient_upstream_activity_error"
+      );
     }
 
     throw err;
