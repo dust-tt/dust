@@ -106,6 +106,7 @@ export class ZendeskBrand extends BaseModel<ZendeskBrand> {
   declare url: string;
   declare subdomain: string;
   declare hasHelpCenter: boolean;
+  declare helpCenterState: string;
 
   declare lastUpsertedTs?: Date;
 
@@ -151,6 +152,10 @@ ZendeskBrand.init(
     },
     hasHelpCenter: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
+    },
+    helpCenterState: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
     lastUpsertedTs: {
