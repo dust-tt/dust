@@ -1463,19 +1463,7 @@ const DatasetSchemaEntryType = FlexibleEnumSchema<
 const DatasetSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
-  data: z
-    .array(
-      z.record(
-        z.union([
-          z.string(),
-          z.number(),
-          z.boolean(),
-          z.object({}).catchall(z.any()),
-        ])
-      )
-    )
-    .nullable()
-    .optional(),
+  data: z.array(z.record(z.any())).nullable().optional(),
   schema: z
     .array(
       z.object({
