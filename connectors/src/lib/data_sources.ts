@@ -51,7 +51,6 @@ export const MAX_DOCUMENT_TXT_LEN = 750000;
 export const MAX_SMALL_DOCUMENT_TXT_LEN = 500000;
 // For some data sources we allow large documents (5mb) to be processed (behind flag).
 export const MAX_LARGE_DOCUMENT_TXT_LEN = 5000000;
-
 export const MAX_FILE_SIZE_TO_DOWNLOAD = 128 * 1024 * 1024;
 
 type UpsertContext = {
@@ -1252,15 +1251,15 @@ export async function _upsertDataSourceFolder({
 }) {
   const now = new Date();
 
-  const r = await getDustAPI(dataSourceConfig).upsertFolder(
-    dataSourceConfig.dataSourceId,
+  const r = await getDustAPI(dataSourceConfig).upsertFolder({
+    dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
-    timestampMs ? timestampMs : now.getTime(),
+    timestamp: timestampMs ? timestampMs : now.getTime(),
     title,
     parentId,
     parents,
-    mimeType
-  );
+    mimeType,
+  });
 
   if (r.isErr()) {
     throw r.error;
@@ -1275,10 +1274,10 @@ export async function deleteDataSourceFolder({
   folderId: string;
   loggerArgs?: Record<string, string | number>;
 }) {
-  const r = await getDustAPI(dataSourceConfig).deleteFolder(
-    dataSourceConfig.dataSourceId,
-    folderId
-  );
+  const r = await getDustAPI(dataSourceConfig).deleteFolder({
+    dataSourceId: dataSourceConfig.dataSourceId,
+    folderId,
+  });
 
   if (r.isErr()) {
     throw r.error;

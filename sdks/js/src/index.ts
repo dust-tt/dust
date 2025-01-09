@@ -59,19 +59,35 @@ import {
 
 export * from "./types";
 
+import type { AxiosRequestConfig } from "axios";
+import axios from "axios";
 import { createParser } from "eventsource-parser";
+import http from "http";
+import https from "https";
+import { Readable } from "stream";
 
-export function isAPIError(obj: unknown): obj is APIError {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    "message" in obj &&
-    typeof obj.message === "string" &&
-    "type" in obj &&
-    typeof obj.type === "string"
-    // TODO(spolu): check type is a valid APIErrorType
-  );
+interface DustResponse {
+  status: number;
+  ok: boolean;
+  url: string;
+  body: Readable;
 }
+
+const textFromResponse = async (response: DustResponse): Promise<string> => {
+  const stream = response.body;
+
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+    stream.on("error", reject);
+  });
+};
+
+const axiosNoKeepAlive = axios.create({
+  httpAgent: new http.Agent({ keepAlive: false }),
+  httpsAgent: new https.Agent({ keepAlive: false }),
+});
 
 type RequestArgsType = {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -137,15 +153,16 @@ export class DustAPI {
   /**
    * Fetches the current user's information from the API.
    *
-   * This method sends a GET request to the `/api/v1/me` endpoint with the necessary
-   * authorization headers. It then processes the response to extract the user information.
-   * Note that this will only work if you are using an OAuth2 token. It will always fail with a workspace API key.
+   * This method sends a GET request to the `/api/v1/me` endpoint with the necessary authorization
+   * headers. It then processes the response to extract the user information.  Note that this will
+   * only work if you are using an OAuth2 token. It will always fail with a workspace API key.
    *
    * @returns {Promise<Result<User, Error>>} A promise that resolves to a Result object containing
    * either the user information or an error.
    */
   async me() {
-    // This method call directly _fetchWithError and _resultFromResponse as it's a little special : it doesn't live under the workspace resource.
+    // This method call directly _fetchWithError and _resultFromResponse as it's a little special:
+    // it doesn't live under the workspace resource.
     const headers: RequestInit["headers"] = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${await this.getApiKey()}`,
@@ -182,7 +199,7 @@ export class DustAPI {
     const res = await this._fetchWithError(url, {
       method: args.method,
       headers,
-      body: args.body ? JSON.stringify(args.body) : undefined,
+      data: args.body ? JSON.stringify(args.body) : undefined,
       signal: args.signal,
     });
 
@@ -291,7 +308,7 @@ export class DustAPI {
      * @param res an HTTP response ready to be consumed as a stream
      */
     async function processStreamedRunResponse(
-      res: Response,
+      res: DustResponse,
       logger: LoggerInterface
     ) {
       if (!res.ok || !res.body) {
@@ -399,23 +416,31 @@ export class DustAPI {
         }
       });
 
-      const reader = res.body.getReader();
+      const reader = res.body;
 
       const streamEvents = async function* () {
         try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              break;
-            }
-            parser.feed(new TextDecoder().decode(value));
+          for await (const chunk of reader) {
+            parser.feed(new TextDecoder().decode(chunk));
             for (const event of pendingEvents) {
               yield event;
             }
             pendingEvents = [];
           }
+          // while (true) {
+          //   const { done, value } = await reader.read();
+          //   if (done) {
+          //     break;
+          //   }
+          //   parser.feed(new TextDecoder().decode(value));
+          //   for (const event of pendingEvents) {
+          //     yield event;
+          //   }
+          //   pendingEvents = [];
+          // }
           if (!hasRunId) {
-            // once the stream is entirely consumed, if we haven't received a run id, reject the promise
+            // Once the stream is entirely consumed, if we haven't received a run id, reject the
+            // promise.
             setImmediate(() => {
               logger.error({}, "No run id received.");
               rejectDustRunIdPromise(new Error("No run id received"));
@@ -435,10 +460,8 @@ export class DustAPI {
               errorStr: JSON.stringify(e),
               errorSource: "processStreamedRunResponse",
             },
-            "Error streaming chunks."
+            "DustAPI error: streaming chunks"
           );
-        } finally {
-          reader.releaseLock();
         }
       };
 
@@ -453,14 +476,10 @@ export class DustAPI {
 
   /**
    * This actions talks to the Dust production API to retrieve the list of data sources of the
-   * specified workspace id.
-   *
-   * @param workspaceId string the workspace id to fetch data sources for
+   * current workspace.
    */
-  async getDataSources(workspaceId: string) {
-    // Note for henry: do we need to override the workspace id here? (isn't it already derived from the credentials?)
+  async getDataSources() {
     const res = await this.request({
-      overrideWorkspaceId: workspaceId,
       method: "GET",
       path: "data_sources",
     });
@@ -472,10 +491,13 @@ export class DustAPI {
     return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations(
-    view?: AgentConfigurationViewType,
-    includes: "authors"[] = []
-  ) {
+  async getAgentConfigurations({
+    view,
+    includes = [],
+  }: {
+    view?: AgentConfigurationViewType;
+    includes?: "authors"[];
+  }) {
     // Function to generate query parameters.
     function getQueryString() {
       const params = new URLSearchParams();
@@ -621,7 +643,7 @@ export class DustAPI {
         type: "dust_api_error",
         message: `Error running streamed app: status_code=${
           res.value.response.status
-        }  - message=${await res.value.response.text()}`,
+        }  - message=${await textFromResponse(res.value.response)}`,
       });
     }
 
@@ -682,17 +704,13 @@ export class DustAPI {
       }
     });
 
-    const reader = res.value.response.body.getReader();
-    const logger = this._logger;
+    const reader = res.value.response.body;
+    const logger = this._logger.child({});
 
     const streamEvents = async function* () {
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          parser.feed(new TextDecoder().decode(value));
+        for await (const chunk of reader) {
+          parser.feed(new TextDecoder().decode(chunk));
           for (const event of pendingEvents) {
             yield event;
           }
@@ -710,12 +728,10 @@ export class DustAPI {
           {
             error: e,
             errorStr: JSON.stringify(e),
-            errorSource: "postUserMessage",
+            errorSource: "streamAgentAnswerEvents",
           },
-          "Error streaming chunks."
+          "DustAPI error: streaming chunks"
         );
-      } finally {
-        reader.releaseLock();
       }
     };
 
@@ -795,15 +811,23 @@ export class DustAPI {
     return new Ok(r.value.tokens);
   }
 
-  async upsertFolder(
-    dataSourceId: string,
-    folderId: string,
-    timestamp: number,
-    title: string,
-    parentId: string | null,
-    parents: string[],
-    mimeType: string
-  ) {
+  async upsertFolder({
+    dataSourceId,
+    folderId,
+    timestamp,
+    title,
+    parentId,
+    parents,
+    mimeType,
+  }: {
+    dataSourceId: string;
+    folderId: string;
+    timestamp: number;
+    title: string;
+    parentId: string | null;
+    parents: string[];
+    mimeType: string;
+  }) {
     const res = await this.request({
       method: "POST",
       path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
@@ -826,7 +850,13 @@ export class DustAPI {
     return new Ok(r.value);
   }
 
-  async deleteFolder(dataSourceId: string, folderId: string) {
+  async deleteFolder({
+    dataSourceId,
+    folderId,
+  }: {
+    dataSourceId: string;
+    folderId: string;
+  }) {
     const res = await this.request({
       method: "DELETE",
       path: `data_sources/${dataSourceId}/folders/${encodeURIComponent(
@@ -878,29 +908,30 @@ export class DustAPI {
     formData.append("file", fileObject);
 
     // Upload file to the obtained URL.
-    let uploadResult;
     try {
-      uploadResult = await fetch(file.uploadUrl, {
-        method: "POST",
-        headers: await this.baseHeaders(),
-        body: formData,
-      });
+      const {
+        data: { file: fileUploaded },
+      } = await axiosNoKeepAlive.post<FileUploadedRequestResponseType>(
+        file.uploadUrl,
+        formData,
+        { headers: await this.baseHeaders() }
+      );
+      return new Ok(fileUploaded);
     } catch (err) {
-      return new Err(new Error(err instanceof Error ? err.message : undefined));
-    }
-
-    if (!uploadResult.ok) {
+      if (axios.isAxiosError(err)) {
+        return new Err(
+          new Error(
+            err.response?.data?.error?.message || "Failed to upload file"
+          )
+        );
+      }
       return new Err(
-        new Error(uploadResult.statusText || "Failed to upload file")
+        new Error(err instanceof Error ? err.message : "Unknown error")
       );
     }
-    const { file: fileUploaded } =
-      (await uploadResult.json()) as FileUploadedRequestResponseType;
-
-    return new Ok(fileUploaded);
   }
 
-  async deleteFile(fileID: string) {
+  async deleteFile({ fileID }: { fileID: string }) {
     const res = await this.request({
       method: "DELETE",
       path: `files/${fileID}`,
@@ -981,12 +1012,12 @@ export class DustAPI {
 
   async patchDataSourceView(
     dataSourceView: DataSourceViewType,
-    patchData: PatchDataSourceViewRequestType
+    patch: PatchDataSourceViewRequestType
   ) {
     const res = await this.request({
       method: "PATCH",
       path: `spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}`,
-      body: patchData,
+      body: patch,
     });
 
     const r = await this._resultFromResponse(DataSourceViewResponseSchema, res);
@@ -999,12 +1030,22 @@ export class DustAPI {
 
   private async _fetchWithError(
     url: string,
-    init?: RequestInit
-  ): Promise<Result<{ response: Response; duration: number }, APIError>> {
+    config?: AxiosRequestConfig
+  ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
     const now = Date.now();
     try {
-      const res = await fetch(url, init);
-      return new Ok({ response: res, duration: Date.now() - now });
+      const res = await axiosNoKeepAlive<Readable>(url, {
+        validateStatus: () => true,
+        responseType: "stream",
+        ...config,
+      });
+      const response: DustResponse = {
+        status: res.status,
+        url: res.config.url || url,
+        body: res.data,
+        ok: res.status >= 200 && res.status < 300,
+      };
+      return new Ok({ response, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
       const err: APIError = {
@@ -1013,6 +1054,7 @@ export class DustAPI {
       };
       this._logger.error(
         {
+          dustError: err,
           url,
           duration,
           connectorsError: err,
@@ -1028,7 +1070,7 @@ export class DustAPI {
     schema: T,
     res: Result<
       {
-        response: Response;
+        response: DustResponse;
         duration: number;
       },
       APIError
@@ -1039,20 +1081,31 @@ export class DustAPI {
     }
 
     if (res.value.response.status === 413) {
-      return new Err({
+      const err: APIError = {
         type: "content_too_large",
-        title: "Your message is too long to be sent.",
-        message: "Please try again with a shorter message.",
-      });
+        message:
+          "Your request content is too large, please try again with a shorter content.",
+      };
+      this._logger.error(
+        {
+          dustError: err,
+          status: res.value.response.status,
+          url: res.value.response.url,
+          duration: res.value.duration,
+        },
+        "DustAPI error"
+      );
+      return new Err(err);
     }
 
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
-    const text = await res.value.response.text();
+    const text = await textFromResponse(res.value.response);
 
     try {
       const response = JSON.parse(text);
       const r = schema.safeParse(response);
+      // This assume that safe parsing means a 200 status.
       if (r.success) {
         return new Ok(r.data as z.infer<T>);
       } else {
@@ -1060,12 +1113,23 @@ export class DustAPI {
         const rErr = APIErrorSchema.safeParse(response["error"]);
         if (rErr.success) {
           // Successfully parsed an error
+          this._logger.error(
+            {
+              dustError: rErr.data,
+              status: res.value.response.status,
+              url: res.value.response.url,
+              duration: res.value.duration,
+            },
+            "DustAPI error"
+          );
           return new Err(rErr.data);
         } else {
           // Unexpected response format (neither an error nor a valid response)
           const err: APIError = {
             type: "unexpected_response_format",
-            message: `Unexpected response format from DustAPI calling ${res.value.response.url} : ${r.error.message}`,
+            message:
+              `Unexpected response format from DustAPI calling ` +
+              `${res.value.response.url} : ${r.error.message}`,
           };
           this._logger.error(
             {
@@ -1084,7 +1148,9 @@ export class DustAPI {
     } catch (e) {
       const err: APIError = {
         type: "unexpected_response_format",
-        message: `Fail to parse response from DustAPI calling ${res.value.response.url} : ${e}`,
+        message:
+          `Fail to parse response from DustAPI calling ` +
+          `${res.value.response.url} : ${e}`,
       };
       this._logger.error(
         {

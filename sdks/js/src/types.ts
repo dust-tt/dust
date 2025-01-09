@@ -338,6 +338,7 @@ export interface LoggerInterface {
   info: (args: Record<string, unknown>, message: string) => void;
   trace: (args: Record<string, unknown>, message: string) => void;
   warn: (args: Record<string, unknown>, message: string) => void;
+  child: (args: Record<string, unknown>) => LoggerInterface;
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<

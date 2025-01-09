@@ -383,7 +383,7 @@ async function answerMessage(
     lastSlackChatBotMessage?.conversationId || null
   );
 
-  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations({});
   if (agentConfigurationsRes.isErr()) {
     return new Err(new Error(agentConfigurationsRes.error.message));
   }
