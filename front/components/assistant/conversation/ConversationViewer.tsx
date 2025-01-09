@@ -325,7 +325,7 @@ const ConversationViewer = React.forwardRef<
   return (
     <ConversationContainer
       className={classNames(
-        "w-full max-w-4xl justify-start pb-4",
+        "h-full w-full max-w-4xl justify-start pb-4",
         isFading ? "animate-fadeout" : "",
         isInModal ? "pt-4" : "sm:px-4"
       )}
