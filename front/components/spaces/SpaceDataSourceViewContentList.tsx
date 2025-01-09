@@ -33,6 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import type {
   ContentActionKey,
   ContentActionsRef,
@@ -52,6 +53,7 @@ import {
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -371,143 +373,150 @@ export const SpaceDataSourceViewContentList = ({
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (
-    <>
-      <div
-        className={classNames(
-          "flex gap-2",
-          isEmpty
-            ? "h-36 w-full items-center justify-center rounded-xl bg-muted-background"
-            : ""
-        )}
+    // MultipleDocumentsUpload listens to the file drop context and will upload the files
+    <FileDropProvider>
+      <DropzoneContainer
+        description="Drag and drop your files here."
+        title="Add Files"
+        disabled={!canWriteInSpace}
       >
-        {!isEmpty && (
-          <>
-            <SearchInput
-              name="search"
-              placeholder="Search (Name)"
-              value={dataSourceSearch}
-              onChange={(s) => {
-                setPagination(
-                  { pageIndex: 0, pageSize: pagination.pageSize },
-                  "replace"
-                );
-                setDataSourceSearch(s);
-              }}
-            />
-          </>
-        )}
-        {isEmpty && emptyContent}
-        {isFolder(dataSourceView.dataSource) && (
-          <>
-            {((viewType === "tables" && hasDocuments) ||
-              (viewType === "documents" && hasTables)) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    label={viewType === "documents" ? "Documents" : "Tables"}
-                    variant="outline"
-                    isSelect
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    label="Documents"
-                    onClick={() => handleViewTypeChange("documents")}
-                  />
-                  <DropdownMenuItem
-                    label="Tables"
-                    onClick={() => handleViewTypeChange("tables")}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            <FoldersHeaderMenu
+        <div
+          className={classNames(
+            "flex gap-2",
+            isEmpty
+              ? "h-36 w-full items-center justify-center rounded-xl bg-muted-background"
+              : ""
+          )}
+        >
+          {!isEmpty && (
+            <>
+              <SearchInput
+                name="search"
+                placeholder="Search (Name)"
+                value={dataSourceSearch}
+                onChange={(s) => {
+                  setPagination(
+                    { pageIndex: 0, pageSize: pagination.pageSize },
+                    "replace"
+                  );
+                  setDataSourceSearch(s);
+                }}
+              />
+            </>
+          )}
+          {isEmpty && emptyContent}
+          {isFolder(dataSourceView.dataSource) && (
+            <>
+              {((viewType === "tables" && hasDocuments) ||
+                (viewType === "documents" && hasTables)) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      label={viewType === "documents" ? "Documents" : "Tables"}
+                      variant="outline"
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      label="Documents"
+                      onClick={() => handleViewTypeChange("documents")}
+                    />
+                    <DropdownMenuItem
+                      label="Tables"
+                      onClick={() => handleViewTypeChange("tables")}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <FoldersHeaderMenu
+                owner={owner}
+                space={space}
+                canWriteInSpace={canWriteInSpace}
+                folder={dataSourceView}
+                contentActionsRef={contentActionsRef}
+              />
+            </>
+          )}
+          {isWebsite(dataSourceView.dataSource) && (
+            <WebsitesHeaderMenu
               owner={owner}
               space={space}
               canWriteInSpace={canWriteInSpace}
-              folder={dataSourceView}
-              contentActionsRef={contentActionsRef}
+              dataSourceView={dataSourceView}
             />
-          </>
+          )}
+          {isManaged(dataSourceView.dataSource) &&
+            space.kind !== "system" &&
+            !isEmpty && (
+              <EditSpaceManagedDataSourcesViews
+                owner={owner}
+                space={space}
+                systemSpace={systemSpace}
+                isAdmin={isAdmin}
+                dataSourceView={dataSourceView}
+                onSelectedDataUpdated={onSelectedDataUpdated}
+              />
+            )}
+          {isManaged(dataSourceView.dataSource) &&
+            connector &&
+            !parentId &&
+            space.kind === "system" && (
+              <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+                {!isNodesLoading && rows.length === 0 && (
+                  <div>Connection ready. Select the data to sync.</div>
+                )}
+
+                <ConnectorPermissionsModal
+                  owner={owner}
+                  connector={connector}
+                  dataSource={dataSourceView.dataSource}
+                  isOpen={showConnectorPermissionsModal}
+                  onClose={(save) => {
+                    setShowConnectorPermissionsModal(false);
+                    if (save) {
+                      void mutateContentNodes();
+                    }
+                  }}
+                  readOnly={false}
+                  isAdmin={isAdmin}
+                  onManageButtonClick={() => {
+                    setShowConnectorPermissionsModal(true);
+                  }}
+                />
+              </div>
+            )}
+        </div>
+        {isNodesLoading && (
+          <div className="mt-8 flex justify-center">
+            <Spinner />
+          </div>
         )}
-        {isWebsite(dataSourceView.dataSource) && (
-          <WebsitesHeaderMenu
-            owner={owner}
-            space={space}
-            canWriteInSpace={canWriteInSpace}
-            dataSourceView={dataSourceView}
+        {rows.length > 0 && (
+          <DataTable
+            data={rows}
+            columns={columns}
+            filter={dataSourceSearch}
+            filterColumn="title"
+            className="pb-4"
+            sorting={sorting}
+            setSorting={setSorting}
+            totalRowCount={isServerPagination ? totalNodesCount : undefined}
+            pagination={pagination}
+            setPagination={setPagination}
+            columnsBreakpoints={columnsBreakpoints}
           />
         )}
-        {isManaged(dataSourceView.dataSource) &&
-          space.kind !== "system" &&
-          !isEmpty && (
-            <EditSpaceManagedDataSourcesViews
-              owner={owner}
-              space={space}
-              systemSpace={systemSpace}
-              isAdmin={isAdmin}
-              dataSourceView={dataSourceView}
-              onSelectedDataUpdated={onSelectedDataUpdated}
-            />
-          )}
-        {isManaged(dataSourceView.dataSource) &&
-          connector &&
-          !parentId &&
-          space.kind === "system" && (
-            <div className="flex flex-col items-center gap-2 text-sm text-element-700">
-              {!isNodesLoading && rows.length === 0 && (
-                <div>Connection ready. Select the data to sync.</div>
-              )}
-
-              <ConnectorPermissionsModal
-                owner={owner}
-                connector={connector}
-                dataSource={dataSourceView.dataSource}
-                isOpen={showConnectorPermissionsModal}
-                onClose={(save) => {
-                  setShowConnectorPermissionsModal(false);
-                  if (save) {
-                    void mutateContentNodes();
-                  }
-                }}
-                readOnly={false}
-                isAdmin={isAdmin}
-                onManageButtonClick={() => {
-                  setShowConnectorPermissionsModal(true);
-                }}
-              />
-            </div>
-          )}
-      </div>
-      {isNodesLoading && (
-        <div className="mt-8 flex justify-center">
-          <Spinner />
-        </div>
-      )}
-      {rows.length > 0 && (
-        <DataTable
-          data={rows}
-          columns={columns}
-          filter={dataSourceSearch}
-          filterColumn="title"
-          className="pb-4"
-          sorting={sorting}
-          setSorting={setSorting}
-          totalRowCount={isServerPagination ? totalNodesCount : undefined}
-          pagination={pagination}
-          setPagination={setPagination}
-          columnsBreakpoints={columnsBreakpoints}
+        <ContentActions
+          ref={contentActionsRef}
+          dataSourceView={dataSourceView}
+          totalNodesCount={totalNodesCount}
+          owner={owner}
+          plan={plan}
+          onSave={onSaveAction}
         />
-      )}
-      <ContentActions
-        ref={contentActionsRef}
-        dataSourceView={dataSourceView}
-        totalNodesCount={totalNodesCount}
-        owner={owner}
-        plan={plan}
-        onSave={onSaveAction}
-      />
-    </>
+      </DropzoneContainer>
+    </FileDropProvider>
   );
 };
