@@ -32,7 +32,6 @@ jobs:
       check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked == 'check' }}
       component: oauth
       dockerfile_path: ./oauth.Dockerfile
-      enforce_main: true
       regions: ${{ github.event.inputs.regions }}
       working_dir: ./core/
     secrets: inherit
