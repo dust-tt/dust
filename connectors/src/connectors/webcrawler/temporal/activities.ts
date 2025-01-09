@@ -181,7 +181,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             if (isTooLongToCrawl) {
               childLogger.error(
                 {
-                  url,
+                  url: rootUrl,
                   configId: webCrawlerConfig.id,
                   panic: true,
                   crawls_per_minute: Math.round(
@@ -320,7 +320,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             documentId,
             configId: webCrawlerConfig.id,
             documentLen: extracted.length,
-            url,
+            url: rootUrl,
           },
           "Successfully crawled page"
         );
@@ -343,10 +343,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             extracted.length > 0 &&
             extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
           ) {
-            const validatedUrl = validateUrl(url);
+            const validatedUrl = validateUrl(request.url);
             if (!validatedUrl.valid || !validatedUrl.standardized) {
               childLogger.info(
-                { documentId, configId: webCrawlerConfig.id, url },
+                { documentId, configId: webCrawlerConfig.id, url: request.url },
                 `Invalid document or URL. Skipping`
               );
               return;
@@ -381,7 +381,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                 configId: webCrawlerConfig.id,
                 documentLen: extracted.length,
                 title: pageTitle,
-                url,
+                url: request.url,
               },
               `Document is empty or too big to be upserted. Skipping`
             );
@@ -393,7 +393,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             {
               error: e,
               configId: webCrawlerConfig.id,
-              url,
+              url: rootUrl,
             },
             "Webcrawler error while upserting document"
           );
@@ -440,20 +440,20 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     })
   );
 
-  let url = webCrawlerConfig.url.trim();
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = `http://${url}`;
+  let rootUrl = webCrawlerConfig.url.trim();
+  if (!rootUrl.startsWith("http://") && !rootUrl.startsWith("https://")) {
+    rootUrl = `http://${rootUrl}`;
   }
 
   childLogger.info(
     {
-      url,
+      url: rootUrl,
       configId: webCrawlerConfig.id,
     },
     "Webcrawler activity started"
   );
 
-  const stats = await crawler.run([url]);
+  const stats = await crawler.run([rootUrl]);
 
   await crawler.teardown();
 
@@ -484,7 +484,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   childLogger.info(
     {
-      url,
+      url: rootUrl,
       pageCount: pageCount.valid,
       crawlingError,
       configId: webCrawlerConfig.id,
