@@ -126,12 +126,12 @@ async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  if (!space.canReadOrAdministrate(auth)) {
+  if (!auth.isSystemKey()) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
-        type: "space_not_found",
-        message: "The space you requested was not found.",
+        type: "invalid_oauth_token_error",
+        message: "Only system keys are allowed to use this endpoint.",
       },
     });
   }
