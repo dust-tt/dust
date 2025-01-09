@@ -4,12 +4,15 @@ const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com;`,
   `style-src 'self' 'unsafe-inline' *.typekit.net;`,
+  `img-src 'self' data: https:;`,
   `connect-src 'self' *.google-analytics.com;`,
+  `font-src 'self' data: *.typekit.net;`,
   `object-src 'none';`,
   `form-action 'self';`,
-  `image-src 'self' data: https:;`,
   `base-uri 'self';`,
   `frame-ancestors 'self';`,
+  `manifest-src 'self';`,
+  `worker-src 'self';`,
   `upgrade-insecure-requests;`,
 ].join(" ");
 
