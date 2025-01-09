@@ -31,7 +31,7 @@ import type {
   AgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { isBuilder, removeNulls } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
@@ -57,7 +57,6 @@ type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   assistantId: string | null;
-  showPerformanceTab?: boolean;
 };
 
 function AssistantDetailsInfo({
@@ -265,7 +264,6 @@ export function AssistantDetails({
   assistantId,
   onClose,
   owner,
-  showPerformanceTab = false,
 }: AssistantDetailsProps) {
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
   const [selectedTab, setSelectedTab] = useState("info");
@@ -349,7 +347,7 @@ export function AssistantDetails({
           {agentConfiguration && (
             <div className="flex flex-col gap-5 pt-6 text-sm text-foreground">
               <DescriptionSection />
-              {showPerformanceTab && (
+              {isBuilder(owner) && (
                 <Tabs value={selectedTab}>
                   <TabsList>
                     <TabsTrigger
