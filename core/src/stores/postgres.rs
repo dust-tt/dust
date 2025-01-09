@@ -172,7 +172,7 @@ impl PostgresStore {
                 node_id = upsert_params.node_id,
                 parents = ?upsert_params.parents,
                 operation = "upsert_node",
-                "[KWSEARCH] invariant_parent_exist_in_nodes"
+                "[KWSEARCH] invariant_parents_missing_in_nodes"
             );
         }
 
