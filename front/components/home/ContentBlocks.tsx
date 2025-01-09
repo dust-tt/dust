@@ -142,7 +142,7 @@ export const HeaderContentBlock = ({
   <Grid>
     <div
       className={classNames(
-        "flex flex-col justify-end gap-12 pt-12 lg:pt-12",
+        "flex flex-col justify-end gap-12 pt-12",
         "col-span-12",
         "sm:col-span-12",
         "lg:col-span-8 lg:col-start-2",
