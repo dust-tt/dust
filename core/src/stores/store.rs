@@ -67,8 +67,8 @@ pub struct TableUpsertParams {
     pub parents: Vec<String>,
     pub remote_database_table_id: Option<String>,
     pub remote_database_secret_id: Option<String>,
-    pub title: Option<String>,
-    pub mime_type: Option<String>,
+    pub title: String,
+    pub mime_type: String,
 }
 
 pub struct FolderUpsertParams {
