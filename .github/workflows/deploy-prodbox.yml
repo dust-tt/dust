@@ -1,4 +1,4 @@
-name: Deploy Prodbox EU (TMP)
+name: Deploy Prodbox
 
 on:
   workflow_dispatch:
