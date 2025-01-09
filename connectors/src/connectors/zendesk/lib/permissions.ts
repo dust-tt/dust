@@ -144,16 +144,10 @@ async function getBrandChildren(
     };
     nodes.push(ticketsNode);
 
-    let helpCenterEnabled;
-    if (brandInDb) {
-      helpCenterEnabled =
-        brandInDb.hasHelpCenter && brandInDb.helpCenterState === "enabled";
-    } else {
-      const {
-        result: { brand: fetchedBrand },
-      } = await zendeskApiClient.brand.show(brandId);
-      helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
-    }
+    const {
+      result: { brand: fetchedBrand },
+    } = await zendeskApiClient.brand.show(brandId);
+    const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
 
     if (helpCenterEnabled) {
       const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
