@@ -440,7 +440,7 @@ export async function getAssistantUsageData(
   if (!mentions.length) {
     return "No data available for the selected period.";
   }
-  return generateCsvFromQueryResult(mentions);
+  return mentions.length.toString();
 }
 
 export async function getAssistantsUsageData(
