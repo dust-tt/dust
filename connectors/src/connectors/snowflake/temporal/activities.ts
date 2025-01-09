@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import { isSnowflakeCredentials } from "@dust-tt/types";
+import { isSnowflakeCredentials, SNOWFLAKE_MIME_TYPES } from "@dust-tt/types";
 
 import {
   connectToSnowflake,
@@ -168,7 +168,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           title: table.databaseName,
           parents: [table.databaseName],
           parentId: null,
-          mimeType: "application/vnd.snowflake.database",
+          mimeType: SNOWFLAKE_MIME_TYPES.DATABASE,
         });
 
         // upsert a folder for the schema (child of the database)
@@ -179,7 +179,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           title: table.schemaName,
           parents: [schemaId, table.databaseName],
           parentId: table.databaseName,
-          mimeType: "application/vnd.snowflake.schema",
+          mimeType: SNOWFLAKE_MIME_TYPES.SCHEMA,
         });
 
         await upsertDataSourceRemoteTable({
@@ -192,7 +192,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           parents: [table.internalId, schemaId, table.databaseName],
           parentId: schemaId,
           title: table.name,
-          mimeType: "application/vnd.snowflake.table",
+          mimeType: SNOWFLAKE_MIME_TYPES.TABLE,
         });
         await table.update({
           lastUpsertedAt: new Date(),

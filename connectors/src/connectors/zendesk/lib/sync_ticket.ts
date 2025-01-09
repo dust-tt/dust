@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { ZENDESK_MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import type {
@@ -236,7 +237,7 @@ ${comments
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
       title: ticket.subject,
-      mimeType: "application/vnd.dust.zendesk.ticket",
+      mimeType: ZENDESK_MIME_TYPES.TICKET,
       async: true,
     });
     await ticketInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });

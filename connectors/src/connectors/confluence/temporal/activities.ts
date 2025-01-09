@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import {
+  CONFLUENCE_MIME_TYPES,
   ConfluenceClientError,
   isConfluenceNotFoundError,
 } from "@dust-tt/types";
@@ -221,7 +222,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     parents: [makeSpaceInternalId(spaceId)],
     parentId: null,
     title: spaceName,
-    mimeType: "application/vnd.dust.confluence.space",
+    mimeType: CONFLUENCE_MIME_TYPES.SPACE,
   });
 }
 
@@ -328,7 +329,7 @@ async function upsertConfluencePageToDataSource({
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: { sync_type: syncType },
       title: page.title,
-      mimeType: "application/vnd.dust.confluence.page",
+      mimeType: CONFLUENCE_MIME_TYPES.PAGE,
       async: true,
     });
   }

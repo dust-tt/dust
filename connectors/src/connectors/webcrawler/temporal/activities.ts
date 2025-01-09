@@ -3,6 +3,7 @@ import {
   stripNullBytes,
   WEBCRAWLER_MAX_DEPTH,
   WEBCRAWLER_MAX_PAGES,
+  WEBCRAWLER_MIME_TYPES,
 } from "@dust-tt/types";
 import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import { Context } from "@temporalio/activity";
@@ -291,7 +292,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             parents,
             parentId: parents[1] || null,
             title: folder,
-            mimeType: "application/vnd.dust.webcrawler.folder",
+            mimeType: WEBCRAWLER_MIME_TYPES.FOLDER,
           });
 
           createdFolders.add(folder);

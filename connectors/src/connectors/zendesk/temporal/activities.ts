@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { ZENDESK_MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
 import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
@@ -136,7 +137,7 @@ export async function syncZendeskBrandActivity({
     parents: [brandInternalId],
     parentId: null,
     title: brandInDb.name,
-    mimeType: "application/vnd.dust.zendesk.brand",
+    mimeType: ZENDESK_MIME_TYPES.BRAND,
   });
 
   // using the content node to get one source of truth regarding the parent relationship
@@ -147,7 +148,7 @@ export async function syncZendeskBrandActivity({
     parents: [helpCenterNode.internalId, helpCenterNode.parentInternalId],
     parentId: helpCenterNode.parentInternalId,
     title: helpCenterNode.title,
-    mimeType: "application/vnd.dust.zendesk.helpcenter",
+    mimeType: ZENDESK_MIME_TYPES.HELP_CENTER,
   });
 
   // using the content node to get one source of truth regarding the parent relationship
@@ -158,7 +159,7 @@ export async function syncZendeskBrandActivity({
     parents: [ticketsNode.internalId, ticketsNode.parentInternalId],
     parentId: ticketsNode.parentInternalId,
     title: ticketsNode.title,
-    mimeType: "application/vnd.dust.zendesk.tickets",
+    mimeType: ZENDESK_MIME_TYPES.TICKETS,
   });
 
   // updating the entry in db
@@ -334,7 +335,7 @@ export async function syncZendeskCategoryActivity({
     parents,
     parentId: parents[1],
     title: categoryInDb.name,
-    mimeType: "application/vnd.dust.zendesk.category",
+    mimeType: ZENDESK_MIME_TYPES.CATEGORY,
   });
 
   // otherwise, we update the category name and lastUpsertedTs
