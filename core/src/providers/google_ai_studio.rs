@@ -509,6 +509,8 @@ impl LLM for GoogleAiStudioLLM {
         mut max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        _logprobs: Option<bool>,
+        _top_logprobs: Option<i32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {

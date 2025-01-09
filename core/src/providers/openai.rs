@@ -36,6 +36,8 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
+use super::llm::TopLogprob;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
     pub prompt_tokens: u64,
@@ -321,11 +323,27 @@ pub struct OpenAICompletionChatMessage {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenAITopLogprob {
+    pub token: String,
+    pub logprob: f32,
+    pub bytes: Option<Vec<u8>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenAIChatChoiceLogprob {
     pub token: String,
     pub logprob: f32,
-    pub bytes: Vec<u8>,
-    pub top_logprobs: Vec<f32>,
+    pub bytes: Option<Vec<u8>>,
+    pub top_logprobs: Vec<OpenAITopLogprob>,
+}
+
+impl From<OpenAITopLogprob> for TopLogprob {
+    fn from(top_logprob: OpenAITopLogprob) -> Self {
+        TopLogprob {
+            token: top_logprob.token,
+            logprob: top_logprob.logprob,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -1032,6 +1050,7 @@ pub async fn streamed_chat_completion(
     response_format: Option<String>,
     reasoning_effort: Option<String>,
     logprobs: Option<bool>,
+    top_logprobs: Option<i32>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
@@ -1102,6 +1121,9 @@ pub async fn streamed_chat_completion(
     }
     if let Some(logprobs) = logprobs {
         body["logprobs"] = json!(logprobs);
+    }
+    if let Some(top_logprobs) = top_logprobs {
+        body["top_logprobs"] = json!(top_logprobs);
     }
 
     let client = builder
@@ -1481,6 +1503,7 @@ pub async fn chat_completion(
     response_format: Option<String>,
     reasoning_effort: Option<String>,
     logprobs: Option<bool>,
+    top_logprobs: Option<i32>,
     user: Option<String>,
 ) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let mut body = json!({
@@ -1520,6 +1543,9 @@ pub async fn chat_completion(
     }
     if let Some(logprobs) = logprobs {
         body["logprobs"] = json!(logprobs);
+    }
+    if let Some(top_logprobs) = top_logprobs {
+        body["top_logprobs"] = json!(top_logprobs);
     }
 
     let mut req = reqwest::Client::new()
@@ -1607,6 +1633,16 @@ pub fn logprobs_from_choices(choices: &Vec<OpenAIChatChoice>) -> Option<Vec<LLMC
             lp.content.iter().map(|content_logprob| LLMChatLogprob {
                 token: content_logprob.token.clone(),
                 logprob: content_logprob.logprob,
+                top_logprobs: match content_logprob.top_logprobs.len() {
+                    0 => None,
+                    _ => Some(
+                        content_logprob
+                            .top_logprobs
+                            .iter()
+                            .map(|top_logprob| top_logprob.clone().into())
+                            .collect(),
+                    ),
+                },
             })
         })
         .collect();
@@ -2067,6 +2103,8 @@ impl LLM for OpenAILLM {
         mut max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        logprobs: Option<bool>,
+        top_logprobs: Option<i32>,
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -2076,32 +2114,27 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (openai_org_id, openai_user, response_format, reasoning_effort, logprobs) =
-            match &extras {
-                None => (None, None, None, None, None),
-                Some(v) => (
-                    match v.get("openai_organization_id") {
-                        Some(Value::String(o)) => Some(o.to_string()),
-                        _ => None,
-                    },
-                    match v.get("openai_user") {
-                        Some(Value::String(u)) => Some(u.to_string()),
-                        _ => None,
-                    },
-                    match v.get("response_format") {
-                        Some(Value::String(f)) => Some(f.to_string()),
-                        _ => None,
-                    },
-                    match v.get("reasoning_effort") {
-                        Some(Value::String(r)) => Some(r.to_string()),
-                        _ => None,
-                    },
-                    match v.get("logprobs") {
-                        Some(Value::Bool(l)) => Some(l.clone()),
-                        _ => None,
-                    },
-                ),
-            };
+        let (openai_org_id, openai_user, response_format, reasoning_effort) = match &extras {
+            None => (None, None, None, None),
+            Some(v) => (
+                match v.get("openai_organization_id") {
+                    Some(Value::String(o)) => Some(o.to_string()),
+                    _ => None,
+                },
+                match v.get("openai_user") {
+                    Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
+                },
+                match v.get("response_format") {
+                    Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+                match v.get("reasoning_effort") {
+                    Some(Value::String(r)) => Some(r.to_string()),
+                    _ => None,
+                },
+            ),
+        };
 
         let tool_choice = match function_call.as_ref() {
             Some(fc) => Some(OpenAIToolChoice::from_str(fc)?),
@@ -2148,6 +2181,7 @@ impl LLM for OpenAILLM {
                 response_format,
                 reasoning_effort,
                 logprobs,
+                top_logprobs,
                 openai_user,
                 event_sender.clone(),
             )
@@ -2181,6 +2215,7 @@ impl LLM for OpenAILLM {
                 response_format,
                 reasoning_effort,
                 logprobs,
+                top_logprobs,
                 openai_user,
             )
             .await?

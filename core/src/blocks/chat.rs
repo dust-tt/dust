@@ -25,6 +25,8 @@ pub struct Chat {
     max_tokens: Option<i32>,
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
+    logprobs: Option<bool>,
+    top_logprobs: Option<i32>,
 }
 
 impl Chat {
@@ -38,6 +40,8 @@ impl Chat {
         let mut max_tokens: Option<i32> = None;
         let mut frequency_penalty: Option<f32> = None;
         let mut presence_penalty: Option<f32> = None;
+        let mut logprobs: Option<bool> = None;
+        let mut top_logprobs: Option<i32> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -78,6 +82,18 @@ impl Chat {
                                 "Invalid `frequency_penalty` in `chat` block, expecting float"
                             ))?,
                         },
+                        "logprobs" => match value.parse::<bool>() {
+                            Ok(n) => logprobs = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `logprobs` in `chat` block, expecting boolean"
+                            ))?,
+                        },
+                        "top_logprobs" => match value.parse::<i32>() {
+                            Ok(n) => top_logprobs = Some(n),
+                            Err(_) => Err(anyhow!(
+                                "Invalid `top_logprobs` in `chat` block, expecting integer"
+                            ))?,
+                        },
                         _ => Err(anyhow!("Unexpected `{}` in `chat` block", key))?,
                     }
                 }
@@ -103,6 +119,8 @@ impl Chat {
             max_tokens,
             presence_penalty,
             frequency_penalty,
+            logprobs,
+            top_logprobs,
         })
     }
 
@@ -164,6 +182,12 @@ impl Block for Chat {
         }
         if let Some(frequency_penalty) = &self.frequency_penalty {
             hasher.update(frequency_penalty.to_string().as_bytes());
+        }
+        if let Some(logprobs) = &self.logprobs {
+            hasher.update(logprobs.to_string().as_bytes());
+        }
+        if let Some(top_logprobs) = &self.top_logprobs {
+            hasher.update(top_logprobs.to_string().as_bytes());
         }
         format!("{}", hasher.finalize().to_hex())
     }
@@ -294,9 +318,6 @@ impl Block for Chat {
                 }
                 if let Some(Value::String(s)) = v.get("reasoning_effort") {
                     extras["reasoning_effort"] = json!(s.clone());
-                }
-                if let Some(Value::Bool(b)) = v.get("logprobs") {
-                    extras["logprobs"] = json!(b.clone());
                 }
 
                 match extras.as_object().unwrap().keys().len() {
@@ -430,6 +451,8 @@ impl Block for Chat {
             self.max_tokens,
             self.presence_penalty,
             self.frequency_penalty,
+            self.logprobs,
+            self.top_logprobs,
             extras,
         );
 

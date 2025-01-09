@@ -32,11 +32,6 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
               ? spec[i].config.use_cache
               : false
             : false,
-          logprobs: spec[i].config
-            ? spec[i].config.logprobs
-              ? spec[i].config.logprobs
-              : false
-            : false,
         };
         break;
       case "input":

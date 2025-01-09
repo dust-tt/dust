@@ -439,6 +439,8 @@ impl LLM for AzureOpenAILLM {
         mut max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        logprobs: Option<bool>,
+        top_logprobs: Option<i32>,
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -448,8 +450,8 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
-        let (openai_user, response_format, reasoning_effort, logprobs) = match &extras {
-            None => (None, None, None, None),
+        let (openai_user, response_format, reasoning_effort) = match &extras {
+            None => (None, None, None),
             Some(v) => (
                 match v.get("openai_user") {
                     Some(Value::String(u)) => Some(u.to_string()),
@@ -461,10 +463,6 @@ impl LLM for AzureOpenAILLM {
                 },
                 match v.get("reasoning_effort") {
                     Some(Value::String(r)) => Some(r.to_string()),
-                    _ => None,
-                },
-                match v.get("logprobs") {
-                    Some(Value::Bool(l)) => Some(l.clone()),
                     _ => None,
                 },
             ),
@@ -511,6 +509,7 @@ impl LLM for AzureOpenAILLM {
                     response_format,
                     reasoning_effort,
                     logprobs,
+                    top_logprobs,
                     openai_user,
                     event_sender,
                 )
@@ -544,6 +543,7 @@ impl LLM for AzureOpenAILLM {
                     response_format,
                     reasoning_effort,
                     logprobs,
+                    top_logprobs,
                     openai_user,
                 )
                 .await?

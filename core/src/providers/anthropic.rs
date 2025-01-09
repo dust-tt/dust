@@ -1674,6 +1674,8 @@ impl LLM for AnthropicLLM {
         mut max_tokens: Option<i32>,
         _presence_penalty: Option<f32>,
         _frequency_penalty: Option<f32>,
+        _logprobs: Option<bool>,
+        _top_logprobs: Option<i32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {

@@ -448,6 +448,12 @@ impl Block for LLM {
                     Some(self.max_tokens),
                     self.presence_penalty,
                     self.frequency_penalty,
+                    if self.top_logprobs.is_some() {
+                        Some(true)
+                    } else {
+                        None
+                    },
+                    self.top_logprobs,
                     extras,
                 );
 
