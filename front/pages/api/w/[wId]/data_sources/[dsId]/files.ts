@@ -16,7 +16,7 @@ import { apiError } from "@app/logger/withlogging";
 
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
-  upsertArgs:
+  upsertArgs?:
     | Pick<UpsertDocumentArgs, "name" | "title" | "tags">
     | Pick<
         UpsertTableArgs,

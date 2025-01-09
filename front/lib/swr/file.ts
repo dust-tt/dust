@@ -87,8 +87,7 @@ export function useUpsertFileAsDatasourceEntry(
       sendNotification({
         type: "success",
         title: "File successfully uploaded",
-        description:
-          "The file has been successfully uploaded to the data source.",
+        description: "The file has been successfully uploaded.",
       });
 
       const response: UpsertFileToDataSourceResponseBody = await res.json();

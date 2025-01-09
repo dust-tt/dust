@@ -1,10 +1,11 @@
-import { Dialog, useSendNotification } from "@dust-tt/sparkle";
+import { Dialog } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
   PlanType,
 } from "@dust-tt/types";
-import { Err, getSupportedNonImageFileExtensions } from "@dust-tt/types";
+import { concurrentExecutor } from "@dust-tt/types";
+import { getSupportedNonImageFileExtensions } from "@dust-tt/types";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -14,8 +15,7 @@ import type {
   FileBlobWithFileId,
 } from "@app/hooks/useFileUploaderService";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useCreateDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
-import { getFileProcessedUrl } from "@app/lib/swr/file";
+import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
 
 type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;
@@ -34,7 +34,6 @@ export const MultipleDocumentsUpload = ({
   totalNodesCount,
   plan,
 }: MultipleDocumentsUploadProps) => {
-  const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
   const [wasOpened, setWasOpened] = useState(isOpen);
@@ -50,31 +49,16 @@ export const MultipleDocumentsUpload = ({
     [onClose]
   );
 
-  const getFileProcessedContent = useCallback(
-    async (fileId: string) => {
-      const url = getFileProcessedUrl(owner, fileId);
-      const res = await fetch(url);
-      if (!res.ok) {
-        return new Err(`Error reading the file content: ${res.status}`);
-      }
-      const content = await res.text();
-      if (content === null || content === "") {
-        return new Err("Empty file content");
-      }
-      return content;
-    },
-    [owner]
-  );
-
   // Used for creating files, with text extraction post-processing
   const fileUploaderService = useFileUploaderService({
     owner,
     useCase: "folder_document",
   });
 
-  // Mutation for creating documents, throw error on partial failure
-  const doCreate = useCreateDataSourceViewDocument(owner, dataSourceView);
-
+  const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(
+    owner,
+    dataSourceView
+  );
   const [isBulkFilesUploading, setIsBulkFilesUploading] = useState<null | {
     total: number;
     completed: number;
@@ -105,7 +89,7 @@ export const MultipleDocumentsUpload = ({
         completed: 0,
       });
 
-      // upload Files and get FileBlobs (only keep successfull uploads)
+      // upload Files and get FileBlobs (only keep successful uploads)
       // Each individual error triggers a notification
       const fileBlobs = (await fileUploaderService.handleFileChange(e))?.filter(
         (fileBlob: FileBlob): fileBlob is FileBlobWithFileId =>
@@ -119,48 +103,26 @@ export const MultipleDocumentsUpload = ({
       }
 
       // upsert the file as Data Source Documents
-      // Done 1 by 1 for simplicity
-      let i = 0;
-      for (const blob of fileBlobs) {
-        setIsBulkFilesUploading({
-          total: fileBlobs.length,
-          completed: i++,
-        });
-        // TODO : use an upsert endpoint here that will handle the upsert of the file
-
-        // get processed text
-        const content = await getFileProcessedContent(blob.fileId);
-        if (content instanceof Err) {
-          sendNotification({
-            type: "error",
-            title: `Error processing document ${blob.filename}`,
-            description: content.error,
+      await concurrentExecutor(
+        fileBlobs,
+        async (blob: { fileId: string; filename: string }) => {
+          // This also notifies in case of error
+          await doUpsertFileAsDataSourceEntry({
+            fileId: blob.fileId,
+            // Have to use the filename to avoid fileId becoming apparent in the UI.
+            upsertArgs: {
+              title: blob.filename,
+              name: blob.filename,
+            },
           });
-          continue;
-        }
 
-        // Create the document
-        const body = {
-          name: blob.filename,
-          title: blob.filename,
-          mime_type: blob.contentType ?? undefined,
-          timestamp: null,
-          parent_id: null,
-          parents: [blob.filename],
-          section: {
-            prefix: null,
-            content: content,
-            sections: [],
-          },
-          text: null,
-          source_url: undefined,
-          tags: [],
-          light_document_output: true,
-          upsert_context: null,
-          async: false,
-        };
-        await doCreate(body);
-      }
+          setIsBulkFilesUploading((prev) => ({
+            total: fileBlobs.length,
+            completed: prev ? prev.completed + 1 : 1,
+          }));
+        },
+        { concurrency: 4 }
+      );
 
       // Reset the upload state
       setIsBulkFilesUploading(null);
@@ -168,13 +130,11 @@ export const MultipleDocumentsUpload = ({
       close(true);
     },
     [
-      doCreate,
       fileUploaderService,
-      getFileProcessedContent,
       close,
       plan.limits.dataSources.documents.count,
-      sendNotification,
       totalNodesCount,
+      doUpsertFileAsDataSourceEntry,
     ]
   );
 
