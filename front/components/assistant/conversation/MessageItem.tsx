@@ -127,6 +127,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 <Citation
                   key={contentFragment.sId}
                   href={contentFragment.sourceUrl ?? undefined}
+                  tooltip={contentFragment.title}
                 >
                   <div className="flex gap-2">
                     {contentFragment.context.profilePictureUrl && (
