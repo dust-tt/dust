@@ -389,7 +389,7 @@ export async function getAssistantUsageData(
   endDate: Date,
   workspace: WorkspaceType,
   agentConfiguration: AgentConfigurationType
-): Promise<string> {
+): Promise<number> {
   const wId = workspace.id;
   const mentions = await frontSequelize.query<AgentUsageQueryResult>(
     `
@@ -438,9 +438,9 @@ export async function getAssistantUsageData(
   );
 
   if (!mentions.length) {
-    return "0";
+    return 0;
   }
-  return mentions[0].messages.toString();
+  return mentions[0].messages;
 }
 
 export async function getAssistantsUsageData(

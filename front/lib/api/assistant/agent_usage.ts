@@ -133,7 +133,7 @@ export async function getAgentUsage(
   return agentUsage
     ? {
         agentId: agentConfiguration.sId,
-        messageCount: parseInt(agentUsage, 10),
+        messageCount: agentUsage,
         timePeriodSec: RANKING_TIMEFRAME_SEC,
       }
     : null;
