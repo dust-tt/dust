@@ -248,13 +248,13 @@ function AssistantDetailsPerformance({
         </CardGrid>
       )}
       {agentConfiguration.scope !== "global" && (
-        <>
-          <Page.SectionHeader title="Feedbacks" />
+        <div>
+          <Page.SectionHeader title="Feedback" />
           <FeedbacksSection
             owner={owner}
             agentConfigurationId={agentConfiguration.sId}
           />
-        </>
+        </div>
       )}
     </>
   );
