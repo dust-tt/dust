@@ -31,8 +31,7 @@ import type {
   AgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
+import { isBuilder, removeNulls } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
