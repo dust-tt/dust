@@ -111,6 +111,7 @@ const FILE_FORMATS = {
   "text/css": { cat: "code", exts: [".css"] },
   "text/javascript": { cat: "code", exts: [".js", ".mjs"] },
   "application/x-sh": { cat: "code", exts: [".sh"] },
+  "text/x-sh": { cat: "code", exts: [".sh"] },
   // declare type here using satisfies to allow flexible typing for keys, FileFormat type for values and yet infer the keys of FILE_FORMATS correctly below
 } as const satisfies Record<string, FileFormat>;
 
