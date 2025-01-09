@@ -2,10 +2,41 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  // Detect path traversal attempts
   const url = request.nextUrl.pathname;
-  if (url.includes("../") || url.includes("..%2F") || url.includes("..%5C")) {
-    return new NextResponse(null, { status: 400 });
+  const decodedUrl = decodeURIComponent(url);
+
+  // Check for various path traversal patterns
+  const dangerous = [
+    // Basic traversal
+    "../",
+    "..\\",
+    // Percent encoding
+    "..%2f",
+    "..%5c",
+    // Double encoding
+    "..%252f",
+    "..%255c",
+    // Unicode encoding
+    "..%u2216",
+    // Overlong UTF-8 encoding
+    "..%c0%af",
+    "..%c1%9c",
+    // Dot encoding
+    "%2e%2e%2f",
+    "%2e%2e/",
+    // Null bytes
+    "%00",
+    "\x00",
+    "\u0000",
+    // Hex encoding
+    "0x2e0x2e0x2f",
+  ].some((pattern) => decodedUrl.toLowerCase().includes(pattern));
+
+  if (dangerous) {
+    return new NextResponse(null, {
+      status: 400,
+      statusText: "Bad Request",
+    });
   }
 
   return NextResponse.next();
