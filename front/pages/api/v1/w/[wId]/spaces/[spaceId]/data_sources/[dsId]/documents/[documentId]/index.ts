@@ -511,7 +511,7 @@ async function handler(
 
       const documentId = req.query.documentId as string;
 
-      const title = r.data.title ?? "No title provided";
+      const title = r.data.title ?? "Untitled document";
       const mimeType = r.data.mime_type ?? "application/octet-stream";
 
       if (r.data.async === true) {
