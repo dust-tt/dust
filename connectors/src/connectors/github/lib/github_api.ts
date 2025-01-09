@@ -34,7 +34,10 @@ import {
   getCodeFileInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
@@ -209,14 +212,12 @@ export async function getRepoIssuesPage(
       isPullRequest: !!i.pull_request,
     }));
   } catch (err) {
-    // Handle excessive redirection or issue not found errors during issue retrieval
-    // by safely ignoring the issue and logging the error.
     if (isBadCredentials(err)) {
-      logger.error(
-        { err: err.message },
-        "[Github] Failed to get repo issues page. Bad credentials."
+      throw new ProviderWorkflowError(
+        "github",
+        `401 - Transient BadCredentialErrror`,
+        "transient_upstream_activity_error"
       );
-      throw new ExternalOAuthTokenError(err);
     }
 
     throw err;
@@ -262,12 +263,19 @@ export async function getIssue(
     // by safely ignoring the issue and logging the error.
     if (
       isGithubRequestRedirectCountExceededError(err) ||
-      isGithubRequestErrorNotFound(err) ||
-      isBadCredentials(err)
+      isGithubRequestErrorNotFound(err)
     ) {
       logger.info({ err: err.message }, "Failed to get issue.");
 
       return null;
+    }
+
+    if (isBadCredentials(err)) {
+      throw new ProviderWorkflowError(
+        "github",
+        `401 - Transient BadCredentialErrror`,
+        "transient_upstream_activity_error"
+      );
     }
 
     throw err;
