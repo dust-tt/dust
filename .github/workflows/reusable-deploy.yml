@@ -176,7 +176,7 @@ jobs:
               client_payload: {
                 regions: '${{ inputs.regions }}',
                 component: '${{ inputs.component }}',
-                image_tag: ${{ needs.prepare.outputs.short_sha }},
+                image_tag: '${{ needs.prepare.outputs.short_sha }}',
                 slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
                 slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}'
               }
