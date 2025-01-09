@@ -115,10 +115,7 @@ async function handler(
       }
       const upsertRes = await handleDataSourceTableCSVUpsert({
         auth,
-        params: {
-          ...r.data,
-          title: r.data.title ?? r.data.name,
-        },
+        params: r.data,
         dataSource,
       });
 

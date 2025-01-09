@@ -511,6 +511,9 @@ async function handler(
 
       const documentId = req.query.documentId as string;
 
+      const title = r.data.title ?? "No title provided";
+      const mimeType = r.data.mime_type ?? "application/octet-stream";
+
       if (r.data.async === true) {
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
@@ -524,8 +527,8 @@ async function handler(
             sourceUrl,
             section,
             upsertContext: r.data.upsert_context || null,
-            title: r.data.title ?? undefined,
-            mimeType: r.data.mime_type ?? undefined,
+            title,
+            mimeType,
           },
         });
         if (enqueueRes.isErr()) {
@@ -565,8 +568,8 @@ async function handler(
           section,
           credentials,
           lightDocumentOutput: r.data.light_document_output === true,
-          title: r.data.title,
-          mimeType: r.data.mime_type,
+          title,
+          mimeType,
         });
 
         if (upsertRes.isErr()) {

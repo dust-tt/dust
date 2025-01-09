@@ -855,8 +855,8 @@ export class CoreAPI {
     section: CoreAPIDataSourceDocumentSection;
     credentials: CredentialsType;
     lightDocumentOutput?: boolean;
-    title?: string | null;
-    mimeType?: string | null;
+    title: string;
+    mimeType: string;
   }): Promise<
     CoreAPIResponse<{
       document:
@@ -886,8 +886,8 @@ export class CoreAPI {
           source_url: sourceUrl,
           credentials,
           light_document_output: lightDocumentOutput,
-          title: title ?? null,
-          mime_type: mimeType ?? null,
+          title: title,
+          mime_type: mimeType,
         }),
       }
     );
@@ -1125,8 +1125,8 @@ export class CoreAPI {
     parents: string[];
     remoteDatabaseTableId?: string | null;
     remoteDatabaseSecretId?: string | null;
-    title?: string;
-    mimeType?: string;
+    title: string;
+    mimeType: string;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(

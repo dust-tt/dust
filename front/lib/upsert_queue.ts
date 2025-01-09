@@ -16,51 +16,43 @@ import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
-export const EnqueueUpsertDocument = t.intersection([
-  t.type({
-    workspaceId: t.string,
-    dataSourceId: t.string,
-    documentId: t.string,
-    tags: t.union([t.array(t.string), t.null]),
-    parentId: t.union([t.string, t.null, t.undefined]),
-    parents: t.union([t.array(t.string), t.null]),
-    sourceUrl: t.union([t.string, t.null]),
-    timestamp: t.union([t.number, t.null]),
-    section: FrontDataSourceDocumentSection,
-    upsertContext: t.union([UpsertContextSchema, t.null]),
-  }),
-  t.partial({
-    title: t.string,
-    mimeType: t.string,
-  }),
-]);
+export const EnqueueUpsertDocument = t.type({
+  workspaceId: t.string,
+  dataSourceId: t.string,
+  documentId: t.string,
+  tags: t.union([t.array(t.string), t.null]),
+  parentId: t.union([t.string, t.null, t.undefined]),
+  parents: t.union([t.array(t.string), t.null]),
+  sourceUrl: t.union([t.string, t.null]),
+  timestamp: t.union([t.number, t.null]),
+  section: FrontDataSourceDocumentSection,
+  upsertContext: t.union([UpsertContextSchema, t.null]),
+  title: t.string,
+  mimeType: t.string,
+});
 
 const DetectedHeaders = t.type({
   header: t.array(t.string),
   rowIndex: t.number,
 });
 
-export const EnqueueUpsertTable = t.intersection([
-  t.type({
-    workspaceId: t.string,
-    dataSourceId: t.string,
-    tableId: t.string,
-    tableName: t.string,
-    tableDescription: t.string,
-    tableTimestamp: t.union([t.number, t.undefined, t.null]),
-    tableTags: t.union([t.array(t.string), t.undefined, t.null]),
-    tableParentId: t.union([t.string, t.undefined, t.null]),
-    tableParents: t.union([t.array(t.string), t.undefined, t.null]),
-    csv: t.union([t.string, t.null]),
-    truncate: t.boolean,
-    useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
-    detectedHeaders: t.union([DetectedHeaders, t.undefined]),
-  }),
-  t.partial({
-    title: t.string,
-    mimeType: t.string,
-  }),
-]);
+export const EnqueueUpsertTable = t.type({
+  workspaceId: t.string,
+  dataSourceId: t.string,
+  tableId: t.string,
+  tableName: t.string,
+  tableDescription: t.string,
+  tableTimestamp: t.union([t.number, t.undefined, t.null]),
+  tableTags: t.union([t.array(t.string), t.undefined, t.null]),
+  tableParentId: t.union([t.string, t.undefined, t.null]),
+  tableParents: t.union([t.array(t.string), t.undefined, t.null]),
+  csv: t.union([t.string, t.null]),
+  truncate: t.boolean,
+  useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
+  detectedHeaders: t.union([DetectedHeaders, t.undefined]),
+  title: t.string,
+  mimeType: t.string,
+});
 
 type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;
 
