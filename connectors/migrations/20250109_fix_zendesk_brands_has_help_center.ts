@@ -1,10 +1,7 @@
 import { makeScript } from "scripts/helpers";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  fetchZendeskBrand,
-  isBrandHelpCenterEnabled,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { fetchZendeskBrand } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -35,14 +32,14 @@ async function backfillConnector(
       continue;
     }
 
-    const oldHasHelpCenter = brand.hasHelpCenter;
-    const newHasHelpCenter = isBrandHelpCenterEnabled(fetchedBrand);
+    const helpCenterState = fetchedBrand.help_center_state;
+    const hasHelpCenter = fetchedBrand.help_center_state;
 
     if (execute) {
-      logger.info({ brandId, oldHasHelpCenter, newHasHelpCenter }, "LIVE");
-      await brand.update({ hasHelpCenter: newHasHelpCenter });
+      logger.info({ brandId, hasHelpCenter, helpCenterState }, "LIVE");
+      await brand.update({ helpCenterState });
     } else {
-      logger.info({ brandId, oldHasHelpCenter, newHasHelpCenter }, "DRY");
+      logger.info({ brandId, hasHelpCenter, helpCenterState }, "DRY");
     }
   }
 }

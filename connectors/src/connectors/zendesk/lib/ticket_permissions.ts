@@ -1,10 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  createZendeskClient,
-  isBrandHelpCenterEnabled,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
   ZendeskBrandResource,
@@ -40,8 +37,6 @@ export async function allowSyncZendeskTickets({
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);
 
-  const hasHelpCenter = isBrandHelpCenterEnabled(fetchedBrand);
-
   if (fetchedBrand) {
     await ZendeskBrandResource.makeNew({
       blob: {
@@ -51,7 +46,8 @@ export async function allowSyncZendeskTickets({
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
         helpCenterPermission: "none",
-        hasHelpCenter,
+        hasHelpCenter: fetchedBrand.has_help_center,
+        helpCenterState: fetchedBrand.help_center_state,
         url: fetchedBrand.url,
       },
     });

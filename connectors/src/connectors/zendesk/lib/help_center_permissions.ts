@@ -49,7 +49,7 @@ export async function allowSyncZendeskHelpCenter({
       return false;
     }
 
-    const hasHelpCenter = isBrandHelpCenterEnabled(fetchedBrand);
+    const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
 
     await ZendeskBrandResource.makeNew({
       blob: {
@@ -58,8 +58,9 @@ export async function allowSyncZendeskHelpCenter({
         brandId: fetchedBrand.id,
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "none",
-        helpCenterPermission: hasHelpCenter ? "read" : "none",
-        hasHelpCenter,
+        helpCenterPermission: helpCenterEnabled ? "read" : "none",
+        hasHelpCenter: fetchedBrand.has_help_center,
+        helpCenterState: fetchedBrand.help_center_state,
         url: fetchedBrand.url,
       },
     });
@@ -174,7 +175,7 @@ export async function allowSyncZendeskCategory({
         return null;
       }
 
-      const hasHelpCenter = isBrandHelpCenterEnabled(fetchedBrand);
+      const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
 
       await ZendeskBrandResource.makeNew({
         blob: {
@@ -183,8 +184,9 @@ export async function allowSyncZendeskCategory({
           brandId: fetchedBrand.id,
           name: fetchedBrand.name || "Brand",
           ticketsPermission: "none",
-          helpCenterPermission: hasHelpCenter ? "read" : "none",
-          hasHelpCenter,
+          helpCenterPermission: helpCenterEnabled ? "read" : "none",
+          hasHelpCenter: fetchedBrand.has_help_center,
+          helpCenterState: fetchedBrand.help_center_state,
           url: fetchedBrand.url,
         },
       });
