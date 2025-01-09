@@ -1,12 +1,14 @@
 const path = require("path");
 
 const CONTENT_SECURITY_POLICIES =
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com;` +
+  ` script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com;` +
   ` style-src 'self' 'unsafe-inline' *.typekit.net;` +
   ` connect-src 'self';` +
+  ` object-src 'none';` +
   ` form-action 'self';` +
   ` base-uri 'self';` +
-  ` frame-ancestors 'self';`;
+  ` frame-ancestors 'self';` +
+  ` upgrade-insecure-requests;`;
 
 module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
