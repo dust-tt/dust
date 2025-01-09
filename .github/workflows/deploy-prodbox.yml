@@ -9,7 +9,9 @@ on:
         default: "us-central1"
         type: choice
         options:
+          - "us-central1"
           - "europe-west1"
+          - "all"
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
