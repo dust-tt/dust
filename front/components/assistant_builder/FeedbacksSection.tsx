@@ -83,7 +83,7 @@ export const FeedbacksSection = ({
     (!agentConfigurationFeedbacks || agentConfigurationFeedbacks.length === 0)
   ) {
     return (
-      <div className="mt-3 text-sm text-element-700">No feedbacks yet.</div>
+      <div className="mt-3 text-sm text-element-700">No feedback yet.</div>
     );
   }
 
