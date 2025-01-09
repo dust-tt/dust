@@ -23,6 +23,9 @@ inputs:
   blocked:
     description: "Is deployment blocked?"
     required: false
+  region:
+    description: "Region being deployed to"
+    required: false
 
 outputs:
   thread_ts:
@@ -79,6 +82,7 @@ runs:
           channel: ${{ inputs.channel }}
           text: |
             🚀 Starting deployment of ${{ inputs.component }} `${{ inputs.image_tag }}`
+            • Region: `${{ inputs.region }}`
             • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
             • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
             • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
