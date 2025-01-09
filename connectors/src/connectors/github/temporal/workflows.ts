@@ -25,7 +25,6 @@ const {
 
 const {
   githubGetReposResultPageActivity,
-  githubGetRepoIssuesResultPageActivity,
   githubGetRepoDiscussionsResultPageActivity,
   githubIssueGarbageCollectActivity,
   githubDiscussionGarbageCollectActivity,
@@ -36,11 +35,12 @@ const {
   startToCloseTimeout: "5 minute",
 });
 
-const { githubRepoGarbageCollectActivity } = proxyActivities<typeof activities>(
-  {
-    startToCloseTimeout: "20 minute",
-  }
-);
+const {
+  githubGetRepoIssuesResultPageActivity,
+  githubRepoGarbageCollectActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "20 minute",
+});
 
 const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
   proxyActivities<typeof activities>({

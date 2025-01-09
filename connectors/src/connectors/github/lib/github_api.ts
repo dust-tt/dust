@@ -179,34 +179,49 @@ export async function getRepoIssuesPage(
   login: string,
   page: number
 ): Promise<GithubIssue[]> {
-  const octokit = await getOctokit(connectionId);
+  try {
+    const octokit = await getOctokit(connectionId);
 
-  const issues = (
-    await octokit.rest.issues.listForRepo({
-      owner: login,
-      repo: repoName,
-      per_page: API_PAGE_SIZE,
-      page: page,
-      state: "all",
-    })
-  ).data;
+    const issues = (
+      await octokit.rest.issues.listForRepo({
+        owner: login,
+        repo: repoName,
+        per_page: API_PAGE_SIZE,
+        page: page,
+        state: "all",
+      })
+    ).data;
 
-  return issues.map((i) => ({
-    id: i.id,
-    number: i.number,
-    title: i.title,
-    url: i.html_url,
-    creator: i.user
-      ? {
-          id: i.user.id,
-          login: i.user.login,
-        }
-      : null,
-    createdAt: new Date(i.created_at),
-    updatedAt: new Date(i.updated_at),
-    body: i.body,
-    isPullRequest: !!i.pull_request,
-  }));
+    return issues.map((i) => ({
+      id: i.id,
+      number: i.number,
+      title: i.title,
+      url: i.html_url,
+      creator: i.user
+        ? {
+            id: i.user.id,
+            login: i.user.login,
+          }
+        : null,
+      createdAt: new Date(i.created_at),
+      updatedAt: new Date(i.updated_at),
+      body: i.body,
+      isPullRequest: !!i.pull_request,
+    }));
+  } catch (err) {
+    // Handle excessive redirection or issue not found errors during issue retrieval
+    // by safely ignoring the issue and logging the error.
+    if (isBadCredentials(err)) {
+      logger.error(
+        { err: err.message },
+        "[Github] Failed to get repo issues page. Bad credentials."
+      );
+
+      return [];
+    }
+
+    throw err;
+  }
 }
 
 export async function getIssue(
