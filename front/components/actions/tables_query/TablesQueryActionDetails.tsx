@@ -151,6 +151,7 @@ function QueryTablesResults({
         className="w-48 min-w-48 max-w-48"
         containerClassName="my-2"
         onClick={handleDownload}
+        tooltip={title}
       >
         <CitationIcons>
           <Icon visual={TableIcon} />

@@ -22,7 +22,7 @@ const TabsList = React.forwardRef<
     <TabsPrimitive.List
       ref={ref}
       className={cn(
-        "s-inline-flex s-h-11 s-gap-2 s-border-b s-border-separator",
+        "s-inline-flex s-h-11 s-gap-2 s-border-b s-border-primary-200/60",
         isFullSize && "s-w-full",
         className
       )}

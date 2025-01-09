@@ -38,6 +38,7 @@ export function BrowseActionDetails({
                     key={idx}
                     href={r.browsedUrl}
                     className="w-48 min-w-48 max-w-48"
+                    tooltip={r.browsedUrl}
                   >
                     <CitationIcons>
                       <Icon visual={GlobeAltIcon} />
