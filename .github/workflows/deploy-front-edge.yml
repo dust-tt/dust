@@ -30,7 +30,7 @@ jobs:
     uses: ./.github/workflows/reusable-deploy.yml
     with:
       check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked }}
-      component: prodbox
+      component: front-edge
       dockerfile_path: ./front/Dockerfile
       regions: ${{ github.event.inputs.regions }}
       working_dir: ./
