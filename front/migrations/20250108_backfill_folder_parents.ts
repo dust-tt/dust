@@ -108,6 +108,7 @@ async function migrateFolderDataSourcesParents(
     staticDataSources = await DataSourceModel.findAll({
       where: { connectorProvider: null, id: { [Op.gte]: startId } },
       limit: DATASOURCE_BATCH_SIZE,
+      order: [["id", "ASC"]],
     });
 
     for (const dataSource of staticDataSources) {
