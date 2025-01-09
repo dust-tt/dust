@@ -10,8 +10,16 @@ import { Input } from "@sparkle/components/Input";
 
 import {
   DataTable,
+  DropdownMenu,
   DropdownMenuItemProps,
   FolderIcon,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogDescription,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -33,6 +41,7 @@ type Data = {
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
   moreMenuItems?: DropdownMenuItemProps[];
+  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
   roundedAvatar?: boolean;
 };
 
@@ -73,7 +82,6 @@ const data: Data[] = [
         disabled: true,
       },
     ],
-    onClick: () => alert("Design clicked"),
   },
   {
     name: "Very long name that should be truncated at some point to avoid overflow and make the table more readable",
@@ -89,7 +97,6 @@ const data: Data[] = [
         disabled: true,
       },
     ],
-    onClick: () => alert("Design clicked"),
   },
   {
     name: "design",
@@ -196,6 +203,28 @@ const columns: ColumnDef<Data>[] = [
 
 export const DataTableExample = () => {
   const [filter, setFilter] = React.useState<string>("");
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [selectedName, setSelectedName] = React.useState("");
+
+  const tableData = data.map((item) =>
+    item.moreMenuItems
+      ? {
+          ...item,
+          dropdownMenuProps: {
+            modal: false,
+          },
+          moreMenuItems: [
+            {
+              label: "Edit",
+              onClick: () => {
+                setSelectedName(item.name);
+                setDialogOpen(true);
+              },
+            },
+          ],
+        }
+      : item
+  );
 
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
@@ -206,11 +235,36 @@ export const DataTableExample = () => {
         onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
-        data={data}
+        data={tableData}
         filter={filter}
         filterColumn="name"
         columns={columns}
       />
+      <NewDialog open={dialogOpen} onOpenChange={(open) => setDialogOpen(open)}>
+        <NewDialogContent
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <NewDialogHeader>
+            <NewDialogTitle>Edit {selectedName}</NewDialogTitle>
+            <NewDialogDescription>
+              Make changes to your item here
+            </NewDialogDescription>
+          </NewDialogHeader>
+          <NewDialogContainer>Your dialog content here</NewDialogContainer>
+          <NewDialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: "Save",
+              variant: "primary",
+              onClick: () => setDialogOpen(false),
+            }}
+          />
+        </NewDialogContent>
+      </NewDialog>
     </div>
   );
 };
