@@ -7,6 +7,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  UserIcon,
 } from "@dust-tt/sparkle";
 import type { BillingPeriod, PlanType } from "@dust-tt/types";
 import type { ReactNode } from "react";
@@ -242,6 +243,7 @@ function EnterprisePriceTable({
             variant="highlight"
             size={biggerButtonSize}
             label="Contact sales"
+            icon={UserIcon}
             disabled={isProcessing}
             onClick={onClick}
           />
