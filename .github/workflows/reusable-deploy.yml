@@ -78,6 +78,7 @@ jobs:
 
       - name: Notify Build And Deploy Start
         id: build_message
+        if: ${{ inputs.component != 'front-qa'}}
         uses: ./.github/actions/slack-notify
         with:
           step: "start"
