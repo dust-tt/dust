@@ -29,7 +29,7 @@ jobs:
   deploy:
     uses: ./.github/workflows/reusable-deploy.yml
     with:
-      check_deployment_blocked: false
+      check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked }}
       component: core
       dockerfile_path: ./Dockerfile
       regions: ${{ github.event.inputs.regions }}
