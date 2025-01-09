@@ -389,42 +389,18 @@ export async function getAssistantUsageData(
   endDate: Date,
   workspace: WorkspaceType,
   agentConfiguration: AgentConfigurationType
-): Promise<string> {
+): Promise<number> {
   const wId = workspace.id;
-  const mentions = await frontSequelize.query<AgentUsageQueryResult>(
+  const mentions = await frontSequelize.query<{ messages: number }>(
     `
-    SELECT
-      ac."name",
-      ac."description",
-      CASE
-        WHEN ac."scope" = 'published' THEN 'shared'
-        WHEN ac."scope" = 'private' THEN 'private'
-        ELSE 'company'
-      END AS "settings",
-      ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
-      COUNT(a."id") AS "messages",
-      COUNT(DISTINCT u."id") AS "distinctUsersReached",
-      COUNT(DISTINCT m."conversationId") AS "distinctConversations",
-      MAX(CAST(ac."createdAt" AS DATE)) AS "lastEdit"
-    FROM
-      "agent_messages" a
-      JOIN "messages" m ON a."id" = m."agentMessageId"
-      JOIN "messages" parent ON m."parentId" = parent."id"
-      JOIN "user_messages" um ON um."id" = parent."userMessageId"
-      JOIN "users" u ON um."userId" = u."id"
-      JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
-      JOIN "users" aut ON ac."authorId" = aut."id"
+    SELECT COUNT(a."id") AS "messages"
+    FROM "agent_messages" a
+    JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
     WHERE
       a."createdAt" BETWEEN :startDate AND :endDate
       AND ac."workspaceId" = :wId
       AND ac."status" = 'active'
       AND ac."sId" = :agentConfigurationId
-    GROUP BY
-      ac."name",
-      ac."description",
-      ac."scope"
-    ORDER BY
-      "messages" DESC;
     `,
     {
       type: QueryTypes.SELECT,
@@ -438,9 +414,9 @@ export async function getAssistantUsageData(
   );
 
   if (!mentions.length) {
-    return "No data available for the selected period.";
+    return 0;
   }
-  return generateCsvFromQueryResult(mentions);
+  return mentions[0].messages;
 }
 
 export async function getAssistantsUsageData(
