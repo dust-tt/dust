@@ -53,6 +53,10 @@ export async function allowSyncZendeskBrand({
       return false;
     }
 
+    const hasHelpCenter =
+      fetchedBrand.has_help_center &&
+      fetchedBrand.help_center_state === "enabled";
+
     brand = await ZendeskBrandResource.makeNew({
       blob: {
         subdomain: fetchedBrand.subdomain,
@@ -60,8 +64,8 @@ export async function allowSyncZendeskBrand({
         brandId: fetchedBrand.id,
         name: fetchedBrand.name || "Brand",
         ticketsPermission: "read",
-        helpCenterPermission: fetchedBrand.has_help_center ? "read" : "none",
-        hasHelpCenter: fetchedBrand.has_help_center,
+        helpCenterPermission: hasHelpCenter ? "read" : "none",
+        hasHelpCenter,
         url: fetchedBrand.url,
       },
     });

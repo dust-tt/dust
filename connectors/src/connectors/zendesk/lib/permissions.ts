@@ -143,9 +143,17 @@ async function getBrandChildren(
     };
     nodes.push(ticketsNode);
 
-    const hasHelpCenter =
-      brandInDb?.hasHelpCenter ||
-      (await zendeskApiClient.brand.show(brandId)).result.brand.has_help_center;
+    let hasHelpCenter;
+    if (brandInDb) {
+      hasHelpCenter = brandInDb.hasHelpCenter;
+    } else {
+      const {
+        result: { brand: fetchedBrand },
+      } = await zendeskApiClient.brand.show(brandId);
+      hasHelpCenter =
+        fetchedBrand.has_help_center &&
+        fetchedBrand.help_center_state === "enabled";
+    }
 
     if (hasHelpCenter) {
       const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
