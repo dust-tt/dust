@@ -32,6 +32,7 @@ jobs:
       check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked == 'check' }}
       component: prodbox
       dockerfile_path: ./prodbox.Dockerfile
+      enforce_main: false
       gcloud_ignore_file: .gcloudignore-prodbox
       regions: ${{ github.event.inputs.regions }}
       working_dir: ./
