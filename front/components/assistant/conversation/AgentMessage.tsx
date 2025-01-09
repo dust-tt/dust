@@ -1,7 +1,18 @@
-import type {
-  ConversationMessageSizeType,
-  FeedbackSelectorProps,
-} from "@dust-tt/sparkle";
+import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
+
+// Copy the FeedbackSelector implementation here
+export type ThumbReaction = "up" | "down";
+
+export type FeedbackType = {
+  thumb: ThumbReaction;
+  feedbackContent: string | null;
+  isConversationShared: boolean;
+};
+
+// ... rest of the component implementation
+
+import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { CitationIndex } from "@dust-tt/sparkle";
 import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
 import {
@@ -13,7 +24,6 @@ import {
   ConversationMessage,
   DocumentDuplicateIcon,
   EyeIcon,
-  FeedbackSelector,
   Markdown,
   Page,
   Popover,
