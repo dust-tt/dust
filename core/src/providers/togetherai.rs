@@ -118,6 +118,8 @@ impl LLM for TogetherAILLM {
         mut max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        logprobs: Option<bool>,
+        top_logprobs: Option<i32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -195,8 +197,8 @@ impl LLM for TogetherAILLM {
                 },
                 None,
                 None,
-                None,
-                None,
+                logprobs,
+                top_logprobs,
                 None,
                 event_sender.clone(),
             )
@@ -228,8 +230,8 @@ impl LLM for TogetherAILLM {
                 },
                 None,
                 None,
-                None,
-                None,
+                logprobs,
+                top_logprobs,
                 None,
             )
             .await?

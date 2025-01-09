@@ -137,13 +137,13 @@ export default function Chat({
 
   const handleLogprobsChange = (logprobs: boolean) => {
     const b = shallowBlockClone(block);
-    b.config.logprobs = logprobs;
+    b.spec.logprobs = logprobs;
     onBlockUpdate(b);
   };
 
   const handleTopLogprobsChange = (top_logprobs: number) => {
     const b = shallowBlockClone(block);
-    b.config.top_logprobs = top_logprobs;
+    b.spec.top_logprobs = top_logprobs;
     onBlockUpdate(b);
   };
 
@@ -409,7 +409,7 @@ export default function Chat({
                 <div className="flex flex-initial font-normal">
                   <input
                     type="checkbox"
-                    checked={block.config.logprobs}
+                    checked={block.spec.logprobs}
                     onChange={(e) => handleLogprobsChange(e.target.checked)}
                   />
                 </div>

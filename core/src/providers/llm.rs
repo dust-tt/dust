@@ -151,6 +151,8 @@ pub trait LLM {
         max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        logprobs: Option<bool>,
+        top_logprobs: Option<i32>,
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration>;
@@ -384,6 +386,8 @@ pub struct LLMChatRequest {
     max_tokens: Option<i32>,
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
+    logprobs: Option<bool>,
+    top_logprobs: Option<i32>,
     extras: Option<Value>,
 }
 
@@ -401,6 +405,8 @@ impl LLMChatRequest {
         max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        logprobs: Option<bool>,
+        top_logprobs: Option<i32>,
         extras: Option<Value>,
     ) -> Self {
         let mut hasher = blake3::Hasher::new();
@@ -435,6 +441,12 @@ impl LLMChatRequest {
         if !frequency_penalty.is_none() {
             hasher.update(frequency_penalty.unwrap().to_string().as_bytes());
         }
+        if !logprobs.is_none() {
+            hasher.update(logprobs.unwrap().to_string().as_bytes());
+        }
+        if !top_logprobs.is_none() {
+            hasher.update(top_logprobs.unwrap().to_string().as_bytes());
+        }
         if !extras.is_none() {
             hasher.update(extras.clone().unwrap().to_string().as_bytes());
         }
@@ -453,6 +465,8 @@ impl LLMChatRequest {
             max_tokens,
             presence_penalty,
             frequency_penalty,
+            logprobs,
+            top_logprobs,
             extras,
         }
     }
@@ -483,6 +497,8 @@ impl LLMChatRequest {
                     self.max_tokens,
                     self.presence_penalty,
                     self.frequency_penalty,
+                    self.logprobs,
+                    self.top_logprobs,
                     self.extras.clone(),
                     event_sender.clone(),
                 )

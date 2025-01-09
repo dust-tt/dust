@@ -2103,6 +2103,8 @@ impl LLM for OpenAILLM {
         mut max_tokens: Option<i32>,
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
+        logprobs: Option<bool>,
+        top_logprobs: Option<i32>,
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -2112,36 +2114,27 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (openai_org_id, openai_user, response_format, reasoning_effort, logprobs, top_logprobs) =
-            match &extras {
-                None => (None, None, None, None, None, None),
-                Some(v) => (
-                    match v.get("openai_organization_id") {
-                        Some(Value::String(o)) => Some(o.to_string()),
-                        _ => None,
-                    },
-                    match v.get("openai_user") {
-                        Some(Value::String(u)) => Some(u.to_string()),
-                        _ => None,
-                    },
-                    match v.get("response_format") {
-                        Some(Value::String(f)) => Some(f.to_string()),
-                        _ => None,
-                    },
-                    match v.get("reasoning_effort") {
-                        Some(Value::String(r)) => Some(r.to_string()),
-                        _ => None,
-                    },
-                    match v.get("logprobs") {
-                        Some(Value::Bool(l)) => Some(l.clone()),
-                        _ => None,
-                    },
-                    match v.get("top_logprobs") {
-                        Some(Value::Number(n)) => Some(n.as_f64().unwrap() as i32),
-                        _ => None,
-                    },
-                ),
-            };
+        let (openai_org_id, openai_user, response_format, reasoning_effort) = match &extras {
+            None => (None, None, None, None),
+            Some(v) => (
+                match v.get("openai_organization_id") {
+                    Some(Value::String(o)) => Some(o.to_string()),
+                    _ => None,
+                },
+                match v.get("openai_user") {
+                    Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
+                },
+                match v.get("response_format") {
+                    Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+                match v.get("reasoning_effort") {
+                    Some(Value::String(r)) => Some(r.to_string()),
+                    _ => None,
+                },
+            ),
+        };
 
         let tool_choice = match function_call.as_ref() {
             Some(fc) => Some(OpenAIToolChoice::from_str(fc)?),
