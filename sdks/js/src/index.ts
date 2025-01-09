@@ -460,7 +460,7 @@ export class DustAPI {
               errorStr: JSON.stringify(e),
               errorSource: "processStreamedRunResponse",
             },
-            "Error streaming chunks."
+            "DustAPI error: streaming chunks"
           );
         }
       };
@@ -730,7 +730,7 @@ export class DustAPI {
             errorStr: JSON.stringify(e),
             errorSource: "streamAgentAnswerEvents",
           },
-          "Error streaming chunks."
+          "DustAPI error: streaming chunks"
         );
       }
     };
