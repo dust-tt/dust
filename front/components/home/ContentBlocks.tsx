@@ -1,4 +1,4 @@
-import { ArrowRightIcon, Button, RocketIcon, UserIcon } from "@dust-tt/sparkle";
+import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";

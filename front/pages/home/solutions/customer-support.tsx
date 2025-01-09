@@ -1,4 +1,4 @@
-import { Button, Div3D, Hover3D, RocketIcon, UserIcon } from "@dust-tt/sparkle";
+import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
 
