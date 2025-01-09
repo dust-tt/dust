@@ -6,6 +6,7 @@ const CONTENT_SECURITY_POLICIES =
   ` connect-src 'self' *.google-analytics.com;` +
   ` object-src 'none';` +
   ` form-action 'self';` +
+  ` image-src 'self' data: https:;` +
   ` base-uri 'self';` +
   ` frame-ancestors 'self';` +
   ` upgrade-insecure-requests;`;
