@@ -9,7 +9,11 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { DataSourceViewType, LightContentNode, LightWorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import * as _ from "lodash";
 import { useState } from "react";
 
