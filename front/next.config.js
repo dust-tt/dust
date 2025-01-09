@@ -6,6 +6,7 @@ const CONTENT_SECURITY_POLICIES = [
   `style-src 'self' 'unsafe-inline' *.typekit.net;`,
   `img-src 'self' data: https:;`,
   `connect-src 'self' *.google-analytics.com;`,
+  `frame-src 'self' *.wistia.net viz.dust.tt;`,
   `font-src 'self' data: *.typekit.net;`,
   `object-src 'none';`,
   `form-action 'self';`,
