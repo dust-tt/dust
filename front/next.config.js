@@ -1,9 +1,9 @@
 const path = require("path");
 
 const CONTENT_SECURITY_POLICIES =
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com;` +
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com;` +
   ` style-src 'self' 'unsafe-inline' *.typekit.net;` +
-  ` connect-src 'self';` +
+  ` connect-src 'self' *.google-analytics.com;` +
   ` object-src 'none';` +
   ` form-action 'self';` +
   ` base-uri 'self';` +
