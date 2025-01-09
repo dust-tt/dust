@@ -10,7 +10,6 @@ import {
 } from "@app/components/home/Particles";
 import TrustedBy from "@app/components/home/TrustedBy";
 
-// Create a separate component for HubSpot form
 const HubSpotForm = dynamic(
   () => import("./HubSpotForm").then((mod) => mod.HubSpotForm),
   { ssr: false }
@@ -41,7 +40,7 @@ export default function Contact() {
       />
       <div className="grid grid-cols-12 items-start sm:gap-8 md:gap-y-12">
         <div className="col-span-12 flex flex-col justify-end gap-12 sm:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-          <div className="w-full max-w-[600px]">
+          <div className="w-full max-w-150">
             <HubSpotForm />
           </div>
         </div>

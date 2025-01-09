@@ -1,4 +1,3 @@
-import { classNames } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 declare global {
@@ -55,21 +54,19 @@ export function HubSpotForm() {
     };
   }, []);
 
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
-  }
-
   return (
     <>
-      {isLoading && (
-        <div className="flex h-[400px] items-center justify-center">
+      {isLoading ? (
+        <div className="flex h-96 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
         </div>
+      ) : !error ? (
+        <div id="hubspotForm" className="min-h-96" />
+      ) : (
+        <div className="flex h-full flex-col gap-3 text-center">
+          There was an error loading the contact form.
+        </div>
       )}
-      <div
-        id="hubspotForm"
-        className={classNames("min-h-[400px]", isLoading ? "hidden" : "")}
-      />
     </>
   );
 }
