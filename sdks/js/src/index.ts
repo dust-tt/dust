@@ -447,13 +447,6 @@ export class DustAPI {
             });
           }
         } catch (e) {
-          yield {
-            type: "error",
-            content: {
-              code: "stream_error",
-              message: "Error streaming chunks",
-            },
-          } as DustAppRunErroredEvent;
           logger.error(
             {
               error: e,
@@ -462,6 +455,13 @@ export class DustAPI {
             },
             "DustAPI error: streaming chunks"
           );
+          yield {
+            type: "error",
+            content: {
+              code: "stream_error",
+              message: "Error streaming chunks",
+            },
+          } as DustAppRunErroredEvent;
         }
       };
 
@@ -705,7 +705,7 @@ export class DustAPI {
     });
 
     const reader = res.value.response.body;
-    const logger = this._logger.child({});
+    const logger = this._logger;
 
     const streamEvents = async function* () {
       try {
@@ -717,13 +717,6 @@ export class DustAPI {
           pendingEvents = [];
         }
       } catch (e) {
-        yield {
-          type: "error",
-          content: {
-            code: "stream_error",
-            message: "Error streaming chunks",
-          },
-        } as DustAppRunErroredEvent;
         logger.error(
           {
             error: e,
@@ -732,6 +725,13 @@ export class DustAPI {
           },
           "DustAPI error: streaming chunks"
         );
+        yield {
+          type: "error",
+          content: {
+            code: "stream_error",
+            message: "Error streaming chunks",
+          },
+        } as DustAppRunErroredEvent;
       }
     };
 
