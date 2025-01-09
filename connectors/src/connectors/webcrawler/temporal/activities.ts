@@ -346,7 +346,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             const validatedUrl = validateUrl(request.url);
             if (!validatedUrl.valid || !validatedUrl.standardized) {
               childLogger.info(
-                { documentId, configId: webCrawlerConfig.id, url },
+                { documentId, configId: webCrawlerConfig.id, url: request.url },
                 `Invalid document or URL. Skipping`
               );
               return;
@@ -381,7 +381,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                 configId: webCrawlerConfig.id,
                 documentLen: extracted.length,
                 title: pageTitle,
-                url,
+                url: request.url,
               },
               `Document is empty or too big to be upserted. Skipping`
             );
