@@ -1,17 +1,5 @@
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
-  NewDialog,
-  NewDialogContainer,
-  NewDialogContent,
-  NewDialogFooter,
-  NewDialogHeader,
-  NewDialogTitle,
-  NewDialogTrigger,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { SheetContainer, SheetTitle } from "@dust-tt/sparkle";
-import { SheetHeader } from "@dust-tt/sparkle";
-import {
   Avatar,
   Button,
   CloudArrowLeftRightIcon,
@@ -21,12 +9,23 @@ import {
   Input,
   LockIcon,
   Modal,
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+  NewDialogTrigger,
   Page,
   Sheet,
+  SheetContainer,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
   TrashIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   BaseContentNode,
@@ -203,6 +202,16 @@ async function updateConnectorConnectionId(
     return {
       success: false,
       error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
+    };
+  }
+  if (
+    error.type === "connector_authorization_error" &&
+    provider === "zendesk"
+  ) {
+    return {
+      success: false,
+      error:
+        "The authenticated user does not have sufficient rights on Zendesk.",
     };
   }
   return {

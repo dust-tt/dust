@@ -1,11 +1,11 @@
 import type {
+  ConnectorConfiguration,
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
   ModelId,
   Result,
 } from "@dust-tt/types";
-import type { ConnectorConfiguration } from "@dust-tt/types";
 
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -13,7 +13,8 @@ export type CreateConnectorErrorCode = "INVALID_CONFIGURATION";
 
 export type UpdateConnectorErrorCode =
   | "INVALID_CONFIGURATION"
-  | "CONNECTOR_OAUTH_TARGET_MISMATCH";
+  | "CONNECTOR_OAUTH_TARGET_MISMATCH"
+  | "USER_NOT_ADMIN";
 
 export type RetrievePermissionsErrorCode =
   | "INVALID_PARENT_INTERNAL_ID"

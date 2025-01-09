@@ -72,6 +72,14 @@ const _postConnectorUpdateAPIHandler = async (
             message: updateRes.error.message,
           },
         });
+      case "USER_NOT_ADMIN":
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "connector_authorization_error",
+            message: updateRes.error.message,
+          },
+        });
       case "INVALID_CONFIGURATION":
         return apiError(req, res, {
           status_code: 400,

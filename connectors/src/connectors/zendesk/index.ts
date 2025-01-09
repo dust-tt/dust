@@ -38,7 +38,10 @@ import {
   forbidSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { fetchZendeskCurrentUser } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import {
+  fetchZendeskCurrentUser,
+  isUserAdmin,
+} from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
   launchZendeskFullSyncWorkflow,
   launchZendeskGarbageCollectionWorkflow,
@@ -74,7 +77,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       subdomain,
       accessToken,
     });
-    if (!zendeskUser.active || zendeskUser.role !== "admin") {
+    if (!isUserAdmin(zendeskUser)) {
       throw new ExternalOAuthTokenError(
         new Error(`Zendesk user is not an admin: connectionId=${connectionId}`)
       );
@@ -145,7 +148,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     if (connectionId) {
       const newConnectionId = connectionId;
 
-      const { subdomain: newSubdomain } =
+      const { accessToken, subdomain: newSubdomain } =
         await getZendeskSubdomainAndAccessToken(newConnectionId);
 
       if (configuration.subdomain !== newSubdomain) {
@@ -153,6 +156,19 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           new ConnectorManagerError(
             "CONNECTOR_OAUTH_TARGET_MISMATCH",
             "Cannot change the subdomain of a Zendesk connector"
+          )
+        );
+      }
+
+      const zendeskUser = await fetchZendeskCurrentUser({
+        subdomain: newSubdomain,
+        accessToken,
+      });
+      if (!isUserAdmin(zendeskUser)) {
+        return new Err(
+          new ConnectorManagerError(
+            "USER_NOT_ADMIN",
+            "New authenticated user is not an admin"
           )
         );
       }
