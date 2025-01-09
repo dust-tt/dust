@@ -1,15 +1,17 @@
 const path = require("path");
 
-const CONTENT_SECURITY_POLICIES =
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com;` +
-  ` style-src 'self' 'unsafe-inline' *.typekit.net;` +
-  ` connect-src 'self' *.google-analytics.com;` +
-  ` object-src 'none';` +
-  ` form-action 'self';` +
-  ` image-src 'self' data: https:;` +
-  ` base-uri 'self';` +
-  ` frame-ancestors 'self';` +
-  ` upgrade-insecure-requests;`;
+const CONTENT_SECURITY_POLICIES = [
+  "default-src 'none';",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com;`,
+  `style-src 'self' 'unsafe-inline' *.typekit.net;`,
+  `connect-src 'self' *.google-analytics.com;`,
+  `object-src 'none';`,
+  `form-action 'self';`,
+  `image-src 'self' data: https:;`,
+  `base-uri 'self';`,
+  `frame-ancestors 'self';`,
+  `upgrade-insecure-requests;`,
+].join(" ");
 
 module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
