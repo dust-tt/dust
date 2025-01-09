@@ -440,7 +440,7 @@ export async function getAssistantUsageData(
   if (!mentions.length) {
     return "No data available for the selected period.";
   }
-  return mentions.length.toString();
+  return mentions[0].messages.toString();
 }
 
 export async function getAssistantsUsageData(
