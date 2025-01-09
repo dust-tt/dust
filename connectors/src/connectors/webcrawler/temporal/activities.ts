@@ -343,7 +343,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             extracted.length > 0 &&
             extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
           ) {
-            const validatedUrl = validateUrl(url);
+            const validatedUrl = validateUrl(request.url);
             if (!validatedUrl.valid || !validatedUrl.standardized) {
               childLogger.info(
                 { documentId, configId: webCrawlerConfig.id, url },
