@@ -599,6 +599,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        title                        TEXT NOT NULL,
        mime_type                    TEXT NOT NULL,
        parents                      TEXT[] NOT NULL,
+       source_url                   TEXT,
        document                     BIGINT,
        \"table\"                      BIGINT,
        folder                       BIGINT,
