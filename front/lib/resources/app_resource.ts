@@ -190,6 +190,13 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     return new Ok(deletedCount);
   }
 
+  async undelete(): Promise<Result<number, Error>> {
+    const [affectedCount] = await this.update({
+      deletedAt: null,
+    });
+    return new Ok(affectedCount);
+  }
+
   // Serialization.
 
   toJSON(): AppType {
