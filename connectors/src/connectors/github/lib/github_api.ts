@@ -216,8 +216,7 @@ export async function getRepoIssuesPage(
         { err: err.message },
         "[Github] Failed to get repo issues page. Bad credentials."
       );
-
-      return [];
+      throw new ExternalOAuthTokenError(err);
     }
 
     throw err;
