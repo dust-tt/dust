@@ -51,6 +51,7 @@ declare module "@tanstack/react-table" {
 interface TBaseData {
   onClick?: () => void;
   moreMenuItems?: DropdownMenuItemProps[];
+  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
 }
 
 interface ColumnBreakpoint {
@@ -226,6 +227,7 @@ export function DataTable<TData extends TBaseData>({
               key={row.id}
               onClick={row.original.onClick}
               moreMenuItems={row.original.moreMenuItems}
+              dropdownMenuProps={row.original.dropdownMenuProps}
             >
               {row.getVisibleCells().map((cell) => {
                 const breakpoint = columnsBreakpoints[cell.column.id];
@@ -334,6 +336,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   onClick?: () => void;
   moreMenuItems?: DropdownMenuItemProps[];
   widthClassName: string;
+  dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
 }
 
 DataTable.Row = function Row({
@@ -342,6 +345,7 @@ DataTable.Row = function Row({
   onClick,
   moreMenuItems,
   widthClassName,
+  dropdownMenuProps,
   ...props
 }: RowProps) {
   return (
@@ -358,7 +362,7 @@ DataTable.Row = function Row({
       {children}
       <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
-          <DropdownMenu>
+          <DropdownMenu {...dropdownMenuProps}>
             <DropdownMenuTrigger asChild>
               <IconButton
                 icon={MoreIcon}
@@ -393,7 +397,6 @@ DataTable.Cell = function Cell({
   column,
   ...props
 }: CellProps) {
-  column.columnDef.minSize;
   return (
     <td
       style={getSize(column.columnDef)}
