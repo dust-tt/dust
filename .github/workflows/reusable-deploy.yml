@@ -9,7 +9,7 @@ on:
         required: true
       check_deployment_blocked:
         description: "Check deployment locks"
-        type: string
+        type: boolean
         required: true
       component:
         description: "Component name"
@@ -28,6 +28,10 @@ on:
         type: string
         required: false
         default: ""
+      enforce_main:
+        required: false
+        type: boolean
+        default: true
     secrets:
       GCLOUD_US_PROJECT_ID:
         required: true
@@ -43,6 +47,17 @@ on:
         required: true
 
 jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.enforce_main || github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Check branch condition
+        run: |
+          if [[ "${{ inputs.enforce_main }}" == "true" && "${{ github.ref }}" != "refs/heads/main" ]]; then
+            echo "Deployments are only allowed from the main branch"
+            exit 1
+          fi
+
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -72,7 +87,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
-        if: ${{ inputs.check_deployment_blocked != 'force (dangerous)' }}
+        if: ${{ inputs.check_deployment_blocked }}
         id: check_deployment_blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:

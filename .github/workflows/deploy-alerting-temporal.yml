@@ -24,6 +24,7 @@ jobs:
       check_deployment_blocked: false
       component: alerting-temporal
       dockerfile_path: ./Dockerfile
+      enforce_main: true
       regions: ${{ github.event.inputs.regions }}
       working_dir: ./alerting/temporal/
     secrets: inherit

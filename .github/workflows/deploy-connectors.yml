@@ -29,9 +29,10 @@ jobs:
   deploy:
     uses: ./.github/workflows/reusable-deploy.yml
     with:
-      check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked }}
+      check_deployment_blocked: ${{ github.event.inputs.check_deployment_blocked == 'check' }}
       component: connectors
       dockerfile_path: ./connectors/Dockerfile
+      enforce_main: true
       regions: ${{ github.event.inputs.regions }}
       working_dir: ./
     secrets: inherit
