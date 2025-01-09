@@ -1,4 +1,12 @@
-import { Dialog } from "@dust-tt/sparkle";
+import {
+  NewDialog,
+  NewDialogContainer,
+  NewDialogContent,
+  NewDialogFooter,
+  NewDialogHeader,
+  NewDialogTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { SpaceType } from "@dust-tt/types";
 
 import { getSpaceName } from "@app/lib/spaces";
@@ -28,15 +36,41 @@ export function ConfirmDeleteSpaceDialog({
         : `No assistants are using this ${getSpaceName(space)}. Confirm permanent deletion?`;
 
   return (
-    <Dialog
-      isOpen={isOpen}
-      title={`Deleting ${getSpaceName(space)}`}
-      onValidate={handleDelete}
-      onCancel={onClose}
-      validateVariant="warning"
-      isSaving={isDeleting}
+    <NewDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <div>{message}</div>
-    </Dialog>
+      <NewDialogContent>
+        <NewDialogHeader>
+          <NewDialogTitle>{`Deleting ${getSpaceName(space)}`}</NewDialogTitle>
+        </NewDialogHeader>
+        {isDeleting ? (
+          <div className="flex justify-center py-8">
+            <Spinner variant="dark" size="md" />
+          </div>
+        ) : (
+          <>
+            <NewDialogContainer>{message}</NewDialogContainer>
+            <NewDialogFooter
+              leftButtonProps={{
+                label: "Cancel",
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Delete",
+                variant: "warning",
+                onClick: async () => {
+                  void handleDelete();
+                },
+              }}
+            />
+          </>
+        )}
+      </NewDialogContent>
+    </NewDialog>
   );
 }
