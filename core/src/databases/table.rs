@@ -255,6 +255,7 @@ impl From<Table> for Node {
             table.timestamp,
             &table.title,
             &table.mime_type,
+            table.provider_visibility,
             table.parents.get(1).cloned(),
             table.parents,
         )

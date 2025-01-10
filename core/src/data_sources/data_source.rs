@@ -232,6 +232,7 @@ impl From<Document> for Node {
             document.timestamp,
             &document.title,
             &document.mime_type,
+            document.provider_visibility,
             document.parent_id,
             document.parents.clone(),
         )

@@ -79,6 +79,7 @@ impl From<Folder> for Node {
             folder.timestamp,
             &folder.title,
             &folder.mime_type,
+            folder.provider_visibility,
             folder.parent_id,
             folder.parents,
         )

@@ -3556,7 +3556,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT timestamp, title, mime_type, parents, node_id, document, \"table\", folder \
+                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder \
                    FROM data_sources_nodes \
                    WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
@@ -3569,11 +3569,12 @@ impl Store for PostgresStore {
                 let timestamp: i64 = row[0].get::<_, i64>(0);
                 let title: String = row[0].get::<_, String>(1);
                 let mime_type: String = row[0].get::<_, String>(2);
-                let parents: Vec<String> = row[0].get::<_, Vec<String>>(3);
-                let node_id: String = row[0].get::<_, String>(4);
-                let document_row_id = row[0].get::<_, Option<i64>>(5);
-                let table_row_id = row[0].get::<_, Option<i64>>(6);
-                let folder_row_id = row[0].get::<_, Option<i64>>(7);
+                let provider_visibility: Option<String> = row[0].get::<_, Option<String>>(3);
+                let parents: Vec<String> = row[0].get::<_, Vec<String>>(4);
+                let node_id: String = row[0].get::<_, String>(5);
+                let document_row_id = row[0].get::<_, Option<i64>>(6);
+                let table_row_id = row[0].get::<_, Option<i64>>(7);
+                let folder_row_id = row[0].get::<_, Option<i64>>(8);
                 let (node_type, row_id) = match (document_row_id, table_row_id, folder_row_id) {
                     (Some(id), None, None) => (NodeType::Document, id),
                     (None, Some(id), None) => (NodeType::Table, id),
@@ -3589,6 +3590,7 @@ impl Store for PostgresStore {
                         timestamp as u64,
                         &title,
                         &mime_type,
+                        provider_visibility,
                         parents.get(1).cloned(),
                         parents,
                     ),
