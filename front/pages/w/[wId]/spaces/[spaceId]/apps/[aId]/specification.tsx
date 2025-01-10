@@ -1,6 +1,7 @@
 import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { AppType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
+import { hash } from "crypto";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -20,6 +21,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   app: AppType;
   specification: string;
+  specificationFromCore: { created: number; data: string; hash: string } | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -50,6 +52,26 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  let specificationFromCore = null;
+  const specificationFromCoreHash = context.query?.hash;
+
+  if (
+    specificationFromCoreHash &&
+    typeof specificationFromCoreHash === "string"
+  ) {
+    const coreSpec = await coreAPI.getSpecification({
+      projectId: app.dustAPIProjectId,
+      specificationHash: specificationFromCoreHash,
+    });
+
+    if (coreSpec.isOk()) {
+      specificationFromCore = {
+        ...coreSpec.value.specification,
+        hash: specificationFromCoreHash,
+      };
+    }
+  }
+
   const latestDatasets = {} as { [key: string]: string };
   for (const d in datasets.value.datasets) {
     latestDatasets[d] = datasets.value.datasets[d][0].hash;
@@ -67,6 +89,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       app: app.toJSON(),
       specification: spec,
+      specificationFromCore,
     },
   };
 });
@@ -76,6 +99,7 @@ export default function Specification({
   subscription,
   app,
   specification,
+  specificationFromCore,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -113,8 +137,19 @@ export default function Specification({
             )}
           </TabsList>
         </Tabs>
-        <div className="font-mono mt-8 whitespace-pre text-[13px] text-gray-700">
-          {specification}
+        <div className="mt-8 flex flex-col gap-4">
+          <h3>Current specifications : </h3>
+          <div className="font-mono whitespace-pre text-[13px] text-gray-700">
+            {specification}
+          </div>
+          {specificationFromCore && (
+            <>
+              <h3>Saved specifications {specificationFromCore.hash}: </h3>
+              <div className="font-mono whitespace-pre text-[13px] text-gray-700">
+                {specificationFromCore.data}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </AppLayout>
