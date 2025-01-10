@@ -50,7 +50,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   };
 
   return (
-    <div className={classNames("flex flex-col gap-12", className)}>
+    <div className={classNames("flex flex-col gap-2", className)}>
       <div className="ml-[10%] pr-[20%] md:m-0 md:pr-[28%]">
         {children ? children : null}
       </div>
@@ -204,7 +204,7 @@ export const MetricComponent = ({
     {metrics.map((metric, index) => (
       <div
         key={index}
-        className="col-span-6 flex flex-col items-center gap-4 py-12 text-center"
+        className="col-span-6 flex flex-col items-center gap-4 py-6 text-center"
       >
         <H1 from={from} to={to}>
           {metric.value}
@@ -225,14 +225,14 @@ interface QuoteProps {
 }
 
 export const Quote = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col py-20 md:col-span-10 md:col-start-2 lg:col-span-8 lg:col-start-3">
-    <div className="flex flex-col items-center text-center font-objektiv text-xl italic text-white sm:text-2xl lg:text-3xl">
+  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-2 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
+    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-xl italic text-white sm:text-xl lg:text-2xl">
       &ldquo; {quote} &rdquo;
     </div>
-    <div className="flex justify-center pt-8">
+    <div className="flex justify-center">
       <div className="flex items-center justify-center">
         <Image src={logo} width={200} height={48} alt="Malt Logo" />
-        <P size="md" className="text-primary-400">
+        <P size="sm" className="text-primary-400">
           <Strong>
             <span className="text-pink-300">{name}</span>
           </Strong>

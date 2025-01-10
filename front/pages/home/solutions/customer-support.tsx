@@ -9,6 +9,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@app/components/home/Carousel";
+import { UseCasesSection } from "@app/components/home/content/Product/SupportUseCasesSection";
+
 import {
   BlogBlock,
   CarousselContentBlock,
@@ -23,7 +25,7 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { SolutionSection } from "@app/components/home/SolutionSection";
+import { BenefitsSection } from "@app/components/home/content/Product/SupportBenefitsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
 
@@ -45,13 +47,7 @@ interface pageSettingsProps {
 
 const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
-  title: (
-    <>
-      Instant knowledge,
-      <br />
-      exceptional support.
-    </>
-  ),
+  title: <>Instant knowledge, exceptional support.</>,
   from: "from-sky-200",
   to: "to-sky-500",
   description: (
@@ -78,19 +74,6 @@ export default function CustomerSupport() {
         <Div3D depth={50} className="absolute top-0">
           <img src="/static/landing/support/support4.png" alt="MainVisual4" />
         </Div3D>
-        {/* <Div3D
-          depth={150}
-          className="absolute top-0 flex h-full w-full items-center justify-center"
-        >
-          <Button
-            icon={PlayIcon}
-            variant="highlight"
-            size="md"
-            label="Watch Product Tour"
-            className="shadow-xl"
-            onClick={() => setIsVideoOpen(true)}
-          />
-        </Div3D> */}
       </Hover3D>
     </>
   );
@@ -105,22 +88,28 @@ export default function CustomerSupport() {
       /> */}
 
       <Grid>
-        <div
+        {/* <div
           className={classNames(
-            "col-span-12 justify-center",
-            "mt-36 flex flex-col gap-8 lg:min-h-[50vh]",
-            "lg:col-span-5 lg:py-20",
+            "col-span-8 justify-center",
+            "flex flex-col gap-8 pt-24 lg:min-h-[50vh]",
+            "lg:col-span-5 lg:py-10",
             "2xl:col-span-5 2xl:col-start-2",
             "text-center lg:text-left"
           )}
+        > */}
+        <div
+          className={classNames(
+            "col-span-12 mx-auto px-4 py-4 pt-12 sm:max-w-[100%] md:max-w-[90%]",
+            "lg:col-span-6 lg:col-start-1 lg:h-[100%] lg:max-w-[100%]",
+            "2xl:col-span-6",
+            "flex flex-col justify-center"
+          )}
         >
-          <div className="flex w-full px-8 md:px-20 lg:hidden">
-            {MainVisualImage()}
-          </div>
+          <P size="lg">Dust for {pageSettings.uptitle}</P>
           <H1 from={pageSettings.from} to={pageSettings.to}>
             {pageSettings.title}
           </H1>
-          <P size="lg" className="text-slate-50">
+          <P size="lg" className="pb-6 text-slate-50">
             {pageSettings.description}
           </P>
           <div className="flex gap-4">
@@ -143,17 +132,27 @@ export default function CustomerSupport() {
         </div>
         <div
           className={classNames(
-            "col-span-12 mx-auto px-8 py-6 sm:max-w-[100%] md:max-w-[90%]",
-            "lg:col-span-7 lg:col-start-6 lg:h-[100%] lg:max-w-[100%]",
+            "col-span-12 mx-auto px-4 py-4 pt-12 sm:max-w-[100%] md:max-w-[90%]",
+            "lg:col-span-6 lg:col-start-7 lg:h-[100%] lg:max-w-[100%]",
             "2xl:col-span-6",
             "hidden lg:block"
           )}
         >
-          <div className="flex h-full w-full items-center justify-center pt-36 xl:px-8">
+          <div className="flex h-full w-full items-center justify-center xl:px-8">
             {MainVisualImage()}
           </div>
         </div>
-
+        <div
+          className={classNames(
+            "flex flex-col gap-8",
+            "col-span-12",
+            "lg:col-span-11 lg:col-start-2",
+            "xl:col-span-10 xl:col-start-2",
+            "2xl:col-start-2"
+          )}
+        >
+          <BenefitsSection />
+        </div>
         <MetricComponent
           metrics={[
             {
@@ -172,263 +171,127 @@ export default function CustomerSupport() {
           from="from-amber-200"
           to="to-amber-500"
         />
-
-        <TrustedBy />
-
-        <SolutionSection
-          title={<>Exceed customer&nbsp;expectations.</>}
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: [
-                {
-                  title: (
-                    <>Parse tickets and&nbsp;get to&nbsp;resolution faster</>
-                  ),
-                  content: [
-                    <>
-                      Allow agents to&nbsp;understand customer messages
-                      and&nbsp;technical errors faster and&nbsp;in
-                      50+&nbsp;languages.
-                    </>,
-                    <>
-                      Build AI assistants based on&nbsp;company knowledge
-                      and&nbsp;past support interactions to&nbsp;bring
-                      the&nbsp;company's collective intelligence to&nbsp;the
-                      support team's fingertips.
-                    </>,
-                  ],
-                },
-                {
-                  title: (
-                    <>Keep your&nbsp;team up-to-date at&nbsp;all&nbsp;times</>
-                  ),
-                  content: [
-                    <>Break down information silos.</>,
-                    <>
-                      Give your frontline team access to&nbsp;up-to-date
-                      information on&nbsp;projects, ongoing product incidents
-                      or&nbsp;issues to&nbsp;help them&nbsp;take action
-                      thoughtfully.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [
-                assistantExamples[0],
-                assistantExamples[4],
-                assistantExamples[5],
-              ],
-            },
-          ]}
-        />
-        <SolutionSection
-          title="Elevate team collaboration."
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: [
-                {
-                  title: (
-                    <>
-                      Bring new team members
-                      <br />
-                      up-to-speed&nbsp;fast
-                    </>
-                  ),
-                  content: [
-                    <>
-                      Reduce your&nbsp;onboarding and&nbsp;training time
-                      drastically.
-                    </>,
-                    <>
-                      Put your&nbsp;documentation on&nbsp;processes
-                      and&nbsp;methods to&nbsp;work to&nbsp;help the&nbsp;team
-                      learn autonomously.
-                    </>,
-                  ],
-                },
-                {
-                  title: (
-                    <>
-                      Maintain visibility
-                      <br />
-                      on&nbsp;customer needs
-                    </>
-                  ),
-                  content: [
-                    <>
-                      Surface insights from&nbsp;interactions with customers
-                      to&nbsp;your Support, Success and&nbsp;Product teams.
-                    </>,
-                    <>
-                      Maintain a&nbsp;continuous understanding of&nbsp;customer
-                      needs to inform your&nbsp;product priorities.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [assistantExamples[3], assistantExamples[2]],
-            },
-          ]}
-        />
-
-        {/* <SolutionSection
-          title="Top customer support use-cases."
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: [
-                {
-                  title: <>Resolve faster</>,
-                  content: [
-                    <>
-                      Surface relevant information from all connected knowledge
-                      bases instantly and understand messages in 50+ languages.
-                    </>,
-                  ],
-                },
-                {
-                  title: <>Boost team productivity</>,
-                  content: [
-                    <>
-                      Keep teams synchronized with real-time access to
-                      information across all communication channels and reduce
-                      onboarding times.
-                    </>,
-                  ],
-                },
-                {
-                  title: <>Understand customer needs</>,
-                  content: [
-                    <>
-                      Gain insights from coss-tool interactions to undertstand
-                      and act on customer needs, improve documentation.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [
-                assistantExamples[0],
-                assistantExamples[1],
-                assistantExamples[2],
-                assistantExamples[3],
-              ],
-            },
-          ]}
-        /> */}
-
-        <Quote
-          quote="We’re managing a&nbsp;higher volume of&nbsp;tickets and have cut processing time—from an&nbsp;average of 6&nbsp;minutes per ticket to&nbsp;just a&nbsp;few seconds."
-          name="Anaïs Ghelfi"
-          title="Head of Data Platform at Malt"
-          logo="/static/landing/logos/malt.png"
-        />
-
         <div
           className={classNames(
             "flex flex-col gap-8",
             "col-span-12",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-9 xl:col-start-2",
-            "2xl:col-start-3"
+            "lg:col-span-11 lg:col-start-2",
+            "xl:col-span-10 xl:col-start-2",
+            "2xl:col-start-2"
           )}
         >
-          <H2 from={pageSettings.from} to={pageSettings.to}>
-            How&nbsp;Dust boosts support teams&nbsp;at:
-          </H2>
+          <UseCasesSection />
         </div>
-        <div className="col-span-12 flex flex-col items-center gap-4">
-          <Carousel className="w-full">
-            <div className="flex w-full flex-row justify-center gap-4">
-              <CarouselPrevious />
-              <CarouselNext />
+        <div
+          className={classNames(
+            "flex flex-col justify-center gap-8 pb-10",
+            "col-span-12",
+            "lg:col-span-11 lg:col-start-2",
+            "xl:col-span-10 xl:col-start-2",
+            "2xl:col-start-2"
+          )}
+        >
+          <div className="mb-6">
+            <H2 from={pageSettings.from} to={pageSettings.to}>
+              Dust in action
+            </H2>
+            {/* <P size="lg">See a demo of the Dust product.</P> */}
+          </div>
+          <Hover3D depth={-40} perspective={1000} className="relative w-full">
+            <div className="relative w-full pt-[56.25%]">
+              {" "}
+              {/* 16:9 aspect ratio */}
+              <iframe
+                src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true"
+                title="Dust product tour"
+                allow="autoplay; fullscreen"
+                frameBorder="0"
+                className="absolute inset-0 h-full w-full rounded-lg"
+              ></iframe>{" "}
             </div>
-            <CarouselContent>
-              <CarouselItem className="basis-full px-12 md:basis-1/2 md:px-6 lg:basis-1/3">
-                <BlogBlock
-                  title="Malt cuts support ticket closing time by 50% with Dust"
-                  content="Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses."
-                  href="https://blog.dust.tt/malt-customer-support/"
-                >
-                  <img
-                    src="https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg"
-                    alt="Blog Image"
-                  />
-                </BlogBlock>
-              </CarouselItem>
-              <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
-                <BlogBlock
-                  title="Pennylane's journey to deploy Dust for Customer Care teams"
-                  content="Dust evolved from a simple support tool into an integral part of Pennylane's operations."
-                  href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
-                >
-                  <img
-                    src="https://blog.dust.tt/content/images/size/w2000/2024/04/Ele-onore-MOTTE--1--1.jpg"
-                    alt="Blog Image"
-                  />
-                </BlogBlock>
-              </CarouselItem>
-              <CarouselItem className="basis-full px-6 md:basis-1/2 lg:basis-1/3">
-                <BlogBlock
-                  title="From Customer Support to building a company-wide AI Culture at Lifen"
-                  content="Lifen deployed from support to all operations saving employees two hours per week."
-                  href="https://blog.dust.tt/customer-story-lifen/"
-                >
-                  <img
-                    src="https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg"
-                    alt="Blog Image"
-                  />
-                </BlogBlock>
-              </CarouselItem>
-            </CarouselContent>
-          </Carousel>
+          </Hover3D>
         </div>
+        <div
+          className={classNames(
+            "flex flex-col gap-8",
+            "col-span-12",
+            "lg:col-span-11 lg:col-start-2",
+            "xl:col-span-10 xl:col-start-2",
+            "2xl:col-start-2"
+          )}
+        >
+          <Quote
+            quote="We’re managing a&nbsp;higher volume of&nbsp;tickets and have cut processing time—from an&nbsp;average of 6&nbsp;minutes per ticket to&nbsp;just a&nbsp;few seconds."
+            name="Anaïs Ghelfi"
+            title="Head of Data Platform at Malt"
+            logo="/static/landing/logos/malt.png"
+          />
+          <Grid gap="gap-8">
+            <div className="col-span-12">
+              <Carousel className="w-full">
+                <div className="mb-6 flex items-end justify-between">
+                  <div>
+                    <H2 from={pageSettings.from} to={pageSettings.to}>
+                      Customer stories
+                    </H2>
+                    {/* <P size="lg">
+                      Discover how our customers augment their&nbsp;workflows
+                      with&nbsp;Dust.
+                    </P> */}
+                  </div>
+                  <div className="flex gap-4">
+                    <CarouselPrevious />
+                    <CarouselNext />
+                  </div>
+                </div>
+
+                <CarouselContent>
+                  <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+                    <BlogBlock
+                      title="Malt cuts support ticket closing time by 50% with Dust"
+                      content="Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses."
+                      href="https://blog.dust.tt/malt-customer-support/"
+                    >
+                      <img
+                        src="https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg"
+                        alt="Blog Image"
+                      />
+                    </BlogBlock>
+                  </CarouselItem>
+                  <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+                    <BlogBlock
+                      title="Pennylane's journey to deploy Dust for Customer Care teams"
+                      content="Dust evolved from a simple support tool into an integral part of Pennylane's operations."
+                      href="https://blog.dust.tt/pennylane-dust-customer-support-journey/"
+                    >
+                      <img
+                        src="https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png"
+                        alt="Blog Image"
+                      />
+                    </BlogBlock>
+                  </CarouselItem>
+                  <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
+                    <BlogBlock
+                      title="Lifen uses Dust AI assistants to boost team productivity"
+                      content="Lifen uses Dust AI assistants to boost team productivity and save hours of work each week."
+                      href="https://blog.dust.tt/customer-story-lifen/"
+                    >
+                      <img
+                        src="https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg"
+                        alt="Blog Image"
+                      />
+                    </BlogBlock>
+                  </CarouselItem>
+                </CarouselContent>
+              </Carousel>
+            </div>
+          </Grid>
+        </div>
+        <TrustedBy />;
       </Grid>
     </>
   );
 }
-
-// const assistantExamples: SolutionSectionAssistantBlockProps[] = [
-//   {
-//     emoji: "🔍",
-//     name: "@ticketResolution",
-//     backgroundColor: "bg-sky-300",
-//     description: (
-//       <>Smart answer suggestions and contextual knowledge at your fingertips.</>
-//     ),
-//   },
-//   {
-//     emoji: "🎓",
-//     name: "@agentCoaching",
-//     backgroundColor: "bg-sky-300",
-//     description: (
-//       <>
-//         Helps new support agents learn bst practices and company knowledge
-//         faster.
-//       </>
-//     ),
-//   },
-//   {
-//     emoji: "📝",
-//     name: "@documentationBuilder",
-//     backgroundColor: "bg-sky-300",
-//     description: (
-//       <>
-//         Converts resolved support tickets into searchable knowledge base
-//         articles and FAQ.
-//       </>
-//     ),
-//   },
-//   {
-//     emoji: "📢",
-//     name: "@customerVoice",
-//     backgroundColor: "bg-sky-300",
-//     description: (
-//       <>Turn customer feedback from every channel into actionable insights.</>
-//     ),
-//   },
-// ];
 
 CustomerSupport.getLayout = (
   page: ReactElement,
