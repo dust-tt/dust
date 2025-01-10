@@ -4,7 +4,9 @@ import { Err, Ok, sanitizeString } from "@dust-tt/types";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
+import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -172,9 +174,11 @@ export async function createOrUpdateUser(
 }
 
 export async function mergeUserIdentities({
+  auth,
   primaryUserId,
   secondaryUserId,
 }: {
+  auth: Authenticator;
   primaryUserId: string;
   secondaryUserId: string;
 }): Promise<
@@ -243,6 +247,19 @@ export async function mergeUserIdentities({
     {
       app_metadata: {
         account_linking_state: Date.now(),
+      },
+    }
+  );
+
+  // Migrate authorship of agent configurations from the secondary user to the primary user.
+  await AgentConfiguration.update(
+    {
+      authorId: primaryUser.id,
+    },
+    {
+      where: {
+        authorId: secondaryUser.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     }
   );
