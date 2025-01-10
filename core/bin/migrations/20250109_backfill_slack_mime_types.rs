@@ -20,6 +20,18 @@ enum NodeType {
     Messages,
 }
 
+impl std::str::FromStr for NodeType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "thread" => Ok(NodeType::Thread),
+            "messages" => Ok(NodeType::Messages),
+            _ => Err(format!("Unknown node type: {}", s)),
+        }
+    }
+}
+
 async fn backfill_mime_types(
     pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>>,
     batch_size: i64,
