@@ -5,7 +5,7 @@ const CONTENT_SECURITY_POLICIES = [
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com;`,
   `style-src 'self' 'unsafe-inline' *.typekit.net;`,
   `img-src 'self' data: https:;`,
-  `connect-src 'self' *.google-analytics.com *.jsdelivr.net;`,
+  `connect-src 'self' *.google-analytics.com cdn.jsdelivr.net;`,
   `frame-src 'self' *.wistia.net viz.dust.tt;`,
   `font-src 'self' data: *.typekit.net;`,
   `object-src 'none';`,
