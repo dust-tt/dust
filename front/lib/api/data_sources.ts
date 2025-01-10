@@ -51,6 +51,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
+import { wakeLock, wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
@@ -912,9 +913,10 @@ export async function createDataSourceWithoutProvider(
 
   return new Ok(dataSourceView);
 }
-export async function getOrCreateConversationDataSourceFromFile(
+
+async function getOrCreateConversationDataSource(
   auth: Authenticator,
-  file: FileResource
+  conversation: ConversationWithoutContentType
 ): Promise<
   Result<
     DataSourceResource,
@@ -933,6 +935,71 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
+  // Handle race condition when we try to create a conversation data source
+  while (!wakeLockIsFree()) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  const res = await wakeLock(
+    async (): Promise<
+      Result<
+        DataSourceResource,
+        Omit<DustError, "code"> & {
+          code: "internal_server_error" | "invalid_request_error";
+        }
+      >
+    > => {
+      // Fetch the datasource linked to the conversation...
+      let dataSource = await DataSourceResource.fetchByConversation(
+        auth,
+        conversation
+      );
+
+      if (!dataSource) {
+        // ...or create a new one.
+        const conversationsSpace =
+          await SpaceResource.fetchWorkspaceConversationsSpace(auth);
+
+        // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
+        // are used as secrets to share the conversation within the workspace users.
+        const r = await createDataSourceWithoutProvider(auth, {
+          plan: auth.getNonNullablePlan(),
+          owner: auth.getNonNullableWorkspace(),
+          space: conversationsSpace,
+          name: generateRandomModelSId("conv"),
+          description: "Files uploaded to conversation",
+          conversation: conversation,
+        });
+
+        if (r.isErr()) {
+          return new Err({
+            name: "dust_error",
+            code: "internal_server_error",
+            message: `Failed to create datasource : ${r.error}`,
+          });
+        }
+
+        dataSource = r.value.dataSource;
+      }
+
+      return new Ok(dataSource);
+    }
+  );
+
+  return res;
+}
+
+export async function getOrCreateConversationDataSourceFromFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<
+  Result<
+    DataSourceResource,
+    Omit<DustError, "code"> & {
+      code: "internal_server_error" | "invalid_request_error";
+    }
+  >
+> {
   // Note: this assume that if we don't have useCaseMetadata, the file is fine.
   const hasRequiredMetadata =
     !!file.useCaseMetadata && !!file.useCaseMetadata.conversationId;
@@ -957,38 +1024,5 @@ export async function getOrCreateConversationDataSourceFromFile(
     });
   }
 
-  // Fetch the datasource linked to the conversation...
-  let dataSource = await DataSourceResource.fetchByConversation(
-    auth,
-    cRes.value
-  );
-
-  if (!dataSource) {
-    // ...or create a new one.
-    const conversationsSpace =
-      await SpaceResource.fetchWorkspaceConversationsSpace(auth);
-
-    // IMPORTANT: never use the conversation sID in the name or description, as conversation sIDs
-    // are used as secrets to share the conversation within the workspace users.
-    const r = await createDataSourceWithoutProvider(auth, {
-      plan: auth.getNonNullablePlan(),
-      owner: auth.getNonNullableWorkspace(),
-      space: conversationsSpace,
-      name: generateRandomModelSId("conv"),
-      description: "Files uploaded to conversation",
-      conversation: cRes.value,
-    });
-
-    if (r.isErr()) {
-      return new Err({
-        name: "dust_error",
-        code: "internal_server_error",
-        message: `Failed to create datasource : ${r.error}`,
-      });
-    }
-
-    dataSource = r.value.dataSource;
-  }
-
-  return new Ok(dataSource);
+  return getOrCreateConversationDataSource(auth, cRes.value);
 }
