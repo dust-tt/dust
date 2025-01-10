@@ -373,7 +373,7 @@ export const SpaceDataSourceViewContentList = ({
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (
-    // MultipleDocumentsUpload listens to the file drop context and will upload the files
+    // MultipleDocumentsUpload listens to the file drop context and uploads the files.
     <FileDropProvider>
       <DropzoneContainer
         description="Drag and drop your files here."
