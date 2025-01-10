@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { Button } from "@dust-tt/sparkle";
 import { Checkbox } from "@dust-tt/sparkle";
 import { Page } from "@dust-tt/sparkle";
@@ -5,6 +6,19 @@ import { PopoverContent, PopoverRoot, PopoverTrigger } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
 import { TextArea } from "@dust-tt/sparkle";
 import { Tooltip } from "@dust-tt/sparkle";
+=======
+import {
+  Button,
+  Checkbox,
+  Page,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  Spinner,
+  TextArea,
+  Tooltip,
+} from "@dust-tt/sparkle";
+>>>>>>> Stashed changes
 import { HandThumbDownIcon, HandThumbUpIcon } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef } from "react";
 
@@ -145,7 +159,11 @@ export function FeedbackSelector({
                   className={
                     feedback?.thumb === "up"
                       ? ""
+<<<<<<< Updated upstream
                       : "[&_svg]:s-text-muted-foreground"
+=======
+                      : "[&_svg]:text-muted-foreground"
+>>>>>>> Stashed changes
                   }
                 />
               }
@@ -162,7 +180,11 @@ export function FeedbackSelector({
                   className={
                     feedback?.thumb === "down"
                       ? ""
+<<<<<<< Updated upstream
                       : "[&_svg]:s-text-muted-foreground"
+=======
+                      : "[&_svg]:text-muted-foreground"
+>>>>>>> Stashed changes
                   }
                 />
               }

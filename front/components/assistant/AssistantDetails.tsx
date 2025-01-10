@@ -29,6 +29,210 @@ type AssistantDetailsProps = {
   assistantId: string | null;
 };
 
+<<<<<<< Updated upstream
+=======
+function AssistantDetailsInfo({
+  agentConfiguration,
+  owner,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  owner: WorkspaceType;
+}) {
+  return (
+    <>
+      <div className="text-sm text-foreground">
+        {agentConfiguration?.description}
+      </div>
+      {agentConfiguration && (
+        <AssistantUsageSection
+          agentConfiguration={agentConfiguration}
+          owner={owner}
+        />
+      )}
+      <Page.Separator />
+
+      <AssistantActionsSection
+        agentConfiguration={agentConfiguration}
+        owner={owner}
+      />
+
+      {agentConfiguration?.instructions ? (
+        <div className="flex flex-col gap-2">
+          <div className="text-lg font-bold text-element-800">Instructions</div>
+          <ReadOnlyTextArea content={agentConfiguration.instructions} />
+        </div>
+      ) : (
+        "This assistant has no instructions."
+      )}
+    </>
+  );
+}
+
+function AssistantDetailsPerformance({
+  agentConfiguration,
+  owner,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  owner: WorkspaceType;
+}) {
+  const [period, setPeriod] = useState(30);
+  const { agentAnalytics, isAgentAnayticsLoading } = useAgentAnalytics({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration.sId,
+    period,
+  });
+
+  return (
+    <>
+      <div className="flex flex-row justify-between gap-3">
+        <Page.H variant="h5">Analytics</Page.H>
+        <div className="self-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                label={PERIODS.find((p) => p.value === period)?.label}
+                variant="outline"
+                isSelect
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {PERIODS.map((p) => (
+                <DropdownMenuItem
+                  key={p.value}
+                  label={p.label}
+                  onClick={() => {
+                    setPeriod(p.value);
+                  }}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {isAgentAnayticsLoading ? (
+        <Spinner />
+      ) : (
+        <CardGrid>
+          <Card variant="primary" size="md">
+            <div className="flex h-24 w-full flex-col gap-1 text-sm">
+              <div className="flex w-full gap-1 font-medium text-foreground">
+                <div className="w-full">Active Users</div>
+              </div>
+              <div className="flex flex-col gap-1 text-lg font-bold">
+                {agentAnalytics?.users ? (
+                  <>
+                    <div className="truncate text-element-900">
+                      {agentAnalytics.users.length}
+                    </div>
+
+                    <Avatar.Stack size="md" hasMagnifier={false}>
+                      {removeNulls(agentAnalytics.users.map((top) => top.user))
+                        .slice(0, 5)
+                        .map((user) => (
+                          <Tooltip
+                            key={user.id}
+                            trigger={
+                              <Avatar
+                                size="sm"
+                                name={user.fullName}
+                                visual={user.image}
+                              />
+                            }
+                            label={user.fullName}
+                          />
+                        ))}
+                    </Avatar.Stack>
+                  </>
+                ) : (
+                  "-"
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <Card variant="primary" size="md">
+            <div className="flex h-24 w-full flex-col gap-1 text-sm">
+              <div className="flex w-full gap-1 font-medium text-foreground">
+                <div className="w-full">Reactions</div>
+              </div>
+              <div className="flex flex-row gap-2 text-lg font-bold">
+                {agentConfiguration.scope !== "global" &&
+                agentAnalytics?.feedbacks ? (
+                  <>
+                    <div className="flex flex-row items-center">
+                      <div>
+                        <HandThumbUpIcon className="h-8 w-8 pr-2 text-element-600" />
+                      </div>
+                      <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
+                    </div>
+                    <div className="flex flex-row items-center">
+                      <div>
+                        <HandThumbDownIcon className="h-8 w-8 pr-2 text-element-600" />
+                      </div>
+                      <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
+                    </div>
+                  </>
+                ) : (
+                  "-"
+                )}
+              </div>
+            </div>
+          </Card>
+          <Card variant="primary" size="md">
+            <div className="flex h-24 w-full flex-col gap-1 text-sm">
+              <div className="flex w-full gap-1 font-medium text-foreground">
+                <div className="w-full">Conversations</div>
+              </div>
+              <div className="flex flex-row gap-2 text-lg font-bold">
+                <div className="flex flex-row items-center">
+                  <div>
+                    <ChatBubbleLeftRightIcon className="h-8 w-8 pr-2 text-element-600" />
+                  </div>
+                  <div>
+                    {agentAnalytics?.mentions
+                      ? `${agentAnalytics.mentions.conversationCount}`
+                      : "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+          <Card variant="primary" size="md">
+            <div className="flex h-24 w-full flex-col gap-1 text-sm">
+              <div className="flex w-full gap-1 font-medium text-foreground">
+                <div className="w-full">Messages</div>
+              </div>
+              <div className="flex flex-row gap-2 text-lg font-bold">
+                <div className="flex flex-row items-center">
+                  <div>
+                    <ChatBubbleThoughtIcon className="h-8 w-8 pr-2 text-element-600" />
+                  </div>
+                  <div>
+                    {agentAnalytics?.mentions
+                      ? `${agentAnalytics.mentions.messageCount}`
+                      : "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </CardGrid>
+      )}
+      {agentConfiguration.scope !== "global" && (
+        <>
+          <Page.SectionHeader title="Feedbacks" />
+          <FeedbacksSection
+            owner={owner}
+            agentConfigurationId={agentConfiguration.sId}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+>>>>>>> Stashed changes
 export function AssistantDetails({
   assistantId,
   onClose,
