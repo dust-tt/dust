@@ -601,7 +601,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        parents                      TEXT[] NOT NULL,
        source_url                   TEXT,
        document                     BIGINT,
-       \"table\"                      BIGINT,
+       \"table\"                    BIGINT,
        folder                       BIGINT,
        FOREIGN KEY(data_source)    REFERENCES data_sources(id),
        FOREIGN KEY(document)       REFERENCES data_sources_documents(id),
