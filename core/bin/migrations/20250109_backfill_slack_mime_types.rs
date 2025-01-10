@@ -34,7 +34,7 @@ async fn backfill_mime_types(
     // Get total count first
     let total_count: i64 = c
         .query_one(
-            "SELECT COUNT(*) FROM data_sources_nodes WHERE node_id ~ $1",
+            "SELECT COUNT(id) FROM data_sources_nodes WHERE node_id ~ $1",
             &[&pattern],
         )
         .await?
