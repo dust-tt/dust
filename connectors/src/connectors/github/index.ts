@@ -702,7 +702,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     // Constructing Nodes for Code
     fullCodeInRepos.forEach((codeRepo) => {
-      const repo = uniqueRepos[parseInt(codeRepo.repoId)];
       nodes.push({
         provider: c.type,
         internalId: getCodeRootInternalId(codeRepo.repoId),
@@ -719,7 +718,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     // Constructing Nodes for Code Directories
     codeDirectories.forEach((directory) => {
-      const repo = uniqueRepos[parseInt(directory.repoId)];
       nodes.push({
         provider: c.type,
         internalId: directory.internalId,
@@ -736,7 +734,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     // Constructing Nodes for Code Files
     codeFiles.forEach((file) => {
-      const repo = uniqueRepos[parseInt(file.repoId)];
       nodes.push({
         provider: c.type,
         internalId: file.documentId,
