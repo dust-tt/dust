@@ -603,6 +603,7 @@ mod tests {
             utils::now(),
             "test_dbml".to_string(),
             "text/plain".to_string(),
+            None,
             vec![],
             None,
             vec![],
