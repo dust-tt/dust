@@ -29,6 +29,7 @@ pub struct Node {
     pub timestamp: u64,
     pub title: String,
     pub mime_type: String,
+    pub provider_visibility: Option<String>,
     pub parent_id: Option<String>,
     pub parents: Vec<String>,
 }
@@ -42,6 +43,7 @@ impl Node {
         timestamp: u64,
         title: &str,
         mime_type: &str,
+        provider_visibility: Option<String>,
         parent_id: Option<String>,
         parents: Vec<String>,
     ) -> Self {
@@ -53,6 +55,7 @@ impl Node {
             timestamp,
             title: title.to_string(),
             mime_type: mime_type.to_string(),
+            provider_visibility: provider_visibility.clone(),
             parent_id: parent_id.clone(),
             parents,
         }
