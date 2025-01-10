@@ -1,3 +1,4 @@
+import { concurrentExecutor } from "@dust-tt/types";
 import { Op, QueryTypes } from "sequelize";
 
 import { getCoreReplicaDbConnection } from "@app/lib/production_checks/utils";
@@ -22,7 +23,9 @@ async function checkStaticDataSourceParents(
   frontDataSource: DataSourceModel,
   logger: typeof Logger
 ) {
-  logger.info("CHECK");
+  if (frontDataSource.id % 100 === 0) {
+    logger.info("CHECK");
+  }
   const { dustAPIProjectId, dustAPIDataSourceId } = frontDataSource;
   const coreDataSource: any = (
     await coreSequelize.query(
@@ -39,7 +42,7 @@ async function checkStaticDataSourceParents(
   }
 
   const nodes: any[] = await coreSequelize.query(
-    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c`,
+    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND != ARRAY[node_id]`,
     { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
   );
   nodes.forEach((doc) => {
@@ -68,15 +71,19 @@ async function checkStaticDataSourcesParents(
       order: [["id", "ASC"]],
     });
 
-    for (const dataSource of staticDataSources) {
-      await checkStaticDataSourceParents(
-        dataSource,
-        logger.child({
-          project: dataSource.dustAPIProjectId,
-          dataSourceId: dataSource.dustAPIDataSourceId,
-        })
-      );
-    }
+    await concurrentExecutor(
+      staticDataSources,
+      async (dataSource) => {
+        await checkStaticDataSourceParents(
+          dataSource,
+          logger.child({
+            project: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+          })
+        );
+      },
+      { concurrency: 10 }
+    );
   } while (staticDataSources.length === DATASOURCE_BATCH_SIZE);
 }
 

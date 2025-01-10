@@ -111,17 +111,21 @@ async function migrateFolderDataSourcesParents(
       order: [["id", "ASC"]],
     });
 
-    for (const dataSource of staticDataSources) {
-      await migrateFolderDataSourceParents(
-        dataSource,
-        coreAPI,
-        execute,
-        logger.child({
-          project: dataSource.dustAPIProjectId,
-          dataSourceId: dataSource.dustAPIDataSourceId,
-        })
-      );
-    }
+    await concurrentExecutor(
+      staticDataSources,
+      async (dataSource) => {
+        await migrateFolderDataSourceParents(
+          dataSource,
+          coreAPI,
+          execute,
+          logger.child({
+            project: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+          })
+        );
+      },
+      { concurrency: 10 }
+    );
   } while (staticDataSources.length === DATASOURCE_BATCH_SIZE);
 }
 
