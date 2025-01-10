@@ -189,7 +189,9 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   // fetching the brands that have a Help Center selected as a whole
   const brandsWithHelpCenter =
     await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
-  // fetching the brands that have at least one Category selected
+  // fetching the brands that have at least one Category selected:
+  // we need to do that because we can only fetch diffs at the brand level.
+  // We will filter later on the categories allowed.
   const brandWithCategories =
     await ZendeskCategoryResource.fetchBrandIdsOfReadOnlyCategories(
       connectorId
