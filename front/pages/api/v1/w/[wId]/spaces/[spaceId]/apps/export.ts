@@ -1,7 +1,6 @@
 import type { GetAppsResponseType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { concurrentExecutor } from "@dust-tt/types";
-import { of } from "fp-ts/lib/ReaderT";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
