@@ -76,7 +76,7 @@ const _postConnectorUpdateAPIHandler = async (
         return apiError(req, res, {
           status_code: 401,
           api_error: {
-            type: "connector_authorization_error",
+            type: "connector_oauth_user_missing_rights",
             message: updateRes.error.message,
           },
         });
