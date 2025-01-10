@@ -935,8 +935,9 @@ async function getOrCreateConversationDataSource(
     });
   }
 
+  const lockName = "conversationDataSource" + conversation.id;
   // Handle race condition when we try to create a conversation data source
-  while (!wakeLockIsFree()) {
+  while (!wakeLockIsFree(lockName)) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
@@ -983,7 +984,8 @@ async function getOrCreateConversationDataSource(
       }
 
       return new Ok(dataSource);
-    }
+    },
+    lockName
   );
 
   return res;
