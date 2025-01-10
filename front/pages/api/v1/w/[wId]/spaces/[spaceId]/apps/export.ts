@@ -1,5 +1,7 @@
 import type { GetAppsResponseType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { concurrentExecutor } from "@dust-tt/types";
+import { of } from "fp-ts/lib/ReaderT";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -44,24 +46,23 @@ async function handler(
     case "GET":
       const apps = await AppResource.listBySpace(auth, space);
 
-      const enhancedApps = await Promise.all(
-        apps
-          .filter((app) => app.canRead(auth))
-          .map(async (app) => {
-            const datasetsFromFront = await getDatasets(auth, app.toJSON());
-            const datasets = await Promise.all(
-              datasetsFromFront.map(async (dataset) => {
-                const fromCore = await getDatasetHash(
-                  auth,
-                  app,
-                  dataset.name,
-                  "latest"
-                );
-                return fromCore || dataset;
-              })
+      const enhancedApps = await await concurrentExecutor(
+        apps.filter((app) => app.canRead(auth)),
+        async (app) => {
+          const datasetsFromFront = await getDatasets(auth, app.toJSON());
+          const datasets = [];
+          for (const dataset of datasetsFromFront) {
+            const fromCore = await getDatasetHash(
+              auth,
+              app,
+              dataset.name,
+              "latest"
             );
-            return { ...app.toJSON(), datasets };
-          })
+            datasets.push(fromCore || dataset);
+          }
+          return { ...app.toJSON(), datasets };
+        },
+        { concurrency: 5 }
       );
 
       res.status(200).json({
