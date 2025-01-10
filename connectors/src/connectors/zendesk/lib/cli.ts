@@ -2,12 +2,14 @@ import type {
   ZendeskCheckIsAdminResponseType,
   ZendeskCommandType,
   ZendeskCountTicketsResponseType,
+  ZendeskFetchBrandResponseType,
   ZendeskFetchTicketResponseType,
   ZendeskResyncTicketsResponseType,
 } from "@dust-tt/types";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
+  fetchZendeskBrand,
   fetchZendeskCurrentUser,
   fetchZendeskTicket,
   fetchZendeskTicketCount,
@@ -17,6 +19,7 @@ import { launchZendeskTicketReSyncWorkflow } from "@connectors/connectors/zendes
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
+  ZendeskBrandResource,
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
@@ -29,6 +32,7 @@ export const zendesk = async ({
   | ZendeskCountTicketsResponseType
   | ZendeskResyncTicketsResponseType
   | ZendeskFetchTicketResponseType
+  | ZendeskFetchBrandResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
@@ -141,6 +145,28 @@ export const zendesk = async ({
       return {
         ticket: ticket as { [key: string]: unknown } | null,
         isTicketOnDb: ticketOnDb !== null,
+      };
+    }
+    case "fetch-brand": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      const brandId = args.brandId ? args.brandId : null;
+      if (!brandId) {
+        throw new Error(`Missing --brandId argument`);
+      }
+
+      const brand = await fetchZendeskBrand({
+        brandId,
+        ...(await getZendeskSubdomainAndAccessToken(connector.connectionId)),
+      });
+      const brandOnDb = await ZendeskBrandResource.fetchByBrandId({
+        connectorId: connector.id,
+        brandId,
+      });
+      return {
+        brand: brand as { [key: string]: unknown } | null,
+        brandOnDb: brandOnDb as { [key: string]: unknown } | null,
       };
     }
   }

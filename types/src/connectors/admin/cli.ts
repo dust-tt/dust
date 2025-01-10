@@ -262,6 +262,7 @@ export const ZendeskCommandSchema = t.type({
     t.literal("count-tickets"),
     t.literal("resync-tickets"),
     t.literal("fetch-ticket"),
+    t.literal("fetch-brand"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -302,6 +303,14 @@ export const ZendeskFetchTicketResponseSchema = t.type({
 });
 export type ZendeskFetchTicketResponseType = t.TypeOf<
   typeof ZendeskFetchTicketResponseSchema
+>;
+
+export const ZendeskFetchBrandResponseSchema = t.type({
+  brand: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
+  brandOnDb: t.union([t.UnknownRecord, t.null]),
+});
+export type ZendeskFetchBrandResponseType = t.TypeOf<
+  typeof ZendeskFetchBrandResponseSchema
 >;
 /**
  * </Zendesk>
@@ -465,6 +474,7 @@ export const AdminResponseSchema = t.union([
   ZendeskCountTicketsResponseSchema,
   ZendeskResyncTicketsResponseSchema,
   ZendeskFetchTicketResponseSchema,
+  ZendeskFetchBrandResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
