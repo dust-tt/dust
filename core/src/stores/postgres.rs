@@ -2724,6 +2724,7 @@ impl Store for PostgresStore {
             upsert_params.timestamp,
             title,
             upsert_params.mime_type,
+            upsert_params.provider_visibility,
             upsert_params.tags,
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
@@ -2740,7 +2741,7 @@ impl Store for PostgresStore {
                 timestamp: table.timestamp(),
                 title: table.title(),
                 mime_type: table.mime_type(),
-                provider_visibility: &None, // TODO(2025-01-10 aubin) - add support for provider_visibility in tables
+                provider_visibility: table.provider_visibility(),
                 parents: table.parents(),
             },
             data_source_row_id,
@@ -3295,6 +3296,7 @@ impl Store for PostgresStore {
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
             upsert_params.mime_type,
+            upsert_params.provider_visibility,
         );
 
         self.upsert_data_source_node(
@@ -3302,7 +3304,7 @@ impl Store for PostgresStore {
                 node_id: folder.folder_id(),
                 node_type: &NodeType::Folder,
                 timestamp: folder.timestamp(),
-                provider_visibility: &None, // TODO(2025-01-10 aubin) - add support for provider_visibility in folders
+                provider_visibility: folder.provider_visibility(),
                 title: folder.title(),
                 mime_type: folder.mime_type(),
                 parents: folder.parents(),

@@ -2195,6 +2195,7 @@ struct DatabasesTablesUpsertPayload {
     // Node meta:
     title: String,
     mime_type: String,
+    provider_visibility: Option<String>,
 }
 
 async fn tables_upsert(
@@ -2263,6 +2264,7 @@ async fn tables_upsert(
                 remote_database_secret_id: payload.remote_database_secret_id,
                 title: payload.title,
                 mime_type: payload.mime_type,
+                provider_visibility: payload.provider_visibility,
             },
         )
         .await
@@ -2926,6 +2928,7 @@ struct FoldersUpsertPayload {
     parents: Vec<String>,
     title: String,
     mime_type: String,
+    provider_visibility: Option<String>,
 }
 
 async fn folders_upsert(
@@ -2989,6 +2992,7 @@ async fn folders_upsert(
                 parents: payload.parents,
                 title: payload.title,
                 mime_type: payload.mime_type,
+                provider_visibility: payload.provider_visibility,
             },
         )
         .await

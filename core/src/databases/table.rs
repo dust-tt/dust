@@ -62,6 +62,7 @@ pub struct Table {
     tags: Vec<String>,
     title: String,
     mime_type: String,
+    provider_visibility: Option<String>,
     parent_id: Option<String>,
     parents: Vec<String>,
 
@@ -84,6 +85,7 @@ impl Table {
         timestamp: u64,
         title: String,
         mime_type: String,
+        provider_visibility: Option<String>,
         tags: Vec<String>,
         parent_id: Option<String>,
         parents: Vec<String>,
@@ -104,6 +106,7 @@ impl Table {
             tags,
             title,
             mime_type,
+            provider_visibility,
             parent_id,
             parents,
             schema,
@@ -130,6 +133,9 @@ impl Table {
     }
     pub fn mime_type(&self) -> &str {
         &self.mime_type
+    }
+    pub fn provider_visibility(&self) -> &Option<String> {
+        &self.provider_visibility
     }
     pub fn parent_id(&self) -> &Option<String> {
         &self.parent_id

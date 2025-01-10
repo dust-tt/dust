@@ -71,6 +71,7 @@ pub struct TableUpsertParams {
     pub remote_database_secret_id: Option<String>,
     pub title: String,
     pub mime_type: String,
+    pub provider_visibility: Option<String>,
 }
 
 pub struct FolderUpsertParams {
@@ -79,6 +80,7 @@ pub struct FolderUpsertParams {
     pub title: String,
     pub parents: Vec<String>,
     pub mime_type: String,
+    pub provider_visibility: Option<String>,
 }
 
 #[async_trait]
