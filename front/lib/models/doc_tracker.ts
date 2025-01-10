@@ -237,11 +237,14 @@ export class TrackerGenerationModel extends SoftDeletableModel<TrackerGeneration
   declare trackerConfigurationId: ForeignKey<TrackerConfigurationModel["id"]>;
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare documentId: string;
+  declare maintainedDocumentDataSourceId: ForeignKey<DataSourceModel["id"]>;
+  declare maintainedDocumentId: string;
 
   declare consumedAt: Date | null;
 
   declare trackerConfiguration: NonAttribute<TrackerConfigurationModel>;
   declare dataSource: NonAttribute<DataSourceModel>;
+  declare maintainedDocumentDataSource: NonAttribute<DataSourceModel>;
 }
 
 TrackerGenerationModel.init(
@@ -275,6 +278,10 @@ TrackerGenerationModel.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    maintainedDocumentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "tracker_generation",
@@ -299,4 +306,13 @@ DataSourceModel.hasMany(TrackerGenerationModel, {
 TrackerGenerationModel.belongsTo(DataSourceModel, {
   foreignKey: { allowNull: false },
   as: "dataSource",
+});
+
+DataSourceModel.hasMany(TrackerGenerationModel, {
+  foreignKey: { allowNull: true },
+  as: "maintainedDocumentDataSource",
+});
+TrackerGenerationModel.belongsTo(DataSourceModel, {
+  foreignKey: { allowNull: false },
+  as: "maintainedDocumentDataSource",
 });
