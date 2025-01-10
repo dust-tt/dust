@@ -73,7 +73,7 @@ async function migrateFolderDataSourceParents(
   }
 
   const nodes: any[] = await coreSequelize.query(
-    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c`,
+    `SELECT node_id, parents, timestamp FROM data_sources_nodes WHERE data_source=:c AND parents != ARRAY[node_id]`,
     { replacements: { c: coreDataSource.id }, type: QueryTypes.SELECT }
   );
   await concurrentExecutor(
