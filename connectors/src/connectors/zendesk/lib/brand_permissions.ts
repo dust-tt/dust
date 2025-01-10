@@ -52,12 +52,7 @@ export async function allowSyncZendeskBrand({
 
   const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
 
-  if (brand) {
-    await brand.grantTicketsPermissions();
-    if (helpCenterEnabled) {
-      await brand.grantHelpCenterPermissions();
-    }
-  } else {
+  if (!brand) {
     await ZendeskBrandResource.makeNew({
       blob: {
         subdomain: fetchedBrand.subdomain,
