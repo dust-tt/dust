@@ -11,6 +11,7 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchZendeskArticlesInCategory,
+  fetchZendeskBrand,
   fetchZendeskCategoriesInBrand,
   fetchZendeskManyUsers,
   fetchZendeskTicketComments,
@@ -178,6 +179,7 @@ export async function syncZendeskBrandActivity({
 
 /**
  * Retrieves the IDs of every brand in db that has read permissions on their Help Center or in one of their Categories.
+ * Removes the permissions beforehand for Help Center that have been deleted or disabled on Zendesk.
  * This activity will be used to retrieve the brands that need to be incrementally synced.
  *
  * Note: in this approach; if a single category has read permissions and not its Help Center,
@@ -189,6 +191,37 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   // fetching the brands that have a Help Center selected as a whole
   const brandsWithHelpCenter =
     await ZendeskBrandResource.fetchHelpCenterReadAllowedBrandIds(connectorId);
+
+  // cleaning up brands that don't have an enabled help center anymore
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  for (const brandId of brandsWithHelpCenter) {
+    const fetchedBrand = await fetchZendeskBrand({
+      accessToken,
+      subdomain,
+      brandId,
+    });
+    const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+      connectorId,
+      brandId,
+    });
+    if (!fetchedBrand) {
+      await brandInDb?.revokeTicketsPermissions();
+      await brandInDb?.revokeHelpCenterPermissions();
+    } else if (
+      // TODO(2025-01-10 aubin): replace this with the generic function isBrandHelpCenterEnabled
+      !fetchedBrand.has_help_center ||
+      fetchedBrand.help_center_state !== "enabled"
+    ) {
+      await brandInDb?.revokeHelpCenterPermissions();
+    }
+  }
+
   // fetching the brands that have at least one Category selected:
   // we need to do that because we can only fetch diffs at the brand level.
   // We will filter later on the categories allowed.
