@@ -8,7 +8,6 @@ import {
   Err,
   getGoogleIdsFromSheetContentNodeInternalId,
   getGoogleSheetContentNodeInternalId,
-  getGoogleSheetTableId,
   isGoogleSheetContentNodeInternalId,
   Ok,
   removeNulls,

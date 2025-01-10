@@ -1,7 +1,6 @@
 import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import {
   Err,
-  getNotionDatabaseTableId,
   getOAuthConnectionAccessToken,
   NOTION_MIME_TYPES,
   Ok,
