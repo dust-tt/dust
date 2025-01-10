@@ -97,6 +97,7 @@ impl Node {
             self.parent_id,
             self.parents,
             self.mime_type,
+            self.provider_visibility,
         )
     }
 
