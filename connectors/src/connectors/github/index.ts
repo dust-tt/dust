@@ -614,7 +614,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         parentInternalId: null,
         type: "folder",
         title: repo.name,
-        titleWithParentsContext: `[${repo.name}] - Full repository`,
         sourceUrl: repo.url,
         expandable: true,
         permission: "read",
@@ -635,7 +634,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         parentInternalId: getRepositoryInternalId(repoId),
         type: "database",
         title: "Issues",
-        titleWithParentsContext: `[${repo.name}] Issues`,
         sourceUrl: repo.url + "/issues",
         expandable: false,
         permission: "read",
@@ -654,7 +652,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         parentInternalId: getRepositoryInternalId(repoId),
         type: "channel",
         title: "Discussions",
-        titleWithParentsContext: `[${repo.name}] Discussions`,
         sourceUrl: repo.url + "/discussions",
         expandable: false,
         permission: "read",
@@ -705,14 +702,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     // Constructing Nodes for Code
     fullCodeInRepos.forEach((codeRepo) => {
-      const repo = uniqueRepos[parseInt(codeRepo.repoId)];
       nodes.push({
         provider: c.type,
         internalId: getCodeRootInternalId(codeRepo.repoId),
         parentInternalId: getRepositoryInternalId(codeRepo.repoId),
         type: "folder",
         title: "Code",
-        titleWithParentsContext: repo ? `[${repo.name}] Code` : "Code",
         sourceUrl: codeRepo.sourceUrl,
         expandable: true,
         permission: "read",
@@ -723,16 +718,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     // Constructing Nodes for Code Directories
     codeDirectories.forEach((directory) => {
-      const repo = uniqueRepos[parseInt(directory.repoId)];
       nodes.push({
         provider: c.type,
         internalId: directory.internalId,
         parentInternalId: directory.parentInternalId,
         type: "folder",
         title: directory.dirName,
-        titleWithParentsContext: repo
-          ? `[${repo.name}] ${directory.dirName} (code)`
-          : directory.dirName,
         sourceUrl: directory.sourceUrl,
         expandable: true,
         permission: "read",
@@ -743,16 +734,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     // Constructing Nodes for Code Files
     codeFiles.forEach((file) => {
-      const repo = uniqueRepos[parseInt(file.repoId)];
       nodes.push({
         provider: c.type,
         internalId: file.documentId,
         parentInternalId: file.parentInternalId,
         type: "file",
         title: file.fileName,
-        titleWithParentsContext: repo
-          ? `[${repo.name}] ${file.fileName} (code)`
-          : file.fileName,
         sourceUrl: file.sourceUrl,
         expandable: false,
         permission: "read",

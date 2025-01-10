@@ -122,7 +122,7 @@ export default function DataSourceSelectionSection({
                     return (
                       <Tree.Item
                         key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
-                        label={node.titleWithParentsContext ?? node.title}
+                        label={node.title}
                         type={node.expandable ? "node" : "leaf"}
                         visual={getVisualForContentNode(node)}
                         className="whitespace-nowrap"
