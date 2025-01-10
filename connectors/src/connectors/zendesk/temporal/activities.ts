@@ -17,6 +17,7 @@ import {
   fetchZendeskTicketComments,
   fetchZendeskTickets,
   getZendeskBrandSubdomain,
+  isBrandHelpCenterEnabled,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -213,11 +214,7 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
     if (!fetchedBrand) {
       await brandInDb?.revokeTicketsPermissions();
       await brandInDb?.revokeHelpCenterPermissions();
-    } else if (
-      // TODO(2025-01-10 aubin): replace this with the generic function isBrandHelpCenterEnabled
-      !fetchedBrand.has_help_center ||
-      fetchedBrand.help_center_state !== "enabled"
-    ) {
+    } else if (!isBrandHelpCenterEnabled(fetchedBrand)) {
       await brandInDb?.revokeHelpCenterPermissions();
     }
   }
