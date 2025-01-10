@@ -364,7 +364,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         },
       });
       nodes = helpCentersFromDb.map((helpCenter) => ({
-        provider: connector.type,
         internalId: getHelpCenterInternalId(
           connectorId,
           helpCenter.helpCenterId
@@ -381,7 +380,6 @@ export async function retrieveIntercomHelpCentersPermissions({
     } else {
       const helpCenters = await fetchIntercomHelpCenters({ accessToken });
       nodes = helpCenters.map((helpCenter) => ({
-        provider: connector.type,
         internalId: getHelpCenterInternalId(connectorId, helpCenter.id),
         parentInternalId: null,
         type: "database",
@@ -425,7 +423,6 @@ export async function retrieveIntercomHelpCentersPermissions({
     });
     if (isReadPermissionsOnly) {
       nodes = collectionsInDb.map((collection) => ({
-        provider: connector.type,
         internalId: getHelpCenterCollectionInternalId(
           connectorId,
           collection.collectionId
@@ -452,7 +449,6 @@ export async function retrieveIntercomHelpCentersPermissions({
           (c) => c.collectionId === collection.id
         );
         return {
-          provider: connector.type,
           internalId: getHelpCenterCollectionInternalId(
             connectorId,
             collection.id
@@ -493,7 +489,6 @@ export async function retrieveIntercomHelpCentersPermissions({
       });
       const collectionNodes: ContentNode[] = collectionsInDb.map(
         (collection) => ({
-          provider: connector.type,
           internalId: getHelpCenterCollectionInternalId(
             connectorId,
             collection.collectionId
@@ -522,7 +517,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         },
       });
       const articleNodes: ContentNode[] = articlesInDb.map((article) => ({
-        provider: connector.type,
         internalId: getHelpCenterArticleInternalId(
           connectorId,
           article.articleId

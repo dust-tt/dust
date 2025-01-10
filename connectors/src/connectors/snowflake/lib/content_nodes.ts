@@ -34,7 +34,6 @@ export const getContentNodeFromInternalId = (
 
   if (type === "database") {
     return {
-      provider: "snowflake",
       internalId: databaseName as string,
       parentInternalId: null,
       type: "folder",
@@ -49,7 +48,6 @@ export const getContentNodeFromInternalId = (
   }
   if (type === "schema") {
     return {
-      provider: "snowflake",
       internalId: `${databaseName}.${schemaName}`,
       parentInternalId: databaseName as string,
       type: "folder",
@@ -64,7 +62,6 @@ export const getContentNodeFromInternalId = (
   }
   if (type === "table") {
     return {
-      provider: "snowflake",
       internalId: `${databaseName}.${schemaName}.${tableName}`,
       parentInternalId: `${databaseName}.${schemaName}`,
       type: "database",

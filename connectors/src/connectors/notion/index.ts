@@ -455,7 +455,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       const expandable = Boolean(hasChildrenByPageId[page.notionPageId]);
 
       return {
-        provider: c.type,
         internalId: nodeIdFromNotionId(page.notionPageId),
         parentInternalId:
           !page.parentId || page.parentId === "workspace"
@@ -479,7 +478,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
       return {
-        provider: c.type,
         internalId: nodeIdFromNotionId(db.notionDatabaseId),
         parentInternalId:
           !db.parentId || db.parentId === "workspace"
@@ -504,7 +502,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         // We also need to return a "fake" top-level folder call "Orphaned" to include resources
         // we haven't been able to find a parent for.
         folderNodes.push({
-          provider: c.type,
           // Orphaned resources in the database will have "unknown" as their parentId.
           internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
@@ -553,7 +550,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
     const pageNodes: ContentNode[] = await Promise.all(
       pages.map(async (page) => ({
-        provider: "notion",
         internalId: nodeIdFromNotionId(page.notionPageId),
         parentInternalId:
           !page.parentId || page.parentId === "workspace"
@@ -571,7 +567,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     );
 
     const dbNodes: ContentNode[] = dbs.map((db) => ({
-      provider: "notion",
       internalId: nodeIdFromNotionId(db.notionDatabaseId),
       parentInternalId:
         !db.parentId || db.parentId === "workspace"
@@ -593,7 +588,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       const orphanedCount = await getOrphanedCount(this.connectorId);
       if (orphanedCount > 0) {
         contentNodes.push({
-          provider: "notion",
           // Orphaned resources in the database will have "unknown" as their parentId.
           internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,

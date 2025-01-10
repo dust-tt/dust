@@ -17,7 +17,6 @@ export function getRootNodes(): ContentNode[] {
 
 export function getSitesRootAsContentNode(): ContentNode {
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: "",
       nodeType: "sites-root",
@@ -36,7 +35,6 @@ export function getSitesRootAsContentNode(): ContentNode {
 
 export function getTeamsRootAsContentNode(): ContentNode {
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: "",
       nodeType: "teams-root",
@@ -54,7 +52,6 @@ export function getTeamsRootAsContentNode(): ContentNode {
 }
 export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: `/teams/${team.id}`,
       nodeType: "team",
@@ -80,7 +77,6 @@ export function getSiteAsContentNode(
     throw new Error("Site id is required");
   }
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: getSiteAPIPath(site),
       nodeType: "site",
@@ -111,7 +107,6 @@ export function getChannelAsContentNode(
   }
 
   return {
-    provider: "microsoft",
     internalId: internalIdFromTypeAndPath({
       itemAPIPath: `/teams/${parentInternalId}/channels/${channel.id}`,
       nodeType: "channel",
@@ -136,7 +131,6 @@ export function getDriveAsContentNode(
     throw new Error("Drive id is required");
   }
   return {
-    provider: "microsoft",
     internalId: getDriveInternalId(drive),
     parentInternalId,
     type: "folder",
@@ -153,7 +147,6 @@ export function getFolderAsContentNode(
   parentInternalId: string
 ): ContentNode {
   return {
-    provider: "microsoft",
     internalId: getDriveItemInternalId(folder),
     parentInternalId,
     type: "folder",
@@ -171,7 +164,6 @@ export function getFileAsContentNode(
   parentInternalId: string
 ): ContentNode {
   return {
-    provider: "microsoft",
     internalId: getDriveItemInternalId(file),
     parentInternalId,
     type: "file",
@@ -207,7 +199,6 @@ export function getMicrosoftNodeAsContentNode(
   }
 
   return {
-    provider: "microsoft",
     internalId: node.internalId,
     parentInternalId: node.parentInternalId,
     type,

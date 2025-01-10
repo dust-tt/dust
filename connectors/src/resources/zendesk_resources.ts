@@ -330,7 +330,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   toContentNode(connectorId: number): ContentNode {
     const { brandId } = this;
     return {
-      provider: "zendesk",
       internalId: getBrandInternalId({ connectorId, brandId }),
       parentInternalId: null,
       type: "folder",
@@ -353,7 +352,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   ): ContentNode & { parentInternalId: string } {
     const { brandId } = this;
     return {
-      provider: "zendesk",
       internalId: getHelpCenterInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
       type: "folder",
@@ -375,7 +373,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   ): ContentNode & { parentInternalId: string } {
     const { brandId } = this;
     return {
-      provider: "zendesk",
       internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
       type: "folder",
@@ -641,7 +638,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   ): ContentNode {
     const { brandId, categoryId, permission } = this;
     return {
-      provider: "zendesk",
       internalId: getCategoryInternalId({ connectorId, brandId, categoryId }),
       parentInternalId: getHelpCenterInternalId({ connectorId, brandId }),
       type: "folder",
@@ -727,7 +723,6 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
   toContentNode(connectorId: number): ContentNode {
     const { brandId, ticketId } = this;
     return {
-      provider: "zendesk",
       internalId: getTicketInternalId({ connectorId, brandId, ticketId }),
       parentInternalId: getTicketsInternalId({ connectorId, brandId }),
       type: "file",
@@ -939,7 +934,6 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   toContentNode(connectorId: number): ContentNode {
     const { brandId, categoryId, articleId } = this;
     return {
-      provider: "zendesk",
       internalId: getArticleInternalId({ connectorId, brandId, articleId }),
       parentInternalId: getCategoryInternalId({
         connectorId,
