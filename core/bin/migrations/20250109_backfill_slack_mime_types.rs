@@ -4,9 +4,6 @@ use dust::stores::{postgres, store};
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(long, default_value = "false")]
-    execute: bool,
-
     #[arg(long, default_value = "512")]
     batch_size: i64,
 
@@ -35,7 +32,6 @@ impl std::str::FromStr for NodeType {
 async fn backfill_mime_types(
     pool: &bb8::Pool<bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>>,
     batch_size: i64,
-    execute: bool,
     sub_type: &str,
 ) -> Result<bool> {
     let c = pool.get().await?;
@@ -43,23 +39,13 @@ async fn backfill_mime_types(
     let pattern = format!("^slack-[A-Z0-9]+-{}-[0-9.\\-]+$", sub_type);
     let mime_type = format!("application/vnd.dust.slack.{}", sub_type);
 
-    // Get total count first
-    let total_count: i64 = c
-        .query_one(
-            "SELECT COUNT(id) FROM data_sources_nodes WHERE node_id ~ $1",
-            &[&pattern],
-        )
-        .await?
-        .get(0);
-
     let mut processed = 0;
     let mut last_id = 0;
 
-    while processed < total_count {
-        if execute {
-            let updated_ids = c
-                .query(
-                    "WITH to_update AS (
+    loop {
+        let updated_ids = c
+            .query(
+                "WITH to_update AS (
                         SELECT id
                         FROM data_sources_nodes
                         WHERE node_id ~ $1
@@ -72,22 +58,19 @@ async fn backfill_mime_types(
                     FROM to_update u
                     WHERE n.id = u.id
                     RETURNING n.id",
-                    &[&pattern, &last_id, &batch_size, &mime_type],
-                )
-                .await?;
+                &[&pattern, &last_id, &batch_size, &mime_type],
+            )
+            .await?;
 
-            if updated_ids.is_empty() {
-                break;
-            }
-
-            let rows_updated = updated_ids.len() as i64;
-            last_id = updated_ids.last().unwrap().get(0);
-            processed += rows_updated;
-        } else {
-            processed += batch_size;
+        if updated_ids.is_empty() {
+            break;
         }
 
-        println!("Processed {}/{} nodes", processed, total_count);
+        let rows_updated = updated_ids.len() as i64;
+        last_id = updated_ids.last().unwrap().get(0);
+        processed += rows_updated;
+
+        println!("Processed {} nodes", processed);
     }
 
     Ok(true)
@@ -96,7 +79,6 @@ async fn backfill_mime_types(
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let execute = args.execute;
     let batch_size = args.batch_size;
     let node_type = args.node_type;
 
@@ -113,10 +95,10 @@ async fn main() -> Result<()> {
 
     match node_type {
         NodeType::Thread => {
-            backfill_mime_types(pool, batch_size, execute, "thread").await?;
+            backfill_mime_types(pool, batch_size, "thread").await?;
         }
         NodeType::Messages => {
-            backfill_mime_types(pool, batch_size, execute, "messages").await?;
+            backfill_mime_types(pool, batch_size, "messages").await?;
         }
     }
 
