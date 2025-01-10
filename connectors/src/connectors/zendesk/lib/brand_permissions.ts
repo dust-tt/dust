@@ -52,6 +52,7 @@ export async function allowSyncZendeskBrand({
 
   const helpCenterEnabled = isBrandHelpCenterEnabled(fetchedBrand);
 
+  // creating the brand if it does not exist yet in db
   if (!brand) {
     await ZendeskBrandResource.makeNew({
       blob: {
@@ -66,6 +67,8 @@ export async function allowSyncZendeskBrand({
     });
   }
 
+  // setting the permissions for the brand:
+  // can be redundant if already set when creating the brand but necessary because of the categories.
   if (helpCenterEnabled) {
     // allow the categories
     await allowSyncZendeskHelpCenter({
