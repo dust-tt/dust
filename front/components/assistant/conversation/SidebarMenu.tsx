@@ -15,6 +15,7 @@ import {
   NavigationListLabel,
   PlusIcon,
   RobotIcon,
+  SearchInput,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -35,7 +36,7 @@ import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames } from "@app/lib/utils";
+import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
@@ -67,6 +68,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [titleFilter, setTitleFilter] = useState<string>("");
   const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
@@ -139,6 +141,16 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     };
 
     conversations.forEach((conversation: ConversationType) => {
+      if (
+        titleFilter &&
+        !subFilter(
+          removeDiacritics(titleFilter).toLowerCase(),
+          removeDiacritics(conversation.title ?? "").toLowerCase()
+        )
+      ) {
+        return;
+      }
+
       const updatedAt = moment(conversation.updated ?? conversation.created);
       if (updatedAt.isSameOrAfter(today)) {
         groups["Today"].push(conversation);
@@ -204,6 +216,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-2 shadow-tale">
+                <SearchInput
+                  name="search"
+                  placeholder="Search (Title)"
+                  value={titleFilter}
+                  onChange={setTitleFilter}
+                />
                 <Button
                   href={`/w/${owner.sId}/assistant/new`}
                   label="New"
