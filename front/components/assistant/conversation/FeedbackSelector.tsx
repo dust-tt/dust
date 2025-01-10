@@ -1,4 +1,7 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
 import { Button } from "@dust-tt/sparkle";
 import { Checkbox } from "@dust-tt/sparkle";
 import { Page } from "@dust-tt/sparkle";
@@ -6,6 +9,7 @@ import { PopoverContent, PopoverRoot, PopoverTrigger } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
 import { TextArea } from "@dust-tt/sparkle";
 import { Tooltip } from "@dust-tt/sparkle";
+<<<<<<< Updated upstream
 =======
 import {
   Button,
@@ -18,6 +22,8 @@ import {
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import { HandThumbDownIcon, HandThumbUpIcon } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef } from "react";

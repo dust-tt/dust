@@ -1,6 +1,14 @@
 {
   "name": "@dust-tt/sparkle",
+<<<<<<< Updated upstream
   "version": "0.2.358",
+=======
+<<<<<<< HEAD
+  "version": "0.2.361",
+=======
+  "version": "0.2.358",
+>>>>>>> 7b500a69f (deleting feedback selector from sparkle)
+>>>>>>> Stashed changes
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
     "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
